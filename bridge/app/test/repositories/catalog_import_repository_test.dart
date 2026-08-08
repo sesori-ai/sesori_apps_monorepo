@@ -330,6 +330,51 @@ void main() {
       expect(calculator.sawFirstRowOnSecondLookup, isTrue);
     });
 
+    test("publishes the backend's own activity for each imported session", () async {
+      final projectPath = "${directory.path}/activity";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "activity", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [
+            _pluginSession(id: "root-a", directory: projectPath, updatedAt: 4242),
+            _pluginSession(id: "root-b", directory: projectPath, updatedAt: 5353),
+          ],
+        },
+        childrenByParent: const {},
+      );
+      final repository = CatalogImportRepository(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final published = <SessionBackendActivity>[];
+      final subscription = repository.backendActivity.listen(published.addAll);
+      addTearDown(subscription.cancel);
+
+      await repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      final bindings = await database.sessionDao.getSessionsForPlugin(pluginId: plugin.id);
+      expect(
+        published.map((activity) => activity.activityAt).toList()..sort(),
+        const [4242, 5353],
+        reason: "the backend's reported update time is what staleness compares against",
+      );
+      expect(
+        published.map((activity) => activity.sessionId).toSet(),
+        {bindings["root-a"]!.sessionId, bindings["root-b"]!.sessionId},
+      );
+    });
+
     test("publishes projects before ancestry-ordered session batches of at most 512", () async {
       final projectPath = "${directory.path}/batched";
       final roots = [

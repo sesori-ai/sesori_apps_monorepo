@@ -22,6 +22,74 @@ class ChatHistoryService {
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
 
+  /// One page of the session's messages, served from the store whenever it is
+  /// known to be current and falling back to the backend otherwise.
+  ///
+  /// A null [limit] returns the whole transcript, which is what an app that
+  /// predates pagination asks for.
+  ///
+  /// The store is preferred only when a backfill has completed *and* no
+  /// backend activity has been observed past the captured watermark, so a
+  /// session advanced outside Sesori still reads correctly.
+  Future<ChatHistoryPage> getSessionMessages({
+    required String sessionId,
+    int? limit,
+    int? before,
+  }) async {
+    // Both the freshness decision and the read run inside the session queue,
+    // so they observe one state. Deciding outside it would let queued work —
+    // an observed import, or a failed capture clearing `syncedAt` — commit
+    // between the decision and the read, and the caller would receive a
+    // transcript that the store already knew was stale.
+    final decided = await _enqueueRead(
+      sessionId: sessionId,
+      read: () async {
+        final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+        if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
+          return null;
+        }
+        return _chatHistoryRepository.getSessionMessages(
+          sessionId: sessionId,
+          limit: limit,
+          before: before,
+        );
+      },
+    );
+    if (decided != null) return decided;
+
+    await backfillSession(sessionId: sessionId);
+    // The backfill is itself queued, so this read lands after it and after
+    // any capture that raced its fetch.
+    return _enqueueRead(
+      sessionId: sessionId,
+      read: () => _chatHistoryRepository.getSessionMessages(
+        sessionId: sessionId,
+        limit: limit,
+        before: before,
+      ),
+    );
+  }
+
+  /// Records backend activity observed outside the live event stream, so a
+  /// session advanced through the backend's own CLI is detected as stale.
+  ///
+  /// Only sessions the store already knows about are tracked; an unknown
+  /// session has nothing to be stale against.
+  Future<void> observeBackendActivity({required String sessionId, required int activityAt}) {
+    return _enqueue(
+      sessionId: sessionId,
+      write: () async {
+        final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+        if (state == null) return;
+        await _chatHistoryRepository.advanceSyncState(
+          sessionId: sessionId,
+          watermark: state.watermark,
+          backendActivityAt: activityAt,
+        );
+      },
+    );
+  }
+
   /// Records a finalized message from the live event stream.
   Future<void> captureMessage({required String sessionId, required Message message}) {
     return _capture(
@@ -189,6 +257,27 @@ class ChatHistoryService {
 
   Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) {
     return _enqueueAll(sessionIds: [sessionId], write: write);
+  }
+
+  /// Runs [read] after the session's pending writes and holds the queue for
+  /// its duration, so a write enqueued while it runs commits after it rather
+  /// than underneath it.
+  ///
+  /// Reads of one session therefore serialize with each other too. That is
+  /// acceptable: a read is a bounded query against a local database, and it
+  /// buys a simple guarantee — whatever a read observed is what the caller
+  /// receives.
+  Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) {
+    final pending = _writeQueues[sessionId] ?? Future<void>.value();
+    final result = pending.then((_) => read());
+    final tail = result.then<void>((_) {}, onError: (Object _) {});
+    _writeQueues[sessionId] = tail;
+    unawaited(
+      tail.whenComplete(() {
+        if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
+      }),
+    );
+    return result;
   }
 
   /// Runs [write] after every listed session's pending writes, and makes it

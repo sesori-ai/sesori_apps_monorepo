@@ -287,7 +287,7 @@ void main() {
       );
 
       expect(result, isFalse);
-      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
@@ -447,7 +447,7 @@ void main() {
 
     test("non-loaded state buffers permission events and replays after loaded", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) => messagesCompleter.future);
+      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
 
       final cubit = _buildCubit(
         sessionId: sessionId,
@@ -473,7 +473,7 @@ void main() {
 
       expect(cubit.state, const SessionDetailState.loading());
 
-      messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
+      messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)));
       await _awaitLoaded(cubit);
 
       // The buffered permission event should have been replayed after load
@@ -738,10 +738,10 @@ SessionDetailCubit _buildCubit({
 
 void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(
-    () => service.getMessages(sessionId: any(named: "sessionId")),
+    () => service.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
-      ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+      ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
     ),
   );
   when(

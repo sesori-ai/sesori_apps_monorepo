@@ -213,6 +213,7 @@
   "harnessManagementInstallVerifying": "Verifying download…",
   "harnessManagementInstallExtracting": "Extracting…",
   "harnessManagementInstallFinishing": "Finishing up…",
+  "harnessManagementInstallInProgress": "Installing…",
   "harnessManagementRestart": "Restart",
   "harnessManagementIdleTimeout": "Idle timeout",
   "harnessManagementClearOverride": "Use bridge default",

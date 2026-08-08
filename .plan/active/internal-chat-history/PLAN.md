@@ -23,8 +23,12 @@ audit file and purge it from the database.
 
 ## Success Criteria
 
-1. Opening a previously synced session serves messages from the store without
-   starting the plugin backend, for all current backends.
+1. **Reading chat history never starts a harness.** Opening a previously
+   synced session serves messages from the store without starting the plugin
+   backend, for all current backends. This is a primary goal of the feature,
+   not a side effect: history must be readable while every harness is stopped.
+   The only read that may start one is the first-ever backfill of a session,
+   or a re-read after the backend itself advanced (Criterion 3).
 2. A live session's streamed messages and parts are queryable from the store
    immediately after they finalize, matching what a plugin history fetch
    would return (same visibility filtering and 500-rune tool-output bound).
@@ -43,6 +47,44 @@ audit file and purge it from the database.
    file.
 8. The 25 GB-class backend databases are never imported wholesale: backfill
    is lazy, per-session, on first read.
+9. **No work in this feature is triggered by a harness starting.** Nothing
+   here issues a request because a backend came up, and nothing batches
+   requests at startup (see Harness Startup Constraints).
+
+## Harness Startup Constraints (user-stated, 2026-08-08)
+
+Harnesses — OpenCode especially — are slow and unreliable for a period after
+they start. Early requests are sluggish or time out outright, which reads to
+the user as the app being unresponsive. Worse, requests issued during that
+window compete with the harness's own startup work, so a *user-initiated*
+action such as sending a message becomes slower because of background traffic
+we chose to send.
+
+Consequences for this feature, all satisfied by the current design:
+
+- **Never fetch history because a harness started.** Backfill is triggered by
+  a user opening a session, never by a lifecycle event. There is no
+  "warm the cache on startup" pass, and none may be added.
+- **Never batch requests at startup.** Nothing here iterates sessions issuing
+  plugin calls. Startup work (`ChatHistoryReconcileService`) reads only the
+  two local databases and never contacts a harness.
+- **Prefer serving stale-but-honest over waking a harness.** When the store is
+  current, it is served with no plugin call at all.
+- Deferred backends stay deferred: a stopped harness with a synced store is
+  never started to satisfy a read.
+
+## Known Limits
+
+- **Import-based staleness needs a backend-reported update time.** A plugin
+  that returns a session with no `time.updated` (Codex and ACP can, when the
+  underlying record carries no timestamp) gets no staleness signal from
+  catalog import. There is deliberately no fallback: the merged catalog
+  `updatedAt` is moved by bridge-local writes such as a rename, and the
+  import's own clock would mark every such session stale on every import and
+  wake its harness on the next open. Live capture keeps those sessions current
+  while the bridge runs; the residual gap is a session advanced through the
+  backend's CLI *while the bridge was down*, for a backend that reports no
+  update time. Revisit only if a backend in that position matters in practice.
 
 ## Why Now (observed problems)
 
@@ -94,8 +136,10 @@ audit file and purge it from the database.
   databases.
 - New SSE event types or changes to the client's reload triggers (owned by
   the separate `session-refresh-reconnects` assessment).
-- Trimming what non-message data the session snapshot sends (explicitly
-  deferred by the user).
+- Trimming what non-message data the session snapshot sends. Serving history
+  without starting a harness does not by itself make session open harness-free,
+  because the same snapshot still issues plugin-starting calls (see step 8/8,
+  which aligns on the follow-up rather than implementing it here).
 - Compression of archive files, retention windows for active-session
   history, content-hash dedup across sessions.
 - Changes to the `BridgePluginApi.getSessionMessages` contract — it remains
@@ -479,12 +523,56 @@ expected and recorded here as unavoidable.
 | 5/8 | `⚙️ [internal-chat-history] Paginate session messages [step 5/8]` | 600–1,000 | `SessionMessagesRequest`/`nextCursor` shared fields, bridge paging over `seq`, compatibility tests both directions. |
 | 6/8 | `🚧 [internal-chat-history] Export archives and purge history on archive [step 6/8]` | 1,000–1,500 | `ArchivedSessionStorage`, export → cleanup → flip → purge sequencing, archived read path (`seq`-cursor from the audit file), incremental vacuum, reconcile audit-file behaviors, delete-path archive cleanup. |
 | 7/8 | `🌿 [internal-chat-history] Load history pages on demand in the client [step 7/8]` | 500–900 | Latest-page initial load, load-older affordance, complete-when-no-cursor, page-merge cubit state, tests. |
-| 8/8 | `🌱 [internal-chat-history] Retire plan [step 8/8]` | 50–150 | Move plan to `.plan/completed/`. |
+| 8/8 | `🌱 [internal-chat-history] Retire plan and scope the harness-free session open [step 8/8]` | 150–400 | Move plan to `.plan/completed/`, and record the follow-up assessment for the remaining plugin-starting calls in the session-open snapshot (below). |
 
 Steps merge in numeric order; each PR is independently valid at its base.
 Bridge serving (4) precedes the wire change (5); archived reads (6) reuse the
 serving path; the client adopts paging last (7) against a bridge that already
 serves both shapes.
+
+## Step 8/8: Harness-Free Session Open (assessment, not implementation)
+
+Serving history from the store removes one plugin call from session open, but
+the snapshot still wakes an idle backend through other calls, so the user does
+not perceive the win. Step 8/8 retires this plan **and** produces an aligned,
+code-informed assessment of what it would take to open a session with every
+harness stopped. Deliverable is a written proposal — a follow-up plan — not an
+implementation, so this series stays scoped.
+
+Observed on 2026-08-08 against a bridge running step 4/8: the store served
+history correctly (`chat_history.db` populated, sessions `synced_at` with a
+current watermark), yet opening a session still felt unchanged because the
+remaining calls started the backend anyway.
+
+Calls in `SessionDetailLoadService._loadSnapshot` to classify, each as
+"can it be answered without the plugin?":
+
+- `getPendingQuestions` / `getPendingPermissions` — `_runtime.use(...)`, which
+  is `startIfNeeded: true`. These are the primary offenders: a stopped backend
+  has no pending interaction to report, so waking it to ask is close to
+  pointless.
+- `getSession`, `getChildren` — already catalog-backed in the common path;
+  confirm no plugin fallback fires for a stored session.
+- `listAgents` / `listProviders` / `listCommands` — plugin-backed, but a
+  session-options cache already exists (`session_options_cache_table`);
+  assess whether the cached snapshot can answer an open on a stopped backend.
+- `getSessionStatuses` — already correct: uses `useIfActive`
+  (`startIfNeeded: false`), so it degrades instead of starting. This is the
+  shape the others should be measured against.
+
+Questions to answer explicitly, with the user, before any implementation:
+
+1. Which of these must be live-accurate, and which may serve a bridge-side
+   cached or empty answer while the backend is stopped?
+2. What should the UI show for a stopped-backend field — last known value,
+   empty, or an explicit "unavailable until the backend starts" state? A
+   silently empty pending-questions list is a correctness risk if a question
+   really is outstanding.
+3. Does opening a session imply intent to *use* it (so a deliberate,
+   non-blocking background start is right), or should the backend start only
+   when the user actually acts?
+4. Given harnesses respond poorly right after starting, should any such start
+   be explicitly backgrounded so it never blocks first paint?
 
 ## Verification
 

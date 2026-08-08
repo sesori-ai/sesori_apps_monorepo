@@ -15,16 +15,48 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
     return (select(historySyncStateTable)..where((table) => table.sessionId.equals(sessionId))).getSingleOrNull();
   }
 
-  Future<List<HistoryMessagesTableData>> getMessages({required String sessionId}) {
-    return (select(historyMessagesTable)
-          ..where((table) => table.sessionId.equals(sessionId))
-          ..orderBy([(table) => OrderingTerm(expression: table.seq)]))
-        .get();
+  /// The session's messages oldest-first.
+  ///
+  /// With [limit] set, returns the newest [limit] messages ordered strictly
+  /// below [before] (or from the newest when [before] is null), still
+  /// oldest-first within the page.
+  Future<List<HistoryMessagesTableData>> getMessages({
+    required String sessionId,
+    int? limit,
+    int? before,
+  }) async {
+    if (limit == null) {
+      return (select(historyMessagesTable)
+            ..where((table) => table.sessionId.equals(sessionId))
+            ..orderBy([(table) => OrderingTerm(expression: table.seq)]))
+          .get();
+    }
+    // Take the newest rows first so the limit selects the right end of the
+    // transcript, then flip the page back into reading order.
+    final page =
+        await (select(historyMessagesTable)
+              ..where(
+                (table) => before == null
+                    ? table.sessionId.equals(sessionId)
+                    : table.sessionId.equals(sessionId) & table.seq.isSmallerThanValue(before),
+              )
+              ..orderBy([(table) => OrderingTerm(expression: table.seq, mode: OrderingMode.desc)])
+              ..limit(limit))
+            .get();
+    return page.reversed.toList(growable: false);
   }
 
-  Future<List<HistoryPartsTableData>> getParts({required String sessionId}) {
+  /// Parts of [messageIds], or of the whole session when [messageIds] is null.
+  Future<List<HistoryPartsTableData>> getParts({
+    required String sessionId,
+    List<String>? messageIds,
+  }) {
     return (select(historyPartsTable)
-          ..where((table) => table.sessionId.equals(sessionId))
+          ..where(
+            (table) => messageIds == null
+                ? table.sessionId.equals(sessionId)
+                : table.sessionId.equals(sessionId) & table.messageId.isIn(messageIds),
+          )
           ..orderBy([
             (table) => OrderingTerm(expression: table.messageId),
             (table) => OrderingTerm(expression: table.orderIndex),

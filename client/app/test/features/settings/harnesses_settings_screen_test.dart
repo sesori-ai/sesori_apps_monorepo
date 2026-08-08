@@ -335,10 +335,10 @@ void main() {
       ),
     ).called(1);
 
-    // The bridge accepts the command immediately, so the card returns to idle
-    // and the streamed phases are what the user sees. Two pumps: one delivers
-    // the stream event to the cubit, the next rebuilds with it. The progress
-    // row animates continuously, so never settle here.
+    // The service marks the install in flight from the tap; the streamed
+    // phases are what the user sees. Two pumps: one delivers the stream event
+    // to the cubit, the next rebuilds with it. The progress row animates
+    // continuously, so never settle here.
     installProgress.add(const {
       "future-harness": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
     });
@@ -352,6 +352,24 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text("Extracting…"), findsOneWidget);
+
+    // A second tap while installing must not send another command.
+    await tester.tap(find.byKey(const Key("harness_management_install_future-harness")));
+    await tester.pump();
+    verifyNever(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.install(),
+      ),
+    );
+
+    // A phase only a newer bridge names still reads as work in progress.
+    installProgress.add(const {
+      "future-harness": PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+    });
+    await tester.pump();
+    await tester.pump();
+    expect(find.text("Installing…"), findsOneWidget);
   });
 
   testWidgets("install is hidden without the capability and when the runtime is ready", (tester) async {

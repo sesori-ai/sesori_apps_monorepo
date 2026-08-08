@@ -83,6 +83,20 @@ void main() {
         const {},
       ),
       (
+        const ProductAnalyticsEvent.harnessInstallFinished(
+          outcome: AnalyticsHarnessInstallOutcome.completed,
+        ),
+        "harness_install_finished",
+        const {"outcome": "completed"},
+      ),
+      (
+        const ProductAnalyticsEvent.harnessInstallFinished(
+          outcome: AnalyticsHarnessInstallOutcome.failed,
+        ),
+        "harness_install_finished",
+        const {"outcome": "failed"},
+      ),
+      (
         const ProductAnalyticsEvent.sessionDiffViewed(
           changeState: AnalyticsChangeState.nonEmpty,
         ),

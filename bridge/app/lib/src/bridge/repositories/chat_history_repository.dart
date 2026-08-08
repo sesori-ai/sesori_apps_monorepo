@@ -7,6 +7,10 @@ import "../../api/attachment_spill_storage.dart";
 import "../../api/database/history/chat_history_dao.dart";
 import "../../api/database/history/chat_history_database.dart";
 
+/// One page of stored history, oldest-first, plus the cursor for the next
+/// older page (null when the caller has reached the start of the transcript).
+typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
+
 /// How fresh a session's stored transcript is.
 ///
 /// [syncedAt] is null until a backfill completes, so a row created by live
@@ -34,22 +38,41 @@ class ChatHistoryRepository {
 
   /// The session's stored transcript, oldest first, with attachments
   /// rehydrated from their spill files.
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
-    final messageRows = await _chatHistoryDao.getMessages(sessionId: sessionId);
-    final partRows = await _chatHistoryDao.getParts(sessionId: sessionId);
+  Future<ChatHistoryPage> getSessionMessages({
+    required String sessionId,
+    int? limit,
+    int? before,
+  }) async {
+    final messageRows = await _chatHistoryDao.getMessages(
+      sessionId: sessionId,
+      limit: limit,
+      before: before,
+    );
+    final partRows = await _chatHistoryDao.getParts(
+      sessionId: sessionId,
+      messageIds: limit == null ? null : [for (final row in messageRows) row.messageId],
+    );
     final partsByMessage = <String, List<MessagePart>>{};
     for (final row in partRows) {
       partsByMessage
           .putIfAbsent(row.messageId, () => [])
           .add(await _rehydratePart(sessionId: sessionId, partJson: row.partJson));
     }
-    return [
+    final messages = [
       for (final row in messageRows)
         MessageWithParts(
           info: Message.fromJson(jsonDecodeMap(row.infoJson)),
           parts: partsByMessage[row.messageId] ?? const [],
         ),
     ];
+    // A full page implies there may be more; a short one proves there is not,
+    // which avoids an extra count query on every read. An empty page is never
+    // "full": there is nothing older to point a cursor at.
+    final hasOlder = limit != null && messageRows.isNotEmpty && messageRows.length == limit;
+    return (
+      messages: messages,
+      nextCursor: hasOlder ? messageRows.first.seq : null,
+    );
   }
 
   /// Stores one message, appending it after the current maximum when new.

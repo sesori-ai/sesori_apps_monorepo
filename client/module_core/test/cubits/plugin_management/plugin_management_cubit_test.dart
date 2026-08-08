@@ -195,6 +195,61 @@ void main() {
       expect((cubit.state as PluginManagementReady).installs, isEmpty);
     });
 
+    test("a cubit created mid-install seeds progress from the service", () async {
+      installProgress.add(const {
+        "one": PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null),
+      });
+      await _settle();
+
+      // The screen builds a fresh cubit on every visit, so reopening harness
+      // settings during an install must not hide it.
+      final reopened = PluginManagementCubit(service: service);
+      addTearDown(reopened.close);
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+
+      expect(
+        (reopened.state as PluginManagementReady).installs,
+        const {"one": PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null)},
+      );
+    });
+
+    test("a loading transition mid-install restores progress with the next snapshot", () async {
+      installProgress.add(const {
+        "one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10),
+      });
+      await _settle();
+
+      snapshots.add(const PluginManagementLoadResult.loading());
+      await _settle();
+      expect(cubit.state, const PluginManagementState.loading());
+
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+
+      expect(
+        (cubit.state as PluginManagementReady).installs,
+        const {"one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10)},
+      );
+    });
+
+    test("an equivalent progress map does not emit a new state", () async {
+      installProgress.add(const {
+        "one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+      });
+      await _settle();
+      final emitted = <PluginManagementState>[];
+      final subscription = cubit.stream.listen(emitted.add);
+      addTearDown(subscription.cancel);
+
+      installProgress.add(const {
+        "one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+      });
+      await _settle();
+
+      expect(emitted, isEmpty);
+    });
+
     test("install progress survives a refreshed snapshot", () async {
       installProgress.add(const {
         "one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),

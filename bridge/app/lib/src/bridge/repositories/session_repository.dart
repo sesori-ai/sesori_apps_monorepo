@@ -105,6 +105,7 @@ class SessionRepository {
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
 
+
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
     required SessionOperation operation,

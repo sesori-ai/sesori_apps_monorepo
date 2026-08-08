@@ -110,6 +110,7 @@ class CatalogImportService {
   Future<void> _drain() async {
     await Future.wait(_operations.values.toList(growable: false));
     await _progressController.close();
+    await _repository.dispose();
   }
 
   Future<void> _run({required String pluginId, required CatalogImportControl control}) async {

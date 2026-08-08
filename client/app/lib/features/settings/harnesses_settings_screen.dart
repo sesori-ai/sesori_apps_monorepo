@@ -364,6 +364,11 @@ class _HarnessControlCard extends StatelessWidget {
       PluginManagementActionForceConfirmationRequired() => false,
     };
     final actionHint = plugin.actionHint ?? plugin.setup.actionHint;
+    // The service reports an install as in-flight from the moment its command
+    // is issued until the bridge's terminal event, so this covers the window
+    // before the first progress event without borrowing the generic action
+    // spinner (which any harness action would trigger).
+    final installing = install != null;
 
     return KeyedSubtree(
       key: Key("harness_management_card_$pluginId"),
@@ -448,11 +453,18 @@ class _HarnessControlCard extends StatelessWidget {
                     loc.harnessManagementInstallDownloading,
                   PluginInstallProgress(phase: PluginInstallPhase.verifying) => loc.harnessManagementInstallVerifying,
                   PluginInstallProgress(phase: PluginInstallPhase.extracting) => loc.harnessManagementInstallExtracting,
-                  PluginInstallProgress() => loc.harnessManagementInstallFinishing,
+                  PluginInstallProgress(phase: PluginInstallPhase.finalizing) =>
+                    loc.harnessManagementInstallFinishing,
+                  // A phase only a newer bridge names: report work without
+                  // claiming which step it is.
+                  PluginInstallProgress() => loc.harnessManagementInstallInProgress,
                 },
               ),
-              trailing: install == null ? null : PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
-              onTap: blocked || install != null
+              trailing: installing ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary) : null,
+              // Also blocked between the tap and the first progress event: the
+              // command returns as soon as the bridge accepts it, long before
+              // any phase arrives.
+              onTap: blocked || installing
                   ? null
                   : () => context.read<PluginManagementCubit>().install(pluginId: pluginId),
               isLast: !(showLifecycle || showSetupRefresh || showRestart || showTimeout || showClearTimeout),
