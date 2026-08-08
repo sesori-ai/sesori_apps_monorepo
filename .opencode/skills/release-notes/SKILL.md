@@ -74,7 +74,7 @@ Use this ONLY when the user explicitly says not to use the existing notes.
 - **PR enumeration** walks the full `compare` API (paged, no arbitrary cap) and refuses to emit truncated notes.
 - **Exclusions**: drops `dependabot` / `dependabot[bot]` authors and any PR labelled `ignore-for-release`.
 - **App/Bridge classification** pages `/pulls/<n>/files` fully and degrades conservatively (lists under both) when a PR is too large to enumerate.
-- **New-contributor detection** credits each author with no commit in the repository at or before the previous stable tag, matching GitHub's own `--generate-notes` behavior.
+- **New-contributor detection** credits each author with no commit reachable from the previous stable tag, matching GitHub's own `--generate-notes` behavior. A failed lookup omits that one author rather than failing the run, so the section can be incomplete on a degraded API; spot-check it when a release is expected to introduce someone.
 
 Reusing it means Mode B and CI can never drift, so just run it instead of re-deriving the same data.
 

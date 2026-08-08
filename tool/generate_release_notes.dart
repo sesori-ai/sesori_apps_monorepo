@@ -57,6 +57,9 @@ void main(final List<String> args) async {
       }
     }
 
+    // The section is cosmetic, but this runs in the production release path:
+    // never fail a release over it. Per-author isolation keeps one bad lookup
+    // from dropping everyone else's credit.
     final firstContributionUrls = await _resolveFirstContributions(api: api, from: fromTag, entries: entries);
 
     final notes = _render(
@@ -332,7 +335,7 @@ class _PrEntry {
 
   final int number;
   final String title;
-  final String author;
+  final String? author;
   final String url;
   final bool touchesApp;
   final bool touchesBridge;
@@ -342,8 +345,8 @@ class _PrEntry {
 Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async {
   final pr = await api.getJson(path: '/repos/${api.repo}/pulls/$number') as Map<String, dynamic>;
 
-  final author = ((pr['user'] as Map<String, dynamic>?)?['login'] as String?) ?? 'unknown';
-  if (_excludedAuthors.contains(author)) {
+  final author = (pr['user'] as Map<String, dynamic>?)?['login'] as String?;
+  if (author != null && _excludedAuthors.contains(author)) {
     return null;
   }
   final labels = (pr['labels'] as List<dynamic>? ?? [])
@@ -416,25 +419,32 @@ Future<Map<String, String>> _resolveFirstContributions({
     return const {};
   }
 
-  final baseCommit = await api.getJson(path: '/repos/${api.repo}/commits/$from') as Map<String, dynamic>;
-  final until = ((baseCommit['commit'] as Map<String, dynamic>)['committer'] as Map<String, dynamic>)['date'] as String;
-
   final checked = <String>{};
   final firstContributionUrls = <String, String>{};
   for (final entry in entries) {
-    if (!checked.add(entry.author)) {
+    final author = entry.author;
+    if (author == null || !checked.add(author)) {
       continue;
     }
-    final earlier =
-        await api.getJson(
-              path:
-                  '/repos/${api.repo}/commits'
-                  '?author=${Uri.encodeQueryComponent(entry.author)}'
-                  '&until=${Uri.encodeQueryComponent(until)}&per_page=1',
-            )
-            as List<dynamic>;
-    if (earlier.isEmpty) {
-      firstContributionUrls[entry.author] = entry.url;
+    // `sha=$from` scopes the lookup to history reachable from the previous
+    // stable tag, so a commit authored long ago but merged after that tag
+    // (rebase, cherry-pick, long-lived branch) correctly still counts as new.
+    try {
+      final earlier =
+          await api.getJson(
+                path:
+                    '/repos/${api.repo}/commits'
+                    '?author=${Uri.encodeQueryComponent(author)}'
+                    '&sha=${Uri.encodeQueryComponent(from)}&per_page=1',
+              )
+              as List<dynamic>;
+      if (earlier.isEmpty) {
+        firstContributionUrls[author] = entry.url;
+      }
+    } catch (error) {
+      // Omitting one credit beats failing the release; a wrong "first
+      // contribution" claim would be worse than a missing one.
+      stderr.writeln('Could not check prior commits for @$author, omitting from New Contributors: $error');
     }
   }
   return firstContributionUrls;
@@ -503,7 +513,9 @@ String _render({
   if (entries.isNotEmpty) {
     buffer.write('\n### All PRs merged\n');
     for (final entry in entries) {
-      buffer.writeln('* ${entry.title} by @${entry.author} in ${entry.url}');
+      final author = entry.author;
+      final attribution = author == null ? '' : ' by @$author';
+      buffer.writeln('* ${entry.title}$attribution in ${entry.url}');
     }
   } else {
     buffer.write('\nNo pull requests merged in this range.\n');
