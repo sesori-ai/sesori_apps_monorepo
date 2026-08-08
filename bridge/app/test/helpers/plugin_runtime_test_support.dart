@@ -56,6 +56,9 @@ class TestPluginRuntime extends PluginRuntime {
   final Map<String, PluginRuntimeTransition> _transitions = {};
   final StreamController<List<PluginRuntimeSnapshot>> _snapshotChanges = StreamController.broadcast(sync: true);
   final StreamController<SourcedPluginRuntimeEvent> _runtimeEvents = StreamController.broadcast(sync: true);
+  /// Plugin ids that are registered but not running, so `useIfActive` reports
+  /// them as unavailable while `use` would start them.
+  final Set<String> stoppedPluginIds = {};
   bool generationCurrent = true;
   bool eventGenerationCurrent = true;
   int currentGeneration = 1;
@@ -255,6 +258,7 @@ class TestPluginRuntime extends PluginRuntime {
     required Enum operation,
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
+    if (stoppedPluginIds.contains(pluginId)) return null;
     final plugin = _plugins[pluginId];
     return plugin == null ? null : body(plugin, currentGeneration);
   }

@@ -31,10 +31,13 @@ class PermissionRepository {
       sessionId: sessionId,
       operation: SessionOperation.getPendingPermissions,
     );
-    return _runtime.use(
+    // Deliberately does not start a stopped backend — see the matching note in
+    // QuestionRepository. A stopped backend holds no pending permissions, so
+    // waking it to ask could only answer "none".
+    final pending = await _runtime.useIfActive(
       pluginId: binding.pluginId,
       operation: SessionOperation.getPendingPermissions,
-      body: (plugin) async {
+      body: (plugin, _) async {
         Set<String>? tombstoned;
         if (plugin is BridgeDerivedProjectsPluginApi) {
           tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
@@ -50,6 +53,9 @@ class PermissionRepository {
         );
       },
     );
+    // Null means the backend is not running, which is indistinguishable from
+    // "it has none" for this question.
+    return pending ?? const [];
   }
 
   static bool _isVisible(PluginPendingPermission permission, Set<String> tombstoned) {

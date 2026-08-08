@@ -149,6 +149,8 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastGetCommandsProjectId;
 
   String? lastGetMessagesSessionId;
+  String? lastGetPendingQuestionsSessionId;
+  String? lastGetPendingPermissionsSessionId;
 
   String? lastGetProvidersProjectId;
   String? lastCreateSessionDirectory;
@@ -415,14 +417,19 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => pendingQuestionsResult;
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    lastGetPendingQuestionsSessionId = sessionId;
+    return pendingQuestionsResult;
+  }
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => pendingQuestionsResult;
 
   @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async =>
-      pendingPermissionsResult;
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
+    lastGetPendingPermissionsSessionId = sessionId;
+    return pendingPermissionsResult;
+  }
 
   @override
   Future<void> replyToQuestion({
