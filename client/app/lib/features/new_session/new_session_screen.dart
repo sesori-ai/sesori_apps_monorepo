@@ -17,6 +17,7 @@ import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/project_nav_subtitle.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
+import "new_session_no_harness_notice.dart";
 import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
 
@@ -246,7 +247,11 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   /// so it stays with the composer instead of scrolling away inside the block
   /// it acts on. Floating rather than in flow: a cramped viewport — landscape
   /// with a multiline draft — must still spend its height on the composer.
-  Widget _buildOptionsRefresh({required NewSessionCubit cubit}) {
+  ///
+  /// With no harness to load options for it reloads the harness list instead,
+  /// and says so: the user's next step is installing one on the bridge's
+  /// machine, not reloading a model list that cannot exist yet.
+  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isHarnessDiscovery}) {
     return Positioned(
       bottom: _refreshBottomGap,
       left: 0,
@@ -254,7 +259,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       child: Center(
         child: PregoButtonsSolid(
           key: const Key("new_session_options_refresh"),
-          label: context.loc.newSessionOptionsRefresh,
+          label: isHarnessDiscovery ? context.loc.newSessionHarnessesRefresh : context.loc.newSessionOptionsRefresh,
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           leadingIcon: TablerRegular.refresh,
@@ -275,12 +280,29 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget _buildOptions({
     required AgentModelData? data,
     required ({String message, bool isFailure})? status,
+    required bool needsHarnessDiscovery,
+    required bool hasNoHarnesses,
   }) {
     if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
       return const NewSessionOptionsSkeleton(
         rowHeight: _optionRowHeight,
         rowSpacing: _optionRowSpacing,
       );
+    }
+
+    // With no harness there is nothing to choose between, and nothing for the
+    // workspace option to shape — no session can start. Say why in the
+    // chooser's place when the bridge answered that itself; when discovery
+    // failed instead, the error banner already explains it and only the retry
+    // above the composer is left standing.
+    if (needsHarnessDiscovery) {
+      return hasNoHarnesses
+          ? NewSessionNoHarnessNotice(
+              onSettingsPressed: () => context.pushRoute(
+                const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
+              ),
+            )
+          : const SizedBox.shrink();
     }
 
     final hasPlugins = data.plugins.isNotEmpty;
@@ -315,10 +337,17 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
+    final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
+    final hasNoHarnesses = cubit.hasNoHarnesses;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
-    final optionsBottomPadding = optionsStatus == null
-        ? _optionsBottomPadding
-        : _optionsBottomPadding + _refreshBandHeight(context);
+    // With no harness known the refresh action stands on its own: the notice
+    // above it, or the error banner, already carries the explanation the status
+    // line would have given. It must outlive a failed retry — hiding the action
+    // the user just pressed would strand them.
+    final showsRefresh = needsHarnessDiscovery || optionsStatus != null;
+    final optionsBottomPadding = showsRefresh
+        ? _optionsBottomPadding + _refreshBandHeight(context)
+        : _optionsBottomPadding;
     final isComposerEnabled = cubit.canCreateSession && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
@@ -404,9 +433,15 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             ),
                             child: child,
                           ),
-                          child: _buildOptions(data: composerData, status: optionsStatus),
+                          child: _buildOptions(
+                            data: composerData,
+                            status: optionsStatus,
+                            needsHarnessDiscovery: needsHarnessDiscovery,
+                            hasNoHarnesses: hasNoHarnesses,
+                          ),
                         ),
-                        if (optionsStatus != null) _buildOptionsRefresh(cubit: cubit),
+                        if (showsRefresh)
+                          _buildOptionsRefresh(cubit: cubit, isHarnessDiscovery: needsHarnessDiscovery),
                       ],
                     ),
                   ),

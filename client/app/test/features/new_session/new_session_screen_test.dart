@@ -1164,6 +1164,120 @@ void main() {
     );
   });
 
+  testWidgets("names the missing harness and re-discovers from the refresh action", (tester) async {
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) async {
+      discoveryCalls++;
+      return ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: discoveryCalls == 1
+              ? const []
+              : const [
+                  PluginMetadata(
+                    id: "plugin-1",
+                    displayName: "Plugin One",
+                    isDefault: true,
+                    state: PluginLifecycleState.ready,
+                    actionHint: null,
+                  ),
+                ],
+        ),
+      );
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    // A machine with no coding tool installed reports no harness at all. The
+    // page has to name that rather than render blank.
+    expect(find.text(loc.newSessionNoHarnessTitle), findsOneWidget);
+    expect(find.text(loc.newSessionNoHarnessDescription), findsOneWidget);
+    expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.byType(PromptInput),
+        matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
+      ),
+      findsOneWidget,
+    );
+
+    // The refresh action is the way back once a harness has been installed, so
+    // it stays enabled and says what it will look for.
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionHarnessesRefresh);
+    expect(tester.widget<PregoButtonsSolid>(refresh).onPressed, isNotNull);
+
+    await tester.tap(refresh);
+    await tester.pumpAndSettle();
+
+    expect(discoveryCalls, 2);
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
+    expect(
+      find.descendant(of: find.byKey(const Key("new_session_plugin_trigger")), matching: find.text("Plugin One")),
+      findsOneWidget,
+    );
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionOptionsRefresh);
+  });
+
+  testWidgets("keeps the harness retry usable when re-discovery fails", (tester) async {
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) async {
+      discoveryCalls++;
+      return discoveryCalls == 2
+          ? ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null))
+          : ApiResponse.success(
+              PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+            );
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    await tester.tap(refresh);
+    await tester.pumpAndSettle();
+
+    // A transient failure must not take the retry away with it — hiding the
+    // action the user just pressed would recreate the dead end this screen
+    // exists to avoid.
+    expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionHarnessesRefresh);
+    expect(tester.widget<PregoButtonsSolid>(refresh).onPressed, isNotNull);
+    // The bridge never said it runs no harness this time, so the screen does
+    // not claim it did; the error banner is the honest explanation.
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
+    // No harness means no session, so the option that only shapes a session
+    // that can start has nothing to shape.
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
+
+    await tester.tap(refresh);
+    await tester.pumpAndSettle();
+
+    expect(discoveryCalls, 3);
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsOneWidget);
+  });
+
+  testWidgets("opens harness settings from the empty harness notice", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("new_session_no_harness_settings")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("harnesses-settings"), findsOneWidget);
+  });
+
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
     when(
       () => sessionService.listProviders(
