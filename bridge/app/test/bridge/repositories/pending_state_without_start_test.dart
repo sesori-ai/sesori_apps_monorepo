@@ -62,6 +62,17 @@ void main() {
       expect(plugin.lastGetPendingPermissionsSessionId, isNull);
     });
 
+    test("a stopped backend is not reported as active", () async {
+      // The fake must match production, where activePluginIds reports only
+      // routable plugins — otherwise a test could pass while the real runtime
+      // reports no backend running at all.
+      expect(runtime.activePluginIds, contains(plugin.id));
+
+      runtime.stoppedPluginIds.add(plugin.id);
+
+      expect(runtime.activePluginIds, isEmpty);
+    });
+
     test("a running backend is still asked", () async {
       final repository = QuestionRepository(
         runtime: runtime,

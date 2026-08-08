@@ -64,7 +64,11 @@ class TestPluginRuntime extends PluginRuntime {
   int currentGeneration = 1;
 
   @override
-  Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
+  /// Mirrors production, where this reports only routable plugins — so a
+  /// stopped one must not appear here, or a test could pass while the real
+  /// runtime reports no active backend.
+  Set<String> get activePluginIds =>
+      Set<String>.unmodifiable(_plugins.keys.where((id) => !stoppedPluginIds.contains(id)));
 
   @override
   Set<String> get eligiblePluginIds => _eligiblePluginIds;
@@ -258,6 +262,10 @@ class TestPluginRuntime extends PluginRuntime {
     required Enum operation,
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
+    // Mirrors the production guard: a registered but stopped plugin is not
+    // routable, so callers that decline to start one receive null rather than
+    // a live API. Without this a test could not distinguish "asked a running
+    // backend" from "declined to start a stopped one".
     if (stoppedPluginIds.contains(pluginId)) return null;
     final plugin = _plugins[pluginId];
     return plugin == null ? null : body(plugin, currentGeneration);
