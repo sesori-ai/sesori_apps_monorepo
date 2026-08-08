@@ -55,6 +55,32 @@ class SessionDetailPendingBanner extends StatelessWidget {
   }
 }
 
+/// Explains why an archived session shows no composer: archiving is permanent,
+/// so the session is readable but can never be prompted or reopened again.
+class SessionDetailArchivedNotice extends StatelessWidget {
+  const SessionDetailArchivedNotice({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+      child: GlassContainer(
+        useOwnLayer: true,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+        settings: LiquidGlassSettings(glassColor: prego.colors.bgSecondary.withValues(alpha: 0.6)),
+        child: GlassListTile(
+          leading: Icon(Icons.archive_outlined, size: 20, color: prego.colors.textSecondary),
+          title: Text(context.loc.sessionDetailArchivedNotice),
+          titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
 class SessionDetailQueuedMessagesSection extends StatelessWidget {
   final List<QueuedSessionSubmission> messages;
 

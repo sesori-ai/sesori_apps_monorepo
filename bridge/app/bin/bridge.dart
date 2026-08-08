@@ -229,6 +229,7 @@ class LogoutCommand extends cli.Command<void> {
       dataDirectory = BridgeCliOptions.resolveDataDirectory(
         dataDirectoryFlag: dataDirectoryFlag,
         defaultDataDirectory: defaultDataDirectory,
+        environment: Platform.environment,
       );
     } on ArgParserException catch (error) {
       usageException(error.message);

@@ -15,7 +15,12 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginMetadata {
 
- String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;
+ String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;// COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
+// per-plugin capability. Unknown plugins stay disabled; the client
+// repository narrowly restores released legacy OpenCode support from the
+// enclosing response's legacy capability signal. Remove @Default and that
+// mapping once those bridges are unsupported.
+ bool get supportsPromptAttachments;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +33,16 @@ $PluginMetadataCopyWith<PluginMetadata> get copyWith => _$PluginMetadataCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint);
+int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,supportsPromptAttachments);
 
 @override
 String toString() {
-  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint)';
+  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, supportsPromptAttachments: $supportsPromptAttachments)';
 }
 
 
@@ -48,7 +53,7 @@ abstract mixin class $PluginMetadataCopyWith<$Res>  {
   factory $PluginMetadataCopyWith(PluginMetadata value, $Res Function(PluginMetadata) _then) = _$PluginMetadataCopyWithImpl;
 @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint, bool supportsPromptAttachments
 });
 
 
@@ -65,14 +70,15 @@ class _$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? supportsPromptAttachments = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
 as bool,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginLifecycleState,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,supportsPromptAttachments: null == supportsPromptAttachments ? _self.supportsPromptAttachments : supportsPromptAttachments // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -84,7 +90,7 @@ as String?,
 @JsonSerializable()
 
 class _PluginMetadata implements PluginMetadata {
-  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint});
+  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint, this.supportsPromptAttachments = false});
   factory _PluginMetadata.fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
 
 @override final  String id;
@@ -92,6 +98,12 @@ class _PluginMetadata implements PluginMetadata {
 @override final  bool isDefault;
 @override@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) final  PluginLifecycleState state;
 @override final  String? actionHint;
+// COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
+// per-plugin capability. Unknown plugins stay disabled; the client
+// repository narrowly restores released legacy OpenCode support from the
+// enclosing response's legacy capability signal. Remove @Default and that
+// mapping once those bridges are unsupported.
+@override@JsonKey() final  bool supportsPromptAttachments;
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
@@ -106,16 +118,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint);
+int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,supportsPromptAttachments);
 
 @override
 String toString() {
-  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint)';
+  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, supportsPromptAttachments: $supportsPromptAttachments)';
 }
 
 
@@ -126,7 +138,7 @@ abstract mixin class _$PluginMetadataCopyWith<$Res> implements $PluginMetadataCo
   factory _$PluginMetadataCopyWith(_PluginMetadata value, $Res Function(_PluginMetadata) _then) = __$PluginMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint, bool supportsPromptAttachments
 });
 
 
@@ -143,14 +155,15 @@ class __$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? supportsPromptAttachments = null,}) {
   return _then(_PluginMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
 as bool,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginLifecycleState,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,supportsPromptAttachments: null == supportsPromptAttachments ? _self.supportsPromptAttachments : supportsPromptAttachments // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

@@ -403,6 +403,126 @@ abstract class AppLocalizations {
   /// **'Harnesses'**
   String get settingsHarnessesTitle;
 
+  /// No description provided for @settingsSectionBridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge'**
+  String get settingsSectionBridge;
+
+  /// No description provided for @settingsPullRequestRefreshTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request refresh'**
+  String get settingsPullRequestRefreshTitle;
+
+  /// No description provided for @settingsPullRequestRefreshDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How often viewed projects refresh pull request status.'**
+  String get settingsPullRequestRefreshDescription;
+
+  /// No description provided for @settingsPullRequestRefreshLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the bridge setting…'**
+  String get settingsPullRequestRefreshLoading;
+
+  /// No description provided for @settingsPullRequestRefreshDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to configure this setting.'**
+  String get settingsPullRequestRefreshDisconnected;
+
+  /// No description provided for @settingsPullRequestRefreshUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to configure this setting.'**
+  String get settingsPullRequestRefreshUnsupported;
+
+  /// No description provided for @settingsPullRequestRefreshLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the bridge setting. Check your connection and try again.'**
+  String get settingsPullRequestRefreshLoadFailed;
+
+  /// No description provided for @settingsPullRequestRefreshUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsPullRequestRefreshUncertain;
+
+  /// No description provided for @settingsPullRequestRefreshUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsPullRequestRefreshUpdateFailed;
+
+  /// No description provided for @settingsPullRequestRefreshStateChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge setting changed while you were editing. Try again.'**
+  String get settingsPullRequestRefreshStateChanged;
+
+  /// No description provided for @settingsPullRequestRefreshUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get settingsPullRequestRefreshUnavailable;
+
+  /// No description provided for @settingsPullRequestRefreshOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get settingsPullRequestRefreshOffline;
+
+  /// No description provided for @settingsPullRequestRefreshRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry pull request refresh setting'**
+  String get settingsPullRequestRefreshRetry;
+
+  /// No description provided for @settingsPullRequestRefreshDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request refresh interval'**
+  String get settingsPullRequestRefreshDialogTitle;
+
+  /// No description provided for @settingsPullRequestRefreshSecondsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get settingsPullRequestRefreshSecondsLabel;
+
+  /// No description provided for @settingsPullRequestRefreshInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of seconds.'**
+  String get settingsPullRequestRefreshInvalid;
+
+  /// No description provided for @settingsPullRequestRefreshRangeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from {minimumSeconds} to {maximumSeconds}.'**
+  String settingsPullRequestRefreshRangeInvalid(int minimumSeconds, int maximumSeconds);
+
+  /// No description provided for @settingsPullRequestRefreshCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get settingsPullRequestRefreshCancel;
+
+  /// No description provided for @settingsPullRequestRefreshSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get settingsPullRequestRefreshSave;
+
+  /// No description provided for @settingsPullRequestRefreshSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds, plural, =1{1 second} other{{seconds} seconds}}'**
+  String settingsPullRequestRefreshSeconds(int seconds);
+
   /// No description provided for @harnessManagementDescription.
   ///
   /// In en, this message translates to:
@@ -889,6 +1009,24 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
+  /// Settings section choosing which input the session composer leads with
+  ///
+  /// In en, this message translates to:
+  /// **'Chat input'**
+  String get settingsSectionChatInput;
+
+  /// Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation
+  ///
+  /// In en, this message translates to:
+  /// **'Voice first'**
+  String get settingsChatInputVoiceFirst;
+
+  /// Chat input option: the composer rests as a tap-to-type field with the microphone alongside
+  ///
+  /// In en, this message translates to:
+  /// **'Text first'**
+  String get settingsChatInputTextFirst;
+
   /// No description provided for @settingsSectionSupport.
   ///
   /// In en, this message translates to:
@@ -966,6 +1104,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'System'**
   String get notificationSectionSystem;
+
+  /// No description provided for @notificationPreferencesUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification preferences unavailable'**
+  String get notificationPreferencesUnavailableTitle;
+
+  /// No description provided for @notificationPreferencesUnavailableDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to manage notification preferences.'**
+  String get notificationPreferencesUnavailableDescription;
+
+  /// No description provided for @notificationPreferencesLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load notification preferences'**
+  String get notificationPreferencesLoadFailedTitle;
+
+  /// No description provided for @notificationPreferencesLoadFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get notificationPreferencesLoadFailedDescription;
+
+  /// No description provided for @notificationPreferencesRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get notificationPreferencesRetry;
+
+  /// No description provided for @notificationPreferenceUpdating.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating notification preference'**
+  String get notificationPreferenceUpdating;
 
   /// No description provided for @notificationCategoryAiInteraction.
   ///
@@ -1129,6 +1303,12 @@ abstract class AppLocalizations {
   /// **'Follow up...'**
   String get sessionDetailFollowUpHint;
 
+  /// Label of the voice-first composer's hold-to-record area once the field already holds text; holding it appends more transcribed speech.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to talk more'**
+  String get sessionDetailHoldToTalkMore;
+
   /// Accessibility label of the keyboard button that switches the composer from hold-to-talk to typing.
   ///
   /// In en, this message translates to:
@@ -1146,6 +1326,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide actions'**
   String get sessionDetailHideActions;
+
+  /// Accessibility label of the advanced-options action that opens the gallery picker to attach an image to the next message.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach image'**
+  String get sessionDetailAttachImage;
+
+  /// Accessibility label of the badge on a staged attachment thumbnail that removes it from the composer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get sessionDetailRemoveAttachment;
+
+  /// Fallback accessibility label of a staged attachment thumbnail when the image has no filename.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached image'**
+  String get sessionDetailAttachedImage;
+
+  /// Snackbar shown when a picked image exceeds the inline attachment size limit.
+  ///
+  /// In en, this message translates to:
+  /// **'That image is too large to attach.'**
+  String get sessionDetailAttachmentTooLarge;
+
+  /// Snackbar shown when the gallery picker fails for a reason other than the size limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t attach the image.'**
+  String get sessionDetailAttachmentPickFailed;
+
+  /// Snackbar shown when the picked file is not a recognized image format and cannot be attached.
+  ///
+  /// In en, this message translates to:
+  /// **'That image format isn\'t supported.'**
+  String get sessionDetailAttachmentUnsupported;
+
+  /// Snackbar shown when adding another image would push the message's combined attachment size past the outbound composer limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached images are limited to 50 MB per message.'**
+  String get sessionDetailAttachmentBudgetExceeded;
+
+  /// Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images.
+  ///
+  /// In en, this message translates to:
+  /// **'Images can\'t be sent with slash commands.'**
+  String get sessionDetailAttachmentsNotWithCommands;
+
+  /// Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 image} other{{count} images}}'**
+  String sessionDetailQueuedAttachmentCount(int count);
 
   /// Accessibility label of the button that opens the fullscreen message editor.
   ///
@@ -1327,11 +1561,59 @@ abstract class AppLocalizations {
   /// **'Question'**
   String get questionModalTitle;
 
-  /// No description provided for @questionModalReject.
+  /// No description provided for @questionModalDecline.
   ///
   /// In en, this message translates to:
-  /// **'Reject'**
-  String get questionModalReject;
+  /// **'Decline'**
+  String get questionModalDecline;
+
+  /// No description provided for @questionModalDeclineAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline all'**
+  String get questionModalDeclineAll;
+
+  /// No description provided for @questionModalDeclineQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline this question'**
+  String get questionModalDeclineQuestion;
+
+  /// No description provided for @questionModalDeclineQuestionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant will see it as unanswered.'**
+  String get questionModalDeclineQuestionHint;
+
+  /// No description provided for @questionModalQuestionDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Question declined'**
+  String get questionModalQuestionDeclined;
+
+  /// No description provided for @questionModalQuestionDeclinedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an answer to undo.'**
+  String get questionModalQuestionDeclinedHint;
+
+  /// No description provided for @questionModalDeclineAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline all questions?'**
+  String get questionModalDeclineAllTitle;
+
+  /// No description provided for @questionModalDeclineAllMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'None of your draft answers will be sent. Your coding session will remain active.'**
+  String get questionModalDeclineAllMessage;
+
+  /// No description provided for @questionModalKeepAnswering.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep answering'**
+  String get questionModalKeepAnswering;
 
   /// No description provided for @questionModalCustomHint.
   ///
@@ -1342,7 +1624,7 @@ abstract class AppLocalizations {
   /// No description provided for @questionModalSubmit.
   ///
   /// In en, this message translates to:
-  /// **'Submit'**
+  /// **'Submit answers'**
   String get questionModalSubmit;
 
   /// No description provided for @questionModalNext.
@@ -1351,11 +1633,47 @@ abstract class AppLocalizations {
   /// **'Next'**
   String get questionModalNext;
 
+  /// No description provided for @questionModalResolveAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer or decline every question to submit.'**
+  String get questionModalResolveAll;
+
+  /// No description provided for @questionModalResolveAllCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer or decline all'**
+  String get questionModalResolveAllCompact;
+
+  /// No description provided for @questionModalStatusUnanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'unanswered'**
+  String get questionModalStatusUnanswered;
+
+  /// No description provided for @questionModalStatusAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'answered'**
+  String get questionModalStatusAnswered;
+
+  /// No description provided for @questionModalStatusDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'declined'**
+  String get questionModalStatusDeclined;
+
   /// No description provided for @questionModalStepIndicator.
   ///
   /// In en, this message translates to:
   /// **'Question {current} of {total}'**
   String questionModalStepIndicator(int current, int total);
+
+  /// No description provided for @questionModalStepSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {current} of {total}, {status}'**
+  String questionModalStepSemantics(int current, int total, String status);
 
   /// No description provided for @questionBannerSingle.
   ///
@@ -1495,12 +1813,6 @@ abstract class AppLocalizations {
   /// **'Archive'**
   String get sessionListArchive;
 
-  /// No description provided for @sessionListUnarchive.
-  ///
-  /// In en, this message translates to:
-  /// **'Unarchive'**
-  String get sessionListUnarchive;
-
   /// No description provided for @sessionListMarkRead.
   ///
   /// In en, this message translates to:
@@ -1525,23 +1837,11 @@ abstract class AppLocalizations {
   /// **'Session archived'**
   String get sessionListArchived;
 
-  /// No description provided for @sessionListUnarchived.
-  ///
-  /// In en, this message translates to:
-  /// **'Session unarchived'**
-  String get sessionListUnarchived;
-
   /// No description provided for @sessionListDeleted.
   ///
   /// In en, this message translates to:
   /// **'Session deleted'**
   String get sessionListDeleted;
-
-  /// No description provided for @sessionListUndo.
-  ///
-  /// In en, this message translates to:
-  /// **'Undo'**
-  String get sessionListUndo;
 
   /// No description provided for @sessionListDeleteConfirmTitle.
   ///
@@ -1812,6 +2112,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel transcription'**
   String get voiceCancelTranscription;
+
+  /// Accessibility label of the X button shown in the accordion's place while recording; releasing or tapping on it discards the recording.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel recording'**
+  String get voiceCancelRecording;
+
+  /// Floating helper above the composer while a hold-to-talk recording is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Release to transcribe'**
+  String get voiceReleaseToTranscribe;
+
+  /// Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording.
+  ///
+  /// In en, this message translates to:
+  /// **'Release to cancel'**
+  String get voiceReleaseToCancel;
 
   /// No description provided for @voiceTranscribing.
   ///
@@ -2161,17 +2479,11 @@ abstract class AppLocalizations {
   /// **'Failed to rename project'**
   String get renameProjectFailed;
 
-  /// No description provided for @newSessionDedicatedWorktree.
+  /// No description provided for @newSessionDedicatedWorkspace.
   ///
   /// In en, this message translates to:
-  /// **'Dedicated worktree'**
-  String get newSessionDedicatedWorktree;
-
-  /// No description provided for @newSessionDedicatedWorktreeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Creates a dedicated git worktree and branch for this session'**
-  String get newSessionDedicatedWorktreeDescription;
+  /// **'Dedicated workspace'**
+  String get newSessionDedicatedWorkspace;
 
   /// No description provided for @newSessionPluginChooserLabel.
   ///
@@ -2197,16 +2509,22 @@ abstract class AppLocalizations {
   /// **'Failed'**
   String get newSessionPluginFailed;
 
-  /// No description provided for @newSessionPluginLoading.
+  /// No description provided for @newSessionHarnessSettings.
   ///
   /// In en, this message translates to:
-  /// **'Loading coding tool options'**
-  String get newSessionPluginLoading;
+  /// **'Harness settings'**
+  String get newSessionHarnessSettings;
+
+  /// No description provided for @newSessionOptionsLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading session options'**
+  String get newSessionOptionsLoadingSemantics;
 
   /// No description provided for @newSessionOptionsRefresh.
   ///
   /// In en, this message translates to:
-  /// **'Refresh'**
+  /// **'Refresh the model list'**
   String get newSessionOptionsRefresh;
 
   /// No description provided for @newSessionOptionsCached.
@@ -2257,6 +2575,12 @@ abstract class AppLocalizations {
   /// **'Delete branch'**
   String get sessionListDeleteBranchCheckbox;
 
+  /// No description provided for @sessionDetailArchivedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is archived and read-only.'**
+  String get sessionDetailArchivedNotice;
+
   /// No description provided for @sessionListArchiveConfirmTitle.
   ///
   /// In en, this message translates to:
@@ -2266,7 +2590,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionListArchiveConfirmMessage.
   ///
   /// In en, this message translates to:
-  /// **'This session will be archived and hidden from the active list.'**
+  /// **'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.'**
   String get sessionListArchiveConfirmMessage;
 
   /// No description provided for @sessionListArchiveConfirmAction.

@@ -235,6 +235,42 @@ void main() {
   });
 
   group("account-bound requests", () {
+    test("patchForUser injects auth and delegates only for the current account", () async {
+      const body = """{"notifications":{"aiInteraction":false}}""";
+      when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userA));
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success("ok"));
+
+      final response = await client.patchForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect((response as SuccessResponse<String>).data, "ok");
+      final captured = verify(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: _parseString,
+          headers: captureAny(named: "headers"),
+          body: body,
+          contentType: null,
+          logBody: false,
+        ),
+      );
+      expect(captured.captured.single, {"Authorization": "Bearer $accessToken"});
+    });
+
     test("refuses a request when its initiating account is no longer current", () async {
       when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userB));
 
@@ -251,6 +287,47 @@ void main() {
           any(),
           fromJson: any(named: "fromJson"),
           headers: any(named: "headers"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      );
+    });
+
+    test("does not send a PATCH after the same account starts a new auth session", () async {
+      AuthState currentState = AuthState.authenticated(user: _userA.copyWith());
+      final tokenResponse = Completer<String?>();
+      when(() => mockAuth.currentState).thenAnswer((_) => currentState);
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) => tokenResponse.future);
+      when(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success("stale"));
+
+      final responseFuture = client.patchForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: "{}",
+      );
+      await Future<void>.delayed(Duration.zero);
+      currentState = const AuthState.unauthenticated();
+      currentState = AuthState.authenticated(user: _userA.copyWith());
+      tokenResponse.complete(accessToken);
+
+      final response = await responseFuture;
+      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      verifyNever(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
           contentType: any(named: "contentType"),
           logBody: any(named: "logBody"),
         ),

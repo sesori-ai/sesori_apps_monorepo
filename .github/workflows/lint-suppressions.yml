@@ -43,9 +43,11 @@ jobs:
           PR_HEAD="${{ github.event.pull_request.head.sha }}"
 
           # Parse diff to extract file:line for each new // ignore comment
-          # Excludes: generated files (.g.dart, .freezed.dart, .gr.dart) and test files (_test.dart)
+          # Excludes: generated files (.g.dart, .freezed.dart, .gr.dart, drift
+          # schema snapshots) and test files (_test.dart)
           NEW_SUPPRESSIONS=$(git diff $BASE_REF...$PR_HEAD -- '*.dart' \
             ':!*.g.dart' ':!*.freezed.dart' ':!*.gr.dart' ':!*_test.dart' \
+            ':!**/test/drift/*/generated/**' \
             | awk '
               /^diff --git/ {
                 # Extract filename from "diff --git a/path b/path"

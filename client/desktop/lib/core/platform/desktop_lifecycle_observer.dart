@@ -33,7 +33,11 @@ class DesktopLifecycleObserver with WidgetsBindingObserver, Disposable implement
       switch (state) {
         .resumed => .resumed,
         .inactive => .inactive,
-        .hidden => .hidden,
+        // `hidden` here only means the window is occluded (Cmd-Tab, another
+        // window on top, minimize); the process, its relay socket and its
+        // timers keep running, unlike a backgrounded phone. Report it as
+        // `inactive` so consumers keep their connection and viewed state.
+        .hidden => .inactive,
         .paused => .paused,
         .detached => .detached,
       },

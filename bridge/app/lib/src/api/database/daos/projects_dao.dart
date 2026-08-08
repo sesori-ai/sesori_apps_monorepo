@@ -58,6 +58,15 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return row?.path;
   }
 
+  Future<void> setPrCacheGithubLogin({
+    required String projectId,
+    required String? githubLogin,
+  }) async {
+    await (update(projectsTable)..where((table) => table.projectId.equals(projectId))).write(
+      ProjectsTableCompanion(prCacheGithubLogin: Value(githubLogin)),
+    );
+  }
+
   /// Records [projectId] as an explicitly-opened folder by storing [path] and
   /// the exact timestamps, creating the row if missing. On conflict [path],
   /// [createdAt], [updatedAt], and the hidden flag are replaced with the
@@ -232,14 +241,19 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     });
   }
 
-  /// Inserts one project with its explicit [path] when it does not exist.
-  /// Existing rows are untouched.
-  Future<void> insertProjectIfMissing({required String projectId, required String path}) async {
+  /// Inserts one project with its explicit [path] and [hidden] state when it
+  /// does not exist. Existing rows are untouched.
+  Future<void> insertProjectIfMissing({
+    required String projectId,
+    required String path,
+    required bool hidden,
+  }) async {
     final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: path,
+        hidden: Value(hidden),
         createdAt: Value(insertedAt),
         updatedAt: Value(insertedAt),
         projectionUpdatedAt: insertedAt,
@@ -250,6 +264,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
 
   Future<void> insertProjectsWithPathsIfMissing({
     required Map<String, ({String path, int? createdAt, int? updatedAt})> projects,
+    required bool hidden,
   }) async {
     if (projects.isEmpty) return;
     final insertedAt = DateTime.now().millisecondsSinceEpoch;
@@ -263,6 +278,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
             return ProjectsTableCompanion.insert(
               projectId: entry.key,
               path: entry.value.path,
+              hidden: Value(hidden),
               createdAt: Value(createdAt),
               updatedAt: Value(updatedAt),
               projectionUpdatedAt: updatedAt,

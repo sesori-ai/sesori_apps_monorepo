@@ -17,7 +17,7 @@ resolution: workspace
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.6.1+1
+version: 1.7.1+1
 environment:
   sdk: ^3.12.2
 
@@ -87,6 +87,12 @@ dependencies:
   vector_graphics: ^1.2.2
   flutter_chat_ui: ^2.11.1
   flutter_chat_core: ^2.9.0
+  image_picker: ^1.2.3
+  flutter_keyboard_visibility:
+    git:
+      url: https://github.com/vespr-wallet/flutter_keyboard_visibility.git
+      ref: a640afe883868faf2709c41daa391e2cd6f1fc7b
+      path: flutter_keyboard_visibility
 
 dev_dependencies:
   flutter_test:

@@ -3,7 +3,9 @@ import "dart:async";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -14,6 +16,7 @@ void main() {
   group("SessionMutationDispatcher", () {
     late AppDatabase db;
     late SessionRepository repository;
+    late SessionOperationDispatcher operationDispatcher;
     late SessionMutationDispatcher dispatcher;
     late _FakeDerivedPlugin plugin;
 
@@ -27,10 +30,15 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      dispatcher = SessionMutationDispatcher(sessionRepository: repository);
+      operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      dispatcher = SessionMutationDispatcher(
+        sessionRepository: repository,
+        sessionOperationDispatcher: operationDispatcher,
+      );
     });
 
     tearDown(() async {
+      await operationDispatcher.dispose();
       await dispatcher.dispose();
       await db.close();
     });
@@ -60,36 +68,27 @@ void main() {
       expect(plugin.renameCalls, isZero);
     });
 
-    test("returns the stored title while plugin propagation remains serialized", () async {
+    test("holds the family operation through backend title propagation", () async {
       final renameStarted = Completer<void>();
       final releaseRename = Completer<void>();
-      final deleteStarted = Completer<void>();
       plugin
         ..renameStarted = renameStarted
-        ..releaseRename = releaseRename.future
-        ..deleteStarted = deleteStarted;
+        ..releaseRename = releaseRename.future;
       await insertSession();
 
       final rename = dispatcher.renameSession(sessionId: "s1", title: "Stored title");
       await renameStarted.future;
-      Future<void>? deletion;
+      var completed = false;
+      unawaited(rename.then<void>((_) => completed = true));
       try {
-        final renamed = await rename.timeout(const Duration(milliseconds: 100));
-        final newerRename = await dispatcher
-            .renameSession(sessionId: "s1", title: "Newer title")
-            .timeout(const Duration(milliseconds: 100));
-        deletion = dispatcher.deleteSession(sessionId: "s1");
         await Future<void>.delayed(Duration.zero);
-
-        expect(renamed.title, "Stored title");
-        expect(newerRename.title, "Newer title");
-        expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
-        expect(deleteStarted.isCompleted, isFalse);
+        expect(completed, isFalse);
+        expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
       } finally {
         releaseRename.complete();
       }
-      await deletion;
-      expect(deleteStarted.isCompleted, isTrue);
+      expect((await rename).title, "Stored title");
+      expect(operationDispatcher.activeLaneCount, isZero);
     });
 
     test("keeps the stored title when plugin propagation fails", () async {
@@ -97,42 +96,13 @@ void main() {
       await insertSession();
 
       final renamed = await dispatcher.renameSession(sessionId: "s1", title: "Stored title");
-      await dispatcher.drain();
 
       expect(renamed.title, "Stored title");
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
       expect(plugin.renameCalls, 1);
     });
 
-    test("a rename waits for deletion and cannot reach the plugin afterward", () async {
-      final deleteStarted = Completer<void>();
-      final releaseDelete = Completer<void>();
-      plugin
-        ..deleteStarted = deleteStarted
-        ..releaseDelete = releaseDelete.future;
-      await insertSession();
-
-      final deletion = dispatcher.deleteSession(sessionId: "s1");
-      await deleteStarted.future;
-      final rename = dispatcher.renameSession(sessionId: "s1", title: "Resurrected");
-      await Future<void>.delayed(Duration.zero);
-      expect(plugin.renameCalls, isZero);
-
-      releaseDelete.complete();
-      await deletion;
-      await expectLater(
-        rename,
-        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
-      );
-      expect(plugin.renameCalls, isZero);
-    });
-
-    test("dispose waits for an in-flight deletion to emit", () async {
-      final deleteStarted = Completer<void>();
-      final releaseDelete = Completer<void>();
-      plugin
-        ..deleteStarted = deleteStarted
-        ..releaseDelete = releaseDelete.future;
+    test("owns repository deletion and deleted session events", () async {
       await insertSession();
       final events = expectLater(
         dispatcher.deletedSessions,
@@ -142,17 +112,20 @@ void main() {
         ]),
       );
 
-      final deletion = dispatcher.deleteSession(sessionId: "s1");
-      await deleteStarted.future;
-      final disposal = dispatcher.dispose();
-      releaseDelete.complete();
-
-      await deletion;
-      await disposal;
+      await dispatcher.deleteSession(
+        sessionId: "s1",
+        cleanup: () async => CleanupSuccess(),
+        onDeleted: (_) async {},
+      );
+      await dispatcher.dispose();
       await events;
-      await expectLater(
-        dispatcher.deleteSession(sessionId: "after-dispose"),
-        throwsA(isA<StateError>()),
+      expect(
+        () => dispatcher.deleteSession(
+          sessionId: "after-dispose",
+          cleanup: () async => CleanupSuccess(),
+          onDeleted: (_) async {},
+        ),
+        throwsStateError,
       );
     });
   });

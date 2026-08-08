@@ -19,8 +19,7 @@ import "support/codex_plugin_test_factory.dart";
 void main() {
   group("CodexPlugin", () {
     test("id returns codex", () {
-      final plugin = CodexPlugin(serverUrl: "ws://127.0.0.1:0");
-      expect(plugin.id, equals("codex"));
+      expect(CodexPlugin.pluginId, equals("codex"));
     });
 
     test("is bridge-derived: launchDirectory is the launch CWD and sessions enumerate from disk", () async {
@@ -260,9 +259,11 @@ void main() {
           );
         });
       });
-      final plugin = CodexPlugin(
+      final plugin = createInjectedCodexPlugin(
         serverUrl: "ws://127.0.0.1:${server.port}",
+        environment: const {},
         projectCwd: "/repo/example",
+        clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
       );
       addTearDown(plugin.dispose);
@@ -322,7 +323,10 @@ void main() {
       final pending = await plugin.getPendingPermissions(sessionId: "t-running");
       expect(pending, hasLength(1));
 
-      final completed = plugin.events.where((event) => event is BridgeSseSessionIdle).cast<BridgeSseSessionIdle>().first;
+      final completed = plugin.events
+          .where((event) => event is BridgeSseSessionIdle)
+          .cast<BridgeSseSessionIdle>()
+          .first;
       socket.add(
         jsonEncode({
           "jsonrpc": "2.0",
@@ -358,7 +362,10 @@ void main() {
       );
       await busyAgain.timeout(const Duration(seconds: 2));
 
-      final disconnected = plugin.events.where((event) => event is BridgeSseSessionIdle).cast<BridgeSseSessionIdle>().first;
+      final disconnected = plugin.events
+          .where((event) => event is BridgeSseSessionIdle)
+          .cast<BridgeSseSessionIdle>()
+          .first;
       await socket.close(WebSocketStatus.goingAway);
 
       expect(
@@ -373,7 +380,15 @@ void main() {
     });
 
     test("dispose closes event buffer without error", () async {
-      final plugin = CodexPlugin(serverUrl: "ws://127.0.0.1:0");
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: "ws://127.0.0.1:0",
+        environment: const {},
+        projectCwd: Directory.current.path,
+        clientFactory: () => CodexAppServerClient(
+          serverUrl: "ws://127.0.0.1:0",
+        ),
+        keepaliveInterval: const Duration(seconds: 30),
+      );
       await expectLater(plugin.dispose(), completes);
     });
   });

@@ -1,4 +1,8 @@
+import "dart:convert";
+
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/routing/reject_question_handler.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -8,11 +12,12 @@ import "routing_test_helpers.dart";
 void main() {
   group("RejectQuestionHandler", () {
     late FakeBridgePlugin plugin;
+    late AppDatabase db;
     late RejectQuestionHandler handler;
 
     setUp(() async {
       plugin = FakeBridgePlugin();
-      final db = createTestDatabase();
+      db = createTestDatabase();
       addTearDown(db.close);
       await recordSessionBinding(
         database: db,
@@ -22,16 +27,31 @@ void main() {
         projectId: "/repo",
         parentSessionId: null,
       );
-      handler = RejectQuestionHandler(
-        questionRepository: singlePluginQuestionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-        ),
-      );
+      final pending = buildTestPendingInteractionService(database: db, plugin: plugin);
+      addTearDown(pending.dispatcher.dispose);
+      addTearDown(pending.service.dispose);
+      handler = RejectQuestionHandler(pendingInteractionService: pending.service);
     });
 
     tearDown(() => plugin.close());
+
+    test("returns 409 for an archived session", () async {
+      await db.sessionDao.setArchived(sessionId: "ses-1", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/question/reject",
+          body: jsonEncode(const RejectQuestionRequest(requestId: "q-1", sessionId: "ses-1").toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 409);
+      expect(plugin.lastRejectQuestionId, isNull);
+    });
 
     test("canHandle POST /question/reject", () {
       expect(handler.canHandle(makeRequest("POST", "/question/reject")), isTrue);
@@ -50,7 +70,15 @@ void main() {
       expect(plugin.lastRejectSessionId, equals("backend-ses-1"));
     });
 
-    test("allows null sessionId for backwards compatibility", () async {
+    test("resolves a null legacy sessionId to its stable owner", () async {
+      plugin.pendingQuestionsResult = const [
+        PluginPendingQuestion(
+          id: "q1",
+          sessionID: "backend-ses-1",
+          displaySessionId: null,
+          questions: [],
+        ),
+      ];
       await handler.handle(
         makeRequest("POST", "/question/reject"),
         body: const RejectQuestionRequest(requestId: "q1", sessionId: null),
@@ -60,7 +88,47 @@ void main() {
       );
 
       expect(plugin.lastRejectQuestionId, equals("q1"));
-      expect(plugin.lastRejectSessionId, isNull);
+      expect(plugin.lastRejectSessionId, equals("backend-ses-1"));
+    });
+
+    test("reports a missing legacy owner as not found", () async {
+      await expectLater(
+        handler.handle(
+          makeRequest("POST", "/question/reject"),
+          body: const RejectQuestionRequest(requestId: "missing", sessionId: null),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
+      );
+    });
+
+    test("reports ambiguous legacy owners as a compatibility conflict", () async {
+      await recordSessionBinding(
+        database: db,
+        sessionId: "ses-2",
+        backendSessionId: "backend-ses-2",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
+      plugin.pendingQuestionsResult = const [
+        PluginPendingQuestion(id: "q1", sessionID: "backend-ses-1", displaySessionId: null, questions: []),
+        PluginPendingQuestion(id: "q1", sessionID: "backend-ses-2", displaySessionId: null, questions: []),
+      ];
+
+      await expectLater(
+        handler.handle(
+          makeRequest("POST", "/question/reject"),
+          body: const RejectQuestionRequest(requestId: "q1", sessionId: null),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
+      );
+      expect(plugin.lastRejectQuestionId, isNull);
     });
 
     test("returns 200", () async {

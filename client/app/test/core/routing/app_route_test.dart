@@ -1,6 +1,7 @@
 import "package:flutter/cupertino.dart" show CupertinoPage;
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
@@ -20,7 +21,11 @@ import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
 
+import "../../helpers/test_helpers.dart";
+
 void main() {
+  setUpAll(registerAllFallbackValues);
+
   group("AppRoute", () {
     test("each value has a non-empty path starting with /", () {
       for (final def in AppRouteDef.values) {
@@ -36,7 +41,17 @@ void main() {
       expect(const AppRoute.login().buildPath(), "/login");
       expect(const AppRoute.projects().buildPath(), "/projects");
       expect(const AppRoute.settings().buildPath(), "/settings");
-      expect(const AppRoute.settingsHarnesses().buildPath(), "/settings/harnesses");
+    });
+
+    test("carries the presentation for settingsHarnesses", () {
+      expect(
+        const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal).buildPath(),
+        "/settings/harnesses?presentation=modal",
+      );
+      expect(
+        const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.pushed).buildPath(),
+        "/settings/harnesses?presentation=pushed",
+      );
     });
 
     test("substitutes projectId for sessions", () {
@@ -168,7 +183,28 @@ void main() {
 
       expect(children.map((route) => route.path), equals(["notifications", "harnesses", "profile"]));
       expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
-      expect(children[1].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<HarnessesSettingsScreen>());
+      // Harnesses rise as a modal from the new-session harness menu and push
+      // in from the settings list, so the route builds its own page per
+      // presentation instead of taking the default push for both.
+      final harnessesModalPage =
+          children[1].pageBuilder!(
+                _FakeBuildContext(),
+                _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "modal"}),
+              )
+              as CupertinoPage<void>;
+      expect(harnessesModalPage.fullscreenDialog, isTrue);
+      expect(harnessesModalPage.child, isA<HarnessesSettingsScreen>());
+      final harnessesPushedPage =
+          children[1].pageBuilder!(
+                _FakeBuildContext(),
+                _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "pushed"}),
+              )
+              as MaterialPage<void>;
+      expect(harnessesPushedPage.child, isA<HarnessesSettingsScreen>());
+      expect(
+        (harnessesPushedPage.child as HarnessesSettingsScreen).presentation,
+        HarnessSettingsPresentation.pushed,
+      );
       expect(children[1].routes, isEmpty);
       expect(children[2].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
       expect(
@@ -253,6 +289,10 @@ void main() {
     });
 
     test("session shell builder hoists cubit provider above split shell", () {
+      final getIt = GetIt.instance;
+      getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
+      addTearDown(() => getIt.unregister<ProjectViewingService>());
+
       final shell = _sessionShellRoute();
       final widget = shell.builder!(
         _FakeBuildContext(),

@@ -1,0 +1,358 @@
+# Setup-Aware Transient Plugin Lifecycle: Tracker
+
+## Plan State
+
+- **Status:** complete; Stages 10-13 merged and final Stage 13 simulator E2E passed
+- **Completion base:** `origin/main` at current-main Harnesses consolidation
+  `0da8ec7c`; final Stage 13 implementation merged as `a30b671b`
+- **Current stage:** complete
+- **Next action:** none; parent and completed child archived
+
+## Frozen Oversized Stack
+
+PR #508 passed its verification but is too large to review effectively. It is
+frozen at `f6cd675d` as source material while the behavior is rebuilt in smaller
+PRs. Its descendants are not advanced until the replacement runtime boundary is
+complete.
+
+| Old PR | State | Replacement |
+|---|---|---|
+| #507 | Merged | Redesigned Stage 10, merged as `4ef55675` |
+| #508 | Closed, superseded | Oversized Stage 11-P01 reference at `f6cd675d`; replaced by P01A-P01D |
+| #509 | Closed, superseded | Replaced by the merged Stage 11-P02 dormant-runtime rebuild |
+| #510 | Closed, superseded | Replaced by the six-PR Stage 12 child series |
+| #511 | Closed, superseded | Replaced by the eight-PR Stage 13 child series |
+
+Old verification results are historical evidence only; replacement stages must
+run their focused verification again.
+
+## Replacement Stages
+
+| Done | Stage | Branch | PR state |
+|---|---|---|---|
+| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
+| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
+| [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
+| [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
+| [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 merged as `41e03f12` |
+| [x] | Stage 12 — headless management | six-PR child series | #563, #567-#570, and #572 merged; recorded in `.plan/completed/setup-aware-plugin-management` |
+| [x] | Stage 13 — redesigned mobile Harnesses settings | eight-PR `setup-aware-harness-settings` child series | #579, #583, #589, #590, #592-#595 merged; current-main E2E passed and is recorded in `.plan/completed/setup-aware-harness-settings/E2E.md` |
+
+## Locked Redesign Deltas
+
+- Denylist is the sole persisted eligibility source.
+- All plugin CLI options are registered; `--plugin` is removed.
+- Setup inspection skips denied plugins and never installs.
+- Setup readiness is the sole pre-start backend gate; the obsolete availability
+  re-probe after setup inspection is removed and does not affect Stage 13 client
+  contracts.
+- Setup adds `notInspected` and removes `canProvision`.
+- Deterministic ordering replaces persisted order and bridge last-used; the
+  derived default prefers OpenCode when selectable, then the first selectable
+  plugin in display-name/ID order.
+- Client stores last-used per bridge after the settings stage.
+- Every ready plugin starts dormant.
+- Idle configuration is integer minutes; `<= 0` never idle-stops after demand.
+- Descriptor-declared resident mode has effective timeout `0` without mutating
+  persisted timeout settings; OpenCode `--opencode-no-auto-start` uses it.
+- Headless management removes authority/order/serialized enabled.
+- Settings work targets the merged Prego Settings landing/sub-page architecture.
+- The user-facing settings destination is Harnesses. Internal domain names stay
+  plugins; routes, screens, localization, and copy use Harnesses.
+- The Harnesses settings row sits immediately below Notifications with the same
+  grouped-row style. Its overview page follows the Notifications page visually
+  and shows descriptor-declared harness logos through a backend-neutral Prego
+  resolver.
+- Remaining delivery aims for approximately 1,000 changed lines per PR. This is
+  a reviewability target rather than a hard limit; simple generated or
+  mechanical excess requires an explicit rationale, while complex work splits
+  earlier when useful.
+- No compatibility machinery is retained for any contract from the superseded
+  oversized stack.
+- Aggregate projects are bridge-owned and may include sessions from multiple
+  plugins. Create/open/rename never select, start, acquire, or call a plugin.
+- P01B may use one narrow stack-local live API view for consumers migrated in
+  P01C/P01D plus a generation-dropping runtime-event adapter for existing
+  listeners. Both are removed by P01D and are not released contracts.
+
+## Review
+
+- The original plan had two reviews before the redesign.
+- 2026-07-19 redesign review pass 1 failed the specificity gate; the plan was
+  expanded with concrete workspaces, files, classes, flows, and constructors.
+- 2026-07-19 permitted specificity recheck passed the gate and rejected six
+  architecture choices. Applied directly without another review: concrete
+  `PluginRuntime` and `PluginGenerationFactory`, explicit disable access-gate
+  transitions instead of a persistence callback, Stage-11 hydration listener
+  ownership, and Layer-3 `NewSessionPluginService` preference coordination.
+
+## Verification Log
+
+### 2026-07-19 — replacement Stage 10
+
+- Regenerated `sesori_shared` Freezed/JSON outputs from source with
+  `dart run build_runner build`.
+- Sequential `dart analyze --fatal-infos` passed in `shared/sesori_shared`,
+  `bridge/sesori_plugin_interface`, `bridge/sesori_plugin_runtime`,
+  `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`,
+  `bridge/sesori_plugin_cursor`, and `bridge/app`. The runtime and app analyzers
+  were rerun after final review fixes and passed.
+- Focused shared setup-wire tests passed.
+- Focused interface descriptor/setup tests passed.
+- Focused existing-runtime resolution/version and cooperative-abort tests passed.
+- Focused OpenCode, Codex, and Cursor setup/availability tests passed.
+- Focused bridge settings/repository/config-command, CLI parser/registry,
+  setup-route, lifecycle, runtime-startup, routing, and zero-plugin tests passed.
+- A correctness-only static diff review found explicit-null fail-open parsing,
+  missing runtime-resolution abort checks, and empty plugin-ID acceptance. All
+  three findings were fixed with regression coverage.
+- `git diff --check` passed.
+- Squashed onto `9e1625d0` as `d02f18d8`, force-pushed with lease, and
+  reopened #507. Because GitHub refuses to reopen a closed PR after its head is
+  rewritten, the old head was restored only long enough to reopen the PR, then
+  the verified replacement head was restored immediately.
+- Rebased cleanly onto `origin/main` at `5a91f582` on 2026-07-20; the Stage 10
+  production commit is now `794e853e`.
+
+### 2026-07-23 — frozen Stage 11-P01 reference
+
+- PR #508 reached head `f6cd675d`, was synchronized through `main` at
+  `583748ab`, and was mergeable with CI 10/10.
+- The reference implementation contains the approved generation runtime,
+  operation routing, durable fencing, bridge-owned projects, and
+  OpenCode-preferred default behavior.
+- Focused runtime/session/create, project/open/rename/activity, event/catalog,
+  lifecycle/default, and routing verification passed; bridge-app
+  `dart analyze --fatal-infos` passed.
+- The implementation is frozen rather than rewritten because its 83-file,
+  roughly 5.5k-addition diff is not reviewable as one PR.
+
+### 2026-07-23 — Stage 11-P01A runtime mechanics
+
+- Started a clean replacement branch from `origin/main` at `583748ab`.
+- Added the concrete `PluginGenerationFactory` and `PluginRuntime` kernel plus
+  focused runtime tests. The bridge composition remains unchanged in this slice.
+- Focused generation-factory and runtime tests passed (40 tests).
+- `dart analyze --fatal-infos` passed in `bridge/app`.
+- Architecture implementation review approved the runtime/factory ownership,
+  lifecycle, dependency direction, and enabling-slice boundary with no findings.
+- Committed as `fbd02dee`, pushed, and opened as PR #547.
+- PR review hardened generation-owned stream cancellation, command/disposal
+  serialization, and access revocation. The second architecture pass identified
+  a paused-consumer teardown dependency; source cancellation and lease release
+  now complete without waiting for downstream `done` delivery.
+- PR #547 merged into `main` as `51008356`; the new base was merged through
+  #548, #549, and this P01D branch.
+
+### 2026-07-23 — Stage 11-P01B operation routing
+
+- Activated the generation runtime in bridge composition while preserving eager
+  Stage 10 residency and alphabetical default behavior.
+- Moved ordinary session, agent, provider, question, permission, and worktree
+  backend calls behind typed runtime acquisitions. Session creation uses
+  `useAndCommit` for its backend-result/binding transaction boundary.
+- Added a stack-local live API view for remaining catalog/project consumers and
+  adapted existing event listeners to the runtime event source without yet
+  carrying generation into normalization.
+- Focused lifecycle, repository, routing, runtime, orchestrator, debug-server,
+  and shutdown suites passed (210 tests).
+- `dart analyze --fatal-infos` passed in `bridge/app`.
+- Architecture implementation review approved composition ownership, runtime
+  routing, dependency direction, and both contained stack-local seams with no
+  findings.
+- Committed as `2e20026d`, pushed, and opened as stacked PR #548.
+- PR #548 merged into `main` as `96f63c69`; the new base was merged through
+  #549 and this P01D branch.
+- PR feedback moved aggregate deadlines inside runtime acquisition bodies,
+  kept best-effort worktree cleanup active-only, gated startup imports on
+  operational plugins, and protected active-root hydration commits through
+  generation replacement. Focused tests and fatal analysis passed; fixes were
+  pushed through `9cbe6c39`, with every review thread answered.
+
+### 2026-07-23 — Stage 11-P01C dynamic events and durable fencing
+
+- Replaced the generation-dropping event adapter with generation-attributed
+  capture, normalization, ordered dispatch, and pre-delivery checks.
+- Added in-transaction generation checks for session projection/child writes and
+  catalog publication, with stream leases retained through cancellation and
+  atomic publication.
+- Routed catalog import through `PluginRuntime.useStream` and drained in-flight
+  relay requests before runtime disposal.
+- Focused event, projection, catalog, routing, runtime-startup, PR-sync, and
+  orchestrator suites passed (117 tests).
+- `dart analyze --fatal-infos` passed in `bridge/app`.
+- Architecture review fixes retained source generation through binding replay,
+  held runtime ownership across explicit durable commits, and rechecked source
+  ownership immediately before final SSE enqueue and delayed summary delivery.
+  Pending tracker keys remain backend-identity based because each pending event
+  already retains its own generation and replay is fenced before publication.
+- The second and final implementation-review pass approved P01C with no
+  findings. Focused regression tests, fatal analysis, and `git diff --check`
+  passed after the review fixes.
+- Merged the reviewed #548 feedback commits into the stack and reran fatal
+  analysis plus 133 focused runtime, repository, event, catalog, startup, and
+  orchestrator tests successfully.
+- Committed the implementation as `2a461f8b`, merged the updated #548 head,
+  pushed the verified branch, and opened stacked PR #549. Its initial monitor
+  reported it mergeable with CI running and no review threads.
+- PR feedback hardened successor-generation pending-root replay, skipped stale
+  outputs without aborting a mixed replay batch, suppressed expected stale
+  normalization telemetry, and disposed the benchmark runtime. Focused tests
+  and fatal analysis passed; fixes were pushed as `220b2954` and every review
+  thread was answered.
+- PR #549 merged into `main` as `cd0e0a31` with CI passing 11/11 and no
+  unresolved review threads.
+
+### 2026-07-24 — Stage 11-P01D bridge-owned projects and defaults
+
+- Made project create/open/rename bridge-owned and plugin-neutral, extracted
+  runtime-backed project activity evidence, preferred OpenCode as the
+  selectable default with deterministic fallback, and removed the temporary
+  live API map.
+- Preserved generation attribution through final activity publication; both
+  native and derived evidence now commit activity through
+  `commitCurrentGeneration`, while native catalog insertion retains its own
+  protected commit.
+- Regenerated app database output from source after clearing a stale local
+  build-runner cache. Fatal analysis, `git diff --check`, and 213 focused
+  project, activity, lifecycle, runtime, routing, and orchestrator tests passed;
+  focused review-fix tests also passed.
+- The second implementation-review pass approved P01D with no findings.
+- Merged the reviewed #549 feedback commit and reran fatal analysis plus 88
+  focused event-tracking and project-activity tests successfully.
+- Committed P01D as `059689e7`, merged the updated #549 head, pushed the
+  verified branch, and opened stacked PR #550. Its initial monitor reported it
+  mergeable with CI running and no inline review threads.
+- After #549 merged, merged `origin/main` into #550 as `21fe3f90`, resolved the
+  tracker conflict, and passed fatal analysis plus 169 focused project,
+  activity, lifecycle, runtime, routing, and event tests. The updated PR was
+  pushed mergeable with CI running.
+- PR #550 merged into `main` as `5020c003` with CI passing 11/11 and no
+  unresolved review threads.
+
+### 2026-07-24 — Stage 11-P02 dormant runtime rebuild
+
+- Reconstructed only the dormancy stage from frozen #509 commits rather than
+  merging its polluted descendant history, preserving the newer P01C/P01D
+  generation-fencing and bridge-owned-project architecture.
+- Added plugin-owned replay-latest work state and an authentication-required
+  signal across the interface, OpenCode, Codex, and ACP/Cursor adapter boundary.
+- Extended `PluginRuntime` with conservative safe-stop work gates,
+  authentication-loss generation retirement, work-state subscriptions, and
+  lease-drained cleanup while retaining durable commit and operation-stream
+  fencing from the replacement stack.
+- Switched startup to all-ready-dormant residency, retained request-time demand
+  activation, added numeric idle suspension policy, and replaced eager startup
+  enumeration with the marker-gated `PluginCatalogHydrationListener`.
+- Removed startup project-activity enumeration that would wake dormant plugins.
+  Reconnect reconciliation remains source-scoped and active-only; explicit
+  headless imports validate setup availability and then activate on demand.
+- `dart analyze --fatal-infos` passed sequentially in
+  `sesori_plugin_interface`, `sesori_plugin_opencode`,
+  `sesori_plugin_codex`, `sesori_plugin_acp`, `sesori_plugin_cursor`, and
+  `bridge/app`.
+- Focused interface, OpenCode (230 tests), Codex (36 tests), ACP (25 tests), and
+  bridge runtime/lifecycle/hydration/composition suites (61 tests) passed.
+  No generated source changed, so code generation was not required.
+- Architecture implementation review approved the 22 production-file working
+  tree diff with no findings.
+- Merged `origin/main` at `0a910926` without rebasing. The only source conflict
+  was in Codex; its resolution preserves both #552 collaboration modes and the
+  P02 accepted-turn work-state signal.
+- Post-merge `dart analyze --fatal-infos` passed sequentially in the plugin
+  interface, OpenCode, Codex, ACP, Cursor, and bridge-app packages.
+- Post-merge full package suites passed in the plugin interface (149 tests),
+  OpenCode (400), Codex (189), ACP (105), and Cursor (85). The focused bridge
+  runtime/lifecycle/hydration/composition/recovery suite passed 64 tests.
+- Final integration architecture review approved the complete 22 production-file
+  diff against `origin/main` with no findings; `git diff HEAD --check` passed.
+- Opened replacement draft PR #556 from verified commit `7b91567c` and retained
+  the pre-sync stash as a safety checkpoint.
+- After release gate #555 shipped and exact revert #557 landed, merged latest
+  `origin/main` at `2bb376b2` without rebasing. The sole conflict was the
+  `OrchestratorComposition` record; its resolution retains both P02 catalog
+  hydration and #558 deleted-session storage cleanup.
+- The first CI run's 18 debug-server/orchestrator timeouts exposed harnesses
+  that still waited for eager startup before plugin event subscription. Updated
+  them to activate plugins through explicit test demand; all 18 previously
+  failing cases pass.
+- Post-sync fatal analysis passed in the plugin interface, Cursor, and bridge
+  app. Full plugin-interface (149 tests) and Cursor (95 tests) suites passed,
+  along with focused runtime, lifecycle, hydration, cleanup, debug-server, and
+  orchestrator integration tests.
+- PR feedback restored active-only project-activity reconciliation after a
+  sourced backend reconnect and made pending Codex approvals keep generic work
+  state busy until their response is delivered. Focused regressions, all 189
+  Codex tests, and fatal Codex/bridge-app analysis passed.
+- A second feedback round moved operation-stream cancellation ahead of auth-loss
+  lease drain, limited ACP auth mapping to agent rejection responses, made
+  hydration-listener disposal terminal, restored the benchmark's broadcast
+  stream contract, and retained ACP/Codex pending approvals as work until reply
+  or session removal. ACP connection reset preserves unknown work state while
+  disposing approvals, and OpenCode cold-start reconciliation preserves turn
+  acceptances newer than its status snapshot. Full bridge-app (2,094 tests),
+  OpenCode (401), ACP (151), and Codex (191) suites plus fatal analysis in all
+  four packages passed.
+- PR #556 merged into `main` as `41e03f12` with CI passing 11/11 and no
+  unresolved review threads.
+
+### 2026-07-25 — Stage 12 redesign
+
+- Re-inspected frozen PR #510 at substantive commit `c4104e73`; its 36-file,
+  3,286-addition diff remains source material only.
+- Split delivery into an independently tracked six-PR series: attach-only
+  residency/diagnostics, read snapshots, revision/SSE, timeout mutations,
+  transactional runtime mechanics, and lifecycle commands/dynamic eligibility.
+- Preserved current-main architecture that the frozen descendant predates,
+  including durable commit fencing, OpenCode-preferred default selection,
+  operation-stream cancellation, and the single hydration listener.
+- The architecture review's specificity gate was corrected in one permitted
+  recheck. Its valid local finding removed a duplicate management snapshot
+  stream. Its requested broad runner/orchestrator composition migration was
+  kept out of this series; P06 uses the existing catalog repository seam and
+  introduces no new composition crossing.
+
+### Recorded 2026-07-26 — Stage 12 complete
+
+- The six replacement PRs merged as #563 (`f8f05c33`), #567 (`19ca475a`),
+  #568 (`00a0da77`), #569 (`583c91f2`), #570 (`92cbdf06`), and #572
+  (`6cedf5bd`).
+- Final production-relay E2E covered all three bundled backends, lifecycle
+  mutations and conflicts, persistence, catalog hydration, bridge restart, and
+  persisted-session resume. The force-disable reconciliation defect is tracked
+  separately as #573.
+- Frozen PR #510 was closed as superseded. The completed child plan and its
+  detailed verification record moved to
+  `.plan/completed/setup-aware-plugin-management`.
+
+### 2026-07-26 — Stage 13 concrete Harnesses series
+
+- Replaced the placeholder Stage 13 rebuild note with the concrete seven-PR
+  `setup-aware-harness-settings` child plan.
+- Locked the user-facing Harnesses label while retaining internal plugin domain
+  names. The settings entry goes directly below Notifications, and the overview
+  page mirrors the Notifications page's grouped-row Prego structure.
+- Added descriptor-declared opaque `brandLogoKey` transport and a Prego logo
+  resolver that uses the existing OpenCode, Codex, and Cursor VESPR glyphs with
+  a generic fallback.
+- Recorded per-slice estimates from 300-1,300 changed lines, including
+  generated and mechanical output.
+- Required real simulator E2E with the source bridge running
+  `--data-dir ~/.local/share/sesori-dev`, the existing login, and the
+  `random stuff` project; the temporary E2E bridge must be stopped afterward.
+
+### 2026-07-31 — Stage 13 complete
+
+- The eight replacement PRs merged as #579, #583, #589, #590, and #592-#595;
+  final Step 8 merged as `a30b671b`. Frozen PR #511 closed as superseded.
+- PR #647 later consolidated the overview and management pages into the final
+  single Harnesses screen and merged as `0da8ec7c`.
+- Current-main simulator E2E verified navigation, live status and logos, setup
+  refresh, safe restart, safe disable/enable, timeout override/clear/apply-all
+  and persistence, busy safe-conflict/cancel/one-shot force behavior, retained
+  forced-disable session reconciliation, session creation and cleanup, and
+  OpenCode no-auto-start capability gating against a pre-existing server.
+- Restored the 10-minute/no-override/all-enabled baseline, deleted the test
+  session, left unrelated processes untouched, and left the ordinary source
+  bridge running. The full record is in the completed child plan's `E2E.md`.

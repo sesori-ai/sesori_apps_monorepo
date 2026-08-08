@@ -20,6 +20,7 @@ void main() {
       expect(descriptor.displayName, equals("OpenCode"));
       expect(descriptor.stateStorage, PluginStateStorage.legacySharedRuntime);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
+      expect(descriptor.supportsPromptAttachments, isTrue);
       expect(
         descriptor.options.map((o) => o.name).toList(),
         equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin"]),
@@ -62,10 +63,26 @@ void main() {
       );
     });
 
-    test("allows every management capability in managed mode", () {
+    test("allows every management capability plus install in managed mode", () {
+      // Every CI/dev platform this test runs on has a published OpenCode
+      // release asset, so the managed install capability is advertised.
       expect(
         descriptor.managementCapabilities(
-          config: const PluginConfig(values: {"no-auto-start": false}),
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": null}),
+        ),
+        const {
+          PluginControlCapability.lifecycle,
+          PluginControlCapability.setupRefresh,
+          PluginControlCapability.idleTimeout,
+          PluginControlCapability.install,
+        },
+      );
+    });
+
+    test("does not advertise install with an explicit binary override", () {
+      expect(
+        descriptor.managementCapabilities(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/usr/local/bin/opencode"}),
         ),
         const {
           PluginControlCapability.lifecycle,

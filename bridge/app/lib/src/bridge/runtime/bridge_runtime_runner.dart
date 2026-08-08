@@ -22,9 +22,11 @@ import "package:sesori_shared/sesori_shared.dart"
     show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo, legacyMissingPluginId;
 
 import "../../api/app_onboarding_state_storage.dart";
+import "../../api/attachment_spill_storage.dart";
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
 import "../../api/database/database.dart";
+import "../../api/database/history/chat_history_database.dart";
 import "../../api/sesori_server_api.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_id_migration_service.dart";
@@ -100,7 +102,6 @@ import "../../updater/services/update_lifecycle_service.dart";
 import "../../updater/services/update_reconciliation_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
-import "../debug_server.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../log_failure_reporter.dart";
@@ -188,7 +189,6 @@ class BridgeRuntimeRunner {
     PluginRuntime? pluginRuntime;
     PluginLifecycleService? pluginLifecycleService;
     BridgeRuntime? runtime;
-    DebugServer? debugServer;
     CatalogImportConsoleListener? catalogImportConsoleListener;
     Future<void>? sessionRun;
     // The single typed slot for a deliberate supervised exit (restart /
@@ -204,9 +204,15 @@ class BridgeRuntimeRunner {
     // loss listener assigns with `??=` so a loss never overwrites an already
     // decided intentional exit.
     SupervisedExitCode? requestedSupervisedExit;
+    // Shared by the ordered pluginDispose phase and the backstop's emergency
+    // disposal so the two cannot drift.
+    Future<void> disposePluginApis() => pluginRuntime?.disposeStartedApis() ?? Future<void>.value();
     final shutdownCoordinator = BridgeShutdownCoordinator(
       startAbortSignal: startAbortController.signal,
       backstopExitCode: () => requestedSupervisedExit?.code ?? 0,
+      // Last resort before a forced exit: stop plugin backends so their agent
+      // processes are not orphaned when the teardown (or a phase) hangs.
+      emergencyDisposal: disposePluginApis,
     );
     shutdownCoordinator
       ..addPhase(
@@ -219,15 +225,22 @@ class BridgeRuntimeRunner {
       )
       ..addPhase(
         phase: BridgeShutdownPhase.signal,
+        // Cancel in-flight agent work (budgeted, best-effort) so the drain
+        // phase is not held open by agent-coupled requests — an in-flight
+        // turn, a resume-load, a lazy agent respawn — while the agent process
+        // is still alive and can answer a cancellation. Signal actions fire in
+        // registration order, so `beginShutdown` above has already fenced new
+        // lease acquisitions, and the phase is awaited before drain begins.
+        action: () => pluginRuntime?.interruptActiveWorkForShutdown() ?? Future<void>.value(),
+        budget: _pluginShutdownBudget,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
         action: () => runtime?.catalogImportService.beginShutdown(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.signal,
         action: () => runtime?.session.beginShutdown(),
-      )
-      ..addPhase(
-        phase: BridgeShutdownPhase.signal,
-        action: () => debugServer?.beginShutdown(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.signal,
@@ -242,12 +255,8 @@ class BridgeRuntimeRunner {
         action: () => sessionRun ?? Future<void>.value(),
       )
       ..addPhase(
-        phase: BridgeShutdownPhase.drain,
-        action: () => debugServer?.drain() ?? Future<void>.value(),
-      )
-      ..addPhase(
         phase: BridgeShutdownPhase.pluginDispose,
-        action: () => pluginRuntime?.disposeStartedApis() ?? Future<void>.value(),
+        action: disposePluginApis,
         budget: _pluginShutdownBudget,
       )
       ..addPhase(
@@ -461,6 +470,7 @@ class BridgeRuntimeRunner {
       final BridgeSettings bridgeSettings;
       try {
         bridgeSettingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+        shutdownCoordinator.add(disposable: bridgeSettingsRepository.dispose);
         bridgeSettings = await bridgeSettingsRepository.loadSettings();
       } on Object catch (error, stackTrace) {
         Log.e("Failed to resolve bridge settings", error, stackTrace);
@@ -646,6 +656,7 @@ class BridgeRuntimeRunner {
                   residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
                   sessionOptionsScope: descriptor.sessionOptionsScope,
                   managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
+                  supportsPromptAttachments: descriptor.supportsPromptAttachments,
                 ),
             ],
           );
@@ -770,6 +781,12 @@ class BridgeRuntimeRunner {
         // exits with the sentinel code instead of spawning a successor (which
         // would replay --control-url with no off-argv secret and fail closed).
         isSupervised: options.isSupervised,
+        // Record the GUI-respawn sentinel the moment the handoff is decided —
+        // before the shutdown it triggers — so the normal return, the error
+        // paths, and a hung-teardown backstop all report the same code.
+        onSupervisedRestartRequested: () {
+          requestedSupervisedExit = SupervisedExitCode.restart;
+        },
       );
 
       // Run startup diagnostics before composing the runtime so the
@@ -789,6 +806,14 @@ class BridgeRuntimeRunner {
       final database = AppDatabase.create(
         dataDirectory: options.dataDirectory,
       );
+      final chatHistoryDatabase = ChatHistoryDatabase.create(
+        dataDirectory: options.dataDirectory,
+      );
+      final attachmentSpillStorage = AttachmentSpillStorage(
+        directoryPath: attachmentSpillDirectoryPath(
+          dataDirectory: options.dataDirectory,
+        ),
+      )..ensureDirectory();
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
         config: BridgeConfig(
@@ -801,8 +826,11 @@ class BridgeRuntimeRunner {
         legacyMissingPluginId: legacyMissingPluginId,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
+        bridgeSettingsRepository: bridgeSettingsRepository,
         clock: serverClock,
         database: database,
+        chatHistoryDatabase: chatHistoryDatabase,
+        attachmentSpillStorage: attachmentSpillStorage,
         httpClient: httpClient,
         processRunner: processRunner,
         accessTokenProvider: accessTokenProvider,
@@ -812,11 +840,12 @@ class BridgeRuntimeRunner {
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
         statusNotifier: controlStatusNotifier,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
       ).create();
       runtime = BridgeRuntime(
         database: database,
+        chatHistoryDatabase: chatHistoryDatabase,
         failureReporter: failureReporter,
-        restartService: restartService,
         composition: composition,
       );
       final activeRuntime = runtime;
@@ -824,6 +853,9 @@ class BridgeRuntimeRunner {
       // Run before imports, debug routes, or relay traffic can load a session
       // into a backend process and retain handles to its persisted storage.
       await activeRuntime.reconcileDeletedSessionStorage();
+      // Drops history whose session disappeared from the catalog while the
+      // bridge was down, before any route can read or extend it.
+      await activeRuntime.reconcileChatHistory();
 
       if (!options.isSupervised) {
         catalogImportConsoleListener = CatalogImportConsoleListener(
@@ -846,7 +878,7 @@ class BridgeRuntimeRunner {
       final sessionStart = activeRuntime.session.start();
       sessionStart.ignore();
       sessionRun = activeRuntime.session.waitUntilStopped();
-      debugServer = await startDebugServerIfRequested(
+      await startDebugServerIfRequested(
         debugPort: options.debugPort,
         runtime: activeRuntime,
         shutdownCoordinator: shutdownCoordinator,
@@ -881,37 +913,35 @@ class BridgeRuntimeRunner {
         onboardingPreparation = null;
       }
 
-      try {
-        final startResult = await sessionStart;
-        if (startResult == OrchestratorSessionStartResult.ready) {
-          if (onboardingPreparation case final preparation?) {
-            final decision = await Future.any<AppClientOnboardingDecision>([
-              sessionRun.then((_) => AppClientOnboardingDecision.skip),
-              preparation,
-            ]);
-            if (decision == AppClientOnboardingDecision.prompt) {
-              _presentAppOnboardingPrompt(environment: environment);
-              await _waitForFirstPhoneConnection(
-                firstPhoneConnected: activeRuntime.session.firstPhoneConnected,
-                sessionRun: sessionRun,
-                environment: environment,
-              );
-            }
+      // Start the ordered shutdown the moment the session begins shutting down
+      // (any trigger: signal, supervised logout/restart, control-channel loss),
+      // so the coordinator's signal phase interrupts in-flight agent work and
+      // its backstop bounds the session teardown itself — a teardown blocked
+      // on agent-coupled requests must not hang the process with no deadline.
+      // Registered after startup wiring so every phase action and disposable
+      // above is in place (no agent-coupled work can exist before startup
+      // completes anyway). The runner's finally joins the same (memoized)
+      // shutdown future and applies the exit-code policy there, so this
+      // early-start copy only marks its error as handled.
+      activeRuntime.session.shutdownRequested.then((_) => shutdownCoordinator.shutdown()).ignore();
+
+      final startResult = await sessionStart;
+      if (startResult == OrchestratorSessionStartResult.ready) {
+        if (onboardingPreparation case final preparation?) {
+          final decision = await Future.any<AppClientOnboardingDecision>([
+            sessionRun.then((_) => AppClientOnboardingDecision.skip),
+            preparation,
+          ]);
+          if (decision == AppClientOnboardingDecision.prompt) {
+            _presentAppOnboardingPrompt(environment: environment);
+            await _waitForFirstPhoneConnection(
+              firstPhoneConnected: activeRuntime.session.firstPhoneConnected,
+              sessionRun: sessionRun,
+              environment: environment,
+            );
           }
-          await sessionRun;
         }
-      } finally {
-        // A supervised phone-triggered restart handed the session off by exiting
-        // rather than spawning a successor; resolve the GUI-respawn sentinel here
-        // (in a finally) so it survives even if session teardown throws —
-        // otherwise the error path below would return a crash code and
-        // the GUI would back off instead of respawning. `restartService` is only
-        // in scope inside this try, hence resolving into the outer-scoped local.
-        // Assigned before the outer `finally`'s shutdown runs, so a hung-shutdown
-        // backstop reports the same code too.
-        if (restartService.supervisedRestartRequested) {
-          requestedSupervisedExit = SupervisedExitCode.restart;
-        }
+        await sessionRun;
       }
       return requestedSupervisedExit?.code ?? 0;
     } on PluginStartAbortedException {

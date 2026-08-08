@@ -37,6 +37,7 @@ void main() {
                   residencyPolicy: PluginResidencyPolicy.transient,
                   sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,
+                  supportsPromptAttachments: false,
                 ),
                 (
                   id: "blocked",
@@ -44,6 +45,7 @@ void main() {
                   residencyPolicy: PluginResidencyPolicy.transient,
                   sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,
+                  supportsPromptAttachments: false,
                 ),
               ],
             )

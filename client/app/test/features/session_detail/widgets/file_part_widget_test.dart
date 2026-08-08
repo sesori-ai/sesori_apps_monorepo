@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
+import "package:go_router/go_router.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:mocktail/mocktail.dart";
@@ -39,6 +40,9 @@ class _FakeImageClipboard implements ImageClipboard {
   Uint8List? copiedBytes;
 
   @override
+  Future<Uint8List?> readImage() async => null;
+
+  @override
   Future<void> writeImage({required Uint8List bytes}) async {
     copiedBytes = bytes;
   }
@@ -65,6 +69,28 @@ Widget _app({required Widget child}) {
 
 Future<void> _finishAsyncDecode({required WidgetTester tester}) async {
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openImageViewer({required WidgetTester tester}) async {
+  await _finishAsyncDecode(tester: tester);
+  final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
+  await tester.runAsync(
+    () => precacheImage(
+      preview.image,
+      tester.element(find.byKey(FilePartWidget.previewImageKey)),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _doubleTap({required WidgetTester tester, required Finder finder}) async {
+  final position = tester.getCenter(finder);
+  await tester.tapAt(position);
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.tapAt(position);
   await tester.pumpAndSettle();
 }
 
@@ -158,6 +184,182 @@ void main() {
 
     expect(identical(imageClipboard.copiedBytes, memoryImage.bytes), isTrue);
     expect(find.text("Image copied to clipboard"), findsOneWidget);
+  });
+
+  testWidgets("session back closes the root image viewer without leaving the session", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      filename: "image.png",
+    );
+    final rootNavigatorKey = GlobalKey<NavigatorState>();
+    final sessionNavigatorKey = GlobalKey<NavigatorState>();
+    final router = GoRouter(
+      navigatorKey: rootNavigatorKey,
+      initialLocation: "/sessions/chat",
+      routes: [
+        ShellRoute(
+          navigatorKey: sessionNavigatorKey,
+          builder: (_, _, child) => Scaffold(
+            body: Row(
+              children: [
+                const SizedBox(
+                  width: 300,
+                  child: Center(child: Text("Session list pane")),
+                ),
+                Expanded(child: child),
+              ],
+            ),
+          ),
+          routes: [
+            GoRoute(
+              path: "/sessions",
+              builder: (_, _) => const Scaffold(body: Text("Session list route")),
+              routes: [
+                GoRoute(
+                  path: "chat",
+                  builder: (_, _) => const Scaffold(body: FilePartWidget(attachment: attachment)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+    await _openImageViewer(tester: tester);
+    final sessionRoute = ModalRoute.of(tester.element(find.byKey(FilePartWidget.previewTapTargetKey)))!;
+
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
+    final viewerRoute = ModalRoute.of(tester.element(find.byType(ImageAttachmentViewer)))!;
+    expect(viewerRoute.navigator, same(rootNavigatorKey.currentState));
+    expect(viewerRoute.opaque, isFalse);
+    expect(tester.getSize(find.byType(ImageAttachmentViewer)), const Size(1024, 800));
+    expect(sessionRoute.willHandlePopInternally, isTrue);
+
+    expect(await sessionNavigatorKey.currentState!.maybePop(), isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsNothing);
+    expect(find.byKey(FilePartWidget.previewTapTargetKey), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
+    expect(sessionRoute.willHandlePopInternally, isFalse);
+
+    expect(await sessionNavigatorKey.currentState!.maybePop(), isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Session list route"), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, "/sessions");
+  });
+
+  testWidgets("free-form image drag follows the pointer, snaps back, or dismisses", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      filename: "image.png",
+    );
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await _openImageViewer(tester: tester);
+    final viewer = find.byType(ImageAttachmentViewer);
+    final initialCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
+
+    final gesture = await tester.startGesture(initialCenter);
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(20, 15));
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(20, 15));
+    await tester.pump();
+
+    final draggedCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(draggedCenter.dx, greaterThan(initialCenter.dx));
+    expect(draggedCenter.dy, greaterThan(initialCenter.dy));
+
+    await tester.pump(const Duration(seconds: 1));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(viewer, findsOneWidget);
+    expect(
+      (tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey)) - initialCenter).distance,
+      lessThan(0.01),
+    );
+
+    await tester.timedDrag(viewer, const Offset(200, 0), const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(viewer, findsNothing);
+    expect(find.byKey(FilePartWidget.previewTapTargetKey), findsOneWidget);
+  });
+
+  testWidgets("fast drag back to center does not dismiss the viewer", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      filename: "image.png",
+    );
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await _openImageViewer(tester: tester);
+    final viewer = find.byType(ImageAttachmentViewer);
+    final image = find.byKey(ImageAttachmentViewer.imageKey);
+    final initialCenter = tester.getCenter(image);
+
+    final gesture = await tester.startGesture(initialCenter);
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(30, 0), timeStamp: const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(30, 0), timeStamp: const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+    await gesture.moveBy(const Offset(-10, 0), timeStamp: const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 1));
+    await gesture.moveBy(const Offset(-10, 0), timeStamp: const Duration(milliseconds: 401));
+    await tester.pump(const Duration(milliseconds: 1));
+    await gesture.moveBy(const Offset(-10, 0), timeStamp: const Duration(milliseconds: 402));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect((tester.getCenter(image) - initialCenter).distance, lessThan(0.01));
+
+    await gesture.up(timeStamp: const Duration(milliseconds: 403));
+    await tester.pumpAndSettle();
+
+    expect(viewer, findsOneWidget);
+  });
+
+  testWidgets("double tap toggles zoom and disables drag dismissal while zoomed", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      filename: "image.png",
+    );
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await _openImageViewer(tester: tester);
+    final viewer = find.byType(ImageAttachmentViewer);
+    final interactiveViewer = tester.widget<InteractiveViewer>(find.byType(InteractiveViewer));
+    final transformationController = interactiveViewer.transformationController!;
+
+    await _doubleTap(tester: tester, finder: viewer);
+
+    expect(transformationController.value.getMaxScaleOnAxis(), closeTo(2.5, 0.01));
+    await tester.timedDrag(viewer, const Offset(0, 200), const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(viewer, findsOneWidget);
+
+    await _doubleTap(tester: tester, finder: viewer);
+
+    expect(transformationController.value.getMaxScaleOnAxis(), closeTo(1, 0.01));
+    await tester.timedDrag(viewer, const Offset(0, 200), const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(viewer, findsNothing);
   });
 
   testWidgets("omits the image title when attachment metadata has no filename", (tester) async {

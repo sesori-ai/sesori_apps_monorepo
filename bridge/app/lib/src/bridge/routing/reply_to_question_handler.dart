@@ -1,16 +1,14 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/question_repository.dart";
+import "../services/pending_interaction_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /question/reply` — replies to a pending question.
-///
-/// Question IDs are globally unique in the backend.
 class ReplyToQuestionHandler extends BodyRequestHandler<ReplyToQuestionRequest, SuccessEmptyResponse> {
-  final QuestionRepository _questionRepository;
+  final PendingInteractionService _pendingInteractionService;
 
-  ReplyToQuestionHandler({required QuestionRepository questionRepository})
-    : _questionRepository = questionRepository,
+  ReplyToQuestionHandler({required PendingInteractionService pendingInteractionService})
+    : _pendingInteractionService = pendingInteractionService,
       super(
         HttpMethod.post,
         "/question/reply",
@@ -34,7 +32,7 @@ class ReplyToQuestionHandler extends BodyRequestHandler<ReplyToQuestionRequest, 
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    await _questionRepository.replyToQuestion(
+    await _pendingInteractionService.replyToQuestion(
       questionId: requestId,
       sessionId: sessionId,
       answers: body.answers,

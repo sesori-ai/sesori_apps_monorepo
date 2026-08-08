@@ -23,6 +23,7 @@ void main() {
   group("SessionDetailLoadService", () {
     late MockSessionRepository repository;
     late MockProjectRepository projectRepository;
+    late MockPluginRepository pluginRepository;
     late MockConnectionService connectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late SessionDetailLoadService service;
@@ -30,11 +31,24 @@ void main() {
     setUp(() {
       repository = MockSessionRepository();
       projectRepository = MockProjectRepository();
+      pluginRepository = stubbedPluginRepository(
+        plugins: const [
+          PluginMetadata(
+            id: "plugin-1",
+            displayName: "Plugin One",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+            supportsPromptAttachments: true,
+          ),
+        ],
+      );
       connectionService = MockConnectionService();
       connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
       service = SessionDetailLoadService(
         repository: repository,
         projectRepository: projectRepository,
+        pluginRepository: pluginRepository,
         connectionService: connectionService,
       );
 
@@ -59,10 +73,25 @@ void main() {
       expect(loaded.snapshot.commands, hasLength(1));
       expect(loaded.snapshot.canonicalSessionTitle, "Canonical title");
       expect(loaded.snapshot.isArchived, isFalse);
+      expect(loaded.snapshot.supportsPromptAttachments, isTrue);
+      verify(() => pluginRepository.listPlugins()).called(1);
       verify(() => repository.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verify(() => repository.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
+    });
+
+    test("plugin discovery failure leaves attachments unresolved without failing the transcript", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(() => pluginRepository.listPlugins()).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.generic()),
+      );
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
     });
 
     test("load marks archived sessions in the snapshot", () async {

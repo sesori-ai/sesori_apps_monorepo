@@ -2,6 +2,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../foundation/models/composer/composer_attachment.dart";
 import "../../repositories/session_repository.dart";
 
 @lazySingleton
@@ -22,10 +23,6 @@ class SessionService {
       deleteBranch: deleteBranch,
       force: force,
     );
-  }
-
-  Future<ApiResponse<Session>> unarchiveSession({required String sessionId}) {
-    return _repository.unarchiveSession(sessionId: sessionId);
   }
 
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
@@ -107,6 +104,7 @@ class SessionService {
     required String projectId,
     required String pluginId,
     required String text,
+    required List<ComposerAttachment> attachments,
     required String? agent,
     required String? providerID,
     required String? modelID,
@@ -117,6 +115,7 @@ class SessionService {
     projectId: projectId,
     pluginId: pluginId,
     text: text,
+    attachments: attachments,
     agent: agent,
     model: _resolveModel(providerID: providerID, modelID: modelID),
     variant: variant,
@@ -127,6 +126,7 @@ class SessionService {
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
     required String text,
+    required List<ComposerAttachment> attachments,
     required String? agent,
     required String? providerID,
     required String? modelID,
@@ -135,6 +135,7 @@ class SessionService {
   }) => _repository.sendMessage(
     sessionId: sessionId,
     text: text,
+    attachments: attachments,
     agent: agent,
     model: _resolveModel(providerID: providerID, modelID: modelID),
     variant: variant,

@@ -1,16 +1,14 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../server/services/bridge_restart_service.dart";
-import "models/restart_bridge_response.dart";
 import "request_handler.dart";
+import "routed_request.dart";
 
 /// Handles `POST /global/restart` — an explicit, user-triggered bridge restart.
 ///
-/// It validates that a restart can be delivered, replies `{restarting:true}`,
-/// and flags the restart. The orchestrator performs the actual handoff (spawn a
-/// successor in standalone, or exit for GUI respawn in supervised mode) + graceful
-/// shutdown *after* this reply has been flushed to the phone, so the response is
-/// never lost to the handoff.
+/// It validates that a restart can be delivered and returns a typed acceptance.
+/// The transport closes or enqueues the fixed response before dispatching the
+/// handoff.
 class RestartBridgeHandler extends RequestHandlerBase {
   RestartBridgeHandler({required BridgeRestartService restartService})
     : _restartService = restartService,
@@ -19,22 +17,38 @@ class RestartBridgeHandler extends RequestHandlerBase {
   final BridgeRestartService _restartService;
 
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RoutedRequestOutcome> routeInternal({
+    required RelayRequest request,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
     final bool canRestart = await _restartService.canRestart();
     if (!canRestart) {
-      return buildErrorResponse(
-        request,
-        503,
-        "Cannot restart: the managed bridge binary is unavailable. Re-run the install script: https://sesori.com/",
+      return ResponseOnly(
+        response: buildErrorResponse(
+          request,
+          503,
+          "Cannot restart: the managed bridge binary is unavailable. Re-run the install script: https://sesori.com/",
+        ),
       );
     }
 
-    _restartService.requestRestart();
-    return buildOkJsonResponse(request, const RestartBridgeResponse(restarting: true));
+    return RestartAccepted(requestId: request.id);
+  }
+
+  @override
+  Future<RelayResponse> handleInternal(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  }) async {
+    return (await routeInternal(
+      request: request,
+      pathParams: pathParams,
+      queryParams: queryParams,
+      fragment: fragment,
+    )).response;
   }
 }

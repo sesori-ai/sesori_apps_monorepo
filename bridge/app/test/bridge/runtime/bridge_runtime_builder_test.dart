@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -23,6 +24,7 @@ import "package:test/test.dart";
 
 import "../../helpers/plugin_lifecycle_test_support.dart";
 import "../../helpers/restart_test_support.dart";
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 import "../routing/routing_test_helpers.dart" show FakeBridgePlugin, makeRequest;
@@ -44,13 +46,14 @@ void main() {
     });
   });
 
-  test("runtime-created debug server reuses the session router", () async {
+  test("runtime-created debug server reuses the composed routed request dispatcher", () async {
     final plugin = FakeBridgePlugin();
     final database = createTestDatabase();
     final httpClient = http.Client();
     final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
     final failureReporter = FakeFailureReporter();
     final restartService = buildTestRestartService();
+    final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       config: const BridgeConfig(
         relayURL: "ws://127.0.0.1:9999",
@@ -66,8 +69,11 @@ void main() {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -77,23 +83,26 @@ void main() {
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
       failureReporter: failureReporter,
-      restartService: restartService,
       composition: composition,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 
-    expect(identical(debugServer.router, runtime.session.router), isTrue);
-    final routed = await debugServer.router.route(
-      makeRequest(
+    expect(identical(debugServer.routedRequestDispatcher, runtime.session.routedRequestDispatcher), isTrue);
+    final dispatch = debugServer.routedRequestDispatcher.dispatch(
+      request: makeRequest(
         "POST",
         "/session/options",
         body: jsonEncode(PluginProjectIdRequest(projectId: "missing", pluginId: plugin.id).toJson()),
       ),
     );
+    expect(dispatch, isA<RoutedRequestAccepted>());
+    final routed = (await (dispatch as RoutedRequestAccepted).pendingRequest.completion).response;
     expect(routed.status, 404);
     expect(routed.headers, containsPair("content-type", "application/json"));
     expect(
@@ -101,7 +110,13 @@ void main() {
       SessionOptionsErrorCode.projectNotFound,
     );
 
-    await debugServer.stop();
+    debugServer.beginShutdown();
+    final rejected = runtime.session.routedRequestDispatcher.dispatch(
+      request: makeRequest("GET", "/global/health"),
+    );
+    expect(rejected, isA<RoutedRequestShutdownRejected>());
+    expect((rejected as RoutedRequestShutdownRejected).response.status, 503);
+    await debugServer.drain();
     await runtime.close();
     await lifecycleService.dispose();
     httpClient.close();

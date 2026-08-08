@@ -27,6 +27,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "beta",
@@ -34,6 +35,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "alpha",
@@ -41,6 +43,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -87,6 +90,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "opencode",
@@ -94,6 +98,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -128,6 +133,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "alpha",
@@ -135,6 +141,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -163,6 +170,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "cursor",
@@ -170,6 +178,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -231,6 +240,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.resident,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
               (
                 id: "alpha",
@@ -238,6 +248,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
               (
                 id: "beta",
@@ -245,6 +256,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -376,6 +388,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: {PluginControlCapability.setupRefresh},
+              supportsPromptAttachments: false,
             ),
             (
               id: "managed",
@@ -383,6 +396,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -411,6 +425,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         )..initialize(
@@ -473,6 +488,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
             (
               id: "beta",
@@ -480,6 +496,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         )..initialize(
@@ -598,6 +615,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: {PluginControlCapability.idleTimeout},
+                supportsPromptAttachments: false,
               ),
               (
                 id: "external",
@@ -605,6 +623,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: {PluginControlCapability.setupRefresh},
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -720,6 +739,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -973,6 +993,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1027,6 +1048,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1083,6 +1105,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1126,6 +1149,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1330,6 +1354,204 @@ void main() {
     expect(readyEvents.last, ["one"]);
   });
 
+  test("install streams progress, enables, re-inspects, and starts when ready", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..installEvents = const [
+        ProvisionResolving(),
+        ProvisionDownloading(receivedBytes: 10, totalBytes: 100),
+        ProvisionVerifying(),
+        ProvisionExtracting(),
+        ProvisionReady(binaryPath: "/managed/one"),
+      ];
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(disabledPluginIds: {"one"}),
+      ),
+    );
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: settingsRepository,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {"one"},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    final accepted = await service.command(
+      pluginId: "one",
+      request: const PluginLifecycleCommandRequest.install(),
+    );
+    expect(accepted.plugins.single.setup.state, PluginSetupState.notInspected);
+
+    await installSettled(progress: progress);
+
+    expect(repository.installCalls, 1);
+    expect(repository.inspectCalls, 1);
+    expect(repository.startCalls, 1);
+    expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isFalse);
+    expect(progress.map((update) => update.phase).toList(), const [
+      PluginInstallPhase.downloading,
+      PluginInstallPhase.verifying,
+      PluginInstallPhase.extracting,
+      PluginInstallPhase.finalizing,
+      PluginInstallPhase.completed,
+    ]);
+    expect(progress.first.percent, 10);
+  });
+
+  test("a failed install reports a terminal failure without enabling the plugin", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..installEvents = const [
+        ProvisionResolving(),
+        ProvisionFailed(message: "checksum verification failed"),
+      ];
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(disabledPluginIds: {"one"}),
+      ),
+    );
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: settingsRepository,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {"one"},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await installSettled(progress: progress);
+
+    expect(progress.last.phase, PluginInstallPhase.failed);
+    // The descriptor's failure text never reaches the wire.
+    expect(progress.last.message, isNot(contains("checksum")));
+    expect(repository.inspectCalls, isZero);
+    expect(repository.startCalls, isZero);
+    expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
+  });
+
+  test("an installed runtime that is still setup-blocked does not report completed", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Log in"),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..installEvents = const [ProvisionReady(binaryPath: "/managed/one")];
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: null,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {"one"},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await installSettled(progress: progress);
+
+    expect(progress.map((update) => update.phase).toList(), const [
+      PluginInstallPhase.finalizing,
+      PluginInstallPhase.failed,
+    ]);
+    expect(repository.startCalls, isZero);
+  });
+
+  test("a duplicate install joins and a different command conflicts while installing", () async {
+    final installGate = Completer<void>();
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )
+      ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+      ..installGate = installGate;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: null,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    expect(repository.installCalls, 1);
+
+    final conflict = isA<PluginManagementConflictException>().having(
+      (error) => error.conflict.reasons,
+      "reasons",
+      [PluginLifecycleConflictReason.transitioning],
+    );
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()),
+      throwsA(conflict),
+    );
+
+    installGate.complete();
+    await installSettled(progress: progress);
+    expect(repository.startCalls, 1);
+  });
+
+  test("install requires the install capability", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    addTearDown(repository.dispose);
+    final service = _commandService(repository: repository, settingsRepository: null)
+      ..initialize(
+        disabledPluginIds: const {},
+        setupById: const {"one": PluginSetupNotInspected()},
+      );
+    addTearDown(service.dispose);
+
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install()),
+      throwsA(
+        isA<PluginManagementConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginLifecycleConflictReason.unsupported],
+        ),
+      ),
+    );
+  });
+
   test("restart requires eligibility and does not replace a newly blocked plugin", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
@@ -1421,6 +1643,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "alpha",
@@ -1428,6 +1651,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: true,
         ),
       ],
     );
@@ -1443,6 +1667,12 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(service.selectableMetadataSnapshot.map((entry) => entry.id), ["alpha", "beta"]);
+    expect(
+      {
+        for (final metadata in service.selectableMetadataSnapshot) metadata.id: metadata.supportsPromptAttachments,
+      },
+      {"alpha": true, "beta": false},
+    );
     expect(service.compositionView.defaultPluginId, "alpha");
   });
 
@@ -1472,6 +1702,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -1501,6 +1732,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1533,6 +1765,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1582,6 +1815,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1626,6 +1860,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1642,6 +1877,23 @@ void main() {
     expect(repository.stopCalls, isZero);
     expect(settingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: "one"), 45);
   });
+}
+
+const installCapableManagementCapabilities = <PluginControlCapability>{
+  ...defaultManagementCapabilities,
+  PluginControlCapability.install,
+};
+
+/// Completes when [progress] contains a terminal install event, then yields
+/// once more so the service's finally-block cleanup runs. The caller must
+/// subscribe its collector before issuing the install command.
+Future<void> installSettled({required List<PluginInstallProgressUpdate> progress}) async {
+  while (!progress.any(
+    (update) => update.phase == PluginInstallPhase.completed || update.phase == PluginInstallPhase.failed,
+  )) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  await Future<void>.delayed(Duration.zero);
 }
 
 PluginLifecycleService _service({
@@ -1679,6 +1931,7 @@ PluginLifecycleService _singleIdleService({
           residencyPolicy: residencyPolicy,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: managementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     )
@@ -1707,6 +1960,7 @@ PluginLifecycleService _commandService({
         residencyPolicy: PluginResidencyPolicy.transient,
         sessionOptionsScope: PluginSessionOptionsScope.project,
         managementCapabilities: managementCapabilities,
+        supportsPromptAttachments: false,
       ),
     ],
   );
@@ -1913,6 +2167,16 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
   int startCalls = 0;
   int restartCalls = 0;
   int prepareDisableCalls = 0;
+  int installCalls = 0;
+  List<RuntimeProvisionProgress> installEvents = const [];
+  Completer<void>? installGate;
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) async* {
+    installCalls++;
+    await installGate?.future;
+    yield* Stream.fromIterable(installEvents);
+  }
 
   @override
   List<PluginLifecycleSnapshot> get snapshot => [_current];
@@ -2077,12 +2341,16 @@ class _MutableBridgeSettingsRepository implements BridgeSettingsRepository {
   }
 
   @override
-  Future<void> saveSettings({required BridgeSettings settings}) async {
+  Future<BridgeSettings> mutateSettings({
+    required BridgeSettings Function({required BridgeSettings current}) mutation,
+  }) async {
+    loadCalls++;
+    final updated = mutation(current: settings);
     if (!saveStarted.isCompleted) saveStarted.complete();
     await saveGate?.future;
     final error = saveError;
     if (error != null) throw error;
-    this.settings = settings;
+    return settings = updated;
   }
 
   @override

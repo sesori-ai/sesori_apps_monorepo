@@ -1,15 +1,11 @@
-/// Platform-aware surface primitives for the Prego design system.
+/// Grouped surface primitives for the Prego design system.
 ///
-/// On Apple platforms these render as `liquid_glass_widgets` surfaces (the
-/// iOS-26 frosted-glass language the app uses elsewhere). On Android — where the
-/// glass shader + backdrop blur jank — they degrade to flat Material surfaces
-/// tinted from the same prego tokens. The "glass" is a platform affordance, not
-/// part of the contract: the same call site renders either path without knowing
-/// which is active. See [glassEffectsEnabled] for the switch.
+/// Cards and list tiles use one solid Material implementation on every platform.
+/// Dividers remain platform-aware by default for standalone glass surfaces, and
+/// can be forced flat when composed into a solid card.
 ///
 /// [PregoCard] / [PregoListTile] / [PregoDivider] compose into grouped-list
-/// cards (e.g. the background-tasks card) exactly as their glass counterparts
-/// [GlassContainer] / [GlassListTile] / [GlassDivider] do.
+/// cards such as the background-tasks card.
 library;
 
 import "package:flutter/material.dart";
@@ -18,59 +14,62 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 
+/// The two outline treatments used by the composer and its adjacent surfaces.
+enum PregoComposerSurfaceStyle { subtle, emphasized }
+
+/// Builds the shared solid decoration used by the composer, picker pills, and
+/// background-task card.
+BoxDecoration pregoComposerSurfaceDecoration({
+  required PregoDesignSystem prego,
+  required PregoComposerSurfaceStyle style,
+  required BorderRadius borderRadius,
+}) {
+  final borderColor = switch (style) {
+    PregoComposerSurfaceStyle.subtle => prego.colors.borderSecondary,
+    PregoComposerSurfaceStyle.emphasized => prego.colors.borderPrimary,
+  };
+  return BoxDecoration(
+    color: prego.colors.bgSurface2,
+    borderRadius: borderRadius,
+    border: Border.all(color: borderColor),
+    boxShadow: prego.shadows.xs,
+  );
+}
+
 /// A rounded, elevated surface that hosts grouped content.
 ///
-/// Apple: a standalone liquid-glass layer ([GlassContainer]). Android: a flat
-/// [Material] card filled with [flatColor] (a secondary surface by default),
-/// hairline-bordered and shadowed to read as a floating card without a shader.
+/// Uses the same fill, border, and elevation as the composer on every platform.
 class PregoCard extends StatelessWidget {
   const PregoCard({
     super.key,
     required this.child,
+    required this.surfaceStyle,
     this.borderRadius = 20,
-    this.glassColor,
-    this.flatColor,
   });
 
   final Widget child;
+  final PregoComposerSurfaceStyle surfaceStyle;
 
   /// Corner radius of the card.
   final double borderRadius;
 
-  /// Apple glass tint. Defaults to the primary glass background.
-  final Color? glassColor;
-
-  /// Android flat fill. Defaults to the secondary surface colour.
-  final Color? flatColor;
-
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-
-    if (glassEffectsEnabled()) {
-      return GlassContainer(
-        useOwnLayer: true,
-        clipBehavior: Clip.antiAlias,
-        padding: EdgeInsets.zero,
-        shape: LiquidRoundedSuperellipse(borderRadius: borderRadius),
-        settings: LiquidGlassSettings(glassColor: glassColor ?? prego.colors.buttonGlassPrimaryBackground),
-        child: child,
-      );
-    }
-
+    final radius = BorderRadius.circular(borderRadius);
     return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: prego.shadows.xl,
+      decoration: pregoComposerSurfaceDecoration(
+        prego: prego,
+        style: surfaceStyle,
+        borderRadius: radius,
       ),
-      child: Material(
-        color: flatColor ?? prego.colors.bgSecondary,
+      child: ClipRRect(
+        borderRadius: radius,
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
-          side: BorderSide(color: prego.colors.borderSecondary, width: 0.5),
+        child: Material(
+          color: Colors.transparent,
+          child: child,
         ),
-        child: child,
       ),
     );
   }
@@ -87,6 +86,7 @@ class PregoDivider extends StatelessWidget {
     this.indent = 0,
     this.endIndent = 0,
     this.height,
+    this.flat = false,
   });
 
   /// Empty space leading the line on the left.
@@ -98,9 +98,12 @@ class PregoDivider extends StatelessWidget {
   /// Total cross-axis space the divider occupies. Defaults to 1.0.
   final double? height;
 
+  /// Forces the solid divider used inside [PregoCard] on every platform.
+  final bool flat;
+
   @override
   Widget build(BuildContext context) {
-    if (glassEffectsEnabled()) {
+    if (!flat && glassEffectsEnabled()) {
       return GlassDivider(indent: indent, endIndent: endIndent, height: height ?? 1.0);
     }
 
@@ -122,11 +125,9 @@ class PregoDivider extends StatelessWidget {
 /// A grouped-list row: leading slot, title (+ optional subtitle), trailing slot,
 /// with press feedback and an optional bottom divider.
 ///
-/// Apple: the row itself is a [GlassListTile] (identical metrics to the existing
-/// glass rows). Android: a flat [InkWell] row with the same metrics — 32px
-/// leading box, 12px gap, title/subtitle column, trailing. On both paths the row
-/// composes a [PregoDivider] below itself unless it is the last row —
-/// [GlassListTile] is position-agnostic and no longer owns divider rendering.
+/// Uses one [InkWell] row on every platform: 32px leading box, 12px gap,
+/// title/subtitle column, and trailing content. The row composes a flat
+/// [PregoDivider] below itself unless it is the last row.
 class PregoListTile extends StatelessWidget {
   const PregoListTile({
     super.key,
@@ -167,43 +168,27 @@ class PregoListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // GlassListTile is position-agnostic in liquid_glass_widgets — it no longer
-    // draws its own divider. PregoListTile owns that layout concern on both
-    // paths, composing a PregoDivider below the row (frosted hairline on Apple,
-    // flat Divider on Android) so the same call site renders either way.
-    final tile = glassEffectsEnabled() ? _buildGlass() : _buildFlat(context);
+    final tile = _buildFlat(context);
 
     if (showDivider && !isLast) {
       final indent = dividerIndent ?? (leading != null ? 56.0 : 16.0);
       return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [tile, PregoDivider(indent: indent)],
+        children: [
+          tile,
+          PregoDivider(indent: indent, flat: true),
+        ],
       );
     }
 
     return tile;
   }
 
-  Widget _buildGlass() {
-    return GlassListTile(
-      leading: leading,
-      title: title,
-      subtitle: subtitle,
-      trailing: trailing,
-      onTap: onTap,
-      contentPadding: contentPadding,
-      leadingIconColor: leadingIconColor,
-      titleStyle: titleStyle,
-      subtitleStyle: subtitleStyle,
-    );
-  }
-
   Widget _buildFlat(BuildContext context) {
     final prego = context.prego;
     final labelColor = prego.colors.textPrimary;
-    final effectiveTitleStyle =
-        titleStyle ?? prego.textTheme.textMd.medium.copyWith(color: labelColor);
+    final effectiveTitleStyle = titleStyle ?? prego.textTheme.textMd.medium.copyWith(color: labelColor);
     final effectiveSubtitleStyle =
         subtitleStyle ?? prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
 

@@ -25,11 +25,13 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -138,6 +140,84 @@ void main() {
       expect(text, contains("partial reply"));
     });
 
+    test("getSessionMessages materializes standard images through its dedicated replay client", () async {
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+      final loadFrame = await waitForFrame("session/load");
+
+      for (final update in <Map<String, dynamic>>[
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": [
+            {"type": "text", "text": "before"},
+            {
+              "type": "image",
+              "data": "AA==",
+              "mimeType": "image/png",
+              "uri": "file:///private/assistant.png",
+            },
+            {"type": "text", "text": "after"},
+          ],
+        },
+        {
+          "sessionUpdate": "tool_call",
+          "toolCallId": "t1",
+          "kind": "read",
+          "status": "completed",
+          "content": [
+            {
+              "type": "content",
+              "content": {"type": "text", "text": "tool output"},
+            },
+            {
+              "type": "content",
+              "content": {
+                "type": "image",
+                "data": "AQ==",
+                "mimeType": "image/webp",
+                "uri": "https://private.example/tool.webp?token=secret",
+              },
+            },
+          ],
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "done"},
+        },
+      ]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {"sessionId": sessionId, "update": update},
+        });
+      }
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "result": {"sessionId": sessionId},
+      });
+
+      final messages = await loading;
+      expect(messages, hasLength(3));
+      expect(messages.first.parts.map((part) => part.type), [
+        PluginMessagePartType.text,
+        PluginMessagePartType.file,
+        PluginMessagePartType.text,
+      ]);
+      final assistantAttachment = messages.first.parts[1].attachment! as PluginMessageAttachmentInlineImage;
+      expect(assistantAttachment.base64, "AA==");
+      expect(assistantAttachment.filename, "assistant.png");
+
+      final tool = messages[1].parts.single;
+      expect(tool.state?.output, "tool output");
+      final toolAttachment = tool.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(toolAttachment.base64, "AQ==");
+      expect(toolAttachment.filename, "tool.webp");
+      expect(toolAttachment.toString(), isNot(contains("private.example")));
+      expect(messages.last.parts.single.text, "done");
+    });
+
     test("a command snapshot replayed before a -32602 rejection still triggers a refresh", () async {
       final emitted = <BridgeSseEvent>[];
       plugin.events.listen(emitted.add);
@@ -170,7 +250,7 @@ void main() {
       await loading;
       await pump();
 
-      expect(emitted.whereType<BridgeSseSessionsUpdated>(), isNotEmpty);
+      expect(emitted.whereType<BridgeSseCommandCatalogUpdated>(), isNotEmpty);
     });
 
     test("a genuine RPC error (not -32601/-32602) still surfaces as a typed failure", () async {
@@ -234,11 +314,13 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(

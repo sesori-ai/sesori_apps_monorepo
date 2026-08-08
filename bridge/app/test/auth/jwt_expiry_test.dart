@@ -84,7 +84,6 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.millisecondsSinceEpoch, 1000000000 * 1000);
-      expect(result.isBefore(DateTime.now()), true);
     });
   });
 }

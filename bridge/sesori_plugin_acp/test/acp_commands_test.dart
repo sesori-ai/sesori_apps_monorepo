@@ -99,11 +99,13 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -180,6 +182,7 @@ void main() {
       final options = (discovery as PluginSessionOptionsDiscoveryObserved).options;
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.commands.single.name, "create_plan");
+      expect(emitted.whereType<BridgeSseCommandCatalogUpdated>(), hasLength(1));
       expect(
         emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",
@@ -222,7 +225,7 @@ void main() {
     });
   });
 
-  test("history replay advertises commands and emits a session refresh", () async {
+  test("history replay advertises commands and invalidates the command catalog", () async {
     final live = FakeAcpProcess();
     final replay = FakeAcpProcess();
     final processes = [live, replay];
@@ -234,11 +237,13 @@ void main() {
       agentDisplayName: "ACP",
       launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
       launchDirectory: "/repo",
+      contentMapper: const AcpContentMapper(),
       eventMapper: AcpEventMapper(
         launchDirectory: "/repo",
         agentId: "acp",
         pluginId: "acp",
         configurationTracker: configurationTracker,
+        contentMapper: const AcpContentMapper(),
       ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
@@ -333,10 +338,7 @@ void main() {
       await messages;
 
       expect((await plugin.getCommands(projectId: "/repo")).single.name, "from_replay");
-      expect(
-        emitted.whereType<BridgeSseSessionsUpdated>().single.sessionID,
-        "s1",
-      );
+      expect(emitted.whereType<BridgeSseCommandCatalogUpdated>(), hasLength(1));
       expect(
         emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",

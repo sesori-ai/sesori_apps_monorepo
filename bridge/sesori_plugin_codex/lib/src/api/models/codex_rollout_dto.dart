@@ -10,6 +10,14 @@ enum CodexRolloutRole {
   unknown,
 }
 
+enum CodexRolloutImageGenerationStatus {
+  @JsonValue("in_progress")
+  inProgress,
+  completed,
+  failed,
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexSessionIndexEntryDto with _$CodexSessionIndexEntryDto {
   const factory CodexSessionIndexEntryDto({
@@ -46,6 +54,12 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
     required CodexRolloutResponseItemDto payload,
   }) = CodexRolloutResponseItemLineDto;
 
+  @FreezedUnionValue("event_msg")
+  const factory CodexRolloutLineDto.eventMessage({
+    required String? timestamp,
+    required CodexRolloutEventDto payload,
+  }) = CodexRolloutEventMessageLineDto;
+
   @FreezedUnionValue("compacted")
   const factory CodexRolloutLineDto.compacted({
     required String? timestamp,
@@ -56,6 +70,48 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
   }) = CodexRolloutUnknownLineDto;
 
   factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(json);
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
+  @FreezedUnionValue("user_message")
+  const factory CodexRolloutEventDto.userMessage({
+    required String message,
+  }) = CodexRolloutUserMessageEventDto;
+
+  @FreezedUnionValue("image_generation_end")
+  const factory CodexRolloutEventDto.imageGenerationEnd({
+    @JsonKey(name: "call_id") required String callId,
+    @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown)
+    required CodexRolloutImageGenerationStatus status,
+    @JsonKey(name: "revised_prompt") required String? revisedPrompt,
+    required String result,
+    @JsonKey(name: "saved_path") required String? savedPath,
+  }) = CodexRolloutImageGenerationEndEventDto;
+
+  @FreezedUnionValue("task_started")
+  const factory CodexRolloutEventDto.taskStarted({
+    @JsonKey(name: "turn_id") required String turnId,
+  }) = CodexRolloutTaskStartedEventDto;
+
+  @FreezedUnionValue("task_complete")
+  const factory CodexRolloutEventDto.taskComplete({
+    @JsonKey(name: "turn_id") required String turnId,
+  }) = CodexRolloutTaskCompleteEventDto;
+
+  @FreezedUnionValue("turn_aborted")
+  const factory CodexRolloutEventDto.turnAborted({
+    @JsonKey(name: "turn_id") required String turnId,
+  }) = CodexRolloutTurnAbortedEventDto;
+
+  const factory CodexRolloutEventDto.unknown() = CodexRolloutUnknownEventDto;
+
+  factory CodexRolloutEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutEventDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
@@ -82,6 +138,16 @@ sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPay
       _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
 
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutItemMetadataDto with _$CodexRolloutItemMetadataDto {
+  const factory CodexRolloutItemMetadataDto({
+    @JsonKey(name: "turn_id") required String? turnId,
+  }) = _CodexRolloutItemMetadataDto;
+
+  factory CodexRolloutItemMetadataDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutItemMetadataDtoFromJson(json);
+}
+
 @Freezed(
   unionKey: "type",
   fallbackUnion: "unknown",
@@ -106,6 +172,7 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     @JsonKey(name: "call_id") required String callId,
     required String name,
     required String arguments,
+    @JsonKey(name: "internal_chat_message_metadata_passthrough") required CodexRolloutItemMetadataDto? metadata,
   }) = CodexRolloutFunctionCallDto;
 
   @FreezedUnionValue("function_call_output")
@@ -120,6 +187,7 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     @JsonKey(name: "call_id") required String callId,
     required String name,
     required String input,
+    @JsonKey(name: "internal_chat_message_metadata_passthrough") required CodexRolloutItemMetadataDto? metadata,
   }) = CodexRolloutCustomToolCallDto;
 
   @FreezedUnionValue("custom_tool_call_output")
@@ -133,6 +201,14 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     required String? id,
     required CodexRolloutActionDto? action,
   }) = CodexRolloutWebSearchCallDto;
+
+  @FreezedUnionValue("image_generation_call")
+  const factory CodexRolloutResponseItemDto.imageGeneration({
+    required String? id,
+    @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown)
+    required CodexRolloutImageGenerationStatus status,
+    required String result,
+  }) = CodexRolloutImageGenerationDto;
 
   const factory CodexRolloutResponseItemDto.unknown() = CodexRolloutUnknownResponseItemDto;
 
@@ -243,6 +319,7 @@ sealed class CodexToolArgumentsDto with _$CodexToolArgumentsDto {
     required Object? path,
     @JsonKey(name: "file_path") required Object? filePath,
     required Object? query,
+    @JsonKey(name: "cell_id") required Object? cellId,
   }) = _CodexToolArgumentsDto;
 
   factory CodexToolArgumentsDto.fromJson(Map<String, dynamic> json) => _$CodexToolArgumentsDtoFromJson(json);

@@ -46,12 +46,23 @@ abstract class BridgePlugin {
   /// Cheap, synchronous, side-effect-free diagnostics (endpoint, version).
   PluginDiagnostics describe();
 
-  /// Interrupts every active backend session before a forced generation stop.
+  /// Interrupts every active backend session and waits for it to quiesce.
   ///
-  /// The runtime has already fenced new acquisitions and drained pre-fence
-  /// operations when this is called.
-  /// Implementations must wait until interrupted history is reloadable and
-  /// return only backend session IDs that are no longer busy or retrying.
+  /// Called on two paths:
+  ///
+  /// - **Forced generation stop.** The runtime has already fenced new
+  ///   acquisitions and drained pre-fence operations; the returned session
+  ///   IDs feed the terminal handoff.
+  /// - **Bridge shutdown.** Best-effort cancellation while the session
+  ///   teardown keeps running concurrently: new acquisitions are fenced, but
+  ///   pre-fence operations are deliberately not drained first (interrupting
+  ///   them is the point), so in-flight requests may still be executing when
+  ///   this is called. No terminal handoff follows; the return value is
+  ///   ignored.
+  ///
+  /// Implementations must tolerate concurrently in-flight operations, wait
+  /// until interrupted history is reloadable, and return only backend session
+  /// IDs that are no longer busy or retrying.
   /// [budget] bounds the complete interruption and quiescence operation.
   Future<Set<String>> interruptActiveWork({required Duration budget});
 

@@ -8,7 +8,9 @@ import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/settings/harnesses_settings_screen.dart";
+import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -73,7 +75,7 @@ Widget _app() {
         path: "/",
         builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
           value: StubConnectionOverlayCubit(),
-          child: const HarnessesSettingsScreen(),
+          child: const HarnessesSettingsScreen(presentation: HarnessSettingsPresentation.modal),
         ),
       ),
       GoRoute(
@@ -88,6 +90,45 @@ Widget _app() {
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
+  );
+}
+
+/// The app's real route table with a stand-in for whatever screen raises
+/// harness settings — the new-session harness menu in production. Exercises the
+/// close button's pop branch, which `_app` (mounted at the router root) cannot.
+Widget _appPushedFromOpener({
+  HarnessSettingsPresentation presentation = HarnessSettingsPresentation.modal,
+}) {
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
+  final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
+    initialLocation: "/opener",
+    routes: [
+      GoRoute(
+        path: "/opener",
+        builder: (context, state) => Scaffold(
+          body: TextButton(
+            onPressed: () => context.pushRoute(AppRoute.settingsHarnesses(presentation: presentation)),
+            child: const Text("open-harnesses"),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: "/projects",
+        builder: (context, state) => const Scaffold(body: Text("projects-route")),
+      ),
+      ...buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey),
+    ],
+  );
+
+  return BlocProvider<ConnectionOverlayCubit>.value(
+    value: StubConnectionOverlayCubit(),
+    child: MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 
@@ -832,5 +873,58 @@ void main() {
     await tester.tap(find.bySemanticsLabel("Close settings"));
     await tester.pumpAndSettle();
     expect(find.text("projects-route"), findsOneWidget);
+  });
+
+  testWidgets("pushed over another screen, close returns to the opener without stacking Settings", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_appPushedFromOpener());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("open-harnesses"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HarnessesSettingsScreen), findsOneWidget);
+    // `/settings/harnesses` is a child route of `/settings`, but an imperative
+    // push adds one page for the location's last route — the Settings list is
+    // not inserted underneath. If a go_router upgrade ever changed that, the
+    // single pop below would land on Settings instead of the opener.
+    expect(find.byType(SettingsScreen), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel("Close settings"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HarnessesSettingsScreen), findsNothing);
+    expect(find.text("open-harnesses"), findsOneWidget);
+    expect(find.text("projects-route"), findsNothing);
+  });
+
+  testWidgets("raised as a modal, the bar closes with the X and shows no back button", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_appPushedFromOpener());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("open-harnesses"));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel("Close settings"), findsOneWidget);
+    expect(find.bySemanticsLabel("Back"), findsNothing);
+  });
+
+  testWidgets("pushed onto the settings stack, the bar goes back and shows no close button", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_appPushedFromOpener(presentation: HarnessSettingsPresentation.pushed));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("open-harnesses"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HarnessesSettingsScreen), findsOneWidget);
+    expect(find.bySemanticsLabel("Close settings"), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel("Back"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HarnessesSettingsScreen), findsNothing);
+    expect(find.text("open-harnesses"), findsOneWidget);
   });
 }

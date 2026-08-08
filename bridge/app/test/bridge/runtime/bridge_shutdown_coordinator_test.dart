@@ -104,6 +104,40 @@ void main() {
       expect(operations, ["parallel.b"]);
     });
 
+    test("an async signal action is awaited before the drain phase starts", () async {
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
+      final interrupt = Completer<void>();
+      final operations = <String>[];
+
+      coordinator
+        ..addPhase(
+          phase: BridgeShutdownPhase.signal,
+          action: () {
+            operations.add("signal.interrupt");
+            return interrupt.future;
+          },
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.drain,
+          action: () => operations.add("drain"),
+        );
+
+      final shutdown = coordinator.shutdown();
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        operations,
+        ["signal.interrupt"],
+        reason: "drain must not race a still-running signal action (e.g. the agent-work interrupt)",
+      );
+
+      interrupt.complete();
+      await shutdown;
+      expect(operations, ["signal.interrupt", "drain"]);
+    });
+
     test("starts every action in a phase before awaiting a blocked peer", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
@@ -244,6 +278,54 @@ void main() {
         expect(exitCalls, isEmpty, reason: "both serial phase budgets must precede the 10 second slack");
 
         async.elapse(const Duration(seconds: 10));
+        expect(exitCalls, [0]);
+      });
+    });
+
+    test("backstop runs the emergency disposal (capped) before forcing exit", () {
+      fakeAsync((async) {
+        final exitCalls = <int>[];
+        var emergencyRuns = 0;
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          emergencyDisposal: () async {
+            emergencyRuns++;
+            await Completer<void>().future;
+          },
+          exitProcess: exitCalls.add,
+        );
+        coordinator.add(disposable: () => Completer<void>().future);
+
+        unawaited(coordinator.shutdown());
+        // Backstop fires at 10s (no phase budgets + slack); the emergency
+        // disposal starts then.
+        async.elapse(const Duration(seconds: 11));
+        expect(emergencyRuns, 1);
+        expect(exitCalls, isEmpty, reason: "exit waits for the bounded emergency disposal");
+
+        // The cap exceeds the plugins' 5s SIGTERM→SIGKILL escalation so a
+        // hung disposal is still granted the full kill window before exit.
+        async.elapse(const Duration(seconds: 4));
+        expect(exitCalls, isEmpty, reason: "the kill escalation window must fit inside the cap");
+
+        async.elapse(const Duration(seconds: 1));
+        expect(exitCalls, [0]);
+      });
+    });
+
+    test("backstop exits promptly when the emergency disposal completes early", () {
+      fakeAsync((async) {
+        final exitCalls = <int>[];
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          emergencyDisposal: () async {},
+          exitProcess: exitCalls.add,
+        );
+        coordinator.add(disposable: () => Completer<void>().future);
+
+        unawaited(coordinator.shutdown());
+        async.elapse(const Duration(seconds: 11));
+
         expect(exitCalls, [0]);
       });
     });

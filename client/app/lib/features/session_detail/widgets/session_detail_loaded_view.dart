@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/agent_model_buttons.dart";
+import "../../../core/widgets/composer_surface_style.dart";
 import "background_tasks_bar.dart";
 import "prompt_input.dart";
 import "session_detail_message_list.dart";
@@ -51,7 +52,32 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
   /// "jump to latest" pill clears them) while older content scrolls up behind
   /// the composer's fade. Stays 0 in the read-only variant, which renders none
   /// of these controls.
-  double _bottomControlsHeight = 0;
+  ///
+  /// A notifier rather than state: the composer's layout morphs animate its
+  /// height frame-by-frame, and each measurement must re-inset only the
+  /// message list — not rebuild the whole view including the very composer
+  /// being measured.
+  final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(0);
+  late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
+
+  @override
+  void initState() {
+    super.initState();
+    _composerSurfaceStyle = ValueNotifier(
+      resolveInitialComposerSurfaceStyle(
+        inputMode: context.read<ChatInputModeCubit>().state,
+        draft: context.read<SessionDetailCubit>().composerDraft,
+        stagedCommand: widget.state.stagedCommand,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _bottomControlsHeight.dispose();
+    _composerSurfaceStyle.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,24 +100,27 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
               child: state.messages.isEmpty && state.retryErrorMessage == null
                   ? Center(child: Text(loc.sessionDetailEmpty))
                   : PregoTopBarInsetBuilder(
-                      builder: (context, topInset, _) => SessionDetailMessageList(
-                        projectId: widget.projectId,
-                        messages: state.messages,
-                        streamingText: state.streamingText,
-                        children: state.children,
-                        childStatuses: state.childStatuses,
-                        retryErrorMessage: state.retryErrorMessage,
-                        // Pad the oldest-message edge clear of the bar it scrolls
-                        // behind, and the newest-message edge clear of the floating
-                        // bottom controls overlaid below (background-tasks bar,
-                        // queued messages and composer); content in between scrolls
-                        // up behind the bar's fade and the composer's fade.
-                        topInset: topInset,
-                        // The read-only variant renders no floating controls, so
-                        // force the inset to 0 there — guarding against a stale
-                        // measured height lingering if a state object is reused
-                        // across an editable -> read-only transition.
-                        bottomInset: widget.readOnly ? 0 : _bottomControlsHeight,
+                      builder: (context, topInset, _) => ValueListenableBuilder<double>(
+                        valueListenable: _bottomControlsHeight,
+                        builder: (context, bottomControlsHeight, _) => SessionDetailMessageList(
+                          projectId: widget.projectId,
+                          messages: state.messages,
+                          streamingText: state.streamingText,
+                          children: state.children,
+                          childStatuses: state.childStatuses,
+                          retryErrorMessage: state.retryErrorMessage,
+                          // Pad the oldest-message edge clear of the bar it scrolls
+                          // behind, and the newest-message edge clear of the floating
+                          // bottom controls overlaid below (background-tasks bar,
+                          // queued messages and composer); content in between scrolls
+                          // up behind the bar's fade and the composer's fade.
+                          topInset: topInset,
+                          // The read-only variant renders no floating controls, so
+                          // force the inset to 0 there — guarding against a stale
+                          // measured height lingering if a state object is reused
+                          // across an editable -> read-only transition.
+                          bottomInset: widget.readOnly ? 0 : bottomControlsHeight,
+                        ),
                       ),
                     ),
             ),
@@ -113,7 +142,11 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (state.isRefreshing) const LinearProgressIndicator(),
-              if (state.pendingQuestions.isNotEmpty)
+              // Archiving is permanent, so this session is audit-only: say so
+              // where the composer used to be, and drop the pending banners —
+              // an archived session's requests can never be answered.
+              if (state.isArchived) const SessionDetailArchivedNotice(),
+              if (!state.isArchived && state.pendingQuestions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.help_outline,
                   backgroundColor: context.prego.colors.bgBrandPrimary,
@@ -121,7 +154,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                   label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
                   onTap: widget.onShowPendingQuestions,
                 ),
-              if (state.pendingPermissions.isNotEmpty)
+              if (!state.isArchived && state.pendingPermissions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.shield_outlined,
                   backgroundColor: context.prego.colors.bgSuccessPrimary,
@@ -147,17 +180,21 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
             right: 0,
             child: _MeasureSize(
               onChange: (size) {
-                if (!mounted || size.height == _bottomControlsHeight) return;
-                setState(() => _bottomControlsHeight = size.height);
+                if (!mounted) return;
+                _bottomControlsHeight.value = size.height;
               },
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (state.children.isNotEmpty)
-                    BackgroundTasksBar(
-                      projectId: widget.projectId,
-                      children: state.children,
-                      childStatuses: state.childStatuses,
+                    ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                      valueListenable: _composerSurfaceStyle,
+                      builder: (context, surfaceStyle, _) => BackgroundTasksBar(
+                        surfaceStyle: surfaceStyle,
+                        projectId: widget.projectId,
+                        children: state.children,
+                        childStatuses: state.childStatuses,
+                      ),
                     ),
                   if (state.queuedMessages.isNotEmpty)
                     SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
@@ -170,15 +207,17 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       // something, so the composer should rest as a follow-up
                       // field even before the first message lands in the list.
                       hasMessages: state.messages.isNotEmpty || state.queuedMessages.isNotEmpty,
+                      attachmentsSupported: state.supportsPromptAttachments,
                       isBusy: hasActiveWork(
                         sessionStatus: state.sessionStatus,
                         childStatuses: state.childStatuses,
                       ),
-                      onSend: ({required text, required command, required inputMode}) =>
+                      onSend: ({required text, required command, required inputMode, required attachments}) =>
                           context.read<SessionDetailCubit>().sendMessage(
                             text: text,
                             command: command,
                             inputMode: inputMode,
+                            attachments: attachments,
                           ),
                       onVoiceTranscriptionCompleted: context
                           .read<SessionDetailCubit>()
@@ -188,16 +227,21 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       ),
                       onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
                       onAbort: () => context.read<SessionDetailCubit>().abort(),
+                      surfaceStyleController: _composerSurfaceStyle,
                       header: null,
-                      composerHeader: AgentModelButtons(
-                        agents: state.availableAgents,
-                        selectedAgent: state.selectedAgent,
-                        onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
-                        providers: state.availableProviders,
-                        selectedAgentModel: state.selectedAgentModel,
-                        onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                        availableVariants: state.availableVariants,
-                        onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                      composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                        valueListenable: _composerSurfaceStyle,
+                        builder: (context, surfaceStyle, _) => AgentModelButtons(
+                          surfaceStyle: surfaceStyle,
+                          agents: state.availableAgents,
+                          selectedAgent: state.selectedAgent,
+                          onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
+                          providers: state.availableProviders,
+                          selectedAgentModel: state.selectedAgentModel,
+                          onModelSelected: context.read<SessionDetailCubit>().selectModel,
+                          availableVariants: state.availableVariants,
+                          onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                        ),
                       ),
                       availableCommands: state.availableCommands,
                       stagedCommand: state.stagedCommand,

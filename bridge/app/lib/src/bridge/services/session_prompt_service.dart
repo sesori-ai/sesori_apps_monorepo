@@ -3,7 +3,10 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
+import "archived_session_validator.dart";
+import "session_operation_dispatcher.dart";
 
 class SessionPromptDefaultsChange {
   final String sessionId;
@@ -17,12 +20,18 @@ class SessionPromptDefaultsChange {
 
 class SessionPromptService {
   final SessionRepository _sessionRepository;
+  final SessionOperationDispatcher _dispatcher;
+  final ArchivedSessionValidator _archivedSessionValidator;
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
 
   SessionPromptService({
     required SessionRepository sessionRepository,
-  }) : _sessionRepository = sessionRepository;
+    required SessionOperationDispatcher dispatcher,
+    required ArchivedSessionValidator archivedSessionValidator,
+  }) : _sessionRepository = sessionRepository,
+       _dispatcher = dispatcher,
+       _archivedSessionValidator = archivedSessionValidator;
 
   Stream<SessionPromptDefaultsChange> get promptDefaultsChanges => _promptDefaultsChangesController.stream;
 
@@ -33,8 +42,35 @@ class SessionPromptService {
     required String? agent,
     required PromptModel? model,
     required String? command,
-  }) async {
+  }) {
     final normalizedCommand = command?.trim();
+    return _dispatcher.dispatch(
+      sessionId: sessionId,
+      operation: normalizedCommand == null || normalizedCommand.isEmpty
+          ? SessionOperation.sendPrompt
+          : SessionOperation.sendCommand,
+      body: () => _sendPrompt(
+        sessionId: sessionId,
+        parts: parts,
+        variant: variant,
+        agent: agent,
+        model: model,
+        normalizedCommand: normalizedCommand,
+      ),
+    );
+  }
+
+  Future<void> _sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required String? agent,
+    required PromptModel? model,
+    required String? normalizedCommand,
+  }) async {
+    // Inside the dispatched body, so this cannot race a concurrent archive on
+    // the same family lane.
+    await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sessionRepository.sendPrompt(
         sessionId: sessionId,

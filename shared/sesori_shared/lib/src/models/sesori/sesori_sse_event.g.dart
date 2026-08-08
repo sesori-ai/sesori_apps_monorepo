@@ -69,6 +69,49 @@ Map<String, dynamic> _$SesoriPluginManagementChangedToJson(
   'type': instance.$type,
 };
 
+SesoriPluginInstallProgress _$SesoriPluginInstallProgressFromJson(Map json) =>
+    SesoriPluginInstallProgress(
+      pluginId: json['pluginId'] as String,
+      phase: $enumDecode(
+        _$PluginInstallPhaseEnumMap,
+        json['phase'],
+        unknownValue: PluginInstallPhase.unknown,
+      ),
+      percent: (json['percent'] as num?)?.toInt(),
+      message: json['message'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriPluginInstallProgressToJson(
+  SesoriPluginInstallProgress instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'phase': _$PluginInstallPhaseEnumMap[instance.phase]!,
+  'percent': ?instance.percent,
+  'message': ?instance.message,
+  'type': instance.$type,
+};
+
+const _$PluginInstallPhaseEnumMap = {
+  PluginInstallPhase.downloading: 'downloading',
+  PluginInstallPhase.verifying: 'verifying',
+  PluginInstallPhase.extracting: 'extracting',
+  PluginInstallPhase.finalizing: 'finalizing',
+  PluginInstallPhase.completed: 'completed',
+  PluginInstallPhase.failed: 'failed',
+  PluginInstallPhase.unknown: 'unknown',
+};
+
+SesoriCommandCatalogUpdated _$SesoriCommandCatalogUpdatedFromJson(Map json) =>
+    SesoriCommandCatalogUpdated(
+      pluginId: json['pluginId'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriCommandCatalogUpdatedToJson(
+  SesoriCommandCatalogUpdated instance,
+) => <String, dynamic>{'pluginId': instance.pluginId, 'type': instance.$type};
+
 SesoriSessionCreated _$SesoriSessionCreatedFromJson(Map json) =>
     SesoriSessionCreated(
       info: Session.fromJson(Map<String, dynamic>.from(json['info'] as Map)),

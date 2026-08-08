@@ -149,6 +149,7 @@ void main() {
         _buildApp(
           child: Scaffold(
             body: BackgroundTasksBar(
+              surfaceStyle: PregoComposerSurfaceStyle.subtle,
               projectId: "project-1",
               children: [child],
               childStatuses: const {},
@@ -178,6 +179,7 @@ void main() {
             body: SessionSplitScope(
               isSplit: true,
               child: BackgroundTasksBar(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
                 projectId: "project-1",
                 children: [child],
                 childStatuses: const {},

@@ -9,10 +9,14 @@ void main() {
     late FakeAcpProcess fake;
     late AcpStdioClient client;
     late List<BridgeSseEvent> emitted;
+    late List<AcpNotification> forwarded;
     late CursorApprovalRegistry registry;
     // The session whose turn is "in flight"; the registry falls back to it for
     // requests that carry no sessionId of their own (e.g. cursor/create_plan).
     String? activeSession;
+    // When set, the fire-and-forget forward throws — simulating a bug in the
+    // notification mapping path downstream of the registry.
+    bool throwOnForward = false;
 
     setUp(() async {
       fake = FakeAcpProcess();
@@ -22,10 +26,16 @@ void main() {
       );
       await client.connect();
       emitted = [];
+      forwarded = [];
       activeSession = "active-s";
+      throwOnForward = false;
       registry = CursorApprovalRegistry(
         client: client,
         emit: emitted.add,
+        onFireAndForgetNotification: (notification) {
+          if (throwOnForward) throw StateError("notification mapping failure");
+          forwarded.add(notification);
+        },
         activeSessionResolver: () => activeSession,
       );
       registry.attach(client.serverRequests);
@@ -258,6 +268,84 @@ void main() {
       fake.emit({
         "jsonrpc": "2.0",
         "id": 3,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": "s1",
+          "toolCall": {"kind": "execute", "title": "Run"},
+          "options": [
+            {"optionId": "ok", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(emitted.single, isA<BridgeSsePermissionAsked>());
+    });
+
+    test("cursor/generate_image request is acked and forwarded as a notification", () async {
+      // Live cursor-agent calls connection.extMethod("cursor/generate_image", …)
+      // which is a JSON-RPC *request* (with id), not a notification — despite the
+      // local helper name sendNonBlockingExtensionNotification. The registry
+      // acks immediately and re-injects the payload unchanged; mapping happens
+      // in CursorEventMapper (see cursor_event_mapper_test.dart).
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 42,
+        "method": "cursor/generate_image",
+        "params": {
+          "toolCallId": "img-1",
+          "filePath": "/tmp/out.png",
+          "description": "test",
+        },
+      });
+      await pump();
+
+      final reply = fake.written.last;
+      expect(reply["id"], 42);
+      expect(reply["result"], isA<Map<String, Object?>>());
+      expect(reply.containsKey("error"), isFalse);
+      final forwardedNotification = forwarded.single;
+      expect(forwardedNotification.method, "cursor/generate_image");
+      expect(forwardedNotification.params["filePath"], "/tmp/out.png");
+      expect(forwardedNotification.params.containsKey("sessionId"), isFalse);
+    });
+
+    test("cursor/update_todos request is acked and forwarded as a notification", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 43,
+        "method": "cursor/update_todos",
+        "params": {"toolCallId": "todo-1", "todos": <Object?>[]},
+      });
+      await pump();
+
+      final reply = fake.written.last;
+      expect(reply["id"], 43);
+      expect(reply.containsKey("error"), isFalse);
+      expect(forwarded.single.method, "cursor/update_todos");
+      expect(forwarded.single.params["toolCallId"], "todo-1");
+    });
+
+    test("a throwing notification forward never breaks the approval channel", () async {
+      // The forward runs on the serverRequests subscription that also answers
+      // permissions; a throw in the mapping path must be contained to the one
+      // payload — the request is still acked and later approvals still surface.
+      throwOnForward = true;
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 44,
+        "method": "cursor/generate_image",
+        "params": {"filePath": "/tmp/out.png"},
+      });
+      await pump();
+
+      final ack = fake.written.last;
+      expect(ack["id"], 44);
+      expect(ack.containsKey("error"), isFalse);
+
+      throwOnForward = false;
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 45,
         "method": "session/request_permission",
         "params": {
           "sessionId": "s1",

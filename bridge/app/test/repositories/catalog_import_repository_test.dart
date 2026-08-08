@@ -42,6 +42,7 @@ void main() {
             path: projectPath,
             hidden: true,
             baseBranch: "main",
+            prCacheGithubLogin: null,
             displayName: "User project name",
             createdAt: 10,
             updatedAt: 20,
@@ -60,6 +61,19 @@ void main() {
             title: "User session title",
             catalogTitle: "Old catalog title",
             projectionUpdatedAt: 20,
+          ),
+        ],
+      );
+      await database.projectsDao.setPrCacheGithubLogin(
+        projectId: "stored-project",
+        githubLogin: "octocat",
+      );
+      await database.sessionDao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "ses_existing_root",
+            currentBranchName: "feature/current",
+            currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
           ),
         ],
       );
@@ -108,6 +122,7 @@ void main() {
       expect(project?.hidden, isTrue);
       expect(project?.baseBranch, "main");
       expect(project?.displayName, "User project name");
+      expect(project?.prCacheGithubLogin, "octocat");
 
       final root = await database.sessionDao.getSessionByBinding(
         pluginId: "native",
@@ -125,6 +140,11 @@ void main() {
       expect(root?.title, "User session title");
       expect(root?.catalogTitle, "Fresh catalog title");
       expect(root?.archivedAt, isNull);
+      expect(root?.currentBranchName, "feature/current");
+      expect(
+        root?.currentGithubRepositoryIdentity,
+        "sesori-ai/sesori_apps_monorepo",
+      );
       expect(child?.sessionId, startsWith("ses_"));
       expect(child?.parentSessionId, root?.sessionId);
       expect(grandchild?.parentSessionId, child?.sessionId);
@@ -148,6 +168,48 @@ void main() {
       expect(
         (await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "child"))?.sessionId,
         child?.sessionId,
+      );
+    });
+
+    test("native import hides new projects while preserving existing visibility", () async {
+      final visiblePath = "${directory.path}/visible";
+      final importedPath = "${directory.path}/imported";
+      await database.projectsDao.upsertProjectRows(
+        rows: [_projectRow(id: "visible-project", path: visiblePath)],
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [
+          PluginProject(id: "visible-project", directory: visiblePath),
+          PluginProject(id: "imported-project", directory: importedPath),
+        ],
+        rootsByProject: {
+          importedPath: [_pluginSession(id: "imported-root", directory: importedPath)],
+        },
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "visible-project"))?.hidden, isFalse);
+      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isTrue);
+      expect(
+        (await database.projectsDao.getCatalogProjects()).map((project) => project.projectId),
+        ["visible-project"],
+      );
+      expect(
+        (await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "imported-root",
+        ))?.projectId,
+        "imported-project",
       );
     });
 
@@ -266,6 +328,51 @@ void main() {
       expect(calculator.callCount, 2);
       expect(calculator.reusedIndexes, isTrue);
       expect(calculator.sawFirstRowOnSecondLookup, isTrue);
+    });
+
+    test("publishes the backend's own activity for each imported session", () async {
+      final projectPath = "${directory.path}/activity";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "activity", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [
+            _pluginSession(id: "root-a", directory: projectPath, updatedAt: 4242),
+            _pluginSession(id: "root-b", directory: projectPath, updatedAt: 5353),
+          ],
+        },
+        childrenByParent: const {},
+      );
+      final repository = CatalogImportRepository(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final published = <SessionBackendActivity>[];
+      final subscription = repository.backendActivity.listen(published.addAll);
+      addTearDown(subscription.cancel);
+
+      await repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      final bindings = await database.sessionDao.getSessionsForPlugin(pluginId: plugin.id);
+      expect(
+        published.map((activity) => activity.activityAt).toList()..sort(),
+        const [4242, 5353],
+        reason: "the backend's reported update time is what staleness compares against",
+      );
+      expect(
+        published.map((activity) => activity.sessionId).toSet(),
+        {bindings["root-a"]!.sessionId, bindings["root-b"]!.sessionId},
+      );
     });
 
     test("publishes projects before ancestry-ordered session batches of at most 512", () async {
@@ -833,6 +940,7 @@ ProjectDto _projectRow({required String id, required String path, int updatedAt 
     path: path,
     hidden: false,
     baseBranch: null,
+    prCacheGithubLogin: null,
     displayName: null,
     createdAt: 10,
     updatedAt: updatedAt,
@@ -861,6 +969,8 @@ SessionDto _sessionRow({
     directory: directory,
     worktreePath: worktreePath,
     branchName: worktreePath == null ? null : "feature",
+    currentBranchName: null,
+    currentGithubRepositoryIdentity: null,
     isDedicated: worktreePath != null,
     archivedAt: archivedAt,
     baseBranch: "main",

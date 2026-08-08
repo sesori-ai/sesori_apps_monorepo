@@ -2,13 +2,31 @@ import "dart:async";
 import "dart:io" as io;
 import "dart:math";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
+import "../api/codex_rollout_api.dart";
+import "../api/codex_tool_outcome_storage.dart";
+import "../api/parsers/codex_command_execution_parser.dart";
+import "../api/parsers/codex_file_change_parser.dart";
+import "../api/parsers/codex_image_bearing_item_parser.dart";
+import "../codex_config_reader.dart";
+import "../codex_event_mapper.dart";
+import "../codex_metadata_repository.dart";
 import "../codex_plugin_impl.dart";
+import "../repositories/codex_catalog_repository.dart";
+import "../repositories/codex_message_repository.dart";
+import "../repositories/codex_tool_lifecycle_tracker.dart";
+import "../repositories/codex_tool_outcome_repository.dart";
+import "../repositories/mappers/codex_image_attachment_mapper.dart";
+import "../repositories/mappers/codex_rollout_tool_mapper.dart";
+import "../services/codex_rollout_tailer.dart";
+import "../services/codex_session_service.dart";
 import "codex_bridge_plugin.dart";
+import "codex_desktop_app_locator.dart";
 import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
 import "codex_record_mapper.dart";
@@ -29,14 +47,66 @@ typedef CodexManagedApiFactory =
     });
 
 CodexManagedApi _defaultBuildApi({
+  required PluginHost host,
   required String serverUrl,
   required void Function() onConnected,
   required void Function() onDisconnected,
 }) {
-  return CodexPlugin(
+  final launchDirectory = io.Directory.current.path;
+  final configReader = CodexConfigReader(environment: host.environment);
+  final rolloutApi = CodexRolloutApi(environment: host.environment);
+  const imageAttachmentMapper = CodexImageAttachmentMapper();
+  const rolloutToolMapper = CodexRolloutToolMapper(
+    imageAttachmentMapper: imageAttachmentMapper,
+  );
+  const imageBearingItemParser = CodexImageBearingItemParser();
+  final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+  final toolOutcomeRepository = CodexToolOutcomeRepository(
+    storage: CodexToolOutcomeStorage(
+      store: host.store,
+      clock: host.clock,
+    ),
+  );
+  return CodexPlugin.composed(
     serverUrl: serverUrl,
+    capabilityToken: null,
+    clientFactory: null,
+    sessionService: CodexSessionService(
+      catalogRepository: catalogRepository,
+      messageRepository: CodexMessageRepository(
+        rolloutApi: rolloutApi,
+        rolloutToolMapper: rolloutToolMapper,
+      ),
+      metadataRepository: CodexMetadataRepository(
+        configReader: configReader,
+      ),
+      toolOutcomeRepository: toolOutcomeRepository,
+      launchDirectory: launchDirectory,
+    ),
+    eventMapper: CodexEventMapper(
+      pluginId: CodexPlugin.pluginId,
+      projectCwd: launchDirectory,
+      imageAttachmentMapper: imageAttachmentMapper,
+      imageBearingItemParser: imageBearingItemParser,
+      rolloutToolMapper: rolloutToolMapper,
+      config: configReader.readDefaults(),
+    ),
+    rolloutTailer: CodexRolloutTailer(
+      rolloutApi: rolloutApi,
+      catalogRepository: catalogRepository,
+      pollInterval: const Duration(milliseconds: 50),
+    ),
+    toolLifecycleTracker: CodexToolLifecycleTracker(
+      rolloutToolMapper: rolloutToolMapper,
+    ),
+    toolOutcomeRepository: toolOutcomeRepository,
+    commandExecutionParser: const CodexCommandExecutionParser(),
+    fileChangeParser: const CodexFileChangeParser(),
+    imageBearingItemParser: imageBearingItemParser,
+    projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
+    keepaliveInterval: const Duration(seconds: 30),
   );
 }
 
@@ -64,13 +134,15 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     Duration coldStartBudget = codexColdStartBudget,
     Duration versionProbeTimeout = codexVersionProbeTimeout,
     ManagedRuntimeProvisionService? provisionService,
+    List<String>? desktopAppCliCandidates,
   }) : _buildApi = buildApi,
        _candidatePorts = candidatePorts,
        _random = random,
        _degradedDebounce = degradedDebounce,
        _coldStartBudget = coldStartBudget,
        _versionProbeTimeout = versionProbeTimeout,
-       _provisionService = provisionService;
+       _provisionService = provisionService,
+       _desktopAppCliCandidates = desktopAppCliCandidates;
 
   final CodexManagedApiFactory? _buildApi;
   final Iterable<int>? _candidatePorts;
@@ -82,6 +154,13 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   /// Test seam for existing-runtime resolution. Production builds a default in
   /// [ensureRuntime] from the host's process service.
   final ManagedRuntimeProvisionService? _provisionService;
+
+  /// Test seam for desktop-app CLI candidates. Production enumerates them with
+  /// [codexDesktopAppCliCandidates] for the current platform.
+  final List<String>? _desktopAppCliCandidates;
+
+  @override
+  bool get supportsPromptAttachments => true;
 
   /// Backend-namespaced ownership filename in shared runtime storage.
   static const String ownershipFileName = "codex-processes.json";
@@ -128,6 +207,71 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   List<PluginOption> get options => cliOptions;
 
   @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
+    return {
+      ...super.managementCapabilities(config: config),
+      if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+    };
+  }
+
+  /// Whether the pinned managed codex runtime can be installed on request: no
+  /// explicit `--codex-bin` override (that binary is authoritative) and a
+  /// published release asset for this platform.
+  bool _supportsManagedInstall({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return false;
+    final PlatformTarget target;
+    try {
+      target = PlatformTarget.current();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] platform detection failed; managed install unavailable", error, stackTrace);
+      return false;
+    }
+    return const CodexRuntimeManifest().assetFor(target: target) != null;
+  }
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) async* {
+    const manifest = CodexRuntimeManifest();
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: null,
+    );
+    final httpClient = http.Client();
+    try {
+      final installService = ManagedRuntimeInstallService(
+        manifest: manifest,
+        versionValidator: RuntimeVersionValidator(
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+          probeTimeout: _versionProbeTimeout,
+        ),
+        installService: RuntimeInstallService(
+          downloadClient: BinaryDownloadClient(httpClient: httpClient),
+          checksumValidator: ChecksumValidator(),
+          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+        ),
+        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+      );
+      yield* installService.install(
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+      );
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,
     required HostProcessService processes,
@@ -149,8 +293,21 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       probeTimeout: _versionProbeTimeout,
     );
 
+    // Fallback resolution mirroring ensureRuntime's precedence when the primary
+    // probe fails: a recent-enough desktop-app-bundled CLI, then the pinned
+    // managed runtime.
     Future<bool> resolveManagedRuntime() async {
       if (hasExplicitBin) return false;
+      for (final candidate in _resolveDesktopAppCliCandidates(environment: environment)) {
+        final candidateVersion = await versionValidator.detectVersion(
+          executable: candidate,
+          environment: environment,
+        );
+        if (candidateVersion != null && candidateVersion.compareTo(manifest.minPathVersion) >= 0) {
+          executable = candidate;
+          return true;
+        }
+      }
       final managedExecutable = manifest.managedBinaryPath(stateDirectory: stateDirectory);
       final managedVersion = await versionValidator.detectVersion(
         executable: managedExecutable,
@@ -265,8 +422,9 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     return value;
   }
 
-  /// Resolves an existing codex runtime (a recent-enough PATH install or the
-  /// pinned managed runtime when already installed). Skipped when an explicit
+  /// Resolves an existing codex runtime (a recent-enough PATH install, a
+  /// recent-enough CLI bundled by the Codex desktop app, or the pinned managed
+  /// runtime when already installed). Skipped when an explicit
   /// `--codex-bin` path is set (it already names the binary). The resolved
   /// launch path is surfaced via [ProvisionReady]; a failure is non-fatal here
   /// and `start()` fails with guidance.
@@ -290,6 +448,15 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     return combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim().toLowerCase();
   }
 
+  /// The injected desktop-app CLI candidates, or the platform's real ones.
+  List<String> _resolveDesktopAppCliCandidates({required Map<String, String> environment}) {
+    return _desktopAppCliCandidates ??
+        codexDesktopAppCliCandidates(
+          environment: environment,
+          os: PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem),
+        );
+  }
+
   /// Assembles the production resolver from the host's process service so
   /// helper commands go through the host, never a raw spawn.
   ManagedRuntimeProvisionService _buildDefaultProvisionService({
@@ -308,6 +475,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
         runtimeId: manifest.runtimeId,
         probeTimeout: _versionProbeTimeout,
       ),
+      fallbackExecutableCandidates: _resolveDesktopAppCliCandidates(environment: host.environment),
     );
   }
 
@@ -423,11 +591,18 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     );
     monitor.arm(handle);
 
-    final api = (_buildApi ?? _defaultBuildApi)(
-      serverUrl: serverUrl,
-      onConnected: reporter.markConnected,
-      onDisconnected: reporter.markDisconnected,
-    );
+    final api = _buildApi == null
+        ? _defaultBuildApi(
+            host: host,
+            serverUrl: serverUrl,
+            onConnected: reporter.markConnected,
+            onDisconnected: reporter.markDisconnected,
+          )
+        : _buildApi(
+            serverUrl: serverUrl,
+            onConnected: reporter.markConnected,
+            onDisconnected: reporter.markDisconnected,
+          );
 
     final plugin = CodexBridgePlugin(
       api: api,

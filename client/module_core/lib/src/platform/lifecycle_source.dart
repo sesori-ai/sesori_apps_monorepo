@@ -24,10 +24,12 @@ enum LifecycleState {
   // * -> Desktop -- app not in focus (user is interacting with other app)
   inactive,
 
-  // when app is no longer visible to the user
+  // when app is no longer visible to the user AND its work is suspended
   // * Mobile -> app is about to be paused
   // * Web -> running in a window or tab that is no longer visible
-  // * Desktop -> app was minimized or placed on a desktop that is no longer visible
+  // * Desktop -> NEVER ENTERS THIS STATE: the platform adapters report an
+  //   occluded or minimized desktop window as [inactive], because the process,
+  //   its socket, and its timers all keep running
   hidden,
 
   // when app is no longer visible to the user

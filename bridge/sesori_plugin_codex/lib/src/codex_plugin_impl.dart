@@ -1,24 +1,24 @@
 import "dart:async";
-import "dart:io" show Directory;
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
-import "api/codex_rollout_api.dart";
+import "api/models/codex_correlatable_item_event_dto.dart";
+import "api/models/codex_image_bearing_item_dto.dart";
+import "api/parsers/codex_command_execution_parser.dart";
+import "api/parsers/codex_file_change_parser.dart";
+import "api/parsers/codex_image_bearing_item_parser.dart";
 import "approval_registry.dart";
 import "codex_app_server_client.dart";
-import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
-import "codex_metadata_repository.dart";
 import "models/codex_collaboration_mode.dart";
-import "repositories/codex_catalog_repository.dart";
-import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
-import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/codex_tool_lifecycle_tracker.dart";
+import "repositories/codex_tool_outcome_repository.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
 import "services/codex_rollout_tailer.dart";
@@ -59,6 +59,11 @@ class CodexPlugin implements CodexManagedApi {
   final CodexSessionService _sessionService;
   final CodexEventMapper _eventMapper;
   final CodexRolloutTailer _rolloutTailer;
+  final CodexToolLifecycleTracker _toolLifecycleTracker;
+  final CodexToolOutcomeRepository _toolOutcomeRepository;
+  final CodexCommandExecutionParser _commandExecutionParser;
+  final CodexFileChangeParser _fileChangeParser;
+  final CodexImageBearingItemParser _imageBearingItemParser;
   final String _projectCwd;
   final Duration _keepaliveInterval;
 
@@ -115,63 +120,18 @@ class CodexPlugin implements CodexManagedApi {
   /// back to the launch cwd until the rollout appears on disk.
   final Map<String, String> _threadDirectory = {};
 
-  factory CodexPlugin({
-    required String serverUrl,
-    String? capabilityToken,
-    String? projectCwd,
-    void Function()? onConnected,
-    void Function()? onDisconnected,
-    Duration keepaliveInterval = const Duration(seconds: 30),
-  }) {
-    final resolvedProjectCwd = projectCwd ?? Directory.current.path;
-    final configReader = CodexConfigReader();
-    final rolloutApi = CodexRolloutApi();
-    const rolloutToolMapper = CodexRolloutToolMapper();
-    final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
-    final rolloutTailer = CodexRolloutTailer(
-      rolloutApi: rolloutApi,
-      catalogRepository: catalogRepository,
-      pollInterval: const Duration(milliseconds: 50),
-    );
-    final metadataRepository = CodexMetadataRepository(
-      configReader: configReader,
-    );
-    return CodexPlugin._(
-      serverUrl: serverUrl,
-      capabilityToken: capabilityToken,
-      // When null, [_ensureConnected] builds the default client so it can wire
-      // the client's `onDisconnected` through [_handleClientDisconnected].
-      clientFactory: null,
-      sessionService: CodexSessionService(
-        catalogRepository: catalogRepository,
-        messageRepository: CodexMessageRepository(
-          rolloutApi: rolloutApi,
-          rolloutToolMapper: rolloutToolMapper,
-        ),
-        metadataRepository: metadataRepository,
-        launchDirectory: resolvedProjectCwd,
-      ),
-      eventMapper: CodexEventMapper(
-        pluginId: pluginId,
-        projectCwd: resolvedProjectCwd,
-        rolloutToolMapper: rolloutToolMapper,
-        config: configReader.readDefaults(),
-      ),
-      rolloutTailer: rolloutTailer,
-      projectCwd: resolvedProjectCwd,
-      onConnected: onConnected,
-      onDisconnected: onDisconnected,
-      keepaliveInterval: keepaliveInterval,
-    );
-  }
-
-  CodexPlugin.injected({
+  CodexPlugin.composed({
     required String serverUrl,
     required String? capabilityToken,
-    required CodexAppServerClient Function() clientFactory,
+    required CodexAppServerClient Function()? clientFactory,
     required CodexSessionService sessionService,
     required CodexEventMapper eventMapper,
     required CodexRolloutTailer rolloutTailer,
+    required CodexToolLifecycleTracker toolLifecycleTracker,
+    required CodexToolOutcomeRepository toolOutcomeRepository,
+    required CodexCommandExecutionParser commandExecutionParser,
+    required CodexFileChangeParser fileChangeParser,
+    required CodexImageBearingItemParser imageBearingItemParser,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -183,6 +143,11 @@ class CodexPlugin implements CodexManagedApi {
          sessionService: sessionService,
          eventMapper: eventMapper,
          rolloutTailer: rolloutTailer,
+         toolLifecycleTracker: toolLifecycleTracker,
+         toolOutcomeRepository: toolOutcomeRepository,
+         commandExecutionParser: commandExecutionParser,
+         fileChangeParser: fileChangeParser,
+         imageBearingItemParser: imageBearingItemParser,
          projectCwd: projectCwd,
          onConnected: onConnected,
          onDisconnected: onDisconnected,
@@ -196,6 +161,11 @@ class CodexPlugin implements CodexManagedApi {
     required CodexSessionService sessionService,
     required CodexEventMapper eventMapper,
     required CodexRolloutTailer rolloutTailer,
+    required CodexToolLifecycleTracker toolLifecycleTracker,
+    required CodexToolOutcomeRepository toolOutcomeRepository,
+    required CodexCommandExecutionParser commandExecutionParser,
+    required CodexFileChangeParser fileChangeParser,
+    required CodexImageBearingItemParser imageBearingItemParser,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -207,6 +177,11 @@ class CodexPlugin implements CodexManagedApi {
        _sessionService = sessionService,
        _eventMapper = eventMapper,
        _rolloutTailer = rolloutTailer,
+       _toolLifecycleTracker = toolLifecycleTracker,
+       _toolOutcomeRepository = toolOutcomeRepository,
+       _commandExecutionParser = commandExecutionParser,
+       _fileChangeParser = fileChangeParser,
+       _imageBearingItemParser = imageBearingItemParser,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
        _onDisconnected = onDisconnected,
@@ -299,6 +274,7 @@ class CodexPlugin implements CodexManagedApi {
     _client = null;
     _sessionService.detachAppServerRepositories();
     _rolloutTailer.stopAll();
+    _toolLifecycleTracker.clear();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _approvalRegistry = null;
@@ -350,11 +326,22 @@ class CodexPlugin implements CodexManagedApi {
       return;
     }
     if (_isSupersededTurnLifecycleNotification(notification)) return;
+    final command = _commandExecutionParser.parse(
+      notification: notification,
+    );
+    final correlatableItem = command ?? _fileChangeParser.parse(notification: notification);
     final threadId = notification.params["threadId"] as String?;
     if (notification.method == "turn/started" && threadId != null) {
       // Calls initiated through this plugin start tailing before turn/start.
       // This fallback covers a turn started by another app-server client.
       _rolloutTailer.start(sessionId: threadId);
+    }
+    final drainThreadId = correlatableItem?.threadId ?? threadId;
+    final isCorrelatableItemStarted = correlatableItem?.lifecycle == CodexCorrelatableItemLifecycle.started;
+    if (drainThreadId != null && (notification.method == "item/completed" || isCorrelatableItemStarted)) {
+      // Codex persists the response item before emitting its stable lifecycle
+      // event. Drain now so polling latency cannot split one tool identity.
+      _rolloutTailer.drain(sessionId: drainThreadId);
     }
     final terminalHistory =
         notification.method == "turn/completed" ||
@@ -365,30 +352,89 @@ class CodexPlugin implements CodexManagedApi {
     if (terminalHistory && threadId != null) {
       await _rolloutTailer.finish(sessionId: threadId);
       if (_isSupersededTurnLifecycleNotification(notification)) return;
+      for (final tool in _toolLifecycleTracker.observeTerminalNotification(
+        notification: notification,
+      )) {
+        _eventMapper
+            .mapProjectedTool(
+              threadId: threadId,
+              tool: tool,
+            )
+            .forEach(_eventBuffer.add);
+      }
     }
     // Keep work state busy until the terminal rollout drain has emitted its
     // final tool updates. Forced runtime teardown waits for this transition
     // before disconnecting the generation's event stream.
     final activityChanged = _maintainBookkeeping(notification);
-    _eventMapper.map(notification).forEach(_eventBuffer.add);
-    if (notification.method == "item/completed" && threadId != null) {
-      // The app-server item is provisional; a rollout output written for the
-      // same call id immediately enriches it with executor metadata.
-      _rolloutTailer.drain(sessionId: threadId);
+    final projectedTool = correlatableItem == null
+        ? _toolLifecycleTracker.observeUncorrelatedAppServerItem(
+            notification: notification,
+            imageGeneration: _parseImageGeneration(
+              notification: notification,
+            ),
+          )
+        : _toolLifecycleTracker.observeCorrelatableAppServerItem(
+            event: correlatableItem,
+          );
+    if (command != null && projectedTool != null && !_deletedThreadIds.contains(command.threadId)) {
+      try {
+        await _toolOutcomeRepository.recordCommandOutcome(
+          command: command,
+          canonicalCallId: projectedTool.canonicalId,
+        );
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "[codex] failed to persist structured tool error for ${command.threadId}/${projectedTool.canonicalId}",
+          error,
+          stackTrace,
+        );
+      }
     }
-    if (threadId != null &&
-        (notification.method == "turn/completed" ||
-            notification.method == "error" ||
-            notification.method == "thread/closed")) {
-      _eventMapper.clearRolloutTurn(threadId: threadId);
+    if (projectedTool == null) {
+      _eventMapper.map(notification).forEach(_eventBuffer.add);
+    } else {
+      _eventMapper
+          .mapProjectedTool(
+            threadId: correlatableItem?.threadId ?? threadId!,
+            tool: projectedTool,
+          )
+          .forEach(_eventBuffer.add);
     }
     if (activityChanged) {
       _eventBuffer.add(const BridgeSseProjectUpdated());
     }
   }
 
+  CodexImageGenerationItemDto? _parseImageGeneration({
+    required CodexServerNotification notification,
+  }) {
+    if (notification.method != "item/started" && notification.method != "item/completed") {
+      return null;
+    }
+    final item = notification.params["item"];
+    if (item is! Map || item["type"] != "imageGeneration") {
+      return null;
+    }
+    final parsed = _imageBearingItemParser.parse(
+      item: Map<String, dynamic>.from(item),
+    );
+    return parsed is CodexImageGenerationItemDto ? parsed : null;
+  }
+
   void _handleRolloutAppend(CodexRolloutAppend append) {
-    _eventMapper.mapRolloutLine(threadId: append.sessionId, line: append.line).forEach(_eventBuffer.add);
+    final tools = _toolLifecycleTracker.observeRolloutLine(
+      threadId: append.sessionId,
+      line: append.line,
+    );
+    for (final tool in tools) {
+      _eventMapper
+          .mapProjectedTool(
+            threadId: append.sessionId,
+            tool: tool,
+          )
+          .forEach(_eventBuffer.add);
+    }
   }
 
   void _maintainThreadStarted(CodexThreadRecord thread) {
@@ -558,11 +604,11 @@ class CodexPlugin implements CodexManagedApi {
   /// project list from these sessions. Each carries its real rollout cwd as its
   /// directory so the bridge groups it under the right project.
   ///
-  /// [knownDirectories] is unused: codex's rollout index already enumerates
-  /// every session globally, so the bridge's directory hints add nothing.
+  /// [knownDirectories] preserves sessions already attributed to stored
+  /// projects while discovery excludes new Codex Desktop projectless chats.
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
-      _sessionService.listAllSessions();
+      _sessionService.listAllSessions(knownDirectories: knownDirectories);
 
   @override
   String get launchDirectory => _projectCwd;
@@ -977,27 +1023,31 @@ class CodexPlugin implements CodexManagedApi {
       }
     }
     _approvalRegistry?.cancelForSession(sessionId);
-    _sessionService.deleteSession(sessionId: sessionId);
+    await _sessionService.deleteSession(sessionId: sessionId);
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _threadDirectory.remove(sessionId);
     _rolloutTailer.stop(sessionId: sessionId);
-    _eventMapper.clearRolloutTurn(threadId: sessionId);
+    _toolLifecycleTracker.clearThread(threadId: sessionId);
     _eventMapper.forgetThread(sessionId);
     _syncWorkState();
   }
 
   @override
   Future<void> archiveSession({required String sessionId}) async {
-    try {
-      final client = await _connectedClient();
-      await client.request(
-        method: "thread/archive",
-        params: {"threadId": sessionId},
-      );
-    } catch (_) {
-      // Best-effort — mobile DB archive state is authoritative.
-    }
+    // Codex moves archived rollouts out of the readable session catalog, while
+    // the bridge contract intentionally keeps archive state local-only.
+    // Explicitly retained as commented code rather than deleted at reviewer
+    // request to document the disabled backend behavior.
+    // try {
+    //   final client = await _connectedClient();
+    //   await client.request(
+    //     method: "thread/archive",
+    //     params: {"threadId": sessionId},
+    //   );
+    // } catch (_) {
+    //   // Best-effort — mobile DB archive state is authoritative.
+    // }
   }
 
   @override
@@ -1023,7 +1073,27 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
-  ) => _sessionService.getSessionMessages(sessionId: sessionId);
+  ) async {
+    final read = await _sessionService.prepareSessionMessageRead(
+      sessionId: sessionId,
+    );
+    if (read == null) return const [];
+    // Let queued app-server activity update after the synchronous rollout
+    // snapshot before deciding whether interrupted tools are truly idle.
+    await Future<void>.delayed(Duration.zero);
+    return _sessionService.getSessionMessages(
+      sessionId: sessionId,
+      read: read,
+      sessionStatus: _sessionStatusForReplay(sessionId: sessionId),
+    );
+  }
+
+  PluginSessionStatus _sessionStatusForReplay({required String sessionId}) {
+    if (_activeTurnByThread.containsKey(sessionId) || _provisionalAcceptedTurnThreadIds.contains(sessionId)) {
+      return const PluginSessionStatus.busy();
+    }
+    return _sessionStatuses[sessionId] ?? const PluginSessionStatus.busy();
+  }
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) => _sessionService.getAgents(projectId: projectId);
@@ -1140,6 +1210,7 @@ class CodexPlugin implements CodexManagedApi {
     await capture(() => _client?.dispose() ?? Future<void>.value());
     _client = null;
     _sessionService.detachAppServerRepositories();
+    _toolLifecycleTracker.clear();
     await capture(_eventBuffer.close);
     await capture(_workState.close);
     final error = firstError;

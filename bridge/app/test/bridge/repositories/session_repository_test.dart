@@ -7,6 +7,8 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -17,12 +19,102 @@ import "package:test/test.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
+final _octocatLogin = VerifiedGithubLogin.tryParse(rawLogin: "octocat")!;
+final _hubotLogin = VerifiedGithubLogin.tryParse(rawLogin: "hubot")!;
+
 void main() {
   group("SessionRepository", () {
     late _FakeBridgePlugin plugin;
 
     setUp(() {
       plugin = _FakeBridgePlugin();
+    });
+
+    test("resolves stable root families and rejects malformed ancestry", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const projectId = "family-project";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await db.sessionDao.insertSession(
+        sessionId: "root",
+        backendSessionId: "backend-root",
+        projectId: projectId,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+      );
+      await db.sessionDao.insertObservedChild(
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: projectId,
+        parentSessionId: "root",
+        directory: projectId,
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
+        pluginId: plugin.id,
+      );
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      expect(
+        await repository.resolveSessionFamily(
+          sessionId: "child",
+          operation: SessionOperation.sendPrompt,
+        ),
+        (rootSessionId: "root", pluginId: plugin.id),
+      );
+      await expectLater(
+        repository.resolveSessionFamily(
+          sessionId: "missing",
+          operation: SessionOperation.sendPrompt,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
+      );
+
+      await db.sessionDao.insertObservedChild(
+        sessionId: "foreign-child",
+        backendSessionId: "foreign-child",
+        projectId: projectId,
+        parentSessionId: "root",
+        directory: projectId,
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
+        pluginId: "other",
+      );
+      await expectLater(
+        repository.resolveSessionFamily(
+          sessionId: "foreign-child",
+          operation: SessionOperation.abortSession,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
+      );
+
+      final root = (await db.sessionDao.getSession(sessionId: "root"))!;
+      await db.sessionDao.upsertSessionRows(rows: [root.copyWith(parentSessionId: "child")]);
+      await expectLater(
+        repository.resolveSessionFamily(
+          sessionId: "child",
+          operation: SessionOperation.sendPrompt,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
+      );
     });
 
     test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {
@@ -54,7 +146,8 @@ void main() {
 
       final deleted = await repository.deleteSession(sessionId: "sess-tomb");
 
-      expect(deleted.pluginId, equals(plugin.id));
+      expect(deleted.session.pluginId, equals(plugin.id));
+      expect(deleted.sessionIds, contains("sess-tomb"));
       expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isTrue);
       expect(await db.sessionDao.getSession(sessionId: "sess-tomb"), isNull);
       expect(
@@ -233,9 +326,24 @@ void main() {
         updatedAt: 10,
         projectionUpdatedAt: 10,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/one",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 7,
           url: "https://github.com/org/repo/pull/7",
@@ -251,6 +359,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 11,
           url: "https://github.com/org/repo/pull/11",
@@ -266,6 +376,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 99,
           url: "https://github.com/org/repo/pull/99",
@@ -292,6 +404,7 @@ void main() {
           pullRequest: null,
           promptDefaults: null,
         ),
+        verifiedGithubLogin: _octocatLogin,
       );
 
       expect(result.time?.created, equals(1));
@@ -351,10 +464,64 @@ void main() {
           pullRequest: null,
           promptDefaults: null,
         ),
+        verifiedGithubLogin: null,
       );
 
       expect(result.promptDefaults, isNull);
       expect(result.hasWorktree, isFalse);
+    });
+
+    test("enrichSessions clears incoming PR data without a freshly visible selection", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      const staleSession = Session(
+        branchName: "feature/private",
+        id: "stale-session",
+        pluginId: "fake",
+        projectID: "p1",
+        directory: "/tmp/project",
+        parentID: null,
+        title: "Session",
+        time: null,
+        pullRequest: PullRequestInfo(
+          number: 17,
+          url: "https://github.com/org/repo/pull/17",
+          title: "Stale PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+        ),
+        pullRequestHistory: [
+          PullRequestInfo(
+            number: 16,
+            url: "https://github.com/org/repo/pull/16",
+            title: "Stale history",
+            state: PrState.merged,
+            mergeableStatus: PrMergeableStatus.unknown,
+            reviewDecision: PrReviewDecision.approved,
+            checkStatus: PrCheckStatus.success,
+          ),
+        ],
+        promptDefaults: null,
+      );
+
+      for (final verifiedGithubLogin in <VerifiedGithubLogin?>[null, _hubotLogin]) {
+        final result = await repository.enrichSessions(
+          sessions: const [staleSession],
+          verifiedGithubLogin: verifiedGithubLogin,
+        );
+
+        expect(result.single.pullRequest, isNull);
+        expect(result.single.pullRequestHistory, isEmpty);
+      }
     });
 
     test("enrichSessions applies stored data only to matching sessions", () async {
@@ -392,9 +559,24 @@ void main() {
         updatedAt: 1234,
         projectionUpdatedAt: 1234,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/one",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 5,
           url: "https://github.com/org/repo/pull/5",
@@ -435,6 +617,7 @@ void main() {
             promptDefaults: null,
           ),
         ],
+        verifiedGithubLogin: _octocatLogin,
       );
 
       expect(result, hasLength(2));
@@ -520,6 +703,7 @@ void main() {
             promptDefaults: null,
           ),
         ],
+        verifiedGithubLogin: null,
       );
 
       expect(result[0].projectID, "native-reported-project");
@@ -812,6 +996,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/rename",
           prNumber: 12,
           url: "https://github.com/org/repo/pull/12",
@@ -1027,6 +1213,7 @@ void main() {
           projectId: "/projects/a",
           start: null,
           limit: null,
+          verifiedGithubLogin: null,
         );
         final binding = await db.sessionDao.getSession(sessionId: "stable-live");
 
@@ -1358,6 +1545,8 @@ void main() {
       expect(commit.backendSessionIds, ["backend-root"]);
       expect(commit.kind, SessionBindingCommitKind.catalogSync);
       expect(commit.generation, 1);
+      expect((await db.projectsDao.getProject(projectId: directory))?.hidden, isTrue);
+      expect(await db.projectsDao.getCatalogProjects(), isEmpty);
       expect(
         (await db.sessionDao.getSessionByBinding(
           pluginId: plugin.id,
@@ -1714,7 +1903,12 @@ void main() {
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
 
-      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+      final sessions = await repository.getSessionsForProject(
+        projectId: parent,
+        start: null,
+        limit: null,
+        verifiedGithubLogin: null,
+      );
 
       expect(sessions.map((s) => s.id).toSet(), {"w1"});
       // Enrichment adopts the stored attribution as projectID (the plugin
@@ -1980,7 +2174,12 @@ void main() {
 
       // The next enumeration keeps serving the rename, not the backend's
       // auto-title: the stored copy wins for derived plugins.
-      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+      final sessions = await repository.getSessionsForProject(
+        projectId: parent,
+        start: null,
+        limit: null,
+        verifiedGithubLogin: null,
+      );
       expect(sessions.single.title, "My rename");
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "My rename");
     });
@@ -2105,6 +2304,7 @@ void main() {
       final childDetail = await repository.getSessionForProject(
         projectId: "/repo",
         sessionId: "stable-child",
+        verifiedGithubLogin: null,
       );
       expect(childDetail?.id, "stable-child");
       expect(childDetail?.parentID, "stable-parent");
@@ -2112,6 +2312,7 @@ void main() {
         await repository.getSessionForProject(
           projectId: "/other",
           sessionId: "stable-child",
+          verifiedGithubLogin: null,
         ),
         isNull,
       );
@@ -2207,7 +2408,12 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
 
-      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+      final sessions = await repository.getSessionsForProject(
+        projectId: parent,
+        start: null,
+        limit: null,
+        verifiedGithubLogin: null,
+      );
       expect(sessions, isEmpty);
 
       expect(await repository.findProjectIdForSession(sessionId: "deleted-s"), isNull);
@@ -2235,7 +2441,12 @@ void main() {
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
 
       await expectLater(
-        repository.getSessionsForProject(projectId: worktree, start: null, limit: null),
+        repository.getSessionsForProject(
+          projectId: worktree,
+          start: null,
+          limit: null,
+          verifiedGithubLogin: null,
+        ),
         throwsA(isA<ProjectNotFoundException>()),
       );
     });
@@ -2493,6 +2704,8 @@ class _CountingSessionDao implements SessionDao {
       directory: "/project",
       worktreePath: null,
       branchName: null,
+      currentBranchName: null,
+      currentGithubRepositoryIdentity: null,
       isDedicated: false,
       archivedAt: null,
       baseBranch: null,

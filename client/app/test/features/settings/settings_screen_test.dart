@@ -14,6 +14,7 @@ import "package:sesori_mobile/core/support_links.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -35,11 +36,19 @@ class _MockNotificationRegistrationService extends Mock implements NotificationR
 
 class _MockAppearanceStore extends Mock implements AppearanceStore {}
 
+class _MockChatInputModeStore extends Mock implements ChatInputModeStore {}
+
 class _MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class _MockLegalRepository extends Mock implements LegalRepository {}
 
-Widget _app({required AppearanceCubit appearance}) {
+class _MockPullRequestRefreshSettingsRepository extends Mock implements PullRequestRefreshSettingsRepository {}
+
+const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com");
+const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
+const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
+
+Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputMode}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -63,8 +72,14 @@ Widget _app({required AppearanceCubit appearance}) {
     ],
   );
 
-  return BlocProvider<AppearanceCubit>.value(
-    value: appearance,
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<AppearanceCubit>.value(value: appearance),
+      if (chatInputMode != null)
+        BlocProvider<ChatInputModeCubit>.value(value: chatInputMode)
+      else
+        BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -90,11 +105,15 @@ void main() {
   late _MockLegalRepository legalRepository;
   late MockProductAnalyticsService productAnalyticsService;
   late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
+  late _MockPullRequestRefreshSettingsRepository pullRequestRefreshSettingsRepository;
+  late MockConnectionService connectionService;
+  late BehaviorSubject<ConnectionStatus> connectionStatuses;
 
   setUpAll(() {
     registerFallbackValue(Uri());
     registerFallbackValue(UrlLaunchMode.externalApp);
     registerFallbackValue(AppearanceMode.system);
+    registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(LegalDocument.terms);
     registerFallbackValue(ProductAnalyticsPreference.disabled);
   });
@@ -109,6 +128,12 @@ void main() {
     );
 
     await GetIt.instance.reset();
+    connectionStatuses = BehaviorSubject.seeded(_connected);
+    connectionService = MockConnectionService();
+    when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
+    when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
+    GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+
     authSession = _StubAuthSession();
     when(authSession.logoutCurrentDevice).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<AuthSession>(authSession);
@@ -149,10 +174,31 @@ void main() {
 
     legalRepository = _MockLegalRepository();
     GetIt.instance.registerSingleton<LegalRepository>(legalRepository);
+
+    pullRequestRefreshSettingsRepository = _MockPullRequestRefreshSettingsRepository();
+    when(pullRequestRefreshSettingsRepository.load).thenAnswer(
+      (_) async => const PullRequestRefreshSettingsLoadSupported(
+        response: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+      ),
+    );
+    when(
+      () => pullRequestRefreshSettingsRepository.update(
+        intervalSeconds: any(named: "intervalSeconds"),
+      ),
+    ).thenAnswer((invocation) async {
+      final intervalSeconds = invocation.namedArguments[#intervalSeconds] as int;
+      return PullRequestRefreshSettingsMutationCommitted(
+        response: PullRequestRefreshSettingsResponse(intervalSeconds: intervalSeconds),
+      );
+    });
+    GetIt.instance.registerSingleton<PullRequestRefreshSettingsService>(
+      PullRequestRefreshSettingsService(repository: pullRequestRefreshSettingsRepository),
+    );
   });
 
   tearDown(() async {
     await GetIt.instance.reset();
+    await connectionStatuses.close();
     await productAnalyticsStates.close();
   });
 
@@ -189,6 +235,179 @@ void main() {
     expect(find.text("harnesses-route"), findsOneWidget);
   });
 
+  testWidgets("shows the bridge-committed pull request refresh interval", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Bridge"), findsOneWidget);
+    expect(find.text("Pull request refresh"), findsOneWidget);
+    expect(find.text("30 seconds"), findsOneWidget);
+  });
+
+  testWidgets("shows a stable offline setting before a bridge connects", (tester) async {
+    _useTallSurface(tester);
+    connectionStatuses.add(const ConnectionStatus.disconnected());
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Connect to a bridge to configure this setting."), findsOneWidget);
+    expect(find.text("Offline"), findsOneWidget);
+    verifyNever(pullRequestRefreshSettingsRepository.load);
+  });
+
+  testWidgets("saves a custom interval and displays the committed response", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pumpAndSettle();
+
+    verify(
+      () => pullRequestRefreshSettingsRepository.update(intervalSeconds: 45),
+    ).called(1);
+    expect(find.text("45 seconds"), findsOneWidget);
+  });
+
+  testWidgets("invalid custom input stays in the sheet and dispatches nothing", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "15.5");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("pull_request_refresh_input")),
+        matching: find.text("Enter a whole number of seconds."),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
+    verifyNever(
+      () => pullRequestRefreshSettingsRepository.update(
+        intervalSeconds: any(named: "intervalSeconds"),
+      ),
+    );
+  });
+
+  testWidgets("reports when an editor becomes stale before save", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
+
+    connectionStatuses.add(const ConnectionStatus.connectionLost(config: _connectionConfig));
+    connectionStatuses.add(_connected);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("The bridge setting changed while you were editing. Try again."), findsOneWidget);
+    verifyNever(
+      () => pullRequestRefreshSettingsRepository.update(
+        intervalSeconds: any(named: "intervalSeconds"),
+      ),
+    );
+  });
+
+  testWidgets("a bridge rejection reports and enforces its authoritative bounds", (tester) async {
+    _useTallSurface(tester);
+    var updateCalls = 0;
+    when(
+      () => pullRequestRefreshSettingsRepository.update(
+        intervalSeconds: any(named: "intervalSeconds"),
+      ),
+    ).thenAnswer((_) async {
+      updateCalls++;
+      return PullRequestRefreshSettingsMutationRejected(
+        bounds: PullRequestRefreshSettingsBounds(
+          minimumIntervalSeconds: 20,
+          maximumIntervalSeconds: 1800,
+        ),
+      );
+    });
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "1900");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Enter a whole number from 20 to 1,800."), findsOneWidget);
+    expect(updateCalls, 1);
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "1900");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("pull_request_refresh_input")),
+        matching: find.text("Enter a whole number from 20 to 1,800."),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
+    expect(updateCalls, 1);
+  });
+
+  testWidgets("old bridges show the cadence setting as unsupported", (tester) async {
+    _useTallSurface(tester);
+    when(
+      pullRequestRefreshSettingsRepository.load,
+    ).thenAnswer((_) async => const PullRequestRefreshSettingsLoadUnsupported());
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Update the connected bridge to configure this setting."), findsOneWidget);
+    expect(find.text("Unavailable"), findsOneWidget);
+  });
+
+  testWidgets("a failed cadence load exposes one retry that refreshes it", (tester) async {
+    _useTallSurface(tester);
+    var loadCalls = 0;
+    when(pullRequestRefreshSettingsRepository.load).thenAnswer((_) async {
+      loadCalls++;
+      return loadCalls == 1
+          ? PullRequestRefreshSettingsLoadFailure(error: ApiError.generic())
+          : const PullRequestRefreshSettingsLoadSupported(
+              response: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+            );
+    });
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("pull_request_refresh_retry")), findsOneWidget);
+    expect(
+      tester.widget<IconButton>(find.byKey(const Key("pull_request_refresh_retry"))).tooltip,
+      "Retry pull request refresh setting",
+    );
+
+    await tester.tap(find.byKey(const Key("pull_request_refresh_retry")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("30 seconds"), findsOneWidget);
+    expect(loadCalls, 2);
+  });
+
   testWidgets("tapping a theme tile switches the appearance", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
@@ -198,6 +417,54 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(appearance.state, AppearanceMode.dark);
+  });
+
+  testWidgets("tapping a chat input tile switches and persists the mode", (tester) async {
+    _useTallSurface(tester);
+    final store = _MockChatInputModeStore();
+    when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
+    final chatInputMode = ChatInputModeCubit(store: store, initialMode: ChatInputMode.voiceFirst);
+
+    await tester.pumpWidget(_app(appearance: appearance, chatInputMode: chatInputMode));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Chat input"), findsOneWidget);
+    await tester.tap(find.text("Text first"));
+    await tester.pumpAndSettle();
+
+    expect(chatInputMode.state, ChatInputMode.textFirst);
+    verify(() => store.write(mode: ChatInputMode.textFirst)).called(1);
+  });
+
+  testWidgets("the chat input tiles announce as one mutually exclusive choice", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    final handle = tester.ensureSemantics();
+
+    // Voice-first is the app default, so it is the checked tile.
+    expect(
+      tester.getSemantics(find.text("Voice first")),
+      matchesSemantics(
+        label: "Voice first",
+        isInMutuallyExclusiveGroup: true,
+        hasCheckedState: true,
+        isChecked: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(
+      tester.getSemantics(find.text("Text first")),
+      matchesSemantics(
+        label: "Text first",
+        isInMutuallyExclusiveGroup: true,
+        hasCheckedState: true,
+        hasTapAction: true,
+      ),
+    );
+
+    handle.dispose();
   });
 
   testWidgets("the theme tiles announce as one mutually exclusive choice", (tester) async {

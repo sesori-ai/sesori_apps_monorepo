@@ -30,11 +30,20 @@ typedef RegisteredPluginMetadata = ({
   PluginResidencyPolicy residencyPolicy,
   PluginSessionOptionsScope sessionOptionsScope,
   Set<PluginControlCapability> managementCapabilities,
+  bool supportsPromptAttachments,
 });
 
 typedef PluginStartupPolicy = ({
   List<String> eligiblePluginIds,
   String? defaultPluginId,
+});
+
+/// One producer-coalesced install progress update, ready for wire mapping.
+typedef PluginInstallProgressUpdate = ({
+  String pluginId,
+  PluginInstallPhase phase,
+  int? percent,
+  String? message,
 });
 
 class PluginIdleTimerScheduler {
@@ -75,6 +84,9 @@ class PluginLifecycleService {
   BehaviorSubject<List<PluginMetadata>>? _metadataSubject;
   BehaviorSubject<List<String>>? _readyPluginIdsSubject;
   final StreamController<String> _managementSnapshotTokenController = StreamController<String>.broadcast(sync: true);
+  final StreamController<PluginInstallProgressUpdate> _installProgressController =
+      StreamController<PluginInstallProgressUpdate>.broadcast(sync: true);
+  final Map<String, DateTime> _lastInstallDownloadEmit = {};
   StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
   Future<void> _settingsMutationTail = Future<void>.value();
@@ -274,11 +286,18 @@ class PluginLifecycleService {
         PluginLifecycleDisableRequest() ||
         PluginLifecycleRestartRequest() => PluginControlCapability.lifecycle,
         PluginLifecycleRefreshRequest() => PluginControlCapability.setupRefresh,
+        PluginLifecycleInstallRequest() => PluginControlCapability.install,
       },
     );
     final active = _activePluginCommands[pluginId];
     if (active != null) {
-      if (active.request == request) return active.completer.future;
+      if (active.request == request) {
+        // A joined install returns the accepted snapshot immediately; the
+        // in-flight install keeps streaming progress and owns the slot.
+        return request is PluginLifecycleInstallRequest
+            ? Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation)
+            : active.completer.future;
+      }
       throw PluginManagementConflictException(
         PluginLifecycleConflict(
           pluginId: pluginId,
@@ -290,8 +309,142 @@ class PluginLifecycleService {
 
     final command = _ActivePluginCommand(request: request);
     _activePluginCommands[pluginId] = command;
+    if (request is PluginLifecycleInstallRequest) {
+      // Accepted-immediately: a download can run for minutes, far beyond any
+      // relay request budget. The HTTP response is the current snapshot;
+      // progress streams via SSE and the terminal outcome invalidates the
+      // management snapshot. The slot stays occupied until the install ends.
+      unawaited(_executeInstall(pluginId: pluginId, command: command));
+      return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
+    }
     unawaited(_executeCommand(pluginId: pluginId, command: command));
     return command.completer.future;
+  }
+
+  Stream<PluginInstallProgressUpdate> get installProgress => _installProgressController.stream;
+
+  Future<void> _executeInstall({
+    required String pluginId,
+    required _ActivePluginCommand command,
+  }) async {
+    try {
+      RuntimeProvisionProgress? terminal;
+      // Stop at the terminal event instead of draining the stream: the install
+      // service still sweeps superseded versions after yielding ProvisionReady,
+      // and the phone should not wait on that housekeeping.
+      await for (final event in _lifecycleRepository.installRuntime(pluginId: pluginId)) {
+        switch (event) {
+          case ProvisionDownloading(:final receivedBytes, :final totalBytes):
+            _emitInstallProgress(
+              pluginId: pluginId,
+              phase: PluginInstallPhase.downloading,
+              percent: (totalBytes != null && totalBytes > 0)
+                  ? (receivedBytes * 100 ~/ totalBytes).clamp(0, 100)
+                  : null,
+              message: null,
+            );
+          case ProvisionVerifying():
+            _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.verifying, percent: null, message: null);
+          case ProvisionExtracting():
+            _emitInstallProgress(
+              pluginId: pluginId,
+              phase: PluginInstallPhase.extracting,
+              percent: null,
+              message: null,
+            );
+          case ProvisionResolving() || ProvisionNotice():
+            break;
+          case ProvisionReady() || ProvisionFailed():
+            terminal = event;
+        }
+        // The install service still sweeps superseded versions after yielding
+        // its terminal event; the phone must not wait on that housekeeping.
+        if (terminal != null) break;
+      }
+      switch (terminal) {
+        case ProvisionReady():
+          _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.finalizing, percent: null, message: null);
+          await _enable(pluginId: pluginId, command: command);
+          // The binary is installed, but setup can still be blocked (most
+          // often authentication). Report completed only when the harness
+          // actually became usable; otherwise the phone would show success
+          // while the card stays blocked.
+          final setup = _requireSetupById()[pluginId];
+          _emitInstallProgress(
+            pluginId: pluginId,
+            phase: setup is PluginSetupReady ? PluginInstallPhase.completed : PluginInstallPhase.failed,
+            percent: null,
+            message: setup is PluginSetupReady
+                ? null
+                : "The runtime installed, but the harness still needs setup. Check its status.",
+          );
+        case ProvisionFailed():
+          // Descriptor failure text is not a trusted wire payload; the phone
+          // gets a fixed message and the detail stays in the bridge log.
+          Log.w('Plugin "$pluginId" managed runtime install failed: ${terminal.message}');
+          _emitInstallProgress(
+            pluginId: pluginId,
+            phase: PluginInstallPhase.failed,
+            percent: null,
+            message: "The runtime could not be installed. Check the bridge logs for details.",
+          );
+        case _:
+          _emitInstallProgress(
+            pluginId: pluginId,
+            phase: PluginInstallPhase.failed,
+            percent: null,
+            message: "The install ended without a result.",
+          );
+      }
+    } on PluginStartAbortedException {
+      // Shutdown aborted the install; the next attempt redoes it cleanly.
+      _emitInstallProgress(
+        pluginId: pluginId,
+        phase: PluginInstallPhase.failed,
+        percent: null,
+        message: "The install was interrupted by a bridge shutdown.",
+      );
+    } on Object catch (error, stackTrace) {
+      // The wire message stays generic; the local log keeps the diagnostic
+      // detail (post-install enable/start errors may contain paths).
+      Log.w('Plugin "$pluginId" managed runtime install failed', error, stackTrace);
+      _emitInstallProgress(
+        pluginId: pluginId,
+        phase: PluginInstallPhase.failed,
+        percent: null,
+        message: "The runtime installed state could not be completed. Check the bridge logs.",
+      );
+    } finally {
+      if (identical(_activePluginCommands[pluginId], command)) {
+        _activePluginCommands.remove(pluginId);
+      }
+      _publishManagementIfChanged();
+      // The install completer is never awaited (the HTTP response returned at
+      // acceptance; a joined duplicate also returns immediately), so it is
+      // deliberately left unsettled.
+    }
+  }
+
+  static const Duration _installPercentMinInterval = Duration(milliseconds: 250);
+
+  void _emitInstallProgress({
+    required String pluginId,
+    required PluginInstallPhase phase,
+    required int? percent,
+    required String? message,
+  }) {
+    if (_installProgressController.isClosed) return;
+    // Producer-side coalescing: repeated downloading-percent updates are
+    // rate-limited; phase changes and terminal events always emit.
+    if (phase == PluginInstallPhase.downloading) {
+      final now = DateTime.now();
+      final last = _lastInstallDownloadEmit[pluginId];
+      if (last != null && now.difference(last) < _installPercentMinInterval) return;
+      _lastInstallDownloadEmit[pluginId] = now;
+    } else {
+      _lastInstallDownloadEmit.remove(pluginId);
+    }
+    _installProgressController.add((pluginId: pluginId, phase: phase, percent: percent, message: message));
   }
 
   Future<PluginManagementResponse> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
@@ -324,21 +477,24 @@ class PluginLifecycleService {
     }
     return _withSettingsMutationTail(() async {
       _requireBridgeId();
-      final current = await _bridgeSettingsRepository.loadSettings();
-      final plugins = switch (request) {
-        PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
-          idleTimeoutMins: idleTimeoutMins,
-          clearOverridePluginIds: _pluginIdsSupporting(capability: PluginControlCapability.idleTimeout),
-        ),
-        PluginIdleTimeoutSetOverrideRequest(:final pluginId, :final idleTimeoutMins) =>
-          current.plugins.withPluginIdleTimeout(pluginId: pluginId, idleTimeoutMins: idleTimeoutMins),
-        PluginIdleTimeoutClearOverrideRequest(:final pluginId) => current.plugins.withPluginIdleTimeout(
-          pluginId: pluginId,
-          idleTimeoutMins: null,
-        ),
-      };
-      _requireBridgeId();
-      await _bridgeSettingsRepository.saveSettings(settings: current.copyWith(plugins: plugins));
+      await _bridgeSettingsRepository.mutateSettings(
+        mutation: ({required current}) {
+          final plugins = switch (request) {
+            PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
+              idleTimeoutMins: idleTimeoutMins,
+              clearOverridePluginIds: _pluginIdsSupporting(capability: PluginControlCapability.idleTimeout),
+            ),
+            PluginIdleTimeoutSetOverrideRequest(:final pluginId, :final idleTimeoutMins) =>
+              current.plugins.withPluginIdleTimeout(pluginId: pluginId, idleTimeoutMins: idleTimeoutMins),
+            PluginIdleTimeoutClearOverrideRequest(:final pluginId) => current.plugins.withPluginIdleTimeout(
+              pluginId: pluginId,
+              idleTimeoutMins: null,
+            ),
+          };
+          _requireBridgeId();
+          return current.copyWith(plugins: plugins);
+        },
+      );
       _syncIdleTimers(_lifecycleRepository.snapshot);
       _publishManagementIfChanged();
       return _managementSnapshotAfterMutation;
@@ -373,6 +529,8 @@ class PluginLifecycleService {
           await _restart(pluginId: pluginId, mode: mode, command: command);
         case PluginLifecycleRefreshRequest():
           await _refresh(pluginId: pluginId, command: command);
+        case PluginLifecycleInstallRequest():
+          throw StateError("install commands are dispatched through _executeInstall");
       }
     } on Object catch (error, stackTrace) {
       failure = error;
@@ -527,12 +685,12 @@ class PluginLifecycleService {
 
   Future<void> _persistPluginDisabled({required String pluginId, required bool disabled}) {
     return _withSettingsMutationTail(() async {
-      final current = await _bridgeSettingsRepository.loadSettings();
-      if (current.plugins.isDisabled(pluginId: pluginId) == disabled) return;
-      await _bridgeSettingsRepository.saveSettings(
-        settings: current.copyWith(
-          plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
-        ),
+      await _bridgeSettingsRepository.mutateSettings(
+        mutation: ({required current}) => current.plugins.isDisabled(pluginId: pluginId) == disabled
+            ? current
+            : current.copyWith(
+                plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
+              ),
       );
     });
   }
@@ -651,6 +809,7 @@ class PluginLifecycleService {
               isDefault: false,
               state: state,
               actionHint: _actionHint(state),
+              supportsPromptAttachments: plugin.supportsPromptAttachments,
             );
           }(),
     };
@@ -750,6 +909,7 @@ class PluginLifecycleService {
         PluginControlCapability.lifecycle => PluginManagementCapability.lifecycle,
         PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
         PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
+        PluginControlCapability.install => PluginManagementCapability.install,
       };
 
   Set<String> _pluginIdsSupporting({required PluginControlCapability capability}) {
@@ -905,6 +1065,12 @@ class PluginLifecycleService {
     }
     try {
       await _managementSnapshotTokenController.close();
+    } on Object catch (error, stackTrace) {
+      firstError ??= error;
+      firstStackTrace ??= stackTrace;
+    }
+    try {
+      await _installProgressController.close();
     } on Object catch (error, stackTrace) {
       firstError ??= error;
       firstStackTrace ??= stackTrace;

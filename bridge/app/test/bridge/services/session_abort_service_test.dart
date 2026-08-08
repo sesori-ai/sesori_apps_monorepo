@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/session_operation.d
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -11,13 +12,21 @@ void main() {
   group("SessionAbortService", () {
     late _FakeSessionRepository sessionRepository;
     late SessionAbortService service;
+    late SessionOperationDispatcher dispatcher;
 
     setUp(() {
       sessionRepository = _FakeSessionRepository();
-      service = SessionAbortService(sessionRepository: sessionRepository);
+      dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      service = SessionAbortService(
+        sessionRepository: sessionRepository,
+        dispatcher: dispatcher,
+      );
     });
 
-    tearDown(() => service.dispose());
+    tearDown(() async {
+      await dispatcher.dispose();
+      await service.dispose();
+    });
 
     test("emits aborted session only after repository abort succeeds", () async {
       final startedSessionIds = <String>[];
@@ -69,16 +78,41 @@ void main() {
       expect(emittedSessionIds, isEmpty);
       expect(failedSessionIds, equals(["session-1"]));
     });
+
+    test("emits abort failure when family resolution fails before execution", () async {
+      final startedSessionIds = <String>[];
+      final failedSessionIds = <String>[];
+      sessionRepository.resolutionError = StateError("family unavailable");
+      final startedSubscription = service.abortStartedSessions.listen(startedSessionIds.add);
+      final failedSubscription = service.abortFailedSessions.listen(failedSessionIds.add);
+      addTearDown(startedSubscription.cancel);
+      addTearDown(failedSubscription.cancel);
+
+      await expectLater(service.abortSession(sessionId: "missing"), throwsStateError);
+
+      expect(startedSessionIds, ["missing"]);
+      expect(failedSessionIds, ["missing"]);
+    });
   });
 }
 
 class _FakeSessionRepository implements SessionRepository {
   final Completer<void> abortCompleter = Completer<void>();
   Future<void> Function({required String sessionId})? onAbort;
+  Object? resolutionError;
 
   @override
   Future<void> abortSession({required String sessionId}) async {
     await onAbort?.call(sessionId: sessionId);
+  }
+
+  @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    if (resolutionError case final error?) throw error;
+    return (rootSessionId: sessionId, pluginId: "fake");
   }
 
   @override

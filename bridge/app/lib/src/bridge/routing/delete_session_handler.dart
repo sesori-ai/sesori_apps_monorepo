@@ -2,25 +2,21 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../services/session_lifecycle_service.dart";
-import "../services/session_mutation_dispatcher.dart";
+import "../services/session_cleanup_result.dart";
+import "../services/session_deletion_service.dart";
 import "request_handler.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
-  final SessionLifecycleService _sessionLifecycleService;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
+  final SessionDeletionService _sessionDeletionService;
 
-  DeleteSessionHandler({
-    required SessionLifecycleService sessionLifecycleService,
-    required SessionMutationDispatcher sessionMutationDispatcher,
-  }) : _sessionLifecycleService = sessionLifecycleService,
-       _sessionMutationDispatcher = sessionMutationDispatcher,
-       super(
-         HttpMethod.delete,
-         "/session/delete",
-         fromJson: DeleteSessionRequest.fromJson,
-       );
+  DeleteSessionHandler({required SessionDeletionService sessionDeletionService})
+    : _sessionDeletionService = sessionDeletionService,
+      super(
+        HttpMethod.delete,
+        "/session/delete",
+        fromJson: DeleteSessionRequest.fromJson,
+      );
 
   @override
   Future<SuccessEmptyResponse> handle(
@@ -35,7 +31,7 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final cleanupResult = await _sessionLifecycleService.cleanup(
+    final cleanupResult = await _sessionDeletionService.deleteSession(
       sessionId: sessionId,
       deleteWorktree: body.deleteWorktree,
       deleteBranch: body.deleteBranch,
@@ -51,11 +47,6 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
         body: jsonEncode(rejection.toJson()),
       );
     }
-
-    // Unconditional (not gated on a stored row): the repository delete also
-    // records the tombstone, and a rowless-but-enumerable backend session
-    // still needs one or it reappears from the next enumeration.
-    await _sessionMutationDispatcher.deleteSession(sessionId: sessionId);
 
     return const SuccessEmptyResponse();
   }

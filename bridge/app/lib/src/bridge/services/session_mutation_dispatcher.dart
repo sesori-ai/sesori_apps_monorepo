@@ -5,56 +5,73 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
+import "session_cleanup_result.dart";
+import "session_operation_dispatcher.dart";
 
-/// Serializes bridge-owned session mutations and backend propagation.
+/// Owns bridge-persisted session mutations and their backend propagation.
 class SessionMutationDispatcher {
   final SessionRepository _sessionRepository;
+  final SessionOperationDispatcher _sessionOperationDispatcher;
   final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
-  Future<void> _tail = Future<void>.value();
-  Future<void> _backendTail = Future<void>.value();
   bool _disposed = false;
+  Future<void>? _disposeFuture;
 
-  SessionMutationDispatcher({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
+  SessionMutationDispatcher({
+    required SessionRepository sessionRepository,
+    required SessionOperationDispatcher sessionOperationDispatcher,
+  }) : _sessionRepository = sessionRepository,
+       _sessionOperationDispatcher = sessionOperationDispatcher;
 
   Stream<Session> get deletedSessions => _deletedSessionsController.stream;
 
-  /// Completes after the authoritative DB title is stored. Backend propagation
-  /// continues on its own serialized tail so later DB writes stay immediate
-  /// while delete and dispose still cannot overtake backend synchronization.
   Future<Session> renameSession({required String sessionId, required String title}) {
-    return _serialized(() async {
-      final stored = await _sessionRepository.setSessionTitleIfStored(sessionId: sessionId, title: title);
-      final renamed = stored ? await _sessionRepository.getCatalogSession(sessionId: sessionId) : null;
-      if (renamed == null) {
-        throw PluginOperationException.notFound(
-          SessionOperation.renameSession.name,
-          message: "session $sessionId was not found",
-        );
-      }
-      unawaited(
-        _serializedBackend(() => _propagateTitle(sessionId: sessionId, title: title)),
-      );
-      return renamed;
-    });
-  }
-
-  Future<void> deleteSession({required String sessionId}) {
     if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
-    return _serialized(() async {
-      final deleted = await _serializedBackend(() => _sessionRepository.deleteSession(sessionId: sessionId));
-      _deletedSessionsController.add(deleted);
-    });
+    return _sessionOperationDispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.renameSession,
+      body: () => _renameSessionAlreadyReserved(sessionId: sessionId, title: title),
+    );
   }
 
-  Future<void> drain() => _serialized(() => _serializedBackend(() async {}));
+  /// Runs [cleanup] and the delete under the family lock, then hands the
+  /// deleted subtree to [onDeleted] while that lock is still held, so
+  /// store-spanning cleanup sees exactly what was removed.
+  Future<CleanupResult> deleteSession({
+    required String sessionId,
+    required Future<CleanupResult> Function() cleanup,
+    required Future<void> Function(List<String> deletedSessionIds) onDeleted,
+  }) {
+    if (_disposed) throw StateError("SessionMutationDispatcher is disposed");
+    return _sessionOperationDispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.deleteSession,
+      body: () async {
+        final cleanupResult = await cleanup();
+        if (cleanupResult is CleanupRejected) return cleanupResult;
+        final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
+        await onDeleted(deleted.sessionIds);
+        _deletedSessionsController.add(deleted.session);
+        return cleanupResult;
+      },
+    );
+  }
 
   Future<void> dispose() {
-    if (_disposed) return Future.value();
     _disposed = true;
-    return _serialized(() async {
-      await _serializedBackend(() async {});
-      await _deletedSessionsController.close();
-    });
+    return _disposeFuture ??= _deletedSessionsController.close();
+  }
+
+  Future<Session> _renameSessionAlreadyReserved({required String sessionId, required String title}) async {
+    final stored = await _sessionRepository.setSessionTitleIfStored(sessionId: sessionId, title: title);
+    final renamed = stored ? await _sessionRepository.getCatalogSession(sessionId: sessionId) : null;
+    if (renamed == null) {
+      throw PluginOperationException.notFound(
+        SessionOperation.renameSession.name,
+        message: "session $sessionId was not found",
+      );
+    }
+    await _propagateTitle(sessionId: sessionId, title: title);
+    return renamed;
   }
 
   Future<void> _propagateTitle({
@@ -66,33 +83,5 @@ class SessionMutationDispatcher {
     } catch (error, stackTrace) {
       Log.w("Could not propagate title for session $sessionId to its plugin", error, stackTrace);
     }
-  }
-
-  Future<T> _serialized<T>(Future<T> Function() operation) {
-    final previous = _tail;
-    final release = Completer<void>();
-    _tail = release.future;
-    return () async {
-      await previous;
-      try {
-        return await operation();
-      } finally {
-        release.complete();
-      }
-    }();
-  }
-
-  Future<T> _serializedBackend<T>(Future<T> Function() operation) {
-    final previous = _backendTail;
-    final release = Completer<void>();
-    _backendTail = release.future;
-    return () async {
-      await previous;
-      try {
-        return await operation();
-      } finally {
-        release.complete();
-      }
-    }();
   }
 }

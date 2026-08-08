@@ -1,0 +1,56 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
+import "chat_history_service.dart";
+import "session_cleanup_result.dart";
+import "session_lifecycle_service.dart";
+import "session_mutation_dispatcher.dart";
+
+/// Owns the complete cleanup-and-delete workflow for one session family.
+class SessionDeletionService {
+  final SessionLifecycleService _sessionLifecycleService;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
+  final ChatHistoryService _chatHistoryService;
+
+  SessionDeletionService({
+    required SessionLifecycleService sessionLifecycleService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
+    required ChatHistoryService chatHistoryService,
+  }) : _sessionLifecycleService = sessionLifecycleService,
+       _sessionMutationDispatcher = sessionMutationDispatcher,
+       _chatHistoryService = chatHistoryService;
+
+  Future<CleanupResult> deleteSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool deleteBranch,
+    required bool force,
+  }) {
+    // The two stores are coordinated here rather than inside
+    // SessionRepository, which owns no history dependency.
+    return _sessionMutationDispatcher.deleteSession(
+      sessionId: sessionId,
+      cleanup: () => _sessionLifecycleService.cleanupAlreadyReserved(
+        sessionId: sessionId,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+        force: force,
+      ),
+      onDeleted: _purgeHistory,
+    );
+  }
+
+  /// Best-effort: the session rows are already gone, so a failure here leaves
+  /// orphan history that the startup reconcile removes.
+  Future<void> _purgeHistory(List<String> sessionIds) async {
+    try {
+      await _chatHistoryService.purgeSessionsHistory(sessionIds: sessionIds);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Failed to purge chat history for ${sessionIds.length} deleted "
+        "session(s); retrying on next startup reconcile",
+        error,
+        stackTrace,
+      );
+    }
+  }
+}

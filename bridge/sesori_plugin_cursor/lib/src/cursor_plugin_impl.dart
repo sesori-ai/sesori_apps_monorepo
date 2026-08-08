@@ -10,6 +10,7 @@ import "cursor_binary.dart";
 import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
+import "repositories/cursor_generated_image_reader.dart";
 import "services/cursor_catalog_service.dart";
 import "services/cursor_session_cleanup_service.dart";
 import "services/cursor_session_options_service.dart";
@@ -48,6 +49,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     final commandTracker = AcpCommandTracker();
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
+    const contentMapper = AcpContentMapper();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
@@ -72,14 +74,23 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
       commandTracker: commandTracker,
       launchDirectory: cwd,
     );
-    return CursorPlugin._(
+    // The mapper needs the plugin's active-turn resolver and the plugin is
+    // constructed with the mapper; `plugin` is assigned immediately below,
+    // before any notification can invoke the closure.
+    late final CursorPlugin plugin;
+    final mapper = CursorEventMapper(
+      launchDirectory: cwd,
+      pluginId: pluginId,
+      configurationTracker: configurationTracker,
+      contentMapper: contentMapper,
+      generatedImageReader: const CursorGeneratedImageReader(),
+      activeSessionResolver: () => plugin.activeTurnSessionId,
+    );
+    return plugin = CursorPlugin._(
       launchSpec: launchSpec,
       launchDirectory: cwd,
-      mapper: CursorEventMapper(
-        launchDirectory: cwd,
-        pluginId: pluginId,
-        configurationTracker: configurationTracker,
-      ),
+      mapper: mapper,
+      contentMapper: contentMapper,
       processFactory: processFactory,
       catalogService: catalogService,
       catalogCommandListener: catalogCommandListener,
@@ -95,6 +106,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   CursorPlugin._({
     required super.launchSpec,
     required super.launchDirectory,
+    required super.contentMapper,
     required CursorEventMapper mapper,
     required CursorCatalogService catalogService,
     required AcpCommandListener catalogCommandListener,
@@ -139,6 +151,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     return CursorApprovalRegistry(
       client: client,
       emit: emitActivityEvent,
+      onFireAndForgetNotification: handleAgentNotification,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }

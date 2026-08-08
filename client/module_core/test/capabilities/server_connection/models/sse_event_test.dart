@@ -28,4 +28,13 @@ void main() {
     expect(event.sessionId, isNull);
     expect(event.data, isNot(isA<SesoriSessionEvent>()));
   });
+
+  test("commandCatalogUpdated is a global plugin event", () {
+    final event = SseEvent(
+      data: const SesoriSseEvent.commandCatalogUpdated(pluginId: "cursor"),
+    );
+
+    expect(event.sessionId, isNull);
+    expect(event.data, isNot(isA<SesoriSessionEvent>()));
+  });
 }

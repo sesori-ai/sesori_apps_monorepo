@@ -4,6 +4,8 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -32,9 +34,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(
-          sessionRepository: sessionRepository,
-        ),
+        sessionPromptService: _buildPromptService(sessionRepository),
       );
       for (final sessionId in ["s1", "s42", "s7", "s8", "s10", "s-update-fails", "s9"]) {
         await _insertStoredSession(
@@ -390,7 +390,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+        sessionPromptService: _buildPromptService(localRepository),
       );
 
       await expectLater(
@@ -442,7 +442,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+        sessionPromptService: _buildPromptService(localRepository),
       );
 
       await expectLater(
@@ -478,11 +478,10 @@ void main() {
         database: db,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final promptService = SessionPromptService(sessionRepository: throwingRepository);
+      final promptService = _buildPromptService(throwingRepository);
       final changes = <SessionPromptDefaultsChange>[];
       final subscription = promptService.promptDefaultsChanges.listen(changes.add);
       addTearDown(subscription.cancel);
-      addTearDown(promptService.dispose);
       final localHandler = SendPromptHandler(
         sessionPromptService: promptService,
       );
@@ -612,6 +611,18 @@ void main() {
       expect(plugin.lastSendCommandSessionId, isNull);
     });
   });
+}
+
+SessionPromptService _buildPromptService(SessionRepository repository) {
+  final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
+  final service = SessionPromptService(
+    sessionRepository: repository,
+    dispatcher: dispatcher,
+    archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+  );
+  addTearDown(dispatcher.dispose);
+  addTearDown(service.dispose);
+  return service;
 }
 
 Future<void> _insertStoredSession({

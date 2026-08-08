@@ -22,6 +22,7 @@ import "../../features/settings/notification_settings_screen.dart";
 import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
+import "../di/injection.dart";
 import "../extensions/build_context_x.dart";
 import "../widgets/sesori_logo.dart";
 import "imperative_pane_route.dart";
@@ -82,19 +83,27 @@ extension AppRouteToGoRoute on AppRouteDef {
   }
 
   Widget _buildScreen({required BuildContext context, required GoRouterState state}) {
-    final route = AppRoute.fromDef(
+    return AppRoute.fromDef(
       def: this,
       pathParams: state.pathParameters,
       queryParams: state.uri.queryParameters,
-    );
+    ).screen;
+  }
+}
 
-    return switch (route) {
+extension on AppRoute {
+  /// The screen this decoded route shows. Separate from [AppRouteToGoRoute._buildScreen]
+  /// so a page builder that already resolved its route — to choose a page type
+  /// from the route's own parameters — builds the screen from that same
+  /// instance instead of decoding the URL a second time.
+  Widget get screen {
+    return switch (this) {
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
-      AppRouteSettingsHarnesses() => const HarnessesSettingsScreen(),
+      AppRouteSettingsHarnesses(:final presentation) => HarnessesSettingsScreen(presentation: presentation),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
@@ -253,12 +262,14 @@ List<RouteBase> _buildAppRoutes({
                   _ => null,
                 };
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
+            final projectViewingService = getIt<ProjectViewingService>();
 
             return SessionListCubitProvider(
               key: ValueKey("session-list-cubit-$projectId"),
               projectId: projectId,
               initialSupportsDedicatedWorktrees: supportsDedicatedWorktrees,
               child: SessionSplitShell(
+                projectViewingService: projectViewingService,
                 list: _SessionListPane(
                   projectId: projectId,
                   projectName: projectName,
@@ -382,7 +393,28 @@ List<RouteBase> _buildAppRoutes({
         ),
         GoRoute(
           path: _settingsHarnessesRouteSegment,
-          builder: (context, state) => AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state),
+          // Harness settings are reached from two places, and the route says
+          // which one. From the settings list they are the next page of that
+          // stack, so they push in like every other settings page. From the
+          // new-session harness menu they are a detour from an unrelated
+          // screen, so they rise as a modal and close back onto it.
+          //
+          // The modal is a CupertinoPage for the same reason settings itself
+          // uses one: only the Cupertino route honours `fullscreenDialog` on
+          // Android too. The pushed page is the MaterialPage go_router would
+          // have built itself, so it keeps the platform's push transition.
+          pageBuilder: (context, state) {
+            final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
+            final child = route.screen;
+            return switch (route.presentation) {
+              HarnessSettingsPresentation.modal => CupertinoPage<void>(
+                key: state.pageKey,
+                fullscreenDialog: true,
+                child: child,
+              ),
+              HarnessSettingsPresentation.pushed => MaterialPage<void>(key: state.pageKey, child: child),
+            };
+          },
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,

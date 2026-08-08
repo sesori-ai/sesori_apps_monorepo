@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
@@ -26,6 +27,7 @@ import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
+import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
@@ -54,6 +56,38 @@ MockSessionViewingService stubbedSessionViewingService() {
   final mock = MockSessionViewingService();
   when(() => mock.setViewingSession(any())).thenReturn(null);
   when(() => mock.clearViewingSession(any())).thenReturn(null);
+  return mock;
+}
+
+class MockProjectViewingService extends Mock implements ProjectViewingService {}
+
+MockProjectViewingService stubbedProjectViewingService() {
+  final mock = MockProjectViewingService();
+  when(
+    () => mock.beginListClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(
+    () => mock.beginDetailClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(mock.beginWideListPaneClaim).thenAnswer((_) => ProjectViewPaneClaim());
+  when(
+    () => mock.markClaimReady(
+      claim: any(named: "claim"),
+      projectId: any(named: "projectId"),
+    ),
+  ).thenReturn(null);
+  when(() => mock.markClaimFailed(claim: any(named: "claim"))).thenReturn(null);
+  when(() => mock.releaseClaim(claim: any(named: "claim"))).thenReturn(null);
+  when(
+    () => mock.setWideListPaneVisible(
+      claim: any(named: "claim"),
+      isVisible: any(named: "isVisible"),
+    ),
+  ).thenReturn(null);
+  when(
+    () => mock.releaseWideListPaneClaim(claim: any(named: "claim")),
+  ).thenReturn(null);
+  when(mock.onDispose).thenAnswer((_) async {});
   return mock;
 }
 
@@ -150,6 +184,22 @@ ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftReposi
 class MockBridgeRepository extends Mock implements BridgeRepository {}
 
 class MockPluginRepository extends Mock implements PluginRepository {}
+
+MockPluginRepository stubbedPluginRepository({
+  List<PluginMetadata> plugins = const <PluginMetadata>[],
+}) {
+  final mock = MockPluginRepository();
+  when(mock.listPlugins).thenAnswer(
+    (_) async => ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-test",
+        supportsSessionOptions: true,
+        plugins: plugins,
+      ),
+    ),
+  );
+  return mock;
+}
 
 class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
 
@@ -301,7 +351,7 @@ void delegateSessionRepositoryToService({
     ),
   );
   when(
-    () => repository.sendMessage(
+    () => repository.sendMessage(attachments: const [],
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
       agent: any(named: "agent"),
@@ -310,7 +360,7 @@ void delegateSessionRepositoryToService({
       command: any(named: "command"),
     ),
   ).thenAnswer(
-    (invocation) => service.sendMessage(
+    (invocation) => service.sendMessage(attachments: const [],
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
       agent: invocation.namedArguments[#agent] as String?,
@@ -377,6 +427,8 @@ void registerAllFallbackValues() {
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+  registerFallbackValue(ProjectViewClaim());
+  registerFallbackValue(ProjectViewPaneClaim());
   registerFallbackValue(DateTime.utc(2026));
 }
 

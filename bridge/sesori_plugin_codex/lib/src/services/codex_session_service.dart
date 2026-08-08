@@ -2,14 +2,31 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../codex_config_reader.dart";
 import "../codex_metadata_repository.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_replay_tool_disposition.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
 import "../repositories/codex_model_repository.dart";
 import "../repositories/codex_skill_repository.dart";
 import "../repositories/codex_thread_repository.dart";
+import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
+
+final class CodexSessionMessageRead {
+  const CodexSessionMessageRead._({
+    required CodexPreparedMessageRead messages,
+    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
+    required CodexConfigDefaults config,
+  }) : _messages = messages,
+       _structuredToolStatusByCallId = structuredToolStatusByCallId,
+       _config = config;
+
+  final CodexPreparedMessageRead _messages;
+  final Map<String, PluginToolStatus> _structuredToolStatusByCallId;
+  final CodexConfigDefaults _config;
+}
 
 /// Layer-3 coordination for the migrated Codex session operations.
 class CodexSessionService {
@@ -26,15 +43,18 @@ class CodexSessionService {
     required CodexCatalogRepository catalogRepository,
     required CodexMessageRepository messageRepository,
     required CodexMetadataRepository metadataRepository,
+    required CodexToolOutcomeRepository toolOutcomeRepository,
     required String launchDirectory,
   }) : _catalogRepository = catalogRepository,
        _messageRepository = messageRepository,
        _metadataRepository = metadataRepository,
+       _toolOutcomeRepository = toolOutcomeRepository,
        _launchDirectory = launchDirectory;
 
   final CodexCatalogRepository _catalogRepository;
   final CodexMessageRepository _messageRepository;
   final CodexMetadataRepository _metadataRepository;
+  final CodexToolOutcomeRepository _toolOutcomeRepository;
   final String _launchDirectory;
 
   CodexThreadRepository? _threadRepository;
@@ -61,7 +81,8 @@ class CodexSessionService {
     _threadModels.clear();
   }
 
-  Future<List<PluginSession>> listAllSessions() => _catalogRepository.listAllSessions();
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
+      _catalogRepository.listAllSessions(knownDirectories: knownDirectories);
 
   Future<List<PluginSession>> getSessions({
     required String projectId,
@@ -360,21 +381,65 @@ class CodexSessionService {
     );
   }
 
-  void deleteSession({required String sessionId}) {
-    _catalogRepository.deleteSession(sessionId: sessionId);
+  Future<void> deleteSession({required String sessionId}) async {
+    final deleted = _catalogRepository.deleteSession(sessionId: sessionId);
+    if (deleted) {
+      try {
+        await _toolOutcomeRepository.deleteSession(sessionId: sessionId);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "[codex] failed to delete persisted tool outcomes for $sessionId",
+          error,
+          stackTrace,
+        );
+      }
+    }
     _loadedThreads.remove(sessionId);
     _threadModels.remove(sessionId);
   }
 
-  Future<List<PluginMessageWithParts>> getSessionMessages({
+  Future<CodexSessionMessageRead?> prepareSessionMessageRead({
     required String sessionId,
   }) async {
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
-    if (path == null) return const [];
-    return _messageRepository.readMessages(
-      rolloutPath: path,
-      sessionId: sessionId,
+    if (path == null) return null;
+    Map<String, PluginToolStatus> structuredToolStatusByCallId;
+    try {
+      structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
+        sessionId: sessionId,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[codex] failed to read persisted tool outcomes for $sessionId",
+        error,
+        stackTrace,
+      );
+      structuredToolStatusByCallId = const {};
+    }
+    return CodexSessionMessageRead._(
+      messages: _messageRepository.prepareMessageRead(
+        rolloutPath: path,
+        sessionId: sessionId,
+      ),
+      structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
+    );
+  }
+
+  List<PluginMessageWithParts> getSessionMessages({
+    required String sessionId,
+    required CodexSessionMessageRead read,
+    required PluginSessionStatus sessionStatus,
+  }) {
+    return _messageRepository.projectMessages(
+      read: read._messages,
+      sessionId: sessionId,
+      replayToolDisposition: switch (sessionStatus) {
+        PluginSessionStatusIdle() => CodexReplayToolDisposition.terminalize,
+        PluginSessionStatusBusy() || PluginSessionStatusRetry() => CodexReplayToolDisposition.preserveRunning,
+      },
+      structuredToolStatusByCallId: read._structuredToolStatusByCallId,
+      config: read._config,
     );
   }
 

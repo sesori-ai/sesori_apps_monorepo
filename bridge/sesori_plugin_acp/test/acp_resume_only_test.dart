@@ -24,11 +24,13 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(

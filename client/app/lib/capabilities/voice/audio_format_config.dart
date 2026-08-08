@@ -17,7 +17,9 @@ class AudioFormatConfig {
   final AudioEncoder encoder;
   final String mimeType;
   final String fileExtension;
+  final int bitRate;
   final int sampleRate;
+  final int numChannels;
 
   AudioFormatConfig()
     : this.forPlatform(
@@ -30,5 +32,7 @@ class AudioFormatConfig {
     : encoder = isWeb ? AudioEncoder.wav : AudioEncoder.aacLc,
       mimeType = isWeb ? "audio/wav" : "audio/mp4",
       fileExtension = isWeb ? "wav" : "m4a",
-      sampleRate = isAndroid ? 16000 : 44100;
+      bitRate = 128000,
+      sampleRate = isAndroid ? 16000 : 44100,
+      numChannels = 1;
 }

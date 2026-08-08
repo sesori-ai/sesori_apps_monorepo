@@ -38,6 +38,12 @@ typedef SessionProjectPathRow = ({
   String? worktreePath,
 });
 
+typedef SessionPullRequestScopeUpdate = ({
+  String sessionId,
+  String? currentBranchName,
+  String? currentGithubRepositoryIdentity,
+});
+
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
@@ -127,6 +133,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     if (project == null) {
       throw StateError("Cannot insert session for unknown project $projectId");
     }
+    final existing = await getSession(sessionId: sessionId);
+    final preservePullRequestScope = existing?.projectId == projectId && existing?.branchName == branchName;
     final directory = worktreePath ?? project.path;
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -163,6 +171,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
           // created_at or the unseen timestamps that a placeholder may have set.
           worktreePath: Value(worktreePath),
           branchName: Value(branchName),
+          currentBranchName: preservePullRequestScope ? const Value.absent() : const Value(null),
+          currentGithubRepositoryIdentity: preservePullRequestScope ? const Value.absent() : const Value(null),
           isDedicated: Value(isDedicated),
           baseBranch: Value(baseBranch),
           baseCommit: Value(baseCommit),
@@ -189,6 +199,26 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<SessionDto?> getSession({required String sessionId}) async {
     return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
+  }
+
+  Future<void> updatePullRequestScopes({
+    required List<SessionPullRequestScopeUpdate> updates,
+  }) async {
+    if (updates.isEmpty) {
+      return;
+    }
+    await batch((batch) {
+      for (final update in updates) {
+        batch.update(
+          sessionTable,
+          SessionTableCompanion(
+            currentBranchName: Value(update.currentBranchName),
+            currentGithubRepositoryIdentity: Value(update.currentGithubRepositoryIdentity),
+          ),
+          where: (table) => table.sessionId.equals(update.sessionId),
+        );
+      }
+    });
   }
 
   /// Upserts the supplied rows without applying merge or import policy.
@@ -390,20 +420,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         archivedAt: Value(archivedAt),
-        updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(projectionUpdatedAt),
-      ),
-    );
-  }
-
-  Future<void> clearArchived({
-    required String sessionId,
-    required int updatedAt,
-    required int projectionUpdatedAt,
-  }) async {
-    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
-      SessionTableCompanion(
-        archivedAt: const Value(null),
         updatedAt: Value(updatedAt),
         projectionUpdatedAt: Value(projectionUpdatedAt),
       ),

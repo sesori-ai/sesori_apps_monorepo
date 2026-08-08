@@ -6,9 +6,11 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
+import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -22,10 +24,12 @@ void main() {
     late Directory codexHome;
     late _FakeAppServer fake;
     late CodexPlugin plugin;
+    late CodexToolOutcomeRepository toolOutcomeRepository;
 
     setUp(() {
       codexHome = Directory.systemTemp.createTempSync("codex-home-write-");
       fake = _FakeAppServer();
+      toolOutcomeRepository = createMemoryCodexToolOutcomeRepository();
       const serverUrl = "ws://127.0.0.1:0";
       plugin = createInjectedCodexPlugin(
         serverUrl: serverUrl,
@@ -36,6 +40,7 @@ void main() {
           channelFactory: (_) => fake.channel,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: toolOutcomeRepository,
       );
     });
 
@@ -121,6 +126,107 @@ void main() {
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
       expect(turnStartParams.containsKey("collaborationMode"), isFalse);
       expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("createSession forwards inline image data to Codex turn input", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-image",
+              "cwd": "/work/sample",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000005,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-image"},
+          },
+        ),
+      ]);
+
+      await plugin.createSession(
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [
+          PluginPromptPart.text(text: "describe this"),
+          PluginPromptPart.fileData(
+            mime: "image/png",
+            base64: "AQID",
+            filename: "shot.png",
+          ),
+        ],
+        userVisibleText: "describe this",
+        variant: null,
+        agent: "Default",
+        model: null,
+      );
+
+      final input = fake.sentParamsFor("turn/start")["input"] as List;
+      expect(input[1], {
+        "type": "image",
+        "url": "data:image/png;base64,AQID",
+      });
+    });
+
+    test("sendPrompt rejects malformed and oversized inline image data", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.initialize();
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "t-invalid-image"},
+          },
+        ),
+        for (var index = 0; index < 3; index++)
+          const _Response(
+            result: {
+              "turn": {"id": "u-invalid-image"},
+            },
+          ),
+      ]);
+
+      final invalidParts = <PluginPromptPart>[
+        const PluginPromptPart.fileData(
+          mime: "data:image/png",
+          base64: "AQID",
+          filename: "bad-mime.png",
+        ),
+        const PluginPromptPart.fileData(
+          mime: "image/png",
+          base64: "not base64",
+          filename: "bad-data.png",
+        ),
+        const PluginPromptPart.fileData(
+          mime: "image/png",
+          base64: "",
+          filename: "empty.png",
+        ),
+        PluginPromptPart.fileData(
+          mime: "image/png",
+          base64: base64Encode(Uint8List(shared.maxInlineMessageAttachmentBytes + 1)),
+          filename: "too-large.png",
+        ),
+      ];
+
+      for (final part in invalidParts) {
+        await expectLater(
+          plugin.sendPrompt(
+            sessionId: "t-invalid-image",
+            parts: [part],
+            variant: null,
+            agent: null,
+            model: null,
+          ),
+          throwsA(isA<Exception>()),
+        );
+      }
+
+      expect(fake.sentMethods, ["initialize", "thread/resume"]);
     });
 
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
@@ -386,6 +492,17 @@ void main() {
       );
 
       expect(stopwatch.elapsed, lessThan(const Duration(seconds: 3)));
+    });
+
+    test("archiveSession keeps Codex rollout history available", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(result: {}),
+      ]);
+
+      await plugin.archiveSession(sessionId: "t-archive");
+
+      expect(fake.sentMethods, isEmpty);
     });
 
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
@@ -1165,6 +1282,12 @@ void main() {
       rollout.writeAsStringSync(record.substring(0, split), mode: FileMode.append);
 
       final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      final failedTool = plugin.events.firstWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part.messageID == "call-error" &&
+            event.part.state?.status == PluginToolStatus.error,
+      );
       fake.pushNotification("error", {
         "threadId": sessionId,
         "error": {"message": "turn failed"},
@@ -1174,9 +1297,19 @@ void main() {
 
       rollout.writeAsStringSync("${record.substring(split)}\n", mode: FileMode.append);
       await idle.timeout(const Duration(seconds: 1));
+      await failedTool.timeout(const Duration(seconds: 1));
       expect(
         events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.messageID),
         contains("call-error"),
+      );
+      expect(
+        events
+            .whereType<BridgeSseMessagePartUpdated>()
+            .lastWhere((event) => event.part.messageID == "call-error")
+            .part
+            .state
+            ?.status,
+        PluginToolStatus.error,
       );
     });
 
@@ -1306,6 +1439,7 @@ void main() {
           callId: "call-immediate",
           name: "exec_command",
           arguments: '{"cmd":"printf \'LIVE-EVENT-TEST immediate-complete\\\\n\'"}',
+          turnId: "u-live",
         ),
         _toolOutput(
           callId: "call-immediate",
@@ -1318,6 +1452,7 @@ void main() {
         _customToolCall(
           id: "ct-exec-1",
           callId: "call-exec-1",
+          turnId: "u-live",
           input:
               'const r = await tools.exec_command({cmd:"sleep 5"}); '
               "text(r.output);",
@@ -1334,6 +1469,7 @@ void main() {
           callId: "call-wait-1",
           name: "wait",
           arguments: '{"cell_id":"1","yield_time_ms":10000,"max_tokens":20000}',
+          turnId: "u-live",
         ),
         _toolOutput(
           callId: "call-wait-1",
@@ -1344,22 +1480,25 @@ void main() {
         _customToolCall(
           id: "ct-exec-2",
           callId: "call-exec-2",
+          turnId: "u-live",
           input:
               'const r = await tools.exec_command({cmd:"sleep 2"}); '
               "text(r.output);",
         ),
-        _customToolOutput(
+        _customToolOutputWithImage(
           callId: "call-exec-2",
           output:
               "Script running with cell ID 2\n"
               "Wall time: 0.01 seconds\n"
               "Output:\n",
+          imageUrl: "data:image/png;base64,AA==",
         ),
         _toolCall(
           id: "fc-wait-2",
           callId: "call-wait-2",
           name: "wait",
           arguments: '{"cell_id":"2","yield_time_ms":10000,"max_tokens":20000}',
+          turnId: "u-live",
         ),
         _toolOutput(
           callId: "call-wait-2",
@@ -1395,6 +1534,50 @@ void main() {
             output: "LIVE-EVENT-TEST recovery-complete\n",
           ),
         ),
+        _customToolCall(
+          id: "ct-image-wrapper",
+          callId: "call-image-wrapper",
+          turnId: "u-live",
+          input: "await tools.image_gen__generate({prompt: 'private'});",
+        ),
+        _customToolOutput(
+          callId: "call-image-wrapper",
+          output: "internal image wrapper output",
+        ),
+        {
+          "timestamp": "2026-07-23T08:00:03Z",
+          "type": "response_item",
+          "payload": {
+            "type": "image_generation_call",
+            "id": "image-before-start",
+            "status": "completed",
+            "revised_prompt": "private prompt",
+            "result": "AA==",
+          },
+        },
+        {
+          "timestamp": "2026-07-23T08:00:03Z",
+          "type": "response_item",
+          "payload": {
+            "type": "image_generation_call",
+            "id": "image-live",
+            "status": "completed",
+            "revised_prompt": "private prompt",
+            "result": "AA==",
+          },
+        },
+        {
+          "timestamp": "2026-07-23T08:00:04Z",
+          "type": "event_msg",
+          "payload": {
+            "type": "image_generation_end",
+            "call_id": "image-live",
+            "status": "completed",
+            "revised_prompt": "private prompt",
+            "result": "AA==",
+            "saved_path": "/private/generated/final.png",
+          },
+        },
       ];
       final encodedRecords = records.map(jsonEncode).toList();
       final finalRecord = encodedRecords.removeLast();
@@ -1404,6 +1587,42 @@ void main() {
         "${finalRecord.substring(0, finalRecordSplit)}",
         mode: FileMode.append,
       );
+
+      fake.pushNotification("item/started", {
+        "threadId": sessionId,
+        "turnId": "u-live",
+        "item": {
+          "type": "imageGeneration",
+          "id": "image-before-start",
+          "status": "in_progress",
+          "revisedPrompt": null,
+          "result": "",
+          "savedPath": null,
+        },
+      });
+      fake
+        ..pushNotification("item/started", {
+          "threadId": sessionId,
+          "turnId": "u-live",
+          "item": {
+            "type": "commandExecution",
+            "id": "exec-immediate",
+            "command": "/bin/zsh -lc \"printf 'LIVE-EVENT-TEST immediate-complete\\n'\"",
+            "status": "inProgress",
+          },
+        })
+        ..pushNotification("item/completed", {
+          "threadId": sessionId,
+          "turnId": "u-live",
+          "item": {
+            "type": "commandExecution",
+            "id": "exec-immediate",
+            "command": "/bin/zsh -lc \"printf 'LIVE-EVENT-TEST immediate-complete\\n'\"",
+            "aggregatedOutput": "LIVE-EVENT-TEST immediate-complete\n",
+            "exitCode": 1,
+            "status": "failed",
+          },
+        });
 
       fake.pushNotification("turn/completed", {
         "threadId": sessionId,
@@ -1430,12 +1649,22 @@ void main() {
       expect(finalLiveParts.keys, {
         "call-immediate",
         "call-exec-1",
-        "call-wait-1",
         "call-exec-2",
-        "call-wait-2",
         "call-failed",
         "call-recovery",
+        "image-before-start",
+        "image-live",
       });
+      expect(finalLiveParts, isNot(contains("exec-immediate")));
+      expect(finalLiveParts, isNot(contains("call-image-wrapper")));
+      expect(
+        finalLiveParts["call-immediate"]?.state?.status,
+        PluginToolStatus.error,
+      );
+      expect(
+        await toolOutcomeRepository.readStatuses(sessionId: sessionId),
+        {"call-immediate": PluginToolStatus.error},
+      );
       expect(history, hasLength(finalLiveParts.length));
       for (final message in history) {
         final historicalPart = message.parts.single;
@@ -1447,7 +1676,14 @@ void main() {
         expect(livePart?.state?.status, historicalPart.state?.status);
         expect(livePart?.state?.output, historicalPart.state?.output);
         expect(livePart?.state?.error, historicalPart.state?.error);
+        expect(livePart?.state?.attachments, historicalPart.state?.attachments);
       }
+      expect(finalLiveParts["call-exec-2"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(finalLiveParts["image-live"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(
+        (finalLiveParts["image-live"]?.state?.attachments.single as PluginMessageAttachmentInlineImage).filename,
+        "final.png",
+      );
       expect(
         finalLiveParts["call-immediate"]?.state?.title,
         r"printf 'LIVE-EVENT-TEST immediate-complete\n'",
@@ -1800,6 +2036,7 @@ Map<String, Object?> _toolCall({
   required String callId,
   required String name,
   required String arguments,
+  String? turnId,
 }) => {
   "timestamp": "2026-07-23T08:00:01Z",
   "type": "response_item",
@@ -1809,6 +2046,10 @@ Map<String, Object?> _toolCall({
     "call_id": callId,
     "name": name,
     "arguments": arguments,
+    if (turnId != null)
+      "internal_chat_message_metadata_passthrough": {
+        "turn_id": turnId,
+      },
   },
 };
 
@@ -1816,6 +2057,7 @@ Map<String, Object?> _customToolCall({
   required String id,
   required String callId,
   required String input,
+  String? turnId,
 }) => {
   "timestamp": "2026-07-23T08:00:01Z",
   "type": "response_item",
@@ -1825,6 +2067,10 @@ Map<String, Object?> _customToolCall({
     "call_id": callId,
     "name": "exec",
     "input": input,
+    if (turnId != null)
+      "internal_chat_message_metadata_passthrough": {
+        "turn_id": turnId,
+      },
   },
 };
 
@@ -1852,6 +2098,23 @@ Map<String, Object?> _customToolOutput({
     "call_id": callId,
     "output": [
       {"type": "input_text", "text": output},
+    ],
+  },
+};
+
+Map<String, Object?> _customToolOutputWithImage({
+  required String callId,
+  required String output,
+  required String imageUrl,
+}) => {
+  "timestamp": "2026-07-23T08:00:02Z",
+  "type": "response_item",
+  "payload": {
+    "type": "custom_tool_call_output",
+    "call_id": callId,
+    "output": [
+      {"type": "input_text", "text": output},
+      {"type": "input_image", "image_url": imageUrl},
     ],
   },
 };

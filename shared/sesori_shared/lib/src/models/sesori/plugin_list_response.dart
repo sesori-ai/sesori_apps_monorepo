@@ -18,6 +18,12 @@ sealed class PluginMetadata with _$PluginMetadata {
     required bool isDefault,
     @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required PluginLifecycleState state,
     required String? actionHint,
+    // COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
+    // per-plugin capability. Unknown plugins stay disabled; the client
+    // repository narrowly restores released legacy OpenCode support from the
+    // enclosing response's legacy capability signal. Remove @Default and that
+    // mapping once those bridges are unsupported.
+    @Default(false) bool supportsPromptAttachments,
   }) = _PluginMetadata;
 
   factory PluginMetadata.fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);

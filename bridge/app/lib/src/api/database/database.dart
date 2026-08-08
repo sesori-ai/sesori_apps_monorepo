@@ -6,6 +6,7 @@ import "package:path/path.dart" as path;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../data_directory_hardening.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
@@ -40,7 +41,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -260,6 +261,27 @@ class AppDatabase extends _$AppDatabase {
       from11To12: (m, schema) async {
         await m.createTable(schema.sessionOptionsCacheTable);
       },
+      from12To13: (m, schema) async {
+        await m.addColumn(schema.projectsTable, schema.projectsTable.prCacheGithubLogin);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.currentBranchName);
+        await m.addColumn(
+          schema.sessionsTable,
+          schema.sessionsTable.currentGithubRepositoryIdentity,
+        );
+
+        // Pull-request rows are an ephemeral cache. The previous table has no
+        // repository or authenticated-login evidence that can be backfilled
+        // honestly, so rebuild it empty with the scoped key instead of exposing
+        // ambiguous rows under the new contract.
+        await customStatement("DROP TABLE pull_requests_table");
+        await m.createTable(schema.pullRequestsTable);
+        await m.createIndex(schema.idxPullRequestsScope);
+
+        final violations = await m.database.customSelect("PRAGMA foreign_key_check").get();
+        if (violations.isNotEmpty) {
+          throw StateError("Migration v12->v13 left foreign key violations: ${violations.map((row) => row.data)}");
+        }
+      },
     ),
     beforeOpen: (details) async {
       await customStatement("PRAGMA foreign_keys = ON");
@@ -267,28 +289,10 @@ class AppDatabase extends _$AppDatabase {
   );
 
   static AppDatabase create({required String dataDirectory}) {
-    final dbDir = Directory(dataDirectory);
-    if (!dbDir.existsSync()) {
-      dbDir.createSync(recursive: true);
-    }
-    if (!Platform.isWindows) {
-      _setUnixMode(targetPath: dbDir.path, mode: "700");
-    }
-    final dbFile = File(path.join(dbDir.path, "sesori.db"));
-    if (!Platform.isWindows) {
-      if (!dbFile.existsSync()) {
-        dbFile.createSync();
-      }
-      _setUnixMode(targetPath: dbFile.path, mode: "600");
-    }
-    return openFile(file: dbFile);
-  }
-
-  static void _setUnixMode({required String targetPath, required String mode}) {
-    final result = Process.runSync("chmod", [mode, targetPath]);
-    if (result.exitCode != 0) {
-      throw FileSystemException("Failed to set mode $mode", targetPath);
-    }
+    final directory = createHardenedDirectory(directoryPath: dataDirectory);
+    return openFile(
+      file: createHardenedFile(filePath: path.join(directory.path, "sesori.db")),
+    );
   }
 
   static AppDatabase openFile({required File file}) {

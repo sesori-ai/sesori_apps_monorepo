@@ -6,6 +6,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// (accept/reject), both blocking requests that the bridge surfaces as
 /// questions.
 ///
+/// Cursor's non-blocking extension *requests* (`cursor/generate_image`,
+/// `cursor/update_todos` — sent via `extMethod` even though cursor-agent
+/// treats them as fire-and-forget) are only declared in
+/// [fireAndForgetExtensionMethods]; the base registry acks and re-injects them
+/// into the notification pipeline, where the Cursor event mapper handles both
+/// wire shapes.
+///
 /// NOTE: Cursor's exact reply payload shapes are not formally documented; the
 /// builders below are best-effort and should be confirmed against a real
 /// `cursor-agent acp` trace during end-to-end verification.
@@ -13,6 +20,7 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
   CursorApprovalRegistry({
     required AcpStdioClient client,
     required super.emit,
+    required super.onFireAndForgetNotification,
     super.idGenerator,
     super.activeSessionResolver,
   }) : super(
@@ -21,6 +29,12 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
          respondError: (id, code, message) => client
              .respondToServerRequestWithError(id: id, code: code, message: message),
        );
+
+  @override
+  Set<String> get fireAndForgetExtensionMethods => const {
+    "cursor/generate_image",
+    "cursor/update_todos",
+  };
 
   @override
   bool handleExtensionRequest(AcpServerRequest request) {
@@ -32,7 +46,7 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
         _handleCreatePlan(request);
         return true;
     }
-    return false;
+    return super.handleExtensionRequest(request);
   }
 
   void _handleAskQuestion(AcpServerRequest request) {

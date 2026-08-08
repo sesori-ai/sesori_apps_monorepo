@@ -46,8 +46,7 @@ Session enrichSharedSession({
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
-  // The stored row carries the branch created with a dedicated worktree.
-  var result = session.copyWith(branchName: session.branchName ?? storedSession?.branchName);
+  var result = session.copyWith(branchName: storedSession?.currentBranchName);
 
   if (storedSession != null) {
     final currentTime = session.time;

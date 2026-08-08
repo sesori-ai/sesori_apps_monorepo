@@ -45,6 +45,32 @@ void main() {
       expect(status.current, isA<PluginStopped>());
     });
 
+    test("interruptActiveWork delegates to the api when the runtime is bridge-owned", () async {
+      final owned = plugin();
+
+      await owned.interruptActiveWork(budget: const Duration(seconds: 1));
+
+      expect(api.interruptCount, equals(1));
+    });
+
+    test("interruptActiveWork skips the api when the server is not bridge-owned", () async {
+      status = PluginStatusController(initial: const PluginReady());
+      final attached = OpenCodeBridgePlugin(
+        api: api,
+        reporter: OpenCodeRuntimeStatusReporter(status: status, clock: const _ImmediateClock()),
+        monitor: monitor,
+        service: service,
+        ownedRecord: null,
+        port: 51000,
+        serverUrl: "http://127.0.0.1:51000",
+      );
+
+      final interrupted = await attached.interruptActiveWork(budget: const Duration(seconds: 1));
+
+      expect(interrupted, isEmpty);
+      expect(api.interruptCount, equals(0));
+    });
+
     test("a disarm failure is the primary teardown error when later steps also fail", () async {
       monitor.disarmError = StateError("disarm failed");
       api.disposeError = StateError("dispose failed");
@@ -88,7 +114,14 @@ class _ImmediateClock implements ServerClock {
 
 class _FakeApi implements OpenCodeManagedApi {
   int disposeCount = 0;
+  int interruptCount = 0;
   Object? disposeError;
+
+  @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) async {
+    interruptCount += 1;
+    return const <String>{};
+  }
 
   @override
   PluginWorkState get currentWorkState => PluginWorkState.idle;

@@ -27,17 +27,26 @@ class PregoMenuLabel extends PregoMenuEntry {
 }
 
 /// A tappable menu row with a [title], optional [subtitle], an optional
-/// [leadingIcon], and an optional selected check mark. Tapping runs [onTap] and
-/// dismisses the menu.
+/// leading glyph or widget, and an optional selected check mark. Tapping runs
+/// [onTap] and dismisses the menu.
 class PregoMenuItem extends PregoMenuEntry {
   const PregoMenuItem({
     required this.title,
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
+    this.key,
     this.leadingIcon,
+    this.leading,
+    this.isEnabled = true,
     this.isDestructive = false,
-  });
+  }) : assert(
+         leadingIcon == null || leading == null,
+         "A row leads with either a glyph or a custom widget, not both.",
+       );
+
+  /// Identifies the rendered row, on whichever path builds it.
+  final Key? key;
 
   final String title;
   final String? subtitle;
@@ -47,6 +56,16 @@ class PregoMenuItem extends PregoMenuEntry {
   /// Optional glyph shown before the title. Rendered identically on the glass
   /// and flat paths (muted to the secondary text colour).
   final IconData? leadingIcon;
+
+  /// Optional caller-built mark shown before the title, for rows led by
+  /// artwork a glyph cannot express (a brand logo). Occupies the same slot as
+  /// [leadingIcon]; the caller sizes it.
+  final Widget? leading;
+
+  /// Whether the row can be picked. A disabled row keeps its place in the menu
+  /// — so the reader still learns the option exists — but dims and ignores
+  /// taps. Pair it with a [subtitle] saying why.
+  final bool isEnabled;
 
   /// Marks an action that destroys something the user cannot get back (delete,
   /// not archive). Tints the title and glyph with the error colour on both
@@ -281,25 +300,32 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
           height: _glassLabelHeight(context),
         );
       case PregoMenuItem(
+        :final key,
         :final title,
         :final subtitle,
         :final isSelected,
         :final onTap,
         :final leadingIcon,
+        :final leading,
+        :final isEnabled,
         :final isDestructive,
       ):
         return GlassMenuItem(
+          key: key,
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
+          enabled: isEnabled,
           height: _glassItemHeight(context, hasSubtitle: subtitle != null),
           // GlassMenuItem would paint a destructive row in Cupertino's system
           // red; the explicit style below keeps it on the design system's error
           // token instead. The flag still drives its press feedback.
           isDestructive: isDestructive,
-          icon: leadingIcon == null
-              ? null
-              : Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
+          icon:
+              leading ??
+              (leadingIcon == null
+                  ? null
+                  : Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive))),
           titleStyle: _titleStyle(prego, isDestructive: isDestructive),
           subtitleStyle: _subtitleStyle(prego),
           trailing: isSelected ? _selectedCheck(prego) : null,
@@ -331,8 +357,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       reverseMotion: const Spring.snappy(),
       // No alignment: the panel positions itself from the trigger rect so it can
       // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
-      triggerBuilder: (context, showModal) =>
-          widget.triggerBuilder(context, () => unawaited(showModal())),
+      triggerBuilder: (context, showModal) => widget.triggerBuilder(context, () => unawaited(showModal())),
       builder: (context, triggerRect) {
         final panel = _flatPanel(context, triggerRect: triggerRect);
         if (spotlight == null) return panel;
@@ -394,18 +419,24 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
           child: Text(text.toUpperCase(), style: _labelStyle(prego)),
         );
       case PregoMenuItem(
+        :final key,
         :final title,
         :final subtitle,
         :final isSelected,
         :final onTap,
         :final leadingIcon,
+        :final leading,
+        :final isEnabled,
         :final isDestructive,
       ):
         return _FlatMenuTile(
+          key: key,
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
           leadingIcon: leadingIcon,
+          leading: leading,
+          isEnabled: isEnabled,
           isDestructive: isDestructive,
           onTap: () {
             close();
@@ -430,63 +461,79 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
 /// to match its glass sibling (same 44px min height, title/subtitle/check layout).
 class _FlatMenuTile extends StatelessWidget {
   const _FlatMenuTile({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
+    required this.isEnabled,
     required this.isDestructive,
     this.leadingIcon,
+    this.leading,
   });
 
   final String title;
   final String? subtitle;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool isEnabled;
   final bool isDestructive;
   final IconData? leadingIcon;
+  final Widget? leading;
+
+  /// How far a row that cannot be picked is dimmed — GlassMenuItem's own
+  /// disabled opacity, so both paths read the same.
+  static const double _disabledOpacity = 0.4;
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
     final leadingIcon = this.leadingIcon;
-    return InkWell(
-      onTap: onTap,
-      // The enclosing Material clips the menu to its configured radius. A
-      // second radius here would round the shared edges between adjacent rows.
-      borderRadius: BorderRadius.zero,
-      child: ConstrainedBox(
-        // Matches GlassMenuItem's 44px iOS/Material touch target.
-        constraints: const BoxConstraints(minHeight: 44),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              if (leadingIcon != null) ...[
-                Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _titleStyle(prego, isDestructive: isDestructive),
-                    ),
-                    if (subtitle != null && subtitle.isNotEmpty)
-                      Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _subtitleStyle(prego)),
-                  ],
+    final leading = this.leading;
+    return Opacity(
+      opacity: isEnabled ? 1 : _disabledOpacity,
+      child: InkWell(
+        onTap: isEnabled ? onTap : null,
+        // The enclosing Material clips the menu to its configured radius. A
+        // second radius here would round the shared edges between adjacent rows.
+        borderRadius: BorderRadius.zero,
+        child: ConstrainedBox(
+          // Matches Figma design of 54px touch target.
+          constraints: const BoxConstraints(minHeight: 54),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                if (leading != null) ...[
+                  leading,
+                  const SizedBox(width: 12),
+                ] else if (leadingIcon != null) ...[
+                  Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _titleStyle(prego, isDestructive: isDestructive),
+                      ),
+                      if (subtitle != null && subtitle.isNotEmpty)
+                        Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _subtitleStyle(prego)),
+                    ],
+                  ),
                 ),
-              ),
-              if (isSelected) ...[
-                const SizedBox(width: 8),
-                _selectedCheck(prego),
+                if (isSelected) ...[
+                  const SizedBox(width: 8),
+                  _selectedCheck(prego),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -532,8 +579,7 @@ double _glassItemHeight(BuildContext context, {required bool hasSubtitle}) {
 /// Height of a [PregoMenuLabel]'s glass row. [GlassMenuLabel] pins its box to
 /// the declared height, so it must clear the label's line box — at a large text
 /// scale that outgrows the 30px the package would otherwise assume.
-double _glassLabelHeight(BuildContext context) =>
-    math.max(30, _lineHeight(context, style: _labelStyle(context.prego)));
+double _glassLabelHeight(BuildContext context) => math.max(30, _lineHeight(context, style: _labelStyle(context.prego)));
 
 /// Height of a [PregoMenuDivider]'s glass row — [GlassMenuDivider]'s own
 /// default, named so the height budget can account for it.
@@ -572,10 +618,9 @@ double _lineHeight(BuildContext context, {required TextStyle style}) {
 TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
-TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive}) =>
-    prego.textTheme.textSm.medium.copyWith(
-      color: isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textPrimary,
-    );
+TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive}) => prego.textTheme.textSm.medium.copyWith(
+  color: isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textPrimary,
+);
 
 Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
     isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textSecondary;
@@ -583,5 +628,4 @@ Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
 TextStyle _subtitleStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);
 
-Widget _selectedCheck(PregoDesignSystem prego) =>
-    Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid);
+Widget _selectedCheck(PregoDesignSystem prego) => Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid);

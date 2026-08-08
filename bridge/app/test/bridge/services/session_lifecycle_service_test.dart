@@ -8,9 +8,13 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -23,12 +27,14 @@ void main() {
     late AppDatabase db;
     late _FakeWorktreeService worktreeService;
     late _FakeSessionRepository sessionRepository;
+    late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
 
     setUp(() {
       db = createTestDatabase();
       worktreeService = _FakeWorktreeService(database: db);
       sessionRepository = _FakeSessionRepository();
+      operationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionLifecycleService(
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
@@ -36,10 +42,13 @@ void main() {
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
         ),
+        sessionOperationDispatcher: operationDispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
       );
     });
 
     tearDown(() async {
+      await operationDispatcher.dispose();
       await db.close();
     });
 
@@ -63,7 +72,7 @@ void main() {
 
     test("missing root binding is an explicit not-found failure", () async {
       await expectLater(
-        service.cleanup(
+        service.cleanupAlreadyReserved(
           sessionId: "missing",
           deleteWorktree: true,
           deleteBranch: true,
@@ -423,6 +432,7 @@ void main() {
   group("SessionLifecycleService archive binding", () {
     late AppDatabase db;
     late _FakeBridgePlugin plugin;
+    late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
 
     setUp(() async {
@@ -436,6 +446,7 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       service = SessionLifecycleService(
         worktreeService: _FakeWorktreeService(database: db),
         sessionRepository: repository,
@@ -443,6 +454,8 @@ void main() {
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
         ),
+        sessionOperationDispatcher: operationDispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
       );
       await db.sessionDao.insertSession(
         sessionId: "root-session",
@@ -460,7 +473,10 @@ void main() {
       );
     });
 
-    tearDown(() => db.close());
+    tearDown(() async {
+      await operationDispatcher.dispose();
+      await db.close();
+    });
 
     test("archive routes plugin I/O through the stored backend id", () async {
       final update = await service.updateArchiveStatus(
@@ -478,7 +494,7 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
     });
 
-    test("unarchive uses the existing root binding and returns its stable id", () async {
+    test("archived: false on an archived session is refused and keeps it archived", () async {
       await db.sessionDao.setArchived(
         sessionId: "root-session",
         archivedAt: 2,
@@ -486,6 +502,29 @@ void main() {
         projectionUpdatedAt: 2,
       );
 
+      await expectLater(
+        service.updateArchiveStatus(
+          sessionId: "root-session",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        throwsA(
+          isA<SessionArchivedReadOnlyException>().having(
+            (e) => e.rejection,
+            "rejection",
+            const SessionArchivedRejection(
+              sessionId: "root-session",
+              reason: SessionArchivedReason.archivedReadOnly,
+            ),
+          ),
+        ),
+      );
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, 2);
+    });
+
+    test("archived: false on a non-archived session stays an unchanged no-op", () async {
       final update = await service.updateArchiveStatus(
         sessionId: "root-session",
         archived: false,
@@ -495,8 +534,7 @@ void main() {
       );
 
       expect(update.session.id, "root-session");
-      expect(update.changed, isTrue);
-      expect(plugin.lastArchivedSessionId, isNull);
+      expect(update.changed, isFalse);
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
     });
   });
@@ -526,7 +564,7 @@ Future<CleanupResult> _cleanup({
     baseBranch: null,
     baseCommit: null,
   );
-  return service.cleanup(
+  return service.cleanupAlreadyReserved(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
     deleteBranch: deleteBranch,
@@ -540,10 +578,16 @@ class _FakeSessionRepository implements SessionRepository {
   int hasSharingCallCount = 0;
 
   @override
-  Future<Session> enrichSession({required Session session}) async => session;
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => session;
 
   @override
-  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => sessions;
 
   @override
   Future<bool> hasOtherActiveSessionsSharing({
@@ -573,6 +617,21 @@ class _FakeSessionRepository implements SessionRepository {
     }
     await ensurePluginRoutable(pluginId: session.pluginId, operation: operation);
     return session;
+  }
+
+  @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final session = storedSession;
+    if (session == null) {
+      throw PluginOperationException.notFound(
+        operation.name,
+        message: "session $sessionId was not found",
+      );
+    }
+    return (rootSessionId: session.id, pluginId: session.pluginId);
   }
 
   @override

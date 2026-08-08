@@ -2,8 +2,14 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
+import "package:codex_plugin/src/api/models/codex_image_bearing_item_dto.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
+import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart";
+import "package:codex_plugin/src/api/parsers/codex_file_change_parser.dart";
+import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
+import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -16,11 +22,23 @@ import "package:test/test.dart";
 void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
-    const rolloutToolMapper = CodexRolloutToolMapper();
+    const imageAttachmentMapper = CodexImageAttachmentMapper();
+    const imageBearingItemParser = CodexImageBearingItemParser();
+    const rolloutToolMapper = CodexRolloutToolMapper(
+      imageAttachmentMapper: imageAttachmentMapper,
+    );
     final mapper = CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
+      imageAttachmentMapper: imageAttachmentMapper,
+      imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
+    );
+    final rolloutLifecycle = _ToolLifecycleHarness(
+      eventMapper: mapper,
+      toolTracker: CodexToolLifecycleTracker(
+        rolloutToolMapper: rolloutToolMapper,
+      ),
     );
     final appServerApi = CodexAppServerApi(
       client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
@@ -168,6 +186,8 @@ void main() {
       final scopedMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
@@ -186,6 +206,8 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       );
       mapThreadStarted(
@@ -231,6 +253,8 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       );
       mapThreadStarted(
@@ -401,6 +425,8 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
@@ -439,6 +465,8 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
@@ -599,12 +627,15 @@ void main() {
         },
       });
 
-      final running = mapper.mapRolloutLine(threadId: "t-raw", line: call);
-      final completed = mapper.mapRolloutLine(
+      final running = rolloutLifecycle.mapRolloutLine(
+        threadId: "t-raw",
+        line: call,
+      );
+      final completed = rolloutLifecycle.mapRolloutLine(
         threadId: "t-raw",
         line: output,
       );
-      final lateItem = mapper.map(
+      final lateItem = rolloutLifecycle.map(
         const CodexServerNotification(
           method: "item/completed",
           params: {
@@ -632,7 +663,160 @@ void main() {
       expect(latePart.state?.status, rawPart.state?.status);
       expect(latePart.state?.output, rawPart.state?.output);
       expect(latePart.state?.error, rawPart.state?.error);
-      mapper.clearRolloutTurn(threadId: "t-raw");
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-raw");
+    });
+
+    test("projected wait results preserve earlier output", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-long",
+          "name": "exec",
+          "input": "await tools.exec_command({cmd: 'sleep 30'});",
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-long",
+          },
+        },
+      });
+      final running = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call_output",
+          "call_id": "call-long",
+          "output": "Script running with cell ID 7\nOutput:\nearly output\n",
+        },
+      });
+      final wait = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-wait",
+          "name": "wait",
+          "arguments": '{"cell_id":"7"}',
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-long",
+          },
+        },
+      });
+      final completedWait = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-wait",
+          "output": "Script completed with exit code 0\nFinal output:\nlate output\n",
+        },
+      });
+
+      rolloutLifecycle
+        ..mapRolloutLine(
+          threadId: "t-long",
+          line: call,
+        )
+        ..mapRolloutLine(
+          threadId: "t-long",
+          line: running,
+        )
+        ..mapRolloutLine(
+          threadId: "t-long",
+          line: wait,
+        );
+      final events = rolloutLifecycle.mapRolloutLine(
+        threadId: "t-long",
+        line: completedWait,
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.state?.status, PluginToolStatus.completed);
+      expect(part.state?.output, contains("early output"));
+      expect(part.state?.output, contains("late output"));
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-long");
+    });
+
+    test("turn-aborted rollout evidence closes running tools", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-aborted",
+          "name": "exec",
+          "input": "await tools.exec_command({cmd: 'sleep 30'});",
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-aborted",
+          },
+        },
+      });
+      final running = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call_output",
+          "call_id": "call-aborted",
+          "output": "Script running with cell ID 7\nOutput:\nearly output\n",
+        },
+      });
+      final aborted = CodexRolloutLineDto.fromJson({
+        "type": "event_msg",
+        "payload": {
+          "type": "turn_aborted",
+          "turn_id": "turn-aborted",
+        },
+      });
+
+      rolloutLifecycle
+        ..mapRolloutLine(
+          threadId: "t-aborted",
+          line: call,
+        )
+        ..mapRolloutLine(
+          threadId: "t-aborted",
+          line: running,
+        );
+      final events = rolloutLifecycle.mapRolloutLine(
+        threadId: "t-aborted",
+        line: aborted,
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.messageID, "call-aborted");
+      expect(part.state?.status, PluginToolStatus.error);
+      expect(part.state?.output, contains("early output"));
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-aborted");
+    });
+
+    test("rollout terminal evidence completes an unresolved command", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-app-server",
+          "name": "exec_command",
+          "arguments": '{"cmd":"sleep 30"}',
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-app-server",
+          },
+        },
+      });
+      final completed = CodexRolloutLineDto.fromJson({
+        "type": "event_msg",
+        "payload": {
+          "type": "task_complete",
+          "turn_id": "turn-app-server",
+        },
+      });
+
+      rolloutLifecycle.mapRolloutLine(
+        threadId: "t-app-server",
+        line: call,
+      );
+
+      final events = rolloutLifecycle.mapRolloutLine(
+        threadId: "t-app-server",
+        line: completed,
+      );
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.messageID, "call-app-server");
+      expect(part.state?.status, PluginToolStatus.completed);
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-app-server");
     });
 
     test("a structured non-zero exit overrides an unclassified raw result", () {
@@ -653,11 +837,17 @@ void main() {
           "output": "opaque executor output",
         },
       });
-      mapper
-        ..mapRolloutLine(threadId: "t-structured", line: call)
-        ..mapRolloutLine(threadId: "t-structured", line: output);
+      rolloutLifecycle
+        ..mapRolloutLine(
+          threadId: "t-structured",
+          line: call,
+        )
+        ..mapRolloutLine(
+          threadId: "t-structured",
+          line: output,
+        );
 
-      final events = mapper.map(
+      final events = rolloutLifecycle.map(
         const CodexServerNotification(
           method: "item/completed",
           params: {
@@ -678,7 +868,87 @@ void main() {
       expect(part.state?.status, PluginToolStatus.error);
       expect(part.state?.output, "opaque executor output");
       expect(part.state?.error, "opaque executor output");
-      mapper.clearRolloutTurn(threadId: "t-structured");
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-structured");
+    });
+
+    test("app-server completion overrides cached running rollout evidence", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-completed",
+          "name": "exec_command",
+          "arguments": '{"cmd":"sleep 1"}',
+        },
+      });
+      final running = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-completed",
+          "output": "Script running with cell ID 7\nOutput:\n",
+        },
+      });
+      rolloutLifecycle
+        ..mapRolloutLine(
+          threadId: "t-completed",
+          line: call,
+        )
+        ..mapRolloutLine(
+          threadId: "t-completed",
+          line: running,
+        );
+
+      final events = rolloutLifecycle.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-completed",
+            "item": {
+              "type": "commandExecution",
+              "id": "call-completed",
+              "exitCode": 0,
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.state?.status, PluginToolStatus.completed);
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-completed");
+    });
+
+    test("clearing connection state removes metadata-less rollout tools", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-stale",
+          "name": "exec",
+          "input": "await tools.exec_command({cmd: 'sleep 30'});",
+        },
+      });
+      rolloutLifecycle.mapRolloutLine(
+        threadId: "t-stale",
+        line: call,
+      );
+
+      rolloutLifecycle.clearRolloutState();
+
+      expect(
+        rolloutLifecycle.mapRolloutLine(
+          threadId: "t-stale",
+          line: CodexRolloutLineDto.fromJson({
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-later",
+            },
+          }),
+        ),
+        isEmpty,
+      );
     });
 
     test("raw fallback titles clip non-BMP text by Unicode code point", () {
@@ -693,7 +963,7 @@ void main() {
         },
       });
 
-      final events = mapper.mapRolloutLine(
+      final events = rolloutLifecycle.mapRolloutLine(
         threadId: "t-unicode",
         line: line,
       );
@@ -701,29 +971,173 @@ void main() {
       final title = (events[1] as BridgeSseMessagePartUpdated).part.state?.title;
       expect(title, "$prefix😀");
       expect(title?.runes, hasLength(120));
-      mapper.clearRolloutTurn(threadId: "t-unicode");
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-unicode");
     });
 
-    test("image-generation rollout items remain unknown and emit no events", () {
+    test("image-generation rollout and app-server items converge on one stable part", () {
       final line = CodexRolloutLineDto.fromJson({
         "type": "response_item",
         "payload": {
           "type": "image_generation_call",
           "id": "image-1",
           "status": "completed",
-          "result": "not-retained-in-step-4",
+          "result": "AA==",
         },
       });
 
-      expect(
-        line,
-        isA<CodexRolloutResponseItemLineDto>().having(
-          (line) => line.payload,
-          "payload",
-          isA<CodexRolloutUnknownResponseItemDto>(),
+      final rollout = rolloutLifecycle.mapRolloutLine(
+        threadId: "t-image",
+        line: line,
+      );
+      final appServer = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-image",
+            "item": {
+              "type": "imageGeneration",
+              "id": "image-1",
+              "status": "completed",
+              "result": "AA==",
+              "savedPath": null,
+            },
+          },
         ),
       );
-      expect(mapper.mapRolloutLine(threadId: "t-image", line: line), isEmpty);
+
+      final rolloutPart = (rollout[1] as BridgeSseMessagePartUpdated).part;
+      final appServerPart = (appServer[1] as BridgeSseMessagePartUpdated).part;
+      expect(line, isA<CodexRolloutResponseItemLineDto>());
+      expect(rolloutPart.id, "image-1-tool");
+      expect(rolloutPart.messageID, "image-1");
+      expect(rolloutPart.id, appServerPart.id);
+      expect(rolloutPart.messageID, appServerPart.messageID);
+      expect(rolloutPart.tool, appServerPart.tool);
+      expect(rolloutPart.state?.status, appServerPart.state?.status);
+      expect(rolloutPart.state?.attachments, appServerPart.state?.attachments);
+
+      final idless = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "image_generation_call",
+          "status": "completed",
+          "result": "AA==",
+        },
+      });
+      expect(
+        rolloutLifecycle.mapRolloutLine(
+          threadId: "t-image",
+          line: idless,
+        ),
+        isEmpty,
+      );
+    });
+
+    test("durable image-generation event preserves its saved filename", () {
+      final line = CodexRolloutLineDto.fromJson({
+        "timestamp": "2026-08-03T12:00:00Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "image_generation_end",
+          "call_id": "image-durable",
+          "status": "future-terminal-status",
+          "revised_prompt": "private prompt",
+          "result": "AA==",
+          "saved_path": "/private/generated/final.png",
+        },
+      });
+
+      final events = rolloutLifecycle.mapRolloutLine(
+        threadId: "t-image-durable",
+        line: line,
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.messageID, "image-durable");
+      expect(part.tool, "image_generation");
+      expect(part.state?.status, PluginToolStatus.completed);
+      final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(attachment.base64, "AA==");
+      expect(attachment.filename, "final.png");
+
+      final laterAppServerEvents = rolloutLifecycle.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-image-durable",
+            "item": {
+              "type": "imageGeneration",
+              "id": "image-durable",
+              "status": "completed",
+              "revisedPrompt": null,
+              "result": "AA==",
+              "savedPath": null,
+            },
+          },
+        ),
+      );
+      final laterPart = (laterAppServerEvents[1] as BridgeSseMessagePartUpdated).part;
+      final laterAttachment = laterPart.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(laterAttachment.filename, "final.png");
+    });
+
+    test("later app-server updates preserve richer rollout attachments", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "id": "tool-record",
+          "call_id": "tool-live",
+          "name": "exec",
+          "input": 'tools.exec_command({"cmd":"capture"})',
+        },
+      });
+      final result = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call_output",
+          "call_id": "tool-live",
+          "output": [
+            {"type": "input_text", "text": "persisted output"},
+            {"type": "input_image", "image_url": "data:image/png;base64,AA=="},
+          ],
+        },
+      });
+      rolloutLifecycle.mapRolloutLine(
+        threadId: "t-canonical-image",
+        line: call,
+      );
+      final rolloutEvents = rolloutLifecycle.mapRolloutLine(
+        threadId: "t-canonical-image",
+        line: result,
+      );
+
+      final appServerEvents = rolloutLifecycle.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-canonical-image",
+            "item": {
+              "type": "dynamicToolCall",
+              "id": "tool-live",
+              "tool": "exec",
+              "arguments": null,
+              "status": "completed",
+              "contentItems": [
+                {"type": "inputText", "text": "smaller app-server output"},
+              ],
+            },
+          },
+        ),
+      );
+
+      final rolloutPart = (rolloutEvents[1] as BridgeSseMessagePartUpdated).part;
+      final appServerPart = (appServerEvents[1] as BridgeSseMessagePartUpdated).part;
+      expect(appServerPart.id, rolloutPart.id);
+      expect(appServerPart.state?.output, "persisted output");
+      expect(appServerPart.state?.attachments, rolloutPart.state?.attachments);
+      expect(appServerPart.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      rolloutLifecycle.clearRolloutTurn(threadId: "t-canonical-image");
     });
 
     test("commandExecution (started/inProgress) → running tool part", () {
@@ -775,6 +1189,57 @@ void main() {
       expect(part.state?.output, contains("+b"));
     });
 
+    test("imageGeneration upserts one stable tool part across its lifecycle", () {
+      List<BridgeSseEvent> mapImage({
+        required String method,
+        required String status,
+        required String result,
+      }) {
+        return mapper.map(
+          CodexServerNotification(
+            method: method,
+            params: {
+              "threadId": "t-1",
+              "item": {
+                "type": "imageGeneration",
+                "id": "i-image",
+                "status": status,
+                "revisedPrompt": "private prompt",
+                "result": result,
+                "savedPath": "/private/output.png",
+              },
+            },
+          ),
+        );
+      }
+
+      final started = mapImage(method: "item/started", status: "in_progress", result: "");
+      final completed = mapImage(method: "item/completed", status: "completed", result: "AA==");
+      final failed = mapImage(method: "item/completed", status: "failed", result: "AA==");
+
+      final runningPart = (started[1] as BridgeSseMessagePartUpdated).part;
+      final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
+      final failedPart = (failed[1] as BridgeSseMessagePartUpdated).part;
+      expect(started, hasLength(2));
+      expect(runningPart.id, "i-image-tool");
+      expect(runningPart.messageID, "i-image");
+      expect(runningPart.tool, "image_generation");
+      expect(runningPart.state?.status, PluginToolStatus.running);
+      expect(runningPart.state?.title, isNull);
+      expect(runningPart.state?.attachments, isEmpty);
+      expect(completedPart.id, runningPart.id);
+      expect(completedPart.state?.status, PluginToolStatus.completed);
+      final image = completedPart.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(image.mime, "image/png");
+      expect(image.base64, "AA==");
+      expect(image.filename, "output.png");
+      expect(completedPart.toString(), isNot(contains("private prompt")));
+      expect(completedPart.toString(), isNot(contains("/private/")));
+      expect(failedPart.id, runningPart.id);
+      expect(failedPart.state?.status, PluginToolStatus.error);
+      expect(failedPart.state?.attachments, isEmpty);
+    });
+
     test("mcpToolCall (failed) → error tool part", () {
       final events = mapper.map(
         const CodexServerNotification(
@@ -787,6 +1252,17 @@ void main() {
               "server": "playwright",
               "tool": "click",
               "status": "failed",
+              "result": {
+                "content": [
+                  {"type": "text", "text": "before "},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "text", "text": "after"},
+                ],
+              },
               "error": {"message": "element not found"},
             },
           },
@@ -797,7 +1273,10 @@ void main() {
       expect(part.tool, "click");
       expect(part.state?.status, PluginToolStatus.error);
       expect(part.state?.title, "playwright/click");
+      expect(part.state?.output, "before after");
       expect(part.state?.error, "element not found");
+      expect(part.state?.attachments, hasLength(4));
+      expect(part.state?.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
     });
 
     test("dynamicToolCall streams a running tool and its completed output", () {
@@ -853,6 +1332,9 @@ void main() {
               "status": "completed",
               "contentItems": [
                 {"type": "inputText", "text": "wait completed"},
+                {"type": "inputImage", "imageUrl": "data:image/png;base64,AA=="},
+                {"type": "inputImage", "imageUrl": "https://example.com/private/remote.png?token=secret"},
+                {"type": "inputAudio", "audioUrl": "data:audio/wav;base64,AA=="},
               ],
               "durationMs": 2000,
               "success": true,
@@ -866,13 +1348,39 @@ void main() {
       expect(completedPart.id, runningPart.id);
       expect(completedPart.state?.status, PluginToolStatus.completed);
       expect(completedPart.state?.output, "wait completed");
+      expect(completedPart.state?.attachments, hasLength(2));
+      expect(completedPart.state?.attachments[0], isA<PluginMessageAttachmentInlineImage>());
+      final remote = completedPart.state!.attachments[1] as PluginMessageAttachmentMetadata;
+      expect(remote.mime, "application/octet-stream");
+      expect(remote.filename, "remote.png");
+    });
+
+    test("imageView local paths remain unsupported", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "item": {
+              "type": "imageView",
+              "id": "i-view",
+              "path": "/private/output.png",
+            },
+          },
+        ),
+      );
+
+      expect(events, isEmpty);
     });
 
     test("dynamicToolCall falls back for malformed or empty tool names", () {
-      for (final rawTool in <Object?>[42, ""]) {
+      for (final (rawTool, method, status, expectedStatus) in <(Object?, String, Object?, PluginToolStatus)>[
+        (42, "item/started", "future_status", PluginToolStatus.running),
+        ("", "item/completed", null, PluginToolStatus.completed),
+      ]) {
         final events = mapper.map(
           CodexServerNotification(
-            method: "item/started",
+            method: method,
             params: {
               "threadId": "t-1",
               "item": {
@@ -880,7 +1388,7 @@ void main() {
                 "id": "i-fallback",
                 "tool": rawTool,
                 "arguments": const <String, Object?>{},
-                "status": "inProgress",
+                "status": status,
               },
             },
           ),
@@ -888,7 +1396,7 @@ void main() {
 
         final part = (events[1] as BridgeSseMessagePartUpdated).part;
         expect(part.tool, "tool");
-        expect(part.state?.status, PluginToolStatus.running);
+        expect(part.state?.status, expectedStatus);
       }
     });
 
@@ -999,6 +1507,65 @@ void main() {
       expect(() => parseAsSesori(agent[0]), returnsNormally);
     });
   });
+}
+
+class _ToolLifecycleHarness {
+  _ToolLifecycleHarness({
+    required CodexEventMapper eventMapper,
+    required CodexToolLifecycleTracker toolTracker,
+  }) : _eventMapper = eventMapper,
+       _toolTracker = toolTracker;
+
+  final CodexEventMapper _eventMapper;
+  final CodexToolLifecycleTracker _toolTracker;
+
+  List<BridgeSseEvent> mapRolloutLine({
+    required String threadId,
+    required CodexRolloutLineDto line,
+  }) {
+    final events = <BridgeSseEvent>[];
+    for (final tool in _toolTracker.observeRolloutLine(threadId: threadId, line: line)) {
+      events.addAll(
+        _eventMapper.mapProjectedTool(threadId: threadId, tool: tool),
+      );
+    }
+    return events;
+  }
+
+  List<BridgeSseEvent> map(CodexServerNotification notification) {
+    final correlatableItem =
+        const CodexCommandExecutionParser().parse(
+          notification: notification,
+        ) ??
+        const CodexFileChangeParser().parse(notification: notification);
+    final item = notification.params["item"];
+    final image = item is Map
+        ? const CodexImageBearingItemParser().parse(
+            item: Map<String, dynamic>.from(item),
+          )
+        : null;
+    final tool = correlatableItem == null
+        ? _toolTracker.observeUncorrelatedAppServerItem(
+            notification: notification,
+            imageGeneration: image is CodexImageGenerationItemDto ? image : null,
+          )
+        : _toolTracker.observeCorrelatableAppServerItem(
+            event: correlatableItem,
+          );
+    final threadId = correlatableItem?.threadId ?? notification.params["threadId"];
+    if (tool == null || threadId is! String) {
+      return _eventMapper.map(notification);
+    }
+    return _eventMapper.mapProjectedTool(threadId: threadId, tool: tool);
+  }
+
+  void clearRolloutTurn({required String threadId}) {
+    _toolTracker.clearThread(threadId: threadId);
+  }
+
+  void clearRolloutState() {
+    _toolTracker.clear();
+  }
 }
 
 String _captureWarnings(void Function() action) {

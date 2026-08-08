@@ -39,30 +39,28 @@ class _ThrowingGetHandler extends GetRequestHandler<Object> {
 }
 
 void main() {
-  group("HttpMethod.matches", () {
-    test("each method matches its own name (uppercase)", () {
-      expect(HttpMethod.get.matches("GET"), isTrue);
-      expect(HttpMethod.post.matches("POST"), isTrue);
-      expect(HttpMethod.put.matches("PUT"), isTrue);
-      expect(HttpMethod.patch.matches("PATCH"), isTrue);
-      expect(HttpMethod.delete.matches("DELETE"), isTrue);
+  group("HttpMethod", () {
+    test("parses supported external methods case-insensitively", () {
+      expect(HttpMethod.parseExternal(rawMethod: "GET"), HttpMethod.get);
+      expect(HttpMethod.parseExternal(rawMethod: "Post"), HttpMethod.post);
+      expect(HttpMethod.parseExternal(rawMethod: "put"), HttpMethod.put);
+      expect(HttpMethod.parseExternal(rawMethod: "PATCH"), HttpMethod.patch);
+      expect(HttpMethod.parseExternal(rawMethod: "DELETE"), HttpMethod.delete);
     });
 
-    test("matching is case-insensitive", () {
-      expect(HttpMethod.get.matches("get"), isTrue);
-      expect(HttpMethod.post.matches("Post"), isTrue);
-      expect(HttpMethod.delete.matches("delete"), isTrue);
+    test("does not parse unsupported methods or the handler wildcard", () {
+      expect(HttpMethod.parseExternal(rawMethod: "OPTIONS"), isNull);
+      expect(HttpMethod.parseExternal(rawMethod: "ANY"), isNull);
     });
 
-    test("method mismatch returns false", () {
-      expect(HttpMethod.get.matches("POST"), isFalse);
-      expect(HttpMethod.post.matches("GET"), isFalse);
-      expect(HttpMethod.put.matches("PATCH"), isFalse);
+    test("matches typed methods", () {
+      expect(HttpMethod.get.matches(requestMethod: HttpMethod.get), isTrue);
+      expect(HttpMethod.get.matches(requestMethod: HttpMethod.post), isFalse);
     });
 
-    test("any matches every method string", () {
-      for (final raw in ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]) {
-        expect(HttpMethod.any.matches(raw), isTrue, reason: raw);
+    test("any matches every parsed method", () {
+      for (final method in HttpMethod.values.where((method) => method != HttpMethod.any)) {
+        expect(HttpMethod.any.matches(requestMethod: method), isTrue, reason: method.name);
       }
     });
   });

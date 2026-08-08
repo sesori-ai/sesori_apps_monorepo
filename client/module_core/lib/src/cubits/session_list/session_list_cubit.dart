@@ -17,6 +17,7 @@ import "../../repositories/models/repo_provider.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
@@ -31,14 +32,12 @@ class SessionListCubit extends Cubit<SessionListState> {
   final ConnectionService _connectionService;
   final SseEventTracker _sseEventTracker;
   final SessionUnseenTracker _sessionUnseenTracker;
+  final ProjectViewingService _projectViewingService;
+  final ProjectViewClaim _projectViewClaim;
   final RouteSource _routeSource;
   final String _projectId;
   final bool? initialSupportsDedicatedWorktrees;
   final FailureReporter _failureReporter;
-
-  /// Tracks the session state before the last archive/unarchive action
-  /// so the screen can offer an undo toast.
-  Session? _undoSnapshot;
 
   SessionCleanupRejection? _lastCleanupRejection;
 
@@ -54,6 +53,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required ConnectionService connectionService,
     required SseEventTracker sseEventTracker,
     required SessionUnseenTracker sessionUnseenTracker,
+    required ProjectViewingService projectViewingService,
     required RouteSource routeSource,
     required String projectId,
     required this.initialSupportsDedicatedWorktrees,
@@ -64,6 +64,8 @@ class SessionListCubit extends Cubit<SessionListState> {
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,
        _sessionUnseenTracker = sessionUnseenTracker,
+       _projectViewingService = projectViewingService,
+       _projectViewClaim = projectViewingService.beginListClaim(projectId: projectId),
        _routeSource = routeSource,
        _projectId = projectId,
        _failureReporter = failureReporter,
@@ -119,6 +121,8 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
             SesoriPluginManagementChanged() ||
+            SesoriPluginInstallProgress() ||
+            SesoriCommandCatalogUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
@@ -284,13 +288,17 @@ class SessionListCubit extends Cubit<SessionListState> {
     final index = _allSessions.indexWhere((s) => s.id == session.id);
 
     if (index < 0) {
-      // Session was unarchived (or created elsewhere) — add it if it belongs here.
+      // Session was created elsewhere — add it if it belongs here.
       logt("[SessionList] session.updated not_found id=${session.id} action=add_via_created");
       _onSessionCreated(session);
       return;
     }
 
-    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
+    _allSessions = _sessionListService.applySessionUpdatedEvent(
+      sessions: _allSessions,
+      existingSession: _allSessions[index],
+      session: session,
+    );
     logt("[SessionList] session.updated updated id=${session.id}");
     _emitFiltered();
   }
@@ -352,11 +360,11 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   // ---------------------------------------------------------------------------
-  // Archive / Unarchive / Delete
+  // Archive / Delete
   // ---------------------------------------------------------------------------
 
-  /// Archives a session. Returns `true` on success so the screen can show
-  /// an undo toast.
+  /// Archives a session permanently. Returns `true` on success so the screen
+  /// can confirm it.
   Future<bool> archiveSession({
     required String sessionId,
     required bool deleteWorktree,
@@ -368,8 +376,9 @@ class SessionListCubit extends Cubit<SessionListState> {
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
     if (index < 0) return false;
 
-    // Store for undo before removing.
-    _undoSnapshot = _allSessions[index];
+    // Per-invocation, so two overlapping archives can never roll each other's
+    // session back.
+    final snapshot = _allSessions[index];
 
     // Optimistically mark as archived in the backing list so _emitFiltered
     // hides it when showArchived is off.
@@ -394,7 +403,7 @@ class SessionListCubit extends Cubit<SessionListState> {
       );
     } on SessionCleanupRejectedException catch (error) {
       _lastCleanupRejection = error.rejection;
-      _rollbackLastAction();
+      _reinsertSession(snapshot);
       return false;
     }
 
@@ -405,81 +414,10 @@ class SessionListCubit extends Cubit<SessionListState> {
       ErrorResponse(:final error) => () {
         loge("Failed to archive session: ${error.toString()}");
         // Rollback — re-insert the original session.
-        _rollbackLastAction();
+        _reinsertSession(snapshot);
         return false;
       }(),
     };
-  }
-
-  /// Unarchives a session. Returns `true` on success so the screen can show
-  /// a confirmation message.
-  ///
-  Future<bool> unarchiveSession(String sessionId) async {
-    if (state is! SessionListLoaded) return false;
-
-    final index = _allSessions.indexWhere((s) => s.id == sessionId);
-    if (index < 0) return false;
-
-    _undoSnapshot = _allSessions[index];
-
-    final unarchivedSession = _allSessions[index].copyWith(
-      time: _allSessions[index].time?.copyWith(archived: null),
-    );
-    _allSessions = _sessionListService.upsertSession(
-      sessions: _allSessions,
-      session: unarchivedSession,
-    );
-    _emitFiltered();
-
-    final response = await _sessionService.unarchiveSession(sessionId: sessionId);
-    if (isClosed) return false;
-
-    return switch (response) {
-      SuccessResponse(:final data) => () {
-        _lastCleanupRejection = null;
-        _reinsertSession(data);
-        return true;
-      }(),
-      ErrorResponse(:final error) => () {
-        loge("Failed to unarchive session: ${error.toString()}");
-        _rollbackLastAction();
-        return false;
-      }(),
-    };
-  }
-
-  /// Undoes the last archive or unarchive operation by reversing the action.
-  Future<bool> undoLastArchiveAction() async {
-    final snapshot = _undoSnapshot;
-    if (snapshot == null) return false;
-    _undoSnapshot = null;
-
-    // If the snapshot was archived, the last action was an unarchive → re-archive.
-    // If the snapshot was not archived, the last action was an archive → unarchive.
-    final wasArchived = snapshot.time?.archived != null;
-    final response = wasArchived
-        ? await _sessionService.archiveSession(
-            sessionId: snapshot.id,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          )
-        : await _sessionService.unarchiveSession(sessionId: snapshot.id);
-    if (isClosed) return false;
-
-    switch (response) {
-      case SuccessResponse(:final data):
-        _reinsertSession(data);
-        return true;
-      case ErrorResponse(:final error):
-        loge("Failed to undo archive action: ${error.toString()}");
-        return false;
-    }
-  }
-
-  /// Clears undo state. Called when the undo toast dismisses.
-  void clearLastActionUndo() {
-    _undoSnapshot = null;
   }
 
   /// Renames a session. Returns `true` on success so the screen can show
@@ -545,13 +483,6 @@ class SessionListCubit extends Cubit<SessionListState> {
         return false;
       }(),
     };
-  }
-
-  void _rollbackLastAction() {
-    final session = _undoSnapshot;
-    if (session == null) return;
-    _undoSnapshot = null;
-    _reinsertSession(session);
   }
 
   void _reinsertSession(Session session) {
@@ -688,12 +619,14 @@ class SessionListCubit extends Cubit<SessionListState> {
           sinceTick: unseenTick,
         );
         _emitFiltered();
+        _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: _projectId);
         return true;
 
       case ErrorResponse(:final error):
         if (silent) {
           logw("Failed to refresh sessions: ${error.toString()}");
         } else {
+          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
           loge("Session list load failed", error);
           emit(SessionListState.failed(reason: error.remoteFailureReason));
         }
@@ -703,6 +636,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   @override
   Future<void> close() {
+    _projectViewingService.releaseClaim(claim: _projectViewClaim);
     _subscriptions.dispose();
     return super.close();
   }

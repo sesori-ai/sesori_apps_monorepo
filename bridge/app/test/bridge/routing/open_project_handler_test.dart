@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_mutation_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -57,18 +58,22 @@ void main() {
         ),
         now: () => 1234,
       );
-      handler = OpenProjectHandler(
-        filesystemRepository: filesystemRepository,
-        projectInitializationService: ProjectInitializationService(
-          worktreeRepository: WorktreeRepository(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            gitApi: gitCliApi,
-            runtime: createTestPluginRuntime(plugins: [plugin]),
-          ),
-          filesystemRepository: filesystemRepository,
+      final projectInitializationService = ProjectInitializationService(
+        worktreeRepository: WorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: gitCliApi,
+          runtime: createTestPluginRuntime(plugins: [plugin]),
         ),
-        projectActivityService: projectActivityService,
+        filesystemRepository: filesystemRepository,
+      );
+      handler = OpenProjectHandler(
+        projectMutationService: ProjectMutationService(
+          filesystemRepository: filesystemRepository,
+          projectInitializationService: projectInitializationService,
+          projectActivityService: projectActivityService,
+          projectRepository: projectRepository,
+        ),
       );
     });
 

@@ -2,25 +2,21 @@ import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
-import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
+import "../services/project_mutation_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/create` — creates a new project directory with git init.
 class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
-  final ProjectInitializationService _projectInitializationService;
-  final ProjectActivityService _projectActivityService;
+  final ProjectMutationService _projectMutationService;
 
-  CreateProjectHandler({
-    required ProjectInitializationService projectInitializationService,
-    required ProjectActivityService projectActivityService,
-  }) : _projectInitializationService = projectInitializationService,
-       _projectActivityService = projectActivityService,
-       super(
-         HttpMethod.post,
-         "/project/create",
-         fromJson: ProjectPathRequest.fromJson,
-       );
+  CreateProjectHandler({required ProjectMutationService projectMutationService})
+    : _projectMutationService = projectMutationService,
+      super(
+        HttpMethod.post,
+        "/project/create",
+        fromJson: ProjectPathRequest.fromJson,
+      );
 
   @override
   Future<Project> handle(
@@ -43,7 +39,7 @@ class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Projec
     }
 
     try {
-      await _projectInitializationService.initializeProject(path: path);
+      return await _projectMutationService.createProject(path: path);
     } on FilesystemPermissionDeniedException {
       throw buildErrorResponse(request, 403, "permission denied: $path");
     } on ProjectParentMissingException {
@@ -53,7 +49,5 @@ class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Projec
     } on ProjectGitSetupException {
       throw buildErrorResponse(request, 500, "Git setup failed");
     }
-
-    return _projectActivityService.openProject(path: path);
   }
 }

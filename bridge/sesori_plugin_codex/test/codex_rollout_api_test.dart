@@ -4,8 +4,10 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
+import "package:codex_plugin/src/models/codex_replay_tool_disposition.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -28,7 +30,9 @@ void main() {
       catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
       messageRepository = CodexMessageRepository(
         rolloutApi: rolloutApi,
-        rolloutToolMapper: const CodexRolloutToolMapper(),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
       );
     });
 
@@ -42,6 +46,77 @@ void main() {
 
     test("readIndex returns empty when session_index.jsonl is missing", () {
       expect(rolloutApi.readSessionIndex(), isEmpty);
+    });
+
+    test("desktop state tolerantly extracts only non-empty projectless thread ids", () async {
+      File(p.join(codexHome.path, ".codex-global-state.json")).writeAsStringSync(
+        jsonEncode({
+          "future-field": {"nested": true},
+          "projectless-thread-ids": [
+            " projectless-one ",
+            42,
+            null,
+            "",
+            {"future": "shape"},
+            "projectless-two",
+            "projectless-one",
+          ],
+        }),
+      );
+
+      expect(
+        (await rolloutApi.readDesktopState()).projectlessThreadIds,
+        {"projectless-one", "projectless-two"},
+      );
+    });
+
+    test("desktop state treats a missing or future-shaped projectless field as empty", () async {
+      expect((await rolloutApi.readDesktopState()).projectlessThreadIds, isEmpty);
+      final state = File(p.join(codexHome.path, ".codex-global-state.json"));
+      for (final contents in [
+        jsonEncode({"future-field": true}),
+        jsonEncode({
+          "projectless-thread-ids": {"future": "shape"},
+        }),
+      ]) {
+        state.writeAsStringSync(contents);
+        expect((await rolloutApi.readDesktopState()).projectlessThreadIds, isEmpty);
+      }
+    });
+
+    test("desktop state read failures retain a privacy-safe cause", () async {
+      File(p.join(codexHome.path, ".codex-global-state.json")).writeAsStringSync(
+        '{"projectless-thread-ids":["private-thread-id"',
+      );
+
+      await expectLater(
+        rolloutApi.readDesktopState(),
+        throwsA(
+          isA<CodexDesktopStateReadException>()
+              .having((error) => error.cause, "cause", isA<FormatException>())
+              .having(
+                (error) => error.toString(),
+                "presentation",
+                isNot(contains("private-thread-id")),
+              ),
+        ),
+      );
+    });
+
+    test("resolves the generated Codex chats directory from the user home", () {
+      final userHome = p.join(codexHome.path, "user-home");
+      final api = CodexRolloutApi(
+        environment: {
+          "CODEX_HOME": codexHome.path,
+          "HOME": userHome,
+          "USERPROFILE": userHome,
+        },
+      );
+
+      expect(
+        api.documentsCodexDirectory,
+        p.join(userHome, "Documents", "Codex"),
+      );
     });
 
     test("readIndex decodes JSON lines and skips malformed JSON", () {
@@ -186,7 +261,17 @@ void main() {
         decode({"type": "custom_tool_call_output", "call_id": "c2", "output": <Object?>[]}),
         decode({"type": "web_search_call", "action": null}),
         decode({"type": "future_item", "secret": "ignored"}),
-        decode({"type": "image_generation_call", "result": "ignored"}),
+        decode({
+          "type": "image_generation_call",
+          "id": "image-1",
+          "status": "completed",
+          "result": "AA==",
+        }),
+        decode({
+          "type": "image_generation_call",
+          "status": "future_status",
+          "result": "AA==",
+        }),
       ];
 
       expect(items[0], isA<CodexRolloutMessageDto>());
@@ -197,7 +282,45 @@ void main() {
       expect(items[5], isA<CodexRolloutCustomToolCallOutputDto>());
       expect(items[6], isA<CodexRolloutWebSearchCallDto>());
       expect(items[7], isA<CodexRolloutUnknownResponseItemDto>());
-      expect(items[8], isA<CodexRolloutUnknownResponseItemDto>());
+      final image = items[8] as CodexRolloutImageGenerationDto;
+      expect(image.id, "image-1");
+      expect(image.status, CodexRolloutImageGenerationStatus.completed);
+      expect(image.result, "AA==");
+      expect(
+        (items[9] as CodexRolloutImageGenerationDto).status,
+        CodexRolloutImageGenerationStatus.unknown,
+      );
+    });
+
+    test("image-generation completion events decode to a typed variant", () {
+      final line = CodexRolloutLineDto.fromJson({
+        "type": "event_msg",
+        "payload": {
+          "type": "image_generation_end",
+          "call_id": "image-1",
+          "status": "completed",
+          "revised_prompt": "private prompt",
+          "result": "AA==",
+          "saved_path": "/private/generated/final.png",
+        },
+      });
+
+      final event = (line as CodexRolloutEventMessageLineDto).payload;
+      expect(
+        event,
+        isA<CodexRolloutImageGenerationEndEventDto>()
+            .having((value) => value.callId, "callId", "image-1")
+            .having(
+              (value) => value.status,
+              "status",
+              CodexRolloutImageGenerationStatus.completed,
+            )
+            .having(
+              (value) => value.savedPath,
+              "savedPath",
+              "/private/generated/final.png",
+            ),
+      );
     });
 
     test("readHeader does not read beyond its bounded scan window", () {
@@ -248,6 +371,10 @@ void main() {
             "type": "secret-token",
             "ghp_secretCredential": "secret-credential",
             "query": "secret-query",
+            "cell_id": "secret-cell-id",
+          },
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "secret-turn-id",
           },
           "action": "secret-source-content",
         },
@@ -265,7 +392,8 @@ void main() {
         contains(
           'schema={type:enum("response_item"),payload:{'
           'type:enum("function_call"),name:String,call_id:int,arguments:{type:String,'
-          '<redacted-key>:String,query:String},'
+          '<redacted-key>:String,query:String,cell_id:String},'
+          'internal_chat_message_metadata_passthrough:{turn_id:String},'
           "action:String}}",
         ),
       );
@@ -274,7 +402,39 @@ void main() {
       expect(output, isNot(contains("secret-token")));
       expect(output, isNot(contains("secret-credential")));
       expect(output, isNot(contains("secret-query")));
+      expect(output, isNot(contains("secret-cell-id")));
+      expect(output, isNot(contains("secret-turn-id")));
       expect(output, isNot(contains("secret-source-content")));
+    });
+
+    test("readTranscript names durable image schema fields without values", () {
+      final path = p.join(codexHome.path, "malformed-image-transcript.jsonl");
+      File(path).writeAsStringSync(
+        '${jsonEncode({
+          "type": "event_msg",
+          "payload": {
+            "type": "image_generation_end",
+            "call_id": "secret-image-id",
+            "status": "completed",
+            "result": 42,
+            "revised_prompt": "secret revised prompt",
+            "saved_path": "/secret/generated.png",
+          },
+        })}\n{}\n',
+      );
+
+      final output = _captureWarnings(
+        () => rolloutApi.readTranscript(rolloutPath: path),
+        level: LogLevel.verbose,
+      );
+
+      expect(output, contains('status:enum("completed")'));
+      expect(output, contains("result:int"));
+      expect(output, contains("revised_prompt:String"));
+      expect(output, contains("saved_path:String"));
+      expect(output, isNot(contains("secret-image-id")));
+      expect(output, isNot(contains("secret revised prompt")));
+      expect(output, isNot(contains("/secret/generated.png")));
     });
 
     test("readTranscript bounds malformed record schema output", () {
@@ -745,12 +905,24 @@ void main() {
               "id": "user-1",
               "role": "user",
               "content": [
-                {"type": "input_text", "text": "hello, codex"},
+                {
+                  "type": "input_text",
+                  "text": '<image name=[Image #1] path="/private/prompt.png">',
+                },
+                {"type": "input_text", "text": "hello, "},
+                {"type": "input_text", "text": "codex"},
                 {
                   "type": "input_image",
                   "image_url": "data:image/png;base64,AA==",
                 },
               ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "hello, codex",
             },
           }),
           jsonEncode({
@@ -775,19 +947,233 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
       );
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
       expect(messages[0].parts.first.text, equals("hello, codex"));
-      expect(messages[0].parts, hasLength(1));
-      expect(messages[0].parts.single.attachment, isNull);
+      expect(messages[0].parts.first.text, isNot(contains("/private/prompt.png")));
+      expect(messages[0].parts, hasLength(2));
+      expect(messages[0].parts.first.attachment, isNull);
+      expect(messages[0].parts.last.type, PluginMessagePartType.file);
+      final promptImage = messages[0].parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      expect(promptImage.mime, "image/png");
+      expect(promptImage.base64, "AA==");
       expect(messages[1].info, isA<PluginMessageAssistant>());
       expect(messages[1].parts.first.text, equals("hello back!"));
       expect(messages[0].info.sessionID, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(messages[0].info.id, "user-1");
-      expect(messages[0].parts.single.id, "user-1-text");
+      expect(messages[0].parts.first.id, "user-1-text");
+      expect(messages[0].parts.last.id, "user-1-file-1");
       expect(messages[1].info.id, "assistant-1");
       expect(messages[1].parts.single.id, "assistant-1-text");
+    });
+
+    test("readMessages excludes only generated Codex user context envelopes", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-generated-context.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "generated-bootstrap",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<recommended_plugins>\ninternal list\n</recommended_plugins>",
+                },
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>\n  <cwd>/repo/app</cwd>\n</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "actual-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "Explain the <environment_context> tag",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "actual-wrapper-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>user-authored text</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "<environment_context>user-authored text</environment_context>",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "mixed-context-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<recommended_plugins>internal list</recommended_plugins>",
+                },
+                {"type": "input_text", "text": "Visible mixed prompt"},
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>internal cwd</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "Visible mixed prompt",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "generated-abort",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<turn_aborted>\nThe turn was interrupted.\n</turn_aborted>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "assistant-1",
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "Visible answer"},
+              ],
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "actual-user",
+        "actual-wrapper-user",
+        "mixed-context-user",
+        "assistant-1",
+      ]);
+      expect(messages.first.parts.single.text, "Explain the <environment_context> tag");
+      expect(
+        messages[1].parts.single.text,
+        "<environment_context>user-authored text</environment_context>",
+      );
+      expect(messages[2].parts.single.text, "Visible mixed prompt");
+      expect(messages.last.parts.single.text, "Visible answer");
+    });
+
+    test("readMessages excludes only complete generated repository instructions", () {
+      const generatedWithPath =
+          "# AGENTS.md instructions for /sanitized/project\n\n"
+          "<INSTRUCTIONS>\nrepository marker\n</INSTRUCTIONS>";
+      const generatedWithoutPath =
+          "# AGENTS.md instructions\n\n"
+          "<INSTRUCTIONS>\nrepository marker\n</INSTRUCTIONS>";
+      const generatedCompact =
+          "# AGENTS.md instructions\n\n"
+          "<INSTRUCTIONS>repository marker</INSTRUCTIONS>";
+      String userMessageLine({required String id, required String text}) => jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "id": id,
+          "role": "user",
+          "content": [
+            {"type": "input_text", "text": text},
+          ],
+        },
+      });
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/04/rollout-generated-repository-instructions.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        cwd: "/repo/app",
+        extraLines: [
+          userMessageLine(id: "generated-with-path", text: generatedWithPath),
+          userMessageLine(id: "generated-without-path", text: generatedWithoutPath),
+          userMessageLine(id: "generated-compact", text: generatedCompact),
+          userMessageLine(id: "generated-with-outer-whitespace", text: "  $generatedWithPath\n"),
+          userMessageLine(id: "authored-exact-envelope", text: generatedWithPath),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": generatedWithPath,
+            },
+          }),
+          userMessageLine(
+            id: "near-match-case",
+            text: "# agents.md instructions\n\n<INSTRUCTIONS>\nmarker\n</INSTRUCTIONS>",
+          ),
+          userMessageLine(
+            id: "incomplete-envelope",
+            text: "# AGENTS.md instructions\n\n<INSTRUCTIONS>\nmarker",
+          ),
+          userMessageLine(
+            id: "mixed-envelope",
+            text: "$generatedWithoutPath\nVisible authored text",
+          ),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "authored-exact-envelope",
+        "near-match-case",
+        "incomplete-envelope",
+        "mixed-envelope",
+      ]);
+      expect(messages.first.parts.single.text, generatedWithPath);
     });
 
     test("readMessages preserves compacted rollout records as completed tools", () {
@@ -817,6 +1203,8 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
       );
 
       expect(messages, hasLength(1));
@@ -830,6 +1218,252 @@ void main() {
       expect(part.state?.output, isNull);
     });
 
+    test("readMessages restores image generations with stable persisted and fallback ids", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/31/rollout-image-history.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "timestamp": "2026-07-31T10:00:01Z",
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "id": "image-1",
+              "status": "completed",
+              "revised_prompt": "private prompt",
+              "result": "AA==",
+            },
+          }),
+          jsonEncode({
+            "timestamp": "2026-07-31T10:00:02Z",
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "completed",
+              "result": "AA==",
+            },
+          }),
+        ],
+      );
+
+      final firstRead = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+      final secondRead = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(firstRead.map((message) => message.info.id), ["image-1", "m-2"]);
+      expect(secondRead.map((message) => message.info.id), ["image-1", "m-2"]);
+      for (final message in firstRead) {
+        final part = message.parts.single;
+        expect(part.id, "${message.info.id}-tool");
+        expect(part.messageID, message.info.id);
+        expect(part.tool, "image_generation");
+        expect(part.state?.status, PluginToolStatus.completed);
+        final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+        expect(attachment.mime, "image/png");
+        expect(attachment.base64, "AA==");
+        expect(attachment.filename, isNull);
+        expect(part.toString(), isNot(contains("private prompt")));
+      }
+    });
+
+    test("idle replay settles interrupted stable and legacy image generations", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/04/rollout-interrupted-images.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "id": "image-running",
+              "status": "in_progress",
+              "result": "AA==",
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "retry",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "in_progress",
+              "result": "AQ==",
+            },
+          }),
+        ],
+      );
+
+      final busyMessages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
+        structuredToolStatusByCallId: const {},
+      );
+      final idleMessages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(
+        busyMessages
+            .where((message) => message.parts.single.type == PluginMessagePartType.tool)
+            .map((message) => message.parts.single.state?.status),
+        everyElement(PluginToolStatus.running),
+      );
+      expect(
+        idleMessages
+            .where((message) => message.parts.single.type == PluginMessagePartType.tool)
+            .map((message) => message.parts.single.state?.status),
+        everyElement(PluginToolStatus.error),
+      );
+    });
+
+    test("readMessages prefers durable image events over duplicate response items", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-durable-image-history.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii2",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "id": "image-1",
+              "status": "completed",
+              "result": "AQ==",
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "image_generation_end",
+              "call_id": " image-1 ",
+              "status": "completed",
+              "revised_prompt": "private prompt",
+              "result": "AA==",
+              "saved_path": "/private/generated/final.png",
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii2",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages, hasLength(1));
+      expect(messages.single.info.id, "image-1");
+      final part = messages.single.parts.single;
+      expect(part.tool, "image_generation");
+      expect(part.state?.status, PluginToolStatus.completed);
+      final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(attachment.base64, "AA==");
+      expect(attachment.filename, "final.png");
+    });
+
+    test("readMessages correlates id-less image records by durable result", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-idless-durable-image.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "completed",
+              "result": "AA==",
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "image_generation_end",
+              "call_id": "image-durable",
+              "status": "completed",
+              "revised_prompt": null,
+              "result": "AA==",
+              "saved_path": "/private/generated/final.png",
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages, hasLength(1));
+      expect(messages.single.info.id, "image-durable");
+    });
+
+    test("blank durable image ids do not shift legacy message ids", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-blank-durable-image.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "image_generation_end",
+              "call_id": "   ",
+              "status": "completed",
+              "revised_prompt": null,
+              "result": "AQ==",
+              "saved_path": null,
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "completed",
+              "result": "AA==",
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.single.info.id, "m-1");
+    });
+
     test("readMessages surfaces transcript read failures", () {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       final path = p.join(codexHome.path, "broken-rollout.jsonl");
@@ -839,6 +1473,8 @@ void main() {
         () => messageRepository.readMessages(
           rolloutPath: path,
           sessionId: sessionId,
+          replayToolDisposition: CodexReplayToolDisposition.terminalize,
+          structuredToolStatusByCallId: const {},
         ),
         throwsA(
           isA<PluginOperationException>()
@@ -905,6 +1541,10 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {
+          "c2": PluginToolStatus.error,
+        },
       );
 
       // exec (completed) + web_search + apply_patch (running); the
@@ -926,7 +1566,251 @@ void main() {
 
       final patch = messages[2].parts.single;
       expect(patch.tool, equals("edit"));
-      expect(patch.state?.status, equals(PluginToolStatus.running));
+      expect(patch.state?.status, equals(PluginToolStatus.error));
+    });
+
+    test("readMessages closes calls from terminal or idle evidence", () {
+      Map<String, Object?> call({
+        required String callId,
+        required String command,
+        required String? turnId,
+        required String name,
+      }) => {
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": callId,
+          "name": name,
+          "arguments": name == "wait" ? command : jsonEncode({"cmd": command}),
+          if (turnId != null)
+            "internal_chat_message_metadata_passthrough": {
+              "turn_id": turnId,
+            },
+        },
+      };
+
+      Map<String, Object?> output({
+        required String callId,
+        required String text,
+      }) => {
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": callId,
+          "output": text,
+        },
+      };
+
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-tool-lifecycle.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode(
+            call(
+              callId: "call-shell",
+              command: "sleep 30",
+              turnId: "turn-wait",
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-shell",
+              text: "Script running with cell ID 7\nOutput:\nearly output\n",
+            ),
+          ),
+          jsonEncode(
+            call(
+              callId: "call-wait",
+              command: '{"cell_id":"7"}',
+              turnId: "turn-wait",
+              name: "wait",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-wait",
+              text: "Script running with cell ID 8\nOutput:\nmiddle output\n",
+            ),
+          ),
+          jsonEncode(
+            call(
+              callId: "call-wait-final",
+              command: '{"cell_id":"8"}',
+              turnId: "turn-wait",
+              name: "wait",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-wait-final",
+              text: "aborted by user after 1.0s",
+            ),
+          ),
+          jsonEncode(
+            call(
+              callId: "call-completed",
+              command: "pwd",
+              turnId: "turn-completed",
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-completed",
+              text: "Script running with cell ID 9\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-completed",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-aborted",
+              command: "sleep 60",
+              turnId: "turn-aborted",
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-aborted",
+              text: "Script running with cell ID 10\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "turn_id": "turn-aborted",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-legacy-completed",
+              command: "sleep 70",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-legacy-completed",
+              text: "Script running with cell ID 11\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-legacy-completed",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-legacy-aborted",
+              command: "sleep 80",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-legacy-aborted",
+              text: "Script running with cell ID 12\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "turn_id": "turn-legacy-aborted",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-interrupted-legacy",
+              command: "sleep 90",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "user-next",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": "continue"},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "continue",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-active",
+              command: "sleep 120",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
+        structuredToolStatusByCallId: const {},
+      );
+      final idleMessages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "call-shell",
+        "call-completed",
+        "call-aborted",
+        "call-legacy-completed",
+        "call-legacy-aborted",
+        "call-interrupted-legacy",
+        "user-next",
+        "call-active",
+      ]);
+      final tools = {
+        for (final message in messages)
+          if (message.parts.single.type == PluginMessagePartType.tool) message.info.id: message.parts.single,
+      };
+      expect(tools["call-shell"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-shell"]?.state?.output, contains("early output"));
+      expect(tools["call-shell"]?.state?.output, contains("middle output"));
+      expect(tools["call-shell"]?.state?.output, contains("aborted by user after 1.0s"));
+      expect(tools["call-completed"]?.state?.status, PluginToolStatus.completed);
+      expect(tools["call-aborted"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-legacy-completed"]?.state?.status, PluginToolStatus.completed);
+      expect(tools["call-legacy-aborted"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-interrupted-legacy"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-active"]?.state?.status, PluginToolStatus.running);
+      final idleActiveCall = idleMessages.singleWhere(
+        (message) => message.info.id == "call-active",
+      );
+      expect(idleActiveCall.parts.single.state?.status, PluginToolStatus.error);
     });
 
     test("readMessages restores current calls around malformed content items", () {
@@ -1004,6 +1888,8 @@ void main() {
         messages = messageRepository.readMessages(
           rolloutPath: path,
           sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+          replayToolDisposition: CodexReplayToolDisposition.terminalize,
+          structuredToolStatusByCallId: const {},
         );
       }, level: LogLevel.verbose);
 
@@ -1021,7 +1907,9 @@ void main() {
       expect(tool.state?.status, PluginToolStatus.completed);
       expect(tool.state?.title, "ls -la");
       expect(tool.state?.output, contains("foo.dart"));
-      expect(tool.state?.attachments, isEmpty);
+      final attachment = tool.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(attachment.mime, "image/png");
+      expect(attachment.base64, "AA==");
 
       final assistant = messages[2];
       expect(assistant.parts.single.text, "Done");
@@ -1060,6 +1948,8 @@ void main() {
           .readMessages(
             rolloutPath: path,
             sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+            replayToolDisposition: CodexReplayToolDisposition.terminalize,
+            structuredToolStatusByCallId: const {},
           )
           .single
           .parts
@@ -1207,6 +2097,41 @@ void main() {
       await plugin.dispose();
     });
 
+    test("getSessionMessages preserves running tools when activity is unknown", () async {
+      const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaa99";
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaa99.jsonl",
+        sessionId: sessionId,
+        cwd: "/work/sample-app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call",
+              "call_id": "call-running",
+              "name": "exec_command",
+              "arguments": '{"cmd":"sleep 30"}',
+            },
+          }),
+        ],
+      );
+
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
+        projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
+      );
+
+      final messages = await plugin.getSessionMessages(sessionId);
+
+      expect(messages.single.parts.single.state?.status, PluginToolStatus.running);
+      await plugin.dispose();
+    });
+
     test("catalog repository extracts the model from turn_context", () {
       final api = CodexRolloutApi(
         environment: {"CODEX_HOME": codexHome.path},
@@ -1237,7 +2162,9 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
-        rolloutToolMapper: const CodexRolloutToolMapper(),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
       );
       final path = _writeRollout(
         codexHome,
@@ -1280,6 +2207,8 @@ void main() {
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-dddddddddddd",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
       );
       expect(messages, hasLength(2));
       final first = messages[0].info as PluginMessageAssistant;
@@ -1295,7 +2224,9 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
-        rolloutToolMapper: const CodexRolloutToolMapper(),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
       );
       final path = _writeRollout(
         codexHome,
@@ -1319,6 +2250,8 @@ void main() {
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
         config: const CodexConfigDefaults(
           model: "gpt-5.5",
           modelProvider: "openai",

@@ -16,6 +16,7 @@ void main() {
   group("VoiceTranscriptionService", () {
     late MockVoiceApi mockVoiceApi;
     late MockAudioRecorder mockRecorder;
+    late MockRecorderPrewarmClient mockRecorderPrewarmClient;
     late MockRecordingFileProvider mockFileProvider;
     late MockWakeLockService mockWakeLockService;
     late MockAudioFormatConfig mockAudioFormat;
@@ -29,29 +30,41 @@ void main() {
 
       mockVoiceApi = MockVoiceApi();
       mockRecorder = MockAudioRecorder();
+      mockRecorderPrewarmClient = MockRecorderPrewarmClient();
       mockFileProvider = MockRecordingFileProvider();
       mockWakeLockService = MockWakeLockService();
       mockAudioFormat = MockAudioFormatConfig();
 
       when(mockRecorder.hasPermission).thenAnswer((_) async => true);
+      when(() => mockRecorder.hasPermission(request: false)).thenAnswer((_) async => true);
       when(() => mockRecorder.start(any(), path: any(named: "path"))).thenAnswer((_) async {});
       when(mockRecorder.stop).thenAnswer((_) async => recordingPath);
       when(() => mockRecorder.onAmplitudeChanged(any())).thenAnswer((_) => const Stream.empty());
       when(mockRecorder.dispose).thenAnswer((_) async {});
+      when(
+        () => mockRecorderPrewarmClient.prewarm(
+          sampleRate: any(named: "sampleRate"),
+          bitRate: any(named: "bitRate"),
+          numChannels: any(named: "numChannels"),
+        ),
+      ).thenAnswer((_) async {});
       when(() => mockFileProvider.createRecordingPath()).thenAnswer((_) async => recordingPath);
       when(mockWakeLockService.enable).thenAnswer((_) async {});
       when(mockWakeLockService.disable).thenAnswer((_) async {});
       when(() => mockAudioFormat.encoder).thenReturn(AudioEncoder.aacLc);
+      when(() => mockAudioFormat.bitRate).thenReturn(128000);
       when(() => mockAudioFormat.sampleRate).thenReturn(44100);
+      when(() => mockAudioFormat.numChannels).thenReturn(1);
       when(() => mockAudioFormat.mimeType).thenReturn("audio/mp4");
       when(() => mockAudioFormat.fileExtension).thenReturn("m4a");
 
       service = VoiceTranscriptionService(
-        mockVoiceApi,
-        mockRecorder,
-        mockFileProvider,
-        mockWakeLockService,
-        mockAudioFormat,
+        voiceApi: mockVoiceApi,
+        recorder: mockRecorder,
+        recorderPrewarmClient: mockRecorderPrewarmClient,
+        fileProvider: mockFileProvider,
+        wakeLockService: mockWakeLockService,
+        audioFormat: mockAudioFormat,
       );
     });
 
@@ -62,6 +75,150 @@ void main() {
       }
     });
 
+    group("prewarmRecording", () {
+      test("does not request permission or touch native resources when permission is absent", () async {
+        when(() => mockRecorder.hasPermission(request: false)).thenAnswer((_) async => false);
+
+        await service.prewarmRecording();
+
+        verify(() => mockRecorder.hasPermission(request: false)).called(1);
+        verifyNever(
+          () => mockRecorderPrewarmClient.prewarm(
+            sampleRate: any(named: "sampleRate"),
+            bitRate: any(named: "bitRate"),
+            numChannels: any(named: "numChannels"),
+          ),
+        );
+      });
+
+      test("passes the exact production recording format to the native prewarmer", () async {
+        await service.prewarmRecording();
+
+        verify(
+          () => mockRecorderPrewarmClient.prewarm(
+            sampleRate: 44100,
+            bitRate: 128000,
+            numChannels: 1,
+          ),
+        ).called(1);
+      });
+
+      test("shares one in-flight attempt between concurrent callers", () async {
+        final nativePrewarm = Completer<void>();
+        when(
+          () => mockRecorderPrewarmClient.prewarm(
+            sampleRate: any(named: "sampleRate"),
+            bitRate: any(named: "bitRate"),
+            numChannels: any(named: "numChannels"),
+          ),
+        ).thenAnswer((_) => nativePrewarm.future);
+
+        final first = service.prewarmRecording();
+        final second = service.prewarmRecording();
+        expect(identical(first, second), isTrue);
+
+        nativePrewarm.complete();
+        await Future.wait([first, second]);
+
+        verify(() => mockRecorder.hasPermission(request: false)).called(1);
+        verify(
+          () => mockRecorderPrewarmClient.prewarm(
+            sampleRate: 44100,
+            bitRate: 128000,
+            numChannels: 1,
+          ),
+        ).called(1);
+      });
+
+      test("contains a native failure and allows a later retry", () async {
+        var attempts = 0;
+        when(
+          () => mockRecorderPrewarmClient.prewarm(
+            sampleRate: any(named: "sampleRate"),
+            bitRate: any(named: "bitRate"),
+            numChannels: any(named: "numChannels"),
+          ),
+        ).thenAnswer((_) async {
+          attempts++;
+          if (attempts == 1) throw Exception("prewarm failed");
+        });
+
+        await service.prewarmRecording();
+        await service.prewarmRecording();
+
+        expect(attempts, 2);
+      });
+
+      test("startRecording waits for an in-flight prewarm before starting native capture", () async {
+        final nativePrewarm = Completer<void>();
+        when(
+          () => mockRecorderPrewarmClient.prewarm(
+            sampleRate: any(named: "sampleRate"),
+            bitRate: any(named: "bitRate"),
+            numChannels: any(named: "numChannels"),
+          ),
+        ).thenAnswer((_) => nativePrewarm.future);
+
+        final prewarmFuture = service.prewarmRecording();
+        await Future<void>.delayed(Duration.zero);
+        final startFuture = service.startRecording();
+        await Future<void>.delayed(Duration.zero);
+        verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
+
+        nativePrewarm.complete();
+        await prewarmFuture;
+        await startFuture;
+
+        verify(() => mockRecorder.start(any(), path: recordingPath)).called(1);
+      });
+
+      test("a timed-out recording attempt stays serialized until prewarm finishes", () {
+        fakeAsync((async) {
+          final nativePrewarm = Completer<void>();
+          Object? startError;
+          when(
+            () => mockRecorderPrewarmClient.prewarm(
+              sampleRate: any(named: "sampleRate"),
+              bitRate: any(named: "bitRate"),
+              numChannels: any(named: "numChannels"),
+            ),
+          ).thenAnswer((_) => nativePrewarm.future);
+
+          unawaited(service.prewarmRecording());
+          async.flushMicrotasks();
+          unawaited(
+            service.startRecording().then<void>(
+              (_) {},
+              onError: (Object error) => startError = error,
+            ),
+          );
+          async.flushMicrotasks();
+          verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
+
+          try {
+            async.elapse(const Duration(seconds: 2));
+            async.flushMicrotasks();
+
+            expect(startError, isA<TimeoutException>());
+            expect(service.isBusy, isFalse);
+            expect(service.isRecording, isFalse);
+            verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
+
+            nativePrewarm.complete();
+            async.flushMicrotasks();
+            unawaited(service.startRecording());
+            async.flushMicrotasks();
+
+            expect(service.isRecording, isTrue);
+            verify(() => mockRecorder.start(any(), path: recordingPath)).called(1);
+          } finally {
+            if (!nativePrewarm.isCompleted) nativePrewarm.complete();
+            async.flushMicrotasks();
+          }
+        });
+      });
+    });
+
     group("startRecording", () {
       test("success: checks permission, starts recorder, enables wake lock, sets flags", () async {
         await service.startRecording();
@@ -70,7 +227,15 @@ void main() {
         expect(service.isBusy, isTrue);
         verify(mockRecorder.hasPermission).called(1);
         verify(() => mockFileProvider.createRecordingPath()).called(1);
-        verify(() => mockRecorder.start(any(), path: recordingPath)).called(1);
+        final config =
+            verify(
+                  () => mockRecorder.start(captureAny(), path: recordingPath),
+                ).captured.single
+                as RecordConfig;
+        expect(config.encoder, AudioEncoder.aacLc);
+        expect(config.bitRate, 128000);
+        expect(config.sampleRate, 44100);
+        expect(config.numChannels, 1);
         verify(mockWakeLockService.enable).called(1);
       });
 

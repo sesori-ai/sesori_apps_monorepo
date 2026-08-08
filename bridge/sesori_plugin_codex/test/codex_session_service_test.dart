@@ -1,19 +1,29 @@
+import "dart:async";
+import "dart:io";
+
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/codex_rollout_api.dart";
+import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
+import "package:codex_plugin/src/api/models/codex_tool_outcome_dto.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/codex_config_reader.dart";
 import "package:codex_plugin/src/codex_metadata_repository.dart";
 import "package:codex_plugin/src/models/codex_collaboration_mode.dart";
+import "package:codex_plugin/src/models/codex_replay_tool_disposition.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/codex_model_repository.dart";
 import "package:codex_plugin/src/repositories/codex_skill_repository.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
+import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+import "support/codex_plugin_test_factory.dart";
 
 void main() {
   test("detaching clears app-server loaded-thread state", () async {
@@ -255,25 +265,222 @@ void main() {
     expect(options.completeness, PluginSessionOptionsCompleteness.partial);
     expect(options.commands.single.name, "compact");
   });
+
+  test("deleting a session removes persisted structured tool errors", () async {
+    final outcomes = createMemoryCodexToolOutcomeRepository();
+    await outcomes.recordError(sessionId: "session-1", callId: "call-1");
+    final service = _newService(toolOutcomeRepository: outcomes);
+
+    await service.deleteSession(sessionId: "session-1");
+
+    expect(await outcomes.readStatuses(sessionId: "session-1"), isEmpty);
+  });
+
+  test("keeps structured tool errors when session deletion fails", () async {
+    final outcomes = createMemoryCodexToolOutcomeRepository();
+    await outcomes.recordError(sessionId: "session-1", callId: "call-1");
+    final service = _newService(
+      catalogRepository: _DeleteFailingCatalogRepository(),
+      toolOutcomeRepository: outcomes,
+    );
+
+    await service.deleteSession(sessionId: "session-1");
+
+    expect(
+      await outcomes.readStatuses(sessionId: "session-1"),
+      {"call-1": PluginToolStatus.error},
+    );
+  });
+
+  test("reads history without overlays when outcome storage fails", () async {
+    final messageRepository = _RecordingMessageRepository();
+    final service = _newService(
+      catalogRepository: _FixedPathCatalogRepository(),
+      messageRepository: messageRepository,
+      toolOutcomeRepository: CodexToolOutcomeRepository(
+        storage: _ReadFailingToolOutcomeStorage(),
+      ),
+    );
+
+    expect(
+      service.getSessionMessages(
+        sessionId: "session-1",
+        read: (await service.prepareSessionMessageRead(sessionId: "session-1"))!,
+        sessionStatus: const PluginSessionStatus.idle(),
+      ),
+      isEmpty,
+    );
+    expect(messageRepository.statuses, isEmpty);
+    expect(
+      messageRepository.replayToolDisposition,
+      CodexReplayToolDisposition.terminalize,
+    );
+  });
+
+  test("preserves unfinished replay tools for active session states", () async {
+    final messageRepository = _RecordingMessageRepository();
+    final service = _newService(
+      catalogRepository: _FixedPathCatalogRepository(),
+      messageRepository: messageRepository,
+    );
+    final read = await service.prepareSessionMessageRead(
+      sessionId: "session-1",
+    );
+
+    for (final status in const [
+      PluginSessionStatus.busy(),
+      PluginSessionStatus.retry(attempt: 1, message: "retrying", next: 2),
+    ]) {
+      service.getSessionMessages(
+        sessionId: "session-1",
+        read: read!,
+        sessionStatus: status,
+      );
+      expect(
+        messageRepository.replayToolDisposition,
+        CodexReplayToolDisposition.preserveRunning,
+      );
+    }
+  });
+
+  test("prepares the transcript before replay activity is supplied", () async {
+    final messageRepository = _RecordingMessageRepository();
+    final outcomes = _DelayedToolOutcomeRepository();
+    final service = _newService(
+      catalogRepository: _FixedPathCatalogRepository(),
+      messageRepository: messageRepository,
+      toolOutcomeRepository: outcomes,
+    );
+    var sessionStatus = const PluginSessionStatus.idle();
+
+    final readFuture = service.prepareSessionMessageRead(
+      sessionId: "session-1",
+    );
+    await outcomes.readStarted.future;
+    outcomes.allowRead.complete();
+    final read = await readFuture;
+    expect(messageRepository.prepareCount, 1);
+    sessionStatus = const PluginSessionStatus.busy();
+    service.getSessionMessages(
+      sessionId: "session-1",
+      read: read!,
+      sessionStatus: sessionStatus,
+    );
+
+    expect(
+      messageRepository.replayToolDisposition,
+      CodexReplayToolDisposition.preserveRunning,
+    );
+  });
 }
 
 CodexSessionService _newService({
+  CodexCatalogRepository? catalogRepository,
+  CodexMessageRepository? messageRepository,
   CodexMetadataRepository? metadataRepository,
+  CodexToolOutcomeRepository? toolOutcomeRepository,
 }) {
   final rolloutApi = CodexRolloutApi(environment: const {});
   return CodexSessionService(
-    catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
-    messageRepository: CodexMessageRepository(
-      rolloutApi: rolloutApi,
-      rolloutToolMapper: const CodexRolloutToolMapper(),
-    ),
+    catalogRepository: catalogRepository ?? CodexCatalogRepository(rolloutApi: rolloutApi),
+    messageRepository:
+        messageRepository ??
+        CodexMessageRepository(
+          rolloutApi: rolloutApi,
+          rolloutToolMapper: const CodexRolloutToolMapper(
+            imageAttachmentMapper: CodexImageAttachmentMapper(),
+          ),
+        ),
     metadataRepository:
         metadataRepository ??
         CodexMetadataRepository(
           configReader: CodexConfigReader(environment: const {}),
         ),
+    toolOutcomeRepository: toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository(),
     launchDirectory: "/repo",
   );
+}
+
+class _DeleteFailingCatalogRepository extends CodexCatalogRepository {
+  _DeleteFailingCatalogRepository() : super(rolloutApi: CodexRolloutApi(environment: const {}));
+
+  @override
+  bool deleteSession({required String sessionId}) => false;
+}
+
+class _DelayedToolOutcomeRepository extends CodexToolOutcomeRepository {
+  _DelayedToolOutcomeRepository()
+    : super(
+        storage: _ReadFailingToolOutcomeStorage(),
+      );
+
+  final readStarted = Completer<void>();
+  final allowRead = Completer<void>();
+
+  @override
+  Future<Map<String, PluginToolStatus>> readStatuses({required String sessionId}) async {
+    readStarted.complete();
+    await allowRead.future;
+    return const {};
+  }
+}
+
+class _FixedPathCatalogRepository extends CodexCatalogRepository {
+  _FixedPathCatalogRepository() : super(rolloutApi: CodexRolloutApi(environment: const {}));
+
+  @override
+  String? findRolloutPath({required String sessionId}) => "/rollout.jsonl";
+}
+
+class _RecordingMessageRepository extends CodexMessageRepository {
+  _RecordingMessageRepository()
+    : super(
+        rolloutApi: CodexRolloutApi(environment: const {}),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
+      );
+
+  Map<String, PluginToolStatus>? statuses;
+  CodexReplayToolDisposition? replayToolDisposition;
+  int prepareCount = 0;
+
+  @override
+  CodexPreparedMessageRead prepareMessageRead({
+    required String rolloutPath,
+    required String sessionId,
+  }) {
+    prepareCount += 1;
+    return CodexPreparedMessageRead(lines: const []);
+  }
+
+  @override
+  List<PluginMessageWithParts> projectMessages({
+    required CodexPreparedMessageRead read,
+    required String sessionId,
+    required CodexReplayToolDisposition replayToolDisposition,
+    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
+    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  }) {
+    statuses = structuredToolStatusByCallId;
+    this.replayToolDisposition = replayToolDisposition;
+    return const [];
+  }
+}
+
+class _ReadFailingToolOutcomeStorage implements CodexToolOutcomeStorage {
+  @override
+  Future<List<CodexStoredToolErrorDto>> readErrors() {
+    throw const FileSystemException("denied");
+  }
+
+  @override
+  Future<void> updateErrors({
+    required List<CodexStoredToolErrorDto> Function(
+      List<CodexStoredToolErrorDto> current,
+    )
+    transform,
+  }) async {}
 }
 
 class _StubMetadataRepository extends CodexMetadataRepository {

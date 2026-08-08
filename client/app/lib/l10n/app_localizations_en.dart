@@ -177,6 +177,83 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHarnessesTitle => 'Harnesses';
 
   @override
+  String get settingsSectionBridge => 'Bridge';
+
+  @override
+  String get settingsPullRequestRefreshTitle => 'Pull request refresh';
+
+  @override
+  String get settingsPullRequestRefreshDescription => 'How often viewed projects refresh pull request status.';
+
+  @override
+  String get settingsPullRequestRefreshLoading => 'Loading the bridge setting…';
+
+  @override
+  String get settingsPullRequestRefreshDisconnected => 'Connect to a bridge to configure this setting.';
+
+  @override
+  String get settingsPullRequestRefreshUnsupported => 'Update the connected bridge to configure this setting.';
+
+  @override
+  String get settingsPullRequestRefreshLoadFailed =>
+      'Couldn\'t load the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPullRequestRefreshUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsPullRequestRefreshUpdateFailed =>
+      'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPullRequestRefreshStateChanged => 'The bridge setting changed while you were editing. Try again.';
+
+  @override
+  String get settingsPullRequestRefreshUnavailable => 'Unavailable';
+
+  @override
+  String get settingsPullRequestRefreshOffline => 'Offline';
+
+  @override
+  String get settingsPullRequestRefreshRetry => 'Retry pull request refresh setting';
+
+  @override
+  String get settingsPullRequestRefreshDialogTitle => 'Pull request refresh interval';
+
+  @override
+  String get settingsPullRequestRefreshSecondsLabel => 'Seconds';
+
+  @override
+  String get settingsPullRequestRefreshInvalid => 'Enter a whole number of seconds.';
+
+  @override
+  String settingsPullRequestRefreshRangeInvalid(int minimumSeconds, int maximumSeconds) {
+    final intl.NumberFormat minimumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String minimumSecondsString = minimumSecondsNumberFormat.format(minimumSeconds);
+    final intl.NumberFormat maximumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String maximumSecondsString = maximumSecondsNumberFormat.format(maximumSeconds);
+
+    return 'Enter a whole number from $minimumSecondsString to $maximumSecondsString.';
+  }
+
+  @override
+  String get settingsPullRequestRefreshCancel => 'Cancel';
+
+  @override
+  String get settingsPullRequestRefreshSave => 'Save';
+
+  @override
+  String settingsPullRequestRefreshSeconds(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds seconds',
+      one: '1 second',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
 
   @override
@@ -428,6 +505,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
+  String get settingsSectionChatInput => 'Chat input';
+
+  @override
+  String get settingsChatInputVoiceFirst => 'Voice first';
+
+  @override
+  String get settingsChatInputTextFirst => 'Text first';
+
+  @override
   String get settingsSectionSupport => 'Support';
 
   @override
@@ -467,6 +553,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationSectionSystem => 'System';
+
+  @override
+  String get notificationPreferencesUnavailableTitle => 'Notification preferences unavailable';
+
+  @override
+  String get notificationPreferencesUnavailableDescription => 'Sign in to manage notification preferences.';
+
+  @override
+  String get notificationPreferencesLoadFailedTitle => 'Couldn\'t load notification preferences';
+
+  @override
+  String get notificationPreferencesLoadFailedDescription => 'Check your connection and try again.';
+
+  @override
+  String get notificationPreferencesRetry => 'Retry';
+
+  @override
+  String get notificationPreferenceUpdating => 'Updating notification preference';
 
   @override
   String get notificationCategoryAiInteraction => 'AI Interactions';
@@ -553,6 +657,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailFollowUpHint => 'Follow up...';
 
   @override
+  String get sessionDetailHoldToTalkMore => 'Hold to talk more';
+
+  @override
   String get sessionDetailTypeMessage => 'Type a message';
 
   @override
@@ -560,6 +667,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailHideActions => 'Hide actions';
+
+  @override
+  String get sessionDetailAttachImage => 'Attach image';
+
+  @override
+  String get sessionDetailRemoveAttachment => 'Remove attachment';
+
+  @override
+  String get sessionDetailAttachedImage => 'Attached image';
+
+  @override
+  String get sessionDetailAttachmentTooLarge => 'That image is too large to attach.';
+
+  @override
+  String get sessionDetailAttachmentPickFailed => 'Couldn\'t attach the image.';
+
+  @override
+  String get sessionDetailAttachmentUnsupported => 'That image format isn\'t supported.';
+
+  @override
+  String get sessionDetailAttachmentBudgetExceeded => 'Attached images are limited to 50 MB per message.';
+
+  @override
+  String get sessionDetailAttachmentsNotWithCommands => 'Images can\'t be sent with slash commands.';
+
+  @override
+  String sessionDetailQueuedAttachmentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images',
+      one: '1 image',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get sessionDetailExpandEditor => 'Expand editor';
@@ -652,20 +794,65 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionModalTitle => 'Question';
 
   @override
-  String get questionModalReject => 'Reject';
+  String get questionModalDecline => 'Decline';
+
+  @override
+  String get questionModalDeclineAll => 'Decline all';
+
+  @override
+  String get questionModalDeclineQuestion => 'Decline this question';
+
+  @override
+  String get questionModalDeclineQuestionHint => 'The assistant will see it as unanswered.';
+
+  @override
+  String get questionModalQuestionDeclined => 'Question declined';
+
+  @override
+  String get questionModalQuestionDeclinedHint => 'Choose an answer to undo.';
+
+  @override
+  String get questionModalDeclineAllTitle => 'Decline all questions?';
+
+  @override
+  String get questionModalDeclineAllMessage =>
+      'None of your draft answers will be sent. Your coding session will remain active.';
+
+  @override
+  String get questionModalKeepAnswering => 'Keep answering';
 
   @override
   String get questionModalCustomHint => 'Type your own answer';
 
   @override
-  String get questionModalSubmit => 'Submit';
+  String get questionModalSubmit => 'Submit answers';
 
   @override
   String get questionModalNext => 'Next';
 
   @override
+  String get questionModalResolveAll => 'Answer or decline every question to submit.';
+
+  @override
+  String get questionModalResolveAllCompact => 'Answer or decline all';
+
+  @override
+  String get questionModalStatusUnanswered => 'unanswered';
+
+  @override
+  String get questionModalStatusAnswered => 'answered';
+
+  @override
+  String get questionModalStatusDeclined => 'declined';
+
+  @override
   String questionModalStepIndicator(int current, int total) {
     return 'Question $current of $total';
+  }
+
+  @override
+  String questionModalStepSemantics(int current, int total, String status) {
+    return 'Question $current of $total, $status';
   }
 
   @override
@@ -756,9 +943,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchive => 'Archive';
 
   @override
-  String get sessionListUnarchive => 'Unarchive';
-
-  @override
   String get sessionListMarkRead => 'Mark as read';
 
   @override
@@ -771,13 +955,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchived => 'Session archived';
 
   @override
-  String get sessionListUnarchived => 'Session unarchived';
-
-  @override
   String get sessionListDeleted => 'Session deleted';
-
-  @override
-  String get sessionListUndo => 'Undo';
 
   @override
   String get sessionListDeleteConfirmTitle => 'Delete session?';
@@ -926,6 +1104,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceCancelTranscription => 'Cancel transcription';
+
+  @override
+  String get voiceCancelRecording => 'Cancel recording';
+
+  @override
+  String get voiceReleaseToTranscribe => 'Release to transcribe';
+
+  @override
+  String get voiceReleaseToCancel => 'Release to cancel';
 
   @override
   String get voiceTranscribing => 'Transcribing...';
@@ -1110,10 +1297,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameProjectFailed => 'Failed to rename project';
 
   @override
-  String get newSessionDedicatedWorktree => 'Dedicated worktree';
-
-  @override
-  String get newSessionDedicatedWorktreeDescription => 'Creates a dedicated git worktree and branch for this session';
+  String get newSessionDedicatedWorkspace => 'Dedicated workspace';
 
   @override
   String get newSessionPluginChooserLabel => 'Coding tool';
@@ -1128,10 +1312,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionPluginFailed => 'Failed';
 
   @override
-  String get newSessionPluginLoading => 'Loading coding tool options';
+  String get newSessionHarnessSettings => 'Harness settings';
 
   @override
-  String get newSessionOptionsRefresh => 'Refresh';
+  String get newSessionOptionsLoadingSemantics => 'Loading session options';
+
+  @override
+  String get newSessionOptionsRefresh => 'Refresh the model list';
 
   @override
   String get newSessionOptionsCached => 'Using cached coding tool options.';
@@ -1163,10 +1350,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteBranchCheckbox => 'Delete branch';
 
   @override
+  String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
+
+  @override
   String get sessionListArchiveConfirmTitle => 'Archive session?';
 
   @override
-  String get sessionListArchiveConfirmMessage => 'This session will be archived and hidden from the active list.';
+  String get sessionListArchiveConfirmMessage =>
+      'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.';
 
   @override
   String get sessionListArchiveConfirmAction => 'Archive';

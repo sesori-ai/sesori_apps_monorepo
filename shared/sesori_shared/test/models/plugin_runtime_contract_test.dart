@@ -12,6 +12,7 @@ void main() {
           isDefault: true,
           state: PluginLifecycleState.degraded,
           actionHint: "Check the bridge console if this plugin needs attention.",
+          supportsPromptAttachments: true,
         ),
         PluginMetadata(
           id: "opencode",
@@ -26,6 +27,17 @@ void main() {
     expect(PluginListResponse.fromJson(response.toJson()), response);
     expect(response.toJson()["bridgeId"], "br_abc12345");
     expect(response.toJson()["plugins"], hasLength(2));
+  });
+
+  test("plugin metadata defaults omitted prompt attachment support to false", () {
+    final metadata = PluginMetadata.fromJson(const {
+      "id": "legacy",
+      "displayName": "Legacy",
+      "isDefault": true,
+      "state": "ready",
+    });
+
+    expect(metadata.supportsPromptAttachments, isFalse);
   });
 
   test("plugin discovery omits a null bridge ID and decodes a missing one as null", () {

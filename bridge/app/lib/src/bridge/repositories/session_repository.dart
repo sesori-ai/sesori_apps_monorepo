@@ -48,6 +48,7 @@ import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_operation.dart";
 import "models/stored_session.dart";
+import "models/verified_github_login.dart";
 import "session_unseen_calculator.dart";
 
 enum SessionBindingCommitKind { sessionCreation, catalogSync }
@@ -59,6 +60,11 @@ typedef SessionBindingsCommitted = ({
   SessionBindingCommitKind kind,
   List<String> backendSessionIds,
 });
+
+typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
+
+/// The deleted root as clients see it, plus every session id removed with it.
+typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
 
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
@@ -99,10 +105,56 @@ class SessionRepository {
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
 
+
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    const maxDepth = 256;
+    final visited = <String>{};
+    String? pluginId;
+    var currentSessionId = sessionId;
+    for (var depth = 0; depth < maxDepth; depth++) {
+      if (!visited.add(currentSessionId)) {
+        throw PluginOperationException(
+          operation.name,
+          statusCode: 409,
+          message: "session $sessionId has cyclic ancestry at $currentSessionId",
+        );
+      }
+      final binding = await _sessionDao.getSession(sessionId: currentSessionId);
+      if (binding == null) {
+        throw PluginOperationException.notFound(
+          operation.name,
+          message: "session $currentSessionId was not found while resolving family for $sessionId",
+        );
+      }
+      pluginId ??= binding.pluginId;
+      if (binding.pluginId != pluginId) {
+        throw PluginOperationException(
+          operation.name,
+          statusCode: 409,
+          message: "session $sessionId has cross-plugin ancestry at $currentSessionId",
+        );
+      }
+      final parentSessionId = binding.parentSessionId;
+      if (parentSessionId == null) {
+        return (rootSessionId: binding.sessionId, pluginId: binding.pluginId);
+      }
+      currentSessionId = parentSessionId;
+    }
+    throw PluginOperationException(
+      operation.name,
+      statusCode: 409,
+      message: "session $sessionId ancestry exceeds $maxDepth entries",
+    );
+  }
+
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
     required int? limit,
+    required VerifiedGithubLogin? verifiedGithubLogin,
   }) async {
     if (await _projectsDao.getProject(projectId: projectId) == null) {
       throw ProjectNotFoundException(projectId: projectId);
@@ -114,16 +166,26 @@ class SessionRepository {
         offset: start ?? 0,
         limit: effectiveLimit,
       ),
+      verifiedGithubLogin: verifiedGithubLogin,
     );
   }
 
-  Future<Session> enrichSession({required Session session}) async {
-    final enrichedSessions = await enrichSessions(sessions: [session]);
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
+    final enrichedSessions = await enrichSessions(
+      sessions: [session],
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
     return enrichedSessions.single;
   }
 
   Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) {
-    return enrichSession(session: pluginSession.toSharedSession(pluginId: pluginId));
+    return enrichSession(
+      session: pluginSession.toSharedSession(pluginId: pluginId),
+      verifiedGithubLogin: null,
+    );
   }
 
   Future<Session> createSession({
@@ -436,13 +498,20 @@ class SessionRepository {
 
   /// Deletes the backend root, then tombstones every persisted binding in its
   /// subtree and removes the stable root atomically.
-  Future<Session> deleteSession({required String sessionId}) async {
+  ///
+  /// Returns the deleted root snapshot plus the exact set of session ids the
+  /// deletion removed, so per-session cleanup outside this repository operates
+  /// on what was actually deleted rather than on an earlier snapshot.
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async {
     final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
     );
     final subtree = await _getSessionSubtree(root: binding);
-    final deletionSnapshot = (await _mapCatalogSessions(rows: [binding])).single;
+    final deletionSnapshot = (await _mapCatalogSessions(
+      rows: [binding],
+      verifiedGithubLogin: null,
+    )).single;
     await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.deleteSession,
@@ -470,7 +539,10 @@ class SessionRepository {
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
     }
-    return deletionSnapshot;
+    return (
+      session: deletionSnapshot,
+      sessionIds: [for (final binding in subtree) binding.sessionId],
+    );
   }
 
   Future<List<SessionDto>> _getSessionSubtree({required SessionDto root}) async {
@@ -674,6 +746,8 @@ class SessionRepository {
             ProjectDto(
               projectId: project.id,
               path: project.directory,
+              hidden: true,
+              prCacheGithubLogin: null,
               createdAt: 0,
               updatedAt: 0,
               projectionUpdatedAt: 0,
@@ -757,6 +831,8 @@ class SessionRepository {
           ProjectDto(
             projectId: preferredProjectId,
             path: projectDirectory,
+            hidden: true,
+            prCacheGithubLogin: null,
             createdAt: 0,
             updatedAt: 0,
             projectionUpdatedAt: 0,
@@ -764,6 +840,7 @@ class SessionRepository {
       await _projectsDao.insertProjectIfMissing(
         projectId: hydratedProject.projectId,
         path: projectDirectory,
+        hidden: true,
       );
       final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
         pluginId: pluginId,
@@ -815,10 +892,17 @@ class SessionRepository {
     };
   }
 
-  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
+  Future<Session?> getSessionForProject({
+    required String projectId,
+    required String sessionId,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
     final row = await _sessionDao.getSession(sessionId: sessionId);
     if (row == null || row.projectId != projectId) return null;
-    return (await _mapCatalogSessions(rows: [row])).single;
+    return (await _mapCatalogSessions(
+      rows: [row],
+      verifiedGithubLogin: verifiedGithubLogin,
+    )).single;
   }
 
   Future<String?> findProjectIdForSession({required String sessionId}) async {
@@ -892,12 +976,18 @@ class SessionRepository {
     );
   }
 
-  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
 
     final (dbSessions, prsBySessionId) = await (
       _sessionDao.getSessionsByIds(sessionIds: sessionIds),
-      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
+      _getVisiblePrsBySessionIds(
+        sessionIds: sessionIds,
+        verifiedGithubLogin: verifiedGithubLogin,
+      ),
     ).wait;
 
     final pullRequestsBySessionId = <String, PullRequestInfo>{};
@@ -911,7 +1001,10 @@ class SessionRepository {
     return [
       for (final session in sessions)
         enrichSharedSession(
-          session: session,
+          session: session.copyWith(
+            pullRequest: null,
+            pullRequestHistory: const <PullRequestInfo>[],
+          ),
           storedSession: dbSessions[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
           unseenCalculator: _unseenCalculator,
@@ -924,9 +1017,15 @@ class SessionRepository {
     ];
   }
 
-  Future<List<Session>> _mapCatalogSessions({required List<SessionDto> rows}) async {
+  Future<List<Session>> _mapCatalogSessions({
+    required List<SessionDto> rows,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
     final sessionIds = [for (final row in rows) row.sessionId];
-    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+    final prsBySessionId = await _getVisiblePrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
     return [
       for (final row in rows)
         _sessionCatalogMapper.map(
@@ -942,6 +1041,19 @@ class SessionRepository {
           ),
         ),
     ];
+  }
+
+  Future<Map<String, List<PullRequestDto>>> _getVisiblePrsBySessionIds({
+    required List<String> sessionIds,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) {
+    if (verifiedGithubLogin == null) {
+      return Future.value(<String, List<PullRequestDto>>{});
+    }
+    return _pullRequestDao.getPrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: verifiedGithubLogin.login,
+    );
   }
 
   /// Selects the most relevant PR from a list of candidates.
@@ -981,7 +1093,38 @@ class SessionRepository {
     }
     return _mapCatalogSessions(
       rows: await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId),
+      verifiedGithubLogin: null,
     );
+  }
+
+  /// The session and every descendant it would take with it on deletion.
+  ///
+  /// Empty when no such session is stored, so callers preparing per-session
+  /// cleanup do not have to distinguish "gone already" from "no children".
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
+    final root = await _sessionDao.getSession(sessionId: sessionId);
+    if (root == null) return const [];
+    final subtree = await _getSessionSubtree(root: root);
+    return [for (final binding in subtree) binding.sessionId];
+  }
+
+  /// The subset of [sessionIds] that still has a stored session row. Archived
+  /// sessions keep their row, so absence means the session is really gone.
+  Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async {
+    if (sessionIds.isEmpty) return const {};
+    // Each id becomes a bind variable and the store is unbounded, so ask in
+    // chunks rather than letting one oversized statement fail the lookup.
+    const chunkSize = 500;
+    final ordered = sessionIds.toList(growable: false);
+    final existing = <String>{};
+    for (var start = 0; start < ordered.length; start += chunkSize) {
+      final end = start + chunkSize;
+      final rows = await _sessionDao.getSessionsByIds(
+        sessionIds: ordered.sublist(start, end > ordered.length ? ordered.length : end),
+      );
+      existing.addAll(rows.keys);
+    }
+    return existing;
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
@@ -1203,7 +1346,10 @@ class SessionRepository {
   Future<Session?> getCatalogSession({required String sessionId}) async {
     final row = await _sessionDao.getSession(sessionId: sessionId);
     if (row == null) return null;
-    return (await _mapCatalogSessions(rows: [row])).single;
+    return (await _mapCatalogSessions(
+      rows: [row],
+      verifiedGithubLogin: null,
+    )).single;
   }
 
   Future<void> archiveStoredSession({
@@ -1214,14 +1360,6 @@ class SessionRepository {
       sessionId: sessionId,
       archivedAt: archivedAt,
       updatedAt: archivedAt,
-      projectionUpdatedAt: captureProjectionTimestamp(),
-    );
-  }
-
-  Future<void> unarchiveStoredSession({required String sessionId}) {
-    return _sessionDao.clearArchived(
-      sessionId: sessionId,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
       projectionUpdatedAt: captureProjectionTimestamp(),
     );
   }

@@ -39,6 +39,14 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriPluginManagementChanged.fromJson(
             json
           );
+                case 'plugin.install.progress':
+          return SesoriPluginInstallProgress.fromJson(
+            json
+          );
+                case 'command.catalog.updated':
+          return SesoriCommandCatalogUpdated.fromJson(
+            json
+          );
                 case 'session.created':
           return SesoriSessionCreated.fromJson(
             json
@@ -585,6 +593,158 @@ class _$SesoriPluginManagementChangedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? snapshotToken = null,}) {
   return _then(SesoriPluginManagementChanged(
 snapshotToken: null == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriPluginInstallProgress implements SesoriSseEvent {
+  const SesoriPluginInstallProgress({required this.pluginId, @JsonKey(unknownEnumValue: PluginInstallPhase.unknown) required this.phase, required this.percent, required this.message, final  String? $type}): $type = $type ?? 'plugin.install.progress';
+  factory SesoriPluginInstallProgress.fromJson(Map<String, dynamic> json) => _$SesoriPluginInstallProgressFromJson(json);
+
+ final  String pluginId;
+@JsonKey(unknownEnumValue: PluginInstallPhase.unknown) final  PluginInstallPhase phase;
+ final  int? percent;
+ final  String? message;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriPluginInstallProgressCopyWith<SesoriPluginInstallProgress> get copyWith => _$SesoriPluginInstallProgressCopyWithImpl<SesoriPluginInstallProgress>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriPluginInstallProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginInstallProgress&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.percent, percent) || other.percent == percent)&&(identical(other.message, message) || other.message == message));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,phase,percent,message);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.pluginInstallProgress(pluginId: $pluginId, phase: $phase, percent: $percent, message: $message)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriPluginInstallProgressCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriPluginInstallProgressCopyWith(SesoriPluginInstallProgress value, $Res Function(SesoriPluginInstallProgress) _then) = _$SesoriPluginInstallProgressCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId,@JsonKey(unknownEnumValue: PluginInstallPhase.unknown) PluginInstallPhase phase, int? percent, String? message
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriPluginInstallProgressCopyWithImpl<$Res>
+    implements $SesoriPluginInstallProgressCopyWith<$Res> {
+  _$SesoriPluginInstallProgressCopyWithImpl(this._self, this._then);
+
+  final SesoriPluginInstallProgress _self;
+  final $Res Function(SesoriPluginInstallProgress) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? phase = null,Object? percent = freezed,Object? message = freezed,}) {
+  return _then(SesoriPluginInstallProgress(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,phase: null == phase ? _self.phase : phase // ignore: cast_nullable_to_non_nullable
+as PluginInstallPhase,percent: freezed == percent ? _self.percent : percent // ignore: cast_nullable_to_non_nullable
+as int?,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriCommandCatalogUpdated implements SesoriSseEvent {
+  const SesoriCommandCatalogUpdated({required this.pluginId, final  String? $type}): $type = $type ?? 'command.catalog.updated';
+  factory SesoriCommandCatalogUpdated.fromJson(Map<String, dynamic> json) => _$SesoriCommandCatalogUpdatedFromJson(json);
+
+ final  String pluginId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriCommandCatalogUpdatedCopyWith<SesoriCommandCatalogUpdated> get copyWith => _$SesoriCommandCatalogUpdatedCopyWithImpl<SesoriCommandCatalogUpdated>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriCommandCatalogUpdatedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCommandCatalogUpdated&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.commandCatalogUpdated(pluginId: $pluginId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriCommandCatalogUpdatedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriCommandCatalogUpdatedCopyWith(SesoriCommandCatalogUpdated value, $Res Function(SesoriCommandCatalogUpdated) _then) = _$SesoriCommandCatalogUpdatedCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriCommandCatalogUpdatedCopyWithImpl<$Res>
+    implements $SesoriCommandCatalogUpdatedCopyWith<$Res> {
+  _$SesoriCommandCatalogUpdatedCopyWithImpl(this._self, this._then);
+
+  final SesoriCommandCatalogUpdated _self;
+  final $Res Function(SesoriCommandCatalogUpdated) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,}) {
+  return _then(SesoriCommandCatalogUpdated(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

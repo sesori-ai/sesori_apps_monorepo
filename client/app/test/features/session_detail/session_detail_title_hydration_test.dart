@@ -24,8 +24,11 @@ class MockPermissionRepository extends Mock implements PermissionRepository {}
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
-  return BlocProvider<ConnectionOverlayCubit>(
-    create: (_) => StubConnectionOverlayCubit(),
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
+      BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+    ],
     child: MaterialApp(
       navigatorKey: navigatorKey,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -46,6 +49,8 @@ SessionDetailLoadResult _loadedResult() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
+      pluginId: "opencode",
+      supportsPromptAttachments: false,
       messages: [],
       pendingQuestions: [],
       pendingPermissions: [],
@@ -67,6 +72,8 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
+      pluginId: "opencode",
+      supportsPromptAttachments: false,
       messages: const [],
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -88,6 +95,8 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
+      pluginId: "opencode",
+      supportsPromptAttachments: false,
       messages: [],
       pendingQuestions: [
         PendingQuestion(
@@ -129,6 +138,7 @@ void _registerDependencies({
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
   getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
+  getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
   getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
@@ -188,6 +198,7 @@ void main() {
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
+    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
 
     when(
       () => loadService.load(

@@ -1,6 +1,6 @@
 ---
 name: release-notes
-description: Generate a polished, user-facing release-notes markdown file for a requested release (e.g. "do this for v1.1.0"). By default it starts from the existing auto-generated GitHub release notes and post-processes them (re-orders by importance, merges multi-PR efforts, highlights the big items, drops noise) while preserving the "All PRs merged" section verbatim. Alternatively, when the user explicitly says NOT to use the existing notes, it analyzes all commits/PRs merged since the previous release tag and builds the notes from scratch. Writes a RELEASE_NOTES_<version>.md file only — never edits the live GitHub release.
+description: Generate a polished, user-facing release-notes markdown file for a requested release (e.g. "do this for v1.1.0"). By default it starts from the existing auto-generated GitHub release notes and post-processes them (re-orders by importance, merges multi-PR efforts, highlights the big items, drops noise) while preserving the "All PRs merged" and "New Contributors" sections verbatim. Alternatively, when the user explicitly says NOT to use the existing notes, it analyzes all commits/PRs merged since the previous release tag and builds the notes from scratch. Writes a RELEASE_NOTES_<version>.md file only — never edits the live GitHub release.
 compatibility: opencode
 metadata:
   audience: maintainers
@@ -9,7 +9,7 @@ metadata:
 
 # Release Notes Skill
 
-Generates a curated, user-facing release-notes markdown file for a given release version. The output mirrors the hand-edited style the maintainer prefers: a top **Highlights** block, then per-target **App** / **Bridge** sections (subdivided into New / Improved / Fixed / Other), then the original **All PRs merged** list kept verbatim.
+Generates a curated, user-facing release-notes markdown file for a given release version. The output mirrors the hand-edited style the maintainer prefers: a top **Highlights** block, then per-target **App** / **Bridge** sections (subdivided into New / Improved / Fixed / Other), then the original **All PRs merged** list kept verbatim, then the **New Contributors** section (also verbatim) when the source has one.
 
 This skill **only writes a file** (`RELEASE_NOTES_<version>.md` in the repo root). The maintainer manually pastes the result into the GitHub release once happy. **Never edit, publish, or otherwise mutate the live GitHub release.**
 
@@ -44,7 +44,7 @@ If the release is not found, list recent releases and ask the user which one the
 gh release list --repo sesori-ai/sesori_apps_monorepo --limit 15
 ```
 
-The `body` field contains the auto-generated notes with `### App`, `### Bridge`, and `### All PRs merged` sections.
+The `body` field contains the auto-generated notes with `### App`, `### Bridge`, `### All PRs merged`, and (when the release introduced first-time authors) `## New Contributors` sections.
 
 ### Step A2: Parse the existing notes
 
@@ -52,6 +52,7 @@ From the fetched body, extract:
 - Every App entry (Added / Fixed / Changed) with its PR number(s).
 - Every Bridge entry with its PR number(s).
 - The complete **All PRs merged** list (keep this text exactly as-is for the final output).
+- The **New Contributors** list, if present (also kept exactly as-is).
 
 ### Step A3: Apply the post-processing rules
 
@@ -59,7 +60,7 @@ Apply all rules in the **Post-Processing Rules** section below to the App and Br
 
 ### Step A4: Write the file
 
-Write `RELEASE_NOTES_<version>.md` using the **Output Format** below. The **All PRs merged** section is copied verbatim from the source.
+Write `RELEASE_NOTES_<version>.md` using the **Output Format** below. The **All PRs merged** and **New Contributors** sections are copied verbatim from the source.
 
 ---
 
@@ -73,6 +74,7 @@ Use this ONLY when the user explicitly says not to use the existing notes.
 - **PR enumeration** walks the full `compare` API (paged, no arbitrary cap) and refuses to emit truncated notes.
 - **Exclusions**: drops `dependabot` / `dependabot[bot]` authors and any PR labelled `ignore-for-release`.
 - **App/Bridge classification** pages `/pulls/<n>/files` fully and degrades conservatively (lists under both) when a PR is too large to enumerate.
+- **New-contributor detection** credits each author with no commit reachable from the previous stable tag, matching GitHub's own `--generate-notes` behavior. A failed lookup omits that one author rather than failing the run, so the section can be incomplete on a degraded API; spot-check it when a release is expected to introduce someone.
 
 Reusing it means Mode B and CI can never drift, so just run it instead of re-deriving the same data.
 
@@ -92,15 +94,15 @@ GITHUB_TOKEN="$(gh auth token)" dart tool/generate_release_notes.dart \
 - **User-supplied range:** if the user explicitly gives a previous tag/ref, pass it as `--from` to override auto-resolution.
 - The tool prints the resolved `from...to` range to stderr — always surface it to the user and confirm it looks right before proceeding.
 
-This produces the same structure Mode A consumes: `### App`, `### Bridge`, and `### All PRs merged` (plus a `**Full Changelog**` link).
+This produces the same structure Mode A consumes: `### App`, `### Bridge`, `### All PRs merged`, an optional `## New Contributors` section (plus a `**Full Changelog**` link).
 
 ### Step B2: Parse, post-process, and write the file
 
 From here the flow is identical to Mode A:
 
-1. Parse the generated `### App`, `### Bridge`, and `### All PRs merged` sections (same as Step A2).
+1. Parse the generated `### App`, `### Bridge`, `### All PRs merged`, and `## New Contributors` sections (same as Step A2).
 2. Apply the **Post-Processing Rules** to the App/Bridge entries (same as Step A3).
-3. Write `RELEASE_NOTES_<version>.md` using the **Output Format**, copying the **All PRs merged** section verbatim from the generated output.
+3. Write `RELEASE_NOTES_<version>.md` using the **Output Format**, copying the **All PRs merged** and **New Contributors** sections verbatim from the generated output.
 
 This guarantees Mode B's range, exclusions, and classification exactly match what GitHub would have shown — the only difference from Mode A is that the raw notes come from the generator instead of an already-published release.
 
@@ -108,7 +110,7 @@ This guarantees Mode B's range, exclusions, and classification exactly match wha
 
 ## Post-Processing Rules (both modes)
 
-Apply these to produce the App and Bridge narrative sections. The **All PRs merged** section is NEVER curated — it stays complete.
+Apply these to produce the App and Bridge narrative sections. The **All PRs merged** and **New Contributors** sections are NEVER curated — they stay complete. Never drop a new contributor because their PR was filtered out of the narrative as chore/CI noise.
 
 1. **Merge multi-PR efforts into one entry.** Collapse clusters that are obviously one initiative (e.g. titles like "migration PR 5/15", a series of "sesori_plugin_runtime — …" PRs, or a feature plus its follow-ups). Write a single descriptive bullet and append all the PR links: `([#223](…), [#226](…), …)`. Describe the *final shipped outcome*, not the mechanics of each PR.
 
@@ -183,6 +185,10 @@ Write to `RELEASE_NOTES_<version>.md` in the repo root:
 ## All PRs merged
 
 <verbatim list from the GitHub release (Mode A) OR generated list (Mode B)>
+
+## New Contributors
+
+<verbatim list from the source; omit this whole section when the source has none>
 ```
 
 Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target (App or Bridge) had no user-facing changes, write a single `- No user-facing changes` bullet under it.
@@ -192,7 +198,7 @@ Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target 
 ## Workflow Summary
 
 1. Determine **version** and **mode** (default = Mode A). Capture any highlight hints the user gave.
-2. **Mode A:** `gh release view <version>` → parse App/Bridge/All-PRs. **Mode B:** run `dart tool/generate_release_notes.dart` (with `GITHUB_TOKEN`) to produce the raw App/Bridge/All-PRs notes, then parse them the same way as Mode A. Do not re-derive the range, exclusions, or classification by hand.
+2. **Mode A:** `gh release view <version>` → parse App/Bridge/All-PRs/New-Contributors. **Mode B:** run `dart tool/generate_release_notes.dart` (with `GITHUB_TOKEN`) to produce the same raw sections, then parse them the same way as Mode A. Do not re-derive the range, exclusions, or classification by hand.
 3. Apply the **Post-Processing Rules** (merge clusters into final outcomes, drop noise, collapse fixes to unreleased code, omit disabled work, reframe perf/UX, order by impact, build Highlights).
 4. For unclear-benefit or unclear-shipping PRs, inspect the diff (`gh pr diff <n>`) before asking the user. Do not ask about clearly same-release repairs or availability decisions the user already supplied; apply the defaults above.
 5. Write `RELEASE_NOTES_<version>.md`. Report the path and a short summary of editorial decisions made (what was merged, dropped, flagged).
@@ -201,6 +207,6 @@ Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target 
 
 - This skill writes a **file only** — it never edits or publishes the GitHub release.
 - Default behavior is **always Mode A** (start from existing GitHub release notes). Only switch to Mode B on an explicit instruction to ignore the existing notes.
-- The **All PRs merged** section is never trimmed or curated.
+- The **All PRs merged** and **New Contributors** sections are never trimmed or curated.
 - Confirm the resolved previous tag in Mode B. Surface an omission candidate only when shipping history remains ambiguous after inspection; collapse clear same-release repair clusters automatically.
 - Repo is `sesori-ai/sesori_apps_monorepo`; requires authenticated `gh`.

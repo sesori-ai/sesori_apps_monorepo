@@ -9,6 +9,7 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -19,6 +20,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/product_analytics_service.dart";
+import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
@@ -27,12 +29,31 @@ import "queued_session_submission.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
+enum _SessionRefreshTrigger {
+  commandExecuted("command_executed"),
+  connectionReconnected("connection_reconnected"),
+  lifecycleResumed("lifecycle_resumed"),
+  dataMayBeStale("data_may_be_stale"),
+  waitingForConnection("waiting_for_connection"),
+  queuedEvent("queued_event");
+
+  final String logValue;
+
+  const _SessionRefreshTrigger(this.logValue);
+}
+
+enum _SessionRefreshAction { observed, ignored, queued, coalesced, started, completed }
+
+enum _SessionRefreshResult { applied, failed, waitingForConnection, staleConnection, closed }
+
 class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionDetailLoadService _loadService;
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final SessionViewingService _sessionViewingService;
+  final ProjectViewingService _projectViewingService;
+  final ProjectViewClaim _projectViewClaim;
   final LifecycleSource _lifecycleSource;
   final ComposerDraftRepository _composerDraftRepository;
   final ProductAnalyticsService _productAnalyticsService;
@@ -56,12 +77,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
+  int _commandCatalogGeneration = 0;
   Timer? _eventRefreshCooldown;
   bool _eventRefreshQueued = false;
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
   bool _wasPaused = false;
   bool _wasConnected = false;
+
+  // A disconnect invalidates capability snapshots that could authorize image sends.
+  int _connectionGeneration = 0;
+  final Map<int, int> _activeLoadingRefreshes = {};
+  bool _connectionRefreshQueued = false;
 
   /// Set when a resume/reconnect requires the next successful silent refresh
   /// to re-declare "the user is viewing this session". The viewing service
@@ -100,6 +127,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
     required SessionViewingService sessionViewingService,
+    required ProjectViewingService projectViewingService,
     required LifecycleSource lifecycleSource,
     required ComposerDraftRepository composerDraftRepository,
     required ProductAnalyticsService productAnalyticsService,
@@ -113,6 +141,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionViewingService = sessionViewingService,
+       _projectViewingService = projectViewingService,
+       _projectViewClaim = projectViewingService.beginDetailClaim(projectId: projectId),
        _lifecycleSource = lifecycleSource,
        _composerDraftRepository = composerDraftRepository,
        _productAnalyticsService = productAnalyticsService,
@@ -129,7 +159,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
-    _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
+    _staleSubscription = _connectionService.dataMayBeStale.listen(
+      (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
+    );
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged);
     _loadMessages(isReload: false);
   }
@@ -138,17 +170,49 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   // Loading
   // ---------------------------------------------------------------------------
 
-  Future<void> _loadMessages({required bool isReload}) async {
+  Future<_SessionRefreshResult> _loadMessages({required bool isReload}) async {
+    final connectionGeneration = _connectionGeneration;
+    _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     emit(const SessionDetailState.loading());
-    final result = isReload
-        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-        : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
-    if (isClosed) return;
+    late final SessionDetailLoadResult result;
+    try {
+      result = isReload
+          ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
+          : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+    } finally {
+      final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
+      if (remaining == 0) {
+        _activeLoadingRefreshes.remove(connectionGeneration);
+      } else {
+        _activeLoadingRefreshes[connectionGeneration] = remaining;
+      }
+    }
+    if (isClosed) return _SessionRefreshResult.closed;
+
+    if (connectionGeneration != _connectionGeneration) {
+      if (_isConnected) {
+        if (!_activeLoadingRefreshes.containsKey(_connectionGeneration)) {
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.connectionReconnected));
+        }
+      } else {
+        _waitingForConnection = true;
+      }
+      return _SessionRefreshResult.staleConnection;
+    }
 
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
+        final effectiveProjectId = snapshot.projectId;
+        if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
+          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        } else {
+          _projectViewingService.markClaimReady(
+            claim: _projectViewClaim,
+            projectId: effectiveProjectId,
+          );
+        }
         // Declare the view only now that the transcript has actually loaded —
         // a load that fails or waits for connection must not mark the session
         // read (clearing its bold globally) while the user only saw a
@@ -156,14 +220,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _sessionViewingService.setViewingSession(_sessionId);
         _drainPendingEvents();
         _tryDrainQueue();
+        return _SessionRefreshResult.applied;
       case SessionDetailLoadResultWaitingForConnection():
+        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
         _waitingForConnection = true;
         if (_connectionService.currentStatus is ConnectionConnected) {
           _waitingForConnection = false;
-          unawaited(_loadMessages(isReload: true));
+          _logRefresh(
+            action: _SessionRefreshAction.observed,
+            trigger: _SessionRefreshTrigger.waitingForConnection,
+          );
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.waitingForConnection));
         }
+        return _SessionRefreshResult.waitingForConnection;
       case SessionDetailLoadResultFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
+        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
         loge("Session detail load failed", error, stackTrace);
@@ -172,15 +244,32 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
           ),
         );
+        return _SessionRefreshResult.failed;
     }
   }
 
-  Future<void> reload() => _loadMessages(isReload: true);
+  Future<void> reload() async {
+    await _loadMessages(isReload: true);
+  }
 
-  void _silentRefresh() {
-    if (state is! SessionDetailLoaded) return;
+  Future<void> _runLoadingRefresh({required _SessionRefreshTrigger trigger}) async {
+    await _traceRefresh(
+      trigger: trigger,
+      operation: () => _loadMessages(isReload: true),
+    );
+  }
+
+  void _silentRefresh({required _SessionRefreshTrigger trigger}) {
+    if (state is! SessionDetailLoaded) {
+      _logRefresh(action: _SessionRefreshAction.ignored, trigger: trigger);
+      return;
+    }
     final active = _activeRefresh;
     if (active != null) {
+      _logRefresh(action: _SessionRefreshAction.coalesced, trigger: trigger);
+      if (trigger == _SessionRefreshTrigger.connectionReconnected) {
+        _queueConnectionRefreshAfter(activeRefresh: active);
+      }
       // This call raced an in-flight refresh. If a staleness signal is
       // queued with no cooldown armed to drain it (the pause path cancels
       // the timer), chain the trailing refresh onto the in-flight completion
@@ -196,9 +285,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final consumedQueuedSignal = _eventRefreshQueued;
     _eventRefreshQueued = false;
     late final Future<void> refresh;
-    refresh = _doSilentRefresh()
-        .then((appliedSnapshot) {
-          if (!appliedSnapshot && consumedQueuedSignal) {
+    refresh = _traceRefresh(trigger: trigger, operation: _doSilentRefresh)
+        .then((result) {
+          if (result != _SessionRefreshResult.applied && consumedQueuedSignal) {
             _restoreQueuedRefreshAfterFailure();
           }
         })
@@ -232,27 +321,41 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     );
   }
 
-  /// Coalesces event-driven staleness signals (sessions.updated,
-  /// command.executed, dataMayBeStale) into at most one silent refresh per
-  /// [eventRefreshMinInterval]. While the agent works, the bridge can emit
-  /// these in sustained bursts (e.g. sessions.updated on every PR-sync tick),
-  /// and each silent refresh refetches the whole session snapshot — ~10
-  /// encrypted relay round-trips — so refreshing per event keeps the radio
-  /// and main isolate busy for the entire turn. The first signal after a
-  /// quiet period still refreshes immediately; follow-ups within the cooldown
-  /// collapse into a single trailing refresh. Reconnect and app-resume
-  /// refreshes bypass this on purpose: they must run promptly and re-assert
-  /// the bridge-side view declaration.
-  void _requestEventDrivenRefresh() {
-    if (state is! SessionDetailLoaded) return;
+  void _queueConnectionRefreshAfter({required Future<void> activeRefresh}) {
+    if (_connectionRefreshQueued) return;
+    _connectionRefreshQueued = true;
+    unawaited(
+      activeRefresh.whenComplete(() {
+        if (!_connectionRefreshQueued) return;
+        _connectionRefreshQueued = false;
+        if (isClosed || !_isConnected || state is! SessionDetailLoaded) return;
+        _silentRefresh(trigger: _SessionRefreshTrigger.connectionReconnected);
+      }),
+    );
+  }
+
+  /// Coalesces event-driven staleness signals (command.executed,
+  /// dataMayBeStale) into at most one silent refresh per
+  /// [eventRefreshMinInterval]. Repeated signals would otherwise each refetch
+  /// the whole session snapshot — ~10 encrypted relay round-trips. The first
+  /// signal after a quiet period still refreshes immediately; follow-ups within
+  /// the cooldown collapse into a single trailing refresh. Reconnect and
+  /// app-resume refreshes bypass this on purpose: they must run promptly and
+  /// re-assert the bridge-side view declaration.
+  void _requestEventDrivenRefresh({required _SessionRefreshTrigger trigger}) {
+    _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
+    if (state is! SessionDetailLoaded) {
+      _logRefresh(action: _SessionRefreshAction.ignored, trigger: trigger);
+      return;
+    }
     if (_wasPaused) {
       // Don't spend the radio while backgrounded: hold the signal and let
       // the resume path's bypass refresh consume it.
-      _eventRefreshQueued = true;
+      _queueEventRefresh(trigger: trigger);
       return;
     }
     if (_eventRefreshCooldown != null) {
-      _eventRefreshQueued = true;
+      _queueEventRefresh(trigger: trigger);
       return;
     }
     if (_activeRefresh != null) {
@@ -260,13 +363,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       // snapshot may predate this signal, so queue a trailing refresh behind
       // a cooldown window instead of letting _silentRefresh coalesce the
       // signal into the stale in-flight run.
-      _eventRefreshQueued = true;
+      _queueEventRefresh(trigger: trigger);
       _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
       return;
     }
     _eventRefreshQueued = true;
-    _silentRefresh();
+    _silentRefresh(trigger: trigger);
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+  }
+
+  void _queueEventRefresh({required _SessionRefreshTrigger trigger}) {
+    final action = _eventRefreshQueued ? _SessionRefreshAction.coalesced : _SessionRefreshAction.queued;
+    _eventRefreshQueued = true;
+    _logRefresh(action: action, trigger: trigger);
   }
 
   void _onEventRefreshCooldownElapsed() {
@@ -274,35 +383,60 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (!_eventRefreshQueued) return;
     if (isClosed || state is! SessionDetailLoaded) {
       _eventRefreshQueued = false;
+      _logRefresh(
+        action: _SessionRefreshAction.ignored,
+        trigger: _SessionRefreshTrigger.queuedEvent,
+      );
       return;
     }
     // While backgrounded the queue is held for the resume bypass refresh.
     if (_wasPaused) return;
     if (!_isConnected) {
       _needsStaleRefresh = true;
+      _logRefresh(
+        action: _SessionRefreshAction.queued,
+        trigger: _SessionRefreshTrigger.queuedEvent,
+      );
       return;
     }
     final active = _activeRefresh;
     if (active != null) {
+      _logRefresh(
+        action: _SessionRefreshAction.coalesced,
+        trigger: _SessionRefreshTrigger.queuedEvent,
+      );
       // The minimum interval has already elapsed, so run the queued refresh
       // as soon as the in-flight one completes instead of waiting another
       // full window.
       _drainQueueWhenRefreshCompletes(active);
       return;
     }
-    _silentRefresh();
+    _logRefresh(
+      action: _SessionRefreshAction.observed,
+      trigger: _SessionRefreshTrigger.queuedEvent,
+    );
+    _silentRefresh(trigger: _SessionRefreshTrigger.queuedEvent);
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
 
-  Future<bool> _doSilentRefresh() async {
+  Future<_SessionRefreshResult> _doSilentRefresh() async {
     final current = state;
-    if (current is! SessionDetailLoaded) return false;
+    if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
+    final connectionGeneration = _connectionGeneration;
+    final commandCatalogGeneration = _commandCatalogGeneration;
 
     emit(current.copyWith(isRefreshing: true, queuedMessages: _promptQueue.items));
 
     try {
       final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
-      if (isClosed) return false;
+      if (isClosed) return _SessionRefreshResult.closed;
+      if (connectionGeneration != _connectionGeneration) {
+        final latest = state;
+        if (latest is SessionDetailLoaded) {
+          emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+        }
+        return _SessionRefreshResult.staleConnection;
+      }
 
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
@@ -339,10 +473,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _sortChildrenByUpdatedDesc(refreshedChildSessions);
 
           final latest = state;
-          if (latest is! SessionDetailLoaded) return false;
+          if (latest is! SessionDetailLoaded) return _SessionRefreshResult.closed;
           final preservedSelectedAgent = latest.selectedAgent;
           final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
+          final availableCommands = commandCatalogGeneration == _commandCatalogGeneration
+              ? snapshot.commands
+              : latest.availableCommands;
           final availableVariants = _deriveAvailableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
@@ -370,12 +507,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               isArchived: snapshot.isArchived,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
-              availableCommands: snapshot.commands,
+              availableCommands: availableCommands,
+              supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _resolveStagedCommand(
-                availableCommands: snapshot.commands,
+                availableCommands: availableCommands,
                 stagedCommand: preservedStagedCommand,
               ),
               queuedMessages: _promptQueue.items,
@@ -383,6 +521,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableVariants: availableVariants,
             ),
           );
+          _tryDrainQueue();
           if (_reassertViewAfterRefresh) {
             // A resume/reconnect requested this refresh; the refreshed
             // transcript has rendered, so it is safe to re-declare the view
@@ -391,30 +530,91 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             _sessionViewingService.setViewingSession(_sessionId);
           }
           _drainPendingEvents();
-          return true;
+          return _SessionRefreshResult.applied;
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
           final latest = state;
           if (latest is SessionDetailLoaded) {
             emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
           }
-          return false;
-        case SessionDetailLoadResultFailed(:final error):
-          logw("Silent refresh failed: ${error.toString()}");
+          return _SessionRefreshResult.waitingForConnection;
+        case SessionDetailLoadResultFailed(:final error, :final stackTrace):
+          logw("Silent refresh failed", error, stackTrace);
           final latest = state;
           if (latest is SessionDetailLoaded) {
             emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
           }
-          return false;
+          return _SessionRefreshResult.failed;
       }
-    } catch (error) {
-      logw("Silent refresh failed: ${error.toString()}");
-      if (isClosed) return false;
+    } on Object catch (error, stackTrace) {
+      logw("Silent refresh failed", error, stackTrace);
+      if (isClosed) return _SessionRefreshResult.closed;
       final latest = state;
       if (latest is SessionDetailLoaded) {
         emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
       }
-      return false;
+      return _SessionRefreshResult.failed;
+    }
+  }
+
+  Future<_SessionRefreshResult> _traceRefresh({
+    required _SessionRefreshTrigger trigger,
+    required Future<_SessionRefreshResult> Function() operation,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    _logRefresh(action: _SessionRefreshAction.started, trigger: trigger);
+    final result = await operation();
+    stopwatch.stop();
+    final resultValue = switch (result) {
+      _SessionRefreshResult.applied => "applied",
+      _SessionRefreshResult.failed => "failed",
+      _SessionRefreshResult.waitingForConnection => "waiting_for_connection",
+      _SessionRefreshResult.staleConnection => "stale_connection",
+      _SessionRefreshResult.closed => "closed",
+    };
+    logd(
+      "[session-refresh] action=${_SessionRefreshAction.completed.name} "
+      "trigger=${trigger.logValue} result=$resultValue durationMs=${stopwatch.elapsedMilliseconds}",
+    );
+    return result;
+  }
+
+  void _logRefresh({
+    required _SessionRefreshAction action,
+    required _SessionRefreshTrigger trigger,
+  }) {
+    logd("[session-refresh] action=${action.name} trigger=${trigger.logValue}");
+  }
+
+  void _onCommandCatalogUpdated({required String pluginId}) {
+    final current = state;
+    if (current is! SessionDetailLoaded || current.pluginId != pluginId) return;
+    final generation = ++_commandCatalogGeneration;
+    unawaited(_refreshCommandCatalog(pluginId: pluginId, generation: generation));
+  }
+
+  Future<void> _refreshCommandCatalog({required String pluginId, required int generation}) async {
+    try {
+      final response = await _sessionRepository.listCommands(projectId: _projectId, pluginId: pluginId);
+      if (isClosed || generation != _commandCatalogGeneration) return;
+      switch (response) {
+        case SuccessResponse(:final data):
+          final latest = state;
+          if (latest is! SessionDetailLoaded || latest.pluginId != pluginId) return;
+          emit(
+            latest.copyWith(
+              availableCommands: data.items,
+              stagedCommand: _resolveStagedCommand(
+                availableCommands: data.items,
+                stagedCommand: latest.stagedCommand,
+              ),
+            ),
+          );
+        case ErrorResponse(:final error):
+          logw("Failed to refresh command catalog", error);
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to refresh command catalog", error, stackTrace);
     }
   }
 
@@ -475,7 +675,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
         case SesoriCommandExecuted():
-          _onDataMayBeStale();
+          _onDataMayBeStale(trigger: _SessionRefreshTrigger.commandExecuted);
         case SesoriSessionPromptDefaultsChanged(:final promptDefaults):
           _onPromptDefaultsChanged(promptDefaults);
         case SesoriSessionCreated() ||
@@ -556,6 +756,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         sessionID: sessionID,
         displaySessionId: displaySessionId,
       ),
+      // The loaded session identifies its plugin after the initial snapshot,
+      // so retain catalog invalidations until that scope can be matched.
+      SesoriCommandCatalogUpdated() => true,
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -563,6 +766,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriGlobalDisposed() ||
       SesoriCatalogImportProgress() ||
       SesoriPluginManagementChanged() ||
+      SesoriPluginInstallProgress() ||
+      SesoriSessionsUpdated() ||
       SesoriSessionDeleted() ||
       SesoriSessionDiff() ||
       SesoriSessionError() ||
@@ -599,10 +804,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       // Unseen-state changes are list-level concerns handled by the tracker;
       // the detail screen does not react to them.
       SesoriSessionUnseenChanged() => false,
-      // Command catalogs can change while the initial snapshot is in flight
-      // (Cursor advertises them during the concurrent history load), so retain
-      // a matching project invalidation and refresh once loading completes.
-      SesoriSessionsUpdated(:final projectID) => projectID.isNotEmpty && projectID == _projectId,
     };
   }
 
@@ -635,6 +836,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         case final SesoriQuestionRejected event
             when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
           _onQuestionResolved(event.requestID);
+        case SesoriCommandCatalogUpdated(:final pluginId):
+          _onCommandCatalogUpdated(pluginId: pluginId);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -646,6 +849,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
             SesoriPluginManagementChanged() ||
+            SesoriPluginInstallProgress() ||
+            SesoriSessionsUpdated() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
             SesoriMessagePartUpdated() ||
@@ -682,10 +887,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriSessionUnseenChanged() ||
             SesoriSessionPromptDefaultsChanged():
           break;
-        case SesoriSessionsUpdated(:final projectID):
-          if (projectID.isNotEmpty && projectID == _projectId) {
-            _requestEventDrivenRefresh();
-          }
       }
     } catch (e, st) {
       loge("SSE global event handler error", e, st);
@@ -944,12 +1145,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   bool get _isConnected => _connectionService.currentStatus is ConnectionConnected;
 
-  void _onDataMayBeStale() {
-    if (state is! SessionDetailLoaded) return;
+  void _onDataMayBeStale({required _SessionRefreshTrigger trigger}) {
+    if (state is! SessionDetailLoaded) {
+      _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
+      _logRefresh(action: _SessionRefreshAction.ignored, trigger: trigger);
+      return;
+    }
     final status = _connectionService.status.value;
     if (status is ConnectionConnected) {
-      _requestEventDrivenRefresh();
+      _requestEventDrivenRefresh(trigger: trigger);
     } else {
+      _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
+      _logRefresh(action: _SessionRefreshAction.queued, trigger: trigger);
       _needsStaleRefresh = true;
     }
   }
@@ -965,16 +1172,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _eventRefreshCooldown = null;
       case LifecycleState.resumed:
         if (!_wasPaused) return;
+        const trigger = _SessionRefreshTrigger.lifecycleResumed;
+        _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
         _wasPaused = false;
-        if (state is! SessionDetailLoaded) return;
+        if (state is! SessionDetailLoaded) {
+          _logRefresh(action: _SessionRefreshAction.ignored, trigger: trigger);
+          return;
+        }
         // The viewing service cleared the view on background and does not
         // re-assert on its own; refresh so the transcript reflects activity
         // that arrived while hidden, then re-declare the view once the refresh
         // renders. When disconnected, defer to the reconnect path below.
         _reassertViewAfterRefresh = true;
         if (_isConnected) {
-          _silentRefresh();
+          _silentRefresh(trigger: trigger);
         } else {
+          _logRefresh(action: _SessionRefreshAction.queued, trigger: trigger);
           _needsStaleRefresh = true;
         }
       case LifecycleState.inactive:
@@ -987,27 +1200,42 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
+    if (!isConnected && _wasConnected) _connectionGeneration++;
     _wasConnected = isConnected;
-    if (isConnected) {
-      if (_waitingForConnection) {
-        _waitingForConnection = false;
-        unawaited(_loadMessages(isReload: true));
-        return;
+    if (!isConnected) {
+      _connectionRefreshQueued = false;
+      final current = state;
+      if (current is SessionDetailLoaded && current.supportsPromptAttachments != null) {
+        // Plugin capabilities belong to the bridge behind the connection and
+        // must be resolved again before another bridge can receive images.
+        emit(current.copyWith(supportsPromptAttachments: null));
       }
-      _tryDrainQueue();
-      if (_needsStaleRefresh) {
-        _needsStaleRefresh = false;
-        // The disconnect that queued this refresh also released this
-        // connection's view on the bridge, so re-assert it once the refresh
-        // renders — same as the plain reconnect branch below.
-        if (state is SessionDetailLoaded) _reassertViewAfterRefresh = true;
-        _silentRefresh();
-      } else if (reconnected && state is SessionDetailLoaded) {
-        // A foreground relay reconnect: the bridge released the old
-        // connection's view declaration, so refresh and re-assert it.
-        _reassertViewAfterRefresh = true;
-        _silentRefresh();
-      }
+      return;
+    }
+    if (_waitingForConnection) {
+      _waitingForConnection = false;
+      const trigger = _SessionRefreshTrigger.waitingForConnection;
+      _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
+      unawaited(_runLoadingRefresh(trigger: trigger));
+      return;
+    }
+    _tryDrainQueue();
+    if (_needsStaleRefresh) {
+      _needsStaleRefresh = false;
+      const trigger = _SessionRefreshTrigger.connectionReconnected;
+      _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
+      // The disconnect that queued this refresh also released this
+      // connection's view on the bridge, so re-assert it once the refresh
+      // renders — same as the plain reconnect branch below.
+      if (state is SessionDetailLoaded) _reassertViewAfterRefresh = true;
+      _silentRefresh(trigger: trigger);
+    } else if (reconnected && state is SessionDetailLoaded) {
+      const trigger = _SessionRefreshTrigger.connectionReconnected;
+      _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
+      // A foreground relay reconnect: the bridge released the old
+      // connection's view declaration, so refresh and re-assert it.
+      _reassertViewAfterRefresh = true;
+      _silentRefresh(trigger: trigger);
     }
   }
 
@@ -1024,14 +1252,33 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String text,
     required String? command,
     required ComposerInputMode inputMode,
+    required List<ComposerAttachment> attachments,
   }) async {
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
-    if (trimmed.isEmpty && normalizedCommand == null) return;
+    if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
+
+    if (_refuseWhenArchived(action: "send a prompt")) return;
+
+    // The bridge's command paths carry only the text part, so sending this
+    // combination would drop the images without telling anyone. Refuse it at
+    // the seam that formats the wire payload, not only in the composer.
+    if (normalizedCommand != null && attachments.isNotEmpty) {
+      logw("Refused a /$normalizedCommand submission carrying ${attachments.length} attachment(s)");
+      return;
+    }
+
+    // Hold the declared capability line at the wire seam too. An unresolved
+    // capability refuses as well, so unsupported images never enter the queue.
+    final supportsPromptAttachments = current is SessionDetailLoaded ? current.supportsPromptAttachments : null;
+    if (attachments.isNotEmpty && supportsPromptAttachments != true) {
+      logw("Refused ${attachments.length} attachment(s) because plugin support is unavailable");
+      return;
+    }
 
     final submission = normalizedCommand == null
-        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode)
+        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
         : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
     if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
       _promptQueue.enqueue(submission);
@@ -1042,16 +1289,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
+    // Send from the submission so the immediate and drained paths carry the
+    // exact same payload — notably a command submission's empty attachments.
     final result = await _sessionRepository.sendMessage(
       sessionId: _sessionId,
-      text: trimmed,
+      text: submission.text,
+      attachments: submission.attachments,
       agent: current.selectedAgent,
       model: _agentModelToPromptModel(current.selectedAgentModel),
       variant: switch (current.selectedAgentModel?.variant) {
         null => null,
         final variant => SessionVariant(id: variant),
       },
-      command: normalizedCommand,
+      command: submission.command,
     );
 
     switch (result) {
@@ -1070,6 +1320,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final removed = _promptQueue.cancel(index);
     if (removed != null) {
       _emitQueueUpdate(current);
+      _tryDrainQueue();
     }
   }
 
@@ -1086,7 +1337,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
+    if (_refuseWhenArchived(action: "drain the prompt queue")) return;
 
+    final pendingSubmission = _promptQueue.items.firstOrNull;
+    if (pendingSubmission == null) return;
+    if (pendingSubmission.attachments.isNotEmpty && current.supportsPromptAttachments != true) {
+      // Preserve authored FIFO order: the blocked image stays visible and
+      // cancellable rather than allowing later text prompts to overtake it.
+      return;
+    }
     final submission = _promptQueue.dequeue();
     if (submission == null) return;
 
@@ -1098,6 +1357,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
         text: submission.text,
+        attachments: submission.attachments,
         agent: current.selectedAgent,
         model: _agentModelToPromptModel(current.selectedAgentModel),
         variant: switch (current.selectedAgentModel?.variant) {
@@ -1268,11 +1528,23 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(pendingPermissions: pending));
   }
 
+  /// Archiving is permanent, so an archived session is audit-only: every
+  /// mutation refuses here rather than in the widgets. Returns `true` when the
+  /// caller must stop.
+  bool _refuseWhenArchived({required String action}) {
+    final current = state;
+    if (current is! SessionDetailLoaded || !current.isArchived) return false;
+    logw("Refused to $action for archived session $_sessionId");
+    return true;
+  }
+
   Future<bool> replyToQuestion({
     required String requestId,
     required String sessionId,
     required List<ReplyAnswer> answers,
   }) async {
+    if (_refuseWhenArchived(action: "reply to a question")) return false;
+
     // Optimistically remove before the API call so the screen sees the
     // updated state synchronously (prevents auto-chain re-opening the
     // same question).
@@ -1297,6 +1569,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   Future<bool> rejectQuestion(String requestId) async {
+    if (_refuseWhenArchived(action: "reject a question")) return false;
+
     // Reject against the question's owning session (which may be a child/
     // sub-agent surfaced on this root), mirroring the reply path, so the bridge
     // clears its tracker under the correct session instead of the open root.
@@ -1325,6 +1599,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String sessionId,
     required PermissionReply reply,
   }) async {
+    if (_refuseWhenArchived(action: "reply to a permission")) return false;
+
     _onPermissionResolved(requestId);
     _notificationCanceller.cancelForSession(sessionId: sessionId);
     try {
@@ -1556,6 +1832,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       sessionTitle: snapshot.canonicalSessionTitle,
+      pluginId: snapshot.pluginId,
+      supportsPromptAttachments: snapshot.supportsPromptAttachments,
       agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
@@ -1629,6 +1907,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   @override
   Future<void> close() {
     _sessionViewingService.clearViewingSession(_sessionId);
+    _projectViewingService.releaseClaim(claim: _projectViewClaim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _eventSubscription.cancel();

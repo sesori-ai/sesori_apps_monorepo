@@ -31,6 +31,9 @@ sealed class RejectQuestionRequest with _$RejectQuestionRequest {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ReplyAnswer with _$ReplyAnswer {
+  /// One question's selected values. An empty list means the question was
+  /// intentionally left unanswered, including when the user declines that
+  /// individual question while answering the rest of the request.
   const factory ReplyAnswer({
     required List<String> values,
   }) = _ReplyAnswer;

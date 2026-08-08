@@ -14,6 +14,7 @@ import "acp_protocol.dart";
 import "acp_session_loader.dart";
 import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
+import "repositories/mappers/acp_content_mapper.dart";
 
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
@@ -39,11 +40,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required this.launchSpec,
     required String launchDirectory,
     required this.eventMapper,
+    required AcpContentMapper contentMapper,
     required AcpCommandTracker commandTracker,
     required AcpSessionOptionsService sessionOptionsService,
     AcpProcessFactory? processFactory,
   }) : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
        _processFactory = processFactory,
+       _contentMapper = contentMapper,
        _commandTracker = commandTracker,
        _sessionOptionsService = sessionOptionsService,
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
@@ -66,6 +69,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   final AcpEventMapper eventMapper;
 
   final AcpProcessFactory? _processFactory;
+  final AcpContentMapper _contentMapper;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
 
   /// Snapshot of the agent's advertised slash commands, fed by the
@@ -195,6 +199,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     return AcpApprovalRegistry.forClient(
       client: client,
       emit: emitActivityEvent,
+      onFireAndForgetNotification: handleAgentNotification,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }
@@ -244,6 +249,26 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpInitializeResult? get initializeResult => _initResult;
   void emitEvent(BridgeSseEvent event) => _eventBuffer.add(event);
 
+  /// The single handler for agent-originated notifications: replay suppression,
+  /// then mapping through [eventMapper] into the event buffer. Also the forward
+  /// target for fire-and-forget extension *requests* reclassified by the
+  /// approval registry (see [AcpApprovalRegistry.fireAndForgetExtensionMethods]),
+  /// so both wire shapes share one mapping path.
+  void handleAgentNotification(AcpNotification notification) {
+    if (notification.method == AcpMethods.sessionUpdate) {
+      final sid = notification.params["sessionId"];
+      final update = notification.params["update"];
+      final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
+      if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
+        // Replay from an in-flight resume-load — drop so old history does
+        // not re-stream into the live conversation.
+        _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
+        return;
+      }
+    }
+    eventMapper.map(notification).forEach(_eventBuffer.add);
+  }
+
   /// Approval state participates in the activity summary, so invalidate that
   /// summary after forwarding each approval transition.
   void emitActivityEvent(BridgeSseEvent event) {
@@ -274,20 +299,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           notifications: client.notifications,
           tracker: _commandTracker,
         );
-        _notificationSubscription = client.notifications.listen((notification) {
-          if (notification.method == AcpMethods.sessionUpdate) {
-            final sid = notification.params["sessionId"];
-            final update = notification.params["update"];
-            final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
-            if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
-              // Replay from an in-flight resume-load — drop so old history does
-              // not re-stream into the live conversation.
-              _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
-              return;
-            }
-          }
-          eventMapper.map(notification).forEach(_eventBuffer.add);
-        });
+        _notificationSubscription = client.notifications.listen(handleAgentNotification);
         final registry = buildApprovalRegistry(client);
         _approvalRegistry = registry;
         registry.attach(client.serverRequests);
@@ -1300,6 +1312,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,
+      contentMapper: _contentMapper,
     );
     StreamSubscription<AcpNotification>? sub;
     AcpCommandListener? commandListener;

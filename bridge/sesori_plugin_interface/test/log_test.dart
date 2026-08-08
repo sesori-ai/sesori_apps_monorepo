@@ -88,6 +88,20 @@ void main() {
       expect(err.single, equals("from-caller"));
     });
 
+    test("warning retains attached error and stack trace at the default info level", () {
+      Log.level = LogLevel.info;
+      final err = <String>[];
+
+      IOOverrides.runZoned(
+        () => Log.w("operation failed", StateError("useful failure"), StackTrace.fromString("useful stack")),
+        stdout: () => _CapturingStdout(<String>[]),
+        stderr: () => _CapturingStdout(err),
+      );
+
+      expect(err.single, contains("Bad state: useful failure"));
+      expect(err.single, contains("useful stack"));
+    });
+
     test("warning and error are not colorized when stderr is not a terminal", () {
       Log.level = LogLevel.verbose;
       final err = <String>[];

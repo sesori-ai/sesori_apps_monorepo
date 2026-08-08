@@ -161,16 +161,6 @@ class WorktreeService {
     );
   }
 
-  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
-    required String projectId,
-  }) async {
-    return _worktreeRepository.resolveBaseBranchAndCommit(
-      projectId: projectId,
-      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
-      refreshOrigin: false,
-    );
-  }
-
   Future<String?> resolveHeadCommit({
     required String projectId,
   }) async {
@@ -229,29 +219,6 @@ class WorktreeService {
     return _worktreeRepository.branchExists(
       projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
       branchName: branchName,
-    );
-  }
-
-  Future<bool> restoreWorktree({
-    required String projectId,
-    required String worktreePath,
-    required String branchName,
-    required String baseBranch,
-    required String? baseCommit,
-  }) async {
-    final projectPath = await _worktreeRepository.resolveProjectPath(projectId: projectId);
-    if (!_worktreeRepository.isValidWorktreePath(
-      projectPath: projectPath,
-      worktreePath: worktreePath,
-    )) {
-      return false;
-    }
-    return _worktreeRepository.restoreWorktree(
-      projectPath: projectPath,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: baseBranch,
-      baseCommit: baseCommit,
     );
   }
 }

@@ -9,9 +9,40 @@ void main() {
   group("CodexPluginDescriptor.inspectSetup", () {
     const stateDirectory = "/state";
     const config = PluginConfig(values: {"port": null, "bin": "codex"});
+    // Probes must stay deterministic regardless of what the host machine has
+    // installed, so the desktop-app candidate list is injected everywhere.
+    const descriptor = CodexPluginDescriptor(desktopAppCliCandidates: []);
 
     test("declares project-scoped session options", () {
       expect(const CodexPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.project);
+      expect(const CodexPluginDescriptor().supportsPromptAttachments, isTrue);
+    });
+
+    test("advertises install without an explicit binary override", () {
+      // Every CI/dev platform this test runs on has a published codex release
+      // asset, so the managed install capability is advertised.
+      expect(
+        descriptor.managementCapabilities(config: config),
+        const {
+          PluginControlCapability.lifecycle,
+          PluginControlCapability.setupRefresh,
+          PluginControlCapability.idleTimeout,
+          PluginControlCapability.install,
+        },
+      );
+    });
+
+    test("does not advertise install with an explicit binary override", () {
+      expect(
+        descriptor.managementCapabilities(
+          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
+        ),
+        const {
+          PluginControlCapability.lifecycle,
+          PluginControlCapability.setupRefresh,
+          PluginControlCapability.idleTimeout,
+        },
+      );
     });
 
     test("reports ready after version and read-only authentication probes", () async {
@@ -19,7 +50,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -30,7 +61,7 @@ void main() {
         ],
       );
 
-      final result = await const CodexPluginDescriptor().inspectSetup(
+      final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
         environment: const <String, String>{},
@@ -50,7 +81,7 @@ void main() {
         spawnError: const ProcessException("codex", ["--version"], "missing", 2),
       );
 
-      final result = await const CodexPluginDescriptor().inspectSetup(
+      final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
         environment: const <String, String>{},
@@ -79,7 +110,7 @@ void main() {
         ],
       );
 
-      final result = await const CodexPluginDescriptor().inspectSetup(
+      final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
         environment: const <String, String>{},
@@ -90,12 +121,81 @@ void main() {
       expect(processes.spawnedExecutables, ["codex", managedBinaryPath, managedBinaryPath]);
     });
 
+    test("falls back to a desktop-app-bundled CLI when PATH is missing", () async {
+      const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          const ProcessException("codex", ["--version"], "missing", 2),
+          _ProbeProcess(
+            pid: 3,
+            stdoutBytes: utf8.encode("codex-cli 0.146.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 4,
+            stdoutBytes: utf8.encode("Logged in using ChatGPT\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await const CodexPluginDescriptor(
+        desktopAppCliCandidates: [appCli],
+      ).inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, const PluginSetupReady());
+      expect(processes.spawnedExecutables, ["codex", appCli, appCli]);
+    });
+
+    test("skips an outdated desktop-app CLI in favor of the managed runtime", () async {
+      const manifest = CodexRuntimeManifest();
+      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          const ProcessException("codex", ["--version"], "missing", 2),
+          _ProbeProcess(
+            pid: 3,
+            stdoutBytes: utf8.encode("codex-cli 0.100.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 4,
+            stdoutBytes: utf8.encode("codex ${manifest.bundledVersion}\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 5,
+            stdoutBytes: utf8.encode("Logged in using ChatGPT\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await const CodexPluginDescriptor(
+        desktopAppCliCandidates: [appCli],
+      ).inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, const PluginSetupReady());
+      expect(processes.spawnedExecutables, ["codex", appCli, managedBinaryPath, managedBinaryPath]);
+    });
+
     test("reports a missing explicitly configured runtime", () async {
       final processes = _ProbeProcessService(
         spawnError: const ProcessException("/custom/codex", ["--version"], "missing", 2),
       );
 
-      final result = await const CodexPluginDescriptor().inspectSetup(
+      final result = await descriptor.inspectSetup(
         config: const PluginConfig(values: {"port": null, "bin": "/custom/codex"}),
         processes: processes,
         environment: const <String, String>{},
@@ -110,7 +210,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -121,7 +221,7 @@ void main() {
         ],
       );
 
-      final result = await const CodexPluginDescriptor().inspectSetup(
+      final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
         environment: const <String, String>{},
@@ -141,7 +241,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 5,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -152,7 +252,7 @@ void main() {
         ],
       );
 
-      final result = await const CodexPluginDescriptor().inspectSetup(
+      final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
         environment: const <String, String>{},
@@ -169,7 +269,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 7,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -180,7 +280,7 @@ void main() {
         ],
       );
 
-      final result = await const CodexPluginDescriptor().inspectSetup(
+      final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
         environment: const <String, String>{},

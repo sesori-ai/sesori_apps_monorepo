@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -10,18 +11,24 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
+import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
 
 class MockPermissionRepository extends Mock implements PermissionRepository {}
+
+class MockPluginRepository extends Mock implements PluginRepository {}
 
 void main() {
   const sessionId = "session-1";
@@ -35,6 +42,7 @@ void main() {
   group("SessionDetailCubit", () {
     late MockSessionService mockSessionService;
     late MockSessionRepository mockSessionRepository;
+    late MockPluginRepository mockPluginRepository;
     late MockProjectRepository mockProjectRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -50,6 +58,7 @@ void main() {
     setUp(() {
       mockSessionService = MockSessionService();
       mockSessionRepository = MockSessionRepository();
+      mockPluginRepository = MockPluginRepository();
       mockProjectRepository = MockProjectRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -57,9 +66,15 @@ void main() {
       mockFailureReporter = MockFailureReporter();
       mockProductAnalyticsService = MockProductAnalyticsService();
       stubProductAnalyticsService(service: mockProductAnalyticsService);
+      _stubPromptAttachmentCapability(
+        repository: mockPluginRepository,
+        pluginId: "plugin-1",
+        supportsPromptAttachments: false,
+      );
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
         projectRepository: mockProjectRepository,
+        pluginRepository: mockPluginRepository,
         connectionService: mockConnectionService,
       );
       promptDispatcher = mockSessionRepository;
@@ -122,6 +137,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -170,6 +186,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -192,6 +209,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -228,6 +246,7 @@ void main() {
         ).called(2);
         verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(2);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
+        verify(mockPluginRepository.listPlugins).called(2);
       },
     );
 
@@ -239,6 +258,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -249,7 +269,7 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "  hi  ",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -260,7 +280,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "hi",
             agent: "coder",
@@ -282,13 +302,128 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendMessage with command when connected delegates to service",
+      "sendMessage forwards attachments when the plugin declares support",
+      build: () {
+        _stubPromptAttachmentCapability(
+          repository: mockPluginRepository,
+          pluginId: "codex",
+          supportsPromptAttachments: true,
+        );
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId, pluginId: "codex"),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: MockLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: mockProductAnalyticsService,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(
+          text: "look at this",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+        );
+      },
+      expect: () => [isA<SessionDetailLoaded>()],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendMessage(
+            sessionId: sessionId,
+            text: "look at this",
+            attachments: any(named: "attachments", that: hasLength(1)),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage refuses attachments when the plugin declares no support",
+      build: () {
+        _stubPromptAttachmentCapability(
+          repository: mockPluginRepository,
+          pluginId: "opencode",
+          supportsPromptAttachments: false,
+        );
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId, pluginId: "opencode"),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: MockLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: mockProductAnalyticsService,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(
+          text: "look at this",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+        );
+      },
+      // Refused outright rather than sent with the images stripped: nothing
+      // reaches the service and nothing is queued.
+      expect: () => [
+        isA<SessionDetailLoaded>().having((state) => state.queuedMessages, "queuedMessages", isEmpty),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockSessionService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+          ),
+        );
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage refuses a command carrying attachments instead of dropping them",
       build: () => SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -300,6 +435,54 @@ void main() {
       act: (cubit) async {
         await _awaitLoaded(cubit);
         await cubit.sendMessage(
+          text: "look at this",
+          command: "review",
+          inputMode: ComposerInputMode.typed,
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+        );
+      },
+      // The bridge's command paths carry only text, so the send is refused
+      // outright rather than reaching the service with the images stripped.
+      // Only the load state is emitted; nothing is sent and nothing is queued.
+      expect: () => [
+        isA<SessionDetailLoaded>().having((state) => state.queuedMessages, "queuedMessages", isEmpty),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockSessionService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+          ),
+        );
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage with command when connected delegates to service",
+      build: () => SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(attachments: const [],
           text: "lib/main.dart",
           command: "review",
           inputMode: ComposerInputMode.voiceAssisted,
@@ -310,7 +493,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "lib/main.dart",
             agent: "coder",
@@ -338,6 +521,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -366,6 +550,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -384,7 +569,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Send message while busy — should send immediately (not queue).
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -402,7 +587,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "hello",
             agent: "coder",
@@ -447,6 +632,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -488,6 +674,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -548,6 +735,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -613,6 +801,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -654,6 +843,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -687,6 +877,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -739,6 +930,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -772,6 +964,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -807,6 +1000,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -842,6 +1036,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -877,6 +1072,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -910,6 +1106,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -943,6 +1140,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -990,6 +1188,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1023,6 +1222,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1075,6 +1275,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1096,7 +1297,20 @@ void main() {
           (_) async => ApiResponse.success(SessionListResponse(items: [oldChild, newChild])),
         );
 
-        globalEvents.add(SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")));
+        connectionStatus.add(
+          ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: testHealthResponse(),
+          ),
+        );
+        sessionEvents.add(
+          const SesoriCommandExecuted(
+            name: "refresh",
+            sessionID: sessionId,
+            arguments: "",
+            messageID: "refresh-message",
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 10));
       },
       expect: () => [
@@ -1148,6 +1362,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1159,7 +1374,20 @@ void main() {
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
 
-      globalEvents.add(SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")));
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      sessionEvents.add(
+        const SesoriCommandExecuted(
+          name: "refresh",
+          sessionID: sessionId,
+          arguments: "",
+          messageID: "refresh-message",
+        ),
+      );
       await slowRefreshStarted.future;
 
       cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
@@ -1195,6 +1423,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1236,6 +1465,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1266,6 +1496,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1281,14 +1512,15 @@ void main() {
             config: ServerConnectionConfig(relayHost: "fake.example.com"),
           ),
         );
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
         );
       },
-      skip: 1,
+
       expect: () => [
+        isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
@@ -1297,7 +1529,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1318,6 +1550,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1333,14 +1566,15 @@ void main() {
             config: ServerConnectionConfig(relayHost: "fake.example.com"),
           ),
         );
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
         );
       },
-      skip: 1,
+
       expect: () => [
+        isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
@@ -1349,7 +1583,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1366,7 +1600,7 @@ void main() {
       "sendMessage re-queues on send failure",
       build: () {
         when(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1383,6 +1617,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1394,7 +1629,7 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1411,7 +1646,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "hello",
             agent: "coder",
@@ -1449,6 +1684,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1469,7 +1705,7 @@ void main() {
         );
 
         // Send message while disconnected — queued.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "queued msg",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1501,7 +1737,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1522,6 +1758,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1541,7 +1778,7 @@ void main() {
         );
 
         // Send message — queued because disconnected.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "retry me",
           command: null,
           inputMode: ComposerInputMode.voiceAssisted,
@@ -1580,7 +1817,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "retry me",
             agent: "coder",
@@ -1608,6 +1845,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1625,7 +1863,7 @@ void main() {
         ),
       );
 
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "hello",
         command: "   ",
         inputMode: ComposerInputMode.typed,
@@ -1651,7 +1889,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       verify(
-        () => mockSessionService.sendMessage(
+        () => mockSessionService.sendMessage(attachments: const [],
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
@@ -1690,6 +1928,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1713,7 +1952,7 @@ void main() {
           config: ServerConnectionConfig(relayHost: "fake.example.com"),
         ),
       );
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "lib/main.dart",
         command: "review",
         inputMode: ComposerInputMode.typed,
@@ -1724,8 +1963,13 @@ void main() {
       );
 
       when(() => mockConnectionService.currentStatus).thenReturn(connected);
-      globalEvents.add(
-        SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")),
+      sessionEvents.add(
+        const SesoriCommandExecuted(
+          name: "refresh",
+          sessionID: sessionId,
+          arguments: "",
+          messageID: "refresh-message",
+        ),
       );
       await slowRefreshStarted.future;
 
@@ -1737,7 +1981,7 @@ void main() {
 
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
       verify(
-        () => mockSessionService.sendMessage(
+        () => mockSessionService.sendMessage(attachments: const [],
           sessionId: sessionId,
           text: "lib/main.dart",
           agent: "coder",
@@ -1755,7 +1999,7 @@ void main() {
       final sentTexts = <String>[];
 
       when(
-        () => mockSessionService.sendMessage(
+        () => mockSessionService.sendMessage(attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
@@ -1780,6 +2024,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1796,7 +2041,7 @@ void main() {
           config: ServerConnectionConfig(relayHost: "fake.example.com"),
         ),
       );
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "first",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1816,7 +2061,7 @@ void main() {
       );
 
       await firstSendStarted.future;
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "second",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1843,6 +2088,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1862,12 +2108,12 @@ void main() {
         );
 
         // Queue two messages while disconnected.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "first",
           command: null,
           inputMode: ComposerInputMode.typed,
         );
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "second",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1892,7 +2138,7 @@ void main() {
       },
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "first",
             agent: any(named: "agent"),
@@ -1903,7 +2149,7 @@ void main() {
           ),
         ).called(1);
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "second",
             agent: any(named: "agent"),
@@ -1922,7 +2168,7 @@ void main() {
         // Make sendMessage always fail — it is only called during drain,
         // not during initial load, so this is safe.
         when(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1939,6 +2185,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1959,7 +2206,7 @@ void main() {
         );
 
         // Queue a message.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "will fail",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -2004,7 +2251,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "will fail",
             agent: any(named: "agent"),
@@ -2020,12 +2267,18 @@ void main() {
     group("viewing declaration", () {
       test("declares the view once the transcript loads and clears it on close", () async {
         final viewingService = stubbedSessionViewingService();
+        final projectViewingService = stubbedProjectViewingService();
+        final projectClaim = ProjectViewClaim();
+        when(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).thenReturn(projectClaim);
         final cubit = SessionDetailCubit(
           mockConnectionService,
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: projectViewingService,
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2037,9 +2290,19 @@ void main() {
         await _awaitLoaded(cubit);
 
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
+        verify(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).called(1);
+        verify(
+          () => projectViewingService.markClaimReady(
+            claim: projectClaim,
+            projectId: "project-1",
+          ),
+        ).called(1);
 
         await cubit.close();
         verify(() => viewingService.clearViewingSession(sessionId)).called(1);
+        verify(() => projectViewingService.releaseClaim(claim: projectClaim)).called(1);
       });
 
       test("a failed load never declares the view", () async {
@@ -2047,12 +2310,18 @@ void main() {
           () => mockSessionService.getMessages(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final viewingService = stubbedSessionViewingService();
+        final projectViewingService = stubbedProjectViewingService();
+        final projectClaim = ProjectViewClaim();
+        when(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).thenReturn(projectClaim);
         final cubit = SessionDetailCubit(
           mockConnectionService,
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: projectViewingService,
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2065,6 +2334,10 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
         verifyNever(() => viewingService.setViewingSession(any()));
+        verify(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).called(1);
+        verify(() => projectViewingService.markClaimFailed(claim: projectClaim)).called(1);
       });
 
       test("a stale reconnect refreshes AND re-asserts the view", () async {
@@ -2080,6 +2353,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2131,6 +2405,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: lifecycle,
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2153,6 +2428,31 @@ void main() {
       });
     });
   });
+}
+
+void _stubPromptAttachmentCapability({
+  required MockPluginRepository repository,
+  required String pluginId,
+  required bool supportsPromptAttachments,
+}) {
+  when(() => repository.listPlugins()).thenAnswer(
+    (_) async => ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-test",
+        supportsSessionOptions: true,
+        plugins: [
+          PluginMetadata(
+            id: pluginId,
+            displayName: "Test Plugin",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+            supportsPromptAttachments: supportsPromptAttachments,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
@@ -2282,6 +2582,7 @@ void _stubAllDefaults(
     () => sessionService.sendMessage(
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
+      attachments: any(named: "attachments"),
       agent: any(named: "agent"),
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),

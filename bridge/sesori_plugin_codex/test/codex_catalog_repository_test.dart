@@ -1,9 +1,11 @@
 import "dart:io";
 
 import "package:codex_plugin/src/api/codex_rollout_api.dart";
+import "package:codex_plugin/src/api/models/codex_desktop_state_dto.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
+import "package:path/path.dart" as p;
 import "package:test/test.dart";
 
 void main() {
@@ -37,7 +39,7 @@ void main() {
         ],
       );
 
-      final sessions = await repository.listAllSessions();
+      final sessions = await repository.listAllSessions(knownDirectories: const {});
 
       expect(sessions, hasLength(1));
       expect(sessions[0].id, "session-with-cwd");
@@ -107,15 +109,112 @@ void main() {
       );
     });
 
+    test("discovery excludes projectless ids and every session under Documents/Codex", () async {
+      final userHome = p.join(Directory.systemTemp.path, "codex-discovery-user");
+      final documentsCodex = p.join(userHome, "Documents", "Codex");
+      final generatedChat = p.join(documentsCodex, "2026-08-01", "new-chat-2");
+      final existingGeneratedChat = p.join(documentsCodex, "2026-08-01", "existing-chat");
+      final normalProject = p.join(userHome, "repos", "app");
+      final existingStateProject = p.join(userHome, "repos", "existing-projectless");
+      final dateShapedProject = p.join(userHome, "repos", "2026-08-01", "small-slug");
+      final similarlyNamedProject = p.join(userHome, "Documents", "Codexical", "app");
+      final repository = _DiscoveryStubCodexCatalogRepository(
+        rolloutApi: _DiscoveryRolloutApi(
+          documentsCodexDirectory: documentsCodex,
+          projectlessThreadIds: const {"state-filtered", "existing-state-filtered"},
+          desktopStateError: null,
+        ),
+        records: [
+          _record(id: "generated-root", cwd: documentsCodex, title: "Generated root"),
+          _record(id: "generated-child", cwd: generatedChat, title: "Generated child"),
+          _record(id: "existing-generated", cwd: existingGeneratedChat, title: "Existing generated"),
+          _record(id: "state-filtered", cwd: normalProject, title: "Projectless elsewhere"),
+          _record(
+            id: "existing-state-filtered",
+            cwd: existingStateProject,
+            title: "Existing projectless elsewhere",
+          ),
+          _record(id: "normal", cwd: normalProject, title: "Normal"),
+          _record(id: "date-shaped", cwd: dateShapedProject, title: "Date shaped"),
+          _record(id: "similar-name", cwd: similarlyNamedProject, title: "Similar name"),
+        ],
+      );
+
+      final discovered = await repository.listAllSessions(
+        knownDirectories: {existingGeneratedChat, existingStateProject},
+      );
+
+      expect(
+        discovered.map((session) => session.id),
+        ["existing-generated", "existing-state-filtered", "normal", "date-shaped", "similar-name"],
+      );
+      expect(
+        (await repository.getSessions(projectId: generatedChat, start: null, limit: null)).map(
+          (session) => session.id,
+        ),
+        ["generated-child"],
+        reason: "discovery filtering must not remove direct access to an already-known session",
+      );
+    });
+
+    test("discovery keeps using the Documents/Codex filter when desktop state is unreadable", () async {
+      final userHome = p.join(Directory.systemTemp.path, "codex-unreadable-state-user");
+      final documentsCodex = p.join(userHome, "Documents", "Codex");
+      final repository = _DiscoveryStubCodexCatalogRepository(
+        rolloutApi: _DiscoveryRolloutApi(
+          documentsCodexDirectory: documentsCodex,
+          projectlessThreadIds: const {},
+          desktopStateError: const FormatException("malformed state"),
+        ),
+        records: [
+          _record(
+            id: "generated",
+            cwd: p.join(documentsCodex, "2026-08-01", "chat"),
+            title: "Generated",
+          ),
+          _record(id: "normal", cwd: p.join(userHome, "repos", "app"), title: "Normal"),
+        ],
+      );
+
+      final discovered = await repository.listAllSessions(knownDirectories: const {});
+
+      expect(discovered.map((session) => session.id), ["normal"]);
+    });
+
     test("keeps the index entry when rollout deletion fails", () {
       final rolloutApi = _DeleteFailingRolloutApi();
       final repository = CodexCatalogRepository(rolloutApi: rolloutApi);
 
-      repository.deleteSession(
+      final deleted = repository.deleteSession(
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
       );
 
+      expect(deleted, isFalse);
       expect(rolloutApi.wroteIndex, isFalse);
+    });
+
+    test("reports failure when rollout absence cannot be confirmed", () {
+      final repository = CodexCatalogRepository(
+        rolloutApi: _EnumerationFailingRolloutApi(),
+      );
+
+      expect(repository.deleteSession(sessionId: "session-1"), isFalse);
+    });
+
+    test("reports failure when the session index cannot be read", () {
+      final repository = CodexCatalogRepository(
+        rolloutApi: _IndexReadFailingRolloutApi(),
+      );
+
+      expect(repository.deleteSession(sessionId: "session-1"), isFalse);
+    });
+
+    test("reports failure when the session index cannot be updated", () {
+      final repository = CodexCatalogRepository(
+        rolloutApi: _IndexWriteFailingRolloutApi(),
+      );
+
+      expect(repository.deleteSession(sessionId: "session-1"), isFalse);
     });
   });
 }
@@ -145,6 +244,42 @@ class _StubCodexCatalogRepository extends CodexCatalogRepository {
 
   @override
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+}
+
+class _DiscoveryStubCodexCatalogRepository extends CodexCatalogRepository {
+  _DiscoveryStubCodexCatalogRepository({
+    required super.rolloutApi,
+    required this.records,
+  });
+
+  final List<CodexSessionRecord> records;
+
+  @override
+  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+}
+
+class _DiscoveryRolloutApi extends CodexRolloutApi {
+  _DiscoveryRolloutApi({
+    required this.documentsCodexDirectory,
+    required this.projectlessThreadIds,
+    required this.desktopStateError,
+  }) : super(environment: const {});
+
+  @override
+  final String? documentsCodexDirectory;
+  final Set<String> projectlessThreadIds;
+  final Object? desktopStateError;
+
+  @override
+  Future<CodexDesktopStateDto> readDesktopState() async {
+    final error = desktopStateError;
+    if (error != null) {
+      throw CodexDesktopStateReadException(cause: error);
+    }
+    return CodexDesktopStateDto(
+      projectlessThreadIds: projectlessThreadIds,
+    );
+  }
 }
 
 class _DeleteFailingRolloutApi extends CodexRolloutApi {
@@ -177,5 +312,50 @@ class _DeleteFailingRolloutApi extends CodexRolloutApi {
   @override
   void writeSessionIndex({required List<String> lines}) {
     wroteIndex = true;
+  }
+}
+
+class _EnumerationFailingRolloutApi extends CodexRolloutApi {
+  _EnumerationFailingRolloutApi() : super(environment: const {});
+
+  @override
+  List<String> listRolloutPaths() {
+    throw const FileSystemException("denied");
+  }
+}
+
+class _IndexReadFailingRolloutApi extends CodexRolloutApi {
+  _IndexReadFailingRolloutApi() : super(environment: const {});
+
+  @override
+  List<String> listRolloutPaths() => const [];
+
+  @override
+  List<CodexSessionIndexLine> readSessionIndexLines() {
+    throw const FileSystemException("denied");
+  }
+}
+
+class _IndexWriteFailingRolloutApi extends CodexRolloutApi {
+  _IndexWriteFailingRolloutApi() : super(environment: const {});
+
+  @override
+  List<String> listRolloutPaths() => const [];
+
+  @override
+  List<CodexSessionIndexLine> readSessionIndexLines() => [
+    (
+      entry: const CodexSessionIndexEntryDto(
+        id: "session-1",
+        threadName: "Session",
+        updatedAt: null,
+      ),
+      raw: '{"id":"session-1"}',
+    ),
+  ];
+
+  @override
+  void writeSessionIndex({required List<String> lines}) {
+    throw const FileSystemException("denied");
   }
 }

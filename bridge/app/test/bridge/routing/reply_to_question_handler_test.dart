@@ -1,3 +1,6 @@
+import "dart:convert";
+
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -8,11 +11,12 @@ import "routing_test_helpers.dart";
 void main() {
   group("ReplyToQuestionHandler", () {
     late FakeBridgePlugin plugin;
+    late AppDatabase db;
     late ReplyToQuestionHandler handler;
 
     setUp(() async {
       plugin = FakeBridgePlugin();
-      final db = createTestDatabase();
+      db = createTestDatabase();
       addTearDown(db.close);
       await recordSessionBinding(
         database: db,
@@ -22,16 +26,37 @@ void main() {
         projectId: "/repo",
         parentSessionId: null,
       );
-      handler = ReplyToQuestionHandler(
-        questionRepository: singlePluginQuestionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-        ),
-      );
+      final pending = buildTestPendingInteractionService(database: db, plugin: plugin);
+      addTearDown(pending.dispatcher.dispose);
+      addTearDown(pending.service.dispose);
+      handler = ReplyToQuestionHandler(pendingInteractionService: pending.service);
     });
 
     tearDown(() => plugin.close());
+
+    test("returns 409 for an archived session", () async {
+      await db.sessionDao.setArchived(sessionId: "ses-1", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/question/reply",
+          body: jsonEncode(
+            const ReplyToQuestionRequest(
+              requestId: "q-1",
+              sessionId: "ses-1",
+              answers: [ReplyAnswer(values: ["yes"])],
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 409);
+      expect(plugin.lastReplyQuestionId, isNull);
+    });
 
     test("canHandle POST /question/reply", () {
       expect(handler.canHandle(makeRequest("POST", "/question/reply")), isTrue);

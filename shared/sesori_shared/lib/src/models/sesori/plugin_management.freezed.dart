@@ -371,6 +371,10 @@ PluginLifecycleCommandRequest _$PluginLifecycleCommandRequestFromJson(
           return PluginLifecycleRefreshRequest.fromJson(
             json
           );
+                case 'install':
+          return PluginLifecycleInstallRequest.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -561,6 +565,45 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
   return 'PluginLifecycleCommandRequest.refresh()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginLifecycleInstallRequest implements PluginLifecycleCommandRequest {
+  const PluginLifecycleInstallRequest({final  String? $type}): $type = $type ?? 'install';
+  factory PluginLifecycleInstallRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleInstallRequestFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginLifecycleInstallRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleInstallRequest);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginLifecycleCommandRequest.install()';
 }
 
 

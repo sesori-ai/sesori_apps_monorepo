@@ -19,6 +19,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProductAnalyticsEvent,
         ProductAnalyticsService,
         ProductAnalyticsState,
+        ProjectViewClaim,
+        ProjectViewPaneClaim,
+        ProjectViewingService,
         RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
@@ -30,13 +33,16 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
+import "package:sesori_dart_core/src/cubits/chat_input_mode/chat_input_mode_cubit.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_cubit.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
+import "package:sesori_dart_core/src/repositories/chat_input_mode_store.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -50,6 +56,7 @@ import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
+import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
 import "package:sesori_mobile/core/di/injection.dart";
@@ -73,6 +80,16 @@ class StubConnectionOverlayCubit extends Cubit<ConnectionOverlayState> implement
 
   @override
   void reconnect() {}
+}
+
+/// The composer resolves its resting layout (hold-to-talk vs tap-to-type)
+/// from [ChatInputModeCubit], so any harness that pumps a composer-bearing
+/// screen must provide one. Defaults to the app default, voice-first.
+class StubChatInputModeCubit extends Cubit<ChatInputMode> implements ChatInputModeCubit {
+  StubChatInputModeCubit({ChatInputMode initialState = ChatInputMode.voiceFirst}) : super(initialState);
+
+  @override
+  Future<void> select({required ChatInputMode mode}) async => emit(mode);
 }
 
 class MockProjectApi extends Mock implements ProjectApi {}
@@ -119,6 +136,8 @@ class MockRelayClient extends Mock implements RelayClient {}
 class MockVoiceApi extends Mock implements VoiceApi {}
 
 class MockAudioRecorder extends Mock implements AudioRecorder {}
+
+class MockRecorderPrewarmClient extends Mock implements RecorderPrewarmClient {}
 
 class MockRecordingFileProvider extends Mock implements RecordingFileProvider {}
 
@@ -273,6 +292,38 @@ MockSessionViewingService stubbedSessionViewingService() {
   return mock;
 }
 
+class MockProjectViewingService extends Mock implements ProjectViewingService {}
+
+MockProjectViewingService stubbedProjectViewingService() {
+  final mock = MockProjectViewingService();
+  when(
+    () => mock.beginListClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(
+    () => mock.beginDetailClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(mock.beginWideListPaneClaim).thenAnswer((_) => ProjectViewPaneClaim());
+  when(
+    () => mock.markClaimReady(
+      claim: any(named: "claim"),
+      projectId: any(named: "projectId"),
+    ),
+  ).thenReturn(null);
+  when(() => mock.markClaimFailed(claim: any(named: "claim"))).thenReturn(null);
+  when(() => mock.releaseClaim(claim: any(named: "claim"))).thenReturn(null);
+  when(
+    () => mock.setWideListPaneVisible(
+      claim: any(named: "claim"),
+      isVisible: any(named: "isVisible"),
+    ),
+  ).thenReturn(null);
+  when(
+    () => mock.releaseWideListPaneClaim(claim: any(named: "claim")),
+  ).thenReturn(null);
+  when(mock.onDispose).thenAnswer((_) async {});
+  return mock;
+}
+
 class MockRouteSource extends Mock implements RouteSource {
   final BehaviorSubject<AppRouteDef?> _currentRoute;
 
@@ -424,10 +475,12 @@ void delegateSessionRepositoryToService({
       pluginId: invocation.namedArguments[#pluginId] as String,
     ),
   );
+  registerFallbackValue(const <ComposerAttachment>[]);
   when(
     () => repository.sendMessage(
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
+      attachments: any(named: "attachments"),
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
@@ -437,6 +490,7 @@ void delegateSessionRepositoryToService({
     (invocation) => service.sendMessage(
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
+      attachments: invocation.namedArguments[#attachments]! as List<ComposerAttachment>,
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
@@ -472,6 +526,8 @@ void registerAllFallbackValues() {
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(ProjectViewClaim());
+  registerFallbackValue(ProjectViewPaneClaim());
   registerFallbackValue(DateTime.utc(2000));
   registerFallbackValue(
     const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),

@@ -16,6 +16,8 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
     unknownValue: PluginLifecycleState.unavailable,
   ),
   actionHint: json['actionHint'] as String?,
+  supportsPromptAttachments:
+      json['supportsPromptAttachments'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
@@ -25,6 +27,7 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
       'isDefault': instance.isDefault,
       'state': _$PluginLifecycleStateEnumMap[instance.state]!,
       'actionHint': ?instance.actionHint,
+      'supportsPromptAttachments': instance.supportsPromptAttachments,
     };
 
 const _$PluginLifecycleStateEnumMap = {

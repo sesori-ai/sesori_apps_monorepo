@@ -1,12 +1,14 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 
+import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
@@ -17,6 +19,7 @@ import "package:test/test.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/restart_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -26,7 +29,10 @@ void main() {
     final harness = await _OrchestratorHarness.create(pluginIds: const ["one", "two"]);
     addTearDown(harness.close);
 
-    final response = await harness.composition.session.router.route(makeRequest("GET", "/plugin"));
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest("GET", "/plugin"),
+    );
     final plugins = PluginListResponse.fromJson(jsonDecodeMap(response.body!)).plugins;
 
     expect(response.status, 200);
@@ -55,8 +61,9 @@ void main() {
     final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
     addTearDown(harness.close);
 
-    final response = await harness.composition.session.router.route(
-      makeRequest(
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
         body: jsonEncode(
@@ -75,8 +82,9 @@ void main() {
     final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
     addTearDown(harness.close);
 
-    final response = await harness.composition.session.router.route(
-      makeRequest(
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
         "POST",
         "/plugin/missing/command",
         body: jsonEncode(const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe).toJson()),
@@ -85,6 +93,151 @@ void main() {
 
     expect(response.status, 404);
     expect(response.body, "plugin not found");
+  });
+
+  test("the command route decodes install and maps a missing capability to a typed conflict", () async {
+    final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
+    addTearDown(harness.close);
+
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/plugin/one/command",
+        body: jsonEncode(const PluginLifecycleCommandRequest.install().toJson()),
+      ),
+    );
+
+    expect(response.status, 409);
+    final conflict = PluginLifecycleConflict.fromJson(jsonDecodeMap(response.body!));
+    expect(conflict.reasons, [PluginLifecycleConflictReason.unsupported]);
+  });
+
+  test("orchestrator owns encrypted project-view claims across relay lifecycles", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final firstSocket = await relayServer.nextClient();
+    final firstMessages = StreamIterator<dynamic>(firstSocket);
+    const firstConnection = 101;
+    const secondConnection = 202;
+    const firstProject = "test-project-x";
+    const secondProject = "test-project-y";
+
+    final roomKey = await _exchangeRoomKey(
+      socket: firstSocket,
+      messages: firstMessages,
+      connID: firstConnection,
+    );
+    await _sendEncryptedRelayMessage(
+      socket: firstSocket,
+      connID: firstConnection,
+      roomKey: roomKey,
+      message: const RelayMessage.projectView(projectId: firstProject),
+    );
+    await _resumePhone(
+      socket: firstSocket,
+      messages: firstMessages,
+      connID: secondConnection,
+      roomKey: roomKey,
+    );
+    await _sendEncryptedRelayMessage(
+      socket: firstSocket,
+      connID: secondConnection,
+      roomKey: roomKey,
+      message: const RelayMessage.projectView(projectId: secondProject),
+    );
+
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.length == 2,
+      reason: "both project-view claims",
+    );
+    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject, secondProject});
+
+    await _sendEncryptedRelayMessage(
+      socket: firstSocket,
+      connID: secondConnection,
+      roomKey: roomKey,
+      message: const RelayMessage.projectView(projectId: null),
+    );
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.length == 1,
+      reason: "null project-view declaration",
+    );
+    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject});
+
+    await _sendEncryptedRelayMessage(
+      socket: firstSocket,
+      connID: secondConnection,
+      roomKey: roomKey,
+      message: const RelayMessage.projectView(projectId: secondProject),
+    );
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.length == 2,
+      reason: "project-view reassertion",
+    );
+    firstSocket.add(jsonEncode({"type": "phone_disconnected", "connId": firstConnection}));
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.length == 1,
+      reason: "single phone disconnect",
+    );
+    expect(harness.composition.projectViewTracker.activeProjectIds, {secondProject});
+
+    await firstSocket.close();
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.isEmpty,
+      reason: "relay-drop project-view cleanup",
+    );
+    await firstMessages.cancel();
+
+    final secondSocket = await relayServer.nextClient();
+    final secondMessages = StreamIterator<dynamic>(secondSocket);
+    const reconnectedConnection = 303;
+    await _resumePhone(
+      socket: secondSocket,
+      messages: secondMessages,
+      connID: reconnectedConnection,
+      roomKey: roomKey,
+    );
+    await _sendEncryptedRelayMessage(
+      socket: secondSocket,
+      connID: reconnectedConnection,
+      roomKey: roomKey,
+      message: const RelayMessage.projectView(projectId: firstProject),
+    );
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.isNotEmpty,
+      reason: "reconnected project-view reassertion",
+    );
+    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject});
+
+    secondSocket.add(jsonEncode({"type": "phone_disconnected", "connId": secondConnection}));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject});
+
+    await _sendEncryptedRelayMessage(
+      socket: secondSocket,
+      connID: reconnectedConnection,
+      roomKey: roomKey,
+      message: const RelayMessage.projectView(projectId: null),
+    );
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.isEmpty,
+      reason: "reconnected null declaration",
+    );
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await secondMessages.cancel();
   });
 
   test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {
@@ -317,6 +470,183 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("initial SSE summary is detached and reserves summary delivery order", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    final roomKey = await _exchangeRoomKey(
+      socket: socket,
+      messages: messages,
+      connID: 404,
+    );
+    await harness.activatePlugins();
+
+    const directory = "/projects/subscription-order";
+    const oldSession = PluginSession(
+      id: "initial-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "Initial session",
+      time: PluginSessionTime(created: 1, updated: 1, archived: null),
+    );
+    const newSession = PluginSession(
+      id: "later-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "Later session",
+      time: PluginSessionTime(created: 2, updated: 2, archived: null),
+    );
+    final plugin = harness.plugins.single;
+    final initialReadStarted = Completer<void>();
+    final releaseInitialRead = Completer<void>();
+    plugin
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "initial-session", awaitingInput: false)],
+        ),
+      ]
+      ..currentProjectResult = const PluginProject(id: directory, directory: directory)
+      ..sessionsResult = const [oldSession, newSession]
+      ..getProjectStarted = initialReadStarted
+      ..getProjectGate = releaseInitialRead;
+    final summaries = <SesoriProjectsSummary>[];
+    final summarySubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriProjectsSummary)
+        .cast<SesoriProjectsSummary>()
+        .listen(summaries.add);
+
+    try {
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: 404,
+        roomKey: roomKey,
+        message: const RelayMessage.sseSubscribe(path: "/events"),
+      );
+      await initialReadStarted.future.timeout(const Duration(seconds: 2));
+
+      final laterReadStarted = Completer<void>();
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "later-session", awaitingInput: true)],
+          ),
+        ]
+        ..activeSummaryReadStarted = laterReadStarted;
+      plugin.emitEvent(const BridgeSseProjectUpdated());
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: 404,
+        roomKey: roomKey,
+        message: const RelayMessage.projectView(projectId: "relay-remains-responsive"),
+      );
+
+      try {
+        await _waitFor(
+          () => harness.composition.projectViewTracker.activeProjectIds.contains("relay-remains-responsive"),
+          reason: "relay control while initial summary is blocked",
+          timeout: const Duration(milliseconds: 500),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(
+          laterReadStarted.isCompleted,
+          isFalse,
+          reason: "the later summary must wait behind the already-enqueued initial build",
+        );
+      } finally {
+        if (!releaseInitialRead.isCompleted) releaseInitialRead.complete();
+      }
+
+      await laterReadStarted.future.timeout(const Duration(seconds: 2));
+      await _waitFor(() => summaries.length == 2, reason: "initial and later summaries");
+      expect(
+        summaries.map((summary) => summary.projects.single.activeSessions.single.awaitingInput),
+        [false, true],
+      );
+    } finally {
+      if (!releaseInitialRead.isCompleted) releaseInitialRead.complete();
+      await summarySubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+      await messages.cancel();
+    }
+  });
+
+  test("shutdown drains a detached initial summary without broadcasting it late", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    final roomKey = await _exchangeRoomKey(
+      socket: socket,
+      messages: messages,
+      connID: 405,
+    );
+    await harness.activatePlugins();
+    final summaryStarted = Completer<void>();
+    final summaryGate = Completer<void>();
+    _configureBlockingProjectSummary(
+      plugin: harness.plugins.single,
+      started: summaryStarted,
+      gate: summaryGate,
+    );
+    final summaries = <SesoriProjectsSummary>[];
+    final summarySubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriProjectsSummary)
+        .cast<SesoriProjectsSummary>()
+        .listen(summaries.add);
+    var stopped = false;
+    runFuture.then((_) => stopped = true).ignore();
+
+    try {
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: 405,
+        roomKey: roomKey,
+        message: const RelayMessage.sseSubscribe(path: "/events"),
+      );
+      await summaryStarted.future.timeout(const Duration(seconds: 2));
+
+      await harness.composition.session.cancel();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(stopped, isFalse);
+
+      summaryGate.complete();
+      await runFuture.timeout(const Duration(seconds: 5));
+      expect(summaries, isEmpty);
+    } finally {
+      if (!summaryGate.isCompleted) summaryGate.complete();
+      await summarySubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+      await messages.cancel();
+    }
+  });
+
   test("shutdown drains in-flight post-normalization work", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -354,6 +684,17 @@ void main() {
     }
     await runFuture.timeout(const Duration(seconds: 5));
   });
+}
+
+Future<RelayResponse> _dispatch({
+  required RoutedRequestDispatcher dispatcher,
+  required RelayRequest request,
+}) async {
+  final result = dispatcher.dispatch(request: request);
+  if (result case final RoutedRequestAccepted accepted) {
+    return (await accepted.pendingRequest.completion).response;
+  }
+  throw StateError("route was rejected during test setup");
 }
 
 void _configureBlockingProjectSummary({
@@ -398,6 +739,111 @@ Future<void> _waitFor(
   }
 }
 
+Future<List<int>> _exchangeRoomKey({
+  required WebSocket socket,
+  required StreamIterator<dynamic> messages,
+  required int connID,
+}) async {
+  final crypto = RelayCryptoService();
+  final phoneKeyPair = await crypto.generateKeyPair();
+  final phonePublicKey = await phoneKeyPair.extractPublicKey();
+  _sendRelayPayload(
+    socket: socket,
+    connID: connID,
+    payload: utf8.encode(
+      jsonEncode(
+        RelayMessage.keyExchange(
+          publicKey: base64Url.encode(phonePublicKey.bytes).replaceAll("=", ""),
+        ).toJson(),
+      ),
+    ),
+  );
+
+  final response = await _nextRelayPayload(messages: messages, connID: connID);
+  expect(response, hasLength(greaterThan(32)));
+  final bridgePublicKey = SimplePublicKey(
+    response.sublist(0, 32),
+    type: KeyPairType.x25519,
+  );
+  final sharedSecret = await crypto.deriveSharedSecret(
+    phoneKeyPair,
+    peerPublicKey: bridgePublicKey,
+  );
+  final ephemeralKey = await crypto.deriveEncryptionKey(sharedSecret);
+  final ready = await _decryptRelayMessage(
+    payload: response.sublist(32),
+    key: ephemeralKey,
+  );
+  expect(ready, isA<RelayReady>());
+  return base64Url.decode(base64Url.normalize((ready as RelayReady).roomKey));
+}
+
+Future<void> _resumePhone({
+  required WebSocket socket,
+  required StreamIterator<dynamic> messages,
+  required int connID,
+  required List<int> roomKey,
+}) async {
+  await _sendEncryptedRelayMessage(
+    socket: socket,
+    connID: connID,
+    roomKey: roomKey,
+    message: const RelayMessage.resume(),
+  );
+  final response = await _nextRelayPayload(messages: messages, connID: connID);
+  final acknowledgement = await _decryptRelayMessage(
+    payload: response,
+    key: SecretKey(List<int>.from(roomKey)),
+  );
+  expect(acknowledgement, isA<RelayResumeAck>());
+}
+
+Future<void> _sendEncryptedRelayMessage({
+  required WebSocket socket,
+  required int connID,
+  required List<int> roomKey,
+  required RelayMessage message,
+}) async {
+  final encryptor = RelayCryptoService().createSessionEncryptor(
+    SecretKey(List<int>.from(roomKey)),
+  );
+  final payload = await frame(
+    utf8.encode(jsonEncode(message.toJson())),
+    encryptor: encryptor,
+  );
+  _sendRelayPayload(socket: socket, connID: connID, payload: payload);
+}
+
+Future<RelayMessage> _decryptRelayMessage({
+  required List<int> payload,
+  required SecretKey key,
+}) async {
+  final decryptor = RelayCryptoService().createSessionEncryptor(key);
+  final decrypted = await unframe(payload, encryptor: decryptor);
+  return RelayMessage.fromJson(jsonDecodeMap(utf8.decode(decrypted)));
+}
+
+void _sendRelayPayload({
+  required WebSocket socket,
+  required int connID,
+  required List<int> payload,
+}) {
+  socket.add(<int>[connID >> 8, connID & 0xFF, ...payload]);
+}
+
+Future<List<int>> _nextRelayPayload({
+  required StreamIterator<dynamic> messages,
+  required int connID,
+}) async {
+  while (await messages.moveNext().timeout(const Duration(seconds: 5))) {
+    final message = messages.current;
+    if (message is! List<int> || message.length < 2) continue;
+    final messageConnID = message[0] << 8 | message[1];
+    if (messageConnID == connID) return message.sublist(2);
+  }
+  throw StateError("Relay socket closed before the expected bridge payload");
+}
+
 class _OrchestratorHarness {
   final List<_SourcedPlugin> plugins;
   final PluginLifecycleService lifecycleService;
@@ -423,6 +869,7 @@ class _OrchestratorHarness {
     final httpClient = http.Client();
     final failureReporter = FakeFailureReporter();
     final restartService = buildTestRestartService();
+    final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       config: BridgeConfig(
         relayURL: relayUrl,
@@ -438,10 +885,13 @@ class _OrchestratorHarness {
       legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
       httpClient: httpClient,
-      processRunner: ProcessRunner(),
+      processRunner: NoopProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
@@ -449,11 +899,12 @@ class _OrchestratorHarness {
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
       failureReporter: failureReporter,
-      restartService: restartService,
       composition: composition,
     );
     return _OrchestratorHarness(

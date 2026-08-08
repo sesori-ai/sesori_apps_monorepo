@@ -12,5 +12,8 @@ class FlutterImageClipboard implements ImageClipboard {
   FlutterImageClipboard({required PasteboardClient pasteboardClient}) : _pasteboardClient = pasteboardClient;
 
   @override
+  Future<Uint8List?> readImage() => _pasteboardClient.readImage();
+
+  @override
   Future<void> writeImage({required Uint8List bytes}) => _pasteboardClient.writeImage(bytes: bytes);
 }

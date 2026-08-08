@@ -9,13 +9,17 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/session_deletion_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -24,8 +28,11 @@ void main() {
     late AppDatabase db;
     late _TrackingFakeBridgePlugin plugin;
     late _FakeWorktreeService worktreeService;
+    late SessionOperationDispatcher sessionOperationDispatcher;
+    late SessionMutationDispatcher sessionMutationDispatcher;
     late DeleteSessionHandler handler;
     late List<String> operationLog;
+    late TestChatHistory chatHistory;
 
     setUp(() {
       db = createTestDatabase();
@@ -39,20 +46,34 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      handler = DeleteSessionHandler(
-        sessionLifecycleService: SessionLifecycleService(
-          worktreeService: worktreeService,
-          sessionRepository: sessionRepository,
-          filesystemRepository: FilesystemRepository(
-            filesystemApi: const FilesystemApi(),
-            permissionValidator: const FilesystemPermissionValidator(),
-          ),
+      sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      sessionMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: sessionRepository,
+        sessionOperationDispatcher: sessionOperationDispatcher,
+      );
+      final sessionLifecycleService = SessionLifecycleService(
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
         ),
-        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
+        sessionOperationDispatcher: sessionOperationDispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+      );
+      chatHistory = createTestChatHistory();
+      handler = DeleteSessionHandler(
+        sessionDeletionService: SessionDeletionService(
+          sessionLifecycleService: sessionLifecycleService,
+          sessionMutationDispatcher: sessionMutationDispatcher,
+          chatHistoryService: chatHistory.service,
+        ),
       );
     });
 
     tearDown(() async {
+      await sessionOperationDispatcher.dispose();
+      await sessionMutationDispatcher.dispose();
       await plugin.close();
       await db.close();
     });

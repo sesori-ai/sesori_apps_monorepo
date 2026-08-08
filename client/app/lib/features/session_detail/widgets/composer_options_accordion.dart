@@ -7,8 +7,8 @@ import "../../../core/extensions/build_context_x.dart";
 
 /// The composer's advanced-options drawer: a pill that holds a chevron toggle
 /// and expands accordion-style to reveal the actions that don't warrant a
-/// permanent spot in the composer — today just the slash-commands picker,
-/// later things like attaching files or images.
+/// permanent spot in the composer — the image-attach action and the
+/// slash-commands picker.
 ///
 /// Styled after the Figma `View options actions left` component: closed it
 /// reads as a single round `pregoButtonsSolid` (44pt, skeuomorphic surface);
@@ -17,12 +17,19 @@ class ComposerOptionsAccordion extends StatefulWidget {
   /// Disables the revealed actions (not the toggle) while the composer is
   /// recording or transcribing, mirroring the old always-visible slash button.
   final bool actionsEnabled;
+
+  /// Whether the image-attach action is offered at all. Harnesses that drop
+  /// image parts get no attach button rather than one that loses the image.
+  final bool showAttachImage;
   final VoidCallback onSlashCommandsTap;
+  final VoidCallback onAttachImageTap;
 
   const ComposerOptionsAccordion({
     super.key,
     required this.actionsEnabled,
+    required this.showAttachImage,
     required this.onSlashCommandsTap,
+    required this.onAttachImageTap,
   });
 
   @override
@@ -65,6 +72,19 @@ class _ComposerOptionsAccordionState extends State<ComposerOptionsAccordion> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_isOpen) ...[
+                      if (widget.showAttachImage) ...[
+                        _AccordionIconButton(
+                          icon: TablerRegular.photo,
+                          tooltip: loc.sessionDetailAttachImage,
+                          onTap: widget.actionsEnabled
+                              ? () {
+                                  setState(() => _isOpen = false);
+                                  widget.onAttachImageTap();
+                                }
+                              : null,
+                        ),
+                        const SizedBox(width: PregoSpacing.md),
+                      ],
                       _AccordionIconButton(
                         icon: TablerRegular.slash,
                         tooltip: loc.sessionDetailCommandPickerTitle,

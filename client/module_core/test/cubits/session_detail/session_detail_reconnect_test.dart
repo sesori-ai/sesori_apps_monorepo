@@ -47,6 +47,7 @@ void main() {
     final loadService = SessionDetailLoadService(
       repository: mockSessionRepository,
       projectRepository: mockProjectRepository,
+      pluginRepository: stubbedPluginRepository(),
       connectionService: mockConnectionService,
     );
     final promptDispatcher = mockSessionRepository;
@@ -91,6 +92,7 @@ void main() {
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
+      projectViewingService: stubbedProjectViewingService(),
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
@@ -119,6 +121,7 @@ void main() {
     final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
+    final projectViewingService = stubbedProjectViewingService();
 
     addTearDown(sessionEvents.close);
     addTearDown(globalEvents.close);
@@ -157,6 +160,8 @@ void main() {
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
+          pluginId: "opencode",
+          supportsPromptAttachments: false,
           messages: <MessageWithParts>[],
           pendingQuestions: <PendingQuestion>[],
           pendingPermissions: <PendingPermission>[],
@@ -180,6 +185,7 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
+      projectViewingService: projectViewingService,
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
@@ -194,10 +200,13 @@ void main() {
 
     verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
     verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(
+      () => projectViewingService.markClaimFailed(claim: any(named: "claim")),
+    ).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
 
-  test("ignores sessions.updated events from unrelated projects", () async {
+  test("does not treat sessions.updated as a session-detail invalidation", () async {
     final mockLoadService = MockSessionDetailLoadService();
     final mockSessionRepository = MockSessionRepository();
     final mockConnectionService = MockConnectionService();
@@ -231,6 +240,8 @@ void main() {
     const loadedResult = SessionDetailLoadResult.loaded(
       snapshot: SessionDetailSnapshot(
         projectId: "project-1",
+        pluginId: "opencode",
+        supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
@@ -270,6 +281,7 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
+      projectViewingService: stubbedProjectViewingService(),
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
@@ -292,11 +304,15 @@ void main() {
         projectId: any(named: "projectId"),
       ),
     );
-
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
     await Future<void>.delayed(Duration.zero);
 
-    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verifyNever(
+      () => mockLoadService.reload(
+        sessionId: _sessionId,
+        projectId: any(named: "projectId"),
+      ),
+    );
   });
 }
 

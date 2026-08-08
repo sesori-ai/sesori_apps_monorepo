@@ -78,6 +78,9 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
   BridgeSettings get currentSettings => settings;
 
   @override
+  Stream<BridgeSettingsChange> get settingsChanges => const Stream<BridgeSettingsChange>.empty();
+
+  @override
   Future<void> ensureConfigExists() async {
     ensureConfigExistsCallCount += 1;
   }
@@ -88,9 +91,17 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
   }
 
   @override
-  Future<void> saveSettings({required BridgeSettings settings}) async {
-    this.settings = settings;
+  Future<BridgeSettings> readCommittedSettings() async => settings;
+
+  @override
+  Future<BridgeSettings> mutateSettings({
+    required BridgeSettings Function({required BridgeSettings current}) mutation,
+  }) async {
+    return settings = mutation(current: settings);
   }
+
+  @override
+  Future<void> dispose() async {}
 
   @override
   Future<BridgeSettings> updatePluginDisabled({required String pluginId, required bool disabled}) async {

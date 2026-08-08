@@ -9,6 +9,7 @@ void main() {
       expect(descriptor.options, isEmpty);
       expect(descriptor.stateStorage, PluginStateStorage.isolated);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
+      expect(descriptor.supportsPromptAttachments, isFalse);
     });
 
     test('validateConfig accepts everything by default', () {
@@ -36,6 +37,24 @@ void main() {
           PluginControlCapability.idleTimeout,
         },
       );
+    });
+
+    test('the default installRuntime fails without a plugin implementation', () async {
+      const descriptor = _MinimalDescriptor();
+
+      final events = await descriptor
+          .installRuntime(
+            config: const PluginConfig.empty(),
+            processes: const _UnusedProcessService(),
+            environment: const {},
+            stateDirectory: '/state',
+            startAborted: StartAbortSignal.never,
+          )
+          .toList();
+
+      expect(events, hasLength(1));
+      expect(events.single, isA<ProvisionFailed>());
+      expect((events.single as ProvisionFailed).message, contains('does not support installing'));
     });
 
     test('a descriptor can reject configuration with PluginConfigException', () {

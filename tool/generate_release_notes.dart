@@ -57,11 +57,17 @@ void main(final List<String> args) async {
       }
     }
 
+    // The section is cosmetic, but this runs in the production release path:
+    // never fail a release over it. Per-author isolation keeps one bad lookup
+    // from dropping everyone else's credit.
+    final firstContributionUrls = await _resolveFirstContributions(api: api, from: fromTag, entries: entries);
+
     final notes = _render(
       repo: options.repo,
       from: fromTag,
       to: options.to,
       entries: entries,
+      firstContributionUrls: firstContributionUrls,
     );
 
     if (options.output != null) {
@@ -329,7 +335,7 @@ class _PrEntry {
 
   final int number;
   final String title;
-  final String author;
+  final String? author;
   final String url;
   final bool touchesApp;
   final bool touchesBridge;
@@ -339,8 +345,8 @@ class _PrEntry {
 Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async {
   final pr = await api.getJson(path: '/repos/${api.repo}/pulls/$number') as Map<String, dynamic>;
 
-  final author = ((pr['user'] as Map<String, dynamic>?)?['login'] as String?) ?? 'unknown';
-  if (_excludedAuthors.contains(author)) {
+  final author = (pr['user'] as Map<String, dynamic>?)?['login'] as String?;
+  if (author != null && _excludedAuthors.contains(author)) {
     return null;
   }
   final labels = (pr['labels'] as List<dynamic>? ?? [])
@@ -400,6 +406,52 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
   );
 }
 
+// A "new contributor" is an author with no commit in the repository at or
+// before the previous stable tag, matching what GitHub's own
+// --generate-notes reports. Entries arrive in compare order (oldest first),
+// so the first entry seen for an author is the PR to credit.
+Future<Map<String, String>> _resolveFirstContributions({
+  required _GitHubApi api,
+  required String from,
+  required List<_PrEntry> entries,
+}) async {
+  if (entries.isEmpty) {
+    return const {};
+  }
+
+  final checked = <String>{};
+  final firstContributionUrls = <String, String>{};
+  for (final entry in entries) {
+    final author = entry.author;
+    if (author == null || !checked.add(author)) {
+      continue;
+    }
+    // `sha=$from` scopes the lookup to history reachable from the previous
+    // stable tag, so a commit authored long ago but merged after that tag
+    // (rebase, cherry-pick, long-lived branch) correctly still counts as new.
+    try {
+      final earlier =
+          await api.getJson(
+                path:
+                    '/repos/${api.repo}/commits'
+                    '?author=${Uri.encodeQueryComponent(author)}'
+                    '&sha=${Uri.encodeQueryComponent(from)}&per_page=1',
+              )
+              as List<dynamic>;
+      if (earlier.isEmpty) {
+        firstContributionUrls[author] = entry.url;
+      }
+    } catch (error, stackTrace) {
+      // Omitting one credit beats failing the release; a wrong "first
+      // contribution" claim would be worse than a missing one.
+      stderr.writeln(
+        'Could not check prior commits for @$author, omitting from New Contributors: $error\n$stackTrace',
+      );
+    }
+  }
+  return firstContributionUrls;
+}
+
 final RegExp _conventionalPrefixPattern = RegExp(r'^(\w+)(\([^)]*\))?!?:\s*');
 
 String _bucketFor({required String title}) {
@@ -430,6 +482,7 @@ String _render({
   required String from,
   required String to,
   required List<_PrEntry> entries,
+  required Map<String, String> firstContributionUrls,
 }) {
   final buffer = StringBuffer('## What\'s Changed\n');
 
@@ -462,10 +515,19 @@ String _render({
   if (entries.isNotEmpty) {
     buffer.write('\n### All PRs merged\n');
     for (final entry in entries) {
-      buffer.writeln('* ${entry.title} by @${entry.author} in ${entry.url}');
+      final author = entry.author;
+      final attribution = author == null ? '' : ' by @$author';
+      buffer.writeln('* ${entry.title}$attribution in ${entry.url}');
     }
   } else {
     buffer.write('\nNo pull requests merged in this range.\n');
+  }
+
+  if (firstContributionUrls.isNotEmpty) {
+    buffer.write('\n## New Contributors\n');
+    for (final contribution in firstContributionUrls.entries) {
+      buffer.writeln('* @${contribution.key} made their first contribution in ${contribution.value}');
+    }
   }
 
   buffer.write('\n**Full Changelog**: https://github.com/$repo/compare/$from...$to\n');

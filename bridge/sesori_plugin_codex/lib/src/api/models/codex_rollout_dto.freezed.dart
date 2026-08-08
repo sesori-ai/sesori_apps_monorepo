@@ -162,6 +162,10 @@ CodexRolloutLineDto _$CodexRolloutLineDtoFromJson(
           return CodexRolloutResponseItemLineDto.fromJson(
             json
           );
+                case 'event_msg':
+          return CodexRolloutEventMessageLineDto.fromJson(
+            json
+          );
                 case 'compacted':
           return CodexRolloutCompactedLineDto.fromJson(
             json
@@ -483,6 +487,87 @@ $CodexRolloutResponseItemDtoCopyWith<$Res> get payload {
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
+class CodexRolloutEventMessageLineDto implements CodexRolloutLineDto {
+  const CodexRolloutEventMessageLineDto({required this.timestamp, required this.payload, final  String? $type}): $type = $type ?? 'event_msg';
+  factory CodexRolloutEventMessageLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutEventMessageLineDtoFromJson(json);
+
+@override final  String? timestamp;
+ final  CodexRolloutEventDto payload;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutLineDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutEventMessageLineDtoCopyWith<CodexRolloutEventMessageLineDto> get copyWith => _$CodexRolloutEventMessageLineDtoCopyWithImpl<CodexRolloutEventMessageLineDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventMessageLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,timestamp,payload);
+
+@override
+String toString() {
+  return 'CodexRolloutLineDto.eventMessage(timestamp: $timestamp, payload: $payload)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutEventMessageLineDtoCopyWith<$Res> implements $CodexRolloutLineDtoCopyWith<$Res> {
+  factory $CodexRolloutEventMessageLineDtoCopyWith(CodexRolloutEventMessageLineDto value, $Res Function(CodexRolloutEventMessageLineDto) _then) = _$CodexRolloutEventMessageLineDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String? timestamp, CodexRolloutEventDto payload
+});
+
+
+$CodexRolloutEventDtoCopyWith<$Res> get payload;
+
+}
+/// @nodoc
+class _$CodexRolloutEventMessageLineDtoCopyWithImpl<$Res>
+    implements $CodexRolloutEventMessageLineDtoCopyWith<$Res> {
+  _$CodexRolloutEventMessageLineDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutEventMessageLineDto _self;
+  final $Res Function(CodexRolloutEventMessageLineDto) _then;
+
+/// Create a copy of CodexRolloutLineDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? timestamp = freezed,Object? payload = null,}) {
+  return _then(CodexRolloutEventMessageLineDto(
+timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
+as String?,payload: null == payload ? _self.payload : payload // ignore: cast_nullable_to_non_nullable
+as CodexRolloutEventDto,
+  ));
+}
+
+/// Create a copy of CodexRolloutLineDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexRolloutEventDtoCopyWith<$Res> get payload {
+  
+  return $CodexRolloutEventDtoCopyWith<$Res>(_self.payload, (value) {
+    return _then(_self.copyWith(payload: value));
+  });
+}
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
 class CodexRolloutCompactedLineDto implements CodexRolloutLineDto {
   const CodexRolloutCompactedLineDto({required this.timestamp, final  String? $type}): $type = $type ?? 'compacted';
   factory CodexRolloutCompactedLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompactedLineDtoFromJson(json);
@@ -619,6 +704,464 @@ as String?,
 
 
 }
+
+CodexRolloutEventDto _$CodexRolloutEventDtoFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'user_message':
+          return CodexRolloutUserMessageEventDto.fromJson(
+            json
+          );
+                case 'image_generation_end':
+          return CodexRolloutImageGenerationEndEventDto.fromJson(
+            json
+          );
+                case 'task_started':
+          return CodexRolloutTaskStartedEventDto.fromJson(
+            json
+          );
+                case 'task_complete':
+          return CodexRolloutTaskCompleteEventDto.fromJson(
+            json
+          );
+                case 'turn_aborted':
+          return CodexRolloutTurnAbortedEventDto.fromJson(
+            json
+          );
+        
+          default:
+            return CodexRolloutUnknownEventDto.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$CodexRolloutEventDto {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto()';
+}
+
+
+}
+
+/// @nodoc
+class $CodexRolloutEventDtoCopyWith<$Res>  {
+$CodexRolloutEventDtoCopyWith(CodexRolloutEventDto _, $Res Function(CodexRolloutEventDto) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutUserMessageEventDto implements CodexRolloutEventDto {
+  const CodexRolloutUserMessageEventDto({required this.message, final  String? $type}): $type = $type ?? 'user_message';
+  factory CodexRolloutUserMessageEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUserMessageEventDtoFromJson(json);
+
+ final  String message;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutUserMessageEventDtoCopyWith<CodexRolloutUserMessageEventDto> get copyWith => _$CodexRolloutUserMessageEventDtoCopyWithImpl<CodexRolloutUserMessageEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUserMessageEventDto&&(identical(other.message, message) || other.message == message));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.userMessage(message: $message)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutUserMessageEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutUserMessageEventDtoCopyWith(CodexRolloutUserMessageEventDto value, $Res Function(CodexRolloutUserMessageEventDto) _then) = _$CodexRolloutUserMessageEventDtoCopyWithImpl;
+@useResult
+$Res call({
+ String message
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutUserMessageEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutUserMessageEventDtoCopyWith<$Res> {
+  _$CodexRolloutUserMessageEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutUserMessageEventDto _self;
+  final $Res Function(CodexRolloutUserMessageEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? message = null,}) {
+  return _then(CodexRolloutUserMessageEventDto(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutImageGenerationEndEventDto implements CodexRolloutEventDto {
+  const CodexRolloutImageGenerationEndEventDto({@JsonKey(name: "call_id") required this.callId, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, @JsonKey(name: "revised_prompt") required this.revisedPrompt, required this.result, @JsonKey(name: "saved_path") required this.savedPath, final  String? $type}): $type = $type ?? 'image_generation_end';
+  factory CodexRolloutImageGenerationEndEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutImageGenerationEndEventDtoFromJson(json);
+
+@JsonKey(name: "call_id") final  String callId;
+@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) final  CodexRolloutImageGenerationStatus status;
+@JsonKey(name: "revised_prompt") final  String? revisedPrompt;
+ final  String result;
+@JsonKey(name: "saved_path") final  String? savedPath;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutImageGenerationEndEventDtoCopyWith<CodexRolloutImageGenerationEndEventDto> get copyWith => _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl<CodexRolloutImageGenerationEndEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationEndEventDto&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.status, status) || other.status == status)&&(identical(other.revisedPrompt, revisedPrompt) || other.revisedPrompt == revisedPrompt)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,callId,status,revisedPrompt,result,savedPath);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.imageGenerationEnd(callId: $callId, status: $status, revisedPrompt: $revisedPrompt, result: $result, savedPath: $savedPath)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutImageGenerationEndEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutImageGenerationEndEventDtoCopyWith(CodexRolloutImageGenerationEndEventDto value, $Res Function(CodexRolloutImageGenerationEndEventDto) _then) = _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "call_id") String callId,@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) CodexRolloutImageGenerationStatus status,@JsonKey(name: "revised_prompt") String? revisedPrompt, String result,@JsonKey(name: "saved_path") String? savedPath
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutImageGenerationEndEventDtoCopyWith<$Res> {
+  _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutImageGenerationEndEventDto _self;
+  final $Res Function(CodexRolloutImageGenerationEndEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? callId = null,Object? status = null,Object? revisedPrompt = freezed,Object? result = null,Object? savedPath = freezed,}) {
+  return _then(CodexRolloutImageGenerationEndEventDto(
+callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexRolloutImageGenerationStatus,revisedPrompt: freezed == revisedPrompt ? _self.revisedPrompt : revisedPrompt // ignore: cast_nullable_to_non_nullable
+as String?,result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
+as String,savedPath: freezed == savedPath ? _self.savedPath : savedPath // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutTaskStartedEventDto implements CodexRolloutEventDto {
+  const CodexRolloutTaskStartedEventDto({@JsonKey(name: "turn_id") required this.turnId, final  String? $type}): $type = $type ?? 'task_started';
+  factory CodexRolloutTaskStartedEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTaskStartedEventDtoFromJson(json);
+
+@JsonKey(name: "turn_id") final  String turnId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutTaskStartedEventDtoCopyWith<CodexRolloutTaskStartedEventDto> get copyWith => _$CodexRolloutTaskStartedEventDtoCopyWithImpl<CodexRolloutTaskStartedEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskStartedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,turnId);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.taskStarted(turnId: $turnId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutTaskStartedEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutTaskStartedEventDtoCopyWith(CodexRolloutTaskStartedEventDto value, $Res Function(CodexRolloutTaskStartedEventDto) _then) = _$CodexRolloutTaskStartedEventDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "turn_id") String turnId
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutTaskStartedEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutTaskStartedEventDtoCopyWith<$Res> {
+  _$CodexRolloutTaskStartedEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutTaskStartedEventDto _self;
+  final $Res Function(CodexRolloutTaskStartedEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? turnId = null,}) {
+  return _then(CodexRolloutTaskStartedEventDto(
+turnId: null == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutTaskCompleteEventDto implements CodexRolloutEventDto {
+  const CodexRolloutTaskCompleteEventDto({@JsonKey(name: "turn_id") required this.turnId, final  String? $type}): $type = $type ?? 'task_complete';
+  factory CodexRolloutTaskCompleteEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTaskCompleteEventDtoFromJson(json);
+
+@JsonKey(name: "turn_id") final  String turnId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutTaskCompleteEventDtoCopyWith<CodexRolloutTaskCompleteEventDto> get copyWith => _$CodexRolloutTaskCompleteEventDtoCopyWithImpl<CodexRolloutTaskCompleteEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskCompleteEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,turnId);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.taskComplete(turnId: $turnId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutTaskCompleteEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutTaskCompleteEventDtoCopyWith(CodexRolloutTaskCompleteEventDto value, $Res Function(CodexRolloutTaskCompleteEventDto) _then) = _$CodexRolloutTaskCompleteEventDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "turn_id") String turnId
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutTaskCompleteEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutTaskCompleteEventDtoCopyWith<$Res> {
+  _$CodexRolloutTaskCompleteEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutTaskCompleteEventDto _self;
+  final $Res Function(CodexRolloutTaskCompleteEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? turnId = null,}) {
+  return _then(CodexRolloutTaskCompleteEventDto(
+turnId: null == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutTurnAbortedEventDto implements CodexRolloutEventDto {
+  const CodexRolloutTurnAbortedEventDto({@JsonKey(name: "turn_id") required this.turnId, final  String? $type}): $type = $type ?? 'turn_aborted';
+  factory CodexRolloutTurnAbortedEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnAbortedEventDtoFromJson(json);
+
+@JsonKey(name: "turn_id") final  String turnId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutTurnAbortedEventDtoCopyWith<CodexRolloutTurnAbortedEventDto> get copyWith => _$CodexRolloutTurnAbortedEventDtoCopyWithImpl<CodexRolloutTurnAbortedEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnAbortedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,turnId);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.turnAborted(turnId: $turnId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutTurnAbortedEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutTurnAbortedEventDtoCopyWith(CodexRolloutTurnAbortedEventDto value, $Res Function(CodexRolloutTurnAbortedEventDto) _then) = _$CodexRolloutTurnAbortedEventDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "turn_id") String turnId
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutTurnAbortedEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutTurnAbortedEventDtoCopyWith<$Res> {
+  _$CodexRolloutTurnAbortedEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutTurnAbortedEventDto _self;
+  final $Res Function(CodexRolloutTurnAbortedEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? turnId = null,}) {
+  return _then(CodexRolloutTurnAbortedEventDto(
+turnId: null == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutUnknownEventDto implements CodexRolloutEventDto {
+  const CodexRolloutUnknownEventDto({final  String? $type}): $type = $type ?? 'unknown';
+  factory CodexRolloutUnknownEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUnknownEventDtoFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownEventDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.unknown()';
+}
+
+
+}
+
+
+
 
 
 /// @nodoc
@@ -890,6 +1433,135 @@ as String?,
 
 }
 
+
+/// @nodoc
+mixin _$CodexRolloutItemMetadataDto {
+
+@JsonKey(name: "turn_id") String? get turnId;
+/// Create a copy of CodexRolloutItemMetadataDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutItemMetadataDtoCopyWith<CodexRolloutItemMetadataDto> get copyWith => _$CodexRolloutItemMetadataDtoCopyWithImpl<CodexRolloutItemMetadataDto>(this as CodexRolloutItemMetadataDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutItemMetadataDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,turnId);
+
+@override
+String toString() {
+  return 'CodexRolloutItemMetadataDto(turnId: $turnId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutItemMetadataDtoCopyWith<$Res>  {
+  factory $CodexRolloutItemMetadataDtoCopyWith(CodexRolloutItemMetadataDto value, $Res Function(CodexRolloutItemMetadataDto) _then) = _$CodexRolloutItemMetadataDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "turn_id") String? turnId
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutItemMetadataDtoCopyWithImpl<$Res>
+    implements $CodexRolloutItemMetadataDtoCopyWith<$Res> {
+  _$CodexRolloutItemMetadataDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutItemMetadataDto _self;
+  final $Res Function(CodexRolloutItemMetadataDto) _then;
+
+/// Create a copy of CodexRolloutItemMetadataDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? turnId = freezed,}) {
+  return _then(_self.copyWith(
+turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CodexRolloutItemMetadataDto implements CodexRolloutItemMetadataDto {
+  const _CodexRolloutItemMetadataDto({@JsonKey(name: "turn_id") required this.turnId});
+  factory _CodexRolloutItemMetadataDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutItemMetadataDtoFromJson(json);
+
+@override@JsonKey(name: "turn_id") final  String? turnId;
+
+/// Create a copy of CodexRolloutItemMetadataDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexRolloutItemMetadataDtoCopyWith<_CodexRolloutItemMetadataDto> get copyWith => __$CodexRolloutItemMetadataDtoCopyWithImpl<_CodexRolloutItemMetadataDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutItemMetadataDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,turnId);
+
+@override
+String toString() {
+  return 'CodexRolloutItemMetadataDto(turnId: $turnId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexRolloutItemMetadataDtoCopyWith<$Res> implements $CodexRolloutItemMetadataDtoCopyWith<$Res> {
+  factory _$CodexRolloutItemMetadataDtoCopyWith(_CodexRolloutItemMetadataDto value, $Res Function(_CodexRolloutItemMetadataDto) _then) = __$CodexRolloutItemMetadataDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: "turn_id") String? turnId
+});
+
+
+
+
+}
+/// @nodoc
+class __$CodexRolloutItemMetadataDtoCopyWithImpl<$Res>
+    implements _$CodexRolloutItemMetadataDtoCopyWith<$Res> {
+  __$CodexRolloutItemMetadataDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexRolloutItemMetadataDto _self;
+  final $Res Function(_CodexRolloutItemMetadataDto) _then;
+
+/// Create a copy of CodexRolloutItemMetadataDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? turnId = freezed,}) {
+  return _then(_CodexRolloutItemMetadataDto(
+turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
 CodexRolloutResponseItemDto _$CodexRolloutResponseItemDtoFromJson(
   Map<String, dynamic> json
 ) {
@@ -920,6 +1592,10 @@ CodexRolloutResponseItemDto _$CodexRolloutResponseItemDtoFromJson(
           );
                 case 'web_search_call':
           return CodexRolloutWebSearchCallDto.fromJson(
+            json
+          );
+                case 'image_generation_call':
+          return CodexRolloutImageGenerationDto.fromJson(
             json
           );
         
@@ -1124,13 +1800,14 @@ as List<CodexRolloutContentDto>,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutFunctionCallDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutFunctionCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.arguments, final  String? $type}): $type = $type ?? 'function_call';
+  const CodexRolloutFunctionCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.arguments, @JsonKey(name: "internal_chat_message_metadata_passthrough") required this.metadata, final  String? $type}): $type = $type ?? 'function_call';
   factory CodexRolloutFunctionCallDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutFunctionCallDtoFromJson(json);
 
  final  String? id;
 @JsonKey(name: "call_id") final  String callId;
  final  String name;
  final  String arguments;
+@JsonKey(name: "internal_chat_message_metadata_passthrough") final  CodexRolloutItemMetadataDto? metadata;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1146,16 +1823,16 @@ $CodexRolloutFunctionCallDtoCopyWith<CodexRolloutFunctionCallDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutFunctionCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutFunctionCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.metadata, metadata) || other.metadata == metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,callId,name,arguments);
+int get hashCode => Object.hash(runtimeType,id,callId,name,arguments,metadata);
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.functionCall(id: $id, callId: $callId, name: $name, arguments: $arguments)';
+  return 'CodexRolloutResponseItemDto.functionCall(id: $id, callId: $callId, name: $name, arguments: $arguments, metadata: $metadata)';
 }
 
 
@@ -1166,11 +1843,11 @@ abstract mixin class $CodexRolloutFunctionCallDtoCopyWith<$Res> implements $Code
   factory $CodexRolloutFunctionCallDtoCopyWith(CodexRolloutFunctionCallDto value, $Res Function(CodexRolloutFunctionCallDto) _then) = _$CodexRolloutFunctionCallDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id,@JsonKey(name: "call_id") String callId, String name, String arguments
+ String? id,@JsonKey(name: "call_id") String callId, String name, String arguments,@JsonKey(name: "internal_chat_message_metadata_passthrough") CodexRolloutItemMetadataDto? metadata
 });
 
 
-
+$CodexRolloutItemMetadataDtoCopyWith<$Res>? get metadata;
 
 }
 /// @nodoc
@@ -1183,17 +1860,30 @@ class _$CodexRolloutFunctionCallDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutResponseItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? callId = null,Object? name = null,Object? arguments = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? callId = null,Object? name = null,Object? arguments = null,Object? metadata = freezed,}) {
   return _then(CodexRolloutFunctionCallDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,arguments: null == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
-as String,
+as String,metadata: freezed == metadata ? _self.metadata : metadata // ignore: cast_nullable_to_non_nullable
+as CodexRolloutItemMetadataDto?,
   ));
 }
 
+/// Create a copy of CodexRolloutResponseItemDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexRolloutItemMetadataDtoCopyWith<$Res>? get metadata {
+    if (_self.metadata == null) {
+    return null;
+  }
 
+  return $CodexRolloutItemMetadataDtoCopyWith<$Res>(_self.metadata!, (value) {
+    return _then(_self.copyWith(metadata: value));
+  });
+}
 }
 
 /// @nodoc
@@ -1278,13 +1968,14 @@ as List<CodexRolloutContentDto>,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCustomToolCallDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutCustomToolCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.input, final  String? $type}): $type = $type ?? 'custom_tool_call';
+  const CodexRolloutCustomToolCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.input, @JsonKey(name: "internal_chat_message_metadata_passthrough") required this.metadata, final  String? $type}): $type = $type ?? 'custom_tool_call';
   factory CodexRolloutCustomToolCallDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCustomToolCallDtoFromJson(json);
 
  final  String? id;
 @JsonKey(name: "call_id") final  String callId;
  final  String name;
  final  String input;
+@JsonKey(name: "internal_chat_message_metadata_passthrough") final  CodexRolloutItemMetadataDto? metadata;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1300,16 +1991,16 @@ $CodexRolloutCustomToolCallDtoCopyWith<CodexRolloutCustomToolCallDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCustomToolCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.input, input) || other.input == input));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCustomToolCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.input, input) || other.input == input)&&(identical(other.metadata, metadata) || other.metadata == metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,callId,name,input);
+int get hashCode => Object.hash(runtimeType,id,callId,name,input,metadata);
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.customToolCall(id: $id, callId: $callId, name: $name, input: $input)';
+  return 'CodexRolloutResponseItemDto.customToolCall(id: $id, callId: $callId, name: $name, input: $input, metadata: $metadata)';
 }
 
 
@@ -1320,11 +2011,11 @@ abstract mixin class $CodexRolloutCustomToolCallDtoCopyWith<$Res> implements $Co
   factory $CodexRolloutCustomToolCallDtoCopyWith(CodexRolloutCustomToolCallDto value, $Res Function(CodexRolloutCustomToolCallDto) _then) = _$CodexRolloutCustomToolCallDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id,@JsonKey(name: "call_id") String callId, String name, String input
+ String? id,@JsonKey(name: "call_id") String callId, String name, String input,@JsonKey(name: "internal_chat_message_metadata_passthrough") CodexRolloutItemMetadataDto? metadata
 });
 
 
-
+$CodexRolloutItemMetadataDtoCopyWith<$Res>? get metadata;
 
 }
 /// @nodoc
@@ -1337,17 +2028,30 @@ class _$CodexRolloutCustomToolCallDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutResponseItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? callId = null,Object? name = null,Object? input = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? callId = null,Object? name = null,Object? input = null,Object? metadata = freezed,}) {
   return _then(CodexRolloutCustomToolCallDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,input: null == input ? _self.input : input // ignore: cast_nullable_to_non_nullable
-as String,
+as String,metadata: freezed == metadata ? _self.metadata : metadata // ignore: cast_nullable_to_non_nullable
+as CodexRolloutItemMetadataDto?,
   ));
 }
 
+/// Create a copy of CodexRolloutResponseItemDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexRolloutItemMetadataDtoCopyWith<$Res>? get metadata {
+    if (_self.metadata == null) {
+    return null;
+  }
 
+  return $CodexRolloutItemMetadataDtoCopyWith<$Res>(_self.metadata!, (value) {
+    return _then(_self.copyWith(metadata: value));
+  });
+}
 }
 
 /// @nodoc
@@ -1510,6 +2214,80 @@ $CodexRolloutActionDtoCopyWith<$Res>? get action {
     return _then(_self.copyWith(action: value));
   });
 }
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutImageGenerationDto implements CodexRolloutResponseItemDto {
+  const CodexRolloutImageGenerationDto({required this.id, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, required this.result, final  String? $type}): $type = $type ?? 'image_generation_call';
+  factory CodexRolloutImageGenerationDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutImageGenerationDtoFromJson(json);
+
+ final  String? id;
+@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) final  CodexRolloutImageGenerationStatus status;
+ final  String result;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutResponseItemDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutImageGenerationDtoCopyWith<CodexRolloutImageGenerationDto> get copyWith => _$CodexRolloutImageGenerationDtoCopyWithImpl<CodexRolloutImageGenerationDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.result, result) || other.result == result));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,status,result);
+
+@override
+String toString() {
+  return 'CodexRolloutResponseItemDto.imageGeneration(id: $id, status: $status, result: $result)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutImageGenerationDtoCopyWith<$Res> implements $CodexRolloutResponseItemDtoCopyWith<$Res> {
+  factory $CodexRolloutImageGenerationDtoCopyWith(CodexRolloutImageGenerationDto value, $Res Function(CodexRolloutImageGenerationDto) _then) = _$CodexRolloutImageGenerationDtoCopyWithImpl;
+@useResult
+$Res call({
+ String? id,@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) CodexRolloutImageGenerationStatus status, String result
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutImageGenerationDtoCopyWithImpl<$Res>
+    implements $CodexRolloutImageGenerationDtoCopyWith<$Res> {
+  _$CodexRolloutImageGenerationDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutImageGenerationDto _self;
+  final $Res Function(CodexRolloutImageGenerationDto) _then;
+
+/// Create a copy of CodexRolloutResponseItemDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? status = null,Object? result = null,}) {
+  return _then(CodexRolloutImageGenerationDto(
+id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexRolloutImageGenerationStatus,result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 /// @nodoc
@@ -2074,7 +2852,7 @@ as String?,
 /// @nodoc
 mixin _$CodexToolArgumentsDto {
 
- Object? get cmd; Object? get command; Object? get path;@JsonKey(name: "file_path") Object? get filePath; Object? get query;
+ Object? get cmd; Object? get command; Object? get path;@JsonKey(name: "file_path") Object? get filePath; Object? get query;@JsonKey(name: "cell_id") Object? get cellId;
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2085,16 +2863,16 @@ $CodexToolArgumentsDtoCopyWith<CodexToolArgumentsDto> get copyWith => _$CodexToo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId));
 
 @override
 String toString() {
-  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query)';
+  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId)';
 }
 
 
@@ -2105,7 +2883,7 @@ abstract mixin class $CodexToolArgumentsDtoCopyWith<$Res>  {
   factory $CodexToolArgumentsDtoCopyWith(CodexToolArgumentsDto value, $Res Function(CodexToolArgumentsDto) _then) = _$CodexToolArgumentsDtoCopyWithImpl;
 @useResult
 $Res call({
- Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query
+ Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query,@JsonKey(name: "cell_id") Object? cellId
 });
 
 
@@ -2122,9 +2900,9 @@ class _$CodexToolArgumentsDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,Object? cellId = freezed,}) {
   return _then(_self.copyWith(
-cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,
+cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,cellId: freezed == cellId ? _self.cellId : cellId ,
   ));
 }
 
@@ -2136,7 +2914,7 @@ cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.comma
 @JsonSerializable(createToJson: false)
 
 class _CodexToolArgumentsDto implements CodexToolArgumentsDto {
-  const _CodexToolArgumentsDto({required this.cmd, required this.command, required this.path, @JsonKey(name: "file_path") required this.filePath, required this.query});
+  const _CodexToolArgumentsDto({required this.cmd, required this.command, required this.path, @JsonKey(name: "file_path") required this.filePath, required this.query, @JsonKey(name: "cell_id") required this.cellId});
   factory _CodexToolArgumentsDto.fromJson(Map<String, dynamic> json) => _$CodexToolArgumentsDtoFromJson(json);
 
 @override final  Object? cmd;
@@ -2144,6 +2922,7 @@ class _CodexToolArgumentsDto implements CodexToolArgumentsDto {
 @override final  Object? path;
 @override@JsonKey(name: "file_path") final  Object? filePath;
 @override final  Object? query;
+@override@JsonKey(name: "cell_id") final  Object? cellId;
 
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
@@ -2155,16 +2934,16 @@ _$CodexToolArgumentsDtoCopyWith<_CodexToolArgumentsDto> get copyWith => __$Codex
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId));
 
 @override
 String toString() {
-  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query)';
+  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId)';
 }
 
 
@@ -2175,7 +2954,7 @@ abstract mixin class _$CodexToolArgumentsDtoCopyWith<$Res> implements $CodexTool
   factory _$CodexToolArgumentsDtoCopyWith(_CodexToolArgumentsDto value, $Res Function(_CodexToolArgumentsDto) _then) = __$CodexToolArgumentsDtoCopyWithImpl;
 @override @useResult
 $Res call({
- Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query
+ Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query,@JsonKey(name: "cell_id") Object? cellId
 });
 
 
@@ -2192,9 +2971,9 @@ class __$CodexToolArgumentsDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,Object? cellId = freezed,}) {
   return _then(_CodexToolArgumentsDto(
-cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,
+cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,cellId: freezed == cellId ? _self.cellId : cellId ,
   ));
 }
 

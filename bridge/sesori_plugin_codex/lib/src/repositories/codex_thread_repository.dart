@@ -1,5 +1,9 @@
+import "dart:convert";
+
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart"
+    show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 import "../api/codex_app_server_api.dart";
 import "../api/models/codex_thread_dto.dart";
@@ -35,8 +39,26 @@ final class CodexThreadRequestException extends CodexThreadOperationException {
   });
 }
 
+final class _CodexPromptAttachmentException implements Exception {
+  const _CodexPromptAttachmentException({required this.message, required this.innerError});
+
+  final String message;
+  final Object? innerError;
+
+  @override
+  String toString() => "CodexPromptAttachmentException($message)";
+}
+
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
 class CodexThreadRepository {
+  static const _supportedImageMimes = {
+    "image/bmp",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  };
+
   CodexThreadRepository({required CodexAppServerApi appServerApi}) : _appServerApi = appServerApi;
 
   final CodexAppServerApi _appServerApi;
@@ -72,7 +94,13 @@ class CodexThreadRepository {
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
   }) async {
-    final input = parts.map(_mapTurnInput).whereType<CodexTurnInputDto>().toList();
+    final input = <CodexTurnInputDto>[];
+    var remainingInlineBytes = maxInlineMessageAttachmentBytes;
+    for (final part in parts) {
+      final mapped = _mapTurnInput(part: part, remainingInlineBytes: remainingInlineBytes);
+      input.add(mapped.input);
+      remainingInlineBytes -= mapped.inlineBytes;
+    }
     if (input.isEmpty) return null;
     final response = await _request(
       operation: "turn/start",
@@ -158,13 +186,70 @@ class CodexThreadRepository {
     );
   }
 
-  CodexTurnInputDto? _mapTurnInput(PluginPromptPart part) {
+  ({CodexTurnInputDto input, int inlineBytes}) _mapTurnInput({
+    required PluginPromptPart part,
+    required int remainingInlineBytes,
+  }) {
     return switch (part) {
-      PluginPromptPartText(:final text) => CodexTurnInputDto.text(text: text),
-      PluginPromptPartFilePath(:final path) => CodexTurnInputDto.localImage(path: path),
-      PluginPromptPartFileUrl(:final url) => CodexTurnInputDto.image(url: url),
-      PluginPromptPartFileData() => null,
+      PluginPromptPartText(:final text) => (input: CodexTurnInputDto.text(text: text), inlineBytes: 0),
+      PluginPromptPartFilePath(:final path) => (input: CodexTurnInputDto.localImage(path: path), inlineBytes: 0),
+      PluginPromptPartFileUrl(:final url) => (input: CodexTurnInputDto.image(url: url), inlineBytes: 0),
+      PluginPromptPartFileData(:final mime, :final base64) => _mapInlineImage(
+        mime: mime,
+        base64Data: base64,
+        remainingInlineBytes: remainingInlineBytes,
+      ),
     };
+  }
+
+  ({CodexTurnInputDto input, int inlineBytes}) _mapInlineImage({
+    required String mime,
+    required String base64Data,
+    required int remainingInlineBytes,
+  }) {
+    final normalizedMime = mime.trim().toLowerCase();
+    if (!_supportedImageMimes.contains(normalizedMime)) {
+      throw const _CodexPromptAttachmentException(
+        message: "Unsupported inline image type",
+        innerError: null,
+      );
+    }
+    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64Data.length)) {
+      throw const _CodexPromptAttachmentException(
+        message: "Inline image exceeds the attachment size limit",
+        innerError: null,
+      );
+    }
+    if (base64Data.isEmpty) {
+      throw const _CodexPromptAttachmentException(
+        message: "Malformed inline image data",
+        innerError: null,
+      );
+    }
+
+    late final String normalizedBase64;
+    try {
+      normalizedBase64 = base64.normalize(base64Data);
+    } on FormatException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        _CodexPromptAttachmentException(
+          message: "Malformed inline image data",
+          innerError: error,
+        ),
+        stackTrace,
+      );
+    }
+    final decodedBytes = decodedBase64Length(base64Data: normalizedBase64);
+    if (decodedBytes > remainingInlineBytes) {
+      throw const _CodexPromptAttachmentException(
+        message: "Inline images exceed the aggregate attachment size limit",
+        innerError: null,
+      );
+    }
+    return (
+      input: CodexTurnInputDto.image(url: "data:$normalizedMime;base64,$normalizedBase64"),
+      inlineBytes: decodedBytes,
+    );
   }
 
   Future<T> _request<T>({

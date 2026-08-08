@@ -1,11 +1,13 @@
 import "dart:async";
 
+import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -26,6 +28,8 @@ class MockPluginRepository extends Mock implements PluginRepository {}
 
 class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
 
+class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
+
 AgentInfo _testAgent({required String name, required String description, required String? variant}) {
   return AgentInfo(
     name: name,
@@ -41,9 +45,40 @@ SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
   commands: const [],
 );
 
+Finder _pickerMenuItem(String label) => find.descendant(
+  of: find.byType(SingleChildScrollView),
+  matching: find.widgetWithText(InkWell, label),
+);
+
+/// The harness row for [pluginId] inside the open harness menu.
+Finder _harnessRow(String pluginId) => find.byKey(Key("new_session_plugin_$pluginId"));
+
+/// The tappable surface of a harness row — null [InkWell.onTap] is how a row
+/// that cannot be picked reports itself.
+InkWell _harnessRowInk(WidgetTester tester, String pluginId) =>
+    tester.widget<InkWell>(find.descendant(of: _harnessRow(pluginId), matching: find.byType(InkWell)));
+
+/// Opens the harness menu, which is where the pickable harnesses live.
+Future<void> openHarnessMenu(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key("new_session_plugin_trigger")));
+  await tester.pumpAndSettle();
+}
+
+/// Dismisses the harness menu through its barrier. Picking a row closes the
+/// menu on its own; a row that cannot be picked leaves it standing.
+Future<void> closeHarnessMenu(WidgetTester tester) async {
+  await tester.tapAt(const Offset(10, 10));
+  await tester.pumpAndSettle();
+}
+
 Widget _buildApp({
   ThemeMode themeMode = ThemeMode.light,
   bool? initialSupportsDedicatedWorktrees = true,
+  SessionListState sessionListState = const SessionListState.loaded(
+    sessions: [],
+    baseBranch: null,
+    repoSlug: null,
+  ),
 }) {
   final router = GoRouter(
     initialLocation: "/new",
@@ -63,6 +98,10 @@ Widget _buildApp({
         ],
       ),
       GoRoute(
+        path: "/settings/harnesses",
+        builder: (context, state) => const Material(child: Text("harnesses-settings")),
+      ),
+      GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
           return Material(
@@ -79,8 +118,18 @@ Widget _buildApp({
     ],
   );
 
-  return BlocProvider<ConnectionOverlayCubit>(
-    create: (_) => StubConnectionOverlayCubit(),
+  // The screen wears the sessions bar, whose second line comes from the
+  // project's session-list cubit — the sessions shell provides it in the app.
+  final sessionListCubit = _MockSessionListCubit();
+  when(() => sessionListCubit.state).thenReturn(sessionListState);
+  whenListen(sessionListCubit, const Stream<SessionListState>.empty(), initialState: sessionListState);
+
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
+      BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+      BlocProvider<SessionListCubit>.value(value: sessionListCubit),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -99,6 +148,14 @@ Future<void> enterTypingMode(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Types a prompt and sends it. The pump in between lets the composer rebuild
+/// around the new text — send only accepts taps once the field has content.
+Future<void> enterTextAndSend({required WidgetTester tester, required String text}) async {
+  await tester.enterText(find.byType(EditableText), text);
+  await tester.pump();
+  await tester.tap(find.byIcon(TablerRegular.arrow_up));
+}
+
 void main() {
   late MockSessionService sessionService;
   late MockSessionRepository sessionRepository;
@@ -113,10 +170,10 @@ void main() {
 
   setUpAll(registerAllFallbackValues);
 
-  // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
-  // renders its flat (cue) menu here — the menu rows are Material InkWells, not
-  // GlassMenuItems. Finders below target those InkWells.
+  // Composer pickers force PregoAnchorMenu's flat cue path on every platform,
+  // so the menu rows are Material InkWells.
   setUp(() async {
+    KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
     sessionService = MockSessionService();
     sessionRepository = MockSessionRepository();
@@ -267,6 +324,7 @@ void main() {
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
+    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
 
     when(
       () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
@@ -305,6 +363,20 @@ void main() {
     await connectionStatus.close();
   });
 
+  testWidgets("toolbar back pops the route while the Android keyboard is visible", (tester) async {
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+    KeyboardVisibilityTesting.setVisibilityForTesting(true);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
   testWidgets("known unsupported project never shows the worktree toggle while composer data loads", (tester) async {
     final projectResponse = Completer<ApiResponse<Project>>();
     when(
@@ -314,7 +386,7 @@ void main() {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: false));
     await tester.pump();
 
-    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.byType(PregoSwitch), findsNothing);
 
     projectResponse.complete(
       ApiResponse.success(
@@ -331,6 +403,9 @@ void main() {
   });
 
   testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(
@@ -359,6 +434,7 @@ void main() {
       find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
     );
     expect(composerPointer.ignoring, isFalse);
+    expect(find.byType(PregoPickerButton), findsNothing);
     verifyNever(
       () => sessionRepository.loadSessionOptions(
         projectId: any(named: "projectId"),
@@ -367,13 +443,22 @@ void main() {
       ),
     );
 
+    final restingComposerHeight = tester.getSize(find.byType(PromptInput)).height;
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text(loc.voiceReleaseToTranscribe), findsOneWidget);
+    expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
     expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
   });
 
@@ -386,7 +471,7 @@ void main() {
       ),
     ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -405,12 +490,11 @@ void main() {
     expect(find.text(loc.newSessionOptionsUnavailable), findsOneWidget);
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "use backend defaults");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester: tester, text: "use backend defaults");
     await tester.pumpAndSettle();
 
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
         text: "use backend defaults",
@@ -459,13 +543,13 @@ void main() {
     await tester.pumpAndSettle();
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
     expect(find.text(loc.newSessionOptionsCached), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.text(loc.newSessionOptionsUpdateFailedRetained), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
   });
 
   testWidgets("unavailable refresh failure clears options immediately", (tester) async {
@@ -485,33 +569,33 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsNothing);
   });
 
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Tapping the variant pill opens a popup listing the Default option plus
     // the model's variants.
-    expect(find.widgetWithText(InkWell, "Default"), findsOneWidget);
-    expect(find.widgetWithText(InkWell, "xhigh"), findsOneWidget);
+    expect(_pickerMenuItem("Default"), findsOneWidget);
+    expect(_pickerMenuItem("xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
+    await tester.tap(_pickerMenuItem("xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("renders bridge order with generic degraded and blocked presentation", (tester) async {
@@ -551,48 +635,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NewSessionPluginChooser), findsOneWidget);
-    expect(tester.getTopLeft(find.text("First Tool")).dy, lessThan(tester.getTopLeft(find.text("Second Tool")).dy));
-    expect(tester.getTopLeft(find.text("Second Tool")).dy, lessThan(tester.getTopLeft(find.text("Third Tool")).dy));
+    await openHarnessMenu(tester);
+
+    expect(tester.getTopLeft(_harnessRow("failed-id")).dy, lessThan(tester.getTopLeft(_harnessRow("codex")).dy));
+    expect(tester.getTopLeft(_harnessRow("codex")).dy, lessThan(tester.getTopLeft(_harnessRow("cursor")).dy));
     expect(find.text("Needs attention"), findsOneWidget);
     expect(find.text("Failed"), findsOneWidget);
     expect(find.text("Unavailable"), findsOneWidget);
-    expect(find.text("Restart the bridge to retry."), findsOneWidget);
-    expect(find.text("Check the bridge console."), findsOneWidget);
-    expect(find.byIcon(TablerRegular.plug), findsOneWidget);
-    expect(findBrandLogo("codex"), findsOneWidget);
+    // Codex is the picked harness, so its mark shows twice: on the trigger and
+    // in its row. The plug stands in for the harness this build has no artwork
+    // for, which is only in the menu.
+    expect(findBrandLogo("codex"), findsNWidgets(2));
     expect(findBrandLogo("cursor"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.plug), findsOneWidget);
 
-    // The marks carry their own colours, so a row that can't be picked has to
-    // mute its artwork or it reads as active beside the row's greyed-out text.
-    double markOpacity(String pluginId) => tester
-        .widget<Opacity>(find.ancestor(of: findBrandLogo(pluginId), matching: find.byType(Opacity)).first)
+    // A row that can't be picked dims as a whole, artwork included — the marks
+    // carry their own colours, so a tint alone would leave them reading active.
+    double rowOpacity(String pluginId) => tester
+        .widget<Opacity>(find.descendant(of: _harnessRow(pluginId), matching: find.byType(Opacity)).first)
         .opacity;
-    expect(markOpacity("cursor"), lessThan(1.0));
-    expect(markOpacity("codex"), 1.0);
+    expect(rowOpacity("cursor"), lessThan(1.0));
+    expect(rowOpacity("codex"), 1.0);
 
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_failed-id"))).onTap,
-      isNull,
-    );
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_cursor"))).onTap,
-      isNull,
-    );
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_codex"))).onTap,
-      isNotNull,
-    );
+    expect(_harnessRowInk(tester, "failed-id").onTap, isNull);
+    expect(_harnessRowInk(tester, "cursor").onTap, isNull);
+    expect(_harnessRowInk(tester, "codex").onTap, isNotNull);
     expect(find.text("failed-id"), findsNothing);
     expect(find.text("codex"), findsNothing);
   });
 
-  testWidgets("uses on-brand foreground tokens for a selected plugin in dark mode", (tester) async {
+  testWidgets("names the picked harness on the trigger and checks its row", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
           plugins: const [
+            PluginMetadata(
+              id: "other-id",
+              displayName: "Other Tool",
+              isDefault: false,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
             PluginMetadata(
               id: "degraded-id",
               displayName: "Selected Tool",
@@ -605,18 +690,63 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp(themeMode: ThemeMode.dark));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(tester.widget<Text>(find.text("Selected Tool")).style?.color, PregoColorsDark.textPrimaryOnBrand);
-    expect(tester.widget<Text>(find.text("Needs attention")).style?.color, PregoColorsDark.textSecondaryOnBrand);
+    final trigger = find.byKey(const Key("new_session_plugin_trigger"));
+    expect(find.descendant(of: trigger, matching: find.text("Selected Tool")), findsOneWidget);
+
+    await openHarnessMenu(tester);
+
     expect(
-      tester.widget<Text>(find.text("Check the bridge console.")).style?.color,
-      PregoColorsDark.textSecondaryOnBrand,
+      find.descendant(of: _harnessRow("degraded-id"), matching: find.byIcon(Icons.check)),
+      findsOneWidget,
     );
-    final selectedRow = find.byKey(const Key("new_session_plugin_degraded-id"));
-    final radio = find.descendant(of: selectedRow, matching: find.byIcon(Icons.radio_button_checked));
-    expect(tester.widget<Icon>(radio).color, PregoColorsDark.iconFgBrandOnBrand);
+    expect(
+      find.descendant(of: _harnessRow("other-id"), matching: find.byIcon(Icons.check)),
+      findsNothing,
+    );
+    expect(find.descendant(of: _harnessRow("degraded-id"), matching: find.text("Needs attention")), findsOneWidget);
+  });
+
+  testWidgets("opens harness settings from the menu header", (tester) async {
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await openHarnessMenu(tester);
+
+    await tester.tap(find.byKey(const Key("new_session_harness_settings")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("harnesses-settings"), findsOneWidget);
+  });
+
+  testWidgets("keeps the harness settings icon layout-safe on hover", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await openHarnessMenu(tester);
+
+    final settings = find.byKey(const Key("new_session_harness_settings"));
+    final loc = AppLocalizations.of(tester.element(settings))!;
+    expect(
+      tester.getSemantics(settings),
+      matchesSemantics(
+        label: loc.newSessionHarnessSettings,
+        isButton: true,
+        isFocusable: true,
+        hasEnabledState: true,
+        isEnabled: true,
+        hasTapAction: true,
+        hasFocusAction: true,
+      ),
+    );
+    semantics.dispose();
+
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(pointer.hover(tester.getCenter(settings)));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("keeps model and variant controls available when no agents load", (tester) async {
@@ -631,8 +761,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.smart_toy_outlined), findsNothing);
-    expect(find.widgetWithText(GlassButton, "Claude 3.5 Sonnet"), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "Claude 3.5 Sonnet"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
@@ -666,15 +796,50 @@ void main() {
       find.descendant(of: optionsScroll, matching: find.byType(NewSessionPluginChooser)),
       findsOneWidget,
     );
-    expect(find.descendant(of: optionsScroll, matching: find.byType(SwitchListTile)), findsOneWidget);
+    expect(find.descendant(of: optionsScroll, matching: find.byType(PregoSwitch)), findsOneWidget);
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
 
+    // The refresh action floats above the composer rather than riding the
+    // options it reloads, so scrolling must not carry it away.
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsNothing);
+
     final composerTop = tester.getTopLeft(find.byType(PromptInput)).dy;
+    final refreshRect = tester.getRect(refresh);
+    expect(refreshRect.bottom, lessThanOrEqualTo(composerTop));
+
     await tester.drag(optionsScroll, const Offset(0, -250));
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(find.byType(PromptInput)).dy, closeTo(composerTop, 0.01));
+    expect(tester.getRect(refresh), refreshRect);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("scrolls the last option clear of the refresh at a large text scale", (tester) async {
+    // The refresh pill is padding around its label, not a fixed box, so it
+    // grows with the text scale. The band reserved beneath the options has to
+    // grow with it or the last row stays stranded underneath.
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.binding.setSurfaceSize(const Size(700, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+
+    final scrollRect = tester.getRect(optionsScroll);
+    await tester.dragFrom(Offset(scrollRect.center.dx, scrollRect.top + 8), const Offset(0, -2000));
+    await tester.pumpAndSettle();
+
+    // Scrolled to the end, the reserved band must still span everything the
+    // pill covers — measured, so it holds however tall the pill has grown.
+    final reserved = tester.widget<SingleChildScrollView>(optionsScroll).padding! as EdgeInsetsDirectional;
+    expect(reserved.bottom, greaterThanOrEqualTo(scrollRect.bottom - tester.getRect(refresh).top));
     expect(tester.takeException(), isNull);
   });
 
@@ -721,7 +886,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
-    expect(find.text(loc.newSessionDedicatedWorktree), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
   });
 
   testWidgets("keeps chooser usable while clearing and reloading composer data", (tester) async {
@@ -768,28 +933,28 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await openHarnessMenu(tester);
+    await tester.tap(_harnessRow("tool-b"));
     await tester.pump();
 
-    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsNothing);
     final disabledComposer = find.ancestor(
       of: find.byType(PromptInput),
       matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
     );
     expect(disabledComposer, findsOneWidget);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-a"))).onTap,
-      isNotNull,
-    );
 
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-a")));
+    await openHarnessMenu(tester);
+    expect(_harnessRowInk(tester, "tool-a").onTap, isNotNull);
+
+    await tester.tap(_harnessRow("tool-a"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
     verifyNever(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -857,20 +1022,16 @@ void main() {
 
     expect(discoveryCalls, 2);
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
-      isNull,
-    );
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await openHarnessMenu(tester);
+    expect(_harnessRowInk(tester, "tool-b").onTap, isNull);
+    await tester.tap(_harnessRow("tool-b"));
     await tester.pump();
     expect(
-      find.descendant(
-        of: find.byKey(const Key("new_session_plugin_tool-a")),
-        matching: find.byIcon(Icons.radio_button_checked),
-      ),
+      find.descendant(of: _harnessRow("tool-a"), matching: find.byIcon(Icons.check)),
       findsOneWidget,
     );
     verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
+    await closeHarnessMenu(tester);
 
     reconnectDiscovery.complete(
       ApiResponse.success(
@@ -884,17 +1045,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isTrue);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
-      isNotNull,
-    );
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await openHarnessMenu(tester);
+    expect(_harnessRowInk(tester, "tool-b").onTap, isNotNull);
+    await tester.tap(_harnessRow("tool-b"));
     await tester.pumpAndSettle();
+
+    await openHarnessMenu(tester);
     expect(
-      find.descendant(
-        of: find.byKey(const Key("new_session_plugin_tool-b")),
-        matching: find.byIcon(Icons.radio_button_checked),
-      ),
+      find.descendant(of: _harnessRow("tool-b"), matching: find.byIcon(Icons.check)),
       findsOneWidget,
     );
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
@@ -944,9 +1102,11 @@ void main() {
     final context = tester.element(find.byType(NewSessionScreen));
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
-    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsOneWidget);
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
-    expect(tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_plugin-1"))).onTap, isNull);
+    await openHarnessMenu(tester);
+    expect(_harnessRow("plugin-1"), findsOneWidget);
+    expect(_harnessRowInk(tester, "plugin-1").onTap, isNull);
+    await closeHarnessMenu(tester);
     expect(
       tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_options_refresh"))).onPressed,
       isNull,
@@ -971,8 +1131,8 @@ void main() {
     final context = tester.element(find.byType(NewSessionScreen));
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
-    expect(find.text(loc.newSessionPluginChooserLabel), findsNothing);
-    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsNothing);
+    expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
+    expect(_harnessRow("plugin-1"), findsNothing);
     expect(
       find.ancestor(
         of: find.byType(PromptInput),
@@ -990,7 +1150,7 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.pump();
     verifyNever(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1039,19 +1199,19 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select a different variant.
-    await tester.tap(find.widgetWithText(InkWell, "low"));
+    await tester.tap(_pickerMenuItem("low"));
     await tester.pumpAndSettle();
 
     // The UI should now reflect the newly selected variant.
-    expect(find.widgetWithText(GlassButton, "low"), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
   testWidgets("selecting Default clears the displayed variant", (tester) async {
@@ -1089,49 +1249,49 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select Default (null variant).
-    await tester.tap(find.widgetWithText(InkWell, "Default"));
+    await tester.tap(_pickerMenuItem("Default"));
     await tester.pumpAndSettle();
 
     // The UI should now show "Default".
-    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
+    await tester.tap(_pickerMenuItem("xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(GlassButton, "coder"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "coder"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(InkWell, "reviewer"));
+    await tester.tap(_pickerMenuItem("reviewer"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "reviewer"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "reviewer"), findsOneWidget);
     // Variant intent is independent, so the explicit xhigh choice survives the
     // agent change while that variant remains valid for the selected model.
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1150,8 +1310,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1163,7 +1322,7 @@ void main() {
   testWidgets("blocks submit UI while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1180,8 +1339,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     final absorbingFinder = find.byWidgetPredicate(
@@ -1195,7 +1353,7 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
 
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1212,7 +1370,7 @@ void main() {
   testWidgets("shows snackbar and allows navigation when aborting while sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1231,8 +1389,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1256,7 +1413,7 @@ void main() {
   testWidgets("does not hijack navigation when creation completes after the user navigated away", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1275,8 +1432,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1305,7 +1461,7 @@ void main() {
   testWidgets("still navigates to session detail after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1322,8 +1478,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1343,7 +1498,7 @@ void main() {
   testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1362,8 +1517,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1379,7 +1533,7 @@ void main() {
   testWidgets("removes the loading overlay and keeps retry UI usable after an error", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1396,8 +1550,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);

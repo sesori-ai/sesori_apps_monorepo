@@ -38,7 +38,7 @@ void main() {
       () => client.post<FilesystemSuggestions>(
         "/filesystem/suggestions",
         fromJson: any(named: "fromJson"),
-        body: const FilesystemSuggestionsRequest(prefix: "/projects", maxResults: 50),
+        body: const FilesystemSuggestionsRequest(prefix: "/projects", maxResults: 1000),
       ),
     ).called(1);
   });

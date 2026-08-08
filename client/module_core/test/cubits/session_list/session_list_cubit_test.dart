@@ -31,6 +31,7 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
+    late MockProjectViewingService mockProjectViewingService;
     late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
@@ -48,6 +49,7 @@ void main() {
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
+      mockProjectViewingService = stubbedProjectViewingService();
       mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -88,11 +90,55 @@ void main() {
       connectionService: mockConnectionService,
       sseEventTracker: mockSseEventTracker,
       sessionUnseenTracker: fakeSessionUnseenTracker,
+      projectViewingService: mockProjectViewingService,
       routeSource: mockRouteSource,
       projectId: projectId,
       initialSupportsDedicatedWorktrees: null,
       failureReporter: mockFailureReporter,
     );
+
+    test("successful list render readies its project claim and close releases it", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+      final cubit = buildCubit();
+
+      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+      verify(() => mockProjectViewingService.beginListClaim(projectId: projectId)).called(1);
+      verify(
+        () => mockProjectViewingService.markClaimReady(
+          claim: any(named: "claim"),
+          projectId: projectId,
+        ),
+      ).called(1);
+
+      await cubit.close();
+      verify(
+        () => mockProjectViewingService.releaseClaim(claim: any(named: "claim")),
+      ).called(1);
+    });
+
+    test("failed initial list render marks its project claim failed", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      final cubit = buildCubit();
+
+      await cubit.stream.firstWhere((state) => state is SessionListFailed);
+      verify(() => mockProjectViewingService.beginListClaim(projectId: projectId)).called(1);
+      verify(
+        () => mockProjectViewingService.markClaimFailed(claim: any(named: "claim")),
+      ).called(1);
+      await cubit.close();
+    });
 
     // -------------------------------------------------------------------------
     // 1. Constructor triggers load only — no route refresh on initial emission
@@ -786,365 +832,6 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 13. unarchiveSession success — preserves ID and updates in place
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "unarchiveSession: keeps session id and clears archived timestamp",
-      build: () {
-        final archivedSession = testSession(
-          id: "s1",
-          archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
-        );
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
-        );
-        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1", title: "Restored")),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.toggleArchived();
-        final result = await cubit.unarchiveSession("s1");
-        expect(result, isTrue);
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>()
-            .having((s) => s.showArchived, "showArchived", isTrue)
-            .having((s) => s.sessions.length, "sessions after toggle", 1)
-            .having((s) => s.sessions.first.time?.archived, "starts archived", isNotNull),
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after optimistic unarchive", 1)
-            .having((s) => s.sessions.first.id, "preserved id", "s1")
-            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after API success", 1)
-            .having((s) => s.sessions.first.id, "preserved id", "s1")
-            .having((s) => s.sessions.first.title, "updated title", "Restored"),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 14. unarchiveSession failure — rollback restores archived state
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "unarchiveSession: rolls back archived timestamp and returns false on API failure",
-      build: () {
-        final archivedSession = testSession(
-          id: "s1",
-          archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
-        );
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
-        );
-        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
-          (_) async => ApiResponse.error(ApiError.generic()),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.toggleArchived();
-        final result = await cubit.unarchiveSession("s1");
-        expect(result, isFalse);
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>()
-            .having((s) => s.showArchived, "showArchived", isTrue)
-            .having((s) => s.sessions.length, "sessions after toggle", 1),
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after optimistic unarchive", 1)
-            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after rollback", 1)
-            .having((s) => s.sessions.first.time?.archived, "archived timestamp restored", isNotNull),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 15. undoLastArchiveAction — reverses archive (undo = unarchive)
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "undoLastArchiveAction: unarchives after archive, restoring the session",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
-        );
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s1",
-            deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testSession(id: "s1", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
-          ),
-        );
-        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1")),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        await cubit.archiveSession(
-          sessionId: "s1",
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        );
-        final undoResult = await cubit.undoLastArchiveAction();
-        expect(undoResult, isTrue);
-      },
-      skip: 1,
-      expect: () => [
-        // Optimistic archive: session hidden.
-        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after archive", isEmpty),
-        // Undo (unarchive): session restored.
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after undo", 1),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 16. undoLastArchiveAction — re-archives after unarchive
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "undoLastArchiveAction: archives back after unarchive",
-      build: () {
-        final archivedSession = testSession(
-          id: "s1",
-          archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
-        );
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
-        );
-        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1")),
-        );
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s1",
-            deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testSession(id: "s1", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000002000)),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.toggleArchived();
-        await cubit.unarchiveSession("s1");
-        final undoResult = await cubit.undoLastArchiveAction();
-        expect(undoResult, isTrue);
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after toggle", 1),
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.first.id, "session id after unarchive", "s1")
-            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.first.id, "session id after undo", "s1")
-            .having((s) => s.sessions.first.time?.archived, "re-archived", isNotNull),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 17. Rapid archive s1 → archive s2 → undo reverts s2 correctly
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "undoLastArchiveAction after rapid successive archives: undo reverts the latest action",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [
-                testSession(id: "s1", title: "First"),
-                testSession(id: "s2", title: "Second"),
-              ],
-            ),
-          ),
-        );
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s1",
-            deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testSession(id: "s1", title: "First", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
-          ),
-        );
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s2",
-            deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testSession(id: "s2", title: "Second", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000002000)),
-          ),
-        );
-        // Undo should unarchive s2 (the latest), not s1.
-        when(() => mockSessionService.unarchiveSession(sessionId: "s2")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s2", title: "Second")),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        await cubit.archiveSession(
-          sessionId: "s1",
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        );
-        await cubit.archiveSession(
-          sessionId: "s2",
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        );
-        final undoResult = await cubit.undoLastArchiveAction();
-        expect(undoResult, isTrue);
-      },
-      skip: 1,
-      expect: () => [
-        // s1 archived → hidden (only s2 visible).
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "after archive s1", 1),
-        // s2 archived → both hidden.
-        isA<SessionListLoaded>().having((s) => s.sessions, "after archive s2", isEmpty),
-        // Undo restores s2 (not s1).
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "after undo", 1)
-            .having((s) => s.sessions.first.id, "restored session id", "s2"),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 18. Stale clearLastActionUndo after rapid archives wipes undo state
-    //     (documents the race condition that the screen must avoid)
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "clearLastActionUndo between rapid archives prevents undo of the latest",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [
-                testSession(id: "s1", title: "First"),
-                testSession(id: "s2", title: "Second"),
-              ],
-            ),
-          ),
-        );
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s1",
-            deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testSession(id: "s1", title: "First", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
-          ),
-        );
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s2",
-            deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testSession(id: "s2", title: "Second", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000002000)),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        await cubit.archiveSession(
-          sessionId: "s1",
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        );
-        await cubit.archiveSession(
-          sessionId: "s2",
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        );
-        // Simulates a stale timer/callback from the first archive's snackbar
-        // clearing the undo state that now belongs to the second archive.
-        cubit.clearLastActionUndo();
-        final undoResult = await cubit.undoLastArchiveAction();
-        expect(undoResult, isFalse);
-      },
-      skip: 1,
-      expect: () => [
-        // s1 archived → hidden.
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "after archive s1", 1),
-        // s2 archived → both hidden.
-        isA<SessionListLoaded>().having((s) => s.sessions, "after archive s2", isEmpty),
-        // No undo emission — undoLastArchiveAction returned false.
-      ],
-    );
-
-    // -------------------------------------------------------------------------
     // SSE events from other projects are ignored
     // -------------------------------------------------------------------------
 
@@ -1242,6 +929,60 @@ void main() {
             .having((s) => s.sessions.first.title, "updated title", "Updated"),
       ],
     );
+
+    test("PR-free session.updated preserves REST PR data until sessions.updated refreshes it", () async {
+      const mergedPullRequest = PullRequestInfo(
+        number: 690,
+        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/690",
+        title: "Merged pull request",
+        state: PrState.merged,
+        mergeableStatus: PrMergeableStatus.unknown,
+        reviewDecision: PrReviewDecision.unknown,
+        checkStatus: PrCheckStatus.success,
+      );
+      final withPullRequest = testSession(id: "s1", title: "Original").copyWith(
+        pullRequest: mergedPullRequest,
+      );
+      final withoutPullRequest = testSession(id: "s1", title: "Updated");
+      final responses = <SessionListResponse>[
+        SessionListResponse(items: [withPullRequest]),
+        SessionListResponse(items: [withoutPullRequest]),
+      ];
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(responses.removeAt(0)));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      await cubit.stream.firstWhere(
+        (state) => state is SessionListLoaded && state.sessions.single.pullRequest == mergedPullRequest,
+      );
+      eventController.add(
+        SseEvent(
+          data: SesoriSseEvent.sessionUpdated(info: withoutPullRequest),
+        ),
+      );
+      final afterSessionUpdate =
+          await cubit.stream.firstWhere(
+                (state) => state is SessionListLoaded && state.sessions.single.title == "Updated",
+              )
+              as SessionListLoaded;
+      expect(afterSessionUpdate.sessions.single.pullRequest, mergedPullRequest);
+
+      eventController.add(
+        SseEvent(data: const SesoriSessionsUpdated(projectID: projectId)),
+      );
+      final afterAuthoritativeRefresh =
+          await cubit.stream.firstWhere(
+                (state) => state is SessionListLoaded && state.sessions.single.pullRequest == null,
+              )
+              as SessionListLoaded;
+      expect(afterAuthoritativeRefresh.sessions.single.pullRequest, isNull);
+    });
 
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.updated timestamp reorders sessions",
@@ -1747,6 +1488,7 @@ void main() {
           connectionService: mockConnectionService,
           sseEventTracker: mockSseEventTracker,
           sessionUnseenTracker: fakeSessionUnseenTracker,
+          projectViewingService: mockProjectViewingService,
           routeSource: mockRouteSource,
           projectId: "global",
           initialSupportsDedicatedWorktrees: null,

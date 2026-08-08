@@ -246,6 +246,13 @@ class ConnectionService {
     await _relayClient?.sendSessionView(sessionId: sessionId);
   }
 
+  /// Stateless transport primitive for this client's currently visible
+  /// project. Fire-and-forget and a no-op when not connected; route, pane,
+  /// lifecycle, and reconnect ownership stays in `ProjectViewingService`.
+  Future<void> sendProjectView({required String? projectId}) async {
+    await _relayClient?.sendProjectView(projectId: projectId);
+  }
+
   /// Connects to the server. Health-checks first, then opens SSE stream
   /// for ongoing heartbeat monitoring.
   Future<ApiResponse<HealthResponse>> connect(
@@ -502,8 +509,18 @@ class ConnectionService {
       (status) {
         switch (status) {
           case BridgeStatus.online:
-            if (_status.value is ConnectionBridgeOffline) {
-              logd("Bridge came back online — reconnecting to re-establish encryption");
+            final currentStatus = _status.value;
+            if (currentStatus is ConnectionBridgeOffline || currentStatus is ConnectionConnected) {
+              if (currentStatus is ConnectionConnected) {
+                // A replacement bridge can connect without an intervening
+                // offline event. Stop requests from using the prior bridge's
+                // room key while token refresh prepares the replacement socket.
+                logd("Bridge connection was replaced — reconnecting to re-establish encryption");
+                unawaited(_disconnectRelayClient());
+                _status.add(ConnectionStatus.reconnecting(config: config));
+              } else {
+                logd("Bridge came back online — reconnecting to re-establish encryption");
+              }
               // immediate: the bridge is provably present and the parked (or
               // stale) socket needs replacing now, so skip the reconnect backoff
               // delay. Backoff still applies to genuinely failed retries, so a

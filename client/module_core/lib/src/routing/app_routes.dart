@@ -4,6 +4,28 @@ const projectNameQueryParam = "name";
 const supportsDedicatedWorktreesQueryParam = "supportsDedicatedWorktrees";
 const projectIdPathParam = "projectId";
 const sessionIdPathParam = "sessionId";
+const harnessSettingsPresentationQueryParam = "presentation";
+
+/// How the harness settings page was raised, which decides both its page
+/// transition and the way out of it.
+enum HarnessSettingsPresentation {
+  /// Raised over a screen it does not belong to — the new-session harness
+  /// menu. It slides up as a modal and closes back onto its opener.
+  modal,
+
+  /// Pushed as the next page of the settings stack. It slides in like any
+  /// other settings page and returns with the back button.
+  pushed;
+
+  /// Reads a presentation from its URL spelling, or null when the value is
+  /// absent or unknown.
+  static HarnessSettingsPresentation? tryParse(String? value) {
+    for (final presentation in values) {
+      if (presentation.name == value) return presentation;
+    }
+    return null;
+  }
+}
 
 String _appendQuery({required String path, required Map<String, String> queryParameters}) {
   if (queryParameters.isEmpty) return path;
@@ -64,7 +86,9 @@ sealed class AppRoute {
   const factory AppRoute.projects() = AppRouteProjects;
   const factory AppRoute.settings() = AppRouteSettings;
   const factory AppRoute.settingsNotifications() = AppRouteSettingsNotifications;
-  const factory AppRoute.settingsHarnesses() = AppRouteSettingsHarnesses;
+  const factory AppRoute.settingsHarnesses({
+    required HarnessSettingsPresentation presentation,
+  }) = AppRouteSettingsHarnesses;
   const factory AppRoute.settingsProfile() = AppRouteSettingsProfile;
   const factory AppRoute.sessions({
     required String projectId,
@@ -103,7 +127,7 @@ sealed class AppRoute {
       AppRouteDef.projects => const AppRoute.projects(),
       AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
-      AppRouteDef.settingsHarnesses => const AppRoute.settingsHarnesses(),
+      AppRouteDef.settingsHarnesses => AppRouteSettingsHarnesses.fromParams(queryParams: queryParams),
       AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
@@ -170,13 +194,34 @@ class AppRouteSettingsNotifications extends AppRoute {
 }
 
 class AppRouteSettingsHarnesses extends AppRoute {
-  const AppRouteSettingsHarnesses();
+  static const _presentationQueryParam = harnessSettingsPresentationQueryParam;
+
+  final HarnessSettingsPresentation presentation;
+
+  const AppRouteSettingsHarnesses({required this.presentation});
+
+  /// Decodes from query parameter maps (inverse of [buildPath]).
+  factory AppRouteSettingsHarnesses.fromParams({required Map<String, String> queryParams}) {
+    return AppRouteSettingsHarnesses(
+      // A deep link or a hand-typed URL names no presentation. It arrives over
+      // whatever was on screen rather than over the settings list, so it is
+      // raised the same way that detour is: as a modal with a way out.
+      presentation:
+          HarnessSettingsPresentation.tryParse(queryParams[_presentationQueryParam]) ??
+          HarnessSettingsPresentation.modal,
+    );
+  }
 
   @override
   AppRouteDef get def => AppRouteDef.settingsHarnesses;
 
   @override
-  String buildPath() => def.path;
+  String buildPath() {
+    return _appendQuery(
+      path: def.path,
+      queryParameters: {_presentationQueryParam: presentation.name},
+    );
+  }
 }
 
 class AppRouteSettingsProfile extends AppRoute {

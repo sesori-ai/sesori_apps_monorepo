@@ -4,10 +4,10 @@
   </a>
 </p>
 
-<h1 align="center">Run your AI coding sessions from anywhere.</h1>
+<h1 align="center">Run OpenCode, Codex, and Cursor from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, and other AI coding assistants.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, and <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a> today, with <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a> coming soon.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -67,7 +67,7 @@ Requires iOS 15 or later, or Android 8.0 or later.
 
 ### 2. Install the Bridge CLI on your machine
 
-The Bridge is a small source-available command-line tool that connects the app to OpenCode, Cursor, Codex, and other AI coding assistants.
+The Bridge is a small source-available command-line tool that connects the app to OpenCode, Codex, and Cursor.
 
 **macOS / Linux:**
 
@@ -99,7 +99,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 
 | Feature | What it means |
 |---|---|
-| **Browse projects & sessions** | See your OpenCode, Cursor, Codex, and other AI coding projects and every active session from your phone. |
+| **Browse projects & sessions** | See your OpenCode, Codex, and Cursor projects and every active session from your phone. |
 | **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
 | **Review code and PR status** | Read diffs and keep tabs on pull requests without opening your laptop. |
 | **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |

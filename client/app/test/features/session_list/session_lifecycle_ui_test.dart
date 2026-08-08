@@ -140,16 +140,15 @@ class _TestSessionListBody extends StatelessWidget {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
-              title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                if (!isArchived) {
+            if (!isArchived)
+              ListTile(
+                leading: const Icon(Icons.archive_outlined),
+                title: Text(loc.sessionListArchive),
+                onTap: () {
+                  Navigator.pop(sheetContext);
                   _showArchiveSheet(context, cubit, session);
-                }
-              },
-            ),
+                },
+              ),
             ListTile(
               leading: Icon(Icons.delete_outlined, color: Theme.of(context).colorScheme.error),
               title: Text(
@@ -370,6 +369,9 @@ void main() {
     if (getIt.isRegistered<FailureReporter>()) {
       getIt.unregister<FailureReporter>();
     }
+    if (getIt.isRegistered<ProjectViewingService>()) {
+      getIt.unregister<ProjectViewingService>();
+    }
   });
 
   // ---------------------------------------------------------------------------
@@ -533,6 +535,7 @@ void main() {
     testWidgets("renders the PR row when a session has pullRequest data", (tester) async {
       final getIt = GetIt.instance;
       final session = _testSessionWithPullRequest();
+      final projectViewingService = stubbedProjectViewingService();
 
       when(
         () => mockProjectRepository.listSessions(
@@ -540,7 +543,6 @@ void main() {
           waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
-
       getIt.registerSingleton<SessionService>(mockSessionService);
       getIt.registerSingleton<ProjectRepository>(mockProjectRepository);
       registerListServices(
@@ -551,6 +553,7 @@ void main() {
       getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
       getIt.registerSingleton<RouteSource>(mockRouteSource);
       getIt.registerSingleton<FailureReporter>(mockFailureReporter);
+      getIt.registerSingleton<ProjectViewingService>(projectViewingService);
 
       await tester.pumpWidget(
         _buildScreenApp(
@@ -742,37 +745,4 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // New session dedicated worktree toggle
-  // ---------------------------------------------------------------------------
-
-  group("New session dedicated worktree", () {
-    testWidgets("toggle renders with correct label", (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: (context) {
-              final loc = AppLocalizations.of(context)!;
-              return Scaffold(
-                body: Column(
-                  children: [
-                    Text(loc.newSessionDedicatedWorktree),
-                    Text(loc.newSessionDedicatedWorktreeDescription),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      );
-
-      expect(find.text("Dedicated worktree"), findsOneWidget);
-      expect(
-        find.text("Creates a dedicated git worktree and branch for this session"),
-        findsOneWidget,
-      );
-    });
-  });
 }

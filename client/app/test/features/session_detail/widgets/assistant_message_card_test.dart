@@ -1,3 +1,6 @@
+import "dart:typed_data";
+import "dart:ui" show SemanticsAction;
+
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -7,6 +10,8 @@ import "package:http/testing.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
+import "package:sesori_mobile/features/session_detail/widgets/image_attachment_viewer.dart";
+import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -212,6 +217,106 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data, "updated draft text");
+  });
+
+  testWidgets("opens a decoded Markdown image in the full-screen viewer", (tester) async {
+    final semantics = tester.ensureSemantics();
+    const imageData =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
+
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [_textPart(id: "image-part", text: "![Test image]($imageData)")],
+        ),
+        streamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final markdownImage = find.byType(MarkdownMessageImage);
+    expect(markdownImage, findsOneWidget);
+    final preview = tester.widget<Image>(find.descendant(of: markdownImage, matching: find.byType(Image)));
+    expect(preview.image, isA<ResizeImage>());
+    expect((preview.image as ResizeImage).imageProvider, isA<MemoryImage>());
+    await tester.runAsync(
+      () => precacheImage(
+        preview.image,
+        tester.element(markdownImage),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final tapTarget = tester.widget<GestureDetector>(
+      find.descendant(of: markdownImage, matching: find.byType(GestureDetector)),
+    );
+    expect(tapTarget.onTap, isNotNull);
+    expect(
+      tester.getSemantics(markdownImage).getSemanticsData().hasAction(SemanticsAction.tap),
+      isTrue,
+    );
+
+    tapTarget.onTap!();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    expect(find.byIcon(Icons.content_copy), findsNothing);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(identical(fullscreen.image, preview.image), isTrue);
+    semantics.dispose();
+  });
+
+  testWidgets("bounds remote Markdown image decode dimensions", (tester) async {
+    const uri = "https://example.com/image.png";
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: MarkdownMessageImage(
+            uri: Uri.parse(uri),
+            semanticLabel: "Remote image",
+          ),
+        ),
+      ),
+    );
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.image, isA<ResizeImage>());
+    final provider = image.image as ResizeImage;
+    expect(provider.width, 2048);
+    expect(provider.height, 2048);
+    expect(provider.policy, ResizeImagePolicy.fit);
+    expect(provider.imageProvider, isA<NetworkImage>());
+    expect((provider.imageProvider as NetworkImage).url, uri);
+  });
+
+  testWidgets("rejects oversized Markdown data images before decoding", (tester) async {
+    final oversizedUri = Uri.dataFromBytes(
+      Uint8List(maxInlineMessageAttachmentBytes + 1),
+      mimeType: "image/png",
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: MarkdownMessageImage(
+            uri: oversizedUri,
+            semanticLabel: "Oversized image",
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(Image), findsNothing);
+    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.byType(GestureDetector), findsNothing);
   });
 
   testWidgets("renders normalized assistant file attachments", (tester) async {

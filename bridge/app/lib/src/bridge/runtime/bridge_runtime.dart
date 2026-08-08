@@ -6,28 +6,34 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 
 import "../../api/database/database.dart";
+import "../../api/database/history/chat_history_database.dart";
 import "../../listeners/plugin_catalog_hydration_listener.dart";
-import "../../server/services/bridge_restart_service.dart";
 import "../../services/catalog_import_service.dart";
 import "../bandwidth_tracker.dart";
 import "../debug_server.dart";
 import "../orchestrator.dart";
+import "../routing/bridge_restart_dispatcher.dart";
+import "../routing/routed_request_dispatcher.dart";
 import "bridge_shutdown_coordinator.dart";
 
 class BridgeRuntime {
   BridgeRuntime({
     required AppDatabase database,
+    required ChatHistoryDatabase chatHistoryDatabase,
     required FailureReporter failureReporter,
-    required BridgeRestartService restartService,
     required OrchestratorComposition composition,
   }) : _database = database,
+       _chatHistoryDatabase = chatHistoryDatabase,
        _failureReporter = failureReporter,
-       _restartService = restartService,
+       _restartDispatcher = composition.restartDispatcher,
+       _routedRequestDispatcher = composition.routedRequestDispatcher,
        _composition = composition;
 
   final AppDatabase _database;
+  final ChatHistoryDatabase _chatHistoryDatabase;
   final FailureReporter _failureReporter;
-  final BridgeRestartService _restartService;
+  final BridgeRestartDispatcher _restartDispatcher;
+  final RoutedRequestDispatcher _routedRequestDispatcher;
   final OrchestratorComposition _composition;
   Future<void>? _closeFuture;
 
@@ -39,6 +45,10 @@ class BridgeRuntime {
     return _composition.deletedSessionStorageCleanupService.reconcile();
   }
 
+  Future<void> reconcileChatHistory() {
+    return _composition.chatHistoryReconcileService.reconcile();
+  }
+
   BandwidthTracker createBandwidthTracker() {
     return BandwidthTracker(bytesSent: session.bytesSent);
   }
@@ -46,12 +56,10 @@ class BridgeRuntime {
   DebugServer createDebugServer({required int port}) {
     return DebugServer(
       localWireEvents: session.localWireEvents,
-      router: session.router,
+      routedRequestDispatcher: _routedRequestDispatcher,
       port: port,
       failureReporter: _failureReporter,
-      restartService: _restartService,
-      restartHandoff: session.handleRestartHandoff,
-      drainRoutedMutations: session.drainRoutedMutations,
+      restartDispatcher: _restartDispatcher,
     );
   }
 
@@ -70,12 +78,15 @@ class BridgeRuntime {
       }
     }
 
+    await step(_restartDispatcher.dispose);
     await step(_composition.sessionUnseenService.dispose);
     await step(_composition.sessionViewTracker.dispose);
+    await step(_composition.projectViewTracker.dispose);
     await step(_composition.sessionRepository.dispose);
     await step(_composition.catalogHydrationListener.dispose);
     await step(_composition.catalogImportService.dispose);
     await step(_database.close);
+    await step(_chatHistoryDatabase.close);
 
     if (firstError != null) {
       Error.throwWithStackTrace(firstError!, firstStackTrace!);
@@ -83,12 +94,12 @@ class BridgeRuntime {
   }
 }
 
-Future<DebugServer?> startDebugServerIfRequested({
+Future<void> startDebugServerIfRequested({
   required int? debugPort,
   required BridgeRuntime runtime,
   required BridgeShutdownCoordinator shutdownCoordinator,
 }) async {
-  if (debugPort == null) return null;
+  if (debugPort == null) return;
 
   final bandwidthTracker = runtime.createBandwidthTracker();
   shutdownCoordinator.add(disposable: bandwidthTracker.dispose);
@@ -96,10 +107,19 @@ Future<DebugServer?> startDebugServerIfRequested({
   try {
     final debugServer = runtime.createDebugServer(port: debugPort);
     await debugServer.start();
-    return debugServer;
+    // Registered only once the server is listening, so the coordinator's
+    // phase closures never capture a half-started server.
+    shutdownCoordinator
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
+        action: debugServer.beginShutdown,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.drain,
+        action: debugServer.drain,
+      );
   } on Object catch (error, stackTrace) {
     Log.w("failed to start debug server", error, stackTrace);
-    return null;
   }
 }
 

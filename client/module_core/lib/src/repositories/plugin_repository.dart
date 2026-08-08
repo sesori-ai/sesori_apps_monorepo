@@ -81,7 +81,17 @@ class PluginRepository {
         PluginDiscoverySnapshot(
           bridgeId: data.bridgeId,
           supportsSessionOptions: data.supportsSessionOptions,
-          plugins: data.plugins,
+          // COMPATIBILITY 2026-08-04 (v1.8.0): Discovery responses that omit
+          // session-options capability also predate prompt capability, while
+          // their sole released OpenCode path already carried fileData parts.
+          // Remove this mapping with support for those bridges.
+          plugins: [
+            for (final plugin in data.plugins)
+              if (!data.supportsSessionOptions && plugin.id == legacyMissingPluginId)
+                plugin.copyWith(supportsPromptAttachments: true)
+              else
+                plugin,
+          ],
         ),
       ),
       // COMPATIBILITY 2026-07-18 (v1.6.0): Bridges without plugin
@@ -98,6 +108,7 @@ class PluginRepository {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              supportsPromptAttachments: true,
             ),
           ],
         ),

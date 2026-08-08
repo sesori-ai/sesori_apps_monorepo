@@ -11,9 +11,22 @@ import android.widget.FrameLayout
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
+import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
+    private var recorderPrewarmService: RecorderPrewarmService? = null
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        recorderPrewarmService = RecorderPrewarmService(
+            channel = MethodChannel(
+                flutterEngine.dartExecutor.binaryMessenger,
+                RecorderPrewarmService.channelName,
+            ),
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyEdgeToEdge()
@@ -31,6 +44,8 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     }
 
     override fun onDestroy() {
+        recorderPrewarmService?.dispose()
+        recorderPrewarmService = null
         flutterEngine?.renderer?.removeIsDisplayingFlutterUiListener(this)
         super.onDestroy()
     }

@@ -1,3 +1,4 @@
+import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 
 sealed class QueuedSessionSubmission {
@@ -6,6 +7,7 @@ sealed class QueuedSessionSubmission {
   const factory QueuedSessionSubmission.text({
     required String text,
     required ComposerInputMode inputMode,
+    required List<ComposerAttachment> attachments,
   }) = QueuedTextSubmission;
 
   const factory QueuedSessionSubmission.command({
@@ -16,11 +18,17 @@ sealed class QueuedSessionSubmission {
   String get text;
   String? get command;
   ComposerInputMode get inputMode;
+  List<ComposerAttachment> get attachments;
 
-  String get displayText => command != null
+  /// What the queued bubble should render, or `null` when the submission
+  /// carries no text of its own — an attachment-only prompt. Callers decide
+  /// what to show in its place rather than reading an empty string as absence.
+  String? get displayText => command != null
       ? text.trim().isEmpty
             ? "/$command"
             : "/$command ${text.trim()}"
+      : text.isEmpty
+      ? null
       : text;
 
   bool get isCommand => command != null;
@@ -31,8 +39,14 @@ final class QueuedTextSubmission extends QueuedSessionSubmission {
   final String text;
   @override
   final ComposerInputMode inputMode;
+  @override
+  final List<ComposerAttachment> attachments;
 
-  const QueuedTextSubmission({required this.text, required this.inputMode});
+  const QueuedTextSubmission({
+    required this.text,
+    required this.inputMode,
+    required this.attachments,
+  });
 
   @override
   String? get command => null;
@@ -44,8 +58,17 @@ final class QueuedCommandSubmission extends QueuedSessionSubmission {
   @override
   final String command;
 
-  const QueuedCommandSubmission({required this.text, required this.command});
+  const QueuedCommandSubmission({
+    required this.text,
+    required this.command,
+  });
 
   @override
   ComposerInputMode get inputMode => ComposerInputMode.typed;
+
+  /// The bridge's command paths carry only the text part, so a queued command
+  /// can never hold images. Keeping that off the variant means a command
+  /// submission cannot silently strip attachments on its way to the bridge.
+  @override
+  List<ComposerAttachment> get attachments => const [];
 }

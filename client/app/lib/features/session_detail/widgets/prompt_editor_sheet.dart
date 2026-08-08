@@ -1,5 +1,6 @@
 import "dart:math" as math;
 
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -14,17 +15,23 @@ import "../../../core/extensions/build_context_x.dart";
 class PromptEditorSheet extends StatelessWidget {
   final TextEditingController controller;
   final String placeholder;
+  final Action<PasteTextIntent> pasteAction;
+  final EditableTextContextMenuBuilder contextMenuBuilder;
 
   const PromptEditorSheet({
     super.key,
     required this.controller,
     required this.placeholder,
+    required this.pasteAction,
+    required this.contextMenuBuilder,
   });
 
   static Future<void> show(
     BuildContext context, {
     required TextEditingController controller,
     required String placeholder,
+    required Action<PasteTextIntent> pasteAction,
+    required EditableTextContextMenuBuilder contextMenuBuilder,
   }) {
     // Status-bar inset, captured before presenting: the modal route strips
     // the top inset from both `padding` and `viewPadding`, so inside the
@@ -43,7 +50,12 @@ class PromptEditorSheet extends StatelessWidget {
         final height = screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard;
         return SizedBox(
           height: math.max(height, screenHeight * 0.3),
-          child: PromptEditorSheet(controller: controller, placeholder: placeholder),
+          child: PromptEditorSheet(
+            controller: controller,
+            placeholder: placeholder,
+            pasteAction: pasteAction,
+            contextMenuBuilder: contextMenuBuilder,
+          ),
         );
       },
     );
@@ -52,20 +64,24 @@ class PromptEditorSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return TextField(
-      controller: controller,
-      autofocus: true,
-      expands: true,
-      maxLines: null,
-      textAlignVertical: TextAlignVertical.top,
-      keyboardType: TextInputType.multiline,
-      textInputAction: TextInputAction.newline,
-      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-      decoration: InputDecoration(
-        isCollapsed: true,
-        border: InputBorder.none,
-        hintText: placeholder,
-        hintStyle: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+    return Actions(
+      actions: kIsWeb ? const {} : {PasteTextIntent: pasteAction},
+      child: TextField(
+        controller: controller,
+        autofocus: true,
+        expands: true,
+        maxLines: null,
+        textAlignVertical: TextAlignVertical.top,
+        keyboardType: TextInputType.multiline,
+        textInputAction: TextInputAction.newline,
+        contextMenuBuilder: contextMenuBuilder,
+        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+        decoration: InputDecoration(
+          isCollapsed: true,
+          border: InputBorder.none,
+          hintText: placeholder,
+          hintStyle: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+        ),
       ),
     );
   }

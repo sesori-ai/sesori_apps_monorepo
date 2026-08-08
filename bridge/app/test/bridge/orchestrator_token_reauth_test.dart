@@ -18,6 +18,7 @@ import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/restart_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -59,7 +60,10 @@ void main() {
       // never re-checks it, so the live socket must stay up.
       authority.emit(_jwt(userId: "user-1", seq: 2));
 
-      await Future<void>.delayed(const Duration(seconds: 1));
+      // With the fast injected backoff the loop would have reconnected within
+      // ~50ms if a rotation wrongly dropped the socket; 250ms is several
+      // iterations of headroom.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
       expect(
         harness.relayServer.acceptedClientCount,
         equals(1),
@@ -97,7 +101,7 @@ void main() {
       // the socket already authenticated with. This must NOT re-auth/flap the
       // live connection.
       authority.emit("token-1");
-      await Future<void>.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 250));
       expect(harness.relayServer.acceptedClientCount, equals(1), reason: "unchanged token must not re-auth");
     });
 
@@ -115,8 +119,9 @@ void main() {
       authority.failRefresh = true;
       await firstSocket.close();
 
-      // Give the reconnect loop several backoff iterations; none should connect.
-      await Future<void>.delayed(const Duration(seconds: 2));
+      // Give the reconnect loop several fast backoff iterations; none should
+      // connect. A broken implementation would attempt within ~50ms.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(harness.relayServer.acceptedClientCount, equals(1), reason: "no reconnect while signed out");
 
       // Signing back in lets the deferred reconnect proceed.
@@ -196,7 +201,7 @@ void main() {
         ..cachedTokenAvailable = false;
       await firstSocket.close();
 
-      await Future<void>.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(harness.relayServer.acceptedClientCount, equals(1), reason: "no reconnect without a safe token");
 
       // Once a token is available again the deferred reconnect proceeds.
@@ -281,6 +286,15 @@ class _TransientRefreshException implements Exception {
   const _TransientRefreshException();
 }
 
+/// A fast ordinary reconnect backoff so re-auth scenarios run in tens of
+/// milliseconds instead of waiting out the production 1s initial backoff.
+const ReconnectBackoffPolicy _fastOrdinaryBackoff = ReconnectBackoffPolicy(
+  ordinaryInitial: Duration(milliseconds: 50),
+  ordinaryMax: Duration(seconds: 1),
+  takeoverInitial: Duration(minutes: 2),
+  takeoverMax: Duration(minutes: 5),
+);
+
 class _ReauthHarness {
   final OrchestratorSession session;
   final Future<void> runFuture;
@@ -304,6 +318,7 @@ class _ReauthHarness {
 
   static Future<_ReauthHarness> start({
     required _ScriptedTokenAuthority authority,
+    ReconnectBackoffPolicy backoffPolicy = _fastOrdinaryBackoff,
   }) async {
     final relayServer = await _CountingRelayServer.start();
     final database = createTestDatabase();
@@ -316,6 +331,7 @@ class _ReauthHarness {
     // id the revoked path re-registers.
     final registrationService = createFakeBridgeRegistrationService(repository: registrationRepository);
 
+    final testChatHistory = createTestChatHistory();
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -331,8 +347,11 @@ class _ReauthHarness {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: authority,
@@ -342,6 +361,7 @@ class _ReauthHarness {
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       statusNotifier: null,
+      reconnectBackoff: backoffPolicy,
     );
 
     final session = orchestrator.create().session;

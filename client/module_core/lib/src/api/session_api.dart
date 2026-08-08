@@ -1,7 +1,10 @@
+import "dart:convert";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/models/composer/composer_attachment.dart";
 import "../logging/logging.dart";
 import "client/relay_http_client.dart";
 
@@ -58,6 +61,7 @@ class SessionApi {
     required String projectId,
     required String pluginId,
     required String text,
+    required List<ComposerAttachment> attachments,
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
@@ -70,7 +74,7 @@ class SessionApi {
       body: CreateSessionRequest(
         projectId: projectId,
         pluginId: pluginId,
-        parts: [PromptPart.text(text: text)],
+        parts: _buildParts(text: text, attachments: attachments),
         agent: agent,
         model: model,
         variant: variant,
@@ -83,6 +87,7 @@ class SessionApi {
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
     required String text,
+    required List<ComposerAttachment> attachments,
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
@@ -93,13 +98,30 @@ class SessionApi {
       fromJson: SuccessEmptyResponse.fromJson,
       body: SendPromptRequest(
         sessionId: sessionId,
-        parts: [PromptPart.text(text: text)],
+        parts: _buildParts(text: text, attachments: attachments),
         agent: agent,
         model: model,
         variant: variant,
         command: command,
       ),
     );
+  }
+
+  /// The text part leads and is only omitted for attachment-only prompts, so
+  /// text-only payloads stay byte-identical to what older clients sent.
+  static List<PromptPart> _buildParts({
+    required String text,
+    required List<ComposerAttachment> attachments,
+  }) {
+    return [
+      if (text.isNotEmpty || attachments.isEmpty) PromptPart.text(text: text),
+      for (final attachment in attachments)
+        PromptPart.fileData(
+          mime: attachment.mime,
+          base64: base64Encode(attachment.bytes),
+          filename: attachment.filename,
+        ),
+    ];
   }
 
   Future<ApiResponse<Session>> archiveSession({
@@ -122,20 +144,6 @@ class SessionApi {
 
     _throwIfCleanupRejected(response);
     return response;
-  }
-
-  Future<ApiResponse<Session>> unarchiveSession({required String sessionId}) {
-    return _client.patch(
-      "/session/update/archive",
-      fromJson: Session.fromJson,
-      body: UpdateSessionArchiveRequest(
-        sessionId: sessionId,
-        archived: false,
-        deleteWorktree: false,
-        deleteBranch: false,
-        force: false,
-      ),
-    );
   }
 
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {

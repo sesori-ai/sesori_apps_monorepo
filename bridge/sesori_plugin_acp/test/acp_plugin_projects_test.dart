@@ -27,11 +27,13 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -738,11 +740,13 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -865,6 +869,7 @@ class _RegistryCapturingAcpPlugin extends AcpPlugin {
     required super.launchSpec,
     required super.launchDirectory,
     required super.eventMapper,
+    required super.contentMapper,
     required super.commandTracker,
     required super.sessionOptionsService,
     super.processFactory,

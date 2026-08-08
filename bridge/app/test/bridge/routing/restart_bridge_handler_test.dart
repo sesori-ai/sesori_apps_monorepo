@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/routing/restart_bridge_handler.dart';
+import 'package:sesori_bridge/src/bridge/routing/routed_request.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
@@ -63,6 +64,7 @@ void main() {
       cliArgs: const ['run'],
       currentPid: 1234,
       isSupervised: isSupervised,
+      onSupervisedRestartRequested: () {},
     );
   }
 
@@ -74,7 +76,7 @@ void main() {
     expect(handler.canHandle(makeRequest('POST', '/global/health')), isFalse);
   });
 
-  test('replies {restarting:true} and flags the restart when spawnable', () async {
+  test('returns a fixed RestartAccepted outcome when spawnable', () async {
     final binaryPath = p.join(tempDir.path, 'sesori-bridge');
     File(binaryPath).writeAsStringSync('binary');
     if (!Platform.isWindows) {
@@ -83,32 +85,33 @@ void main() {
     final service = buildService(binaryPath: binaryPath);
     final handler = RestartBridgeHandler(restartService: service);
 
-    final response = await handler.handleInternal(
-      makeRequest('POST', '/global/restart'),
+    final outcome = await handler.routeInternal(
+      request: makeRequest('POST', '/global/restart'),
       pathParams: const {},
       queryParams: const {},
       fragment: null,
     );
 
-    expect(response.status, 200);
-    expect(response.body, contains('"restarting":true'));
-    expect(service.consumeRestartRequest(), isTrue);
+    expect(outcome, isA<RestartAccepted>());
+    expect((outcome as RestartAccepted).requestId, 'test-id');
+    expect(outcome.response.status, 200);
+    expect(outcome.response.body, contains('"restarting":true'));
   });
 
-  test('returns 503 without flagging a restart when the binary is unavailable', () async {
+  test('returns ResponseOnly 503 when the binary is unavailable', () async {
     final service = buildService(binaryPath: p.join(tempDir.path, 'missing'));
     final handler = RestartBridgeHandler(restartService: service);
 
-    final response = await handler.handleInternal(
-      makeRequest('POST', '/global/restart'),
+    final outcome = await handler.routeInternal(
+      request: makeRequest('POST', '/global/restart'),
       pathParams: const {},
       queryParams: const {},
       fragment: null,
     );
 
-    expect(response.status, 503);
-    expect(response.body, contains('sesori.com'));
-    expect(service.consumeRestartRequest(), isFalse);
+    expect(outcome, isA<ResponseOnly>());
+    expect(outcome.response.status, 503);
+    expect(outcome.response.body, contains('sesori.com'));
   });
 
   test('supervised restart proceeds even when the managed binary is unavailable', () async {
@@ -117,15 +120,15 @@ void main() {
     final service = buildService(binaryPath: p.join(tempDir.path, 'missing'), isSupervised: true);
     final handler = RestartBridgeHandler(restartService: service);
 
-    final response = await handler.handleInternal(
-      makeRequest('POST', '/global/restart'),
+    final outcome = await handler.routeInternal(
+      request: makeRequest('POST', '/global/restart'),
       pathParams: const {},
       queryParams: const {},
       fragment: null,
     );
 
-    expect(response.status, 200);
-    expect(response.body, contains('"restarting":true'));
-    expect(service.consumeRestartRequest(), isTrue);
+    expect(outcome, isA<RestartAccepted>());
+    expect(outcome.response.status, 200);
+    expect(outcome.response.body, contains('"restarting":true'));
   });
 }

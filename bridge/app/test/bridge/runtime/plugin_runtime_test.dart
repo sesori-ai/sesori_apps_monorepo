@@ -28,6 +28,41 @@ void main() {
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
   });
 
+  test("installRuntime forwards descriptor progress and aborts on shutdown", () async {
+    final installGate = Completer<void>();
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        install: (startAborted) async* {
+          yield const ProvisionResolving();
+          await installGate.future;
+          if (startAborted.isAborted) throw const PluginStartAbortedException();
+          yield const ProvisionReady(binaryPath: "/managed/one");
+        },
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    final events = <RuntimeProvisionProgress>[];
+    final done = runtime.installRuntime(pluginId: "one").listen(events.add).asFuture<void>();
+    await Future<void>.delayed(Duration.zero);
+    expect(events.single, isA<ProvisionResolving>());
+
+    runtime.beginShutdown();
+    installGate.complete();
+    await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+  });
+
+  test("installRuntime fails immediately while shutting down", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+
+    runtime.beginShutdown();
+    final events = await runtime.installRuntime(pluginId: "one").toList();
+
+    expect(events.single, isA<ProvisionFailed>());
+  });
+
   test("disable invalidates an in-flight setup inspection", () async {
     final inspectionGate = Completer<PluginSetupStatus>();
     final runtime = _runtime(
@@ -497,6 +532,65 @@ void main() {
     expect(result, isA<PluginRuntimeCommandConflict>());
     expect((result as PluginRuntimeCommandConflict).reasons, contains(PluginRuntimeConflictReason.busy));
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+  });
+
+  test("shutdown interrupt asks every started plugin to quiesce active work within the budget", () async {
+    final api = _FakeApi();
+    late _FakePlugin plugin;
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => plugin = _FakePlugin(api: api),
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    Duration? seenBudget;
+    plugin.interruptActiveWorkHandler = (budget) async {
+      seenBudget = budget;
+      return const {};
+    };
+
+    await runtime.interruptActiveWorkForShutdown();
+
+    expect(plugin.interruptActiveWorkCount, 1);
+    expect(seenBudget, const Duration(seconds: 1));
+  });
+
+  test("shutdown interrupt isolates a failing plugin and never throws", () async {
+    final api = _FakeApi();
+    late _FakePlugin plugin;
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => plugin = _FakePlugin(api: api),
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    plugin.interruptActiveWorkHandler = (_) => Future.error(StateError("cannot quiesce"));
+
+    await runtime.interruptActiveWorkForShutdown();
+
+    expect(plugin.interruptActiveWorkCount, 1);
+  });
+
+  test("shutdown interrupt bounds a hung plugin", () async {
+    final api = _FakeApi();
+    late _FakePlugin plugin;
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => plugin = _FakePlugin(api: api),
+    );
+    final runtime = _runtime(
+      factory: factory,
+      shutdownBudget: const Duration(milliseconds: 20),
+    );
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    plugin.interruptActiveWorkHandler = (_) => Completer<Set<String>>().future;
+
+    await runtime.interruptActiveWorkForShutdown();
+
+    expect(plugin.interruptActiveWorkCount, 1);
   });
 
   test("a force stop interrupts active sessions before retiring the generation", () async {
@@ -1518,6 +1612,7 @@ enum _TestOperation {
 PluginRuntime _runtime({
   required _FakeGenerationFactory factory,
   BridgePluginDescriptor descriptor = const _FakeDescriptor(),
+  Duration shutdownBudget = const Duration(seconds: 1),
 }) {
   final runtime = PluginRuntime(
     registrations: [
@@ -1531,7 +1626,7 @@ PluginRuntime _runtime({
     setupProcesses: const _UnusedHostProcessService(),
     environment: const {},
     clock: const ServerClock(),
-    shutdownBudget: const Duration(seconds: 1),
+    shutdownBudget: shutdownBudget,
   );
   runtime.applyAccess(
     entries: const [
@@ -1589,9 +1684,10 @@ class _FakeGenerationFactory implements PluginGenerationFactory {
 }
 
 class _FakeDescriptor extends BridgePluginDescriptor {
-  const _FakeDescriptor({this.inspect});
+  const _FakeDescriptor({this.inspect, this.install});
 
   final Future<PluginSetupStatus> Function()? inspect;
+  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install;
 
   @override
   String get id => "one";
@@ -1616,6 +1712,27 @@ class _FakeDescriptor extends BridgePluginDescriptor {
     required String stateDirectory,
   }) {
     return inspect?.call() ?? Future.value(const PluginSetupReady());
+  }
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) {
+    final handler = install;
+    if (handler == null) {
+      return super.installRuntime(
+        config: config,
+        processes: processes,
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+      );
+    }
+    return handler(startAborted);
   }
 
   @override

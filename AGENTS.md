@@ -73,27 +73,48 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
+- Every PR title starts with one implementation-complexity emoji: `🌱` trivial,
+  `🌿` straightforward, `⚙️` moderate, `🚧` complex, or `🚨` very complex.
+  Complexity is implementation/review difficulty, not the risk rating.
+  Single-PR tasks use `<emoji> <normal title>`.
+- Every PR body includes concise `## Complexity`, `## What`, `## Why`,
+  `## Risk and test focus`, and `## Expected result` sections. State explicitly
+  when there is no user-visible or database impact; keep verification as an
+  additional section.
 - Assume the user will not inspect local-only changes unless they explicitly say
   they will. Once a task is complete and ready for code review or implementation
   testing, commit, push, and open a PR by default. Leave changes local only when
   the user explicitly requests that.
 - When splitting any task across multiple PRs, title every PR
-  `[<slug>] <description> [step <x>/<y>]`. For planned work, `<slug>` is the
-  plan directory name under `.plan`; otherwise choose one stable, lowercase
-  kebab-case slug. Keep one total for the whole series. Single-PR tasks keep the
-  normal title style.
+  `<emoji> [<slug>] <description> [step <x>/<y>]`. For planned work,
+  `<slug>` is the plan directory name under `.plan`; otherwise choose one
+  stable, lowercase kebab-case slug. Keep one total for the whole series.
 - Backward and forward compatibility is required only for transport
   contracts exchanged between the client and bridge, because an older app can
   use a newer bridge and a newer app can use an older bridge. Preserve those
   wire contracts with honest defaults or graceful degradation where possible;
   when an older peer cannot support new behavior, surface that limitation
   explicitly instead of silently breaking an existing flow.
+- Compatibility baselines include only public production releases. Internal,
+  prerelease, development, and otherwise unpublished builds do not create a
+  compatibility obligation. When a route or wire shape has appeared only in
+  those builds, replace it cleanly and remove the obsolete code, models, tests,
+  and handlers; do not add fallbacks, shims, dual routes, or retained contracts
+  solely for unpublished peers.
 - Dart/Flutter modules and plugin interfaces/packages have no external
   consumers outside this repository and update together. Do not add
   compatibility shims, optional parameters, or legacy API paths for those
   internal contracts; update every in-repository consumer in lockstep instead.
 - A recovered failure that continues must remain observable. Do not add a
   redundant log when the error is rethrown or returned as an explicit failure.
+- A failure response sent to a remote client does not replace a useful local log
+  when only that log retains the original error, stack trace, or operation context.
+- Preserve diagnostically useful errors, stack traces, paths, identifiers, and
+  operation context in local bridge and client logs. Logs are not submitted
+  automatically; users choose whether to inspect, anonymize, and share them.
+  Strip only known user data that has no debugging value (for example prompt or
+  transcript content), and remove that field selectively rather than suppressing
+  an entire error or category because it might contain sensitive data.
 - When translating a caught error into another error, retain the original in a
   typed `innerError` or `cause` field instead of discarding it. Keep the
   wrapper's presentation privacy-safe when the original may contain sensitive
@@ -127,22 +148,26 @@ eagerly "just in case."
 - Do not rerun an unchanged passing command or reread unchanged files solely for
   additional confidence. Expand verification only when impact or a failure gives
   a concrete reason.
-- Aristotle is an architecture reviewer, not a general implementation or code
-  correctness reviewer. Invoke it only for architecture-bearing production work:
-  new or moved production classes/files, dependency or DI ownership changes,
-  public/wire/persisted contracts, cross-layer flow, lifecycle triggers, or
-  shared boundaries.
-- Do not invoke Aristotle for docs, instructions, agent/skill definitions,
-  tests-only edits, formatting, copy, localized bug fixes, ordinary method logic,
-  or non-architectural tooling changes. Broader wording in reviewer metadata
-  applies only within this architecture scope.
-- Apply valid `aristotle-plan-review` findings directly without re-reviewing the
-  fixes. A too-vague rejection may be reviewed once more after clarification;
+- Architecture review is handled by two skills — `architecture-plan-review`
+  and `architecture-implementation-review` — that are architecture reviewers,
+  not general implementation or code correctness reviewers. Invoke them only for
+  architecture-bearing production work: new or moved production classes/files,
+  dependency or DI ownership changes, public/wire/persisted contracts,
+  cross-layer flow, lifecycle triggers, or shared boundaries. Both skills are
+  invoked through a sub-agent: ask a sub-agent to perform the review using the
+  skill, rather than loading the skill directly in the main agent context.
+- Do not invoke the architecture reviewers for docs, instructions, agent/skill
+  definitions, tests-only edits, formatting, copy, localized bug fixes, ordinary
+  method logic, or non-architectural tooling changes. Broader wording in
+  reviewer metadata applies only within this architecture scope.
+- Apply valid `architecture-plan-review` findings directly without re-reviewing
+  the fixes. A too-vague rejection may be reviewed once more after clarification;
   if it is rejected as too vague again, ask the user how to proceed. Considerable
   plan changes caused by new findings or user requests may also be reviewed again.
-- Use `aristotle-impl-review` at most twice before asking the user how to proceed.
-  If rejection is based only on an explicitly approved user decision, that
-  decision supersedes the review; do not re-review or re-litigate it.
+- Use `architecture-implementation-review` at most twice before asking the user
+  how to proceed. If rejection is based only on an explicitly approved user
+  decision, that decision supersedes the review; do not re-review or re-litigate
+  it.
 - Prefer a Git-defined implementation-review scope such as the current branch
   against `main`, a commit range, the last N commits, or a PR. File or directory
   scopes are also valid when useful; the reviewer uses Git history and diffs
@@ -151,8 +176,8 @@ eagerly "just in case."
   finding would move, rename, or refactor pre-existing files, classes, or
   architecture beyond the current request, ask the user whether that scope
   expansion is acceptable before making it.
-- These review rules supersede broader Aristotle requirements in older roadmap
-  or plan documents.
+- These review rules supersede broader requirements in older roadmap or plan
+  documents.
 - Cleanup and refactoring are acceptable when the value is clear. Before a
   considerable refactor, explain its approximate size and ask the user to
   approve it. Prefer a dedicated PR without unrelated functionality changes
@@ -162,6 +187,20 @@ eagerly "just in case."
 
 - Do not solve speculative edge cases with broad locks, registries, lifecycle
   machinery, or abstractions unless a plausible flow and meaningful impact exist.
+- Edge cases are infinite; completeness is not the goal. Guarding a state no
+  current flow produces adds code to the path that runs constantly, in order to
+  defend a path that never runs. That trade is a net loss: the guard itself
+  becomes a new failure point. Prefer leaving the unreachable case unhandled.
+- Before adding a guard, name the concrete flow that reaches the bad state and
+  the damage if it does. If you cannot name a real caller or sequence that
+  produces it, do not write the guard. "An API technically accepts it" and "a
+  misbehaving or future client might" are not flows.
+- Defensive depth must stay proportional to damage. A rare case that degrades a
+  screen, fails one request, or shows a stale value does not justify tree walks,
+  cascade checks, extra queries on hot paths, or new coordination.
+- Enforce an invariant at the one place that owns it, on the entity the caller
+  named. Do not extend it outward to parents, children, families, or related
+  entities in case someone reaches them another way.
 - Do not let backend concepts, identifiers, payload assumptions, or behavior
   escape the owning plugin package.
 - Do not enter a verification spiral: once relevant evidence passes and inputs

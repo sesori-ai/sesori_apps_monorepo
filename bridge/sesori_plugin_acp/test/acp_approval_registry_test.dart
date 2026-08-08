@@ -21,6 +21,9 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responds.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
+        // The base registry declares no fireAndForgetExtensionMethods, so the
+        // forward is never invoked here.
+        onFireAndForgetNotification: (_) {},
       );
       registry.attach(requests.stream);
     });

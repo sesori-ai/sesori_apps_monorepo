@@ -121,6 +121,7 @@ void main() async {
       notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
     ),
     readAppearanceFn: () => getIt<AppearanceStore>().read(),
+    readChatInputModeFn: () => getIt<ChatInputModeStore>().read(),
     runAppFn: runApp,
   );
 }
@@ -133,6 +134,7 @@ Future<void> bootstrapSesoriApp({
   required Future<void> Function() startAnalyticsRouteListenerFn,
   required Future<void> Function() startNotificationStartupFn,
   required Future<AppearanceMode> Function() readAppearanceFn,
+  required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
   configureDependenciesFn();
@@ -149,7 +151,10 @@ Future<void> bootstrapSesoriApp({
 
   // Awaited: the persisted theme has to be in place before the first frame,
   // otherwise a pinned light/dark choice flashes the device theme on launch.
-  final appearance = await readAppearanceFn();
+  // The chat input mode rides along concurrently — same store, and reading it
+  // here keeps the composer preference synchronous for the rest of the app.
+  // Both reads swallow their own failures, so the parallel wait cannot throw.
+  final (appearance, chatInputMode) = await (readAppearanceFn(), readChatInputModeFn()).wait;
 
   final isImpeller = ui.ImageFilter.isShaderFilterSupported;
 
@@ -161,7 +166,7 @@ Future<void> bootstrapSesoriApp({
 
   runAppFn(
     LiquidGlassWidgets.wrap(
-      child: SesoriApp(initialAppearance: appearance),
+      child: SesoriApp(initialAppearance: appearance, initialChatInputMode: chatInputMode),
       adaptiveQuality: true,
       // ignore: experimental_member_use
       adaptiveConfig: GlassAdaptiveScopeConfig(
@@ -251,20 +256,33 @@ bool get _supportsFirebaseCrashlytics {
 }
 
 class SesoriApp extends StatelessWidget {
-  const SesoriApp({required this.initialAppearance, super.key});
+  const SesoriApp({required this.initialAppearance, required this.initialChatInputMode, super.key});
 
   /// The persisted appearance, read before the first frame.
   final AppearanceMode initialAppearance;
 
+  /// The persisted chat input preference, read alongside the appearance.
+  final ChatInputMode initialChatInputMode;
+
   @override
   Widget build(BuildContext context) {
     // Above the router so the whole app — including full-screen modal routes —
-    // rebuilds when the appearance choice changes.
-    return BlocProvider<AppearanceCubit>(
-      create: (_) => AppearanceCubit(
-        store: getIt<AppearanceStore>(),
-        initialMode: initialAppearance,
-      ),
+    // rebuilds when the appearance or chat input choice changes.
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AppearanceCubit>(
+          create: (_) => AppearanceCubit(
+            store: getIt<AppearanceStore>(),
+            initialMode: initialAppearance,
+          ),
+        ),
+        BlocProvider<ChatInputModeCubit>(
+          create: (_) => ChatInputModeCubit(
+            store: getIt<ChatInputModeStore>(),
+            initialMode: initialChatInputMode,
+          ),
+        ),
+      ],
       child: const _SesoriAppShell(),
     );
   }

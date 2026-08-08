@@ -3,6 +3,9 @@ import "dart:async";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -15,6 +18,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late SessionOperationDispatcher dispatcher;
     late SessionPromptService service;
 
     setUp(() async {
@@ -27,8 +31,11 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionPromptService(
         sessionRepository: sessionRepository,
+        dispatcher: dispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
       );
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -48,6 +55,7 @@ void main() {
 
     tearDown(() async {
       await service.dispose();
+      await dispatcher.dispose();
       await plugin.close();
       await db.close();
     });
@@ -70,6 +78,36 @@ void main() {
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
       expect(plugin.lastSendCommandUserVisibleArguments, equals("extra args"));
+    });
+
+    test("refuses a prompt to an archived session without reaching the plugin", () async {
+      await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
+
+      await expectLater(
+        service.sendPrompt(
+          sessionId: "s1",
+          parts: const [PromptPart.text(text: "hello")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        throwsA(
+          isA<SessionArchivedReadOnlyException>().having(
+            (e) => e.rejection,
+            "rejection",
+            const SessionArchivedRejection(sessionId: "s1", reason: SessionArchivedReason.archivedReadOnly),
+          ),
+        ),
+      );
+      expect(plugin.lastSendPromptSessionId, isNull);
+    });
+
+    test("refuses a command to an archived session without reaching the plugin", () async {
+      await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
+
+      await expectLater(sendCommand(), throwsA(isA<SessionArchivedReadOnlyException>()));
+      expect(plugin.lastSendCommandSessionId, isNull);
     });
 
     test("propagates a command dispatch failure", () async {
@@ -153,6 +191,55 @@ void main() {
       expect(change.promptDefaults.model?.providerID, "openai");
       expect(change.promptDefaults.model?.modelID, "gpt-5");
       expect(change.promptDefaults.model?.variant, "high");
+    });
+
+    test("suppresses completion immediately while backend actions retain arrival order", () async {
+      final abortService = SessionAbortService(
+        sessionRepository: sessionRepository,
+        dispatcher: dispatcher,
+      );
+      addTearDown(abortService.dispose);
+      final events = <String>[];
+      final defaultsSubscription = service.promptDefaultsChanges.listen(
+        (change) => events.add("defaults:${change.promptDefaults.agent}"),
+      );
+      final abortSubscription = abortService.abortStartedSessions.listen(
+        (_) => events.add("abort"),
+      );
+      addTearDown(defaultsSubscription.cancel);
+      addTearDown(abortSubscription.cancel);
+      final commandGate = Completer<void>();
+      plugin.sendCommandCompleter = commandGate;
+
+      final command = service.sendPrompt(
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "arguments")],
+        variant: null,
+        agent: "first",
+        model: null,
+        command: "review",
+      );
+      while (plugin.lastSendCommandSessionId == null) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final abort = abortService.abortSession(sessionId: "s1");
+      final prompt = service.sendPrompt(
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "later")],
+        variant: null,
+        agent: "second",
+        model: null,
+        command: null,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(events, ["abort"]);
+      expect(plugin.lastAbortSessionId, isNull);
+      expect(plugin.lastSendPromptSessionId, isNull);
+
+      commandGate.complete();
+      await Future.wait([command, abort, prompt]);
+      expect(events, ["abort", "defaults:first", "defaults:second"]);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))!.lastAgent, "second");
     });
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {

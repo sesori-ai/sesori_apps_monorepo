@@ -5,7 +5,6 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -18,6 +17,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "benchmark_plugin_runtime.dart";
+import "benchmark_relay_fixture.dart";
 
 const _defaultWarmupCount = 25;
 const _defaultSampleCount = 2000;
@@ -175,8 +175,18 @@ class _EventProjectionBenchmark {
     required BridgeEventMapper bridgeEventMapper,
     required SSEManager sseManager,
   }) async {
-    sseManager.subscribePath(1, "/global/event", _BenchmarkRelayClient());
-    sseManager.unsubscribe(1);
+    final relay = await BenchmarkRelayFixture.start();
+    try {
+      sseManager.subscribePath(
+        connID: 1,
+        path: "/global/event",
+        client: relay.client,
+        connection: relay.connection,
+      );
+      sseManager.unsubscribe(1);
+    } finally {
+      await relay.dispose();
+    }
     if (sseManager.pendingReplayCount != 1) {
       throw StateError("benchmark relay replay queue was not created");
     }
@@ -282,7 +292,7 @@ class _EventProjectionBenchmark {
     if (output.length != 1) {
       throw StateError("event projection emitted ${output.length} events; expected 1");
     }
-    final mapped = bridgeEventMapper.map(output.single);
+    final mapped = bridgeEventMapper.map(event: output.single, pluginId: _pluginId);
     if (mapped == null) throw StateError("projected session update did not map to a shared event");
     sseManager.enqueueEvent(mapped);
   }
@@ -400,11 +410,6 @@ class _BenchmarkPlugin implements NativeProjectsPluginApi {
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => throw UnimplementedError();
 
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _BenchmarkRelayClient implements RelayClient {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

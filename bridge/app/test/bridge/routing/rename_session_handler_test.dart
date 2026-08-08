@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/rename_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -18,6 +19,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
     late RenameSessionHandler handler;
 
@@ -31,7 +33,11 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+      sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      sessionMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: sessionRepository,
+        sessionOperationDispatcher: sessionOperationDispatcher,
+      );
       handler = RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher);
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -50,6 +56,7 @@ void main() {
     });
 
     tearDown(() async {
+      await sessionOperationDispatcher.dispose();
       await sessionMutationDispatcher.dispose();
       await plugin.close();
       await db.close();
@@ -94,7 +101,7 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("New Title"));
     });
 
-    test("returns the authoritative catalog Session", () async {
+    test("returns the authoritative catalog Session without ungated PR metadata", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
@@ -111,9 +118,24 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/rename",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/rename",
           prNumber: 13,
           url: "https://github.com/org/repo/pull/13",
@@ -152,8 +174,7 @@ void main() {
       expect(result.time?.created, equals(1));
       expect(result.time?.updated, greaterThan(1));
       expect(result.time?.archived, isNull);
-      expect(result.pullRequest?.number, equals(13));
-      expect(result.pullRequest?.title, equals("Rename PR"));
+      expect(result.pullRequest, isNull);
       await sessionMutationDispatcher.dispose();
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
     });

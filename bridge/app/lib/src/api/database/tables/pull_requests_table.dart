@@ -7,12 +7,18 @@ import "projects_table.dart";
 
 part "pull_requests_table.freezed.dart";
 
+@TableIndex(
+  name: "idx_pull_requests_scope",
+  columns: {#projectId, #githubRepositoryIdentity, #branchName, #githubLogin},
+)
 @UseRowClass(PullRequestDto)
 class PullRequestsTable extends Table {
   @override
   String get tableName => "pull_requests_table";
 
   TextColumn get projectId => text().references(ProjectsTable, #projectId, onDelete: KeyAction.cascade)();
+  TextColumn get githubRepositoryIdentity => text()();
+  TextColumn get githubLogin => text()();
   IntColumn get prNumber => integer()();
   TextColumn get branchName => text()();
   TextColumn get url => text()();
@@ -28,13 +34,15 @@ class PullRequestsTable extends Table {
   bool get withoutRowId => true;
 
   @override
-  Set<Column> get primaryKey => {projectId, prNumber};
+  Set<Column> get primaryKey => {projectId, githubRepositoryIdentity, prNumber};
 }
 
 @freezed
 sealed class PullRequestDto with _$PullRequestDto, $PullRequestsTableTableToColumns {
   const factory PullRequestDto({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required String githubLogin,
     required int prNumber,
     required String branchName,
     required String url,

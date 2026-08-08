@@ -24,7 +24,7 @@ void main() {
       final processes = _ProbeProcessService(
         process: _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("opencode 1.18.3\n"),
+          stdoutBytes: utf8.encode("opencode 1.18.11\n"),
           exitCode: Future<int>.value(0),
         ),
       );
@@ -128,6 +128,70 @@ void main() {
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
+    });
+
+    test("a too-old default runtime stays in an installable state with the install capability", () async {
+      // Pins the phone gate invariant: while the install capability is
+      // advertised (default binary), a too-old runtime maps to runtimeMissing
+      // (installable), never to unavailable.
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("opencode 0.0.1\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          const ProcessException("managed-opencode", ["--version"], "missing", 2),
+        ],
+      );
+
+      const descriptor = OpenCodePluginDescriptor();
+      final result = await descriptor.inspectSetup(
+        config: automaticConfig,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(
+        descriptor.managementCapabilities(config: automaticConfig),
+        contains(PluginControlCapability.install),
+      );
+    });
+
+    test("a too-old explicit binary is unavailable and never advertises install", () async {
+      const explicitConfig = PluginConfig(
+        values: {
+          "no-auto-start": false,
+          "port": null,
+          "host": "127.0.0.1",
+          "password": "",
+          "bin": "/custom/opencode",
+          "no-password": false,
+        },
+      );
+      final processes = _ProbeProcessService(
+        process: _ProbeProcess(
+          pid: 1,
+          stdoutBytes: utf8.encode("opencode 0.0.1\n"),
+          exitCode: Future<int>.value(0),
+        ),
+      );
+
+      const descriptor = OpenCodePluginDescriptor();
+      final result = await descriptor.inspectSetup(
+        config: explicitConfig,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnavailable>());
+      expect(
+        descriptor.managementCapabilities(config: explicitConfig),
+        isNot(contains(PluginControlCapability.install)),
+      );
     });
 
     test("reports unknown without exposing unrecognized command output", () async {

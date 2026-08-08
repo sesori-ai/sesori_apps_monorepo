@@ -12,3 +12,10 @@ workspace:
   - module_prego
   - module_desktop_core
   - desktop
+
+dependency_overrides:
+  record_android:
+    git:
+      url: https://github.com/sesori-ai/record.git
+      ref: 98dc1e1a856186e613523aaac06264984bedda87
+      path: record_android
