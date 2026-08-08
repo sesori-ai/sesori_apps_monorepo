@@ -1,8 +1,8 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
-import "package:flutter/foundation.dart";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -68,21 +68,22 @@ class GoRouterRouteSource implements RouteSource, Disposable {
 
   /// Routes sorted by match precedence, computed once — the route table is
   /// static.
-  static final _orderedRoutes = AppRouteDef.values.toList()..sort(_byMatchPrecedence);
+  static final _orderedRoutes = AppRouteDef.values.toList()
+    ..sort((a, b) => _compareMatchPrecedence(first: a, second: b));
 
   /// A literal segment beats a parameter at the first place the two paths
   /// disagree, so `/projects/:id/sessions/new` is tried before
   /// `/projects/:id/sessions/:sessionId` — otherwise `new` would be read as a
   /// session id. Failing that the deeper path wins, so `/projects/:id/sessions`
   /// is tried before `/projects`.
-  static int _byMatchPrecedence(AppRouteDef a, AppRouteDef b) {
-    final aSegments = a.path.split("/");
-    final bSegments = b.path.split("/");
-    for (var index = 0; index < aSegments.length && index < bSegments.length; index++) {
-      final aIsParameter = aSegments[index].startsWith(":");
-      if (aIsParameter != bSegments[index].startsWith(":")) return aIsParameter ? 1 : -1;
+  static int _compareMatchPrecedence({required AppRouteDef first, required AppRouteDef second}) {
+    final firstSegments = first.path.split("/");
+    final secondSegments = second.path.split("/");
+    for (var index = 0; index < firstSegments.length && index < secondSegments.length; index++) {
+      final firstIsParameter = firstSegments[index].startsWith(":");
+      if (firstIsParameter != secondSegments[index].startsWith(":")) return firstIsParameter ? 1 : -1;
     }
-    return bSegments.length.compareTo(aSegments.length);
+    return secondSegments.length.compareTo(firstSegments.length);
   }
 
   static final _regexByRoute = {

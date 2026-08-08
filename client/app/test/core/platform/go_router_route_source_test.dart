@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -76,7 +78,7 @@ void main() {
 
     // A push leaves RouteMatchList.uri on /projects, so only walking the match
     // tree reveals settings as the screen the user is actually on.
-    router.push<void>(const AppRoute.settings().buildPath());
+    unawaited(router.push<void>(const AppRoute.settings().buildPath()));
     await tester.pumpAndSettle();
 
     expect(routeSource.currentRouteStream.value, AppRouteDef.settings);
@@ -87,13 +89,15 @@ void main() {
     router.go(const AppRoute.projects().buildPath());
     await tester.pumpAndSettle();
 
-    router.push<void>(
-      const AppRoute.sessions(projectId: "p1", projectName: null, supportsDedicatedWorktrees: null).buildPath(),
+    unawaited(
+      router.push<void>(
+        const AppRoute.sessions(projectId: "p1", projectName: null, supportsDedicatedWorktrees: null).buildPath(),
+      ),
     );
     await tester.pumpAndSettle();
     expect(routeSource.currentRouteStream.value, AppRouteDef.sessions);
 
-    router.push<void>(const AppRoute.newSession(projectId: "p1", projectName: null).buildPath());
+    unawaited(router.push<void>(const AppRoute.newSession(projectId: "p1", projectName: null).buildPath()));
     await tester.pumpAndSettle();
 
     expect(routeSource.currentRouteStream.value, AppRouteDef.newSession);
@@ -103,9 +107,9 @@ void main() {
     await pumpRouter(tester);
     router.go(const AppRoute.projects().buildPath());
     await tester.pumpAndSettle();
-    router.push<void>(const AppRoute.settings().buildPath());
+    unawaited(router.push<void>(const AppRoute.settings().buildPath()));
     await tester.pumpAndSettle();
-    router.push<void>(const AppRoute.settingsProfile().buildPath());
+    unawaited(router.push<void>(const AppRoute.settingsProfile().buildPath()));
     await tester.pumpAndSettle();
     expect(routeSource.currentRouteStream.value, AppRouteDef.settingsProfile);
 
