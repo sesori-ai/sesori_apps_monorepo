@@ -74,5 +74,8 @@ sealed class PluginManagementState with _$PluginManagementState {
     required PluginManagementResponse response,
     required PluginManagementRefreshState refresh,
     required PluginManagementActionState action,
+
+    /// In-flight managed runtime installs, keyed by plugin id.
+    required Map<String, PluginInstallProgress> installs,
   }) = PluginManagementReady;
 }

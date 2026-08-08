@@ -273,6 +273,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementRefreshSetup => 'Refresh setup';
 
   @override
+  String get harnessManagementInstall => 'Install runtime';
+
+  @override
+  String get harnessManagementInstallDescription =>
+      'Download this harness for Sesori only. Your system stays untouched.';
+
+  @override
+  String get harnessManagementInstallDownloading => 'Downloading…';
+
+  @override
+  String harnessManagementInstallDownloadingPercent(int percent) {
+    return 'Downloading… $percent%';
+  }
+
+  @override
+  String get harnessManagementInstallVerifying => 'Verifying download…';
+
+  @override
+  String get harnessManagementInstallExtracting => 'Extracting…';
+
+  @override
+  String get harnessManagementInstallFinishing => 'Finishing up…';
+
+  @override
   String get harnessManagementRestart => 'Restart';
 
   @override

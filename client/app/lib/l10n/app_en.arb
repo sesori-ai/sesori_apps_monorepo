@@ -199,6 +199,20 @@
   "harnessManagementDefaultTimeoutDescription": "Apply this timeout to every harness that supports idle-timeout control.",
   "harnessManagementEnabled": "Enabled",
   "harnessManagementRefreshSetup": "Refresh setup",
+  "harnessManagementInstall": "Install runtime",
+  "harnessManagementInstallDescription": "Download this harness for Sesori only. Your system stays untouched.",
+  "harnessManagementInstallDownloading": "Downloading…",
+  "harnessManagementInstallDownloadingPercent": "Downloading… {percent}%",
+  "@harnessManagementInstallDownloadingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "harnessManagementInstallVerifying": "Verifying download…",
+  "harnessManagementInstallExtracting": "Extracting…",
+  "harnessManagementInstallFinishing": "Finishing up…",
   "harnessManagementRestart": "Restart",
   "harnessManagementIdleTimeout": "Idle timeout",
   "harnessManagementClearOverride": "Use bridge default",

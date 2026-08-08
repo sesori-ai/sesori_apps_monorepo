@@ -379,12 +379,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i271.ProjectViewRepository>(
       () => _i271.ProjectViewRepository(api: gh<_i210.ProjectViewApi>()),
     );
-    gh.lazySingleton<_i110.PluginManagementService>(
-      () => _i110.PluginManagementService(
-        pluginRepository: gh<_i337.PluginRepository>(),
-        connectionService: gh<_i369.ConnectionService>(),
-      ),
-    );
     gh.lazySingleton<_i106.PullRequestRefreshSettingsRepository>(
       () => _i106.PullRequestRefreshSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
@@ -450,6 +444,13 @@ extension GetItInjectableX on _i174.GetIt {
         lifecycleSource: gh<_i903.LifecycleSource>(),
         connectionService: gh<_i369.ConnectionService>(),
         routeSource: gh<_i366.RouteSource>(),
+      ),
+    );
+    gh.lazySingleton<_i110.PluginManagementService>(
+      () => _i110.PluginManagementService(
+        pluginRepository: gh<_i337.PluginRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
       ),
     );
     gh.lazySingleton<_i18.SessionViewingService>(

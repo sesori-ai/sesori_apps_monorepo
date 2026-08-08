@@ -559,6 +559,48 @@ abstract class AppLocalizations {
   /// **'Refresh setup'**
   String get harnessManagementRefreshSetup;
 
+  /// No description provided for @harnessManagementInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install runtime'**
+  String get harnessManagementInstall;
+
+  /// No description provided for @harnessManagementInstallDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Download this harness for Sesori only. Your system stays untouched.'**
+  String get harnessManagementInstallDescription;
+
+  /// No description provided for @harnessManagementInstallDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get harnessManagementInstallDownloading;
+
+  /// No description provided for @harnessManagementInstallDownloadingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading… {percent}%'**
+  String harnessManagementInstallDownloadingPercent(int percent);
+
+  /// No description provided for @harnessManagementInstallVerifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying download…'**
+  String get harnessManagementInstallVerifying;
+
+  /// No description provided for @harnessManagementInstallExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting…'**
+  String get harnessManagementInstallExtracting;
+
+  /// No description provided for @harnessManagementInstallFinishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing up…'**
+  String get harnessManagementInstallFinishing;
+
   /// No description provided for @harnessManagementRestart.
   ///
   /// In en, this message translates to:

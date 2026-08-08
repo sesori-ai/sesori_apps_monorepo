@@ -167,6 +167,7 @@ int? _timeoutMinutes(PluginManagementIdleTimeoutInput input) => switch (input) {
 void main() {
   late _MockPluginManagementService service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
+  late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
 
   setUpAll(() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
@@ -180,7 +181,9 @@ void main() {
     await GetIt.instance.reset();
     service = _MockPluginManagementService();
     snapshots = BehaviorSubject();
+    installProgress = BehaviorSubject.seeded(const {});
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
+    when(() => service.installProgress).thenAnswer((_) => installProgress.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
     when(() => service.onDispose()).thenAnswer((_) async {});
     when(
@@ -236,6 +239,7 @@ void main() {
   tearDown(() async {
     await GetIt.instance.reset();
     await snapshots.close();
+    await installProgress.close();
   });
 
   testWidgets("renders loading, unsupported, and initial failure treatments", (tester) async {
@@ -300,6 +304,87 @@ void main() {
         request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
       ),
     ).called(1);
+  });
+
+  testWidgets("install is offered for a missing runtime and streams its phases", (tester) async {
+    _useTallSurface(tester);
+    final plugin = _managed.copyWith(
+      setup: _managed.setup.copyWith(state: PluginSetupState.runtimeMissing, actionHint: null),
+      runtimeState: PluginRuntimeState.blocked,
+      managementCapabilities: {..._managed.managementCapabilities, PluginManagementCapability.install},
+    );
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [plugin]),
+        refreshError: null,
+      ),
+    );
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    final installRow = find.byKey(const Key("harness_management_install_future-harness"));
+    expect(installRow, findsOneWidget);
+    expect(find.text("Download this harness for Sesori only. Your system stays untouched."), findsOneWidget);
+
+    await _openRow(tester, "harness_management_install_future-harness");
+    verify(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.install(),
+      ),
+    ).called(1);
+
+    // The bridge accepts the command immediately, so the card returns to idle
+    // and the streamed phases are what the user sees. Two pumps: one delivers
+    // the stream event to the cubit, the next rebuilds with it. The progress
+    // row animates continuously, so never settle here.
+    installProgress.add(const {
+      "future-harness": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+    });
+    await tester.pump();
+    await tester.pump();
+    expect(find.text("Downloading… 42%"), findsOneWidget);
+
+    installProgress.add(const {
+      "future-harness": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+    });
+    await tester.pump();
+    await tester.pump();
+    expect(find.text("Extracting…"), findsOneWidget);
+  });
+
+  testWidgets("install is hidden without the capability and when the runtime is ready", (tester) async {
+    _useTallSurface(tester);
+    final installable = _managed.copyWith(
+      setup: _managed.setup.copyWith(state: PluginSetupState.runtimeMissing, actionHint: null),
+      runtimeState: PluginRuntimeState.blocked,
+    );
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [installable]),
+        refreshError: null,
+      ),
+    );
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harness_management_install_future-harness")), findsNothing);
+
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(
+          plugins: [
+            _managed.copyWith(
+              managementCapabilities: {..._managed.managementCapabilities, PluginManagementCapability.install},
+            ),
+          ],
+        ),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harness_management_install_future-harness")), findsNothing);
   });
 
   testWidgets("setup-ready disabled shows enable and setup refresh without operational facts", (tester) async {

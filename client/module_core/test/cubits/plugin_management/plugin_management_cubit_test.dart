@@ -24,6 +24,7 @@ Future<void> _settle() async {
 void main() {
   late _MockPluginManagementService service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
+  late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
   late PluginManagementCubit cubit;
 
   setUpAll(() {
@@ -34,7 +35,9 @@ void main() {
   setUp(() {
     service = _MockPluginManagementService();
     snapshots = BehaviorSubject();
+    installProgress = BehaviorSubject.seeded(const {});
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
+    when(() => service.installProgress).thenAnswer((_) => installProgress.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
     when(
       () => service.command(
@@ -51,6 +54,7 @@ void main() {
   tearDown(() async {
     await cubit.close();
     await snapshots.close();
+    await installProgress.close();
   });
 
   test("starts loading and maps supported snapshots to idle ready state", () async {
@@ -65,6 +69,7 @@ void main() {
         response: _response,
         refresh: PluginManagementRefreshState.idle(),
         action: PluginManagementActionState.idle(),
+        installs: {},
       ),
     );
   });
@@ -164,6 +169,45 @@ void main() {
         ),
       ).called(1);
       expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
+    });
+
+    test("install sends the install command and surfaces streamed progress", () async {
+      await cubit.install(pluginId: "one");
+
+      verify(
+        () => service.command(
+          pluginId: "one",
+          request: const PluginLifecycleCommandRequest.install(),
+        ),
+      ).called(1);
+
+      installProgress.add(const {
+        "one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+      });
+      await _settle();
+      expect(
+        (cubit.state as PluginManagementReady).installs,
+        const {"one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42)},
+      );
+
+      installProgress.add(const {});
+      await _settle();
+      expect((cubit.state as PluginManagementReady).installs, isEmpty);
+    });
+
+    test("install progress survives a refreshed snapshot", () async {
+      installProgress.add(const {
+        "one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+      });
+      await _settle();
+
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+
+      expect(
+        (cubit.state as PluginManagementReady).installs,
+        const {"one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null)},
+      );
     });
 
     test("executes service-owned typed timeout plans and keeps clear override separate", () async {

@@ -12,10 +12,12 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     : _service = service,
       super(const PluginManagementState.loading()) {
     _snapshotSubscription = service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot));
+    _installSubscription = service.installProgress.listen((installs) => _onInstallProgress(installs: installs));
   }
 
   final PluginManagementService _service;
   late final StreamSubscription<PluginManagementLoadResult> _snapshotSubscription;
+  late final StreamSubscription<Map<String, PluginInstallProgress>> _installSubscription;
   int _actionGeneration = 0;
 
   Future<void> refresh() => _service.refresh();
@@ -38,6 +40,15 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     pluginId: pluginId,
     request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
     forceAction: PluginManagementForceAction.restart,
+    replacePendingConfirmation: false,
+  );
+
+  /// Installs the harness' managed runtime. The bridge accepts immediately;
+  /// phase progress arrives through [PluginManagementReady.installs].
+  Future<void> install({required String pluginId}) => _runCommand(
+    pluginId: pluginId,
+    request: const PluginLifecycleCommandRequest.install(),
+    forceAction: null,
     replacePendingConfirmation: false,
   );
 
@@ -270,6 +281,12 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
           PluginManagementUnsupported() ||
           PluginManagementFailure() => const PluginManagementActionState.idle(),
         };
+        final installs = switch (state) {
+          PluginManagementReady(:final installs) => installs,
+          PluginManagementLoading() ||
+          PluginManagementUnsupported() ||
+          PluginManagementFailure() => const <String, PluginInstallProgress>{},
+        };
         emit(
           PluginManagementState.ready(
             response: response,
@@ -278,6 +295,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
               null => const PluginManagementRefreshState.idle(),
             },
             action: action,
+            installs: installs,
           ),
         );
       case PluginManagementLoadResultUnsupported():
@@ -289,9 +307,17 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     }
   }
 
+  void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {
+    if (isClosed) return;
+    final current = state;
+    if (current is! PluginManagementReady || current.installs == installs) return;
+    emit(current.copyWith(installs: installs));
+  }
+
   @override
   Future<void> close() async {
     await _snapshotSubscription.cancel();
+    await _installSubscription.cancel();
     return super.close();
   }
 }

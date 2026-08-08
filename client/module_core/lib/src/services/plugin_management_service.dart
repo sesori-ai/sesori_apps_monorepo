@@ -3,6 +3,7 @@ import "dart:math";
 
 import "package:get_it/get_it.dart";
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -10,8 +11,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
+import "../foundation/models/product_analytics/product_analytics_event.dart";
+import "../logging/logging.dart";
+import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/models/plugin_management_result.dart";
 import "../repositories/plugin_repository.dart";
+import "product_analytics_service.dart";
 
 typedef _ManagementRequestFence = ({
   int connectionEpoch,
@@ -49,8 +54,10 @@ class PluginManagementService with Disposable {
   PluginManagementService({
     required PluginRepository pluginRepository,
     required ConnectionService connectionService,
+    required ProductAnalyticsService productAnalyticsService,
   }) : _pluginRepository = pluginRepository,
        _connectionService = connectionService,
+       _productAnalyticsService = productAnalyticsService,
        _connected = connectionService.currentStatus is ConnectionConnected,
        _connectionEpoch = connectionService.currentStatus is ConnectionConnected ? 1 : 0 {
     _subscriptions
@@ -61,7 +68,9 @@ class PluginManagementService with Disposable {
 
   final PluginRepository _pluginRepository;
   final ConnectionService _connectionService;
+  final ProductAnalyticsService _productAnalyticsService;
   final BehaviorSubject<PluginManagementLoadResult> _snapshots = BehaviorSubject();
+  final BehaviorSubject<Map<String, PluginInstallProgress>> _installProgress = BehaviorSubject.seeded(const {});
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _connected;
@@ -79,6 +88,21 @@ class PluginManagementService with Disposable {
   String? _activeBridgeId;
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
+
+  /// In-flight managed runtime installs, keyed by plugin id. An entry appears
+  /// when the bridge reports progress and disappears when the install settles.
+  ValueStream<Map<String, PluginInstallProgress>> get installProgress => _installProgress.stream;
+
+  /// Starts a managed runtime install. The bridge accepts immediately and
+  /// streams progress; the terminal outcome also invalidates the snapshot.
+  Future<PluginManagementMutationResult> install({required String pluginId}) {
+    return _runMutation(
+      request: () => _pluginRepository.command(
+        pluginId: pluginId,
+        request: const PluginLifecycleCommandRequest.install(),
+      ),
+    );
+  }
 
   Future<void> refresh() {
     _markStale();
@@ -170,6 +194,10 @@ class PluginManagementService with Disposable {
   }
 
   void _onSseEvent(SseEvent event) {
+    if (event.data case SesoriPluginInstallProgress(:final pluginId, :final phase, :final percent)) {
+      _applyInstallProgress(pluginId: pluginId, phase: phase, percent: percent);
+      return;
+    }
     if (event.data case SesoriPluginManagementChanged(:final snapshotToken)) {
       final currentToken = switch (_currentSnapshot) {
         PluginManagementLoadResultSupported(:final response) => response.snapshotToken,
@@ -181,6 +209,65 @@ class PluginManagementService with Disposable {
       if (snapshotToken == currentToken) return;
       _markStale();
     }
+  }
+
+  void _applyInstallProgress({
+    required String pluginId,
+    required PluginInstallPhase phase,
+    required int? percent,
+  }) {
+    if (_disposed || _installProgress.isClosed) return;
+    final next = Map<String, PluginInstallProgress>.from(_installProgress.value);
+    switch (phase) {
+      case PluginInstallPhase.completed || PluginInstallPhase.failed:
+        // The terminal outcome is carried by the refreshed snapshot (and, on
+        // failure, the harness' unchanged setup state), so the transient
+        // progress entry is dropped here.
+        final wasTracked = next.remove(pluginId) != null;
+        // The bridge's terminal event is the authoritative outcome, so report
+        // it here rather than at the tap. Only for installs this app started.
+        if (wasTracked) _reportInstallOutcome(phase: phase);
+        if (!wasTracked) return;
+      case PluginInstallPhase.downloading ||
+          PluginInstallPhase.verifying ||
+          PluginInstallPhase.extracting ||
+          PluginInstallPhase.finalizing:
+        next[pluginId] = PluginInstallProgress(phase: phase, percent: percent);
+      case PluginInstallPhase.unknown:
+        // A newer bridge phase: keep the row in an in-progress state without
+        // claiming a phase this app can name.
+        next[pluginId] = const PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null);
+    }
+    _installProgress.add(Map<String, PluginInstallProgress>.unmodifiable(next));
+  }
+
+  void _reportInstallOutcome({required PluginInstallPhase phase}) {
+    final outcome = switch (phase) {
+      PluginInstallPhase.completed => AnalyticsHarnessInstallOutcome.completed,
+      PluginInstallPhase.failed => AnalyticsHarnessInstallOutcome.failed,
+      PluginInstallPhase.downloading ||
+      PluginInstallPhase.verifying ||
+      PluginInstallPhase.extracting ||
+      PluginInstallPhase.finalizing ||
+      PluginInstallPhase.unknown => null,
+    };
+    if (outcome == null) return;
+    unawaited(
+      _productAnalyticsService
+          .logEvent(
+            event: ProductAnalyticsEvent.harnessInstallFinished(outcome: outcome),
+            occurredAtUtc: DateTime.now().toUtc(),
+          )
+          .catchError((Object error, StackTrace stackTrace) {
+            logw("Failed to report harness install outcome analytics event", error, stackTrace);
+            return AnalyticsDeliveryResult.failed;
+          }),
+    );
+  }
+
+  void _clearInstallProgress() {
+    if (_disposed || _installProgress.isClosed || _installProgress.value.isEmpty) return;
+    _installProgress.add(const {});
   }
 
   void _markStale() {
@@ -381,6 +468,9 @@ class PluginManagementService with Disposable {
 
   void _invalidatePublishedSnapshot() {
     _publicationGeneration++;
+    // Progress belongs to the bridge connection that reported it; a new
+    // connection or bridge identity re-reports whatever is still running.
+    _clearInstallProgress();
     _snapshots.add(const PluginManagementLoadResult.loading());
   }
 
@@ -391,6 +481,7 @@ class PluginManagementService with Disposable {
     await _subscriptions.dispose();
     await _refreshTail;
     await _snapshots.close();
+    await _installProgress.close();
   }
 }
 
@@ -402,6 +493,24 @@ int? _parseIdleTimeoutMins({required PluginManagementIdleTimeoutInput input}) {
       _ => null,
     },
   };
+}
+
+/// One harness' in-flight managed runtime install, as last reported.
+@immutable
+class PluginInstallProgress {
+  const PluginInstallProgress({required this.phase, required this.percent});
+
+  final PluginInstallPhase phase;
+
+  /// Download completion, only present while downloading with a known total.
+  final int? percent;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PluginInstallProgress && other.phase == phase && other.percent == percent;
+
+  @override
+  int get hashCode => Object.hash(phase, percent);
 }
 
 enum _RefreshOutcome { applied, failed, superseded, fenced }
