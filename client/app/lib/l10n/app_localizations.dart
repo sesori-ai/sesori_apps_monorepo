@@ -601,6 +601,12 @@ abstract class AppLocalizations {
   /// **'Finishing up…'**
   String get harnessManagementInstallFinishing;
 
+  /// No description provided for @harnessManagementInstallInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing…'**
+  String get harnessManagementInstallInProgress;
+
   /// No description provided for @harnessManagementRestart.
   ///
   /// In en, this message translates to:

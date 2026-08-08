@@ -297,6 +297,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementInstallFinishing => 'Finishing up…';
 
   @override
+  String get harnessManagementInstallInProgress => 'Installing…';
+
+  @override
   String get harnessManagementRestart => 'Restart';
 
   @override

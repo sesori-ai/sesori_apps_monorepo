@@ -105,14 +105,18 @@ class PluginManagementService with Disposable {
   Future<PluginManagementMutationResult> command({
     required String pluginId,
     required PluginLifecycleCommandRequest request,
-  }) {
-    // Install progress is broadcast to every connected surface, so remember
-    // which installs this app actually started: only those are its outcome to
-    // report.
-    if (request is PluginLifecycleInstallRequest) _selfStartedInstalls.add(pluginId);
-    return _runMutation(
+  }) async {
+    final result = await _runMutation(
       request: () => _pluginRepository.command(pluginId: pluginId, request: request),
     );
+    // Install progress is broadcast to every connected surface, so remember
+    // which installs this app actually started — but only once the bridge has
+    // accepted the command, so a rejected or offline attempt never claims a
+    // later install someone else started.
+    if (request is PluginLifecycleInstallRequest && result is PluginManagementMutationResultSuccess) {
+      _selfStartedInstalls.add(pluginId);
+    }
+    return result;
   }
 
   Future<PluginManagementMutationResult> updateIdleTimeout({

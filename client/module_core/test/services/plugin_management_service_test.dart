@@ -803,6 +803,37 @@ void main() {
       expect(reportedEvents.single.wireName, "harness_install_finished");
     });
 
+    test("a rejected install command never claims a later install", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(PluginManagementMutationResult.failure(error: ApiError.generic()));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+
+      // The bridge never accepted it, so a later install of the same harness
+      // (started elsewhere) is not this app's outcome.
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
+      await _pump();
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+
+      expect(reportedEvents, isEmpty);
+    });
+
     test("a reconnect clears progress that belonged to the previous connection", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "one")))

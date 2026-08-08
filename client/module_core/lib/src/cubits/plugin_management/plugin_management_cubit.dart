@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../repositories/models/plugin_management_result.dart";
@@ -281,12 +282,12 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
           PluginManagementUnsupported() ||
           PluginManagementFailure() => const PluginManagementActionState.idle(),
         };
-        final installs = switch (state) {
-          PluginManagementReady(:final installs) => installs,
-          PluginManagementLoading() ||
-          PluginManagementUnsupported() ||
-          PluginManagementFailure() => const <String, PluginInstallProgress>{},
-        };
+        // Read the service's current progress rather than the previous state:
+        // installs keep running across loading/reconnect transitions and while
+        // this cubit is recreated (the screen builds a new one per visit), so
+        // seeding from an empty map would hide a live install until its next
+        // progress event.
+        final installs = _service.installProgress.valueOrNull ?? const <String, PluginInstallProgress>{};
         emit(
           PluginManagementState.ready(
             response: response,
@@ -310,7 +311,10 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {
     if (isClosed) return;
     final current = state;
-    if (current is! PluginManagementReady || current.installs == installs) return;
+    // A non-ready state has no card to update; the next ready snapshot reads
+    // the service's current progress, so nothing is lost by ignoring it here.
+    if (current is! PluginManagementReady) return;
+    if (const MapEquality<String, PluginInstallProgress>().equals(current.installs, installs)) return;
     emit(current.copyWith(installs: installs));
   }
 
