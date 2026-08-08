@@ -36,17 +36,36 @@ class ChatHistoryReconcileService {
   /// be mistaken for deleted sessions.
   Future<void> _reconcile() async {
     final storedSessionIds = await _chatHistoryService.getStoredSessionIds();
-    if (storedSessionIds.isEmpty) return;
+    final archivedSessionIds = await _chatHistoryService.getArchivedSessionIds();
+    final trackedSessionIds = {...storedSessionIds, ...archivedSessionIds};
+    if (trackedSessionIds.isEmpty) return;
 
-    final knownSessionIds = await _sessionRepository.getExistingSessionIds(sessionIds: storedSessionIds);
-    final orphanIds = storedSessionIds.difference(knownSessionIds).toList(growable: false)..sort();
+    final knownSessionIds = await _sessionRepository.getExistingSessionIds(sessionIds: trackedSessionIds);
+    final orphanIds = trackedSessionIds.difference(knownSessionIds).toList(growable: false)..sort();
     for (final sessionId in orphanIds) {
       try {
-        await _chatHistoryService.purgeSessionHistory(sessionId: sessionId);
+        await _chatHistoryService.purgeSessionHistory(sessionId: sessionId, includeArchive: true);
       } on Object catch (error, stackTrace) {
         Log.w(
           "Failed to purge orphan chat history for session $sessionId; "
           "retrying next startup",
+          error,
+          stackTrace,
+        );
+      }
+    }
+
+    // A crash between the archive flip and the purge leaves both a durable
+    // audit file and the live rows it replaced. The file is authoritative, so
+    // finish the purge that was interrupted.
+    final duplicated = storedSessionIds.intersection(archivedSessionIds).difference(orphanIds.toSet());
+    for (final sessionId in duplicated.toList(growable: false)..sort()) {
+      try {
+        await _chatHistoryService.purgeSessionHistory(sessionId: sessionId);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Failed to re-purge archived session $sessionId whose live history "
+          "survived a crash; retrying next startup",
           error,
           stackTrace,
         );

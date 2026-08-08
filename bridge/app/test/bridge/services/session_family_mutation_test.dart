@@ -229,6 +229,7 @@ class _Fixture {
       filesystemRepository: _MissingFilesystemRepository(),
       sessionOperationDispatcher: operations,
       archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+        chatHistoryService: createTestChatHistory().service,
     );
     chatHistory = createTestChatHistory();
     deletions = SessionDeletionService(

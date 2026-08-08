@@ -82,11 +82,40 @@ class AttachmentSpillStorage {
     return digest.length == 64 && RegExp(r"^[0-9a-f]{64}$").hasMatch(digest);
   }
 
+  /// Copies every spill file of [sessionId] into [destinationDirectoryPath].
+  ///
+  /// Idempotent: names are content-addressed, so an already-copied file is
+  /// left alone. Used by the archive export, which copies before the live
+  /// files are purged so a crash in between cannot lose attachment bytes.
+  Future<void> copySession({
+    required String sessionId,
+    required String destinationDirectoryPath,
+  }) async {
+    final source = Directory(_sessionDirectoryPath(sessionId: sessionId));
+    if (!source.existsSync()) return;
+
+    final destination = Directory(destinationDirectoryPath);
+    await destination.create(recursive: true);
+    await hardenPath(targetPath: destination.path, mode: ownerOnlyDirectoryMode);
+    await for (final entity in source.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final target = File(path.join(destination.path, path.basename(entity.path)));
+      if (target.existsSync()) continue;
+      await entity.copy(target.path);
+      await hardenPath(targetPath: target.path, mode: ownerOnlyFileMode);
+    }
+  }
+
   Future<void> deleteSession({required String sessionId}) async {
     final directory = Directory(_sessionDirectoryPath(sessionId: sessionId));
     if (!directory.existsSync()) return;
     await directory.delete(recursive: true);
   }
+
+  /// Where this storage keeps [sessionId]'s files, so a caller copying into
+  /// another spill root can name the destination without duplicating the
+  /// layout rule.
+  String sessionDirectoryPath({required String sessionId}) => _sessionDirectoryPath(sessionId: sessionId);
 
   String _sessionDirectoryPath({required String sessionId}) => path.join(_directoryPath, _segment(id: sessionId));
 

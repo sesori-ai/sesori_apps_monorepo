@@ -1,11 +1,33 @@
 import "dart:convert";
 import "dart:typed_data";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/archived_session_storage.dart";
 import "../../api/attachment_spill_storage.dart";
 import "../../api/database/history/chat_history_dao.dart";
 import "../../api/database/history/chat_history_database.dart";
+import "../../api/models/archived_session_file_dto.dart";
+import "models/stored_session.dart";
+
+/// Raised when an audit file was written by a newer bridge than this one.
+class ChatHistoryArchiveVersionException implements Exception {
+  final String sessionId;
+  final int fileVersion;
+  final int supportedVersion;
+
+  ChatHistoryArchiveVersionException({
+    required this.sessionId,
+    required this.fileVersion,
+    required this.supportedVersion,
+  });
+
+  @override
+  String toString() =>
+      "archived history for session $sessionId is schema v$fileVersion, "
+      "which this bridge (v$supportedVersion) cannot read";
+}
 
 /// One page of stored history, oldest-first, plus the cursor for the next
 /// older page (null when the caller has reached the start of the transcript).
@@ -23,11 +45,19 @@ class ChatHistoryRepository {
   ChatHistoryRepository({
     required ChatHistoryDao chatHistoryDao,
     required AttachmentSpillStorage attachmentSpillStorage,
+    required ArchivedSessionStorage archivedSessionStorage,
+    required AttachmentSpillStorage archivedAttachmentStorage,
   }) : _chatHistoryDao = chatHistoryDao,
-       _attachmentSpillStorage = attachmentSpillStorage;
+       _attachmentSpillStorage = attachmentSpillStorage,
+       _archivedSessionStorage = archivedSessionStorage,
+       _archivedAttachmentStorage = archivedAttachmentStorage;
+
+  static const _archiveSchemaVersion = 1;
 
   final ChatHistoryDao _chatHistoryDao;
   final AttachmentSpillStorage _attachmentSpillStorage;
+  final ArchivedSessionStorage _archivedSessionStorage;
+  final AttachmentSpillStorage _archivedAttachmentStorage;
 
   Future<ChatHistorySyncState?> getSyncState({required String sessionId}) async {
     final row = await _chatHistoryDao.getSyncState(sessionId: sessionId);
@@ -214,13 +244,146 @@ class ChatHistoryRepository {
 
   Future<Set<String>> getStoredSessionIds() => _chatHistoryDao.getStoredSessionIds();
 
+  /// Writes the session's audit file and copies its attachment bytes beside
+  /// it, leaving the live store untouched.
+  ///
+  /// The spill files are copied rather than moved so a crash before the
+  /// archive flip leaves the still-active session's attachments intact; the
+  /// live copies are removed later by the post-flip purge.
+  Future<void> exportSession({
+    required StoredSession session,
+    required String? title,
+    required int createdAt,
+    required int updatedAt,
+    required int archivedAt,
+    required ArchivedSessionCompleteness completeness,
+  }) async {
+    final messageRows = await _chatHistoryDao.getMessages(sessionId: session.id);
+    final partRows = await _chatHistoryDao.getParts(sessionId: session.id);
+    final partsByMessage = <String, List<Map<String, dynamic>>>{};
+    for (final row in partRows) {
+      // Stored (spilled) form, kept verbatim: the audit file references the
+      // archived spill directory and never carries base64.
+      partsByMessage.putIfAbsent(row.messageId, () => []).add(jsonDecodeMap(row.partJson));
+    }
+
+    final file = ArchivedSessionFileDto(
+      schemaVersion: _archiveSchemaVersion,
+      archivedAt: archivedAt,
+      completeness: completeness,
+      session: ArchivedSessionSnapshotDto(
+        sessionId: session.id,
+        backendSessionId: session.backendSessionId,
+        pluginId: session.pluginId,
+        projectId: session.projectId,
+        parentSessionId: session.parentSessionId,
+        directory: session.directory,
+        worktreePath: session.worktreePath,
+        branchName: session.branchName,
+        baseBranch: session.baseBranch,
+        baseCommit: session.baseCommit,
+        lastAgent: null,
+        title: title,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      ),
+      messages: [
+        for (final row in messageRows)
+          ArchivedMessageDto(
+            seq: row.seq,
+            info: Message.fromJson(jsonDecodeMap(row.infoJson)),
+            parts: partsByMessage[row.messageId] ?? const [],
+          ),
+      ],
+    );
+
+    // Bytes first: an audit file that references a missing spill file would
+    // render degraded, while orphan bytes are harmless.
+    await _attachmentSpillStorage.copySession(
+      sessionId: session.id,
+      destinationDirectoryPath: _archivedAttachmentStorage.sessionDirectoryPath(sessionId: session.id),
+    );
+    await _archivedSessionStorage.write(sessionId: session.id, contents: jsonEncode(file.toJson()));
+  }
+
+  /// The archived transcript for [sessionId], or null when no audit file
+  /// exists. Attachments are rehydrated from the archived spill directory.
+  Future<ChatHistoryPage?> getArchivedSessionMessages({
+    required String sessionId,
+    int? limit,
+    int? before,
+  }) async {
+    final contents = await _archivedSessionStorage.read(sessionId: sessionId);
+    if (contents == null) return null;
+
+    final ArchivedSessionFileDto file;
+    try {
+      file = ArchivedSessionFileDto.fromJson(jsonDecodeMap(contents));
+    } on Object catch (error, stackTrace) {
+      Log.w("[archive] quarantining an unreadable audit file for session $sessionId", error, stackTrace);
+      await _archivedSessionStorage.quarantine(sessionId: sessionId);
+      return null;
+    }
+    if (file.schemaVersion > _archiveSchemaVersion) {
+      throw ChatHistoryArchiveVersionException(
+        sessionId: sessionId,
+        fileVersion: file.schemaVersion,
+        supportedVersion: _archiveSchemaVersion,
+      );
+    }
+    if (file.completeness == ArchivedSessionCompleteness.storeOnly) {
+      Log.i(
+        "[archive] session $sessionId was archived without a backend fetch, "
+        "so its audit file may be missing the most recent messages",
+      );
+    }
+
+    // Archived reads are rare audit views, so the page is sliced in memory
+    // rather than earning an index.
+    final ordered = file.messages.toList(growable: false)..sort((left, right) => left.seq.compareTo(right.seq));
+    final eligible = before == null
+        ? ordered
+        : [
+            for (final entry in ordered)
+              if (entry.seq < before) entry,
+          ];
+    final page = limit == null || eligible.length <= limit
+        ? eligible
+        : eligible.sublist(eligible.length - limit);
+    return (
+      messages: [
+        for (final entry in page)
+          MessageWithParts(
+            info: entry.info,
+            parts: [
+              for (final part in entry.parts)
+                await _rehydratePart(
+                  sessionId: sessionId,
+                  partJson: jsonEncode(part),
+                  storage: _archivedAttachmentStorage,
+                ),
+            ],
+          ),
+      ],
+      nextCursor: limit != null && page.length == limit && eligible.length > limit ? page.first.seq : null,
+    );
+  }
+
+  Future<bool> hasArchive({required String sessionId}) =>
+      _archivedSessionStorage.exists(sessionId: sessionId);
+
+  Future<Set<String>> getArchivedSessionIds() => _archivedSessionStorage.listArchivedSessionIds();
+
   /// Drops every trace of [sessionIds] from the store.
   ///
   /// Rows go first so a failure between the two steps leaves orphan bytes
   /// (harmless, removed by the next purge) rather than rows referencing spill
   /// files that no longer exist. Deleting a session family is one transaction
   /// and one vacuum pass, not one of each per descendant.
-  Future<void> purgeSessions({required List<String> sessionIds}) async {
+  Future<void> purgeSessions({
+    required List<String> sessionIds,
+    bool includeArchive = false,
+  }) async {
     if (sessionIds.isEmpty) return;
     await _chatHistoryDao.deleteSessionRows(sessionIds: sessionIds);
     // Every session is attempted even if one directory refuses to go, so a
@@ -234,6 +397,17 @@ class ChatHistoryRepository {
       } on Object catch (error, stackTrace) {
         firstError ??= error;
         firstStackTrace ??= stackTrace;
+      }
+    }
+    if (includeArchive) {
+      for (final sessionId in sessionIds) {
+        try {
+          await _archivedSessionStorage.delete(sessionId: sessionId);
+          await _archivedAttachmentStorage.deleteSession(sessionId: sessionId);
+        } on Object catch (error, stackTrace) {
+          firstError ??= error;
+          firstStackTrace ??= stackTrace;
+        }
       }
     }
     await _chatHistoryDao.reclaimFreedPages();
@@ -290,17 +464,29 @@ class ChatHistoryRepository {
     };
   }
 
-  Future<MessagePart> _rehydratePart({required String sessionId, required String partJson}) async {
+  Future<MessagePart> _rehydratePart({
+    required String sessionId,
+    required String partJson,
+    AttachmentSpillStorage? storage,
+  }) async {
     final json = jsonDecodeMap(partJson);
     if (json["attachment"] case final Map<String, dynamic> attachment) {
-      json["attachment"] = await _rehydrateAttachment(sessionId: sessionId, attachment: attachment);
+      json["attachment"] = await _rehydrateAttachment(
+        sessionId: sessionId,
+        attachment: attachment,
+        storage: storage ?? _attachmentSpillStorage,
+      );
     }
     if (json["state"] case final Map<String, dynamic> state) {
       if (state["attachments"] case final List<dynamic> attachments) {
         state["attachments"] = [
           for (final attachment in attachments)
             if (attachment is Map<String, dynamic>)
-              await _rehydrateAttachment(sessionId: sessionId, attachment: attachment)
+              await _rehydrateAttachment(
+                sessionId: sessionId,
+                attachment: attachment,
+                storage: storage ?? _attachmentSpillStorage,
+              )
             else
               attachment,
         ];
@@ -312,12 +498,11 @@ class ChatHistoryRepository {
   Future<Map<String, dynamic>> _rehydrateAttachment({
     required String sessionId,
     required Map<String, dynamic> attachment,
+    required AttachmentSpillStorage storage,
   }) async {
     if (attachment["source"] != "stored_file") return attachment;
     final digest = attachment["sha256"];
-    final bytes = digest is String
-        ? await _attachmentSpillStorage.read(sessionId: sessionId, digest: digest)
-        : null;
+    final bytes = digest is String ? await storage.read(sessionId: sessionId, digest: digest) : null;
     // A missing spill file degrades the slot instead of failing the read.
     if (bytes == null) {
       return {"source": "metadata", "mime": attachment["mime"], "filename": attachment["filename"]};

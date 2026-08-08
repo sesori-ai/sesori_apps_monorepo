@@ -890,6 +890,8 @@ class _OrchestratorHarness {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: NoopProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),

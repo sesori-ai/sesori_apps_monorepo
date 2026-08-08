@@ -11,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/archived_session_storage.dart";
 import "../api/attachment_spill_storage.dart";
 import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/database.dart";
@@ -180,6 +181,8 @@ class Orchestrator {
   final AppDatabase _database;
   final ChatHistoryDatabase _chatHistoryDatabase;
   final AttachmentSpillStorage _attachmentSpillStorage;
+  final ArchivedSessionStorage _archivedSessionStorage;
+  final AttachmentSpillStorage _archivedAttachmentStorage;
   final http.Client _httpClient;
   final ProcessRunner _processRunner;
   final AccessTokenProvider _accessTokenProvider;
@@ -202,6 +205,8 @@ class Orchestrator {
     required AppDatabase database,
     required ChatHistoryDatabase chatHistoryDatabase,
     required AttachmentSpillStorage attachmentSpillStorage,
+    required ArchivedSessionStorage archivedSessionStorage,
+    required AttachmentSpillStorage archivedAttachmentStorage,
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required AccessTokenProvider accessTokenProvider,
@@ -223,6 +228,8 @@ class Orchestrator {
        _database = database,
        _chatHistoryDatabase = chatHistoryDatabase,
        _attachmentSpillStorage = attachmentSpillStorage,
+       _archivedSessionStorage = archivedSessionStorage,
+       _archivedAttachmentStorage = archivedAttachmentStorage,
        _httpClient = httpClient,
        _processRunner = processRunner,
        _accessTokenProvider = accessTokenProvider,
@@ -460,19 +467,22 @@ class Orchestrator {
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
     );
+    final chatHistoryService = ChatHistoryService(
+      chatHistoryRepository: ChatHistoryRepository(
+        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
+        attachmentSpillStorage: _attachmentSpillStorage,
+        archivedSessionStorage: _archivedSessionStorage,
+        archivedAttachmentStorage: _archivedAttachmentStorage,
+      ),
+      sessionRepository: sessionRepository,
+    );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
-    );
-    final chatHistoryService = ChatHistoryService(
-      chatHistoryRepository: ChatHistoryRepository(
-        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
-        attachmentSpillStorage: _attachmentSpillStorage,
-      ),
-      sessionRepository: sessionRepository,
+      chatHistoryService: chatHistoryService,
     );
     final sessionDeletionService = SessionDeletionService(
       sessionLifecycleService: sessionLifecycleService,

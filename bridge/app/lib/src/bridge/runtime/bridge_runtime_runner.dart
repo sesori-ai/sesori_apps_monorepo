@@ -22,6 +22,7 @@ import "package:sesori_shared/sesori_shared.dart"
     show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo, legacyMissingPluginId;
 
 import "../../api/app_onboarding_state_storage.dart";
+import "../../api/archived_session_storage.dart";
 import "../../api/attachment_spill_storage.dart";
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
@@ -814,6 +815,12 @@ class BridgeRuntimeRunner {
           dataDirectory: options.dataDirectory,
         ),
       )..ensureDirectory();
+      final archivedSessionStorage = ArchivedSessionStorage(
+        directoryPath: archiveDirectoryPath(dataDirectory: options.dataDirectory),
+      );
+      final archivedAttachmentStorage = AttachmentSpillStorage(
+        directoryPath: archivedAttachmentDirectoryPath(dataDirectory: options.dataDirectory),
+      );
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
         config: BridgeConfig(
@@ -831,6 +838,8 @@ class BridgeRuntimeRunner {
         database: database,
         chatHistoryDatabase: chatHistoryDatabase,
         attachmentSpillStorage: attachmentSpillStorage,
+        archivedSessionStorage: archivedSessionStorage,
+        archivedAttachmentStorage: archivedAttachmentStorage,
         httpClient: httpClient,
         processRunner: processRunner,
         accessTokenProvider: accessTokenProvider,

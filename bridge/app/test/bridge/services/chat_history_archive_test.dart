@@ -1,0 +1,264 @@
+import "dart:convert";
+import "dart:io";
+import "dart:typed_data";
+
+import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
+import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/chat_history_reconcile_service.dart";
+import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
+
+import "../../helpers/test_chat_history.dart";
+
+void main() {
+  group("archiving history", () {
+    late TestChatHistory history;
+    late _FakeSessionRepository repository;
+
+    setUp(() async {
+      repository = _FakeSessionRepository(
+        transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
+      );
+      history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+    });
+
+    Future<void> export() => history.service.exportSessionHistory(
+      session: _storedSession(),
+      title: "Archived session",
+      createdAt: 100,
+      updatedAt: 200,
+      archivedAt: 300,
+    );
+
+    test("the audit file round-trips the transcript", () async {
+      await export();
+
+      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+      expect(page!.messages.map((message) => message.info.id), const ["m1", "m2"]);
+      expect(page.nextCursor, isNull);
+    });
+
+    test("the archived transcript survives purging the live store", () async {
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+
+      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
+      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+      expect(
+        served.messages.map((message) => message.info.id),
+        const ["m1", "m2"],
+        reason: "an archived session reads from its audit file, not the purged store",
+      );
+      expect(repository.fetchCount, 1, reason: "an archived read must not consult the backend");
+    });
+
+    test("attachments round-trip through the archived spill directory", () async {
+      final bytes = Uint8List.fromList(List<int>.generate(32, (index) => index));
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _part(
+          id: "m1-att",
+          messageId: "m1",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(bytes),
+            filename: "shot.png",
+          ),
+        ),
+      );
+
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+
+      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+      final attachment = page!.messages
+          .expand((message) => message.parts)
+          .map((part) => part.attachment)
+          .whereType<MessageAttachmentInlineImage>()
+          .single;
+      expect(attachment.base64, base64Encode(bytes));
+      expect(attachment.filename, "shot.png");
+    });
+
+    test("archived pages use the same exclusive cursor as the live store", () async {
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+
+      final first = await history.service.getArchivedSessionMessages(sessionId: "ses_a", limit: 1);
+      expect(first!.messages.single.info.id, "m2");
+      expect(first.nextCursor, isNotNull);
+
+      final second = await history.service.getArchivedSessionMessages(
+        sessionId: "ses_a",
+        limit: 1,
+        before: first.nextCursor,
+      );
+      expect(second!.messages.single.info.id, "m1");
+      expect(second.nextCursor, isNull, reason: "the start of the transcript ends paging");
+    });
+
+    test("an export that cannot reach the backend is recorded as store-only", () async {
+      repository.error = StateError("backend gone");
+      await history.repository.clearSyncedAt(sessionId: "ses_a");
+
+      await export();
+
+      final file = ArchivedSessionFileDto.fromJson(
+        jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!),
+      );
+      expect(file.completeness, ArchivedSessionCompleteness.storeOnly);
+      expect(file.messages, hasLength(2), reason: "it still archives what the store held");
+    });
+
+    test("a corrupt audit file is quarantined rather than deleted", () async {
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+      await history.archivedStorage.write(sessionId: "ses_a", contents: "{ not json");
+
+      expect(await history.service.getArchivedSessionMessages(sessionId: "ses_a"), isNull);
+
+      final quarantined = Directory(history.directory.path)
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.contains(".corrupt-"));
+      expect(quarantined, hasLength(1), reason: "the only copy of the transcript is preserved for inspection");
+    });
+
+    test("a newer schema version is refused instead of silently misread", () async {
+      await history.archivedStorage.write(
+        sessionId: "ses_a",
+        contents: jsonEncode({
+          "schemaVersion": 99,
+          "archivedAt": 1,
+          "completeness": "complete",
+          "session": _storedSessionJson(),
+          "messages": <Map<String, dynamic>>[],
+        }),
+      );
+
+      await expectLater(
+        history.service.getArchivedSessionMessages(sessionId: "ses_a"),
+        throwsA(isA<ChatHistoryArchiveVersionException>()),
+      );
+    });
+
+    test("deleting a session removes its archive too", () async {
+      await export();
+
+      await history.service.purgeSessionHistory(sessionId: "ses_a", includeArchive: true);
+
+      expect(await history.archivedStorage.read(sessionId: "ses_a"), isNull);
+      expect(await history.service.getArchivedSessionMessages(sessionId: "ses_a"), isNull);
+    });
+
+    test("reconcile finishes a purge interrupted between the flip and the purge", () async {
+      await export();
+      // The crash window: the audit file is durable but the live rows survive.
+      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, hasLength(2));
+      repository.existingSessionIds = {"ses_a"};
+
+      await ChatHistoryReconcileService(
+        sessionRepository: repository,
+        chatHistoryService: history.service,
+      ).reconcile();
+
+      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
+      expect(
+        await history.archivedStorage.read(sessionId: "ses_a"),
+        isNotNull,
+        reason: "the archive is authoritative and must survive",
+      );
+    });
+
+    test("reconcile purges an archive whose session left the catalog", () async {
+      await export();
+      repository.existingSessionIds = const {};
+
+      await ChatHistoryReconcileService(
+        sessionRepository: repository,
+        chatHistoryService: history.service,
+      ).reconcile();
+
+      expect(await history.archivedStorage.read(sessionId: "ses_a"), isNull);
+    });
+  });
+}
+
+StoredSession _storedSession() => const StoredSession(
+  id: "ses_a",
+  backendSessionId: "backend-a",
+  pluginId: "fake",
+  projectId: "project-a",
+  parentSessionId: null,
+  directory: "/projects/a",
+  worktreePath: null,
+  branchName: null,
+  isDedicated: false,
+  archivedAt: null,
+  baseBranch: null,
+  baseCommit: null,
+);
+
+Map<String, dynamic> _storedSessionJson() => {
+  "sessionId": "ses_a",
+  "backendSessionId": "backend-a",
+  "pluginId": "fake",
+  "projectId": "project-a",
+  "directory": "/projects/a",
+  "createdAt": 1,
+  "updatedAt": 2,
+};
+
+Message _message({required String id}) =>
+    Message.user(id: id, sessionID: "ses_a", agent: null, time: const MessageTime(created: 1, completed: null));
+
+MessagePart _part({
+  required String id,
+  required String messageId,
+  MessageAttachment? attachment,
+}) => MessagePart(
+  id: id,
+  sessionID: "ses_a",
+  messageID: messageId,
+  type: MessagePartType.text,
+  text: "text of $messageId",
+  tool: null,
+  state: null,
+  prompt: null,
+  description: null,
+  agent: null,
+  agentName: null,
+  attempt: null,
+  retryError: null,
+  attachment: attachment,
+);
+
+MessageWithParts _messageWithParts({required String id}) =>
+    MessageWithParts(info: _message(id: id), parts: [_part(id: "$id-p1", messageId: id)]);
+
+class _FakeSessionRepository implements SessionRepository {
+  _FakeSessionRepository({required this.transcript});
+
+  final List<MessageWithParts> transcript;
+  Object? error;
+  Set<String> existingSessionIds = const {};
+  int fetchCount = 0;
+
+  @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+    fetchCount++;
+    final failure = error;
+    if (failure != null) throw failure;
+    return transcript;
+  }
+
+  @override
+  Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async =>
+      sessionIds.intersection(existingSessionIds);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}

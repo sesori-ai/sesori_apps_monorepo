@@ -3,7 +3,9 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/models/archived_session_file_dto.dart";
 import "../repositories/chat_history_repository.dart";
+import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 
 /// The single writer of the chat history store.
@@ -36,14 +38,25 @@ class ChatHistoryService {
     int? limit,
     int? before,
   }) async {
-    // Both the freshness decision and the read run inside the session queue,
-    // so they observe one state. Deciding outside it would let queued work —
-    // an observed import, or a failed capture clearing `syncedAt` — commit
-    // between the decision and the read, and the caller would receive a
-    // transcript that the store already knew was stale.
+    // The archive check, the freshness decision, and the read all run inside
+    // the session queue, so they observe one state. Deciding outside it would
+    // let queued work — an observed import, or a failed capture clearing
+    // `syncedAt` — commit in between, and the caller would receive a
+    // transcript the store already knew was stale.
     final decided = await _enqueueRead(
       sessionId: sessionId,
       read: () async {
+        // An archived session has no live rows left, so its audit file is the
+        // only copy. Checked first: a purged session would otherwise look
+        // unsynced and trigger a pointless backfill against a session nobody
+        // can resume.
+        final archived = await _chatHistoryRepository.getArchivedSessionMessages(
+          sessionId: sessionId,
+          limit: limit,
+          before: before,
+        );
+        if (archived != null) return archived;
+
         final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
         if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
           return null;
@@ -186,23 +199,91 @@ class ChatHistoryService {
     );
   }
 
-  /// Removes the session's stored transcript and attachment bytes.
-  Future<void> purgeSessionHistory({required String sessionId}) {
-    return purgeSessionsHistory(sessionIds: [sessionId]);
+  /// Writes the session's audit file before it is archived.
+  ///
+  /// Brings the store current first so the archive captures everything the
+  /// backend knows. When the backend cannot be consulted the export proceeds
+  /// with whatever the store holds and records that honestly: archiving never
+  /// touches backend storage, so its own copy survives, and refusing to
+  /// archive would trap the session.
+  Future<void> exportSessionHistory({
+    required StoredSession session,
+    required String? title,
+    required int createdAt,
+    required int updatedAt,
+    required int archivedAt,
+  }) async {
+    var completeness = ArchivedSessionCompleteness.complete;
+    try {
+      await _refreshForExport(sessionId: session.id);
+    } on Object catch (error, stackTrace) {
+      completeness = ArchivedSessionCompleteness.storeOnly;
+      Log.w(
+        "[archive] could not bring session ${session.id} current before archiving; "
+        "exporting what the store holds (the backend keeps its own copy)",
+        error,
+        stackTrace,
+      );
+    }
+    await _enqueue(
+      sessionId: session.id,
+      write: () => _chatHistoryRepository.exportSession(
+        session: session,
+        title: title,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        archivedAt: archivedAt,
+        completeness: completeness,
+      ),
+    );
   }
 
-  /// Removes stored history for a whole session family in one pass.
+  Future<void> _refreshForExport({required String sessionId}) async {
+    final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+    if (state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt) return;
+    await backfillSession(sessionId: sessionId);
+  }
+
+  /// The archived transcript for [sessionId], or null when it has no audit
+  /// file.
+  Future<ChatHistoryPage?> getArchivedSessionMessages({
+    required String sessionId,
+    int? limit,
+    int? before,
+  }) {
+    return _chatHistoryRepository.getArchivedSessionMessages(
+      sessionId: sessionId,
+      limit: limit,
+      before: before,
+    );
+  }
+
+  Future<Set<String>> getArchivedSessionIds() => _chatHistoryRepository.getArchivedSessionIds();
+
+  Future<bool> hasArchive({required String sessionId}) =>
+      _chatHistoryRepository.hasArchive(sessionId: sessionId);
+
+  /// Removes the session's stored transcript and attachment bytes.
+  Future<void> purgeSessionHistory({required String sessionId, bool includeArchive = false}) {
+    return purgeSessionsHistory(sessionIds: [sessionId], includeArchive: includeArchive);
+  }
+
+  /// Removes stored history, spill files, and any archive file for a whole
+  /// session family in one pass.
   ///
   /// The batch is serialized behind every listed session's write queue, so no
   /// concurrent capture can re-create rows the purge is removing.
-  Future<void> purgeSessionsHistory({required List<String> sessionIds}) {
+  Future<void> purgeSessionsHistory({
+    required List<String> sessionIds,
+    bool includeArchive = false,
+  }) {
     if (sessionIds.isEmpty) return Future<void>.value();
     // The write runs later, so own the ids rather than trusting the caller's
     // list to stay unchanged until then.
     final owned = List<String>.unmodifiable(sessionIds);
     return _enqueueAll(
       sessionIds: owned,
-      write: () => _chatHistoryRepository.purgeSessions(sessionIds: owned),
+      write: () => _chatHistoryRepository.purgeSessions(sessionIds: owned, includeArchive: includeArchive),
     );
   }
 

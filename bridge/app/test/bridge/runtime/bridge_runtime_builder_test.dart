@@ -74,6 +74,8 @@ void main() {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),

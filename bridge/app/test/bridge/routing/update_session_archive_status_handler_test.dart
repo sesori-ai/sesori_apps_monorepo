@@ -20,6 +20,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -55,6 +56,7 @@ void main() {
           filesystemRepository: filesystemRepository,
           sessionOperationDispatcher: operationDispatcher,
           archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+        chatHistoryService: createTestChatHistory().service,
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );

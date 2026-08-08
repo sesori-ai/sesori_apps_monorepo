@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:drift/native.dart";
+import "package:sesori_bridge/src/api/archived_session_storage.dart";
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
@@ -11,6 +12,8 @@ import "package:test/test.dart";
 typedef TestChatHistory = ({
   ChatHistoryDatabase database,
   AttachmentSpillStorage spillStorage,
+  ArchivedSessionStorage archivedStorage,
+  AttachmentSpillStorage archivedSpillStorage,
   ChatHistoryRepository repository,
   ChatHistoryService service,
   Directory directory,
@@ -29,9 +32,17 @@ TestChatHistory createTestChatHistory({SessionRepository? sessionRepository}) {
   final spillStorage = AttachmentSpillStorage(
     directoryPath: attachmentSpillDirectoryPath(dataDirectory: directory.path),
   );
+  final archivedStorage = ArchivedSessionStorage(
+    directoryPath: archiveDirectoryPath(dataDirectory: directory.path),
+  );
+  final archivedSpillStorage = AttachmentSpillStorage(
+    directoryPath: archivedAttachmentDirectoryPath(dataDirectory: directory.path),
+  );
   final repository = ChatHistoryRepository(
     chatHistoryDao: database.chatHistoryDao,
     attachmentSpillStorage: spillStorage,
+    archivedSessionStorage: archivedStorage,
+    archivedAttachmentStorage: archivedSpillStorage,
   );
   addTearDown(() async {
     await database.close();
@@ -40,6 +51,8 @@ TestChatHistory createTestChatHistory({SessionRepository? sessionRepository}) {
   return (
     database: database,
     spillStorage: spillStorage,
+    archivedStorage: archivedStorage,
+    archivedSpillStorage: archivedSpillStorage,
     repository: repository,
     service: ChatHistoryService(
       chatHistoryRepository: repository,
