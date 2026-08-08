@@ -128,6 +128,7 @@ class PluginRuntime {
   Future<void>? _disposeStartedApisFuture;
   Future<void>? _disposeFuture;
   bool _apiDisposalStarted = false;
+  final Set<StartAbortController> _installAbortControllers = <StartAbortController>{};
   final Map<BridgePluginApi, Future<void>> _apiDisposals = Map<BridgePluginApi, Future<void>>.identity();
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
@@ -215,6 +216,32 @@ class PluginRuntime {
     return Map<String, PluginSetupStatus>.unmodifiable({
       for (final slot in _slots.values) slot.registration.descriptor.id: slot.setup,
     });
+  }
+
+  /// Runs the plugin descriptor's managed-runtime install and forwards its
+  /// progress. Purely file-level: it never starts, stops, or mutates slot
+  /// state — the caller re-inspects setup after a terminal [ProvisionReady].
+  /// A shutdown aborts the install cooperatively via the returned stream's
+  /// abort signal.
+  Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) async* {
+    final slot = _requireSlot(pluginId);
+    if (_shuttingDown) {
+      yield const ProvisionFailed(message: "The bridge is shutting down.");
+      return;
+    }
+    final abortController = StartAbortController();
+    _installAbortControllers.add(abortController);
+    try {
+      yield* slot.registration.descriptor.installRuntime(
+        config: slot.registration.config,
+        processes: _setupProcesses,
+        environment: _environment,
+        stateDirectory: slot.registration.stateDirectory,
+        startAborted: abortController.signal,
+      );
+    } finally {
+      _installAbortControllers.remove(abortController);
+    }
   }
 
   void applyAccess({required List<PluginRuntimeAccess> entries}) {
@@ -577,6 +604,9 @@ class PluginRuntime {
   void beginShutdown() {
     if (_shuttingDown) return;
     _shuttingDown = true;
+    for (final controller in _installAbortControllers) {
+      controller.abort();
+    }
     for (final slot in _slots.values) {
       slot.startAbortController?.abort();
       final leaseDrainCompleter = slot.leaseDrainCompleter;

@@ -625,6 +625,7 @@ class Orchestrator {
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
+      pluginInstallProgress: _pluginLifecycleService.installProgress,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -765,6 +766,7 @@ class OrchestratorSession {
     required SessionPromptService sessionPromptService,
     required Stream<CatalogImportProgress> catalogImportProgress,
     required Stream<String> pluginManagementSnapshotTokens,
+    required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
     required StreamController<int> bytesSentController,
     required StreamController<SesoriSseEvent> localWireEventsController,
     required FailureReporter failureReporter,
@@ -841,6 +843,18 @@ class OrchestratorSession {
     pluginManagementSnapshotTokens
         .listen((snapshotToken) {
           _enqueueWireEvent(SesoriSseEvent.pluginManagementChanged(snapshotToken: snapshotToken));
+        })
+        .addTo(_subscriptions);
+    pluginInstallProgress
+        .listen((update) {
+          _enqueueWireEvent(
+            SesoriSseEvent.pluginInstallProgress(
+              pluginId: update.pluginId,
+              phase: update.phase,
+              percent: update.percent,
+              message: update.message,
+            ),
+          );
         })
         .addTo(_subscriptions);
     _sessionPromptService.promptDefaultsChanges

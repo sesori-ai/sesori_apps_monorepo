@@ -1354,6 +1354,171 @@ void main() {
     expect(readyEvents.last, ["one"]);
   });
 
+  test("install streams progress, enables, re-inspects, and starts when ready", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..installEvents = const [
+        ProvisionResolving(),
+        ProvisionDownloading(receivedBytes: 10, totalBytes: 100),
+        ProvisionVerifying(),
+        ProvisionExtracting(),
+        ProvisionReady(binaryPath: "/managed/one"),
+      ];
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(disabledPluginIds: {"one"}),
+      ),
+    );
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: settingsRepository,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {"one"},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    final accepted = await service.command(
+      pluginId: "one",
+      request: const PluginLifecycleCommandRequest.install(),
+    );
+    expect(accepted.plugins.single.setup.state, PluginSetupState.notInspected);
+
+    await installSettled(progress);
+
+    expect(repository.installCalls, 1);
+    expect(repository.inspectCalls, 1);
+    expect(repository.startCalls, 1);
+    expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isFalse);
+    expect(progress.map((update) => update.phase).toList(), const [
+      PluginInstallPhase.downloading,
+      PluginInstallPhase.verifying,
+      PluginInstallPhase.extracting,
+      PluginInstallPhase.finalizing,
+      PluginInstallPhase.completed,
+    ]);
+    expect(progress.first.percent, 10);
+  });
+
+  test("a failed install reports a terminal failure without enabling the plugin", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..installEvents = const [
+        ProvisionResolving(),
+        ProvisionFailed(message: "checksum verification failed"),
+      ];
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(disabledPluginIds: {"one"}),
+      ),
+    );
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: settingsRepository,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {"one"},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await installSettled(progress);
+
+    expect(progress.last.phase, PluginInstallPhase.failed);
+    expect(progress.last.message, "checksum verification failed");
+    expect(repository.inspectCalls, isZero);
+    expect(repository.startCalls, isZero);
+    expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
+  });
+
+  test("a duplicate install joins and a different command conflicts while installing", () async {
+    final installGate = Completer<void>();
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )
+      ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+      ..installGate = installGate;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: null,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    expect(repository.installCalls, 1);
+
+    final conflict = isA<PluginManagementConflictException>().having(
+      (error) => error.conflict.reasons,
+      "reasons",
+      [PluginLifecycleConflictReason.transitioning],
+    );
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()),
+      throwsA(conflict),
+    );
+
+    installGate.complete();
+    await installSettled(progress);
+    expect(repository.startCalls, 1);
+  });
+
+  test("install requires the install capability", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    addTearDown(repository.dispose);
+    final service = _commandService(repository: repository, settingsRepository: null)
+      ..initialize(
+        disabledPluginIds: const {},
+        setupById: const {"one": PluginSetupNotInspected()},
+      );
+    addTearDown(service.dispose);
+
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install()),
+      throwsA(
+        isA<PluginManagementConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginLifecycleConflictReason.unsupported],
+        ),
+      ),
+    );
+  });
+
   test("restart requires eligibility and does not replace a newly blocked plugin", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
@@ -1681,6 +1846,23 @@ void main() {
   });
 }
 
+const installCapableManagementCapabilities = <PluginControlCapability>{
+  ...defaultManagementCapabilities,
+  PluginControlCapability.install,
+};
+
+/// Completes when [progress] contains a terminal install event, then yields
+/// once more so the service's finally-block cleanup runs. The caller must
+/// subscribe its collector before issuing the install command.
+Future<void> installSettled(List<PluginInstallProgressUpdate> progress) async {
+  while (!progress.any(
+    (update) => update.phase == PluginInstallPhase.completed || update.phase == PluginInstallPhase.failed,
+  )) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  await Future<void>.delayed(Duration.zero);
+}
+
 PluginLifecycleService _service({
   required PluginRuntime runtime,
   required List<RegisteredPluginMetadata> plugins,
@@ -1952,6 +2134,16 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
   int startCalls = 0;
   int restartCalls = 0;
   int prepareDisableCalls = 0;
+  int installCalls = 0;
+  List<RuntimeProvisionProgress> installEvents = const [];
+  Completer<void>? installGate;
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) async* {
+    installCalls++;
+    await installGate?.future;
+    yield* Stream.fromIterable(installEvents);
+  }
 
   @override
   List<PluginLifecycleSnapshot> get snapshot => [_current];

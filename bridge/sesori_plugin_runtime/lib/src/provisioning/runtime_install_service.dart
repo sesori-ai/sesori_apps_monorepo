@@ -27,9 +27,13 @@ class RuntimeInstallException implements Exception {
 /// and moved into a freshly created version directory under the canonical
 /// [binaryFileName] (normalizing publishers that ship a target-triple-named
 /// member). The sentinel (the verified SHA-256) is written last, so an
-/// interrupted install leaves no sentinel and is cleanly redone next launch.
-/// Runs under the bridge startup mutex, so installs are already serialized
-/// across bridge instances; staging paths are fixed and self-healing.
+/// interrupted install leaves no sentinel and is cleanly redone next attempt.
+/// No lock is required: single-live-bridge enforcement covers cross-process
+/// overlap, callers gate concurrent same-plugin work (setup-blocked plugins
+/// cannot start, and management commands are serialized per plugin), the
+/// binary lands via atomic rename, and the sentinel is written last — so any
+/// residual race self-heals on the next attempt. Staging paths are fixed and
+/// self-healing.
 class RuntimeInstallService {
   final BinaryDownloadClient _downloadClient;
   final ChecksumValidator _checksumValidator;

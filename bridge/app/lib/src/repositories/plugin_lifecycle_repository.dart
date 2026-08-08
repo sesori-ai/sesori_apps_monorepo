@@ -62,6 +62,9 @@ class PluginLifecycleRepository {
 
   Future<PluginRuntimeCommandResult> start({required String pluginId}) => _runtime.start(pluginId: pluginId);
 
+  Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) =>
+      _runtime.installRuntime(pluginId: pluginId);
+
   Future<PluginRuntimeCommandResult> stop({
     required String pluginId,
     required PluginStopIntent intent,

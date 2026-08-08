@@ -95,6 +95,24 @@ void main() {
     expect(response.body, "plugin not found");
   });
 
+  test("the command route decodes install and maps a missing capability to a typed conflict", () async {
+    final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
+    addTearDown(harness.close);
+
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/plugin/one/command",
+        body: jsonEncode(const PluginLifecycleCommandRequest.install().toJson()),
+      ),
+    );
+
+    expect(response.status, 409);
+    final conflict = PluginLifecycleConflict.fromJson(jsonDecodeMap(response.body!));
+    expect(conflict.reasons, [PluginLifecycleConflictReason.unsupported]);
+  });
+
   test("orchestrator owns encrypted project-view claims across relay lifecycles", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(

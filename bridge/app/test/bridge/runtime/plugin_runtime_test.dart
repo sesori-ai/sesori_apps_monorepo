@@ -28,6 +28,41 @@ void main() {
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
   });
 
+  test("installRuntime forwards descriptor progress and aborts on shutdown", () async {
+    final installGate = Completer<void>();
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        install: (startAborted) async* {
+          yield const ProvisionResolving();
+          await installGate.future;
+          if (startAborted.isAborted) throw const PluginStartAbortedException();
+          yield const ProvisionReady(binaryPath: "/managed/one");
+        },
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    final events = <RuntimeProvisionProgress>[];
+    final done = runtime.installRuntime(pluginId: "one").listen(events.add).asFuture<void>();
+    await Future<void>.delayed(Duration.zero);
+    expect(events.single, isA<ProvisionResolving>());
+
+    runtime.beginShutdown();
+    installGate.complete();
+    await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+  });
+
+  test("installRuntime fails immediately while shutting down", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+
+    runtime.beginShutdown();
+    final events = await runtime.installRuntime(pluginId: "one").toList();
+
+    expect(events.single, isA<ProvisionFailed>());
+  });
+
   test("disable invalidates an in-flight setup inspection", () async {
     final inspectionGate = Completer<PluginSetupStatus>();
     final runtime = _runtime(
@@ -1649,9 +1684,10 @@ class _FakeGenerationFactory implements PluginGenerationFactory {
 }
 
 class _FakeDescriptor extends BridgePluginDescriptor {
-  const _FakeDescriptor({this.inspect});
+  const _FakeDescriptor({this.inspect, this.install});
 
   final Future<PluginSetupStatus> Function()? inspect;
+  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install;
 
   @override
   String get id => "one";
@@ -1676,6 +1712,27 @@ class _FakeDescriptor extends BridgePluginDescriptor {
     required String stateDirectory,
   }) {
     return inspect?.call() ?? Future.value(const PluginSetupReady());
+  }
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) {
+    final handler = install;
+    if (handler == null) {
+      return super.installRuntime(
+        config: config,
+        processes: processes,
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+      );
+    }
+    return handler(startAborted);
   }
 
   @override
