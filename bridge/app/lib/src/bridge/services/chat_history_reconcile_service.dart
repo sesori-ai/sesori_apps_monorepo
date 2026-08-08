@@ -28,6 +28,12 @@ class ChatHistoryReconcileService {
   /// Purges history for sessions the catalog no longer knows about — deleted
   /// while the bridge was down, or whose inline purge failed. An archived
   /// session keeps its catalog row, so row existence is the whole mapping.
+  ///
+  /// This can never fire for a session that merely disappeared from its
+  /// backend: catalog import is non-destructive, so such a session keeps its
+  /// row and therefore its history. The comparison reads only the local
+  /// databases — no plugin request is involved, so a failing backend cannot
+  /// be mistaken for deleted sessions.
   Future<void> _reconcile() async {
     final storedSessionIds = await _chatHistoryService.getStoredSessionIds();
     if (storedSessionIds.isEmpty) return;
