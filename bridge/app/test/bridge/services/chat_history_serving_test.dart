@@ -118,6 +118,35 @@ void main() {
       );
     });
 
+    test("a staleness update enqueued during a read commits after it", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+      final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+
+      // Issue the read, then enqueue the staleness update while it is still
+      // running. The read must not observe a half-applied state, and the
+      // update must still land.
+      final reading = history.service.getSessionMessages(sessionId: "ses_a");
+      final observing = history.service.observeBackendActivity(
+        sessionId: "ses_a",
+        activityAt: synced.watermark + 5000,
+      );
+      final served = await reading;
+      await observing;
+
+      expect(served.map((message) => message.info.id), const ["m1"]);
+      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      expect(state.backendActivityAt, greaterThan(state.watermark), reason: "the update still applied");
+
+      repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
+      expect(
+        (await history.service.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
+        const ["m1", "m2"],
+        reason: "the next read sees the staleness recorded during the previous one",
+      );
+    });
+
     test("an empty transcript is served without re-fetching", () async {
       final repository = _FakeSessionRepository(transcript: const []);
       final history = createTestChatHistory(sessionRepository: repository);

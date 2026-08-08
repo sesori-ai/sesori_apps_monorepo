@@ -244,11 +244,25 @@ class ChatHistoryService {
     return _enqueueAll(sessionIds: [sessionId], write: write);
   }
 
-  /// Runs [read] after the session's pending writes, without making it the new
-  /// tail — concurrent reads of one session stay parallel.
+  /// Runs [read] after the session's pending writes and holds the queue for
+  /// its duration, so a write enqueued while it runs commits after it rather
+  /// than underneath it.
+  ///
+  /// Reads of one session therefore serialize with each other too. That is
+  /// acceptable: a read is a bounded query against a local database, and it
+  /// buys a simple guarantee — whatever a read observed is what the caller
+  /// receives.
   Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) {
-    final pending = _writeQueues[sessionId];
-    return pending == null ? read() : pending.then((_) => read());
+    final pending = _writeQueues[sessionId] ?? Future<void>.value();
+    final result = pending.then((_) => read());
+    final tail = result.then<void>((_) {}, onError: (Object _) {});
+    _writeQueues[sessionId] = tail;
+    unawaited(
+      tail.whenComplete(() {
+        if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
+      }),
+    );
+    return result;
   }
 
   /// Runs [write] after every listed session's pending writes, and makes it
