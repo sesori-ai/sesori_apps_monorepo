@@ -441,10 +441,12 @@ Future<Map<String, String>> _resolveFirstContributions({
       if (earlier.isEmpty) {
         firstContributionUrls[author] = entry.url;
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
       // Omitting one credit beats failing the release; a wrong "first
       // contribution" claim would be worse than a missing one.
-      stderr.writeln('Could not check prior commits for @$author, omitting from New Contributors: $error');
+      stderr.writeln(
+        'Could not check prior commits for @$author, omitting from New Contributors: $error\n$stackTrace',
+      );
     }
   }
   return firstContributionUrls;
