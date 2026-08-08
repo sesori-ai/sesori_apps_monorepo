@@ -90,8 +90,8 @@ card shows a dismissible error and the Install button returns.
   the capability, so a new app never offers install against it.
   `PluginSetupUnavailable` is broader than "too old" in general ("unsupported
   or otherwise unusable"), but for the installable descriptors it is only
-  produced for a too-old binary today (OpenCode: explicit-bin too old; Cursor:
-  CLI below minimum; Codex: never). The explicit-bin cases never advertise the
+  produced for a too-old binary today (OpenCode/Codex: explicit-bin too old;
+  Cursor: CLI below minimum). The explicit-bin cases never advertise the
   capability, so capability ∧ `unavailable` ⇒ installable. Descriptor tests in
   step 2 pin this: while the install capability is advertised,
   `PluginSetupUnavailable` may only be returned for a too-old runtime that the
