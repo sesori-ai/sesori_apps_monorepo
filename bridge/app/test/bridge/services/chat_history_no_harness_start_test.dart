@@ -52,7 +52,7 @@ void main() {
     expect(plugin.lastGetMessagesSessionId, "backend-a");
 
     plugin.lastGetMessagesSessionId = null;
-    final served = await history.service.getSessionMessages(sessionId: "ses_a");
+    final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
     expect(served.single.info.id, "m1");
     expect(

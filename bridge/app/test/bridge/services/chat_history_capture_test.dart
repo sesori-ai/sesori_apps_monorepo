@@ -18,7 +18,7 @@ void main() {
       await history.service.capturePart(sessionId: "ses_a", part: _part(id: "p1", messageId: "m1", text: "one"));
       await history.service.capturePart(sessionId: "ses_a", part: _part(id: "p2", messageId: "m1", text: "two"));
 
-      final stored = await history.repository.getSessionMessages(sessionId: "ses_a");
+      final stored = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages;
       expect(stored, hasLength(1));
       expect(stored.single.info.id, "m1");
       expect(stored.single.parts.map((part) => part.text), const ["one", "two"]);
@@ -30,7 +30,7 @@ void main() {
       await history.service.capturePart(sessionId: "ses_a", part: _part(id: "p1", messageId: "m1", text: "early"));
       await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
 
-      final stored = await history.repository.getSessionMessages(sessionId: "ses_a");
+      final stored = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages;
       expect(stored.single.parts.single.text, "early");
     });
 
@@ -45,7 +45,7 @@ void main() {
         part: _part(id: "p1", messageId: "m1", text: "one (final)"),
       );
 
-      final stored = await history.repository.getSessionMessages(sessionId: "ses_a");
+      final stored = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages;
       expect(stored.single.parts.map((part) => part.text), const ["one (final)", "two"]);
     });
 
@@ -57,12 +57,12 @@ void main() {
 
       await history.service.capturePartRemoved(sessionId: "ses_a", messageId: "m1", partId: "p1");
       expect(
-        (await history.repository.getSessionMessages(sessionId: "ses_a")).single.parts.map((part) => part.id),
+        (await history.repository.getSessionMessages(sessionId: "ses_a")).messages.single.parts.map((part) => part.id),
         const ["p2"],
       );
 
       await history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m1");
-      expect(await history.repository.getSessionMessages(sessionId: "ses_a"), isEmpty);
+      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
     });
 
     test("capture creates a sync row that is not marked synced", () async {
@@ -100,7 +100,7 @@ void main() {
       expect(rows.single.partJson, isNot(contains(base64Encode(bytes))));
       expect(rows.single.partJson, contains("stored_file"));
 
-      final served = (await history.repository.getSessionMessages(sessionId: "ses_a")).single.parts.single;
+      final served = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages.single.parts.single;
       expect(
         served.attachment,
         isA<MessageAttachmentInlineImage>()
@@ -128,7 +128,7 @@ void main() {
 
       await history.spillStorage.deleteSession(sessionId: "ses_a");
 
-      final served = (await history.repository.getSessionMessages(sessionId: "ses_a")).single.parts.single;
+      final served = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages.single.parts.single;
       expect(
         served.attachment,
         isA<MessageAttachmentMetadata>().having((data) => data.filename, "filename", "shot.png"),
@@ -145,7 +145,7 @@ void main() {
 
       await history.service.backfillSession(sessionId: "ses_a");
 
-      final stored = await history.repository.getSessionMessages(sessionId: "ses_a");
+      final stored = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages;
       expect(stored.map((message) => message.info.id), const ["m1", "m2"]);
       expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
     });
@@ -157,7 +157,7 @@ void main() {
 
       await history.service.backfillSession(sessionId: "ses_a");
 
-      final stored = await history.repository.getSessionMessages(sessionId: "ses_a");
+      final stored = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages;
       expect(
         stored.map((message) => message.info.id),
         const ["m1", "live"],
@@ -203,7 +203,7 @@ void main() {
       // observation. A message the backend still reports is not deleted yet,
       // and mirroring the backend is the point of a backfill.
       expect(
-        (await history.repository.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
+        (await history.repository.getSessionMessages(sessionId: "ses_a")).messages.map((message) => message.info.id),
         const ["m1", "m2"],
       );
     });
@@ -222,7 +222,7 @@ void main() {
       await removal;
 
       expect(
-        (await history.repository.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
+        (await history.repository.getSessionMessages(sessionId: "ses_a")).messages.map((message) => message.info.id),
         const ["m1"],
       );
     });
@@ -242,7 +242,7 @@ void main() {
       await history.service.backfillSession(sessionId: "ses_a");
       await removal;
 
-      final stored = await history.repository.getSessionMessages(sessionId: "ses_a");
+      final stored = (await history.repository.getSessionMessages(sessionId: "ses_a")).messages;
       expect(stored.single.parts, isEmpty, reason: "the removal is newer than the fetched transcript");
     });
 
@@ -272,7 +272,7 @@ void main() {
 
       await history.service.backfillSession(sessionId: "ses_a");
 
-      expect(await history.repository.getSessionMessages(sessionId: "ses_a"), isEmpty);
+      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
       expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
     });
 
@@ -290,8 +290,8 @@ void main() {
         chatHistoryService: history.service,
       ).reconcile();
 
-      expect(await history.repository.getSessionMessages(sessionId: "ses_known"), hasLength(1));
-      expect(await history.repository.getSessionMessages(sessionId: "ses_orphan"), isEmpty);
+      expect((await history.repository.getSessionMessages(sessionId: "ses_known")).messages, hasLength(1));
+      expect((await history.repository.getSessionMessages(sessionId: "ses_orphan")).messages, isEmpty);
       expect(await history.repository.getSyncState(sessionId: "ses_orphan"), isNull);
     });
   });

@@ -192,7 +192,7 @@ void main() {
     test("connected API failure does not auto-loop", () async {
       connectionStatus.add(connectedStatus);
       when(
-        () => repository.getMessages(sessionId: "session-1"),
+        () => repository.getMessages(sessionId: "session-1", limit: null, before: null),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       when(
         () => repository.getPendingQuestions(sessionId: "session-1"),
@@ -227,7 +227,7 @@ void main() {
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultFailed>());
-      verify(() => repository.getMessages(sessionId: "session-1")).called(1);
+      verify(() => repository.getMessages(sessionId: "session-1", limit: null, before: null)).called(1);
     });
 
     test("load falls back to carried title state when canonical title is unavailable", () async {
@@ -353,8 +353,10 @@ void _stubRepositorySnapshot({
   String? canonicalSessionTitle = "Canonical title",
 }) {
   when(
-    () => repository.getMessages(sessionId: "session-1"),
-  ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
+    () => repository.getMessages(sessionId: "session-1", limit: null, before: null),
+  ).thenAnswer(
+    (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+  );
   when(
     () => repository.getPendingQuestions(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));

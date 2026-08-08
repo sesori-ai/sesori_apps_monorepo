@@ -223,11 +223,17 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<MessageWithPartsResponse>> getMessages({required String sessionId}) {
+  /// A page of the session's messages. A null [limit] requests the whole
+  /// transcript, which is also what an older bridge always returns.
+  Future<ApiResponse<MessageWithPartsResponse>> getMessages({
+    required String sessionId,
+    required int? limit,
+    required int? before,
+  }) {
     return _client.post(
       "/session/messages",
       fromJson: MessageWithPartsResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
+      body: SessionMessagesRequest(sessionId: sessionId, limit: limit, before: before),
     );
   }
 

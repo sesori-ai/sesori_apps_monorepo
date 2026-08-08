@@ -125,3 +125,26 @@ sealed class SessionIdRequest with _$SessionIdRequest {
 
   factory SessionIdRequest.fromJson(Map<String, dynamic> json) => _$SessionIdRequestFromJson(json);
 }
+
+/// Request body for `POST /session/messages`.
+///
+/// A superset of [SessionIdRequest]: both new fields are optional, so an older
+/// app's body still decodes and an older bridge ignores what it does not know.
+/// Omitting [limit] returns the whole transcript, which is the pre-pagination
+/// behavior.
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionMessagesRequest with _$SessionMessagesRequest {
+  const factory SessionMessagesRequest({
+    required String sessionId,
+
+    /// Maximum messages to return, newest-first from [before]. Null means the
+    /// full transcript — what an app that predates pagination sends.
+    required int? limit,
+
+    /// Exclusive cursor: return messages ordered strictly before this one.
+    /// Null starts from the newest message.
+    required int? before,
+  }) = _SessionMessagesRequest;
+
+  factory SessionMessagesRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
+}

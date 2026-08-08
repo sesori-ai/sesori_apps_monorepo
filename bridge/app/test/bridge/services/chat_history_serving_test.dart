@@ -14,7 +14,7 @@ void main() {
       );
       final history = createTestChatHistory(sessionRepository: repository);
 
-      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
       expect(served, equals(repository.transcript), reason: "store-served output must equal plugin-served output");
       expect(repository.fetchCount, 1);
@@ -25,7 +25,7 @@ void main() {
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.getSessionMessages(sessionId: "ses_a");
 
-      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
       expect(repository.fetchCount, 1, reason: "a synced store must not cold-start the backend");
       expect(served.map((message) => message.info.id), const ["m1"]);
@@ -44,7 +44,7 @@ void main() {
       repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
 
       expect(
-        (await history.service.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
+        (await history.service.getSessionMessages(sessionId: "ses_a")).messages.map((message) => message.info.id),
         const ["m1", "m2"],
         reason: "a session advanced outside Sesori must be re-read",
       );
@@ -85,7 +85,7 @@ void main() {
         unawaited(history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2"));
       };
 
-      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
       expect(
         served.map((message) => message.info.id),
@@ -151,8 +151,8 @@ void main() {
       final repository = _FakeSessionRepository(transcript: const []);
       final history = createTestChatHistory(sessionRepository: repository);
 
-      expect(await history.service.getSessionMessages(sessionId: "ses_a"), isEmpty);
-      expect(await history.service.getSessionMessages(sessionId: "ses_a"), isEmpty);
+      expect((await history.service.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
+      expect((await history.service.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
       expect(repository.fetchCount, 1, reason: "empty is a valid synced state, not a cache miss");
     });
 

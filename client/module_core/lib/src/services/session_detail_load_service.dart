@@ -44,7 +44,9 @@ class SessionDetailLoadService {
 
     try {
       final routeProjectId = projectId.normalize();
-      final messagesFuture = _repository.getMessages(sessionId: sessionId);
+      // Paging policy lands in step 7/8; until then the initial snapshot keeps
+    // asking for the whole transcript, exactly as before.
+    final messagesFuture = _repository.getMessages(sessionId: sessionId, limit: null, before: null);
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
       final sessionResponse = await _repository.getSession(sessionId: sessionId);
       final session = switch (sessionResponse) {

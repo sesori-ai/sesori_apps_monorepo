@@ -3,8 +3,9 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../services/chat_history_service.dart";
 import "request_handler.dart";
 
-/// Handles `POST /session/messages` — returns all messages for a session.
-class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, MessageWithPartsResponse> {
+/// Handles `POST /session/messages` — returns a page of a session's messages,
+/// or the whole transcript when the request carries no limit.
+class GetSessionMessagesHandler extends BodyRequestHandler<SessionMessagesRequest, MessageWithPartsResponse> {
   final ChatHistoryService _chatHistoryService;
 
   GetSessionMessagesHandler({required ChatHistoryService chatHistoryService})
@@ -12,13 +13,13 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, Mes
       super(
         HttpMethod.post,
         "/session/messages",
-        fromJson: SessionIdRequest.fromJson,
+        fromJson: SessionMessagesRequest.fromJson,
       );
 
   @override
   Future<MessageWithPartsResponse> handle(
     RelayRequest request, {
-    required SessionIdRequest body,
+    required SessionMessagesRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
@@ -28,8 +29,11 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, Mes
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    return MessageWithPartsResponse(
-      messages: await _chatHistoryService.getSessionMessages(sessionId: sessionId),
+    final page = await _chatHistoryService.getSessionMessages(
+      sessionId: sessionId,
+      limit: body.limit,
+      before: body.before,
     );
+    return MessageWithPartsResponse(messages: page.messages, nextCursor: page.nextCursor);
   }
 }

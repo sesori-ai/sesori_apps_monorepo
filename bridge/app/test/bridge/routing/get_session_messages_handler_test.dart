@@ -40,7 +40,7 @@ void main() {
       await expectLater(
         () => handler.handle(
           makeRequest("POST", "/session/messages"),
-          body: const SessionIdRequest(sessionId: ""),
+          body: const SessionMessagesRequest(sessionId: "", limit: null, before: null),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -52,7 +52,7 @@ void main() {
     test("uses request body sessionId as the session ID passed to plugin", () async {
       await handler.handle(
         makeRequest("POST", "/session/messages"),
-        body: const SessionIdRequest(sessionId: "session-xyz"),
+        body: const SessionMessagesRequest(sessionId: "session-xyz", limit: null, before: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -63,7 +63,7 @@ void main() {
     test("returns typed response", () async {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
-        body: const SessionIdRequest(sessionId: "s1"),
+        body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -74,7 +74,7 @@ void main() {
     test("returns empty list when plugin has no messages", () async {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
-        body: const SessionIdRequest(sessionId: "s1"),
+        body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -108,7 +108,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
-        body: const SessionIdRequest(sessionId: "s1"),
+        body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -124,7 +124,7 @@ void main() {
         makeRequest(
           "POST",
           "/session/messages",
-          body: jsonEncode(const SessionIdRequest(sessionId: "s1").toJson()),
+          body: jsonEncode(const SessionMessagesRequest(sessionId: "s1", limit: null, before: null).toJson()),
         ),
         pathParams: {},
         queryParams: {},

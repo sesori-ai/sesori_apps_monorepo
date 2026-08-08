@@ -22,13 +22,20 @@ class ChatHistoryService {
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
 
-  /// The session's messages, served from the store whenever it is known to be
-  /// current and falling back to the backend otherwise.
+  /// One page of the session's messages, served from the store whenever it is
+  /// known to be current and falling back to the backend otherwise.
+  ///
+  /// A null [limit] returns the whole transcript, which is what an app that
+  /// predates pagination asks for.
   ///
   /// The store is preferred only when a backfill has completed *and* no
   /// backend activity has been observed past the captured watermark, so a
   /// session advanced outside Sesori still reads correctly.
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+  Future<ChatHistoryPage> getSessionMessages({
+    required String sessionId,
+    int? limit,
+    int? before,
+  }) async {
     // Both the freshness decision and the read run inside the session queue,
     // so they observe one state. Deciding outside it would let queued work —
     // an observed import, or a failed capture clearing `syncedAt` — commit
@@ -41,7 +48,11 @@ class ChatHistoryService {
         if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
           return null;
         }
-        return _chatHistoryRepository.getSessionMessages(sessionId: sessionId);
+        return _chatHistoryRepository.getSessionMessages(
+          sessionId: sessionId,
+          limit: limit,
+          before: before,
+        );
       },
     );
     if (decided != null) return decided;
@@ -51,7 +62,11 @@ class ChatHistoryService {
     // any capture that raced its fetch.
     return _enqueueRead(
       sessionId: sessionId,
-      read: () => _chatHistoryRepository.getSessionMessages(sessionId: sessionId),
+      read: () => _chatHistoryRepository.getSessionMessages(
+        sessionId: sessionId,
+        limit: limit,
+        before: before,
+      ),
     );
   }
 
