@@ -50,6 +50,9 @@ audit file and purge it from the database.
 9. **No work in this feature is triggered by a harness starting.** Nothing
    here issues a request because a backend came up, and nothing batches
    requests at startup (see Harness Startup Constraints).
+10. **Opening a session does not start a harness to learn there is nothing
+    pending.** A stopped backend reports no pending questions or permissions
+    directly, because it holds none (see step 8/9).
 
 ## Harness Startup Constraints (user-stated, 2026-08-08)
 
@@ -522,15 +525,61 @@ expected and recorded here as unavoidable.
 | 4/8 | `⚙️ [internal-chat-history] Serve session messages from the store [step 4/8]` | 700–1,100 | Store-first serving with staleness fallback; attachment rehydration; wire shape unchanged; empty-vs-error semantics pinned. |
 | 5/8 | `⚙️ [internal-chat-history] Paginate session messages [step 5/8]` | 600–1,000 | `SessionMessagesRequest`/`nextCursor` shared fields, bridge paging over `seq`, compatibility tests both directions. |
 | 6/8 | `🚧 [internal-chat-history] Export archives and purge history on archive [step 6/8]` | 1,000–1,500 | `ArchivedSessionStorage`, export → cleanup → flip → purge sequencing, archived read path (`seq`-cursor from the audit file), incremental vacuum, reconcile audit-file behaviors, delete-path archive cleanup. |
-| 7/8 | `🌿 [internal-chat-history] Load history pages on demand in the client [step 7/8]` | 500–900 | Latest-page initial load, load-older affordance, complete-when-no-cursor, page-merge cubit state, tests. |
-| 8/8 | `🌱 [internal-chat-history] Retire plan and scope the harness-free session open [step 8/8]` | 150–400 | Move plan to `.plan/completed/`, and record the follow-up assessment for the remaining plugin-starting calls in the session-open snapshot (below). |
+| 7/9 | `🌿 [internal-chat-history] Load history pages on demand in the client [step 7/9]` | 500–900 | Latest-page initial load, load-older affordance, complete-when-no-cursor, page-merge cubit state, tests. |
+| 8/9 | `⚙️ [internal-chat-history] Stop waking a harness for pending questions and permissions [step 8/9]` | 300–600 | Move `getPendingQuestions`/`getPendingPermissions` to `useIfActive`, so a stopped backend reports none instead of being started. See below. |
+| 9/9 | `🌱 [internal-chat-history] Retire plan and scope the remaining harness-free work [step 9/9]` | 150–400 | Move plan to `.plan/completed/`, and record the follow-up assessment for the plugin-starting calls that remain after step 8/9 (below). |
+
+Steps 1/8 through 6/8 merged under a nine-step total of eight; the series was
+extended to nine on 2026-08-08 (see step 8/9). Their merged titles are left as
+they were — Git history is not rewritten — and every later step uses `/9`.
 
 Steps merge in numeric order; each PR is independently valid at its base.
 Bridge serving (4) precedes the wire change (5); archived reads (6) reuse the
 serving path; the client adopts paging last (7) against a bridge that already
 serves both shapes.
 
-## Step 8/8: Harness-Free Session Open (assessment, not implementation)
+## Step 8/9: Stop Waking a Harness for Pending Questions and Permissions
+
+Serving history from the store does not make session open harness-free,
+because the same snapshot still calls `getPendingQuestions` and
+`getPendingPermissions` through `PluginRuntime.use`, which is
+`startIfNeeded: true`. Opening a session therefore still starts an idle
+backend, and the user waits on the sluggish post-start window regardless of
+where history came from.
+
+**A stopped harness has no pending interaction, so there is nothing to ask it
+for.** Pending state is per-process and does not survive a stop:
+
+- ACP/Cursor keep it in an in-memory approval registry
+  (`_approvalRegistry.pendingForSession`, `bridge/sesori_plugin_acp/lib/src/acp_plugin.dart:1477`),
+  which starts empty on every start and returns `const []` when absent.
+- OpenCode serves it from its running HTTP server (`GET /question`,
+  `GET /permission`, `bridge/sesori_plugin_opencode/lib/src/opencode_api.dart:344`),
+  which cannot answer while stopped.
+
+So starting a backend to ask "do you have pending questions?" can only ever
+return none — after paying the full start cost. Answering "none" directly is
+both faster and equally correct.
+
+Change: `QuestionRepository.getPendingQuestions` and
+`PermissionRepository.getPendingPermissions` move from `_runtime.use` to
+`_runtime.useIfActive`, treating a null result (plugin not routable) as an
+empty list. `getSessionStatuses`
+(`bridge/app/lib/src/bridge/repositories/session_repository.dart:942`) already
+does exactly this and is the reference shape.
+
+Scope limits, deliberately:
+
+- Only these two calls. The options lookups (`listAgents`, `listProviders`,
+  `listCommands`) and any other snapshot call are assessed in step 9/9, since
+  their answers *are* meaningful for a stopped backend and need a caching or
+  UI decision first.
+- No UI change: an empty pending list is what the client already renders when
+  a session genuinely has none.
+- Verification must pin the invariant directly — a stopped plugin must yield
+  an empty list without a start — rather than asserting on timing.
+
+## Step 9/9: Remaining Harness-Free Session Open (assessment, not implementation)
 
 Serving history from the store removes one plugin call from session open, but
 the snapshot still wakes an idle backend through other calls, so the user does
@@ -544,13 +593,10 @@ history correctly (`chat_history.db` populated, sessions `synced_at` with a
 current watermark), yet opening a session still felt unchanged because the
 remaining calls started the backend anyway.
 
-Calls in `SessionDetailLoadService._loadSnapshot` to classify, each as
-"can it be answered without the plugin?":
+Calls in `SessionDetailLoadService._loadSnapshot` still to classify, each as
+"can it be answered without the plugin?" (pending questions and permissions
+are handled in step 8/9 and excluded here):
 
-- `getPendingQuestions` / `getPendingPermissions` — `_runtime.use(...)`, which
-  is `startIfNeeded: true`. These are the primary offenders: a stopped backend
-  has no pending interaction to report, so waking it to ask is close to
-  pointless.
 - `getSession`, `getChildren` — already catalog-backed in the common path;
   confirm no plugin fallback fires for a stored session.
 - `listAgents` / `listProviders` / `listCommands` — plugin-backed, but a
@@ -562,6 +608,10 @@ Calls in `SessionDetailLoadService._loadSnapshot` to classify, each as
 
 Questions to answer explicitly, with the user, before any implementation:
 
+0. What should a backend that never auto-starts (for example OpenCode
+   configured not to start on demand) do for each of these? That case makes
+   "start it to find out" not merely slow but unavailable, so it is the
+   sharpest test of every answer below.
 1. Which of these must be live-accurate, and which may serve a bridge-side
    cached or empty answer while the backend is stopped?
 2. What should the UI show for a stopped-backend field — last known value,
