@@ -81,6 +81,23 @@ void main() {
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
+    test("the initial snapshot requests only the newest page", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+
+      await service.load(sessionId: "session-1", projectId: "project-1");
+
+      // A long transcript would otherwise ship in full on every open,
+      // reconnect, and reload.
+      verify(
+        () => repository.getMessages(
+          sessionId: "session-1",
+          limit: SessionDetailLoadService.initialPageSize,
+          before: null,
+        ),
+      ).called(1);
+    });
+
     test("plugin discovery failure leaves attachments unresolved without failing the transcript", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
@@ -192,7 +209,7 @@ void main() {
     test("connected API failure does not auto-loop", () async {
       connectionStatus.add(connectedStatus);
       when(
-        () => repository.getMessages(sessionId: "session-1", limit: null, before: null),
+        () => repository.getMessages(sessionId: "session-1", limit: any(named: "limit"), before: any(named: "before")),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       when(
         () => repository.getPendingQuestions(sessionId: "session-1"),
@@ -227,7 +244,7 @@ void main() {
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultFailed>());
-      verify(() => repository.getMessages(sessionId: "session-1", limit: null, before: null)).called(1);
+      verify(() => repository.getMessages(sessionId: "session-1", limit: any(named: "limit"), before: any(named: "before"))).called(1);
     });
 
     test("load falls back to carried title state when canonical title is unavailable", () async {
@@ -353,7 +370,7 @@ void _stubRepositorySnapshot({
   String? canonicalSessionTitle = "Canonical title",
 }) {
   when(
-    () => repository.getMessages(sessionId: "session-1", limit: null, before: null),
+    () => repository.getMessages(sessionId: "session-1", limit: any(named: "limit"), before: any(named: "before")),
   ).thenAnswer(
     (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
   );

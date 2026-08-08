@@ -28,6 +28,7 @@ SessionDetailState _loadedState({
 }) {
   return SessionDetailState.loaded(
     messages: messages,
+    olderMessagesCursor: null,
     streamingText: streamingText,
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],

@@ -78,6 +78,10 @@ class SessionDetailMessageList extends StatefulWidget {
   /// it and dissolves into the bar's fade.
   final double topInset;
 
+  /// Requests the page of messages before the ones shown, or null when the
+  /// start of the transcript is already loaded.
+  final Future<void> Function()? onLoadOlderMessages;
+
   const SessionDetailMessageList({
     super.key,
     required this.projectId,
@@ -85,6 +89,7 @@ class SessionDetailMessageList extends StatefulWidget {
     required this.streamingText,
     required this.children,
     required this.childStatuses,
+    this.onLoadOlderMessages,
     this.retryErrorMessage,
     this.bottomInset = 0,
     this.topInset = 0,
@@ -429,6 +434,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
               // Always allow overscroll/bounce, even when the transcript is
               // shorter than the viewport, so the list never feels locked.
               physics: const AlwaysScrollableScrollPhysics(),
+              // The list is reversed, so "end" is the top: scrolling back
+              // through history is what asks for the older page. Null once
+              // the start is loaded, which stops the package asking again.
+              onEndReached: widget.onLoadOlderMessages,
             ),
           ),
         ),

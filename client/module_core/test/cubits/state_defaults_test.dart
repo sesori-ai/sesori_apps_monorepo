@@ -8,6 +8,7 @@ void main() {
   test("SessionDetailLoaded.isRefreshing defaults to false", () {
     const state = SessionDetailState.loaded(
       messages: [],
+      olderMessagesCursor: null,
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
       pendingQuestions: [],

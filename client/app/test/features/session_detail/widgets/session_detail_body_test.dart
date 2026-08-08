@@ -116,6 +116,7 @@ SessionDetailLoaded _loadedState({
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
     messages: messages,
+    olderMessagesCursor: null,
     streamingText: const {},
     sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
@@ -264,6 +265,7 @@ void main() {
     final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
       messages: const [],
+      olderMessagesCursor: null,
       streamingText: const {},
       sessionStatus: const SessionStatus.idle(),
       pendingQuestions: const [],

@@ -252,6 +252,46 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     await _loadMessages(isReload: true);
   }
 
+  /// Loads the page of messages before the ones currently shown.
+  ///
+  /// A no-op when the start of the transcript is already loaded or a request
+  /// is already running, so repeated scroll-to-top gestures cannot stack.
+  Future<void> loadOlderMessages() async {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final cursor = current.olderMessagesCursor;
+    if (cursor == null || current.isLoadingOlderMessages) return;
+
+    emit(current.copyWith(isLoadingOlderMessages: true));
+    final page = await _loadService.loadOlderMessages(sessionId: _sessionId, before: cursor);
+    if (isClosed) return;
+
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return;
+    if (page == null) {
+      // Keep the cursor: the transcript did not end, the request failed, so
+      // the user can retry.
+      emit(latest.copyWith(isLoadingOlderMessages: false));
+      return;
+    }
+
+    // Merge by id rather than concatenating. Live events can append a message
+    // while the page is in flight, and an older page must never duplicate or
+    // reorder what is already shown.
+    final known = {for (final message in latest.messages) message.info.id};
+    final older = [
+      for (final message in page.messages)
+        if (!known.contains(message.info.id)) message,
+    ];
+    emit(
+      latest.copyWith(
+        messages: [...older, ...latest.messages],
+        olderMessagesCursor: page.olderMessagesCursor,
+        isLoadingOlderMessages: false,
+      ),
+    );
+  }
+
   Future<void> _runLoadingRefresh({required _SessionRefreshTrigger trigger}) async {
     await _traceRefresh(
       trigger: trigger,
@@ -495,6 +535,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           emit(
             latest.copyWith(
               messages: snapshot.messages,
+              // A refresh re-reads the newest page, so previously paged-back
+              // history is dropped and the cursor returns to that page's edge.
+              // Keeping older pages would leave a gap between them and the
+              // refreshed page whenever the session moved on meanwhile.
+              olderMessagesCursor: snapshot.olderMessagesCursor,
+              isLoadingOlderMessages: false,
               streamingText: streamingText,
               sessionStatus: refreshedSessionStatus,
               retryErrorMessage: retryMessage,
@@ -1826,6 +1872,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     return SessionDetailLoaded(
       messages: snapshot.messages,
+      olderMessagesCursor: snapshot.olderMessagesCursor,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       retryErrorMessage: initialRetryMessage,

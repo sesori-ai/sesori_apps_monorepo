@@ -108,6 +108,11 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,
+                          // Null once the start of the transcript is loaded,
+                          // so the list stops asking for more.
+                          onLoadOlderMessages: state.olderMessagesCursor == null
+                              ? null
+                              : context.read<SessionDetailCubit>().loadOlderMessages,
                           retryErrorMessage: state.retryErrorMessage,
                           // Pad the oldest-message edge clear of the bar it scrolls
                           // behind, and the newest-message edge clear of the floating

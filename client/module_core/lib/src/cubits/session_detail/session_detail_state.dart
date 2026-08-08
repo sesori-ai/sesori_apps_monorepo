@@ -12,6 +12,16 @@ sealed class SessionDetailState with _$SessionDetailState {
 
   const factory SessionDetailState.loaded({
     required List<MessageWithParts> messages,
+
+    /// Cursor for the page of messages before [messages], or null when the
+    /// start of the transcript is loaded — so the UI shows no load-older
+    /// affordance. Also null against a bridge that predates pagination, which
+    /// always sends the whole transcript.
+    required int? olderMessagesCursor,
+
+    /// Whether a load-older request is in flight, so the action is not
+    /// re-issued while it runs.
+    @Default(false) bool isLoadingOlderMessages,
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
     required List<SesoriQuestionAsked> pendingQuestions,
