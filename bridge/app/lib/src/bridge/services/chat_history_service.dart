@@ -72,25 +72,6 @@ class ChatHistoryService {
     );
   }
 
-  /// Records backend activity observed outside the live event stream, so a
-  /// session advanced through the backend's own CLI is detected as stale.
-  Future<void> observeBackendActivity({required String sessionId, required int activityAt}) {
-    return _enqueue(
-      sessionId: sessionId,
-      write: () async {
-        final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
-        // Only sessions the store already knows about are tracked; an unknown
-        // session has nothing to be stale against.
-        if (state == null) return;
-        await _chatHistoryRepository.advanceSyncState(
-          sessionId: sessionId,
-          watermark: state.watermark,
-          backendActivityAt: activityAt,
-        );
-      },
-    );
-  }
-
   /// Fills the store from the backend's own transcript.
   ///
   /// Concurrent callers for the same session await one fetch. Failures

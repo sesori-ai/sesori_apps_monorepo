@@ -3,21 +3,21 @@
 ## Current State
 
 - **Plan slug:** `internal-chat-history`
-- **Implementation base:** `origin/main` at `5653be1b`
-- **Series state:** Step 2/8 in PR; step 3/8 implemented locally
-- **Current step:** 2/8
+- **Implementation base:** `origin/main` at `6723c833`
+- **Series state:** Step 2/8 merged; step 3/8 in PR
+- **Current step:** 3/8
 - **Plan PR:** [#763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763) merged
 - **Prerequisite:** satisfied — the `read-only-archiving` series merged fully on
   2026-08-07 (through [PR #771](https://github.com/sesori-ai/sesori_apps_monorepo/pull/771)).
-- **Next action:** merge PR #768, then raise step 3/8.
+- **Next action:** merge step 3/8, then start step 4/8.
 
 ## Delivery Steps
 
 | Done | Step | Exact PR title | Estimate | State |
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [internal-chat-history] Raise plan [step 1/8]` | 400–700 | [PR #763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763) merged |
-| [ ] | 2/8 | `🚧 [internal-chat-history] Introduce the chat history database [step 2/8]` | 1,500–2,600 | [PR #768](https://github.com/sesori-ai/sesori_apps_monorepo/pull/768) open |
-| [ ] | 3/8 | `🚧 [internal-chat-history] Capture live message events and backfill lazily [step 3/8]` | 900–1,400 | pending |
+| [x] | 2/8 | `🚧 [internal-chat-history] Introduce the chat history database [step 2/8]` | 1,500–2,600 | [PR #768](https://github.com/sesori-ai/sesori_apps_monorepo/pull/768) merged |
+| [ ] | 3/8 | `🚧 [internal-chat-history] Capture live message events and backfill lazily [step 3/8]` | 900–1,400 | in progress |
 | [ ] | 4/8 | `⚙️ [internal-chat-history] Serve session messages from the store [step 4/8]` | 700–1,100 | pending |
 | [ ] | 5/8 | `⚙️ [internal-chat-history] Paginate session messages [step 5/8]` | 600–1,000 | pending |
 | [ ] | 6/8 | `🚧 [internal-chat-history] Export archives and purge history on archive [step 6/8]` | 1,000–1,500 | pending |
@@ -46,6 +46,9 @@
 - **2026-08-07 — step 2/8:** `dart analyze --fatal-infos` clean in `bridge/app`;
   `dart test` in `bridge/app` green (2,440 tests), including the new
   `chat_history_purge_test.dart`.
+- **2026-08-07 — step 3/8:** `dart analyze --fatal-infos` clean in `bridge/app`;
+  `dart test` in `bridge/app` green (2,460 tests), including the new
+  `chat_history_capture_test.dart`.
 
 ## Findings And Plan Deltas
 
@@ -62,3 +65,14 @@
   relies on archive permanence. Steps 2/8–5/8 touch none of the archiving
   code, so the two series run in parallel. Recorded after the user started
   `read-only-archiving` separately.
+- **2026-08-07 — Second watermark source deferred to step 4/8.** The plan lists
+  two inputs for `backend_activity_at`: live capture and catalog import
+  observing newer backend activity. Only capture has a caller until serving
+  exists, so the catalog-import input (and the `observeBackendActivity`
+  surface it needs) moves to step 4/8, where the staleness comparison it feeds
+  is introduced. Success Criterion 3 is therefore verified in step 4, not 3.
+- **2026-08-07 — Backfill atomicity tightened.** The plan says a backfill
+  atomically replaces rows and sets the watermark; the first implementation
+  split the row replace and the sync-state write into two statements. They now
+  share one transaction, so a crash cannot leave a replaced transcript
+  described by the previous run's freshness marks.

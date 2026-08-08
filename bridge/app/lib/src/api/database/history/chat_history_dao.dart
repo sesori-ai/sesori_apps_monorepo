@@ -109,12 +109,17 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
   }
 
   /// Replaces the session's transcript with [messages] and [parts], keeping
-  /// the rows in [retainedMessageIds] that the transcript does not contain.
+  /// the rows in [retainedMessageIds] that the transcript does not contain,
+  /// and records [syncState] in the same transaction.
+  ///
+  /// One transaction so a crash can never leave a replaced transcript whose
+  /// freshness marks describe the previous one.
   Future<void> replaceSessionRows({
     required String sessionId,
     required List<HistoryMessagesTableData> messages,
     required List<HistoryPartsTableData> parts,
     required Set<String> retainedMessageIds,
+    required HistorySyncStateTableData syncState,
   }) {
     return transaction(() async {
       await (delete(historyPartsTable)..where(
@@ -135,7 +140,8 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
       await batch((batch) {
         batch
           ..insertAllOnConflictUpdate(historyMessagesTable, messages)
-          ..insertAllOnConflictUpdate(historyPartsTable, parts);
+          ..insertAllOnConflictUpdate(historyPartsTable, parts)
+          ..insert(historySyncStateTable, syncState, onConflict: DoUpdate((_) => syncState));
       });
     });
   }
@@ -143,10 +149,6 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
   /// Larger than any transcript a single session can hold, so parked rows
   /// cannot collide with the numbering being written beneath them.
   static const _seqParkingOffset = 1 << 40;
-
-  Future<void> upsertSyncState({required HistorySyncStateTableData row}) {
-    return into(historySyncStateTable).insertOnConflictUpdate(row);
-  }
 
   /// Creates the row if absent, then advances its timestamps monotonically.
   Future<void> advanceSyncState({

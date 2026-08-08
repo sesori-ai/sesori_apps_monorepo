@@ -7,27 +7,11 @@ import "../../api/attachment_spill_storage.dart";
 import "../../api/database/history/chat_history_dao.dart";
 import "../../api/database/history/chat_history_database.dart";
 
-/// A stored transcript page plus the freshness facts that produced it.
-typedef StoredSessionHistory = ({
-  List<MessageWithParts> messages,
-  int? syncedAt,
-});
-
-/// Raised when stored history cannot be read or written.
-class ChatHistoryStorageException implements Exception {
-  final String operation;
-  final String sessionId;
-  final Object innerError;
-
-  ChatHistoryStorageException({
-    required this.operation,
-    required this.sessionId,
-    required this.innerError,
-  });
-
-  @override
-  String toString() => "chat history $operation failed for session $sessionId";
-}
+/// How fresh a session's stored transcript is.
+///
+/// [syncedAt] is null until a backfill completes, so a row created by live
+/// capture never claims to be a complete transcript.
+typedef ChatHistorySyncState = ({int watermark, int backendActivityAt, int? syncedAt});
 
 /// Owns the stored representation of chat history: database rows, their JSON
 /// payloads, and the attachment spill files those payloads reference.
@@ -41,8 +25,11 @@ class ChatHistoryRepository {
   final ChatHistoryDao _chatHistoryDao;
   final AttachmentSpillStorage _attachmentSpillStorage;
 
-  Future<HistorySyncStateTableData?> getSyncState({required String sessionId}) {
-    return _chatHistoryDao.getSyncState(sessionId: sessionId);
+  Future<ChatHistorySyncState?> getSyncState({required String sessionId}) async {
+    final row = await _chatHistoryDao.getSyncState(sessionId: sessionId);
+    return row == null
+        ? null
+        : (watermark: row.watermark, backendActivityAt: row.backendActivityAt, syncedAt: row.syncedAt);
   }
 
   /// The session's stored transcript, oldest first, with attachments
@@ -180,9 +167,7 @@ class ChatHistoryRepository {
       messages: messageRows,
       parts: partRows,
       retainedMessageIds: {for (final row in retained) row.messageId},
-    );
-    await _chatHistoryDao.upsertSyncState(
-      row: HistorySyncStateTableData(
+      syncState: HistorySyncStateTableData(
         sessionId: sessionId,
         watermark: watermark,
         backendActivityAt: backendActivityAt,

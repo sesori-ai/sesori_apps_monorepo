@@ -194,21 +194,6 @@ void main() {
       expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
     });
 
-    test("observed backend activity outdates a synced store", () async {
-      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
-      final history = createTestChatHistory(sessionRepository: repository);
-      await history.service.backfillSession(sessionId: "ses_a");
-      final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
-
-      await history.service.observeBackendActivity(
-        sessionId: "ses_a",
-        activityAt: synced.watermark + 5000,
-      );
-
-      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
-      expect(state.backendActivityAt, greaterThan(state.watermark));
-      expect(state.syncedAt, isNotNull, reason: "staleness is a comparison, not a lost sync marker");
-    });
   });
 
   group("chat history reconcile", () {
