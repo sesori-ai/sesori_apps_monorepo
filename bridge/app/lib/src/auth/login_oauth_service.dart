@@ -16,18 +16,32 @@ const Duration _defaultPollInterval = Duration(milliseconds: 250);
 const Duration _defaultPollTimeout = Duration(seconds: _totalLoginTimeoutSeconds);
 const Duration _defaultPerRequestTimeout = Duration(seconds: _perRequestTimeoutSeconds);
 
+typedef OAuthBrowserLauncher = Future<void> Function({required String url, required DateTime deadline});
+typedef OAuthBrowserProcessStarter = Future<void> Function(String executable, List<String> arguments);
+
+Future<void> _startOAuthBrowserProcess(String executable, List<String> arguments) async {
+  await Process.start(executable, arguments, mode: ProcessStartMode.detached);
+}
+
 /// Opens the default browser to [url].
 ///
 /// Platform-specific:
 /// - macOS: `open`
 /// - Linux: `xdg-open`
 /// - Windows: `rundll32 url.dll,FileProtocolHandler`
-Future<void> openOAuthBrowser(String url) async {
-  late final ProcessResult result;
+Future<void> openOAuthBrowser({
+  required String url,
+  required DateTime deadline,
+  @visibleForTesting OAuthBrowserProcessStarter processStarter = _startOAuthBrowserProcess,
+}) async {
+  late final String executable;
+  late final List<String> arguments;
   if (Platform.isMacOS) {
-    result = await Process.run("open", [url]);
+    executable = "open";
+    arguments = [url];
   } else if (Platform.isLinux) {
-    result = await Process.run("xdg-open", [url]);
+    executable = "xdg-open";
+    arguments = [url];
   } else if (Platform.isWindows) {
     // Hand the URL straight to the shell's protocol handler via rundll32
     // instead of `cmd /c start`. cmd.exe treats the `&` query-string
@@ -36,14 +50,19 @@ Future<void> openOAuthBrowser(String url) async {
     // as its own command — and `start` would additionally misread the URL as a
     // window title. rundll32 is launched without a shell, so the URL (every
     // `&` included) reaches the default browser verbatim.
-    result = await Process.run("rundll32", ["url.dll,FileProtocolHandler", url]);
+    executable = "rundll32";
+    arguments = ["url.dll,FileProtocolHandler", url];
   } else {
     throw UnsupportedError("Unsupported platform: ${Platform.operatingSystem}");
   }
 
-  if (result.exitCode != 0) {
-    throw Exception("Browser launcher exited with code ${result.exitCode}: ${result.stderr}");
+  if (!DateTime.now().isBefore(deadline)) {
+    throw TimeoutException("timed out waiting for authorization");
   }
+
+  // The platform opener is only a best-effort handoff. Detached mode avoids
+  // retaining child pipes or waiting for the browser after the OS accepts it.
+  await processStarter(executable, arguments);
 }
 
 /// Confidence that a URL can be opened in a graphical browser on this host.
@@ -134,7 +153,7 @@ bool _isWindowsSubsystemForLinux(Map<String, String> env) {
 
 class LoginOAuthService {
   final LoginOAuthApi _api;
-  final Future<void> Function(String url) _browserLauncher;
+  final OAuthBrowserLauncher _browserLauncher;
   final BrowserOpenability Function() _browserOpenability;
   final Duration _pollInterval;
   final Duration _pollTimeout;
@@ -143,7 +162,7 @@ class LoginOAuthService {
 
   LoginOAuthService({
     required LoginOAuthApi api,
-    required Future<void> Function(String url) browserLauncher,
+    required OAuthBrowserLauncher browserLauncher,
     required BrowserOpenability Function() browserOpenability,
     @visibleForTesting Duration pollInterval = _defaultPollInterval,
     @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
@@ -162,10 +181,43 @@ class LoginOAuthService {
   /// The temporary session token is generated in memory, sent only through the
   /// `X-Sesori-Session-Token` header, and never persisted or placed in URLs.
   Future<({TokenData tokens, String sessionToken})> performOAuthLogin(OAuthProvider provider) async {
+    final stopwatch = Stopwatch()..start();
+    final deadline = DateTime.now().add(_pollTimeout);
+    var restarted = false;
+    while (true) {
+      try {
+        return await _performOAuthAttempt(provider: provider, stopwatch: stopwatch, deadline: deadline);
+      } on OAuthSessionRestartRequiredException catch (error) {
+        if (restarted) {
+          rethrow;
+        }
+        restarted = true;
+        stopwatch.start();
+        final remaining = _pollTimeout - stopwatch.elapsed;
+        if (remaining <= Duration.zero || error.restartAfter >= remaining) {
+          throw TimeoutException("timed out waiting for authorization", _pollTimeout);
+        }
+        if (error.restartAfter > Duration.zero) {
+          await _delay(error.restartAfter).timeout(remaining);
+        }
+      }
+    }
+  }
+
+  Future<({TokenData tokens, String sessionToken})> _performOAuthAttempt({
+    required OAuthProvider provider,
+    required Stopwatch stopwatch,
+    required DateTime deadline,
+  }) async {
     final sessionToken = _generateSessionToken();
-    final initResp = await _api.initOAuthSession(
-      provider: provider,
-      sessionToken: sessionToken,
+    final initResp = await _beforeOAuthDeadline(
+      stopwatch: stopwatch,
+      operation: () => _api.initOAuthSession(
+        provider: provider,
+        sessionToken: sessionToken,
+        deadline: deadline,
+        requestTimeout: _pollTimeout - stopwatch.elapsed,
+      ),
     );
 
     // The URL is ALWAYS printed, on its own line, so login works even when no
@@ -190,15 +242,40 @@ class LoginOAuthService {
     Console.message(initResp.authUrl);
     if (openability != BrowserOpenability.no) {
       try {
-        await _browserLauncher(initResp.authUrl);
+        await _beforeOAuthDeadline(
+          stopwatch: stopwatch,
+          operation: () => _browserLauncher(url: initResp.authUrl, deadline: deadline),
+        );
+      } on TimeoutException {
+        rethrow;
       } catch (e) {
         Console.message("Could not open a browser automatically; open the URL above manually: $e");
       }
     }
 
     Console.message("Waiting for authorization...");
-    final tokens = await _pollForCompletion(provider: provider, sessionToken: sessionToken);
+    final tokens = await _pollForCompletion(
+      provider: provider,
+      sessionToken: sessionToken,
+      stopwatch: stopwatch,
+      deadline: deadline,
+    );
     return (tokens: tokens, sessionToken: sessionToken);
+  }
+
+  Future<T> _beforeOAuthDeadline<T>({
+    required Stopwatch stopwatch,
+    required Future<T> Function() operation,
+  }) {
+    final remaining = _pollTimeout - stopwatch.elapsed;
+    if (remaining <= Duration.zero) {
+      return Future<T>.error(TimeoutException("timed out waiting for authorization", _pollTimeout));
+    }
+
+    return operation().timeout(
+      remaining,
+      onTimeout: () => throw TimeoutException("timed out waiting for authorization", _pollTimeout),
+    );
   }
 
   Future<void> ackOAuthSessionCompletion({required String sessionToken}) {
@@ -208,18 +285,24 @@ class LoginOAuthService {
   Future<TokenData> _pollForCompletion({
     required OAuthProvider provider,
     required String sessionToken,
+    required Stopwatch stopwatch,
+    required DateTime deadline,
   }) async {
-    final stopwatch = Stopwatch()..start();
     try {
       while (stopwatch.elapsed < _pollTimeout) {
         final remaining = _pollTimeout - stopwatch.elapsed;
         if (remaining <= Duration.zero) break;
         final requestTimeout = remaining < _perRequestTimeout ? remaining : _perRequestTimeout;
-        final status = await _api.getOAuthSessionStatus(sessionToken: sessionToken).timeout(requestTimeout);
+        final status = await _api.getOAuthSessionStatus(
+          sessionToken: sessionToken,
+          deadline: deadline,
+          requestTimeout: requestTimeout,
+        );
 
         switch (status) {
           case AuthSessionStatusResponsePending():
-            final delay = _pollInterval < remaining ? _pollInterval : remaining;
+            final delayRemaining = _pollTimeout - stopwatch.elapsed;
+            final delay = _pollInterval < delayRemaining ? _pollInterval : delayRemaining;
             if (delay > Duration.zero) {
               await _delay(delay);
             }

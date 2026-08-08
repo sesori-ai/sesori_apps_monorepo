@@ -15,6 +15,72 @@ import 'package:test/test.dart';
 
 void main() {
   group('LoginOAuthApi', () {
+    test('503 and 404 map to bounded restart requirements before JSON parsing', () async {
+      final cases = <({int statusCode, String? retryAfter, Duration expectedDelay})>[
+        (statusCode: 503, retryAfter: '0', expectedDelay: Duration.zero),
+        (statusCode: 503, retryAfter: '5', expectedDelay: Duration(seconds: 5)),
+        (statusCode: 503, retryAfter: null, expectedDelay: Duration(seconds: 1)),
+        (statusCode: 503, retryAfter: '-1', expectedDelay: Duration(seconds: 1)),
+        (statusCode: 503, retryAfter: '6', expectedDelay: Duration(seconds: 1)),
+        (statusCode: 404, retryAfter: '5', expectedDelay: Duration.zero),
+      ];
+      final authServer = await _OAuthLongPollTestServer.start(
+        statusResponses: [
+          for (final testCase in cases) (statusCode: testCase.statusCode, retryAfter: testCase.retryAfter),
+        ],
+      );
+      addTearDown(authServer.close);
+      final api = LoginOAuthApi(
+        authBackendUrl: authServer.baseUrl,
+        client: authServer.client,
+        clientType: AuthClientType.bridgeMacos,
+        device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
+      );
+      final deadline = DateTime.now().add(const Duration(minutes: 5));
+      for (final testCase in cases) {
+        final restartRequired = predicate<OAuthSessionRestartRequiredException>(
+          (error) => error.restartAfter == testCase.expectedDelay && error.deadline == deadline,
+        );
+        await expectLater(
+          api.getOAuthSessionStatus(
+            sessionToken: 'stale-token',
+            deadline: deadline,
+            requestTimeout: const Duration(seconds: 1),
+          ),
+          throwsA(restartRequired),
+        );
+      }
+    });
+
+    test('init 503 maps to the same bounded restart requirement before JSON parsing', () async {
+      final authServer = await _OAuthLongPollTestServer.start(
+        initResponses: [(statusCode: 503, retryAfter: '3')],
+        statusResponses: [],
+      );
+      addTearDown(authServer.close);
+      final api = LoginOAuthApi(
+        authBackendUrl: authServer.baseUrl,
+        client: authServer.client,
+        clientType: AuthClientType.bridgeMacos,
+        device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
+      );
+      final deadline = DateTime.now().add(const Duration(minutes: 5));
+
+      await expectLater(
+        api.initOAuthSession(
+          provider: AuthProvider.github,
+          sessionToken: 'new-token',
+          deadline: deadline,
+          requestTimeout: const Duration(seconds: 1),
+        ),
+        throwsA(
+          predicate<OAuthSessionRestartRequiredException>(
+            (error) => error.restartAfter == const Duration(seconds: 3) && error.deadline == deadline,
+          ),
+        ),
+      );
+    });
+
     group('GitHub OAuth', () {
       test('performOAuthLogin initializes, opens browser, polls, and returns tokens', () async {
         final authServer = await _OAuthLongPollTestServer.start(
@@ -74,6 +140,144 @@ void main() {
           expect(statusRequest.sessionToken, equals(initRequest.sessionToken));
         }
         expect(authServer.unexpectedPaths, isNot(contains('/callback')));
+      });
+
+      test('restarts once, rejects a second restart, and keeps one absolute budget', () async {
+        const firstUrl = 'https://example.com/github-login-1';
+        const user = AuthUser(id: 'u', provider: AuthProvider.github, providerUserId: 'g', providerUsername: null);
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: firstUrl,
+          statusResponses: [
+            (statusCode: 503, retryAfter: '0'),
+            AuthSessionStatusResponse.complete(
+              accessToken: 'access',
+              refreshToken: 'refresh',
+              user: user,
+            ),
+            (statusCode: 503, retryAfter: '0'),
+            (statusCode: 404, retryAfter: null),
+            (statusCode: 503, retryAfter: '1'),
+            const AuthSessionStatusResponse.pending(),
+          ],
+        );
+        addTearDown(authServer.close);
+        final launchedUrls = <String>[];
+        final service = _createOAuthService(
+          authServer: authServer,
+          browserLauncher: (url) async => launchedUrls.add(url),
+          pollInterval: const Duration(seconds: 5),
+        );
+        final result = await service.performOAuthLogin(AuthProvider.github);
+        final sessionTokens = authServer.initRequests.map((request) => request.sessionToken).toList();
+        expect(launchedUrls, [firstUrl, '$firstUrl-restart']);
+        expect((sessionTokens.length, sessionTokens.toSet().length), (2, 2));
+        expect(result.sessionToken, sessionTokens.last);
+        expect(authServer.statusRequests.map((request) => request.sessionToken).toList(), sessionTokens);
+        await expectLater(
+          service.performOAuthLogin(AuthProvider.github),
+          throwsA(isA<OAuthSessionRestartRequiredException>()),
+        );
+        expect((authServer.initRequests.length, authServer.statusRequests.length), (4, 4));
+        final stopwatch = Stopwatch()..start();
+        await expectLater(service.performOAuthLogin(AuthProvider.github), throwsA(isA<TimeoutException>()));
+        stopwatch.stop();
+        expect((authServer.initRequests.length, authServer.statusRequests.length), (6, 6));
+        expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 2600)));
+      });
+
+      test('an init 503 consumes the one full restart and then completes', () async {
+        const user = AuthUser(id: 'u', provider: AuthProvider.github, providerUserId: 'g', providerUsername: null);
+        final authServer = await _OAuthLongPollTestServer.start(
+          initResponses: [(statusCode: 503, retryAfter: '0')],
+          statusResponses: [
+            AuthSessionStatusResponse.complete(
+              accessToken: 'access',
+              refreshToken: 'refresh',
+              user: user,
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+        final launchedUrls = <String>[];
+        final service = _createOAuthService(
+          authServer: authServer,
+          browserLauncher: (url) async => launchedUrls.add(url),
+        );
+
+        final result = await service.performOAuthLogin(AuthProvider.github);
+
+        expect(result.tokens.accessToken, 'access');
+        expect(authServer.initRequests, hasLength(2));
+        expect(authServer.statusRequests, hasLength(1));
+        expect(launchedUrls, ['https://example.com/github-login-restart']);
+      });
+
+      test('a hung status request is aborted at its local timeout without accumulating another request', () async {
+        final client = _HangingOAuthStatusClient();
+        final api = LoginOAuthApi(
+          authBackendUrl: 'https://auth.example.test',
+          client: client,
+          clientType: AuthClientType.bridgeMacos,
+          device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
+        );
+        final service = LoginOAuthService(
+          api: api,
+          browserLauncher: ({required String url, required DateTime deadline}) async {},
+          browserOpenability: _alwaysOpenableBrowser,
+          pollTimeout: const Duration(seconds: 1),
+          perRequestTimeout: const Duration(milliseconds: 10),
+          pollInterval: Duration.zero,
+        );
+
+        await expectLater(
+          service.performOAuthLogin(AuthProvider.github),
+          throwsA(isA<TimeoutException>()),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(client.statusRequestCount, 1);
+        expect(client.maximumActiveStatusRequests, 1);
+        expect(client.activeStatusRequests, 0);
+        expect(client.statusAbortCount, 1);
+      });
+
+      test('browser launcher receives the same absolute deadline after an OAuth restart', () async {
+        final authServer = await _OAuthLongPollTestServer.start(
+          statusResponses: [
+            (statusCode: 503, retryAfter: '0'),
+            AuthSessionStatusResponse.complete(
+              accessToken: 'access',
+              refreshToken: 'refresh',
+              user: const AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'github-1',
+                providerUsername: null,
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+        final deadlines = <DateTime>[];
+        final service = LoginOAuthService(
+          api: LoginOAuthApi(
+            authBackendUrl: authServer.baseUrl,
+            client: authServer.client,
+            clientType: AuthClientType.bridgeMacos,
+            device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
+          ),
+          browserLauncher: ({required String url, required DateTime deadline}) async {
+            deadlines.add(deadline);
+          },
+          browserOpenability: _alwaysOpenableBrowser,
+          pollInterval: Duration.zero,
+          pollTimeout: const Duration(seconds: 1),
+        );
+
+        await service.performOAuthLogin(AuthProvider.github);
+
+        expect(deadlines, hasLength(2));
+        expect(deadlines.toSet(), hasLength(1));
       });
 
       test('denied status throws', () async {
@@ -345,6 +549,44 @@ void main() {
     });
   });
 
+  group('openOAuthBrowser', () {
+    test('does not invoke the process starter after the absolute deadline', () async {
+      var startCalls = 0;
+
+      await expectLater(
+        openOAuthBrowser(
+          url: 'https://example.com/oauth?state=expired-before-start',
+          deadline: DateTime.now().subtract(const Duration(milliseconds: 1)),
+          processStarter: (_, __) {
+            startCalls += 1;
+            throw StateError('process starter must not be called');
+          },
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      expect(startCalls, 0);
+    });
+
+    test('dispatches the URL without retaining process ownership', () async {
+      String? executable;
+      List<String>? arguments;
+      const authUrl = 'https://example.com/oauth?state=state-1';
+
+      await openOAuthBrowser(
+        url: authUrl,
+        deadline: DateTime.now().add(const Duration(seconds: 1)),
+        processStarter: (startedExecutable, startedArguments) async {
+          executable = startedExecutable;
+          arguments = startedArguments;
+        },
+      );
+
+      expect(executable, isNotEmpty);
+      expect(arguments, contains(authUrl));
+    });
+  });
+
   group('resolveBrowserOpenability', () {
     BrowserOpenability resolve({
       bool isLinux = false,
@@ -532,7 +774,7 @@ LoginOAuthService _createOAuthService({
       clientType: AuthClientType.bridgeMacos,
       device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),
     ),
-    browserLauncher: browserLauncher,
+    browserLauncher: ({required String url, required DateTime deadline}) => browserLauncher(url),
     browserOpenability: browserOpenability,
     pollTimeout: pollTimeout,
     pollInterval: pollInterval,
@@ -541,6 +783,51 @@ LoginOAuthService _createOAuthService({
 }
 
 BrowserOpenability _alwaysOpenableBrowser() => BrowserOpenability.yes;
+
+class _HangingOAuthStatusClient extends http.BaseClient {
+  int statusRequestCount = 0;
+  int activeStatusRequests = 0;
+  int maximumActiveStatusRequests = 0;
+  int statusAbortCount = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.method == 'POST' && request.url.path.endsWith('/init')) {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'authUrl': 'https://example.com/github-login',
+              'state': 'oauth-state',
+              'userCode': 'ABCD',
+              'expiresIn': 120,
+            }),
+          ),
+        ),
+        200,
+      );
+    }
+    if (request.method == 'GET' && request.url.path == '/auth/session/status') {
+      statusRequestCount += 1;
+      activeStatusRequests += 1;
+      if (activeStatusRequests > maximumActiveStatusRequests) {
+        maximumActiveStatusRequests = activeStatusRequests;
+      }
+      try {
+        final abortTrigger = (request as http.Abortable).abortTrigger;
+        if (abortTrigger == null) {
+          throw StateError('status request is not abortable');
+        }
+        await abortTrigger;
+        statusAbortCount += 1;
+        throw http.RequestAbortedException(request.url);
+      } finally {
+        activeStatusRequests -= 1;
+      }
+    }
+    throw StateError('unexpected OAuth request: ${request.method} ${request.url}');
+  }
+}
 
 class _MockLoginEmailApi implements LoginEmailApi {
   @override
@@ -631,7 +918,8 @@ class _OAuthRequestRecord {
 class _OAuthLongPollTestServer {
   final HttpServer _server;
   final String authUrl;
-  final List<AuthSessionStatusResponse> _statusResponses;
+  final List<({int statusCode, String? retryAfter})> _initResponses;
+  final List<Object> _statusResponses;
   final http.Client client = http.Client();
   final List<_OAuthRequestRecord> initRequests = [];
   final List<_OAuthRequestRecord> statusRequests = [];
@@ -641,20 +929,24 @@ class _OAuthLongPollTestServer {
   _OAuthLongPollTestServer._({
     required HttpServer server,
     required this.authUrl,
-    required List<AuthSessionStatusResponse> statusResponses,
+    required List<({int statusCode, String? retryAfter})> initResponses,
+    required List<Object> statusResponses,
   }) : _server = server,
+       _initResponses = List.of(initResponses),
        _statusResponses = List.of(statusResponses) {
     _listen();
   }
 
   static Future<_OAuthLongPollTestServer> start({
     String authUrl = 'https://example.com/github-login',
-    required List<AuthSessionStatusResponse> statusResponses,
+    List<({int statusCode, String? retryAfter})> initResponses = const [],
+    required List<Object> statusResponses,
   }) async {
     final server = await HttpServer.bind('127.0.0.1', 0);
     return _OAuthLongPollTestServer._(
       server: server,
       authUrl: authUrl,
+      initResponses: initResponses,
       statusResponses: statusResponses,
     );
   }
@@ -666,11 +958,27 @@ class _OAuthLongPollTestServer {
       if ((request.uri.path == '/auth/github/init' || request.uri.path == '/auth/google/init') &&
           request.method == 'POST') {
         initRequests.add(await _recordRequest(request));
+        final configuredResponse = _initResponses.isEmpty
+            ? (statusCode: 200, retryAfter: null)
+            : _initResponses.removeAt(0);
+        if (configuredResponse.statusCode == 0) {
+          await Completer<void>().future;
+          return;
+        }
+        if (configuredResponse.statusCode != 200) {
+          request.response.statusCode = configuredResponse.statusCode;
+          if (configuredResponse.retryAfter != null) {
+            request.response.headers.set('Retry-After', configuredResponse.retryAfter!);
+          }
+          request.response.write('not-json');
+          await request.response.close();
+          return;
+        }
         request.response.statusCode = 200;
         request.response.headers.contentType = ContentType.json;
         request.response.write(
           jsonEncode({
-            'authUrl': authUrl,
+            'authUrl': initRequests.length == 1 ? authUrl : '$authUrl-restart',
             'state': 'oauth-state',
             'userCode': 'ABCD',
             'expiresIn': 120,
@@ -682,6 +990,16 @@ class _OAuthLongPollTestServer {
         final status = _statusResponses.isEmpty
             ? const AuthSessionStatusResponse.pending()
             : _statusResponses.removeAt(0);
+        if (status is! AuthSessionStatusResponse) {
+          final restartResponse = status as ({int statusCode, String? retryAfter});
+          request.response.statusCode = restartResponse.statusCode;
+          if (restartResponse.retryAfter != null) {
+            request.response.headers.set('Retry-After', restartResponse.retryAfter!);
+          }
+          request.response.write('not-json');
+          await request.response.close();
+          return;
+        }
         request.response.statusCode = 200;
         request.response.headers.contentType = ContentType.json;
         request.response.write(jsonEncode(status.toJson()));

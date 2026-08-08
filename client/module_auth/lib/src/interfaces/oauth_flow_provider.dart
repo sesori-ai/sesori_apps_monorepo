@@ -8,7 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 /// device).
 abstract interface class OAuthFlowProvider {
   /// Starts an auth-server backed OAuth session for [provider].
-  Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider});
+  Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider, required DateTime? deadline});
 
   /// Polls the auth server until the pending OAuth session reaches a terminal result.
   Future<AuthUser> pollForResult();
