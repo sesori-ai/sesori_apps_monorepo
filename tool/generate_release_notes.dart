@@ -57,11 +57,14 @@ void main(final List<String> args) async {
       }
     }
 
+    final firstContributionUrls = await _resolveFirstContributions(api: api, from: fromTag, entries: entries);
+
     final notes = _render(
       repo: options.repo,
       from: fromTag,
       to: options.to,
       entries: entries,
+      firstContributionUrls: firstContributionUrls,
     );
 
     if (options.output != null) {
@@ -400,6 +403,43 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
   );
 }
 
+// A "new contributor" is an author with no commit in the repository at or
+// before the previous stable tag, matching what GitHub's own
+// --generate-notes reports. Entries arrive in compare order (oldest first),
+// so the first entry seen for an author is the PR to credit.
+Future<Map<String, String>> _resolveFirstContributions({
+  required _GitHubApi api,
+  required String from,
+  required List<_PrEntry> entries,
+}) async {
+  if (entries.isEmpty) {
+    return const {};
+  }
+
+  final baseCommit = await api.getJson(path: '/repos/${api.repo}/commits/$from') as Map<String, dynamic>;
+  final until = ((baseCommit['commit'] as Map<String, dynamic>)['committer'] as Map<String, dynamic>)['date'] as String;
+
+  final checked = <String>{};
+  final firstContributionUrls = <String, String>{};
+  for (final entry in entries) {
+    if (!checked.add(entry.author)) {
+      continue;
+    }
+    final earlier =
+        await api.getJson(
+              path:
+                  '/repos/${api.repo}/commits'
+                  '?author=${Uri.encodeQueryComponent(entry.author)}'
+                  '&until=${Uri.encodeQueryComponent(until)}&per_page=1',
+            )
+            as List<dynamic>;
+    if (earlier.isEmpty) {
+      firstContributionUrls[entry.author] = entry.url;
+    }
+  }
+  return firstContributionUrls;
+}
+
 final RegExp _conventionalPrefixPattern = RegExp(r'^(\w+)(\([^)]*\))?!?:\s*');
 
 String _bucketFor({required String title}) {
@@ -430,6 +470,7 @@ String _render({
   required String from,
   required String to,
   required List<_PrEntry> entries,
+  required Map<String, String> firstContributionUrls,
 }) {
   final buffer = StringBuffer('## What\'s Changed\n');
 
@@ -466,6 +507,13 @@ String _render({
     }
   } else {
     buffer.write('\nNo pull requests merged in this range.\n');
+  }
+
+  if (firstContributionUrls.isNotEmpty) {
+    buffer.write('\n## New Contributors\n');
+    for (final contribution in firstContributionUrls.entries) {
+      buffer.writeln('* @${contribution.key} made their first contribution in ${contribution.value}');
+    }
   }
 
   buffer.write('\n**Full Changelog**: https://github.com/$repo/compare/$from...$to\n');
