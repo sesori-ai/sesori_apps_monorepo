@@ -1341,7 +1341,8 @@ as String,
 mixin _$SessionMessagesRequest {
 
  String get sessionId;/// Maximum messages to return, newest-first from [before]. Null means the
-/// full transcript — what an app that predates pagination sends.
+/// full transcript.
+// COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
  int? get limit;/// Exclusive cursor: return messages ordered strictly before this one.
 /// Null starts from the newest message.
  int? get before;
@@ -1416,7 +1417,8 @@ class _SessionMessagesRequest implements SessionMessagesRequest {
 
 @override final  String sessionId;
 /// Maximum messages to return, newest-first from [before]. Null means the
-/// full transcript — what an app that predates pagination sends.
+/// full transcript.
+// COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
 @override final  int? limit;
 /// Exclusive cursor: return messages ordered strictly before this one.
 /// Null starts from the newest message.

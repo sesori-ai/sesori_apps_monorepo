@@ -14,9 +14,8 @@ sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
     required List<MessageWithParts> messages,
 
     /// Cursor for the next older page, to be sent back verbatim as the
-    /// request's `before`. Null means the transcript is complete — either
-    /// because everything was returned, or because the bridge predates
-    /// pagination and always returns everything.
+    /// request's `before`. Null means the transcript is complete.
+    // COMPATIBILITY 2026-08-08 (v1.7.2): Bridges that predate pagination omit nextCursor, which decodes to null and correctly means "complete". Make this required once those bridges are unsupported.
     required int? nextCursor,
   }) = _MessageWithPartsResponse;
 

@@ -150,7 +150,11 @@ void main() {
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+        verify(() => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        )).called(1);
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
@@ -177,7 +181,11 @@ void main() {
       "initial load failure emits SessionDetailFailed",
       build: () {
         when(
-          () => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")),
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
         return SessionDetailCubit(
@@ -228,7 +236,11 @@ void main() {
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(2);
+        verify(() => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        )).called(2);
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
@@ -991,8 +1003,14 @@ void main() {
       "SSE message.updated adds message to state",
       build: () {
         when(
-          () => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")),
-        ).thenAnswer((_) async => ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[], nextCursor: null)));
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(
+          const MessageWithPartsResponse(messages: <MessageWithParts>[], nextCursor: null),
+        ));
 
         return SessionDetailCubit(
           mockConnectionService,
@@ -1341,7 +1359,11 @@ void main() {
       final completeSlowRefresh = Completer<void>();
 
       when(
-        () => mockSessionRepository.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionRepository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) {
         getMessagesCallCount += 1;
         if (getMessagesCallCount == 2) {
@@ -1907,7 +1929,11 @@ void main() {
       final completeSlowRefresh = Completer<void>();
 
       when(
-        () => mockSessionRepository.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionRepository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) {
         getMessagesCallCount += 1;
         if (getMessagesCallCount == 2) {
@@ -2307,7 +2333,11 @@ void main() {
 
       test("a failed load never declares the view", () async {
         when(
-          () => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")),
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final viewingService = stubbedSessionViewingService();
         final projectViewingService = stubbedProjectViewingService();
@@ -2424,7 +2454,13 @@ void main() {
 
         // The post-resume silent refresh completed and re-declared the view.
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
-        verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(greaterThanOrEqualTo(1));
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(greaterThanOrEqualTo(1));
       });
     });
   });
@@ -2489,7 +2525,11 @@ void _stubAllDefaults(
   required BehaviorSubject<ConnectionStatus> connectionStatus,
 }) {
   when(
-    () => service.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+    () => service.getMessages(
+      sessionId: any(named: "sessionId"),
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
       ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),

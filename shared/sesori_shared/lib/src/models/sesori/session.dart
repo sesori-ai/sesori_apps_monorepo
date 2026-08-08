@@ -138,7 +138,8 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
     required String sessionId,
 
     /// Maximum messages to return, newest-first from [before]. Null means the
-    /// full transcript — what an app that predates pagination sends.
+    /// full transcript.
+    // COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
     required int? limit,
 
     /// Exclusive cursor: return messages ordered strictly before this one.
