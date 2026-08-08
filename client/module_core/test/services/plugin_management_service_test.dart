@@ -937,6 +937,11 @@ void main() {
         pluginId: "codex",
         request: const PluginLifecycleCommandRequest.install(),
       );
+      await _pump();
+
+      // A rejected command must also release the busy row, or Install could
+      // never be retried.
+      expect(service.installProgress.value, isEmpty);
 
       // The bridge never accepted it, so a later install of the same harness
       // (started elsewhere) is not this app's outcome.

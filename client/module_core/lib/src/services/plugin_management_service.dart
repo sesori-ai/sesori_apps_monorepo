@@ -150,10 +150,13 @@ class PluginManagementService with Disposable {
     }
     // The bridge never accepted it: withdraw authorship so a later install of
     // the same harness, started elsewhere, is not misattributed to this app,
-    // and release the busy row.
+    // and drop the synthetic busy entry written at tap time so the row is
+    // tappable again.
     _selfStartedInstalls.remove(pluginId);
     _pendingInstallOutcomes.remove(pluginId);
-    _publishInstallProgress(_installProgress.value);
+    _publishInstallProgress(
+      Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId),
+    );
     return result;
   }
 
