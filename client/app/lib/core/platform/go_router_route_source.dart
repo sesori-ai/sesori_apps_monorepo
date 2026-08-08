@@ -2,8 +2,8 @@ import "dart:async";
 
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
+import "package:flutter/foundation.dart";
 import "package:injectable/injectable.dart";
-import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
