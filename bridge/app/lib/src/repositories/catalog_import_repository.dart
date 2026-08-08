@@ -16,6 +16,13 @@ import "../bridge/runtime/plugin_runtime.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
 
+/// Backend-owned activity for one session, as reported by the backend itself.
+///
+/// Deliberately separate from the catalog `updatedAt`, which bridge-local
+/// writes such as a rename also move — comparing against that would mark the
+/// history store stale after an ordinary rename and cold-start the backend.
+typedef SessionBackendActivity = ({String sessionId, int activityAt});
+
 class CatalogImportRepository {
   CatalogImportRepository({
     required PluginRuntime runtime,
@@ -38,9 +45,22 @@ class CatalogImportRepository {
   final SessionDao _sessionDao;
   final CatalogHydrationsDao _catalogHydrationsDao;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
+  final StreamController<List<SessionBackendActivity>> _backendActivityController =
+      StreamController<List<SessionBackendActivity>>.broadcast(sync: true);
+
+  /// Backend activity observed by an import, published after the catalog is
+  /// committed. Consumers use it to notice sessions advanced outside Sesori.
+  Stream<List<SessionBackendActivity>> get backendActivity => _backendActivityController.stream;
 
   Set<String> get eligiblePluginIds => _runtime.eligiblePluginIds;
   Set<String> get importEligiblePluginIds => _runtime.startAllowedPluginIds;
+
+  void _publishBackendActivity({required List<SessionBackendActivity> activity}) {
+    if (activity.isEmpty || _backendActivityController.isClosed) return;
+    _backendActivityController.add(List<SessionBackendActivity>.unmodifiable(activity));
+  }
+
+  Future<void> dispose() => _backendActivityController.close();
 
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) {
     return _catalogHydrationsDao.getCompletion(
@@ -411,6 +431,9 @@ class CatalogImportRepository {
         final reservedIds = await _sessionDao.getAllSessionIds();
 
         var sessionRows = <SessionDto>[];
+        // The backend's own view of when each session last changed, used by
+        // the history store to notice sessions advanced outside Sesori.
+        final observedActivity = <SessionBackendActivity>[];
         final finalBindingsByBackendId = <String, ({String sessionId, String projectId})>{};
         var sessionsImported = 0;
         for (final observation in orderedSessions) {
@@ -434,6 +457,12 @@ class CatalogImportRepository {
             importStartedAt: importStartedAt,
           );
           sessionRows.add(row);
+          // Only the backend's reported time counts. Falling back to the
+          // merged `updatedAt` would leak bridge-local writes such as a
+          // rename into what is supposed to be backend-owned activity.
+          if (session.time?.updated case final updatedAt?) {
+            observedActivity.add((sessionId: row.sessionId, activityAt: updatedAt));
+          }
           finalBindingsByBackendId[session.id] = (
             sessionId: row.sessionId,
             projectId: row.projectId,
@@ -461,6 +490,7 @@ class CatalogImportRepository {
           );
         }
         requireCurrentGeneration();
+        _publishBackendActivity(activity: observedActivity);
         return (
           projectsImported: projectRows.length,
           sessionsImported: sessionsImported,

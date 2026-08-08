@@ -532,9 +532,9 @@ class Orchestrator {
       chatHistoryService: chatHistoryService,
     );
     final chatHistoryActivityListener = ChatHistoryActivityListener(
-      source: sessionRepository.backendActivity,
+      source: catalogImportRepository.backendActivity,
       chatHistoryService: chatHistoryService,
-    )..start();
+    );
     final normalizedPluginEvents = sessionEventDispatcher.events.doOnListen(() {
       for (final listener in pluginEventListeners) {
         listener.start();
@@ -906,6 +906,7 @@ class OrchestratorSession {
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
     _viewedProjectPrRefreshListener.start();
+    _chatHistoryActivityListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),

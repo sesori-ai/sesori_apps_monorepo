@@ -65,10 +65,22 @@
   relies on archive permanence. Steps 2/8–5/8 touch none of the archiving
   code, so the two series run in parallel. Recorded after the user started
   `read-only-archiving` separately.
-- **2026-08-07 — Second watermark source wired in step 4/8** as deferred below:
-  `SessionRepository` now publishes a `backendActivity` stream from catalog
-  import, and `ChatHistoryActivityListener` feeds it into the store's
-  staleness marks. Success Criterion 3 is verified here.
+- **2026-08-07 — Second watermark source wired in step 4/8** as deferred
+  below: `CatalogImportRepository` publishes a `backendActivity` stream as it
+  commits an import, and `ChatHistoryActivityListener` feeds it into the
+  store's staleness marks. Success Criterion 3 is verified here.
+- **2026-08-08 — Corrected the activity producer.** The first step-4 draft
+  published from `SessionRepository`'s active-root hydration path, which only
+  runs when an active session has no bridge binding — so for a normally
+  imported catalog nothing was ever published and Criterion 3 was unmet
+  despite being claimed. The producer now lives in the import commit, uses the
+  backend's own reported `updated` time (never the merged `updatedAt`, which a
+  rename moves), and is pinned by a test. Found by architecture review.
+- **2026-08-08 — Harness startup constraints recorded** in `PLAN.md` per user
+  direction: harnesses respond poorly right after starting, so nothing in this
+  feature may fetch on a lifecycle event or batch requests at startup, and
+  "reading history never starts a harness" is now stated as a primary goal in
+  Success Criterion 1 rather than left implicit.
 - **2026-08-07 — Second watermark source deferred to step 4/8.** The plan lists
   two inputs for `backend_activity_at`: live capture and catalog import
   observing newer backend activity. Only capture has a caller until serving

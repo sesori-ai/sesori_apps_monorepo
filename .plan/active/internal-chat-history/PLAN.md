@@ -23,8 +23,12 @@ audit file and purge it from the database.
 
 ## Success Criteria
 
-1. Opening a previously synced session serves messages from the store without
-   starting the plugin backend, for all current backends.
+1. **Reading chat history never starts a harness.** Opening a previously
+   synced session serves messages from the store without starting the plugin
+   backend, for all current backends. This is a primary goal of the feature,
+   not a side effect: history must be readable while every harness is stopped.
+   The only read that may start one is the first-ever backfill of a session,
+   or a re-read after the backend itself advanced (Criterion 3).
 2. A live session's streamed messages and parts are queryable from the store
    immediately after they finalize, matching what a plugin history fetch
    would return (same visibility filtering and 500-rune tool-output bound).
@@ -43,6 +47,31 @@ audit file and purge it from the database.
    file.
 8. The 25 GB-class backend databases are never imported wholesale: backfill
    is lazy, per-session, on first read.
+9. **No work in this feature is triggered by a harness starting.** Nothing
+   here issues a request because a backend came up, and nothing batches
+   requests at startup (see Harness Startup Constraints).
+
+## Harness Startup Constraints (user-stated, 2026-08-08)
+
+Harnesses — OpenCode especially — are slow and unreliable for a period after
+they start. Early requests are sluggish or time out outright, which reads to
+the user as the app being unresponsive. Worse, requests issued during that
+window compete with the harness's own startup work, so a *user-initiated*
+action such as sending a message becomes slower because of background traffic
+we chose to send.
+
+Consequences for this feature, all satisfied by the current design:
+
+- **Never fetch history because a harness started.** Backfill is triggered by
+  a user opening a session, never by a lifecycle event. There is no
+  "warm the cache on startup" pass, and none may be added.
+- **Never batch requests at startup.** Nothing here iterates sessions issuing
+  plugin calls. Startup work (`ChatHistoryReconcileService`) reads only the
+  two local databases and never contacts a harness.
+- **Prefer serving stale-but-honest over waking a harness.** When the store is
+  current, it is served with no plugin call at all.
+- Deferred backends stay deferred: a stopped harness with a synced store is
+  never started to satisfy a read.
 
 ## Why Now (observed problems)
 
