@@ -302,6 +302,39 @@ void main() {
       );
     });
 
+    test("a stale displaced copy never blocks a later write", () async {
+      await export();
+      final canonical = File(
+        "${archiveDirectoryPath(dataDirectory: history.directory.path)}/"
+        "${base64Url.encode(utf8.encode("ses_a"))}.json",
+      );
+      // A crash left a displaced copy behind while the canonical file exists.
+      canonical.copySync("${canonical.path}.previous");
+
+      await history.archivedStorage.write(sessionId: "ses_a", contents: '{"schemaVersion":1}');
+
+      expect(
+        File("${canonical.path}.previous").existsSync(),
+        isFalse,
+        reason: "a stale displaced slot must be cleared, or the next write cannot rename aside",
+      );
+      expect(await history.archivedStorage.read(sessionId: "ses_a"), contains("schemaVersion"));
+    });
+
+    test("deleting a session leaves no displaced copy behind", () async {
+      await export();
+      final canonical = File(
+        "${archiveDirectoryPath(dataDirectory: history.directory.path)}/"
+        "${base64Url.encode(utf8.encode("ses_a"))}.json",
+      );
+      canonical.copySync("${canonical.path}.previous");
+
+      await history.service.purgeSessionHistory(sessionId: "ses_a", includeArchive: true);
+
+      expect(await history.archivedStorage.listArchivedSessionIds(), isEmpty);
+      expect(await history.archivedStorage.exists(sessionId: "ses_a"), isFalse);
+    });
+
     test("deleting a session removes its archive too", () async {
       await export();
 

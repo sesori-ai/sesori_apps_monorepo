@@ -28,6 +28,10 @@ class ArchivedSessionStorage {
     final file = File(_filePath(sessionId: sessionId));
     await Directory(path.dirname(file.path)).create(recursive: true);
     await hardenPath(targetPath: path.dirname(file.path), mode: ownerOnlyDirectoryMode);
+    // Settle any transcript left aside by an interrupted replacement before
+    // touching the canonical path, so the displaced slot is always free and a
+    // later write can never fail because it is occupied.
+    await _settleDisplaced(sessionId: sessionId);
 
     final temporary = File("${file.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp");
     try {
@@ -64,7 +68,7 @@ class ArchivedSessionStorage {
   /// The stored audit file, or null when this session was never archived.
   Future<String?> read({required String sessionId}) async {
     final file = File(_filePath(sessionId: sessionId));
-    if (!file.existsSync()) await _restoreDisplaced(sessionId: sessionId);
+    if (!file.existsSync()) await _settleDisplaced(sessionId: sessionId);
     if (!file.existsSync()) return null;
     try {
       return await file.readAsString();
@@ -79,23 +83,29 @@ class ArchivedSessionStorage {
 
   Future<bool> exists({required String sessionId}) async {
     final file = File(_filePath(sessionId: sessionId));
-    if (!file.existsSync()) await _restoreDisplaced(sessionId: sessionId);
+    if (!file.existsSync()) await _settleDisplaced(sessionId: sessionId);
     return file.existsSync();
   }
 
-  /// Restores a transcript left aside by a crash mid-replacement.
+  /// Clears the displaced slot left by an interrupted replacement.
   ///
   /// The replacement renames the live file aside before moving the new one
-  /// into place; a crash between those two steps leaves only the displaced
-  /// copy, which is still a complete transcript.
-  Future<void> _restoreDisplaced({required String sessionId}) async {
-    final displaced = File("${_filePath(sessionId: sessionId)}$_displacedSuffix");
+  /// into place. A crash between those steps leaves the displaced copy — still
+  /// a complete transcript — so it is restored when the canonical path is
+  /// missing, and discarded when a later write already replaced it.
+  Future<void> _settleDisplaced({required String sessionId}) async {
+    final canonical = _filePath(sessionId: sessionId);
+    final displaced = File("$canonical$_displacedSuffix");
     if (!displaced.existsSync()) return;
     try {
-      await displaced.rename(_filePath(sessionId: sessionId));
+      if (File(canonical).existsSync()) {
+        await displaced.delete();
+        return;
+      }
+      await displaced.rename(canonical);
       Log.w("[archive] restored the audit file for session $sessionId after an interrupted replacement");
     } on FileSystemException catch (error, stackTrace) {
-      Log.w("[archive] failed to restore the displaced audit file for session $sessionId", error, stackTrace);
+      Log.w("[archive] failed to settle the displaced audit file for session $sessionId", error, stackTrace);
     }
   }
 
@@ -116,6 +126,10 @@ class ArchivedSessionStorage {
   Future<void> delete({required String sessionId}) async {
     final file = File(_filePath(sessionId: sessionId));
     if (file.existsSync()) await file.delete();
+    // A deleted session must stay deleted: leaving a displaced copy would let
+    // it reappear through the recovery path and be re-purged on every startup.
+    final displaced = File("${file.path}$_displacedSuffix");
+    if (displaced.existsSync()) await displaced.delete();
   }
 
   /// Every session id that has an audit file, for startup reconciliation.
