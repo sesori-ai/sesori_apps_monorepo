@@ -951,6 +951,41 @@ void main() {
       expect(reportedEvents.single.parameters, {"outcome": "completed"});
     });
 
+    test("an uncertain response still settles an install that finished during the request", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(mutation.future)
+        ..queueLoad(_supported(_response(token: "two")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final command = service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      // The install completes while the response is still in flight, and the
+      // response then comes back uncertain: the terminal event is proof the
+      // bridge ran it, so the row must not stay blocked until a reconnect.
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+      mutation.complete(const PluginManagementMutationResult.uncertain());
+      await command;
+      await _pump();
+
+      expect(service.installProgress.value, isEmpty);
+      expect(reportedEvents.single.parameters, {"outcome": "completed"});
+    });
+
     test("a rejected install command never claims a later install", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "one")))

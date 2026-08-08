@@ -133,37 +133,35 @@ class PluginManagementService with Disposable {
     if (!isInstall) return result;
 
     _installRequestsInFlight.remove(pluginId);
-    if (result is PluginManagementMutationResultSuccess) {
-      // A terminal event that raced the response is reported now that the
-      // command is known to have been accepted. Authorship (and with it the
-      // busy row) otherwise persists until the bridge's terminal event.
-      final pending = _pendingInstallOutcomes.remove(pluginId);
-      if (pending != null && _selfStartedInstalls.remove(pluginId)) {
-        _reportInstallOutcome(phase: pending);
-        // Authorship is gone, so republish to drop the synthetic busy entry
-        // this install no longer needs.
-        _publishInstallProgress(
-          Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId),
-        );
-      }
+
+    // A terminal event that raced the response proves the bridge ran this
+    // install, whatever the response ended up saying, so it settles the
+    // install regardless of the result branch below.
+    final pending = _pendingInstallOutcomes.remove(pluginId);
+    if (pending != null) {
+      if (_selfStartedInstalls.remove(pluginId)) _reportInstallOutcome(phase: pending);
+      _releaseInstallRow(pluginId: pluginId);
       return result;
     }
-    // An uncertain outcome may still have reached the bridge (the relay
-    // documents a lost response as possibly-dispatched), so authorship and the
-    // busy row are kept: the terminal event settles them if the install is
-    // running, and a reconnect clears them otherwise. Re-enabling Install here
-    // could start a second multi-minute download instead.
-    if (result is PluginManagementMutationResultUncertain) return result;
 
-    // A definite rejection: withdraw authorship so a later install of the same
-    // harness, started elsewhere, is not misattributed to this app, and drop
-    // the synthetic busy entry written at tap time so the row is tappable.
-    _selfStartedInstalls.remove(pluginId);
-    _pendingInstallOutcomes.remove(pluginId);
-    _publishInstallProgress(
-      Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId),
-    );
-    return result;
+    switch (result) {
+      // Accepted: authorship and the busy row persist until the bridge's
+      // terminal event. An uncertain outcome may still have reached the bridge
+      // (the relay documents a lost response as possibly-dispatched), so it is
+      // treated the same way — re-enabling Install could start a second
+      // multi-minute download.
+      case PluginManagementMutationResultSuccess() || PluginManagementMutationResultUncertain():
+        return result;
+      // A definite rejection: withdraw authorship so a later install of the
+      // same harness, started elsewhere, is not misattributed to this app, and
+      // drop the synthetic busy entry written at tap time.
+      case PluginManagementMutationResultNotFound() ||
+          PluginManagementMutationResultConflict() ||
+          PluginManagementMutationResultFailure():
+        _selfStartedInstalls.remove(pluginId);
+        _releaseInstallRow(pluginId: pluginId);
+        return result;
+    }
   }
 
   Future<PluginManagementMutationResult> updateIdleTimeout({
@@ -293,6 +291,15 @@ class PluginManagementService with Disposable {
         next[pluginId] = const PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null);
     }
     _publishInstallProgress(next);
+  }
+
+  /// Drops [pluginId]'s progress entry so its Install row is tappable again.
+  /// Only meaningful once authorship has been released, since
+  /// [_publishInstallProgress] re-adds a synthetic entry for tracked installs.
+  void _releaseInstallRow({required String pluginId}) {
+    _publishInstallProgress(
+      Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId),
+    );
   }
 
   /// Publishes [progress] plus a synthetic entry for every install this app
