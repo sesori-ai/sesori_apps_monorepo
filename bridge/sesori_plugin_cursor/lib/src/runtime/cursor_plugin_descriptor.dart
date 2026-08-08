@@ -82,12 +82,12 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   /// [ensureRuntime] from the host's process service.
   final ManagedRuntimeProvisionService? _provisionService;
 
-  /// Minimum Cursor CLI build the bridge supports. Earlier builds (e.g.
+  /// Minimum Cursor CLI build the bridge supports, owned by
+  /// [CursorRuntimeManifest.minPathVersion]. Earlier builds (e.g.
   /// `2026.05.28`) advertise the `acp` model picker and `session/load` but
   /// silently no-op model switching and history replay, so the experience is
-  /// broken in ways the user can't see. Raise this floor only when bridge
-  /// behavior requires a newer Cursor capability.
-  static const String minVersion = "2026.07.16";
+  /// broken in ways the user can't see.
+  static String get minVersion => const CursorRuntimeManifest().minPathVersion.raw;
 
   /// CLI option naming the Cursor CLI binary (path or PATH name). Declared
   /// as the bare local name — the bridge's [PluginCliOptionsMapper] namespaces
@@ -237,7 +237,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
         runInShell: io.Platform.isWindows,
         maxCapturedOutputCharactersPerStream: null,
       ),
-      runtimeId: const CursorRuntimeManifest().runtimeId,
+      manifest: const CursorRuntimeManifest(),
       probeTimeout: _versionProbeTimeout,
     );
   }
@@ -391,17 +391,16 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       return (state: _CursorRuntimeProbeState.unknown, version: null);
     }
 
-    final parsed = _CalVer.tryParse(result.stdout);
-    final minimum = _CalVer.tryParse(minVersion);
-    if (parsed != null && minimum != null && parsed.compareTo(minimum) < 0) {
-      final version = parsed.toString();
-      Log.w("[cursor] Cursor CLI $version is below the supported minimum $minVersion");
-      return (state: _CursorRuntimeProbeState.outdated, version: version);
-    }
+    const manifest = CursorRuntimeManifest();
+    final parsed = manifest.parseVersion(value: result.stdout.trim().split(RegExp(r"\s+")).first);
     if (parsed == null) {
       return (state: _CursorRuntimeProbeState.unrecognized, version: null);
     }
-    final version = parsed.toString();
+    if (parsed.compareTo(manifest.minPathVersion) < 0) {
+      Log.w("[cursor] Cursor CLI ${parsed.raw} is below the supported minimum ${manifest.minPathVersion.raw}");
+      return (state: _CursorRuntimeProbeState.outdated, version: parsed.raw);
+    }
+    final version = parsed.raw;
     Log.d("[cursor] available: '$executablePath --version' -> $version");
     return (state: _CursorRuntimeProbeState.ready, version: version);
   }
@@ -480,38 +479,3 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
 }
 
 enum _CursorRuntimeProbeState { ready, missing, outdated, unknown, unrecognized }
-
-/// A Cursor CLI calendar version (`YYYY.MM.DD`, the leading component of a
-/// build string like `2026.06.15-18-00-12-6f5a2cf`). Parsed once into a typed
-/// [Comparable] rather than comparing version strings ad hoc.
-class _CalVer implements Comparable<_CalVer> {
-  const _CalVer(this.year, this.month, this.day);
-
-  final int year;
-  final int month;
-  final int day;
-
-  /// Parses the leading `YYYY.MM.DD` from a Cursor CLI version/build string,
-  /// or null if it does not start with that shape (caller fails open).
-  static _CalVer? tryParse(String raw) {
-    final match = RegExp(r"^\s*(\d{4})\.(\d{1,2})\.(\d{1,2})").firstMatch(raw);
-    if (match == null) return null;
-    return _CalVer(
-      int.parse(match.group(1)!),
-      int.parse(match.group(2)!),
-      int.parse(match.group(3)!),
-    );
-  }
-
-  @override
-  int compareTo(_CalVer other) {
-    final byYear = year.compareTo(other.year);
-    if (byYear != 0) return byYear;
-    final byMonth = month.compareTo(other.month);
-    if (byMonth != 0) return byMonth;
-    return day.compareTo(other.day);
-  }
-
-  @override
-  String toString() => "$year.${month.toString().padLeft(2, "0")}.${day.toString().padLeft(2, "0")}";
-}

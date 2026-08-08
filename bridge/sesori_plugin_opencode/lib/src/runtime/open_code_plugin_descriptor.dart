@@ -317,10 +317,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       final installService = ManagedRuntimeInstallService(
         manifest: manifest,
         versionValidator: RuntimeVersionValidator(
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-          probeTimeout: _versionProbeTimeout,
-        ),
+        commandExecutor: commandExecutor,
+        manifest: manifest,
+        probeTimeout: _versionProbeTimeout,
+      ),
         installService: RuntimeInstallService(
           downloadClient: BinaryDownloadClient(httpClient: httpClient),
           checksumValidator: ChecksumValidator(),
@@ -361,10 +361,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
     final versionValidator = RuntimeVersionValidator(
-      commandExecutor: executor,
-      runtimeId: manifest.runtimeId,
-      probeTimeout: _versionProbeTimeout,
-    );
+        commandExecutor: executor,
+        manifest: manifest,
+        probeTimeout: _versionProbeTimeout,
+      );
 
     Future<bool> managedRuntimeIsReady() async {
       if (hasExplicitBin) return false;
@@ -492,7 +492,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       manifest: manifest,
       versionValidator: RuntimeVersionValidator(
         commandExecutor: commandExecutor,
-        runtimeId: manifest.runtimeId,
+        manifest: manifest,
         probeTimeout: _versionProbeTimeout,
       ),
       // OpenCode has no desktop app bundling a CLI.

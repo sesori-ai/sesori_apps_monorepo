@@ -31,7 +31,7 @@ class ManagedRuntimeInventory {
     final managedDir = Directory(p.join(stateDirectory, _manifest.runtimeId));
     if (!managedDir.existsSync()) return false;
 
-    final pinned = _manifest.bundledVersion.toString();
+    final pinned = _manifest.bundledVersion.raw;
     try {
       return managedDir.listSync(followLinks: false).any(
         (entity) => entity is Directory && p.basename(entity.path) != pinned,

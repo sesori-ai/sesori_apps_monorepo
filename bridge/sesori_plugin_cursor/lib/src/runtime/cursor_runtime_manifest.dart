@@ -6,9 +6,13 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///
 /// Cursor differs from OpenCode and codex in three ways that shape this file:
 ///
-/// 1. **Calendar versions.** Builds are `YYYY.MM.DD-<hash>` (e.g.
-///    `2026.08.04-aaa8809`), which parses as a semantic version with the build
-///    hash as its prerelease segment, so ordering still works.
+/// 1. **Calendar versions.** Builds are `YYYY.MM.DD-<suffix>` (e.g.
+///    `2026.08.04-aaa8809`, and historically `2026.06.15-18-00-12-6f5a2cf`).
+///    Semver cannot express these: the multi-dash form fails to parse at all,
+///    and a dated build would sort *below* the same day's bare version because
+///    semver treats the suffix as a prerelease. Cursor therefore pins
+///    [CalendarRuntimeVersion], which orders on the date and ignores the
+///    build suffix.
 /// 2. **No published checksums.** Cursor serves the archive straight from
 ///    `downloads.cursor.com` with no digest manifest, so the SHA-256 values
 ///    below are computed by us at pin time (see the `update-backend-runtimes`
@@ -33,15 +37,14 @@ class CursorRuntimeManifest extends RuntimeManifest {
   /// Minimum pre-installed (PATH) Cursor CLI build the bridge uses as-is.
   /// Earlier builds advertise `acp` model switching and `session/load` but
   /// silently no-op them, so the experience breaks invisibly.
-  static final SemanticVersion _minPathVersion = SemanticVersion.parse(value: "2026.07.16");
+  static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.07.16");
 
-  /// The exact Cursor CLI build the managed runtime installs.
-  static final SemanticVersion _bundledVersion = SemanticVersion.parse(value: _bundledBuild);
-
-  /// The build string exactly as Cursor publishes it. [SemanticVersion] drops
-  /// the leading zeros (`2026.08.04` parses to `2026.8.4`), so the download URL
-  /// must use this raw form rather than the parsed version's `toString()`.
-  static const String _bundledBuild = "2026.08.04-aaa8809";
+  /// The exact Cursor CLI build the managed runtime installs, preserved
+  /// verbatim: [CalendarRuntimeVersion] keeps the publisher's string, so the
+  /// download URL and the on-disk version directory both use it unchanged.
+  static final CalendarRuntimeVersion _bundledVersion = CalendarRuntimeVersion.parse(
+    value: "2026.08.04-aaa8809",
+  );
 
   static const String _downloadBaseUrl = "https://downloads.cursor.com/lab";
 
@@ -103,10 +106,13 @@ class CursorRuntimeManifest extends RuntimeManifest {
   String get binaryFileName => _packageBinaryName;
 
   @override
-  SemanticVersion get minPathVersion => _minPathVersion;
+  RuntimeVersion get minPathVersion => _minPathVersion;
 
   @override
-  SemanticVersion get bundledVersion => _bundledVersion;
+  RuntimeVersion get bundledVersion => _bundledVersion;
+
+  @override
+  RuntimeVersion? parseVersion({required String value}) => CalendarRuntimeVersion.tryParse(value: value);
 
   @override
   RuntimeAsset? assetFor({required PlatformTarget target}) {
@@ -115,6 +121,6 @@ class CursorRuntimeManifest extends RuntimeManifest {
 
   @override
   String downloadUrlFor({required RuntimeAsset asset}) {
-    return "$_downloadBaseUrl/$_bundledBuild/${asset.assetName}";
+    return "$_downloadBaseUrl/${bundledVersion.raw}/${asset.assetName}";
   }
 }

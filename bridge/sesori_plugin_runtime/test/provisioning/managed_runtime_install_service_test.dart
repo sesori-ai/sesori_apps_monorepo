@@ -16,6 +16,7 @@ class _StubManifest implements RuntimeManifest {
     format: ArchiveFormat.zip,
     sha256: "abc123",
     archiveBinaryName: "opencode",
+    layout: RuntimeAssetLayout.singleBinary,
   );
 
   @override
@@ -34,10 +35,13 @@ class _StubManifest implements RuntimeManifest {
   String get binaryFileName => "opencode";
 
   @override
-  SemanticVersion get minPathVersion => SemanticVersion.parse(value: "1.0.0");
+  RuntimeVersion get minPathVersion => SemanticRuntimeVersion.parse(value: "1.0.0");
 
   @override
-  SemanticVersion get bundledVersion => SemanticVersion.parse(value: "1.17.9");
+  RuntimeVersion get bundledVersion => SemanticRuntimeVersion.parse(value: "1.17.9");
+
+  @override
+  RuntimeVersion? parseVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
 
   @override
   RuntimeAsset? assetFor({required PlatformTarget target}) => hasAsset ? _asset : null;
@@ -54,11 +58,11 @@ class _StubManifest implements RuntimeManifest {
 class _FakeValidator implements RuntimeVersionValidator {
   _FakeValidator({required this.managedVersion});
 
-  final SemanticVersion? managedVersion;
+  final RuntimeVersion? managedVersion;
   final List<String> detectedExecutables = [];
 
   @override
-  Future<SemanticVersion?> detectVersion({
+  Future<RuntimeVersion?> detectVersion({
     required String executable,
     required Map<String, String>? environment,
   }) async {
@@ -67,7 +71,7 @@ class _FakeValidator implements RuntimeVersionValidator {
   }
 
   @override
-  SemanticVersion? parseVersionOutput({required String output}) => SemanticVersion.tryParse(value: output);
+  RuntimeVersion? parseVersionOutput({required String output}) => SemanticRuntimeVersion.tryParse(value: output);
 }
 
 class _FakeDownloadClient implements BinaryDownloadClient {
@@ -136,7 +140,7 @@ void main() {
   ManagedRuntimeInstallService build({
     bool hasAsset = true,
     bool checksumValid = true,
-    SemanticVersion? managedVersion,
+    RuntimeVersion? managedVersion,
   }) {
     return ManagedRuntimeInstallService(
       manifest: _StubManifest(hasAsset: hasAsset),
@@ -158,7 +162,7 @@ void main() {
   }
 
   test("installs, probes the placed binary, and ends ready", () async {
-    final events = await install(build(managedVersion: SemanticVersion.parse(value: "1.17.9")));
+    final events = await install(build(managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9")));
 
     final binaryPath = p.join(stateDir.path, "opencode", "1.17.9", "opencode");
     expect(events.first, isA<ProvisionResolving>());
@@ -194,7 +198,7 @@ void main() {
   test("sweeps superseded managed versions after a healthy install", () async {
     final staleDir = Directory(p.join(stateDir.path, "opencode", "1.0.0"))..createSync(recursive: true);
 
-    await install(build(managedVersion: SemanticVersion.parse(value: "1.17.9")));
+    await install(build(managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9")));
 
     expect(staleDir.existsSync(), isFalse);
     expect(Directory(p.join(stateDir.path, "opencode", "1.17.9")).existsSync(), isTrue);
@@ -202,7 +206,7 @@ void main() {
 
   test("sweeps before the terminal event so an unsubscribing consumer cannot skip cleanup", () async {
     final staleDir = Directory(p.join(stateDir.path, "opencode", "1.0.0"))..createSync(recursive: true);
-    final flow = build(managedVersion: SemanticVersion.parse(value: "1.17.9"));
+    final flow = build(managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"));
 
     // Mirrors the lifecycle service, which stops listening at the terminal
     // event so the phone is not held up by post-install housekeeping.

@@ -79,6 +79,7 @@ const _asset = RuntimeAsset(
   format: ArchiveFormat.zip,
   sha256: "abc123",
   archiveBinaryName: "opencode",
+  layout: RuntimeAssetLayout.singleBinary,
 );
 
 void main() {

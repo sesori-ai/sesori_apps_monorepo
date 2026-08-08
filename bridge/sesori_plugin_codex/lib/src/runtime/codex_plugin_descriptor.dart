@@ -248,10 +248,10 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       final installService = ManagedRuntimeInstallService(
         manifest: manifest,
         versionValidator: RuntimeVersionValidator(
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-          probeTimeout: _versionProbeTimeout,
-        ),
+        commandExecutor: commandExecutor,
+        manifest: manifest,
+        probeTimeout: _versionProbeTimeout,
+      ),
         installService: RuntimeInstallService(
           downloadClient: BinaryDownloadClient(httpClient: httpClient),
           checksumValidator: ChecksumValidator(),
@@ -288,10 +288,10 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
     final versionValidator = RuntimeVersionValidator(
-      commandExecutor: executor,
-      runtimeId: manifest.runtimeId,
-      probeTimeout: _versionProbeTimeout,
-    );
+        commandExecutor: executor,
+        manifest: manifest,
+        probeTimeout: _versionProbeTimeout,
+      );
 
     /// What to tell the user when no usable runtime was found and Sesori can
     /// install one: a superseded managed install needs updating, anything else
@@ -480,7 +480,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       manifest: manifest,
       versionValidator: RuntimeVersionValidator(
         commandExecutor: commandExecutor,
-        runtimeId: manifest.runtimeId,
+        manifest: manifest,
         probeTimeout: _versionProbeTimeout,
       ),
       fallbackExecutableCandidates: _resolveDesktopAppCliCandidates(environment: host.environment),

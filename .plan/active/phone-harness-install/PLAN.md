@@ -181,12 +181,20 @@ single binary), darwin/linux × x64/arm64 only, and **no published checksums**.
   checksums computed by us at pin time; extend the `update-backend-runtimes`
   skill with the Cursor digest workflow. A silently re-published asset then
   fails checksum verification with a clear message — accepted behavior (fail
-  closed). Contract note: `RuntimeManifest` types its versions as
-  `SemanticVersion`, which cannot express Cursor's CalVer-plus-hash build
-  (`2026.08.04-aaa8809`). Resolve by generalizing the manifest's version
-  contract to an opaque comparable pin (updating OpenCode/Codex in lockstep —
-  internal interface, no shims) rather than a Cursor-side fork; the version
-  string doubles as the version-directory name, which any opaque pin supports.
+  closed). Contract note: `RuntimeManifest` typed its versions as
+  `SemanticVersion`, which cannot express Cursor's builds. Resolved by
+  generalizing the manifest's version contract to a sealed `RuntimeVersion`
+  (`SemanticRuntimeVersion` for OpenCode/Codex, `CalendarRuntimeVersion` for
+  Cursor), updating OpenCode/Codex in lockstep — internal interface, no shims.
+  The pin preserves the publisher's exact string, which doubles as the
+  version-directory name and the download URL segment.
+
+  Verified empirically why semver cannot serve Cursor: `2026.06.15-18-00-12-6f5a2cf`
+  fails semver parsing entirely (a healthy CLI would read as absent, and the
+  post-install probe would reject a correctly installed runtime), and
+  `2026.07.16-899851b` sorts *below* the `2026.07.16` floor because semver
+  treats the build suffix as a prerelease. `CalendarRuntimeVersion` orders on
+  the date and ignores the suffix.
 - Extend the runtime install machinery with a package-directory layout (place
   the whole extracted tree into the version dir, mark the entry binary
   executable) alongside the existing single-binary layout, selected by the
@@ -315,12 +323,25 @@ of this plan.
   the shared seam with a generalized opaque version pin and declared
   dependency.
 
+- Architecture implementation review (step 5): rejected with three findings —
+  the approved version-pin generalization had been skipped in favour of a
+  Cursor-side raw-string fork (leaving two incompatible version authorities),
+  `RuntimeAsset.layout` added as an optional defaulted parameter on an internal
+  contract, and `RuntimeAsset`'s doc comment absorbed into the new enum's. All
+  three applied: sealed `RuntimeVersion` with lockstep OpenCode/Codex updates
+  and `CursorPluginDescriptor.minVersion`/`_CalVer` retired in favour of the
+  manifest, `layout` made required and declared explicitly on every asset, docs
+  restored. The skipped generalization was a genuine implementation error —
+  the earlier decision to skip it rested on testing only one Cursor build
+  string.
+
 ## Cleanup Assessment
 
 - `RuntimeInstallService` and `ManagedRuntimeCleaner` regain production
   callers (they are currently test-only); no code moves needed.
 - Cursor's `targetVersion` constant is superseded by the manifest pin and is
-  removed in step 5.
+  removed in step 5, along with its private `_CalVer` comparator (replaced by
+  the shared `CalendarRuntimeVersion`).
 - `installDocsUrl` manual-install hints in `ProvisionFailed` messages remain
   valid for headless/CLI users; no removal.
 - No other obsolete calculations, fields, transport members, or jobs found.

@@ -10,8 +10,10 @@ void main() {
     expect(manifest.runtimeId, "cursor");
     expect(manifest.pathExecutableName, "cursor-agent");
     expect(manifest.binaryFileName, "cursor-agent");
-    expect(manifest.bundledVersion.toString(), "2026.8.4-aaa8809");
-    expect(manifest.minPathVersion.toString(), "2026.7.16");
+    // The publisher's exact strings survive: a normalized 2026.8.4 would 404
+    // the download and mis-name the on-disk version directory.
+    expect(manifest.bundledVersion.raw, "2026.08.04-aaa8809");
+    expect(manifest.minPathVersion.raw, "2026.07.16");
   });
 
   test("publishes darwin and linux packages but not windows", () {
@@ -49,8 +51,6 @@ void main() {
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
     )!;
 
-    // SemanticVersion drops the leading zeros (2026.08.04 -> 2026.8.4), which
-    // would 404; the URL must carry Cursor's exact build string.
     expect(
       manifest.downloadUrlFor(asset: asset),
       "https://downloads.cursor.com/lab/2026.08.04-aaa8809/darwin/arm64/agent-cli-package.tar.gz",
@@ -61,7 +61,7 @@ void main() {
   test("managed binaries live under a version-scoped directory", () {
     expect(
       manifest.managedBinaryPath(stateDirectory: "/state"),
-      "/state/cursor/2026.8.4-aaa8809/cursor-agent",
+      "/state/cursor/2026.08.04-aaa8809/cursor-agent",
     );
   });
 }

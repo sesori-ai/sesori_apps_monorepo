@@ -24,10 +24,13 @@ class _StubManifest extends RuntimeManifest {
   String get binaryFileName => "opencode";
 
   @override
-  SemanticVersion get minPathVersion => SemanticVersion.parse(value: "1.0.0");
+  RuntimeVersion get minPathVersion => SemanticRuntimeVersion.parse(value: "1.0.0");
 
   @override
-  SemanticVersion get bundledVersion => SemanticVersion.parse(value: "1.17.9");
+  RuntimeVersion get bundledVersion => SemanticRuntimeVersion.parse(value: "1.17.9");
+
+  @override
+  RuntimeVersion? parseVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
 
   @override
   RuntimeAsset? assetFor({required PlatformTarget target}) => null;

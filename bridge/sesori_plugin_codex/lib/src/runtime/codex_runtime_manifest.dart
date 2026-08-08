@@ -26,10 +26,10 @@ class CodexRuntimeManifest extends RuntimeManifest {
   const CodexRuntimeManifest();
 
   /// Minimum pre-installed codex version the bridge will use as-is.
-  static final SemanticVersion _minPathVersion = SemanticVersion.parse(value: "0.139.0");
+  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.139.0");
 
   /// The exact codex version the managed runtime installs.
-  static final SemanticVersion _bundledVersion = SemanticVersion.parse(value: "0.146.0");
+  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: "0.146.0");
 
   static const String _releaseBaseUrl = "https://github.com/openai/codex/releases/download";
 
@@ -45,12 +45,14 @@ class CodexRuntimeManifest extends RuntimeManifest {
         format: ArchiveFormat.tarGz,
         sha256: "2750132d300e64f1dbffb95e3d913fd9c9dc7812bc8e1bce5c61357248b7929e",
         archiveBinaryName: "codex-aarch64-apple-darwin",
+        layout: RuntimeAssetLayout.singleBinary,
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "codex-x86_64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "710d727b0fa2b4ab2189eb1bdc5ab40177c168296af264913eb7ab3ce848d04b",
         archiveBinaryName: "codex-x86_64-apple-darwin",
+        layout: RuntimeAssetLayout.singleBinary,
       ),
     },
     PlatformOs.linux: {
@@ -59,12 +61,14 @@ class CodexRuntimeManifest extends RuntimeManifest {
         format: ArchiveFormat.tarGz,
         sha256: "975bac91562abeedeb8f79636d51a86649b31f34a9de6a3bcb059565b6cf1f87",
         archiveBinaryName: "codex-aarch64-unknown-linux-musl",
+        layout: RuntimeAssetLayout.singleBinary,
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "codex-x86_64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "5ba3b9405543953081f661d0854d266f76e2abbe51d41349355a36de7673776a",
         archiveBinaryName: "codex-x86_64-unknown-linux-musl",
+        layout: RuntimeAssetLayout.singleBinary,
       ),
     },
     PlatformOs.windows: {
@@ -73,12 +77,14 @@ class CodexRuntimeManifest extends RuntimeManifest {
         format: ArchiveFormat.zip,
         sha256: "5219938c0138580611735d8c2a79b100be0929083f779a8f375aadf192175b33",
         archiveBinaryName: "codex-aarch64-pc-windows-msvc.exe",
+        layout: RuntimeAssetLayout.singleBinary,
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "codex-x86_64-pc-windows-msvc.exe.zip",
         format: ArchiveFormat.zip,
         sha256: "4781b618fa3a16d91c892f8a1e2c82625f9286f9bb944a5690ba727c84fc5729",
         archiveBinaryName: "codex-x86_64-pc-windows-msvc.exe",
+        layout: RuntimeAssetLayout.singleBinary,
       ),
     },
   };
@@ -99,10 +105,13 @@ class CodexRuntimeManifest extends RuntimeManifest {
   String get binaryFileName => Platform.isWindows ? "codex.exe" : "codex";
 
   @override
-  SemanticVersion get minPathVersion => _minPathVersion;
+  RuntimeVersion get minPathVersion => _minPathVersion;
 
   @override
-  SemanticVersion get bundledVersion => _bundledVersion;
+  RuntimeVersion get bundledVersion => _bundledVersion;
+
+  @override
+  RuntimeVersion? parseVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
 
   @override
   RuntimeAsset? assetFor({required PlatformTarget target}) {
