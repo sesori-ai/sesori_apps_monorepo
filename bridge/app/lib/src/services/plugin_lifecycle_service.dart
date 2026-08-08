@@ -275,6 +275,7 @@ class PluginLifecycleService {
         PluginLifecycleDisableRequest() ||
         PluginLifecycleRestartRequest() => PluginControlCapability.lifecycle,
         PluginLifecycleRefreshRequest() => PluginControlCapability.setupRefresh,
+        PluginLifecycleInstallRequest() => PluginControlCapability.install,
       },
     );
     final active = _activePluginCommands[pluginId];
@@ -377,6 +378,10 @@ class PluginLifecycleService {
           await _restart(pluginId: pluginId, mode: mode, command: command);
         case PluginLifecycleRefreshRequest():
           await _refresh(pluginId: pluginId, command: command);
+        case PluginLifecycleInstallRequest():
+          // The install execution path lands in the next series step; no
+          // released app sends this command before then.
+          throw const PluginManagementCommandFailedException("plugin install is not supported by this bridge yet");
       }
     } on Object catch (error, stackTrace) {
       failure = error;
@@ -755,6 +760,7 @@ class PluginLifecycleService {
         PluginControlCapability.lifecycle => PluginManagementCapability.lifecycle,
         PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
         PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
+        PluginControlCapability.install => PluginManagementCapability.install,
       };
 
   Set<String> _pluginIdsSupporting({required PluginControlCapability capability}) {

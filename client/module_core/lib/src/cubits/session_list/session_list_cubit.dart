@@ -121,6 +121,7 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
             SesoriPluginManagementChanged() ||
+            SesoriPluginInstallProgress() ||
             SesoriCommandCatalogUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||

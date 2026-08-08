@@ -18,6 +18,33 @@ void main() {
       expect(const CodexPluginDescriptor().supportsPromptAttachments, isTrue);
     });
 
+    test("advertises install without an explicit binary override", () {
+      // Every CI/dev platform this test runs on has a published codex release
+      // asset, so the managed install capability is advertised.
+      expect(
+        descriptor.managementCapabilities(config: config),
+        const {
+          PluginControlCapability.lifecycle,
+          PluginControlCapability.setupRefresh,
+          PluginControlCapability.idleTimeout,
+          PluginControlCapability.install,
+        },
+      );
+    });
+
+    test("does not advertise install with an explicit binary override", () {
+      expect(
+        descriptor.managementCapabilities(
+          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
+        ),
+        const {
+          PluginControlCapability.lifecycle,
+          PluginControlCapability.setupRefresh,
+          PluginControlCapability.idleTimeout,
+        },
+      );
+    });
+
     test("reports ready after version and read-only authentication probes", () async {
       final processes = _ProbeProcessService(
         processSequence: [

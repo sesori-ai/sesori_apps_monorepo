@@ -42,9 +42,13 @@ enum PluginRuntimeState {
 
 enum PluginManagementWorkState { idle, busy, unknown }
 
-enum PluginManagementCapability { lifecycle, setupRefresh, idleTimeout, unknown }
+enum PluginManagementCapability { lifecycle, setupRefresh, idleTimeout, install, unknown }
 
 enum PluginStopMode { safe, force }
+
+/// Phase of a phone-triggered managed runtime install, streamed via the
+/// `plugin.install.progress` SSE event. `completed` and `failed` are terminal.
+enum PluginInstallPhase { downloading, verifying, extracting, finalizing, completed, failed, unknown }
 
 enum PluginLifecycleConflictReason { inFlight, busy, workStateUnknown, transitioning, notEnabled, unsupported, unknown }
 
@@ -100,6 +104,14 @@ sealed class PluginLifecycleCommandRequest with _$PluginLifecycleCommandRequest 
 
   @FreezedUnionValue("refresh")
   const factory PluginLifecycleCommandRequest.refresh() = PluginLifecycleRefreshRequest;
+
+  /// Installs the plugin's pinned managed runtime, then enables, re-inspects,
+  /// and starts the plugin when ready. Accepted immediately; progress streams
+  /// via `plugin.install.progress` SSE and the terminal outcome invalidates
+  /// the management snapshot. Only valid for plugins advertising
+  /// [PluginManagementCapability.install].
+  @FreezedUnionValue("install")
+  const factory PluginLifecycleCommandRequest.install() = PluginLifecycleInstallRequest;
 
   factory PluginLifecycleCommandRequest.fromJson(Map<String, dynamic> json) =>
       _$PluginLifecycleCommandRequestFromJson(json);

@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io" as io;
 import "dart:math";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -204,6 +205,71 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
 
   @override
   List<PluginOption> get options => cliOptions;
+
+  @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
+    return {
+      ...super.managementCapabilities(config: config),
+      if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+    };
+  }
+
+  /// Whether the pinned managed codex runtime can be installed on request: no
+  /// explicit `--codex-bin` override (that binary is authoritative) and a
+  /// published release asset for this platform.
+  bool _supportsManagedInstall({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return false;
+    final PlatformTarget target;
+    try {
+      target = PlatformTarget.current();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] platform detection failed; managed install unavailable", error, stackTrace);
+      return false;
+    }
+    return const CodexRuntimeManifest().assetFor(target: target) != null;
+  }
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) async* {
+    const manifest = CodexRuntimeManifest();
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: null,
+    );
+    final httpClient = http.Client();
+    try {
+      final flow = ManagedRuntimeInstallFlow(
+        manifest: manifest,
+        versionValidator: RuntimeVersionValidator(
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+          probeTimeout: _versionProbeTimeout,
+        ),
+        installService: RuntimeInstallService(
+          downloadClient: BinaryDownloadClient(httpClient: httpClient),
+          checksumValidator: ChecksumValidator(),
+          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+        ),
+        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+      );
+      yield* flow.install(
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+      );
+    } finally {
+      httpClient.close();
+    }
+  }
 
   @override
   Future<PluginSetupStatus> inspectSetup({
