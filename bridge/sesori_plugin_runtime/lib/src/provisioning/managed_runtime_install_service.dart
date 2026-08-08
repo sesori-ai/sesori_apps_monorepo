@@ -22,7 +22,8 @@ import "runtime_version_validator.dart";
 /// (which only resolves already-present runtimes): it selects the platform
 /// asset, reuses a healthy existing install, otherwise downloads, verifies,
 /// extracts, and places the binary via [RuntimeInstallService], probes the
-/// result actually runs, and finally sweeps superseded managed versions.
+/// result actually runs, and sweeps superseded managed versions before
+/// reporting the terminal event (a consumer may unsubscribe on that event).
 ///
 /// Terminal events are [ProvisionReady] (the installed binary path) or
 /// [ProvisionFailed] with a sanitized user-facing message. An abort surfaces
@@ -91,8 +92,11 @@ class ManagedRuntimeInstallService {
       _throwIfAborted(startAborted: startAborted);
       if (cachedVersion != null && cachedVersion.compareTo(bundled) == 0) {
         Log.i("[$id] managed $name $bundled already installed");
-        yield ProvisionReady(binaryPath: binaryPath);
+        // Sweep before the terminal event: consumers may stop listening as
+        // soon as ProvisionReady arrives, which would cancel this stream and
+        // leave superseded version directories behind.
         await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.toString());
+        yield ProvisionReady(binaryPath: binaryPath);
         return;
       }
       Log.w(
@@ -144,8 +148,10 @@ class ManagedRuntimeInstallService {
     }
 
     Log.i("[$id] installed managed $name $bundled");
-    yield ProvisionReady(binaryPath: binaryPath);
+    // Sweep before the terminal event: consumers may stop listening as soon as
+    // ProvisionReady arrives, which would cancel this stream mid-sweep.
     await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.toString());
+    yield ProvisionReady(binaryPath: binaryPath);
   }
 
   void _throwIfAborted({required StartAbortSignal startAborted}) {

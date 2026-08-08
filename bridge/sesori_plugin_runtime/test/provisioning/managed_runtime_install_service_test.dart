@@ -199,4 +199,17 @@ void main() {
     expect(staleDir.existsSync(), isFalse);
     expect(Directory(p.join(stateDir.path, "opencode", "1.17.9")).existsSync(), isTrue);
   });
+
+  test("sweeps before the terminal event so an unsubscribing consumer cannot skip cleanup", () async {
+    final staleDir = Directory(p.join(stateDir.path, "opencode", "1.0.0"))..createSync(recursive: true);
+    final flow = build(managedVersion: SemanticVersion.parse(value: "1.17.9"));
+
+    // Mirrors the lifecycle service, which stops listening at the terminal
+    // event so the phone is not held up by post-install housekeeping.
+    await flow
+        .install(environment: const {}, stateDirectory: stateDir.path, startAborted: StartAbortSignal.never)
+        .firstWhere((event) => event is ProvisionReady || event is ProvisionFailed);
+
+    expect(staleDir.existsSync(), isFalse);
+  });
 }
