@@ -841,6 +841,82 @@ void main() {
       expect(service.installProgress.value, isEmpty);
     });
 
+    test("the row stays busy from acceptance until the first progress event", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(_success(_response(token: "one")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      await _pump();
+
+      // Accepted, but the bridge has not reported a phase yet: the harness must
+      // still read as installing so the row cannot be tapped again.
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
+      await _pump();
+      expect(
+        service.installProgress.value["codex"],
+        const PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 5),
+      );
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+      expect(service.installProgress.value, isEmpty);
+    });
+
+    test("a reconnect during an unresolved install command leaves no busy row", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(mutation.future)
+        ..queueLoad(_supported(_response(token: "two")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final command = service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      await _pump();
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      connection.emitStatus(const ConnectionStatus.disconnected());
+      await _pump();
+      expect(service.installProgress.value, isEmpty);
+
+      // The orphaned command resolving later must not resurrect the row.
+      mutation.complete(_success(_response(token: "one")));
+      await command;
+      await _pump();
+
+      expect(service.installProgress.value, isEmpty);
+      expect(reportedEvents, isEmpty);
+    });
+
     test("a rejected install command never claims a later install", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "one")))

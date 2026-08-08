@@ -98,9 +98,8 @@ class PluginManagementService with Disposable {
   /// here until acceptance is known rather than dropped.
   final Map<String, PluginInstallPhase> _pendingInstallOutcomes = {};
 
-  /// Plugin ids with an install command awaiting its response. The row stays
-  /// busy through this window, which closes only on the first progress event
-  /// or a rejection.
+  /// Plugin ids with an install command still awaiting its response, used only
+  /// to decide whether a terminal event must be held until acceptance is known.
   final Set<String> _installRequestsInFlight = {};
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
@@ -134,27 +133,27 @@ class PluginManagementService with Disposable {
     if (!isInstall) return result;
 
     _installRequestsInFlight.remove(pluginId);
-    // A terminal event that arrived during the request removed the real entry;
-    // drop the synthetic in-flight one with it so the row does not stay busy.
-    final settledDuringRequest = _pendingInstallOutcomes.containsKey(pluginId);
-    _publishInstallProgress(
-      settledDuringRequest
-          ? (Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId))
-          : _installProgress.value,
-    );
     if (result is PluginManagementMutationResultSuccess) {
       // A terminal event that raced the response is reported now that the
-      // command is known to have been accepted.
+      // command is known to have been accepted. Authorship (and with it the
+      // busy row) otherwise persists until the bridge's terminal event.
       final pending = _pendingInstallOutcomes.remove(pluginId);
       if (pending != null && _selfStartedInstalls.remove(pluginId)) {
         _reportInstallOutcome(phase: pending);
+        // Authorship is gone, so republish to drop the synthetic busy entry
+        // this install no longer needs.
+        _publishInstallProgress(
+          Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId),
+        );
       }
       return result;
     }
     // The bridge never accepted it: withdraw authorship so a later install of
-    // the same harness, started elsewhere, is not misattributed to this app.
+    // the same harness, started elsewhere, is not misattributed to this app,
+    // and release the busy row.
     _selfStartedInstalls.remove(pluginId);
     _pendingInstallOutcomes.remove(pluginId);
+    _publishInstallProgress(_installProgress.value);
     return result;
   }
 
@@ -263,7 +262,7 @@ class PluginManagementService with Disposable {
         // The terminal outcome is carried by the refreshed snapshot (and, on
         // failure, the harness' unchanged setup state), so the transient
         // progress entry is dropped here.
-        final wasTracked = next.remove(pluginId) != null;
+        next.remove(pluginId);
         // The bridge's terminal event is the authoritative outcome, so report
         // it here rather than at the tap — but only for an install this app
         // started, since every connected surface sees the same event. While
@@ -274,7 +273,6 @@ class PluginManagementService with Disposable {
         } else if (_selfStartedInstalls.remove(pluginId)) {
           _reportInstallOutcome(phase: phase);
         }
-        if (!wasTracked) return;
       case PluginInstallPhase.downloading ||
           PluginInstallPhase.verifying ||
           PluginInstallPhase.extracting ||
@@ -288,13 +286,14 @@ class PluginManagementService with Disposable {
     _publishInstallProgress(next);
   }
 
-  /// Publishes [progress] plus a synthetic entry for every install this app has
-  /// requested but not yet seen reported, so the row stays busy in the window
-  /// between the tap and the bridge's first progress event.
+  /// Publishes [progress] plus a synthetic entry for every install this app
+  /// started that the bridge has not reported on yet, so the row stays busy for
+  /// the whole window between the tap and the first progress event — which
+  /// spans the command's own round trip and the gap after it.
   void _publishInstallProgress(Map<String, PluginInstallProgress> progress) {
     if (_disposed || _installProgress.isClosed) return;
     final next = Map<String, PluginInstallProgress>.from(progress);
-    for (final pluginId in _installRequestsInFlight) {
+    for (final pluginId in _selfStartedInstalls) {
       next.putIfAbsent(
         pluginId,
         () => const PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
@@ -329,9 +328,12 @@ class PluginManagementService with Disposable {
 
   void _clearInstallProgress() {
     // A new connection or bridge identity makes any pending outcome
-    // unattributable, so authorship is forgotten with the progress itself.
+    // unattributable, so authorship is forgotten with the progress itself. The
+    // in-flight set goes too, otherwise a command still awaiting its response
+    // would resurrect a busy row on the fresh connection.
     _selfStartedInstalls.clear();
     _pendingInstallOutcomes.clear();
+    _installRequestsInFlight.clear();
     if (_disposed || _installProgress.isClosed || _installProgress.value.isEmpty) return;
     _installProgress.add(const {});
   }
