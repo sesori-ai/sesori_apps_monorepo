@@ -141,7 +141,8 @@ Consequences for this feature, all satisfied by the current design:
   the separate `session-refresh-reconnects` assessment).
 - Trimming what non-message data the session snapshot sends. Serving history
   without starting a harness does not by itself make session open harness-free,
-  because the same snapshot still issues plugin-starting calls (see step 8/8,
+  because the same snapshot still issues plugin-starting calls (see steps 8/9
+  and 9/9,
   which aligns on the follow-up rather than implementing it here).
 - Compression of archive files, retention windows for active-session
   history, content-hash dedup across sessions.
@@ -529,9 +530,10 @@ expected and recorded here as unavoidable.
 | 8/9 | `⚙️ [internal-chat-history] Stop waking a harness for pending questions and permissions [step 8/9]` | 300–600 | Move `getPendingQuestions`/`getPendingPermissions` to `useIfActive`, so a stopped backend reports none instead of being started. See below. |
 | 9/9 | `🌱 [internal-chat-history] Retire plan and scope the remaining harness-free work [step 9/9]` | 150–400 | Move plan to `.plan/completed/`, and record the follow-up assessment for the plugin-starting calls that remain after step 8/9 (below). |
 
-Steps 1/8 through 6/8 merged under a nine-step total of eight; the series was
-extended to nine on 2026-08-08 (see step 8/9). Their merged titles are left as
-they were — Git history is not rewritten — and every later step uses `/9`.
+This began as an eight-step series and was extended to nine on 2026-08-08
+(see step 8/9). Steps 1 through 6 merged before that, so their titles still
+read `[step N/8]`; Git history is not rewritten. Every step from 7 onward
+uses `/9`.
 
 Steps merge in numeric order; each PR is independently valid at its base.
 Bridge serving (4) precedes the wire change (5); archived reads (6) reuse the
@@ -583,7 +585,7 @@ Scope limits, deliberately:
 
 Serving history from the store removes one plugin call from session open, but
 the snapshot still wakes an idle backend through other calls, so the user does
-not perceive the win. Step 8/8 retires this plan **and** produces an aligned,
+not perceive the win. Step 9/9 retires this plan **and** produces an aligned,
 code-informed assessment of what it would take to open a session with every
 harness stopped. Deliverable is a written proposal — a follow-up plan — not an
 implementation, so this series stays scoped.

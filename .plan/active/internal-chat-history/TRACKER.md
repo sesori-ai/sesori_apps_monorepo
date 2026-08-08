@@ -43,7 +43,6 @@
   tests in step 5.
 
 ## Verification Log
-
 - **2026-08-07 — step 2/8:** `dart analyze --fatal-infos` clean in `bridge/app`;
   `dart test` in `bridge/app` green (2,440 tests), including the new
   `chat_history_purge_test.dart`.
@@ -51,12 +50,12 @@
   `dart test` in `bridge/app` green (2,460 tests), including the new
   `chat_history_capture_test.dart`.
 - **2026-08-08 — step 4/8:** analyzer clean; `bridge/app` green (2,475 tests).
-- **2026-08-08 — step 6/8:** analyzer clean; `bridge/app` green (2,516 tests).
-- **2026-08-08 — step 7/9:** analyzer clean in `client/module_core` and
-  `client/app`; `module_core` 1,029 tests, `client/app` 922.
 - **2026-08-08 — step 5/8:** analyzer clean in `bridge/app`, `sesori_shared`,
   `client/module_core`, and `client/app`; `bridge/app` 2,493 tests,
   `sesori_shared` 364, `client/module_core` 1,006, `client/app` 915.
+- **2026-08-08 — step 6/8:** analyzer clean; `bridge/app` green (2,516 tests).
+- **2026-08-08 — step 7/9:** analyzer clean in `client/module_core` and
+  `client/app`; `module_core` 1,029 tests, `client/app` 922.
 
 ## Findings And Plan Deltas
 - **2026-08-06 — Plan revised after comparison with PR #764** (parallel

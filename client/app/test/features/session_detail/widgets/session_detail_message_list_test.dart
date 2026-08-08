@@ -63,6 +63,7 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
       home: Scaffold(
         body: SessionDetailMessageList(
           projectId: null,
+          onLoadOlderMessages: null,
           messages: _messages,
           streamingText: _streamingText,
           children: const <Session>[],

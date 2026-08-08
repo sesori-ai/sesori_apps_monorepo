@@ -89,7 +89,7 @@ class SessionDetailMessageList extends StatefulWidget {
     required this.streamingText,
     required this.children,
     required this.childStatuses,
-    this.onLoadOlderMessages,
+    required this.onLoadOlderMessages,
     this.retryErrorMessage,
     this.bottomInset = 0,
     this.topInset = 0,

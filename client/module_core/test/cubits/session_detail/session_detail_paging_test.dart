@@ -161,6 +161,28 @@ void main() {
       expect(state.messages.map((message) => message.info.id), const ["m4", "m5", "m6"]);
     });
 
+    test("a page that lands after a refresh is dropped, not spliced in", () async {
+      // The refresh replaces the transcript and resets the cursor, so this
+      // page describes history that no longer joins onto what is shown.
+      final pageCompleter = Completer<SessionMessagePage?>();
+      when(
+        () => loadService.loadOlderMessages(sessionId: _sessionId, before: 5),
+      ).thenAnswer((_) => pageCompleter.future);
+
+      final loading = cubit.loadOlderMessages();
+      await cubit.reload();
+      pageCompleter.complete((messages: [_message(id: "m4")], olderMessagesCursor: 4));
+      await loading;
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(
+        state.messages.map((message) => message.info.id),
+        const ["m5", "m6"],
+        reason: "splicing a stale page onto a refreshed transcript would leave a gap",
+      );
+      expect(state.olderMessagesCursor, 5, reason: "the refreshed cursor must survive");
+    });
+
     test("a reload returns to the newest page and drops paged-back history", () async {
       when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
         (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: 4),
@@ -183,7 +205,12 @@ void main() {
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
   if (cubit.state is SessionDetailLoaded) return;
-  await cubit.stream.firstWhere((state) => state is SessionDetailLoaded).timeout(const Duration(seconds: 5));
+  await cubit.stream
+      .firstWhere((state) => state is SessionDetailLoaded)
+      .timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw StateError("cubit never reached loaded; last state: ${cubit.state}"),
+      );
 }
 
 MessageWithParts _message({required String id}) => MessageWithParts(
