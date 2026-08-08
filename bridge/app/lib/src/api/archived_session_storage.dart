@@ -36,11 +36,20 @@ class ArchivedSessionStorage {
       try {
         await temporary.rename(file.path);
       } on FileSystemException {
-        // Windows refuses to rename onto an existing file. Re-archiving must
-        // still replace the previous audit file, so remove it and retry.
+        // Windows refuses to rename onto an existing file. Move the current
+        // file aside rather than deleting it: if the replacement then fails,
+        // the previous transcript is still on disk and can be restored, so no
+        // window exists in which the session has no audit file at all.
         if (!file.existsSync()) rethrow;
-        await file.delete();
-        await temporary.rename(file.path);
+        final displaced = File("${file.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.previous");
+        await file.rename(displaced.path);
+        try {
+          await temporary.rename(file.path);
+        } on FileSystemException {
+          await displaced.rename(file.path);
+          rethrow;
+        }
+        if (displaced.existsSync()) await displaced.delete();
       }
     } finally {
       if (temporary.existsSync()) temporary.deleteSync();

@@ -25,7 +25,8 @@ class ChatHistoryArchiveVersionException implements Exception {
 
   @override
   String toString() =>
-      "archived history for session $sessionId is schema v$fileVersion, "
+      "archived history for session $sessionId is schema "
+      "${fileVersion < 0 ? "unreadable" : "v$fileVersion"}, "
       "which this bridge (v$supportedVersion) cannot read";
 }
 
@@ -330,10 +331,14 @@ class ChatHistoryRepository {
       await _archivedSessionStorage.quarantine(sessionId: sessionId);
       return null;
     }
-    if (raw["schemaVersion"] case final int version when version > _archiveSchemaVersion) {
+    // Refuse any version this bridge does not implement, not merely newer
+    // ones: an unrecognised older format would otherwise be decoded as v1 and
+    // silently misread. There is one version today, so this is exact equality.
+    final version = raw["schemaVersion"];
+    if (version is! int || version != _archiveSchemaVersion) {
       throw ChatHistoryArchiveVersionException(
         sessionId: sessionId,
-        fileVersion: version,
+        fileVersion: version is int ? version : -1,
         supportedVersion: _archiveSchemaVersion,
       );
     }

@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
+import "package:sesori_bridge/src/api/archived_session_storage.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
@@ -225,6 +226,41 @@ void main() {
       );
       expect(file.session.lastAgent, "build");
       expect(file.session.lastAgentModel, "claude-sonnet");
+    });
+
+    test("an unrecognised schema version is refused, not decoded as v1", () async {
+      for (final version in <Object?>[0, 99, "1", null]) {
+        await history.archivedStorage.write(
+          sessionId: "ses_a",
+          contents: jsonEncode({
+            "schemaVersion": version,
+            "archivedAt": 1,
+            "completeness": "complete",
+            "session": _storedSessionJson(),
+            "messages": <Map<String, dynamic>>[],
+          }),
+        );
+
+        await expectLater(
+          history.service.getArchivedSessionMessages(sessionId: "ses_a"),
+          throwsA(isA<ChatHistoryArchiveVersionException>()),
+          reason: "version $version is not the supported format",
+        );
+      }
+    });
+
+    test("replacing an audit file keeps the old one until the new one lands", () async {
+      await export();
+      final original = await history.archivedStorage.read(sessionId: "ses_a");
+
+      // A second write must leave exactly one audit file, with the new
+      // contents — no displaced leftovers, and never a moment with none.
+      await history.archivedStorage.write(sessionId: "ses_a", contents: original!);
+
+      final archiveDirectory = Directory(archiveDirectoryPath(dataDirectory: history.directory.path));
+      final files = archiveDirectory.listSync().whereType<File>().toList();
+      expect(files, hasLength(1));
+      expect(await history.archivedStorage.read(sessionId: "ses_a"), original);
     });
 
     test("deleting a session removes its archive too", () async {
