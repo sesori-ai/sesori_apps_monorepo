@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -66,6 +68,33 @@ void main() {
       );
     });
 
+    test("a read reflects captures that raced the backfill fetch", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      // Several captures land while the fetch is in flight, so they queue
+      // behind the backfill. Queue depth keeps the assertion about ordering
+      // rather than about microtask luck.
+      repository.onFetch = () {
+        for (var index = 0; index < 25; index++) {
+          unawaited(
+            history.service.captureMessage(sessionId: "ses_a", message: _message(id: "filler-$index")),
+          );
+        }
+        unawaited(history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2"));
+      };
+
+      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(
+        served.map((message) => message.info.id),
+        isNot(contains("m2")),
+        reason: "the queued removal is newer than the fetched snapshot",
+      );
+      expect(served.map((message) => message.info.id), contains("filler-24"));
+    });
+
     test("an empty transcript is served without re-fetching", () async {
       final repository = _FakeSessionRepository(transcript: const []);
       final history = createTestChatHistory(sessionRepository: repository);
@@ -114,9 +143,14 @@ class _FakeSessionRepository implements SessionRepository {
   final Object? error;
   int fetchCount = 0;
 
+  /// Runs while the fetch is in flight, so a test can interleave live events.
+  void Function()? onFetch;
+
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
     fetchCount++;
+    onFetch?.call();
+    await Future<void>.delayed(Duration.zero);
     final failure = error;
     if (failure != null) throw failure;
     return transcript;

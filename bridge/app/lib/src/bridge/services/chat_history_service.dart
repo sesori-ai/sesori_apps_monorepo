@@ -33,7 +33,15 @@ class ChatHistoryService {
     if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
       await backfillSession(sessionId: sessionId);
     }
-    return _chatHistoryRepository.getSessionMessages(sessionId: sessionId);
+    // Read through the write queue so the response includes every capture
+    // that arrived before it — including events that landed while a backfill
+    // was fetching, which are queued behind that backfill. Reading outside the
+    // queue would serve the fetched snapshot and omit them, and the client
+    // would drop the SSE patch it had already applied.
+    return _enqueueRead(
+      sessionId: sessionId,
+      read: () => _chatHistoryRepository.getSessionMessages(sessionId: sessionId),
+    );
   }
 
   /// Records backend activity observed outside the live event stream, so a
@@ -223,6 +231,13 @@ class ChatHistoryService {
 
   Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) {
     return _enqueueAll(sessionIds: [sessionId], write: write);
+  }
+
+  /// Runs [read] after the session's pending writes, without making it the new
+  /// tail — concurrent reads of one session stay parallel.
+  Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) {
+    final pending = _writeQueues[sessionId];
+    return pending == null ? read() : pending.then((_) => read());
   }
 
   /// Runs [write] after every listed session's pending writes, and makes it
