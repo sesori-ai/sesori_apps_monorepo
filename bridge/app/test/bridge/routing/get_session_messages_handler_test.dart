@@ -36,6 +36,21 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/session")), isFalse);
     });
 
+    test("returns 400 for a non-positive limit", () async {
+      for (final limit in const [0, -1]) {
+        await expectLater(
+          () => handler.handle(
+            makeRequest("POST", "/session/messages"),
+            body: SessionMessagesRequest(sessionId: "session-1", limit: limit, before: null),
+            pathParams: const {},
+            queryParams: const {},
+            fragment: null,
+          ),
+          throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
+        );
+      }
+    });
+
     test("returns 400 when session id is empty", () async {
       await expectLater(
         () => handler.handle(

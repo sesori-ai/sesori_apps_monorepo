@@ -28,6 +28,12 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionMessagesReques
     if (sessionId.isEmpty) {
       throw buildErrorResponse(request, 400, "empty session id");
     }
+    // A non-positive limit has no honest answer: it is neither "the whole
+    // transcript" (null) nor a page anyone can page onward from, so refuse it
+    // rather than returning an empty page that never terminates.
+    if (body.limit case final limit? when limit <= 0) {
+      throw buildErrorResponse(request, 400, "limit must be greater than zero");
+    }
 
     final page = await _chatHistoryService.getSessionMessages(
       sessionId: sessionId,

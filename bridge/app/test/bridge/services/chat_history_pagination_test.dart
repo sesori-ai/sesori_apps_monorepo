@@ -85,6 +85,15 @@ void main() {
       expect(next.nextCursor, isNull);
     });
 
+    test("an empty page never claims there is more", () async {
+      // A page that returned nothing cannot point a cursor at anything older,
+      // so it must terminate rather than invite another request.
+      final page = await history.repository.getSessionMessages(sessionId: "ses_a", limit: 0);
+
+      expect(page.messages, isEmpty);
+      expect(page.nextCursor, isNull);
+    });
+
     test("a session with no stored messages pages cleanly", () async {
       // ses_b was never backfilled, so the store holds nothing for it.
       final page = await history.repository.getSessionMessages(sessionId: "ses_b", limit: 5);

@@ -66,8 +66,9 @@ class ChatHistoryRepository {
         ),
     ];
     // A full page implies there may be more; a short one proves there is not,
-    // which avoids an extra count query on every read.
-    final hasOlder = limit != null && messageRows.length == limit;
+    // which avoids an extra count query on every read. An empty page is never
+    // "full": there is nothing older to point a cursor at.
+    final hasOlder = limit != null && messageRows.isNotEmpty && messageRows.length == limit;
     return (
       messages: messages,
       nextCursor: hasOlder ? messageRows.first.seq : null,
