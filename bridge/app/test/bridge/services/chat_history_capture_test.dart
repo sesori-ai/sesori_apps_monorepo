@@ -164,6 +164,46 @@ void main() {
       );
     });
 
+    test("a capture during the fetch keeps its newer freshness marks", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      // Seed a row so the backfill's pre-fetch snapshot exists and is provably
+      // older than the capture that lands during the fetch.
+      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "seed"));
+      final beforeFetch = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      repository.onFetch = () => history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "during-fetch"),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      expect(
+        state.watermark,
+        greaterThanOrEqualTo(beforeFetch.watermark),
+        reason: "a backfill must not rewind a watermark advanced during its fetch",
+      );
+      expect(state.backendActivityAt, greaterThanOrEqualTo(beforeFetch.backendActivityAt));
+      expect(state.syncedAt, isNotNull);
+    });
+
+    test("a removal during the fetch is not resurrected by the transcript", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      repository.onFetch = () => history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await history.repository.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
+        const ["m1"],
+        reason: "the removal is newer than the transcript being imported",
+      );
+    });
+
     test("concurrent reads share one fetch", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
@@ -257,11 +297,15 @@ class _FakeSessionRepository implements SessionRepository {
   final Set<String> existingSessionIds;
   int fetchCount = 0;
 
+  /// Runs while the fetch is in flight, so a test can interleave live events.
+  Future<void> Function()? onFetch;
+
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
     fetchCount++;
     // Yield so a second caller can observe the in-flight fetch.
     await Future<void>.delayed(Duration.zero);
+    await onFetch?.call();
     final failure = error;
     if (failure != null) throw failure;
     return transcript;

@@ -110,16 +110,20 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
 
   /// Replaces the session's transcript with [messages] and [parts], keeping
   /// the rows in [retainedMessageIds] that the transcript does not contain,
-  /// and records [syncState] in the same transaction.
+  /// and marks the session synced at [syncedAt] in the same transaction.
   ///
   /// One transaction so a crash can never leave a replaced transcript whose
-  /// freshness marks describe the previous one.
+  /// freshness marks describe the previous one. The freshness timestamps only
+  /// ever move forward: capture that landed while the transcript was being
+  /// fetched keeps its newer marks, so a backfill cannot rewind them.
   Future<void> replaceSessionRows({
     required String sessionId,
     required List<HistoryMessagesTableData> messages,
     required List<HistoryPartsTableData> parts,
     required Set<String> retainedMessageIds,
-    required HistorySyncStateTableData syncState,
+    required int watermark,
+    required int backendActivityAt,
+    required int syncedAt,
   }) {
     return transaction(() async {
       await (delete(historyPartsTable)..where(
@@ -140,9 +144,14 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
       await batch((batch) {
         batch
           ..insertAllOnConflictUpdate(historyMessagesTable, messages)
-          ..insertAllOnConflictUpdate(historyPartsTable, parts)
-          ..insert(historySyncStateTable, syncState, onConflict: DoUpdate((_) => syncState));
+          ..insertAllOnConflictUpdate(historyPartsTable, parts);
       });
+      await _writeSyncState(
+        sessionId: sessionId,
+        watermark: watermark,
+        backendActivityAt: backendActivityAt,
+        syncedAt: Value(syncedAt),
+      );
     });
   }
 
@@ -150,34 +159,49 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
   /// cannot collide with the numbering being written beneath them.
   static const _seqParkingOffset = 1 << 40;
 
-  /// Creates the row if absent, then advances its timestamps monotonically.
+  /// Creates the row if absent, then advances its timestamps.
   Future<void> advanceSyncState({
     required String sessionId,
     required int watermark,
     required int backendActivityAt,
   }) {
-    return transaction(() async {
-      final existing = await getSyncState(sessionId: sessionId);
-      if (existing == null) {
-        await into(historySyncStateTable).insert(
-          HistorySyncStateTableData(
-            sessionId: sessionId,
-            watermark: watermark,
-            backendActivityAt: backendActivityAt,
-          ),
-        );
-        return;
-      }
-      await into(historySyncStateTable).insertOnConflictUpdate(
-        existing.copyWith(
-          watermark: watermark > existing.watermark ? watermark : existing.watermark,
-          backendActivityAt: backendActivityAt > existing.backendActivityAt
-              ? backendActivityAt
-              : existing.backendActivityAt,
-        ),
-      );
-    });
+    return _writeSyncState(
+      sessionId: sessionId,
+      watermark: watermark,
+      backendActivityAt: backendActivityAt,
+      syncedAt: const Value.absent(),
+    );
   }
+
+  /// Upserts the row, keeping whichever timestamps are later.
+  ///
+  /// `MAX` runs inside the statement so a concurrent writer cannot land
+  /// between a read and a write and lose its marks.
+  Future<void> _writeSyncState({
+    required String sessionId,
+    required int watermark,
+    required int backendActivityAt,
+    required Value<int?> syncedAt,
+  }) async {
+    await into(historySyncStateTable).insert(
+      HistorySyncStateTableCompanion.insert(
+        sessionId: sessionId,
+        watermark: watermark,
+        backendActivityAt: backendActivityAt,
+        syncedAt: syncedAt,
+      ),
+      onConflict: DoUpdate(
+        (old) => HistorySyncStateTableCompanion.custom(
+          watermark: _greatest(old.watermark, Constant(watermark)),
+          backendActivityAt: _greatest(old.backendActivityAt, Constant(backendActivityAt)),
+          syncedAt: syncedAt.present ? Constant(syncedAt.value) : null,
+        ),
+      ),
+    );
+  }
+
+  Expression<int> _greatest(Expression<int> left, Expression<int> right) =>
+      FunctionCallExpression("MAX", [left, right]);
 
   Future<void> clearSyncedAt({required String sessionId}) async {
     await (update(historySyncStateTable)..where((table) => table.sessionId.equals(sessionId))).write(

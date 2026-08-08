@@ -167,12 +167,9 @@ class ChatHistoryRepository {
       messages: messageRows,
       parts: partRows,
       retainedMessageIds: {for (final row in retained) row.messageId},
-      syncState: HistorySyncStateTableData(
-        sessionId: sessionId,
-        watermark: watermark,
-        backendActivityAt: backendActivityAt,
-        syncedAt: syncedAt,
-      ),
+      watermark: watermark,
+      backendActivityAt: backendActivityAt,
+      syncedAt: syncedAt,
     );
   }
 
@@ -251,9 +248,12 @@ class ChatHistoryRepository {
   }) async {
     if (attachment["source"] != "inline_image") return attachment;
     final base64Data = attachment["base64"];
+    if (base64Data is! String || base64Data.isEmpty) {
+      return {"source": "metadata", "mime": attachment["mime"], "filename": attachment["filename"]};
+    }
     final Uint8List bytes;
     try {
-      bytes = base64Decode(base64Data is String ? base64Data : "");
+      bytes = base64Decode(base64Data);
     } on FormatException {
       // Undecodable inline data cannot be stored or re-served, so keep the
       // slot with the metadata the client can still render.

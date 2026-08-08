@@ -1111,8 +1111,19 @@ class SessionRepository {
   /// sessions keep their row, so absence means the session is really gone.
   Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async {
     if (sessionIds.isEmpty) return const {};
-    final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
-    return rows.keys.toSet();
+    // Each id becomes a bind variable and the store is unbounded, so ask in
+    // chunks rather than letting one oversized statement fail the lookup.
+    const chunkSize = 500;
+    final ordered = sessionIds.toList(growable: false);
+    final existing = <String>{};
+    for (var start = 0; start < ordered.length; start += chunkSize) {
+      final end = start + chunkSize;
+      final rows = await _sessionDao.getSessionsByIds(
+        sessionIds: ordered.sublist(start, end > ordered.length ? ordered.length : end),
+      );
+      existing.addAll(rows.keys);
+    }
+    return existing;
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {

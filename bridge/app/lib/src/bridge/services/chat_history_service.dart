@@ -21,6 +21,8 @@ class ChatHistoryService {
   final SessionRepository _sessionRepository;
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
+  /// Message ids removed while that session's backfill fetch is in flight.
+  final Map<String, Set<String>> _removalsDuringBackfill = {};
 
   /// Records a finalized message from the live event stream.
   Future<void> captureMessage({required String sessionId, required Message message}) {
@@ -49,6 +51,7 @@ class ChatHistoryService {
   }
 
   Future<void> captureMessageRemoved({required String sessionId, required String messageId}) {
+    _removalsDuringBackfill[sessionId]?.add(messageId);
     return _capture(
       sessionId: sessionId,
       description: "removal of message $messageId",
@@ -90,13 +93,24 @@ class ChatHistoryService {
     // masked by a watermark taken afterwards.
     final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
     final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
-    final messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+    // A removal that lands while the fetch is in flight is newer than the
+    // transcript being fetched, so the transcript must not resurrect it.
+    final removedDuringFetch = _removalsDuringBackfill[sessionId] = <String>{};
+    final List<MessageWithParts> messages;
+    try {
+      messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+    } finally {
+      _removalsDuringBackfill.remove(sessionId);
+    }
     final syncedAt = DateTime.now().millisecondsSinceEpoch;
     await _enqueue(
       sessionId: sessionId,
       write: () => _chatHistoryRepository.replaceSessionMessages(
         sessionId: sessionId,
-        messages: messages,
+        messages: [
+          for (final message in messages)
+            if (!removedDuringFetch.contains(message.info.id)) message,
+        ],
         watermark: backendActivityAt,
         backendActivityAt: backendActivityAt,
         syncedAt: syncedAt,

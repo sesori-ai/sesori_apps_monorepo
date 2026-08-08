@@ -16,6 +16,7 @@ class ChatHistoryListener {
   final Stream<NormalizedSourcedBridgeEvent> _source;
   final ChatHistoryService _chatHistoryService;
   StreamSubscription<NormalizedSourcedBridgeEvent>? _subscription;
+  final Set<Future<void>> _pendingCaptures = {};
   bool _disposed = false;
 
   ChatHistoryListener({
@@ -27,11 +28,18 @@ class ChatHistoryListener {
   void start() {
     if (_subscription != null || _disposed) return;
     _subscription = _source.listen(
-      (sourced) => unawaited(_capture(event: sourced.event)),
+      (sourced) => _track(capture: _capture(event: sourced.event)),
       // Source errors are surfaced by the dispatcher's own consumers; capture
       // simply has nothing to store for a failed event.
       onError: (Object _) {},
     );
+  }
+
+  /// Keeps the write observable to [dispose], so shutdown does not close the
+  /// database out from under a finalized event still being persisted.
+  void _track({required Future<void> capture}) {
+    _pendingCaptures.add(capture);
+    unawaited(capture.whenComplete(() => _pendingCaptures.remove(capture)));
   }
 
   Future<void> _capture({required BridgeSseEvent event}) {
@@ -66,5 +74,8 @@ class ChatHistoryListener {
     if (_disposed) return;
     _disposed = true;
     await _subscription?.cancel();
+    // Capture never throws (failures are logged and drop the synced marker),
+    // so waiting cannot fail teardown.
+    await Future.wait(_pendingCaptures.toList(growable: false));
   }
 }
