@@ -919,6 +919,8 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async => sessionIds;
   @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async => const {};
+  @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
       const <StoredSession>[];
   @override
@@ -1349,6 +1351,15 @@ class FakeSessionRepository implements SessionRepository {
   Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async {
     final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
     return rows.keys.toSet();
+  }
+
+  @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async {
+    final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
+    return {
+      for (final entry in rows.entries)
+        if (entry.value.archivedAt != null) entry.key,
+    };
   }
 
   @override

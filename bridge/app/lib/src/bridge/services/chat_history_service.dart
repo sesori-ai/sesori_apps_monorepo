@@ -46,16 +46,19 @@ class ChatHistoryService {
     final decided = await _enqueueRead(
       sessionId: sessionId,
       read: () async {
-        // An archived session has no live rows left, so its audit file is the
-        // only copy. Checked first: a purged session would otherwise look
-        // unsynced and trigger a pointless backfill against a session nobody
-        // can resume.
-        final archived = await _chatHistoryRepository.getArchivedSessionMessages(
-          sessionId: sessionId,
-          limit: limit,
-          before: before,
-        );
-        if (archived != null) return archived;
+        // The audit file is authoritative only once the session is actually
+        // archived. Export writes it *before* the archive flip, so a failed or
+        // interrupted archive can leave a file for a session that is still
+        // live — serving that would hide newer messages still in the store.
+        final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+        if (stored?.archivedAt != null) {
+          final archived = await _chatHistoryRepository.getArchivedSessionMessages(
+            sessionId: sessionId,
+            limit: limit,
+            before: before,
+          );
+          if (archived != null) return archived;
+        }
 
         final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
         if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
@@ -209,12 +212,25 @@ class ChatHistoryService {
   Future<void> exportSessionHistory({
     required StoredSession session,
     required String? title,
+    required String? lastAgent,
+    required String? lastAgentModel,
     required int createdAt,
     required int updatedAt,
     required int archivedAt,
   }) async {
+    // A completed archive is durable and its live rows are gone, so a repeated
+    // request must not overwrite a real transcript with an empty store-only
+    // one. Enforced here rather than only at the caller, because this service
+    // owns the archive file.
+    if (session.archivedAt != null && await _chatHistoryRepository.hasArchive(sessionId: session.id)) {
+      Log.i("[archive] session ${session.id} already has an audit file; keeping it");
+      return;
+    }
+
     var completeness = ArchivedSessionCompleteness.complete;
     try {
+      // Outside the queue because it may fetch from the backend; the freshness
+      // it establishes is re-checked inside the queue below.
       await _refreshForExport(sessionId: session.id);
     } on Object catch (error, stackTrace) {
       completeness = ArchivedSessionCompleteness.storeOnly;
@@ -227,14 +243,24 @@ class ChatHistoryService {
     }
     await _enqueue(
       sessionId: session.id,
-      write: () => _chatHistoryRepository.exportSession(
-        session: session,
-        title: title,
-        createdAt: createdAt,
-        updatedAt: updatedAt,
-        archivedAt: archivedAt,
-        completeness: completeness,
-      ),
+      write: () async {
+        // Re-check inside the queue: a capture or an observed import may have
+        // landed after the refresh, which would make the rows about to be
+        // exported stale. Claiming `complete` then would be a lie, and the
+        // post-flip purge would delete the only copy of those messages.
+        final state = await _chatHistoryRepository.getSyncState(sessionId: session.id);
+        final current = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
+        await _chatHistoryRepository.exportSession(
+          session: session,
+          title: title,
+          lastAgent: lastAgent,
+          lastAgentModel: lastAgentModel,
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+          archivedAt: archivedAt,
+          completeness: current ? completeness : ArchivedSessionCompleteness.storeOnly,
+        );
+      },
     );
   }
 

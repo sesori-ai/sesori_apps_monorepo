@@ -257,6 +257,8 @@ class ChatHistoryRepository {
     required int updatedAt,
     required int archivedAt,
     required ArchivedSessionCompleteness completeness,
+    required String? lastAgent,
+    required String? lastAgentModel,
   }) async {
     final messageRows = await _chatHistoryDao.getMessages(sessionId: session.id);
     final partRows = await _chatHistoryDao.getParts(sessionId: session.id);
@@ -282,7 +284,8 @@ class ChatHistoryRepository {
         branchName: session.branchName,
         baseBranch: session.baseBranch,
         baseCommit: session.baseCommit,
-        lastAgent: null,
+        lastAgent: lastAgent,
+        lastAgentModel: lastAgentModel,
         title: title,
         createdAt: createdAt,
         updatedAt: updatedAt,
@@ -316,20 +319,32 @@ class ChatHistoryRepository {
     final contents = await _archivedSessionStorage.read(sessionId: sessionId);
     if (contents == null) return null;
 
-    final ArchivedSessionFileDto file;
+    // Read the version from the raw envelope first. A newer format may change
+    // required fields or enum values, so typed decoding would fail and the
+    // file would be quarantined as corrupt when it is merely too new.
+    final Map<String, dynamic> raw;
     try {
-      file = ArchivedSessionFileDto.fromJson(jsonDecodeMap(contents));
+      raw = jsonDecodeMap(contents);
     } on Object catch (error, stackTrace) {
       Log.w("[archive] quarantining an unreadable audit file for session $sessionId", error, stackTrace);
       await _archivedSessionStorage.quarantine(sessionId: sessionId);
       return null;
     }
-    if (file.schemaVersion > _archiveSchemaVersion) {
+    if (raw["schemaVersion"] case final int version when version > _archiveSchemaVersion) {
       throw ChatHistoryArchiveVersionException(
         sessionId: sessionId,
-        fileVersion: file.schemaVersion,
+        fileVersion: version,
         supportedVersion: _archiveSchemaVersion,
       );
+    }
+
+    final ArchivedSessionFileDto file;
+    try {
+      file = ArchivedSessionFileDto.fromJson(raw);
+    } on Object catch (error, stackTrace) {
+      Log.w("[archive] quarantining an unreadable audit file for session $sessionId", error, stackTrace);
+      await _archivedSessionStorage.quarantine(sessionId: sessionId);
+      return null;
     }
     if (file.completeness == ArchivedSessionCompleteness.storeOnly) {
       Log.i(
@@ -365,7 +380,9 @@ class ChatHistoryRepository {
             ],
           ),
       ],
-      nextCursor: limit != null && page.length == limit && eligible.length > limit ? page.first.seq : null,
+      nextCursor: limit != null && page.isNotEmpty && page.length == limit && eligible.length > limit
+          ? page.first.seq
+          : null,
     );
   }
 

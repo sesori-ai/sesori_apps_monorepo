@@ -20,7 +20,7 @@ void main() {
     setUp(() async {
       repository = _FakeSessionRepository(
         transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
-      );
+      )..archived = true;
       history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
     });
@@ -28,6 +28,8 @@ void main() {
     Future<void> export() => history.service.exportSessionHistory(
       session: _storedSession(),
       title: "Archived session",
+      lastAgent: "build",
+      lastAgentModel: "claude-sonnet",
       createdAt: 100,
       updatedAt: 200,
       archivedAt: 300,
@@ -145,6 +147,86 @@ void main() {
       );
     });
 
+    test("an orphan audit file does not shadow a still-live transcript", () async {
+      // Export writes the file before the archive flip, so a failed archive
+      // leaves a file for a session that is still live. Serving it would hide
+      // messages the store has and the file does not.
+      repository.archived = false;
+      await export();
+      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m3"));
+
+      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(
+        served.messages.map((message) => message.info.id),
+        containsAll(const ["m1", "m2", "m3"]),
+        reason: "a session that is not archived reads from the live store",
+      );
+    });
+
+    test("reconcile keeps live rows when the archive never completed", () async {
+      repository.archived = false;
+      await export();
+      repository.existingSessionIds = {"ses_a"};
+      repository.archivedSessionIds = const {};
+
+      await ChatHistoryReconcileService(
+        sessionRepository: repository,
+        chatHistoryService: history.service,
+      ).reconcile();
+
+      expect(
+        (await history.repository.getSessionMessages(sessionId: "ses_a")).messages,
+        hasLength(2),
+        reason: "a pre-flip export failure must not cost the only copy of the transcript",
+      );
+    });
+
+    test("re-archiving does not overwrite a complete audit file", () async {
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+      // The live store is empty now, and the backend is unreachable, so a
+      // second export would write an empty store-only archive.
+      repository.error = StateError("backend gone");
+
+      await history.service.exportSessionHistory(
+        session: _archivedStoredSession(),
+        title: "Archived session",
+        lastAgent: null,
+        lastAgentModel: null,
+        createdAt: 100,
+        updatedAt: 200,
+        archivedAt: 400,
+      );
+
+      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+      expect(
+        page!.messages.map((message) => message.info.id),
+        const ["m1", "m2"],
+        reason: "the durable transcript must survive a repeated archive request",
+      );
+    });
+
+    test("archived paging refuses a non-positive limit without crashing", () async {
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+
+      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a", limit: 0);
+
+      expect(page!.messages, isEmpty);
+      expect(page.nextCursor, isNull);
+    });
+
+    test("the archived snapshot keeps the agent metadata", () async {
+      await export();
+
+      final file = ArchivedSessionFileDto.fromJson(
+        jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!),
+      );
+      expect(file.session.lastAgent, "build");
+      expect(file.session.lastAgentModel, "claude-sonnet");
+    });
+
     test("deleting a session removes its archive too", () async {
       await export();
 
@@ -159,6 +241,7 @@ void main() {
       // The crash window: the audit file is durable but the live rows survive.
       expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, hasLength(2));
       repository.existingSessionIds = {"ses_a"};
+      repository.archivedSessionIds = {"ses_a"};
 
       await ChatHistoryReconcileService(
         sessionRepository: repository,
@@ -186,6 +269,21 @@ void main() {
     });
   });
 }
+
+StoredSession _archivedStoredSession() => const StoredSession(
+  id: "ses_a",
+  backendSessionId: "backend-a",
+  pluginId: "fake",
+  projectId: "project-a",
+  parentSessionId: null,
+  directory: "/projects/a",
+  worktreePath: null,
+  branchName: null,
+  isDedicated: false,
+  archivedAt: 300,
+  baseBranch: null,
+  baseCommit: null,
+);
 
 StoredSession _storedSession() => const StoredSession(
   id: "ses_a",
@@ -245,7 +343,17 @@ class _FakeSessionRepository implements SessionRepository {
   final List<MessageWithParts> transcript;
   Object? error;
   Set<String> existingSessionIds = const {};
+  Set<String> archivedSessionIds = const {};
+  bool archived = false;
   int fetchCount = 0;
+
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async =>
+      archived ? _archivedStoredSession() : _storedSession();
+
+  @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async =>
+      sessionIds.intersection(archivedSessionIds);
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {

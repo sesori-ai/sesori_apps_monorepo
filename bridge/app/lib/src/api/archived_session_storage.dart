@@ -20,6 +20,10 @@ class ArchivedSessionStorage {
 
   final String _directoryPath;
 
+  /// Creates the archive root with its intended permissions, so a fresh data
+  /// directory has the same shape (and mode) as one that has archived before.
+  void ensureDirectory() => createHardenedDirectory(directoryPath: _directoryPath);
+
   Future<void> write({required String sessionId, required String contents}) async {
     final file = File(_filePath(sessionId: sessionId));
     await Directory(path.dirname(file.path)).create(recursive: true);
@@ -29,7 +33,15 @@ class ArchivedSessionStorage {
     try {
       await temporary.writeAsString(contents, flush: true);
       await hardenPath(targetPath: temporary.path, mode: ownerOnlyFileMode);
-      await temporary.rename(file.path);
+      try {
+        await temporary.rename(file.path);
+      } on FileSystemException {
+        // Windows refuses to rename onto an existing file. Re-archiving must
+        // still replace the previous audit file, so remove it and retry.
+        if (!file.existsSync()) rethrow;
+        await file.delete();
+        await temporary.rename(file.path);
+      }
     } finally {
       if (temporary.existsSync()) temporary.deleteSync();
     }
@@ -39,7 +51,15 @@ class ArchivedSessionStorage {
   Future<String?> read({required String sessionId}) async {
     final file = File(_filePath(sessionId: sessionId));
     if (!file.existsSync()) return null;
-    return file.readAsString();
+    try {
+      return await file.readAsString();
+    } on FileSystemException catch (error, stackTrace) {
+      // Includes malformed UTF-8, which would otherwise fail every archived
+      // read for this session forever.
+      Log.w("[archive] unreadable audit file bytes for session $sessionId", error, stackTrace);
+      await quarantine(sessionId: sessionId);
+      return null;
+    }
   }
 
   Future<bool> exists({required String sessionId}) async =>

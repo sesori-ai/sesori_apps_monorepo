@@ -56,9 +56,16 @@ class ChatHistoryReconcileService {
     }
 
     // A crash between the archive flip and the purge leaves both a durable
-    // audit file and the live rows it replaced. The file is authoritative, so
-    // finish the purge that was interrupted.
-    final duplicated = storedSessionIds.intersection(archivedSessionIds).difference(orphanIds.toSet());
+    // audit file and the live rows it replaced. The file is authoritative
+    // then, so finish the interrupted purge.
+    //
+    // Only for sessions the catalog reports as archived: export writes the
+    // audit file *before* the flip, so a session with a file but no
+    // `archivedAt` had its archive fail before completing. Its live rows are
+    // still the only copy and must be kept — the orphan file is harmless and
+    // the next archive attempt overwrites it.
+    final withAudit = storedSessionIds.intersection(archivedSessionIds).difference(orphanIds.toSet());
+    final duplicated = await _sessionRepository.getArchivedSessionIds(sessionIds: withAudit);
     for (final sessionId in duplicated.toList(growable: false)..sort()) {
       try {
         await _chatHistoryService.purgeSessionHistory(sessionId: sessionId);

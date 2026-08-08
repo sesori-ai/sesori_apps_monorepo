@@ -817,10 +817,10 @@ class BridgeRuntimeRunner {
       )..ensureDirectory();
       final archivedSessionStorage = ArchivedSessionStorage(
         directoryPath: archiveDirectoryPath(dataDirectory: options.dataDirectory),
-      );
+      )..ensureDirectory();
       final archivedAttachmentStorage = AttachmentSpillStorage(
         directoryPath: archivedAttachmentDirectoryPath(dataDirectory: options.dataDirectory),
-      );
+      )..ensureDirectory();
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
         config: BridgeConfig(

@@ -101,8 +101,20 @@ class AttachmentSpillStorage {
       if (entity is! File) continue;
       final target = File(path.join(destination.path, path.basename(entity.path)));
       if (target.existsSync()) continue;
-      await entity.copy(target.path);
-      await hardenPath(targetPath: target.path, mode: ownerOnlyFileMode);
+      // Copy through a temp file: an interrupted `copy` straight to the target
+      // would leave a partial file that the next archive skips as "already
+      // copied", permanently degrading that attachment once the live spill is
+      // purged.
+      final temporary = File("${target.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp");
+      try {
+        await entity.copy(temporary.path);
+        await hardenPath(targetPath: temporary.path, mode: ownerOnlyFileMode);
+        await temporary.rename(target.path);
+      } on FileSystemException {
+        if (!target.existsSync()) rethrow;
+      } finally {
+        if (temporary.existsSync()) temporary.deleteSync();
+      }
     }
   }
 

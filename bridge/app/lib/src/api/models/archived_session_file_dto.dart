@@ -55,6 +55,7 @@ sealed class ArchivedSessionSnapshotDto with _$ArchivedSessionSnapshotDto {
     required String? baseBranch,
     required String? baseCommit,
     required String? lastAgent,
+    required String? lastAgentModel,
     required String? title,
     required int createdAt,
     required int updatedAt,

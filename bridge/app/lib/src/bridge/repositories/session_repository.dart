@@ -1127,6 +1127,27 @@ class SessionRepository {
     return existing;
   }
 
+  /// The subset of [sessionIds] the catalog reports as archived.
+  ///
+  /// Distinguishes "the archive completed" from "an export ran but the archive
+  /// never finished", which look identical from the filesystem alone.
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async {
+    if (sessionIds.isEmpty) return const {};
+    const chunkSize = 500;
+    final ordered = sessionIds.toList(growable: false);
+    final archived = <String>{};
+    for (var start = 0; start < ordered.length; start += chunkSize) {
+      final end = start + chunkSize;
+      final rows = await _sessionDao.getSessionsByIds(
+        sessionIds: ordered.sublist(start, end > ordered.length ? ordered.length : end),
+      );
+      for (final entry in rows.entries) {
+        if (entry.value.archivedAt != null) archived.add(entry.key);
+      }
+    }
+    return archived;
+  }
+
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
     return sessions.map((session) => session.toStoredSession()).toList(growable: false);

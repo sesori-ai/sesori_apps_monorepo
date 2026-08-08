@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -160,6 +161,10 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => transcript;
+
+  /// Not archived: these suites exercise the live-store path.
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

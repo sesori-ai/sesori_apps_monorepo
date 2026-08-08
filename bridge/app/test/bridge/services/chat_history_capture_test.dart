@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:typed_data";
 
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/chat_history_reconcile_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -360,6 +361,10 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async =>
       sessionIds.intersection(existingSessionIds);
+
+  /// Not archived: these suites exercise the live-store path.
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
