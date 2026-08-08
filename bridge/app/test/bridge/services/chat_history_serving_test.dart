@@ -108,7 +108,7 @@ void main() {
         sessionId: "ses_a",
         activityAt: synced.watermark + 5000,
       );
-      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
       await observed;
 
       expect(
@@ -132,7 +132,7 @@ void main() {
         sessionId: "ses_a",
         activityAt: synced.watermark + 5000,
       );
-      final served = await reading;
+      final served = (await reading).messages;
       await observing;
 
       expect(served.map((message) => message.info.id), const ["m1"]);
@@ -141,7 +141,7 @@ void main() {
 
       repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
       expect(
-        (await history.service.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
+        (await history.service.getSessionMessages(sessionId: "ses_a")).messages.map((message) => message.info.id),
         const ["m1", "m2"],
         reason: "the next read sees the staleness recorded during the previous one",
       );
