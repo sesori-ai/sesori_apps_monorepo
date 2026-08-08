@@ -29,15 +29,26 @@ class ChatHistoryService {
   /// backend activity has been observed past the captured watermark, so a
   /// session advanced outside Sesori still reads correctly.
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
-    final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
-    if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
-      await backfillSession(sessionId: sessionId);
-    }
-    // Read through the write queue so the response includes every capture
-    // that arrived before it — including events that landed while a backfill
-    // was fetching, which are queued behind that backfill. Reading outside the
-    // queue would serve the fetched snapshot and omit them, and the client
-    // would drop the SSE patch it had already applied.
+    // Both the freshness decision and the read run inside the session queue,
+    // so they observe one state. Deciding outside it would let queued work —
+    // an observed import, or a failed capture clearing `syncedAt` — commit
+    // between the decision and the read, and the caller would receive a
+    // transcript that the store already knew was stale.
+    final decided = await _enqueueRead(
+      sessionId: sessionId,
+      read: () async {
+        final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+        if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
+          return null;
+        }
+        return _chatHistoryRepository.getSessionMessages(sessionId: sessionId);
+      },
+    );
+    if (decided != null) return decided;
+
+    await backfillSession(sessionId: sessionId);
+    // The backfill is itself queued, so this read lands after it and after
+    // any capture that raced its fetch.
     return _enqueueRead(
       sessionId: sessionId,
       read: () => _chatHistoryRepository.getSessionMessages(sessionId: sessionId),

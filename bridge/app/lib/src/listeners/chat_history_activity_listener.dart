@@ -37,21 +37,22 @@ class ChatHistoryActivityListener {
   }
 
   Future<void> _record({required List<SessionBackendActivity> activity}) async {
-    for (final observed in activity) {
-      try {
-        await _chatHistoryService.observeBackendActivity(
-          sessionId: observed.sessionId,
-          activityAt: observed.activityAt,
-        );
-      } on Object catch (error, stackTrace) {
-        // A missed observation only costs a redundant plugin fetch later.
-        Log.w(
-          "Failed to record backend activity for session ${observed.sessionId}",
-          error,
-          stackTrace,
-        );
-      }
-    }
+    // Enqueue every session before awaiting any of them. Each session has its
+    // own write queue, so awaiting one at a time would let a read for a later
+    // session slip in before its staleness update was even queued.
+    await Future.wait([
+      for (final observed in activity)
+        _chatHistoryService
+            .observeBackendActivity(sessionId: observed.sessionId, activityAt: observed.activityAt)
+            .catchError((Object error, StackTrace stackTrace) {
+              // A missed observation only costs a redundant plugin fetch later.
+              Log.w(
+                "Failed to record backend activity for session ${observed.sessionId}",
+                error,
+                stackTrace,
+              );
+            }),
+    ]);
   }
 
   /// Memoized so a second caller joins the same drain instead of returning

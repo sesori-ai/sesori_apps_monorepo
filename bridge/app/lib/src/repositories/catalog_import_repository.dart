@@ -457,9 +457,16 @@ class CatalogImportRepository {
             importStartedAt: importStartedAt,
           );
           sessionRows.add(row);
-          // Only the backend's reported time counts. Falling back to the
-          // merged `updatedAt` would leak bridge-local writes such as a
-          // rename into what is supposed to be backend-owned activity.
+          // Only the backend's own reported time counts as backend activity.
+          //
+          // There is deliberately no fallback for a plugin that omits it. The
+          // merged `row.updatedAt` is contaminated by bridge-local writes (a
+          // rename moves it), and the import's own clock would mark every such
+          // session stale on every import — waking its harness on the next
+          // open, which is the cost this feature exists to remove. A backend
+          // that reports no update time simply cannot support import-based
+          // staleness detection; live capture still keeps those sessions
+          // current while the bridge is running. See PLAN.md § Known Limits.
           if (session.time?.updated case final updatedAt?) {
             observedActivity.add((sessionId: row.sessionId, activityAt: updatedAt));
           }

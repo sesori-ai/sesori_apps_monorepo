@@ -95,6 +95,29 @@ void main() {
       expect(served.map((message) => message.info.id), contains("filler-24"));
     });
 
+    test("activity queued before a read still forces the re-read", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+      final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
+
+      // Not awaited: the staleness write is merely queued when the read is
+      // issued, which is what happens when an import commits concurrently.
+      final observed = history.service.observeBackendActivity(
+        sessionId: "ses_a",
+        activityAt: synced.watermark + 5000,
+      );
+      final served = await history.service.getSessionMessages(sessionId: "ses_a");
+      await observed;
+
+      expect(
+        served.map((message) => message.info.id),
+        const ["m1", "m2"],
+        reason: "the freshness decision must see writes already queued for the session",
+      );
+    });
+
     test("an empty transcript is served without re-fetching", () async {
       final repository = _FakeSessionRepository(transcript: const []);
       final history = createTestChatHistory(sessionRepository: repository);

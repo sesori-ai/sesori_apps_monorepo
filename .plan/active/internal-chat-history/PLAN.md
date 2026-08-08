@@ -73,6 +73,19 @@ Consequences for this feature, all satisfied by the current design:
 - Deferred backends stay deferred: a stopped harness with a synced store is
   never started to satisfy a read.
 
+## Known Limits
+
+- **Import-based staleness needs a backend-reported update time.** A plugin
+  that returns a session with no `time.updated` (Codex and ACP can, when the
+  underlying record carries no timestamp) gets no staleness signal from
+  catalog import. There is deliberately no fallback: the merged catalog
+  `updatedAt` is moved by bridge-local writes such as a rename, and the
+  import's own clock would mark every such session stale on every import and
+  wake its harness on the next open. Live capture keeps those sessions current
+  while the bridge runs; the residual gap is a session advanced through the
+  backend's CLI *while the bridge was down*, for a backend that reports no
+  update time. Revisit only if a backend in that position matters in practice.
+
 ## Why Now (observed problems)
 
 - Opening a session **cold-starts an idle backend** purely to read history:
