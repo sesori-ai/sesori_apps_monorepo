@@ -124,7 +124,7 @@ void main() {
   late Directory stateDir;
 
   setUp(() async {
-    stateDir = await Directory.systemTemp.createTemp("install-flow");
+    stateDir = await Directory.systemTemp.createTemp("install-service");
   });
 
   tearDown(() async {
@@ -133,12 +133,12 @@ void main() {
     }
   });
 
-  ManagedRuntimeInstallFlow build({
+  ManagedRuntimeInstallService build({
     bool hasAsset = true,
     bool checksumValid = true,
     SemanticVersion? managedVersion,
   }) {
-    return ManagedRuntimeInstallFlow(
+    return ManagedRuntimeInstallService(
       manifest: _StubManifest(hasAsset: hasAsset),
       versionValidator: _FakeValidator(managedVersion: managedVersion),
       installService: RuntimeInstallService(
@@ -152,9 +152,8 @@ void main() {
     );
   }
 
-  Future<List<RuntimeProvisionProgress>> install(ManagedRuntimeInstallFlow flow) {
-    return flow
-        .install(environment: const {}, stateDirectory: stateDir.path, startAborted: StartAbortSignal.never)
+  Future<List<RuntimeProvisionProgress>> install(ManagedRuntimeInstallService service) {
+    return service        .install(environment: const {}, stateDirectory: stateDir.path, startAborted: StartAbortSignal.never)
         .toList();
   }
 

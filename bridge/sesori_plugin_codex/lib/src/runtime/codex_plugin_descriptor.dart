@@ -245,7 +245,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     );
     final httpClient = http.Client();
     try {
-      final flow = ManagedRuntimeInstallFlow(
+      final installService = ManagedRuntimeInstallService(
         manifest: manifest,
         versionValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
@@ -261,7 +261,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
         ),
         cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
       );
-      yield* flow.install(
+      yield* installService.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
