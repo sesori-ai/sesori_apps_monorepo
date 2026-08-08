@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan slug:** `internal-chat-history`
-- **Implementation base:** `origin/main` at `dd6fd2f8`
-- **Series state:** Steps 1–6 merged; step 7/9 in PR
-- **Current step:** 7/9
+- **Implementation base:** `origin/main` at `3d9fe379`
+- **Series state:** Steps 1–7 merged; step 8/9 in PR
+- **Current step:** 8/9
 - **Plan PR:** [#763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763) merged
 - **Prerequisite:** satisfied — the `read-only-archiving` series merged fully on
   2026-08-07 (through [PR #771](https://github.com/sesori-ai/sesori_apps_monorepo/pull/771)).
-- **Next action:** merge step 7/9, then start step 8/9 (stop waking a harness for pending state).
+- **Next action:** merge step 8/9, then start step 9/9 (retire the plan and scope the remaining harness-free work).
 
 ## Delivery Steps
 
@@ -21,8 +21,8 @@
 | [x] | 4/8 | `⚙️ [internal-chat-history] Serve session messages from the store [step 4/8]` | 700–1,100 | [PR #781](https://github.com/sesori-ai/sesori_apps_monorepo/pull/781) merged |
 | [x] | 5/8 | `⚙️ [internal-chat-history] Paginate session messages [step 5/8]` | 600–1,000 | [PR #783](https://github.com/sesori-ai/sesori_apps_monorepo/pull/783) merged |
 | [x] | 6/8 | `🚧 [internal-chat-history] Export archives and purge history on archive [step 6/8]` | 1,000–1,500 | [PR #785](https://github.com/sesori-ai/sesori_apps_monorepo/pull/785) merged |
-| [ ] | 7/9 | `🌿 [internal-chat-history] Load history pages on demand in the client [step 7/9]` | 500–900 | in progress |
-| [ ] | 8/9 | `⚙️ [internal-chat-history] Stop waking a harness for pending questions and permissions [step 8/9]` | 300–600 | pending |
+| [x] | 7/9 | `🌿 [internal-chat-history] Load history pages on demand in the client [step 7/9]` | 500–900 | [PR #787](https://github.com/sesori-ai/sesori_apps_monorepo/pull/787) merged |
+| [ ] | 8/9 | `⚙️ [internal-chat-history] Stop waking a harness for pending questions and permissions [step 8/9]` | 300–600 | in progress |
 | [ ] | 9/9 | `🌱 [internal-chat-history] Retire plan and scope the remaining harness-free work [step 9/9]` | 150–400 | pending |
 
 ## Execution Rules
@@ -55,7 +55,9 @@
   `sesori_shared` 364, `client/module_core` 1,006, `client/app` 915.
 - **2026-08-08 — step 6/8:** analyzer clean; `bridge/app` green (2,516 tests).
 - **2026-08-08 — step 7/9:** analyzer clean in `client/module_core` and
-  `client/app`; `module_core` 1,029 tests, `client/app` 922.
+  `client/app`; `module_core` 1,030 tests, `client/app` 922.
+- **2026-08-08 — step 8/9:** analyzer clean; `bridge/app` green (2,520 tests),
+  including the new `pending_state_without_start_test.dart`.
 
 ## Findings And Plan Deltas
 - **2026-08-06 — Plan revised after comparison with PR #764** (parallel
