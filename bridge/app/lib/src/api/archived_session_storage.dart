@@ -40,11 +40,20 @@ class ArchivedSessionStorage {
     final generation = (existing.isEmpty ? 0 : existing.first.generation) + 1;
     final file = File(_filePath(sessionId: sessionId, generation: generation));
 
-    // A partially written new generation is never the newest complete one,
-    // because the reader falls back to the previous generation when the newest
-    // fails to parse. Write it in place; there is no target to clobber.
-    await file.writeAsString(contents, flush: true);
-    await hardenPath(targetPath: file.path, mode: ownerOnlyFileMode);
+    // Written through a temp file and renamed into place. The generation name
+    // is new, so the rename never has a target to clobber and needs no
+    // platform fallback — but without it, an interrupted *first* write would
+    // leave a partial file with no older generation to fall back to.
+    final temporary = File("${file.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp");
+    try {
+      await temporary.writeAsString(contents, flush: true);
+      await hardenPath(targetPath: temporary.path, mode: ownerOnlyFileMode);
+      await temporary.rename(file.path);
+    } finally {
+      if (temporary.existsSync()) temporary.deleteSync();
+    }
+    // Only after the new generation is durable, so a crash here leaves extra
+    // files rather than none.
     await _removeGenerations(files: existing);
   }
 
@@ -70,12 +79,17 @@ class ArchivedSessionStorage {
   Future<bool> exists({required String sessionId}) async =>
       (await _generationsFor(sessionId: sessionId)).isNotEmpty;
 
-  /// Moves an unreadable file aside instead of deleting it: it may be the only
-  /// remaining copy of that transcript, and a human may still salvage it.
+  /// Moves the newest generation aside instead of deleting it: it may be the
+  /// only remaining copy of that transcript, and a human may still salvage it.
+  ///
+  /// Only the newest, because that is the one the caller just failed to read.
+  /// Older generations are the fallback that makes an interrupted write
+  /// survivable, so quarantining them would destroy the very copy the next
+  /// read should use.
   Future<void> quarantine({required String sessionId}) async {
-    for (final entry in await _generationsFor(sessionId: sessionId)) {
-      await _quarantineFile(file: entry.file, sessionId: sessionId);
-    }
+    final generations = await _generationsFor(sessionId: sessionId);
+    if (generations.isEmpty) return;
+    await _quarantineFile(file: generations.first.file, sessionId: sessionId);
   }
 
   Future<void> delete({required String sessionId}) async {

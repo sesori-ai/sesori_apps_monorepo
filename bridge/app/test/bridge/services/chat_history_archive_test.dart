@@ -284,6 +284,40 @@ void main() {
       expect(await history.archivedStorage.exists(sessionId: "ses_a"), isTrue);
     });
 
+    test("a decode failure on the newest generation keeps the older one", () async {
+      await export();
+      final original = await history.archivedStorage.read(sessionId: "ses_a");
+      // Valid UTF-8 but not a valid envelope: the repository decodes it, fails,
+      // and quarantines. The older generation must survive as the fallback.
+      final archiveDirectory = Directory(archiveDirectoryPath(dataDirectory: history.directory.path));
+      File(
+        "${archiveDirectory.path}/${base64Url.encode(utf8.encode("ses_a"))}.99.json",
+      ).writeAsStringSync("{ not an envelope");
+
+      // First read quarantines the bad newest generation.
+      await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+
+      expect(
+        await history.archivedStorage.read(sessionId: "ses_a"),
+        original,
+        reason: "quarantining the unreadable newest must not take the last good archive with it",
+      );
+    });
+
+    test("an interrupted first write leaves no partial generation", () async {
+      // Nothing under a generation name is ever partial: writes land through a
+      // temp file, so a crash leaves a .tmp that no reader matches.
+      final archiveDirectory = Directory(archiveDirectoryPath(dataDirectory: history.directory.path));
+      await archiveDirectory.create(recursive: true);
+      File(
+        "${archiveDirectory.path}/${base64Url.encode(utf8.encode("ses_b"))}.1.json.1234.5678.tmp",
+      ).writeAsStringSync("{ partial");
+
+      expect(await history.archivedStorage.exists(sessionId: "ses_b"), isFalse);
+      expect(await history.archivedStorage.read(sessionId: "ses_b"), isNull);
+      expect(await history.archivedStorage.listArchivedSessionIds(), isNot(contains("ses_b")));
+    });
+
     test("writing again supersedes the previous generation", () async {
       await export();
 
