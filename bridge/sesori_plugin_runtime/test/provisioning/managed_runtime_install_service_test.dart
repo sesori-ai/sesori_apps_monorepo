@@ -179,7 +179,9 @@ void main() {
     final events = await install(build(checksumValid: false));
 
     expect(events.last, isA<ProvisionFailed>());
-    expect((events.last as ProvisionFailed).message, contains("checksum verification failed"));
+    final message = (events.last as ProvisionFailed).message;
+    expect(message, contains("Could not install the OpenCode runtime"));
+    expect(message, isNot(contains("checksum")));
   });
 
   test("fails when the freshly placed binary does not run", () async {
