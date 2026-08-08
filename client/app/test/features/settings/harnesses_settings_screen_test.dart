@@ -335,10 +335,10 @@ void main() {
       ),
     ).called(1);
 
-    // The bridge accepts the command immediately, so the card returns to idle
-    // and the streamed phases are what the user sees. Two pumps: one delivers
-    // the stream event to the cubit, the next rebuilds with it. The progress
-    // row animates continuously, so never settle here.
+    // The service marks the install in flight from the tap; the streamed
+    // phases are what the user sees. Two pumps: one delivers the stream event
+    // to the cubit, the next rebuilds with it. The progress row animates
+    // continuously, so never settle here.
     installProgress.add(const {
       "future-harness": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
     });

@@ -803,6 +803,44 @@ void main() {
       expect(reportedEvents.single.wireName, "harness_install_finished");
     });
 
+    test("an install that settles before its command returns still reports once", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(mutation.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final command = service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      // The row is busy from the tap, before any progress event arrives.
+      await _pump();
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      // A cached install can finish inside the request round trip.
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+      expect(reportedEvents, isEmpty);
+
+      mutation.complete(_success(_response(token: "one")));
+      await command;
+      await _pump();
+
+      expect(reportedEvents.single.parameters, {"outcome": "completed"});
+      expect(service.installProgress.value, isEmpty);
+    });
+
     test("a rejected install command never claims a later install", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "one")))

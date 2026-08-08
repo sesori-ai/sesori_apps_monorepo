@@ -364,9 +364,11 @@ class _HarnessControlCard extends StatelessWidget {
       PluginManagementActionForceConfirmationRequired() => false,
     };
     final actionHint = plugin.actionHint ?? plugin.setup.actionHint;
-    // An install is under way from the moment this app's command is in flight
-    // until the bridge's terminal progress event clears the entry.
-    final installing = install != null || actionForThisHarness;
+    // The service reports an install as in-flight from the moment its command
+    // is issued until the bridge's terminal event, so this covers the window
+    // before the first progress event without borrowing the generic action
+    // spinner (which any harness action would trigger).
+    final installing = install != null;
 
     return KeyedSubtree(
       key: Key("harness_management_card_$pluginId"),

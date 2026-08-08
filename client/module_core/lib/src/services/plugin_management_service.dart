@@ -88,8 +88,20 @@ class PluginManagementService with Disposable {
   String? _activeBridgeId;
 
   /// Plugin ids whose install this app started, so its analytics report counts
-  /// installs rather than surfaces watching one.
+  /// installs rather than surfaces watching one. An id is added when the
+  /// command is issued and removed when its terminal event is reported or the
+  /// bridge rejects the command.
   final Set<String> _selfStartedInstalls = {};
+
+  /// Terminal phases that arrived before the issuing command returned. A fast
+  /// install can settle within the request round trip, so the outcome is held
+  /// here until acceptance is known rather than dropped.
+  final Map<String, PluginInstallPhase> _pendingInstallOutcomes = {};
+
+  /// Plugin ids with an install command awaiting its response. The row stays
+  /// busy through this window, which closes only on the first progress event
+  /// or a rejection.
+  final Set<String> _installRequestsInFlight = {};
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
 
@@ -106,16 +118,43 @@ class PluginManagementService with Disposable {
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) async {
+    final isInstall = request is PluginLifecycleInstallRequest;
+    // Install progress is broadcast to every connected surface, so track which
+    // installs this app started. Authorship is claimed up front because the
+    // bridge can finish a cached install before this request returns; a
+    // rejected command withdraws it below.
+    if (isInstall) {
+      _selfStartedInstalls.add(pluginId);
+      _installRequestsInFlight.add(pluginId);
+      _publishInstallProgress(_installProgress.value);
+    }
     final result = await _runMutation(
       request: () => _pluginRepository.command(pluginId: pluginId, request: request),
     );
-    // Install progress is broadcast to every connected surface, so remember
-    // which installs this app actually started — but only once the bridge has
-    // accepted the command, so a rejected or offline attempt never claims a
-    // later install someone else started.
-    if (request is PluginLifecycleInstallRequest && result is PluginManagementMutationResultSuccess) {
-      _selfStartedInstalls.add(pluginId);
+    if (!isInstall) return result;
+
+    _installRequestsInFlight.remove(pluginId);
+    // A terminal event that arrived during the request removed the real entry;
+    // drop the synthetic in-flight one with it so the row does not stay busy.
+    final settledDuringRequest = _pendingInstallOutcomes.containsKey(pluginId);
+    _publishInstallProgress(
+      settledDuringRequest
+          ? (Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId))
+          : _installProgress.value,
+    );
+    if (result is PluginManagementMutationResultSuccess) {
+      // A terminal event that raced the response is reported now that the
+      // command is known to have been accepted.
+      final pending = _pendingInstallOutcomes.remove(pluginId);
+      if (pending != null && _selfStartedInstalls.remove(pluginId)) {
+        _reportInstallOutcome(phase: pending);
+      }
+      return result;
     }
+    // The bridge never accepted it: withdraw authorship so a later install of
+    // the same harness, started elsewhere, is not misattributed to this app.
+    _selfStartedInstalls.remove(pluginId);
+    _pendingInstallOutcomes.remove(pluginId);
     return result;
   }
 
@@ -227,8 +266,14 @@ class PluginManagementService with Disposable {
         final wasTracked = next.remove(pluginId) != null;
         // The bridge's terminal event is the authoritative outcome, so report
         // it here rather than at the tap — but only for an install this app
-        // started, since every connected surface sees the same event.
-        if (_selfStartedInstalls.remove(pluginId)) _reportInstallOutcome(phase: phase);
+        // started, since every connected surface sees the same event. While
+        // this app's own command is still in flight, hold the outcome until
+        // acceptance is known instead of dropping or misreporting it.
+        if (_installRequestsInFlight.contains(pluginId)) {
+          _pendingInstallOutcomes[pluginId] = phase;
+        } else if (_selfStartedInstalls.remove(pluginId)) {
+          _reportInstallOutcome(phase: phase);
+        }
         if (!wasTracked) return;
       case PluginInstallPhase.downloading ||
           PluginInstallPhase.verifying ||
@@ -239,6 +284,21 @@ class PluginManagementService with Disposable {
         // A newer bridge phase: keep the row in an in-progress state without
         // claiming a phase this app can name.
         next[pluginId] = const PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null);
+    }
+    _publishInstallProgress(next);
+  }
+
+  /// Publishes [progress] plus a synthetic entry for every install this app has
+  /// requested but not yet seen reported, so the row stays busy in the window
+  /// between the tap and the bridge's first progress event.
+  void _publishInstallProgress(Map<String, PluginInstallProgress> progress) {
+    if (_disposed || _installProgress.isClosed) return;
+    final next = Map<String, PluginInstallProgress>.from(progress);
+    for (final pluginId in _installRequestsInFlight) {
+      next.putIfAbsent(
+        pluginId,
+        () => const PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+      );
     }
     _installProgress.add(Map<String, PluginInstallProgress>.unmodifiable(next));
   }
@@ -271,6 +331,7 @@ class PluginManagementService with Disposable {
     // A new connection or bridge identity makes any pending outcome
     // unattributable, so authorship is forgotten with the progress itself.
     _selfStartedInstalls.clear();
+    _pendingInstallOutcomes.clear();
     if (_disposed || _installProgress.isClosed || _installProgress.value.isEmpty) return;
     _installProgress.add(const {});
   }
