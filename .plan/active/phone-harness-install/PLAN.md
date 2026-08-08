@@ -88,6 +88,14 @@ card shows a dismissible error and the Install button returns.
 - The phone shows Install only when the capability is present **and** setup
   state is `runtimeMissing` or `unavailable`. An old bridge never advertises
   the capability, so a new app never offers install against it.
+  `PluginSetupUnavailable` is broader than "too old" in general ("unsupported
+  or otherwise unusable"), but for the installable descriptors it is only
+  produced for a too-old binary today (OpenCode: explicit-bin too old; Cursor:
+  CLI below minimum; Codex: never). The explicit-bin cases never advertise the
+  capability, so capability ∧ `unavailable` ⇒ installable. Descriptor tests in
+  step 2 pin this: while the install capability is advertised,
+  `PluginSetupUnavailable` may only be returned for a too-old runtime that the
+  managed install resolves.
 
 ### Wire contracts (backward/forward compatible, additive only)
 
@@ -127,7 +135,8 @@ card shows a dismissible error and the Install button returns.
   by the existing single-live-bridge enforcement; and any residual race is
   self-healing because the sentinel is written last and the binary lands via
   atomic rename. `RuntimeInstallService`'s doc comment (which still describes
-  the old startup-mutex caller assumption) is updated to state this contract.
+  the old startup-mutex caller assumption) is updated in step 3 to state this
+  contract.
 - `PluginLifecycleService` owns the install command through the existing
   per-plugin active-command slot:
   - **Accepted-immediately semantics**: unlike other lifecycle commands, the
@@ -203,7 +212,7 @@ One open PR at a time; every title exactly as listed.
 |---|---|---|
 | 1/6 | `🌱 [phone-harness-install] Raise the plan [step 1/6]` | This plan + tracker. |
 | 2/6 | `⚙️ [phone-harness-install] Install capability, wire contracts, and descriptor install seams [step 2/6]` | Shared: `PluginManagementCapability.install`, `install()` command variant, `plugin.install.progress` SSE event + contract tests; client exhaustive-switch tolerance (same four files as the P03 precedent). Interface: `PluginControlCapability.install`, `installRuntime` descriptor seam. Plugins: OpenCode + Codex `installRuntime` implementations + capability declarations, wired to `RuntimeInstallService`/`ManagedRuntimeCleaner`, with descriptor tests. Inert until step 3 wires the command path (same additive-contract precedent as Stage 12-P02). |
-| 3/6 | `🚧 [phone-harness-install] Bridge install command end to end [step 3/6]` | `PluginRuntime` install entry + fencing, repository mirror, `PluginLifecycleService` install command (accepted-immediately, startup-mutex serialization, enable/re-inspect/start on success, sanitized failure), handler mapping for the new variant, Orchestrator SSE emission with throttling. Focused service/runtime/handler/orchestrator tests. |
+| 3/6 | `🚧 [phone-harness-install] Bridge install command end to end [step 3/6]` | `PluginRuntime` install entry + fencing, repository mirror, `PluginLifecycleService` install command (accepted-immediately, existing serialization — no lock, enable/re-inspect/start on success, sanitized failure), `RuntimeInstallService` doc-contract update, handler mapping for the new variant, Orchestrator SSE emission with throttling. Focused service/runtime/handler/orchestrator tests. |
 | 4/6 | `⚙️ [phone-harness-install] Phone install button and progress [step 4/6]` | `PluginManagementService` progress consumption, cubit state, harness-card Install button + progress + failure banner, l10n, bounded analytics event, widget/service tests. |
 | 5/6 | `🚧 [phone-harness-install] Cursor managed runtime and install [step 5/6]` | Generalize the `RuntimeManifest` version pin (OpenCode/Codex updated in lockstep), Cursor manifest, package-directory install layout, `ensureRuntime`-based managed resolution + capability, `sesori_plugin_cursor → sesori_plugin_runtime` dependency, `update-backend-runtimes` skill extension, tests. |
 | 6/6 | `🌱 [phone-harness-install] Retire the plan [step 6/6]` | Move plan to `.plan/completed/`. |
