@@ -757,6 +757,24 @@ retain the legacy raw requests (or explicitly degrade) for older bridges,
 otherwise a newer app's session composer silently loses its options against
 them. This is the usual older-peer rule applied to a new capability.
 
+**Wiring only `loadCacheOnly` is not enough to deliver the promised behavior.**
+The recommendation says "refresh in the background when the backend is
+running", but `loadCacheOnly` never refreshes — on a cold or stale cache it
+returns `SessionOptionsCacheUnavailable` and stops. The alternative modes on
+the route are both wrong for this purpose: no `refresh` param runs
+`loadDynamic`, which falls back to activation and can start a stopped backend,
+and `refresh=true` runs `refreshExplicit`, which definitely does. What the
+follow-up actually needs is an **active-only refresh** — and
+`SessionOptionsService.refreshActiveOnly` (`session_options_service.dart:170`)
+already exists with exactly that semantics, but it is internal and not exposed
+on the route. The follow-up must expose it as an active-only bridge operation
+(or provide an equivalent atomic bridge-side selection between cache-only and
+active-only refresh). Doing the selection client-side from observed state
+would race a backend going dormant, so the decision belongs on the bridge.
+Without this, "refresh in the background when running" is unimplementable, and
+opening a session would either never refresh cold options or wake the
+backend.
+
 ## Verification
 
 - Per-PR: owning-package tests + analyzer; migration verifier fixtures for
