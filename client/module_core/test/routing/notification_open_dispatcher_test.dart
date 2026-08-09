@@ -76,7 +76,9 @@ void main() {
     });
 
     test("leaves the stack alone when that session detail is already on top", () async {
-      routeSource.currentPath = "/projects/project-1/sessions/session-1";
+      // Display-only query parameters differ from what the notification would
+      // build; they must not defeat the match.
+      routeSource.currentLocation = "/projects/project-1/sessions/session-1?readOnly=false&title=Renamed";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -90,8 +92,24 @@ void main() {
       expect(routeDispatcher.replacedStacks, isEmpty);
     });
 
+    test("rebuilds when that session is shown read-only", () async {
+      // Background tasks and subtasks open the same session on the read-only
+      // route, which renders without the composer. The notification wants the
+      // editable screen, so it must still navigate.
+      routeSource.currentLocation = "/projects/project-1/sessions/session-1?readOnly=true";
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+      );
+
+      await dispatcher.start();
+
+      expect(routeDispatcher.replacedStacks, hasLength(1));
+    });
+
     test("rebuilds the stack when a different session is on top", () async {
-      routeSource.currentPath = "/projects/project-1/sessions/session-2";
+      routeSource.currentLocation = "/projects/project-1/sessions/session-2";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -104,7 +122,7 @@ void main() {
     });
 
     test("rebuilds the stack when a pushed screen sits above that session", () async {
-      routeSource.currentPath = "/projects/project-1/sessions/session-1/diffs";
+      routeSource.currentLocation = "/projects/project-1/sessions/session-1/diffs";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -339,7 +357,7 @@ class RecordingRouteDispatcher implements RouteDispatcher {
 
 class FakeRouteSource implements RouteSource {
   @override
-  String? currentPath;
+  String? currentLocation;
 
   final BehaviorSubject<AppRouteDef?> _currentRoute = BehaviorSubject.seeded(null);
 

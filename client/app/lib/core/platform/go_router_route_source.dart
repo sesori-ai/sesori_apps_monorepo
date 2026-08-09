@@ -29,7 +29,7 @@ class GoRouterRouteSource implements RouteSource, Disposable {
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRouteStream.stream;
 
   @override
-  String? get currentPath => _currentPath(_routerDelegate.currentConfiguration);
+  String? get currentLocation => _currentLocation(_routerDelegate.currentConfiguration);
 
   @override
   FutureOr<void> onDispose() {
@@ -53,6 +53,31 @@ class GoRouterRouteSource implements RouteSource, Disposable {
   /// match tree from the top instead reports what the user is actually looking
   /// at.
   static String? _currentPath(RouteMatchList configuration) => _topMatchedLocation(configuration.matches);
+
+  /// As [_currentPath], but keeping the query string.
+  ///
+  /// A match on its own carries no query — only the [RouteMatchList] owning it
+  /// does, via [RouteMatchList.uri]. An imperatively pushed route brings its
+  /// own list, so descending into it reports the pushed location's query
+  /// rather than the last `go`/`replace` one.
+  static String? _currentLocation(RouteMatchList configuration) =>
+      _topLocation(matches: configuration.matches, owner: configuration);
+
+  static String? _topLocation({
+    required List<RouteMatchBase> matches,
+    required RouteMatchList owner,
+  }) {
+    for (final match in matches.reversed) {
+      final location = switch (match) {
+        ImperativeRouteMatch(:final matches) => _topLocation(matches: matches.matches, owner: matches),
+        ShellRouteMatch(:final matches) => _topLocation(matches: matches, owner: owner),
+        RouteMatch() => owner.uri.toString(),
+        _ => null,
+      };
+      if (location != null) return location;
+    }
+    return null;
+  }
 
   static String? _topMatchedLocation(List<RouteMatchBase> matches) {
     for (final match in matches.reversed) {

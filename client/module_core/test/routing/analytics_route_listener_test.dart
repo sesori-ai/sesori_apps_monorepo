@@ -15,7 +15,7 @@ class _FakeRouteSource implements RouteSource {
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
 
   @override
-  String? currentPath;
+  String? currentLocation;
 
   void emit({required AppRouteDef? route}) => routes.add(route);
 

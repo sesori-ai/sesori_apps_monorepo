@@ -113,7 +113,7 @@ class NotificationOpenDispatcher {
   }
 
   void _dispatch(NotificationOpenRequest request) {
-    final sessionDetail = AppRoute.sessionDetail(
+    final sessionDetail = AppRouteSessionDetail(
       projectId: request.projectId,
       projectName: null,
       sessionId: request.sessionId,
@@ -127,7 +127,8 @@ class NotificationOpenDispatcher {
     // one on top, the notification asks for something the user is looking at:
     // the mounted screen surfaces the prompt through its own event stream, so
     // navigating again only costs a reload.
-    if (_routeSource.currentPath == Uri.parse(sessionDetail.buildPath()).path) {
+    final location = _routeSource.currentLocation;
+    if (location != null && sessionDetail.showsEditableLocation(location: Uri.parse(location))) {
       return;
     }
 

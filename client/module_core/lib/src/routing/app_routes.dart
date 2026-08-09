@@ -360,6 +360,23 @@ class AppRouteSessionDetail extends AppRoute {
     };
     return _appendQuery(path: base, queryParameters: queryParams);
   }
+
+  /// Whether [location] — a resolved location as reported by
+  /// `RouteSource.currentLocation` — already shows this session in its
+  /// editable form.
+  ///
+  /// The read-only variant of a session (background tasks and subtasks open
+  /// that way) shares this route's path and differs only by query, so a plain
+  /// path comparison would treat the two as interchangeable. They are not: the
+  /// read-only screen renders without the composer or mutating controls, so a
+  /// caller that wants the editable screen must still navigate to it.
+  ///
+  /// [projectName] and [sessionTitle] are display-only and deliberately
+  /// ignored — the same session labelled differently is still the same screen.
+  bool showsEditableLocation({required Uri location}) {
+    if (location.path != Uri.parse(buildPath()).path) return false;
+    return location.queryParameters[_readOnlyQueryParam] != true.toString();
+  }
 }
 
 class AppRouteSessionDiffs extends AppRoute {
