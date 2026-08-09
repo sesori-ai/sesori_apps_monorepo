@@ -586,10 +586,12 @@ Scope limits, deliberately:
 
 ## Step 9/9: Remaining Harness-Free Session Open (assessment, not implementation)
 
-This series is complete. Opening a session now serves history from
-`chat_history.db`, never starts a harness to learn there is no pending
-interaction, pages older messages on both sides, and archives transcripts
-without touching a backend.
+This series is complete. Opening a session with current, previously synced
+history serves that history from `chat_history.db`, never starts a harness to
+learn there is no pending interaction, and pages older messages on both sides.
+Archiving never deletes the backend's stored transcript; it can still touch —
+and start — the backend when bringing the store current or notifying the
+plugin (see the archive note below).
 
 One group of calls still starts an idle backend, so a fully stopped harness is
 not yet a fully passive session open. This section is the code-informed
@@ -602,7 +604,7 @@ against the merged code:
 
 | Call | Bridge path | Starts a stopped backend? |
 |---|---|---|
-| history | `ChatHistoryService.getSessionMessages` | No — served from `chat_history.db` |
+| history | `ChatHistoryService.getSessionMessages` | No *when the store is current* — served from `chat_history.db`. A session with no sync row, a null `syncedAt`, or a stale watermark triggers `backfillSession`, which reaches `SessionRepository.getSessionMessages` → `_runtime.use` and **can start a stopped backend**. See the cold/stale note below. |
 | `getSession` | `SessionRepository.getSessionForProject` | No — pure `_sessionDao.getSession` read |
 | `getChildren` | `SessionRepository.getChildSessions` | No — pure `_sessionDao.getChildCatalogSessions` read |
 | `getSessionStatuses` | `useIfActive` | No — degrades to empty when stopped |
@@ -611,9 +613,34 @@ against the merged code:
 | `listProviders` | `ProviderRepository.getProviders` → `_runtime.use` | **Yes** |
 | `listCommands` | `SessionRepository.getCommands` → `_runtime.use` | **Yes** |
 
-So a stopped backend is now woken only to render the agent, provider, and
-command pickers the composer needs. History, catalog reads, status, and
-pending state are all answered without it.
+So a stopped backend is woken for two groups, not one: the three picker calls
+**and** any history read on a cold or stale session (a session never synced,
+or advanced outside Sesori since the last sync). A session with current,
+previously synced history answers entirely from the store; catalog reads,
+status, and pending state never wake it.
+
+**Cold/stale history is a real gap, not a corner case.** Opening a session the
+bridge has never backfilled, or one advanced through the backend CLI since its
+last sync, starts the backend purely to fetch history — and against a
+`--opencode-no-auto-start` backend that open fails at history, before the
+composer options ever matter. The follow-up plan must decide what a cold or
+stale session means for a stopped backend: serve what the store has with an
+explicit "possibly incomplete" marker, or block open until the backend is
+started. Serving stale history without a marker is a correctness risk (the
+store may be missing messages the backend has); failing the open outright
+defeats the point of the feature for first-time opens.
+
+### Archive can still touch the backend (for the record)
+
+The success criterion "archiving exports without starting the backend" is not
+what the code does. `ChatHistoryService.exportSessionHistory` backfills
+through `_runtime.use` whenever the stored transcript is missing or stale, and
+`SessionLifecycleService._doArchive` calls `notifySessionArchived` — also
+`_runtime.use` — even when history is current. What the series *does*
+guarantee is narrower but still the point: **archiving never modifies or
+deletes the backend's stored transcript**, so the export/purge is never the
+only copy. A stopped backend can be started by archiving, but never destroyed
+by it.
 
 ### Why these three differ from the step 8/9 pair
 
@@ -666,11 +693,17 @@ when the cache is cold and the backend *can* be started. A no-auto-start
 backend with a cold cache is the one case that needs a real UI decision
 (question 2).
 
-This direction reuses `SessionOptionsService.loadDynamic` instead of adding a
-third options path, keeps the composer functional on a stopped backend, and
-leaves the aggressive "start on open" behaviour in the past. The one honest
-residue is config staleness while a backend is stopped, which the 30-day
-retention already bounds for the composer.
+This direction needs a **cache-only variant of the options loader**, not a
+straight reuse of `SessionOptionsService.loadDynamic`. `loadDynamic` falls
+back to `_refresh` with `SessionOptionsCaptureActivation.mayActivate` when the
+cache is absent or stale, and that refresh reaches `_runtime.useWithGeneration`
+— it starts the stopped backend the follow-up is trying not to start, and
+fails outright against a `--no-auto-start` backend before the cold-cache
+affordance can be shown. The follow-up must add a `loadCacheOnly` (or an
+active-only refresh) for the stopped-backend path, reusing `loadDynamic`'s
+cache read and resolution logic without its activation fallback. The one
+honest residue is config staleness while a backend is stopped, which the
+30-day retention already bounds for the composer.
 
 ## Verification
 
