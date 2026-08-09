@@ -2572,7 +2572,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionNoHarnessDescription.
   ///
   /// In en, this message translates to:
-  /// **'The connected bridge has no coding harness it can run. Install one on that computer, then check again.'**
+  /// **'The connected bridge has no coding harness it can run. Install one from Harness settings.'**
   String get newSessionNoHarnessDescription;
 
   /// No description provided for @newSessionHarnessesRefresh.
