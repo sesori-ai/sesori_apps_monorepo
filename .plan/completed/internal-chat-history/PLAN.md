@@ -775,6 +775,30 @@ Without this, "refresh in the background when running" is unimplementable, and
 opening a session would either never refresh cold options or wake the
 backend.
 
+**Two further constraints on that active-only operation.**
+
+First, exposing `refreshActiveOnly` alone still misses attach mode.
+`refreshActiveOnly` prechecks `isCurrentGeneration` and returns
+`SessionOptionsAutomaticNoOp` when the runtime has no current routable
+generation — which is exactly the state after a bridge restart in
+`--opencode-no-auto-start` attach mode, even though the external server is
+live. It never attempts the descriptor's attach flow, so a cold cache still
+degrades despite the options being available. The follow-up needs an
+**attach-without-spawn availability path** (or an equivalent bridge-side
+distinction) so "refresh when the backend is running" also holds for an
+independently owned live server, not just a bridge-managed one.
+
+Second, the capability needs an honest default. The published v1.7.1 bridge
+already advertises `supportsSessionOptions: true`, but its handler accepts only
+absent, `false`, or `true` refresh values. A newer client that uses a new
+active-only mode against that bridge gets a 400, because the existing
+capability bit cannot distinguish "supports session options" from "supports
+every mode this bridge will ever add". The follow-up must either add a
+separate capability for the active-only mode with an honest default, or define
+an explicit fallback that preserves the older route semantics, so a newer
+client degrades cleanly rather than breaking against a bridge that already
+advertises the parent capability.
+
 ## Verification
 
 - Per-PR: owning-package tests + analyzer; migration verifier fixtures for
