@@ -1,4 +1,6 @@
+import "dart:collection";
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:claude_plugin/claude_plugin.dart";
@@ -208,6 +210,17 @@ void main() {
       );
     });
 
+    test("bounds untrusted image MIME metadata", () {
+      final mapped = mapper
+          .map(
+            content: _image(data: "AA==", mime: "X" * 300),
+          )
+          .single as ClaudeMappedImageContentBlock;
+
+      expect(mapped.attachment.mime, "x" * 255);
+      expect(mapped.attachment, isA<PluginMessageAttachmentMetadata>());
+    });
+
     test("enforces the image budget across one mapped message", () {
       final image = base64Encode(Uint8List(3 * 1024 * 1024));
       final mapped = mapper.map(
@@ -222,19 +235,27 @@ void main() {
     });
 
     test("absorbs redacted, future, and malformed blocks without exposing payloads", () {
-      final mapped = mapper.map(
-        content: [
-          {"type": "redacted_thinking", "data": "private-redacted-data"},
-          {"type": "future_block", "payload": "private-future-data"},
-          {"type": "text", "text": 42, "payload": "private-malformed-data"},
-        ],
-      );
+      late final List<ClaudeMappedContentBlock> mapped;
+      final warnings = _captureWarnings(() {
+        mapped = mapper.map(
+          content: [
+            {"type": "redacted_thinking", "data": "private-redacted-data"},
+            {"type": "future_block", "payload": "private-future-data"},
+            {"type": "text", "text": 42, "payload": "private-malformed-data"},
+            _ThrowingCastMap({"type": "text", "text": "private-cast-payload"}),
+          ],
+        );
+      });
 
       expect(mapped[0], isA<ClaudeMappedUnsupportedContentBlock>());
       expect(mapped.skip(1), everyElement(isA<ClaudeMappedUnknownContentBlock>()));
       expect(mapped.toString(), isNot(contains("private-redacted-data")));
       expect(mapped.toString(), isNot(contains("private-future-data")));
       expect(mapped.toString(), isNot(contains("private-malformed-data")));
+      expect(warnings, contains("[claude] content block decode failed"));
+      expect(warnings, isNot(contains("private-malformed-data")));
+      expect(warnings, isNot(contains("private-cast-payload")));
+      expect(warnings, isNot(contains("private-decode-error")));
       expect(
         mapper.mapParts(sessionId: "session-1", messageId: "message-1", content: {"type": "future_block"}).single.type,
         PluginMessagePartType.unknown,
@@ -247,3 +268,51 @@ Map<String, Object?> _image({required String data, String mime = "image/png"}) =
   "type": "image",
   "source": {"type": "base64", "media_type": mime, "data": data},
 };
+
+String _captureWarnings(void Function() action) {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.warning;
+    IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _ThrowingCastMap extends MapBase<Object?, Object?> {
+  _ThrowingCastMap(this._values);
+
+  final Map<Object?, Object?> _values;
+
+  @override
+  Object? operator [](Object? key) => _values[key];
+
+  @override
+  void operator []=(Object? key, Object? value) => _values[key] = value;
+
+  @override
+  Iterable<Object?> get keys => _values.keys;
+
+  @override
+  void clear() => _values.clear();
+
+  @override
+  Object? remove(Object? key) => _values.remove(key);
+
+  @override
+  Map<RK, RV> cast<RK, RV>() => throw const FormatException("private-decode-error");
+}

@@ -66,6 +66,7 @@ final class ClaudeMappedUnknownContentBlock extends ClaudeMappedContentBlock {
 final class ClaudeContentMapper {
   const ClaudeContentMapper();
 
+  static const int _maxMimeCharacters = 255;
   static const Set<String> _supportedImageMimes = {
     "image/gif",
     "image/jpeg",
@@ -113,7 +114,13 @@ final class ClaudeContentMapper {
     final ClaudeContentBlockDto dto;
     try {
       dto = ClaudeContentBlockDto.fromJson(content.cast<String, dynamic>());
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[claude] content block decode failed "
+        "(fields: ${content.length}, discriminator type: ${content["type"].runtimeType})",
+        error.runtimeType,
+        stackTrace,
+      );
       yield const ClaudeMappedUnknownContentBlock();
       return;
     }
@@ -305,7 +312,8 @@ final class ClaudeContentMapper {
 
   String _normalizedMime(String? value) {
     final normalized = value?.trim().toLowerCase();
-    return normalized == null || normalized.isEmpty ? "application/octet-stream" : normalized;
+    if (normalized == null || normalized.isEmpty) return "application/octet-stream";
+    return String.fromCharCodes(normalized.runes.take(_maxMimeCharacters));
   }
 }
 
