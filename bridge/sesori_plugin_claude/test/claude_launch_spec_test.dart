@@ -100,6 +100,21 @@ void main() {
       expect(arguments, containsAllInOrder(["--permission-mode", "plan"]));
     });
 
+    test("rejects a HOME override", () {
+      expect(
+        () => ClaudeLaunchSpec(
+          binaryPath: "claude",
+          workingDirectory: "/tmp/project",
+          launch: ClaudeNewSession(sessionId: _newSessionId),
+          model: null,
+          effort: null,
+          permissionMode: null,
+          environment: const {"HOME": "/tmp/test-home"},
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
     test("spells the standard mode the way the command line expects", () {
       final arguments = specFor(
         ClaudeNewSession(sessionId: _newSessionId),

@@ -163,6 +163,27 @@ void main() {
       expect(ClaudeStreamMessage.parse({"type": 7}), isA<ClaudeUnknownMessage>());
     });
 
+    test("tolerates wrong-typed scalar fields without throwing", () {
+      final result =
+          ClaudeStreamMessage.parse({
+                "type": "result",
+                "session_id": 1,
+                "uuid": false,
+                "subtype": <Object?>[],
+                "is_error": "false",
+                "result": 2,
+                "stop_reason": true,
+              })
+              as ClaudeResultMessage;
+
+      expect(result.sessionId, isNull);
+      expect(result.uuid, isNull);
+      expect(result.subtype, isNull);
+      expect(result.isError, isFalse);
+      expect(result.result, isNull);
+      expect(result.stopReason, isNull);
+    });
+
     test("tolerates malformed nested payloads without throwing", () {
       // Every nested read is defensive: a wrong-typed member must degrade to an
       // empty map rather than take down the frame.
@@ -172,17 +193,17 @@ void main() {
       expect(assistant.messageId, isNull);
 
       final result =
-          ClaudeStreamMessage.parse({"type": "result", "permission_denials": "not-a-list"})
-              as ClaudeResultMessage;
+          ClaudeStreamMessage.parse({"type": "result", "permission_denials": "not-a-list"}) as ClaudeResultMessage;
       expect(result.permissionDenials, isEmpty);
 
-      final init = ClaudeStreamMessage.parse({
-            "type": "system",
-            "subtype": "init",
-            "capabilities": "not-a-list",
-            "tools": [1, "Read"],
-          })
-          as ClaudeInitMessage;
+      final init =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "init",
+                "capabilities": "not-a-list",
+                "tools": [1, "Read"],
+              })
+              as ClaudeInitMessage;
       expect(init.capabilities, isEmpty);
       expect(init.tools, ["Read"]);
     });

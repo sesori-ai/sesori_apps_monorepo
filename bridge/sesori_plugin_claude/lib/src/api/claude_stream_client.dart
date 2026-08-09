@@ -33,11 +33,11 @@ class ClaudeControlException implements Exception {
 class ClaudeStreamClient {
   ClaudeStreamClient({
     required ClaudeLaunchSpec launchSpec,
-    ClaudeProcessFactory? processFactory,
+    required ClaudeProcessFactory processFactory,
     Duration controlTimeout = const Duration(seconds: 60),
     String logTag = "claude",
   }) : _launchSpec = launchSpec,
-       _processFactory = processFactory ?? defaultClaudeProcessFactory,
+       _processFactory = processFactory,
        _controlTimeout = controlTimeout,
        _logTag = logTag;
 
@@ -165,14 +165,29 @@ class ClaudeStreamClient {
   }
 
   /// Sends a user turn. Content blocks are built by the caller.
+  ///
+  /// Throws [ClaudeControlException] when the process has already exited or the
+  /// frame cannot be written. Calls after explicit teardown remain a no-op so a
+  /// late UI callback cannot revive a disposed session.
   void sendUserMessage({required List<Map<String, Object?>> content}) {
     final process = _process;
     if (process == null) return;
-    _writeFrame(process, {
+    if (_exited.isCompleted) {
+      throw ClaudeControlException(
+        subtype: "<user>",
+        message: "claude process has exited",
+      );
+    }
+    if (!_writeFrame(process, {
       "type": "user",
       "message": {"role": "user", "content": content},
       "session_id": _launchSpec.launch.sessionId,
-    });
+    })) {
+      throw ClaudeControlException(
+        subtype: "<user>",
+        message: "failed to write user turn",
+      );
+    }
   }
 
   /// Sends a control request and awaits its response payload.
@@ -202,7 +217,7 @@ class ClaudeStreamClient {
     if (!_writeFrame(process, {
       "type": "control_request",
       "request_id": requestId,
-      "request": {"subtype": subtype, ...params},
+      "request": {...params, "subtype": subtype},
     })) {
       // The frame never left the bridge, so no reply is coming. Fail now rather
       // than orphaning the request until it times out.
@@ -363,9 +378,9 @@ class ClaudeStreamClient {
       try {
         // Closing stdin is the protocol's own shutdown signal, so try it before
         // signalling. A broken pipe here is expected and already absorbed.
-        await process.stdin.close();
-      } on Object catch (error) {
-        Log.d("[$_logTag] closing stdin during teardown failed: $error");
+        await process.stdin.close().timeout(gracefulTimeout);
+      } on Object catch (error, stack) {
+        Log.w("[$_logTag] closing stdin during teardown failed", error, stack);
       }
       try {
         if (io.Platform.isWindows) {

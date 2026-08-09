@@ -5,11 +5,11 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `7e460bc9` (Step 3 rebased onto it after Step 2 merged)
-- **Series state:** Steps 1-2/17 merged; Step 3/17 complete locally
+- **Series state:** Steps 1-2/17 merged; Step 3/17 PR open
 - **Current step:** 3/17 — stream-json transport
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Open the Step 3 PR against `main`
+- **Next action:** Address review feedback and merge the Step 3 PR
 
 ## Plan Review
 
@@ -46,7 +46,7 @@
 |---|---|---|---|---:|---|
 | [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,200-1,400 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) merged; see the verification log for the measured diff |
 | [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | [PR #752](https://github.com/sesori-ai/sesori_apps_monorepo/pull/752) merged 2026-08-09 as `7e460bc9`; see the verification log for the measured diff |
-| [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | Complete locally and rebased onto merged Step 2; ready to open against `main` |
+| [ ] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | [PR #792](https://github.com/sesori-ai/sesori_apps_monorepo/pull/792) open against `main` |
 | [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 | Not started |
 | [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | Not started |
 | [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Not started |
