@@ -30,6 +30,9 @@ class _FakeRouteSource implements RouteSource {
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
+
+  @override
+  String? currentPath;
 }
 
 const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token");

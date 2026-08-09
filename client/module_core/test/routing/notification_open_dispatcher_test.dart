@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/platform/notification_open_request.dart";
 import "package:sesori_dart_core/src/platform/push_messaging_source.dart";
 import "package:sesori_dart_core/src/platform/push_notification_message.dart";
 import "package:sesori_dart_core/src/platform/route_dispatcher.dart";
+import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/routing/notification_open_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -18,6 +19,7 @@ void main() {
     late FakePushMessagingSource pushMessagingSource;
     late FakeLocalNotificationClient localNotificationClient;
     late RecordingRouteDispatcher routeDispatcher;
+    late FakeRouteSource routeSource;
     late NotificationOpenDispatcher dispatcher;
 
     setUp(() {
@@ -25,11 +27,13 @@ void main() {
       pushMessagingSource = FakePushMessagingSource();
       localNotificationClient = FakeLocalNotificationClient();
       routeDispatcher = RecordingRouteDispatcher();
+      routeSource = FakeRouteSource();
       dispatcher = NotificationOpenDispatcher(
         authSession: authSession,
         pushMessagingSource: pushMessagingSource,
         localNotificationClient: localNotificationClient,
         routeDispatcher: routeDispatcher,
+        routeSource: routeSource,
       );
     });
 
@@ -69,6 +73,47 @@ void main() {
           ).buildPath(),
         ]),
       );
+    });
+
+    test("leaves the stack alone when that session detail is already on top", () async {
+      routeSource.currentPath = "/projects/project-1/sessions/session-1";
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+      );
+
+      await dispatcher.start();
+
+      // Rebuilding would tear down the live screen and force a full reload
+      // before the prompt could show; the mounted screen already surfaces it.
+      expect(routeDispatcher.replacedStacks, isEmpty);
+    });
+
+    test("rebuilds the stack when a different session is on top", () async {
+      routeSource.currentPath = "/projects/project-1/sessions/session-2";
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+      );
+
+      await dispatcher.start();
+
+      expect(routeDispatcher.replacedStacks, hasLength(1));
+    });
+
+    test("rebuilds the stack when a pushed screen sits above that session", () async {
+      routeSource.currentPath = "/projects/project-1/sessions/session-1/diffs";
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+      );
+
+      await dispatcher.start();
+
+      expect(routeDispatcher.replacedStacks, hasLength(1));
     });
 
     test("latest pending notification wins after auth replay", () async {
@@ -290,6 +335,16 @@ class RecordingRouteDispatcher implements RouteDispatcher {
   void replaceStack({required RouteStack stack}) {
     replacedStacks.add(stack);
   }
+}
+
+class FakeRouteSource implements RouteSource {
+  @override
+  String? currentPath;
+
+  final BehaviorSubject<AppRouteDef?> _currentRoute = BehaviorSubject.seeded(null);
+
+  @override
+  ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 }
 
 AuthState _authenticatedState() {

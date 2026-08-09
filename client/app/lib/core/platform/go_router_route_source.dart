@@ -29,6 +29,9 @@ class GoRouterRouteSource implements RouteSource, Disposable {
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRouteStream.stream;
 
   @override
+  String? get currentPath => _currentPath(_routerDelegate.currentConfiguration);
+
+  @override
   FutureOr<void> onDispose() {
     _routerDelegate.removeListener(_onRouteChanged);
     _currentRouteStream.close();
