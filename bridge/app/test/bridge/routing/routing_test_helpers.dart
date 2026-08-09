@@ -23,6 +23,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
@@ -60,15 +61,14 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
   required AppDatabase database,
   required BridgePluginApi plugin,
 }) {
-  final dispatcher = SessionOperationDispatcher(
-    sessionRepository: singlePluginSessionRepository(
-      plugin: plugin,
-      sessionDao: database.sessionDao,
-      projectsDao: database.projectsDao,
-      pullRequestDao: database.pullRequestDao,
-      unseenCalculator: const SessionUnseenCalculator(),
-    ),
+  final sessionRepository = singlePluginSessionRepository(
+    plugin: plugin,
+    sessionDao: database.sessionDao,
+    projectsDao: database.projectsDao,
+    pullRequestDao: database.pullRequestDao,
+    unseenCalculator: const SessionUnseenCalculator(),
   );
+  final dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
   return (
     dispatcher: dispatcher,
     service: PendingInteractionService(
@@ -82,6 +82,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
         projectsDao: database.projectsDao,
       ),
       dispatcher: dispatcher,
+      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
       legacyMissingPluginId: plugin.id,
     ),
   );
@@ -148,6 +149,8 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastGetCommandsProjectId;
 
   String? lastGetMessagesSessionId;
+  String? lastGetPendingQuestionsSessionId;
+  String? lastGetPendingPermissionsSessionId;
 
   String? lastGetProvidersProjectId;
   String? lastCreateSessionDirectory;
@@ -414,14 +417,19 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => pendingQuestionsResult;
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    lastGetPendingQuestionsSessionId = sessionId;
+    return pendingQuestionsResult;
+  }
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => pendingQuestionsResult;
 
   @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async =>
-      pendingPermissionsResult;
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
+    lastGetPendingPermissionsSessionId = sessionId;
+    return pendingPermissionsResult;
+  }
 
   @override
   Future<void> replyToQuestion({
@@ -547,17 +555,6 @@ class FakeSessionDao {
     if (_sessions.containsKey(sessionId)) {
       final session = _sessions[sessionId]!;
       _sessions[sessionId] = session.copyWith(archivedAt: archivedAt);
-    }
-  }
-
-  Future<void> clearArchived({
-    required String sessionId,
-    required int updatedAt,
-    required int projectionUpdatedAt,
-  }) async {
-    if (_sessions.containsKey(sessionId)) {
-      final session = _sessions[sessionId]!;
-      _sessions[sessionId] = session.copyWith(archivedAt: null);
     }
   }
 
@@ -774,7 +771,10 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   }) async => const <String>{};
 }
 
-Session _deletedSession(String sessionId) => Session(
+DeletedSessionSubtree _deletedSession(String sessionId) =>
+    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
+
+Session _deletedSessionInfo(String sessionId) => Session(
   branchName: null,
   id: sessionId,
   pluginId: "fake",
@@ -832,6 +832,7 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
+
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
@@ -848,7 +849,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
-  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
@@ -921,6 +922,12 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async => [sessionId];
+  @override
+  Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async => sessionIds;
+  @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async => const {};
+  @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
       const <StoredSession>[];
   @override
@@ -990,9 +997,6 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required int archivedAt,
   }) async {}
-
-  @override
-  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({
@@ -1082,6 +1086,7 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
+
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
@@ -1131,7 +1136,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
@@ -1344,6 +1349,27 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
+    final stored = await _sessionDao.getSession(sessionId: sessionId);
+    return stored == null ? const [] : [sessionId];
+  }
+
+  @override
+  Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async {
+    final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
+    return rows.keys.toSet();
+  }
+
+  @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async {
+    final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
+    return {
+      for (final entry in rows.entries)
+        if (entry.value.archivedAt != null) entry.key,
+    };
+  }
+
+  @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
     return sessions.map((session) => session.toStoredSession()).toList(growable: false);
@@ -1441,9 +1467,6 @@ class FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required int archivedAt,
   }) async {}
-
-  @override
-  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({

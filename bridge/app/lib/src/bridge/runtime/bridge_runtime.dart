@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 
 import "../../api/database/database.dart";
+import "../../api/database/history/chat_history_database.dart";
 import "../../listeners/plugin_catalog_hydration_listener.dart";
 import "../../services/catalog_import_service.dart";
 import "../bandwidth_tracker.dart";
@@ -18,15 +19,18 @@ import "bridge_shutdown_coordinator.dart";
 class BridgeRuntime {
   BridgeRuntime({
     required AppDatabase database,
+    required ChatHistoryDatabase chatHistoryDatabase,
     required FailureReporter failureReporter,
     required OrchestratorComposition composition,
   }) : _database = database,
+       _chatHistoryDatabase = chatHistoryDatabase,
        _failureReporter = failureReporter,
        _restartDispatcher = composition.restartDispatcher,
        _routedRequestDispatcher = composition.routedRequestDispatcher,
        _composition = composition;
 
   final AppDatabase _database;
+  final ChatHistoryDatabase _chatHistoryDatabase;
   final FailureReporter _failureReporter;
   final BridgeRestartDispatcher _restartDispatcher;
   final RoutedRequestDispatcher _routedRequestDispatcher;
@@ -39,6 +43,10 @@ class BridgeRuntime {
 
   Future<void> reconcileDeletedSessionStorage() {
     return _composition.deletedSessionStorageCleanupService.reconcile();
+  }
+
+  Future<void> reconcileChatHistory() {
+    return _composition.chatHistoryReconcileService.reconcile();
   }
 
   BandwidthTracker createBandwidthTracker() {
@@ -78,6 +86,7 @@ class BridgeRuntime {
     await step(_composition.catalogHydrationListener.dispose);
     await step(_composition.catalogImportService.dispose);
     await step(_database.close);
+    await step(_chatHistoryDatabase.close);
 
     if (firstError != null) {
       Error.throwWithStackTrace(firstError!, firstStackTrace!);

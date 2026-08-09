@@ -18,6 +18,7 @@ import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/restart_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -330,6 +331,7 @@ class _ReauthHarness {
     // id the revoked path re-registers.
     final registrationService = createFakeBridgeRegistrationService(repository: registrationRepository);
 
+    final testChatHistory = createTestChatHistory();
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -348,6 +350,10 @@ class _ReauthHarness {
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: authority,

@@ -281,6 +281,12 @@ void main() {
 }
 
 class _FakeCatalogImportRepository implements CatalogImportRepository {
+  @override
+  Stream<List<SessionBackendActivity>> get backendActivity => const Stream.empty();
+
+  @override
+  Future<void> dispose() async {}
+
   _FakeCatalogImportRepository({
     required this.completion,
     required this.hydrationGate,

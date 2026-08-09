@@ -89,6 +89,18 @@ void main() {
     );
   });
 
+  test("install capability round-trips on the wire", () {
+    final json = plugin.copyWith(
+      managementCapabilities: {PluginManagementCapability.install},
+    ).toJson();
+
+    expect(json["managementCapabilities"], ["install"]);
+    expect(
+      PluginManagementMetadata.fromJson(json).managementCapabilities,
+      {PluginManagementCapability.install},
+    );
+  });
+
   test("older management responses decode without a snapshot token", () {
     final json = const PluginManagementResponse(
       snapshotToken: null,
@@ -172,6 +184,7 @@ void main() {
       PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
       PluginLifecycleCommandRequest.restart(mode: PluginStopMode.force),
       PluginLifecycleCommandRequest.refresh(),
+      PluginLifecycleCommandRequest.install(),
     ];
     const expectedJson = <Map<String, dynamic>>[
       {"type": "enable"},
@@ -180,6 +193,7 @@ void main() {
       {"type": "restart", "mode": "safe"},
       {"type": "restart", "mode": "force"},
       {"type": "refresh"},
+      {"type": "install"},
     ];
     for (final (index, request) in requests.indexed) {
       final json = request.toJson();

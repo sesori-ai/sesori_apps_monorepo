@@ -116,6 +116,7 @@ SessionDetailLoaded _loadedState({
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
     messages: messages,
+    olderMessagesCursor: null,
     streamingText: const {},
     sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
@@ -264,6 +265,7 @@ void main() {
     final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
       messages: const [],
+      olderMessagesCursor: null,
       streamingText: const {},
       sessionStatus: const SessionStatus.idle(),
       pendingQuestions: const [],
@@ -345,6 +347,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
+  });
+
+  testWidgets("an archived session is read-only: no composer, no pending banners", (tester) async {
+    // Archiving is permanent, so an archived session is audit-only.
+    final state = _loadedState(
+      pendingQuestions: const [_question],
+      pendingPermissions: const [_permission],
+    ).copyWith(isArchived: true);
+    when(() => cubit.state).thenReturn(state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.text("This session is archived and read-only."), findsOneWidget);
+    // Pending requests can never be answered on an archived session.
+    expect(find.text("1 pending question"), findsNothing);
+    expect(find.text("1 permission request pending"), findsNothing);
   });
 
   testWidgets("closes an open question when it leaves pending state", (tester) async {

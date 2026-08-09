@@ -148,6 +148,22 @@ void main() {
       expect(result.data.map((s) => s.name).toList(), ["a", "b"]);
     });
 
+    test("listSuggestions returns every child when maxResults exceeds the directory size", () {
+      // Guards the reported bug: a directory of 152 folders listed only its
+      // first 50 because the client asked for 50. maxResults must be the only
+      // bound in this path — no other cap may re-truncate a listing that fits.
+      const childCount = 152;
+      for (var index = 0; index < childCount; index++) {
+        Directory("${tempDir.path}/project-${index.toString().padLeft(3, "0")}").createSync();
+      }
+
+      final result = repository.listSuggestions(prefix: tempDir.path, maxResults: 1000);
+
+      expect(result.data, hasLength(childCount));
+      expect(result.data.first.name, "project-000");
+      expect(result.data.last.name, "project-151");
+    });
+
     test("translates a permission denial into FilesystemPermissionDeniedException", () {
       final repo = FilesystemRepository(
         filesystemApi: _PermissionDeniedFilesystemApi(),

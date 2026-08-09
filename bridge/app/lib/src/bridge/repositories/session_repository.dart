@@ -63,6 +63,9 @@ typedef SessionBindingsCommitted = ({
 
 typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 
+/// The deleted root as clients see it, plus every session id removed with it.
+typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
@@ -101,6 +104,7 @@ class SessionRepository {
        _aggregateSourceDeadline = aggregateSourceDeadline;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
+
 
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
@@ -494,7 +498,11 @@ class SessionRepository {
 
   /// Deletes the backend root, then tombstones every persisted binding in its
   /// subtree and removes the stable root atomically.
-  Future<Session> deleteSession({required String sessionId}) async {
+  ///
+  /// Returns the deleted root snapshot plus the exact set of session ids the
+  /// deletion removed, so per-session cleanup outside this repository operates
+  /// on what was actually deleted rather than on an earlier snapshot.
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async {
     final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
@@ -531,7 +539,10 @@ class SessionRepository {
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
     }
-    return deletionSnapshot;
+    return (
+      session: deletionSnapshot,
+      sessionIds: [for (final binding in subtree) binding.sessionId],
+    );
   }
 
   Future<List<SessionDto>> _getSessionSubtree({required SessionDto root}) async {
@@ -1086,6 +1097,57 @@ class SessionRepository {
     );
   }
 
+  /// The session and every descendant it would take with it on deletion.
+  ///
+  /// Empty when no such session is stored, so callers preparing per-session
+  /// cleanup do not have to distinguish "gone already" from "no children".
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
+    final root = await _sessionDao.getSession(sessionId: sessionId);
+    if (root == null) return const [];
+    final subtree = await _getSessionSubtree(root: root);
+    return [for (final binding in subtree) binding.sessionId];
+  }
+
+  /// The subset of [sessionIds] that still has a stored session row. Archived
+  /// sessions keep their row, so absence means the session is really gone.
+  Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async {
+    if (sessionIds.isEmpty) return const {};
+    // Each id becomes a bind variable and the store is unbounded, so ask in
+    // chunks rather than letting one oversized statement fail the lookup.
+    const chunkSize = 500;
+    final ordered = sessionIds.toList(growable: false);
+    final existing = <String>{};
+    for (var start = 0; start < ordered.length; start += chunkSize) {
+      final end = start + chunkSize;
+      final rows = await _sessionDao.getSessionsByIds(
+        sessionIds: ordered.sublist(start, end > ordered.length ? ordered.length : end),
+      );
+      existing.addAll(rows.keys);
+    }
+    return existing;
+  }
+
+  /// The subset of [sessionIds] the catalog reports as archived.
+  ///
+  /// Distinguishes "the archive completed" from "an export ran but the archive
+  /// never finished", which look identical from the filesystem alone.
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async {
+    if (sessionIds.isEmpty) return const {};
+    const chunkSize = 500;
+    final ordered = sessionIds.toList(growable: false);
+    final archived = <String>{};
+    for (var start = 0; start < ordered.length; start += chunkSize) {
+      final end = start + chunkSize;
+      final rows = await _sessionDao.getSessionsByIds(
+        sessionIds: ordered.sublist(start, end > ordered.length ? ordered.length : end),
+      );
+      for (final entry in rows.entries) {
+        if (entry.value.archivedAt != null) archived.add(entry.key);
+      }
+    }
+    return archived;
+  }
+
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
     return sessions.map((session) => session.toStoredSession()).toList(growable: false);
@@ -1319,14 +1381,6 @@ class SessionRepository {
       sessionId: sessionId,
       archivedAt: archivedAt,
       updatedAt: archivedAt,
-      projectionUpdatedAt: captureProjectionTimestamp(),
-    );
-  }
-
-  Future<void> unarchiveStoredSession({required String sessionId}) {
-    return _sessionDao.clearArchived(
-      sessionId: sessionId,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
       projectionUpdatedAt: captureProjectionTimestamp(),
     );
   }

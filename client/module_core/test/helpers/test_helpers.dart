@@ -297,9 +297,17 @@ void delegateSessionRepositoryToService({
     ),
   );
   when(
-    () => repository.getMessages(sessionId: any(named: "sessionId")),
+    () => repository.getMessages(
+      sessionId: any(named: "sessionId"),
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
   ).thenAnswer(
-    (invocation) => service.getMessages(sessionId: invocation.namedArguments[#sessionId]! as String),
+    (invocation) => service.getMessages(
+      sessionId: invocation.namedArguments[#sessionId]! as String,
+      limit: invocation.namedArguments[#limit] as int?,
+      before: invocation.namedArguments[#before] as int?,
+    ),
   );
   when(
     () => repository.getPendingQuestions(sessionId: any(named: "sessionId")),

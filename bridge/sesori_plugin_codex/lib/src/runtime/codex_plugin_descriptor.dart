@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io" as io;
 import "dart:math";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -25,6 +26,7 @@ import "../repositories/mappers/codex_rollout_tool_mapper.dart";
 import "../services/codex_rollout_tailer.dart";
 import "../services/codex_session_service.dart";
 import "codex_bridge_plugin.dart";
+import "codex_desktop_app_locator.dart";
 import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
 import "codex_record_mapper.dart";
@@ -132,13 +134,15 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     Duration coldStartBudget = codexColdStartBudget,
     Duration versionProbeTimeout = codexVersionProbeTimeout,
     ManagedRuntimeProvisionService? provisionService,
+    List<String>? desktopAppCliCandidates,
   }) : _buildApi = buildApi,
        _candidatePorts = candidatePorts,
        _random = random,
        _degradedDebounce = degradedDebounce,
        _coldStartBudget = coldStartBudget,
        _versionProbeTimeout = versionProbeTimeout,
-       _provisionService = provisionService;
+       _provisionService = provisionService,
+       _desktopAppCliCandidates = desktopAppCliCandidates;
 
   final CodexManagedApiFactory? _buildApi;
   final Iterable<int>? _candidatePorts;
@@ -150,6 +154,10 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   /// Test seam for existing-runtime resolution. Production builds a default in
   /// [ensureRuntime] from the host's process service.
   final ManagedRuntimeProvisionService? _provisionService;
+
+  /// Test seam for desktop-app CLI candidates. Production enumerates them with
+  /// [codexDesktopAppCliCandidates] for the current platform.
+  final List<String>? _desktopAppCliCandidates;
 
   @override
   bool get supportsPromptAttachments => true;
@@ -199,6 +207,71 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   List<PluginOption> get options => cliOptions;
 
   @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
+    return {
+      ...super.managementCapabilities(config: config),
+      if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+    };
+  }
+
+  /// Whether the pinned managed codex runtime can be installed on request: no
+  /// explicit `--codex-bin` override (that binary is authoritative) and a
+  /// published release asset for this platform.
+  bool _supportsManagedInstall({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return false;
+    final PlatformTarget target;
+    try {
+      target = PlatformTarget.current();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] platform detection failed; managed install unavailable", error, stackTrace);
+      return false;
+    }
+    return const CodexRuntimeManifest().assetFor(target: target) != null;
+  }
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) async* {
+    const manifest = CodexRuntimeManifest();
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: null,
+    );
+    final httpClient = http.Client();
+    try {
+      final installService = ManagedRuntimeInstallService(
+        manifest: manifest,
+        versionValidator: RuntimeVersionValidator(
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+          probeTimeout: _versionProbeTimeout,
+        ),
+        installService: RuntimeInstallService(
+          downloadClient: BinaryDownloadClient(httpClient: httpClient),
+          checksumValidator: ChecksumValidator(),
+          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+        ),
+        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+      );
+      yield* installService.install(
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+      );
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,
     required HostProcessService processes,
@@ -220,8 +293,21 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       probeTimeout: _versionProbeTimeout,
     );
 
+    // Fallback resolution mirroring ensureRuntime's precedence when the primary
+    // probe fails: a recent-enough desktop-app-bundled CLI, then the pinned
+    // managed runtime.
     Future<bool> resolveManagedRuntime() async {
       if (hasExplicitBin) return false;
+      for (final candidate in _resolveDesktopAppCliCandidates(environment: environment)) {
+        final candidateVersion = await versionValidator.detectVersion(
+          executable: candidate,
+          environment: environment,
+        );
+        if (candidateVersion != null && candidateVersion.compareTo(manifest.minPathVersion) >= 0) {
+          executable = candidate;
+          return true;
+        }
+      }
       final managedExecutable = manifest.managedBinaryPath(stateDirectory: stateDirectory);
       final managedVersion = await versionValidator.detectVersion(
         executable: managedExecutable,
@@ -336,8 +422,9 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     return value;
   }
 
-  /// Resolves an existing codex runtime (a recent-enough PATH install or the
-  /// pinned managed runtime when already installed). Skipped when an explicit
+  /// Resolves an existing codex runtime (a recent-enough PATH install, a
+  /// recent-enough CLI bundled by the Codex desktop app, or the pinned managed
+  /// runtime when already installed). Skipped when an explicit
   /// `--codex-bin` path is set (it already names the binary). The resolved
   /// launch path is surfaced via [ProvisionReady]; a failure is non-fatal here
   /// and `start()` fails with guidance.
@@ -361,6 +448,15 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     return combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim().toLowerCase();
   }
 
+  /// The injected desktop-app CLI candidates, or the platform's real ones.
+  List<String> _resolveDesktopAppCliCandidates({required Map<String, String> environment}) {
+    return _desktopAppCliCandidates ??
+        codexDesktopAppCliCandidates(
+          environment: environment,
+          os: PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem),
+        );
+  }
+
   /// Assembles the production resolver from the host's process service so
   /// helper commands go through the host, never a raw spawn.
   ManagedRuntimeProvisionService _buildDefaultProvisionService({
@@ -379,6 +475,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
         runtimeId: manifest.runtimeId,
         probeTimeout: _versionProbeTimeout,
       ),
+      fallbackExecutableCandidates: _resolveDesktopAppCliCandidates(environment: host.environment),
     );
   }
 

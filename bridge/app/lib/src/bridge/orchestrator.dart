@@ -11,12 +11,17 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/archived_session_storage.dart";
+import "../api/attachment_spill_storage.dart";
 import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/database.dart";
+import "../api/database/history/chat_history_database.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
+import "../listeners/chat_history_activity_listener.dart";
+import "../listeners/chat_history_listener.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
 import "../listeners/plugin_event_listener.dart";
 import "../listeners/session_binding_commit_listener.dart";
@@ -62,6 +67,7 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
+import "repositories/chat_history_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
@@ -121,6 +127,9 @@ import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
+import "services/archived_session_validator.dart";
+import "services/chat_history_reconcile_service.dart";
+import "services/chat_history_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
@@ -150,6 +159,7 @@ typedef OrchestratorComposition = ({
   CatalogImportService catalogImportService,
   PluginCatalogHydrationListener catalogHydrationListener,
   DeletedSessionStorageCleanupService deletedSessionStorageCleanupService,
+  ChatHistoryReconcileService chatHistoryReconcileService,
   BridgeRestartDispatcher restartDispatcher,
   RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
@@ -169,6 +179,10 @@ class Orchestrator {
   final BridgeSettingsRepository _bridgeSettingsRepository;
   final ServerClock _clock;
   final AppDatabase _database;
+  final ChatHistoryDatabase _chatHistoryDatabase;
+  final AttachmentSpillStorage _attachmentSpillStorage;
+  final ArchivedSessionStorage _archivedSessionStorage;
+  final AttachmentSpillStorage _archivedAttachmentStorage;
   final http.Client _httpClient;
   final ProcessRunner _processRunner;
   final AccessTokenProvider _accessTokenProvider;
@@ -189,6 +203,10 @@ class Orchestrator {
     required BridgeSettingsRepository bridgeSettingsRepository,
     required ServerClock clock,
     required AppDatabase database,
+    required ChatHistoryDatabase chatHistoryDatabase,
+    required AttachmentSpillStorage attachmentSpillStorage,
+    required ArchivedSessionStorage archivedSessionStorage,
+    required AttachmentSpillStorage archivedAttachmentStorage,
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required AccessTokenProvider accessTokenProvider,
@@ -208,6 +226,10 @@ class Orchestrator {
        _bridgeSettingsRepository = bridgeSettingsRepository,
        _clock = clock,
        _database = database,
+       _chatHistoryDatabase = chatHistoryDatabase,
+       _attachmentSpillStorage = attachmentSpillStorage,
+       _archivedSessionStorage = archivedSessionStorage,
+       _archivedAttachmentStorage = archivedAttachmentStorage,
        _httpClient = httpClient,
        _processRunner = processRunner,
        _accessTokenProvider = accessTokenProvider,
@@ -286,6 +308,7 @@ class Orchestrator {
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
+    final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
     final sessionMutationDispatcher = SessionMutationDispatcher(
       sessionRepository: sessionRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
@@ -384,6 +407,7 @@ class Orchestrator {
       permissionRepository: permissionRepository,
       questionRepository: questionRepository,
       dispatcher: sessionOperationDispatcher,
+      archivedSessionValidator: archivedSessionValidator,
       legacyMissingPluginId: _legacyMissingPluginId,
     );
     final sessionCreationService = SessionCreationService(
@@ -441,16 +465,29 @@ class Orchestrator {
     final sessionPromptService = SessionPromptService(
       sessionRepository: sessionRepository,
       dispatcher: sessionOperationDispatcher,
+      archivedSessionValidator: archivedSessionValidator,
+    );
+    final chatHistoryService = ChatHistoryService(
+      chatHistoryRepository: ChatHistoryRepository(
+        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
+        attachmentSpillStorage: _attachmentSpillStorage,
+        archivedSessionStorage: _archivedSessionStorage,
+        archivedAttachmentStorage: _archivedAttachmentStorage,
+      ),
+      sessionRepository: sessionRepository,
     );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
+      archivedSessionValidator: archivedSessionValidator,
+      chatHistoryService: chatHistoryService,
     );
     final sessionDeletionService = SessionDeletionService(
       sessionLifecycleService: sessionLifecycleService,
       sessionMutationDispatcher: sessionMutationDispatcher,
+      chatHistoryService: chatHistoryService,
     );
     final sessionAbortService = SessionAbortService(
       sessionRepository: sessionRepository,
@@ -500,12 +537,21 @@ class Orchestrator {
       runtime: _pluginRuntime,
       service: sessionOptionsService,
     );
+    final chatHistoryListener = ChatHistoryListener(
+      source: sessionEventDispatcher.events,
+      chatHistoryService: chatHistoryService,
+    );
+    final chatHistoryActivityListener = ChatHistoryActivityListener(
+      source: catalogImportRepository.backendActivity,
+      chatHistoryService: chatHistoryService,
+    );
     final normalizedPluginEvents = sessionEventDispatcher.events.doOnListen(() {
       for (final listener in pluginEventListeners) {
         listener.start();
       }
       sessionBindingCommitListener.start();
       sessionDeletionListener.start();
+      chatHistoryListener.start();
     });
     final restartDispatcher = BridgeRestartDispatcher(restartService: _restartService);
     final router = RequestRouter(
@@ -534,7 +580,7 @@ class Orchestrator {
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
         ),
-        GetSessionMessagesHandler(sessionRepository: sessionRepository),
+        GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
@@ -586,6 +632,8 @@ class Orchestrator {
       pluginEventListeners: pluginEventListeners,
       sessionBindingCommitListener: sessionBindingCommitListener,
       sessionDeletionListener: sessionDeletionListener,
+      chatHistoryListener: chatHistoryListener,
+      chatHistoryActivityListener: chatHistoryActivityListener,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
       sessionEventDispatcher: sessionEventDispatcher,
@@ -603,6 +651,7 @@ class Orchestrator {
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
+      pluginInstallProgress: _pluginLifecycleService.installProgress,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -627,6 +676,10 @@ class Orchestrator {
       catalogImportService: catalogImportService,
       catalogHydrationListener: catalogHydrationListener,
       deletedSessionStorageCleanupService: deletedSessionStorageCleanupService,
+      chatHistoryReconcileService: ChatHistoryReconcileService(
+        sessionRepository: sessionRepository,
+        chatHistoryService: chatHistoryService,
+      ),
       restartDispatcher: restartDispatcher,
       routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
@@ -661,6 +714,8 @@ class OrchestratorSession {
   final List<PluginEventListener> _pluginEventListeners;
   final SessionBindingCommitListener _sessionBindingCommitListener;
   final SessionDeletionListener _sessionDeletionListener;
+  final ChatHistoryListener _chatHistoryListener;
+  final ChatHistoryActivityListener _chatHistoryActivityListener;
   final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener;
   final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener;
   final SessionEventDispatcher _sessionEventDispatcher;
@@ -726,6 +781,8 @@ class OrchestratorSession {
     required List<PluginEventListener> pluginEventListeners,
     required SessionBindingCommitListener sessionBindingCommitListener,
     required SessionDeletionListener sessionDeletionListener,
+    required ChatHistoryListener chatHistoryListener,
+    required ChatHistoryActivityListener chatHistoryActivityListener,
     required SessionOptionsCreationRefreshListener sessionOptionsCreationRefreshListener,
     required SessionOptionsChangedRefreshListener sessionOptionsChangedRefreshListener,
     required SessionEventDispatcher sessionEventDispatcher,
@@ -743,6 +800,7 @@ class OrchestratorSession {
     required SessionPromptService sessionPromptService,
     required Stream<CatalogImportProgress> catalogImportProgress,
     required Stream<String> pluginManagementSnapshotTokens,
+    required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
     required StreamController<int> bytesSentController,
     required StreamController<SesoriSseEvent> localWireEventsController,
     required FailureReporter failureReporter,
@@ -766,6 +824,8 @@ class OrchestratorSession {
        _pluginEventListeners = pluginEventListeners,
        _sessionBindingCommitListener = sessionBindingCommitListener,
        _sessionDeletionListener = sessionDeletionListener,
+       _chatHistoryListener = chatHistoryListener,
+       _chatHistoryActivityListener = chatHistoryActivityListener,
        _sessionOptionsCreationRefreshListener = sessionOptionsCreationRefreshListener,
        _sessionOptionsChangedRefreshListener = sessionOptionsChangedRefreshListener,
        _sessionEventDispatcher = sessionEventDispatcher,
@@ -821,6 +881,18 @@ class OrchestratorSession {
           _enqueueWireEvent(SesoriSseEvent.pluginManagementChanged(snapshotToken: snapshotToken));
         })
         .addTo(_subscriptions);
+    pluginInstallProgress
+        .listen((update) {
+          _enqueueWireEvent(
+            SesoriSseEvent.pluginInstallProgress(
+              pluginId: update.pluginId,
+              phase: update.phase,
+              percent: update.percent,
+              message: update.message,
+            ),
+          );
+        })
+        .addTo(_subscriptions);
     _sessionPromptService.promptDefaultsChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -858,6 +930,7 @@ class OrchestratorSession {
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
     _viewedProjectPrRefreshListener.start();
+    _chatHistoryActivityListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),
@@ -1072,6 +1145,8 @@ class OrchestratorSession {
       for (final listener in _pluginEventListeners) attempt(listener.dispose),
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_sessionDeletionListener.dispose),
+      attempt(_chatHistoryListener.dispose),
+      attempt(_chatHistoryActivityListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([

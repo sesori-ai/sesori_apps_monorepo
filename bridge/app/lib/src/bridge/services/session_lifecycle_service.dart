@@ -5,6 +5,8 @@ import "../repositories/filesystem_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
+import "archived_session_validator.dart";
+import "chat_history_service.dart";
 import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
 import "worktree_service.dart";
@@ -43,23 +45,27 @@ class ArchiveStatusUpdate {
 
 class SessionNotFoundException implements Exception {}
 
-class SessionInitializationException implements Exception {}
-
 class SessionLifecycleService {
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
   final FilesystemRepository _filesystemRepository;
   final SessionOperationDispatcher _sessionOperationDispatcher;
+  final ChatHistoryService _chatHistoryService;
+  final ArchivedSessionValidator _archivedSessionValidator;
 
   SessionLifecycleService({
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
     required FilesystemRepository filesystemRepository,
     required SessionOperationDispatcher sessionOperationDispatcher,
+    required ChatHistoryService chatHistoryService,
+    required ArchivedSessionValidator archivedSessionValidator,
   }) : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
        _filesystemRepository = filesystemRepository,
-       _sessionOperationDispatcher = sessionOperationDispatcher;
+       _sessionOperationDispatcher = sessionOperationDispatcher,
+       _chatHistoryService = chatHistoryService,
+       _archivedSessionValidator = archivedSessionValidator;
 
   /// Runs cleanup inside a session-family operation already reserved by the
   /// archive or deletion workflow.
@@ -176,19 +182,41 @@ class SessionLifecycleService {
     required bool deleteBranch,
     required bool force,
   }) async {
+    // COMPATIBILITY 2026-08-07 (v1.7.0): published apps render Unarchive from
+    // time.archived alone, so the request shape still accepts `archived: false`
+    // and answers with an explicit rejection; remove tolerance when out of
+    // support.
+    if (!archived) {
+      return _refuseUnarchive(sessionId: sessionId);
+    }
     final storedSession = await _getStoredSession(sessionId: sessionId);
-    final wasArchived = storedSession.archivedAt != null;
-    final session = archived
-        ? await _doArchive(
-            storedSession: storedSession,
-            deleteWorktree: deleteWorktree,
-            deleteBranch: deleteBranch,
-            force: force,
-          )
-        : await _doUnarchive(storedSession: storedSession);
+    return ArchiveStatusUpdate(
+      session: await _doArchive(
+        storedSession: storedSession,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+        force: force,
+      ),
+      changed: storedSession.archivedAt == null,
+      projectId: storedSession.projectId,
+    );
+  }
+
+  /// Archiving is permanent. `archived: false` is refused for an archived
+  /// session and stays an unchanged no-op for one that is not.
+  ///
+  /// Neither answer needs the backend, so this path deliberately skips the
+  /// routability requirement: an archived session must still be refused with
+  /// the archived rejection when its plugin is stopped.
+  Future<ArchiveStatusUpdate> _refuseUnarchive({required String sessionId}) async {
+    final storedSession = await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+    final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    if (storedSession == null || session == null) {
+      throw SessionNotFoundException();
+    }
     return ArchiveStatusUpdate(
       session: session,
-      changed: wasArchived != archived,
+      changed: false,
       projectId: storedSession.projectId,
     );
   }
@@ -207,6 +235,12 @@ class SessionLifecycleService {
     required bool force,
   }) async {
     final archivedAt = DateTime.now().millisecondsSinceEpoch;
+    // Export first, before worktree cleanup: bringing the store current may
+    // need the session's worktree, since directory-scoped backends replay from
+    // it. Exporting afterwards could silently archive a truncated transcript.
+    // A cleanup rejection after a successful export leaves only an orphan
+    // audit file, which the next attempt overwrites.
+    await _exportHistory(storedSession: storedSession, archivedAt: archivedAt);
     await _cleanupIfNeeded(
       storedSession: storedSession,
       deleteWorktree: deleteWorktree,
@@ -217,6 +251,19 @@ class SessionLifecycleService {
       sessionId: storedSession.id,
       archivedAt: archivedAt,
     );
+    // After the flip: the audit file is durable, so the live rows and spill
+    // files are now redundant. A failure here leaves duplicate data that the
+    // startup reconcile removes.
+    try {
+      await _chatHistoryService.purgeSessionHistory(sessionId: storedSession.id);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[archive] failed to purge stored history for session ${storedSession.id}; "
+        "the archive succeeded and startup reconciliation will retry",
+        error,
+        stackTrace,
+      );
+    }
     try {
       await _sessionRepository.notifySessionArchived(sessionId: storedSession.id);
     } on Object catch (error, stackTrace) {
@@ -227,6 +274,25 @@ class SessionLifecycleService {
       throw SessionNotFoundException();
     }
     return session;
+  }
+
+  /// Only a storage-level write failure fails the archive: the session stays
+  /// active with its live store intact rather than losing its transcript.
+  Future<void> _exportHistory({
+    required StoredSession storedSession,
+    required int archivedAt,
+  }) async {
+    final session = await _sessionRepository.getCatalogSession(sessionId: storedSession.id);
+    final promptDefaults = session?.promptDefaults;
+    await _chatHistoryService.exportSessionHistory(
+      session: storedSession,
+      title: session?.title,
+      lastAgent: promptDefaults?.agent,
+      lastAgentModel: promptDefaults?.model?.modelID,
+      createdAt: session?.time?.created ?? archivedAt,
+      updatedAt: session?.time?.updated ?? archivedAt,
+      archivedAt: archivedAt,
+    );
   }
 
   Future<void> _cleanupIfNeeded({
@@ -247,50 +313,6 @@ class SessionLifecycleService {
     if (cleanupResult case CleanupRejected(:final rejection)) {
       throw SessionArchiveConflictException(rejection: rejection);
     }
-  }
-
-  Future<Session> _doUnarchive({required StoredSession storedSession}) async {
-    await _sessionRepository.unarchiveStoredSession(sessionId: storedSession.id);
-    if (storedSession case StoredSession(
-      isDedicated: true,
-      :final projectId,
-      worktreePath: final worktreePath?,
-      branchName: final branchName?,
-    )) {
-      final hasWorktreeOnDisk = _filesystemRepository.directoryExists(path: worktreePath);
-      if (!hasWorktreeOnDisk) {
-        final restoreBaseBranch = await _resolveRestoreBaseBranch(
-          projectId: projectId,
-          storedBaseBranch: storedSession.baseBranch,
-        );
-        await _worktreeService.restoreWorktree(
-          projectId: projectId,
-          worktreePath: worktreePath,
-          branchName: branchName,
-          baseBranch: restoreBaseBranch,
-          baseCommit: storedSession.baseCommit?.normalize(),
-        );
-      }
-    }
-    final session = await _sessionRepository.getCatalogSession(sessionId: storedSession.id);
-    if (session == null) {
-      throw SessionNotFoundException();
-    }
-    return session;
-  }
-
-  Future<String> _resolveRestoreBaseBranch({
-    required String projectId,
-    required String? storedBaseBranch,
-  }) async {
-    if (storedBaseBranch case final baseBranch?) {
-      return baseBranch;
-    }
-    final resolved = await _worktreeService.resolveBaseBranchAndCommit(projectId: projectId);
-    if (resolved == null) {
-      throw SessionInitializationException();
-    }
-    return resolved.baseBranch;
   }
 
   List<CleanupIssue> _mapSafetyIssues({required List<SafetyIssue> issues}) {

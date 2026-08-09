@@ -19,6 +19,7 @@ import "package:test/test.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/restart_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -92,6 +93,24 @@ void main() {
 
     expect(response.status, 404);
     expect(response.body, "plugin not found");
+  });
+
+  test("the command route decodes install and maps a missing capability to a typed conflict", () async {
+    final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
+    addTearDown(harness.close);
+
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/plugin/one/command",
+        body: jsonEncode(const PluginLifecycleCommandRequest.install().toJson()),
+      ),
+    );
+
+    expect(response.status, 409);
+    final conflict = PluginLifecycleConflict.fromJson(jsonDecodeMap(response.body!));
+    expect(conflict.reasons, [PluginLifecycleConflictReason.unsupported]);
   });
 
   test("orchestrator owns encrypted project-view claims across relay lifecycles", () async {
@@ -850,6 +869,7 @@ class _OrchestratorHarness {
     final httpClient = http.Client();
     final failureReporter = FakeFailureReporter();
     final restartService = buildTestRestartService();
+    final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       config: BridgeConfig(
         relayURL: relayUrl,
@@ -868,6 +888,10 @@ class _OrchestratorHarness {
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: NoopProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -881,6 +905,7 @@ class _OrchestratorHarness {
     ).create();
     final runtime = BridgeRuntime(
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
       failureReporter: failureReporter,
       composition: composition,
     );

@@ -1336,4 +1336,154 @@ as String,
 
 }
 
+
+/// @nodoc
+mixin _$SessionMessagesRequest {
+
+ String get sessionId;/// Maximum messages to return, newest-first from [before]. Null means the
+/// full transcript.
+// COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
+ int? get limit;/// Exclusive cursor: return messages ordered strictly before this one.
+/// Null starts from the newest message.
+ int? get before;
+/// Create a copy of SessionMessagesRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionMessagesRequestCopyWith<SessionMessagesRequest> get copyWith => _$SessionMessagesRequestCopyWithImpl<SessionMessagesRequest>(this as SessionMessagesRequest, _$identity);
+
+  /// Serializes this SessionMessagesRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionId,limit,before);
+
+@override
+String toString() {
+  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionMessagesRequestCopyWith<$Res>  {
+  factory $SessionMessagesRequestCopyWith(SessionMessagesRequest value, $Res Function(SessionMessagesRequest) _then) = _$SessionMessagesRequestCopyWithImpl;
+@useResult
+$Res call({
+ String sessionId, int? limit, int? before
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionMessagesRequestCopyWithImpl<$Res>
+    implements $SessionMessagesRequestCopyWith<$Res> {
+  _$SessionMessagesRequestCopyWithImpl(this._self, this._then);
+
+  final SessionMessagesRequest _self;
+  final $Res Function(SessionMessagesRequest) _then;
+
+/// Create a copy of SessionMessagesRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,}) {
+  return _then(_self.copyWith(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
+as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionMessagesRequest implements SessionMessagesRequest {
+  const _SessionMessagesRequest({required this.sessionId, required this.limit, required this.before});
+  factory _SessionMessagesRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
+
+@override final  String sessionId;
+/// Maximum messages to return, newest-first from [before]. Null means the
+/// full transcript.
+// COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
+@override final  int? limit;
+/// Exclusive cursor: return messages ordered strictly before this one.
+/// Null starts from the newest message.
+@override final  int? before;
+
+/// Create a copy of SessionMessagesRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionMessagesRequestCopyWith<_SessionMessagesRequest> get copyWith => __$SessionMessagesRequestCopyWithImpl<_SessionMessagesRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionMessagesRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionId,limit,before);
+
+@override
+String toString() {
+  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionMessagesRequestCopyWith<$Res> implements $SessionMessagesRequestCopyWith<$Res> {
+  factory _$SessionMessagesRequestCopyWith(_SessionMessagesRequest value, $Res Function(_SessionMessagesRequest) _then) = __$SessionMessagesRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String sessionId, int? limit, int? before
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionMessagesRequestCopyWithImpl<$Res>
+    implements _$SessionMessagesRequestCopyWith<$Res> {
+  __$SessionMessagesRequestCopyWithImpl(this._self, this._then);
+
+  final _SessionMessagesRequest _self;
+  final $Res Function(_SessionMessagesRequest) _then;
+
+/// Create a copy of SessionMessagesRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,}) {
+  return _then(_SessionMessagesRequest(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
+as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
 // dart format on

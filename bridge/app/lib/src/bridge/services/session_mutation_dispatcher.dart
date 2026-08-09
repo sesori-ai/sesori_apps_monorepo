@@ -33,9 +33,13 @@ class SessionMutationDispatcher {
     );
   }
 
+  /// Runs [cleanup] and the delete under the family lock, then hands the
+  /// deleted subtree to [onDeleted] while that lock is still held, so
+  /// store-spanning cleanup sees exactly what was removed.
   Future<CleanupResult> deleteSession({
     required String sessionId,
     required Future<CleanupResult> Function() cleanup,
+    required Future<void> Function(List<String> deletedSessionIds) onDeleted,
   }) {
     if (_disposed) throw StateError("SessionMutationDispatcher is disposed");
     return _sessionOperationDispatcher.dispatch(
@@ -45,7 +49,8 @@ class SessionMutationDispatcher {
         final cleanupResult = await cleanup();
         if (cleanupResult is CleanupRejected) return cleanupResult;
         final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
-        _deletedSessionsController.add(deleted);
+        await onDeleted(deleted.sessionIds);
+        _deletedSessionsController.add(deleted.session);
         return cleanupResult;
       },
     );

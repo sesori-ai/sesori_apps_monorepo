@@ -17,6 +17,7 @@ import "package:test/test.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/restart_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -59,6 +60,7 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(""),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -73,6 +75,10 @@ void main() {
       bridgeSettingsRepository: bridgeSettingsRepository,
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -134,6 +140,7 @@ void main() {
       bridgeIdProvider: FakeBridgeIdProvider(),
       connectTimeout: const Duration(seconds: 30),
     );
+    final testChatHistory = createTestChatHistory();
     final session = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${rawServer.port}",
@@ -148,6 +155,10 @@ void main() {
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -187,6 +198,7 @@ void main() {
       final database = createTestDatabase();
       final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
       final httpClient = http.Client();
+      final testChatHistory = createTestChatHistory();
       final orchestrator = Orchestrator(
         config: const BridgeConfig(
           relayURL: "ws://127.0.0.1:9999",
@@ -201,6 +213,10 @@ void main() {
         bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
         clock: const ServerClock(),
         database: database,
+        chatHistoryDatabase: testChatHistory.database,
+        attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
         httpClient: httpClient,
         processRunner: ProcessRunner(),
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -305,6 +321,7 @@ class _TestHarness {
 
     final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
     final httpClient = http.Client();
+    final testChatHistory = createTestChatHistory();
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -319,6 +336,10 @@ class _TestHarness {
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),

@@ -68,8 +68,6 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       );
     } on SessionNotFoundException {
       throw buildErrorResponse(request, 404, "session not found");
-    } on SessionInitializationException {
-      throw buildErrorResponse(request, 500, "failed to initialize session");
     }
   }
 }

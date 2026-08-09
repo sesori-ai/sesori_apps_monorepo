@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart
 import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
@@ -19,6 +20,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -42,6 +44,8 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
         sessionOperationDispatcher: operationDispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+        chatHistoryService: createTestChatHistory().service,
       );
     });
 
@@ -453,6 +457,8 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
         sessionOperationDispatcher: operationDispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+        chatHistoryService: createTestChatHistory().service,
       );
       await db.sessionDao.insertSession(
         sessionId: "root-session",
@@ -491,7 +497,7 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
     });
 
-    test("unarchive uses the existing root binding and returns its stable id", () async {
+    test("archived: false on an archived session is refused and keeps it archived", () async {
       await db.sessionDao.setArchived(
         sessionId: "root-session",
         archivedAt: 2,
@@ -499,6 +505,29 @@ void main() {
         projectionUpdatedAt: 2,
       );
 
+      await expectLater(
+        service.updateArchiveStatus(
+          sessionId: "root-session",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        throwsA(
+          isA<SessionArchivedReadOnlyException>().having(
+            (e) => e.rejection,
+            "rejection",
+            const SessionArchivedRejection(
+              sessionId: "root-session",
+              reason: SessionArchivedReason.archivedReadOnly,
+            ),
+          ),
+        ),
+      );
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, 2);
+    });
+
+    test("archived: false on a non-archived session stays an unchanged no-op", () async {
       final update = await service.updateArchiveStatus(
         sessionId: "root-session",
         archived: false,
@@ -508,8 +537,7 @@ void main() {
       );
 
       expect(update.session.id, "root-session");
-      expect(update.changed, isTrue);
-      expect(plugin.lastArchivedSessionId, isNull);
+      expect(update.changed, isFalse);
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
     });
   });

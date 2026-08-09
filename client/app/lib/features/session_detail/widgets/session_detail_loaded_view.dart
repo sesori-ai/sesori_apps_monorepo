@@ -108,6 +108,11 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,
+                          // Null once the start of the transcript is loaded,
+                          // so the list stops asking for more.
+                          onLoadOlderMessages: state.olderMessagesCursor == null
+                              ? null
+                              : context.read<SessionDetailCubit>().loadOlderMessages,
                           retryErrorMessage: state.retryErrorMessage,
                           // Pad the oldest-message edge clear of the bar it scrolls
                           // behind, and the newest-message edge clear of the floating
@@ -142,7 +147,11 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (state.isRefreshing) const LinearProgressIndicator(),
-              if (state.pendingQuestions.isNotEmpty)
+              // Archiving is permanent, so this session is audit-only: say so
+              // where the composer used to be, and drop the pending banners —
+              // an archived session's requests can never be answered.
+              if (state.isArchived) const SessionDetailArchivedNotice(),
+              if (!state.isArchived && state.pendingQuestions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.help_outline,
                   backgroundColor: context.prego.colors.bgBrandPrimary,
@@ -150,7 +159,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                   label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
                   onTap: widget.onShowPendingQuestions,
                 ),
-              if (state.pendingPermissions.isNotEmpty)
+              if (!state.isArchived && state.pendingPermissions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.shield_outlined,
                   backgroundColor: context.prego.colors.bgSuccessPrimary,

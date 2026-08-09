@@ -199,6 +199,21 @@
   "harnessManagementDefaultTimeoutDescription": "Apply this timeout to every harness that supports idle-timeout control.",
   "harnessManagementEnabled": "Enabled",
   "harnessManagementRefreshSetup": "Refresh setup",
+  "harnessManagementInstall": "Install runtime",
+  "harnessManagementInstallDescription": "Download this harness for Sesori only. Your system stays untouched.",
+  "harnessManagementInstallDownloading": "Downloading…",
+  "harnessManagementInstallDownloadingPercent": "Downloading… {percent}%",
+  "@harnessManagementInstallDownloadingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "harnessManagementInstallVerifying": "Verifying download…",
+  "harnessManagementInstallExtracting": "Extracting…",
+  "harnessManagementInstallFinishing": "Finishing up…",
+  "harnessManagementInstallInProgress": "Installing…",
   "harnessManagementRestart": "Restart",
   "harnessManagementIdleTimeout": "Idle timeout",
   "harnessManagementClearOverride": "Use bridge default",
@@ -576,14 +591,11 @@
   "sessionListToggleArchived": "Show archived",
   "sessionListEmptyArchived": "No archived sessions",
   "sessionListArchive": "Archive",
-  "sessionListUnarchive": "Unarchive",
   "sessionListMarkRead": "Mark as read",
   "sessionListMarkUnread": "Mark as unread",
   "sessionListDelete": "Delete",
   "sessionListArchived": "Session archived",
-  "sessionListUnarchived": "Session unarchived",
   "sessionListDeleted": "Session deleted",
-  "sessionListUndo": "Undo",
   "sessionListDeleteConfirmTitle": "Delete session?",
   "sessionListDeleteConfirmMessage": "This will permanently remove the session and all its messages. This cannot be undone.",
   "sessionListDeleteConfirmAction": "Delete",
@@ -774,8 +786,9 @@
   "newSessionOptionsRefreshFailedUnavailable": "Refresh failed and no valid cached options remain. You can create with defaults.",
   "sessionListDeleteWorktreeCheckbox": "Delete worktree",
   "sessionListDeleteBranchCheckbox": "Delete branch",
+  "sessionDetailArchivedNotice": "This session is archived and read-only.",
   "sessionListArchiveConfirmTitle": "Archive session?",
-  "sessionListArchiveConfirmMessage": "This session will be archived and hidden from the active list.",
+  "sessionListArchiveConfirmMessage": "Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.",
   "sessionListArchiveConfirmAction": "Archive",
   "sessionListForceDeleteTitle": "Force delete?",
   "sessionListForceArchiveTitle": "Force archive?",

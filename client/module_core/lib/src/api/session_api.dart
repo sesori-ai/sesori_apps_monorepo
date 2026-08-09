@@ -146,20 +146,6 @@ class SessionApi {
     return response;
   }
 
-  Future<ApiResponse<Session>> unarchiveSession({required String sessionId}) {
-    return _client.patch(
-      "/session/update/archive",
-      fromJson: Session.fromJson,
-      body: UpdateSessionArchiveRequest(
-        sessionId: sessionId,
-        archived: false,
-        deleteWorktree: false,
-        deleteBranch: false,
-        force: false,
-      ),
-    );
-  }
-
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
     return _client.patch(
       "/session/title",
@@ -237,11 +223,17 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<MessageWithPartsResponse>> getMessages({required String sessionId}) {
+  /// A page of the session's messages. A null [limit] requests the whole
+  /// transcript, which is also what an older bridge always returns.
+  Future<ApiResponse<MessageWithPartsResponse>> getMessages({
+    required String sessionId,
+    required int? limit,
+    required int? before,
+  }) {
     return _client.post(
       "/session/messages",
       fromJson: MessageWithPartsResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
+      body: SessionMessagesRequest(sessionId: sessionId, limit: limit, before: before),
     );
   }
 

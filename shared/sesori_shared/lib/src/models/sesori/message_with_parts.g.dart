@@ -14,12 +14,14 @@ _MessageWithPartsResponse _$MessageWithPartsResponseFromJson(Map json) =>
                 MessageWithParts.fromJson(Map<String, dynamic>.from(e as Map)),
           )
           .toList(),
+      nextCursor: (json['nextCursor'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$MessageWithPartsResponseToJson(
   _MessageWithPartsResponse instance,
 ) => <String, dynamic>{
   'messages': instance.messages.map((e) => e.toJson()).toList(),
+  'nextCursor': ?instance.nextCursor,
 };
 
 _MessageWithParts _$MessageWithPartsFromJson(Map json) => _MessageWithParts(

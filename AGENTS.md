@@ -187,6 +187,20 @@ eagerly "just in case."
 
 - Do not solve speculative edge cases with broad locks, registries, lifecycle
   machinery, or abstractions unless a plausible flow and meaningful impact exist.
+- Edge cases are infinite; completeness is not the goal. Guarding a state no
+  current flow produces adds code to the path that runs constantly, in order to
+  defend a path that never runs. That trade is a net loss: the guard itself
+  becomes a new failure point. Prefer leaving the unreachable case unhandled.
+- Before adding a guard, name the concrete flow that reaches the bad state and
+  the damage if it does. If you cannot name a real caller or sequence that
+  produces it, do not write the guard. "An API technically accepts it" and "a
+  misbehaving or future client might" are not flows.
+- Defensive depth must stay proportional to damage. A rare case that degrades a
+  screen, fails one request, or shows a stale value does not justify tree walks,
+  cascade checks, extra queries on hot paths, or new coordination.
+- Enforce an invariant at the one place that owns it, on the entity the caller
+  named. Do not extend it outward to parents, children, families, or related
+  entities in case someone reaches them another way.
 - Do not let backend concepts, identifiers, payload assumptions, or behavior
   escape the owning plugin package.
 - Do not enter a verification spiral: once relevant evidence passes and inputs

@@ -15,7 +15,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MessageWithPartsResponse {
 
- List<MessageWithParts> get messages;
+ List<MessageWithParts> get messages;/// Cursor for the next older page, to be sent back verbatim as the
+/// request's `before`. Null means the transcript is complete.
+// COMPATIBILITY 2026-08-08 (v1.7.2): Bridges that predate pagination omit nextCursor, which decodes to null and correctly means "complete". Make this required once those bridges are unsupported.
+ int? get nextCursor;
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +31,16 @@ $MessageWithPartsResponseCopyWith<MessageWithPartsResponse> get copyWith => _$Me
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages),nextCursor);
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages)';
+  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor)';
 }
 
 
@@ -48,7 +51,7 @@ abstract mixin class $MessageWithPartsResponseCopyWith<$Res>  {
   factory $MessageWithPartsResponseCopyWith(MessageWithPartsResponse value, $Res Function(MessageWithPartsResponse) _then) = _$MessageWithPartsResponseCopyWithImpl;
 @useResult
 $Res call({
- List<MessageWithParts> messages
+ List<MessageWithParts> messages, int? nextCursor
 });
 
 
@@ -65,10 +68,11 @@ class _$MessageWithPartsResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? messages = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? messages = null,Object? nextCursor = freezed,}) {
   return _then(_self.copyWith(
 messages: null == messages ? _self.messages : messages // ignore: cast_nullable_to_non_nullable
-as List<MessageWithParts>,
+as List<MessageWithParts>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -80,7 +84,7 @@ as List<MessageWithParts>,
 @JsonSerializable()
 
 class _MessageWithPartsResponse implements MessageWithPartsResponse {
-  const _MessageWithPartsResponse({required final  List<MessageWithParts> messages}): _messages = messages;
+  const _MessageWithPartsResponse({required final  List<MessageWithParts> messages, required this.nextCursor}): _messages = messages;
   factory _MessageWithPartsResponse.fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
 
  final  List<MessageWithParts> _messages;
@@ -90,6 +94,10 @@ class _MessageWithPartsResponse implements MessageWithPartsResponse {
   return EqualUnmodifiableListView(_messages);
 }
 
+/// Cursor for the next older page, to be sent back verbatim as the
+/// request's `before`. Null means the transcript is complete.
+// COMPATIBILITY 2026-08-08 (v1.7.2): Bridges that predate pagination omit nextCursor, which decodes to null and correctly means "complete". Make this required once those bridges are unsupported.
+@override final  int? nextCursor;
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -104,16 +112,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),nextCursor);
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages)';
+  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor)';
 }
 
 
@@ -124,7 +132,7 @@ abstract mixin class _$MessageWithPartsResponseCopyWith<$Res> implements $Messag
   factory _$MessageWithPartsResponseCopyWith(_MessageWithPartsResponse value, $Res Function(_MessageWithPartsResponse) _then) = __$MessageWithPartsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<MessageWithParts> messages
+ List<MessageWithParts> messages, int? nextCursor
 });
 
 
@@ -141,10 +149,11 @@ class __$MessageWithPartsResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? messages = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? nextCursor = freezed,}) {
   return _then(_MessageWithPartsResponse(
 messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
-as List<MessageWithParts>,
+as List<MessageWithParts>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

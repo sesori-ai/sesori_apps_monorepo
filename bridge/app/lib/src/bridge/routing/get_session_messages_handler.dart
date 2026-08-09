@@ -1,24 +1,25 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/session_repository.dart";
+import "../services/chat_history_service.dart";
 import "request_handler.dart";
 
-/// Handles `POST /session/messages` — returns all messages for a session.
-class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, MessageWithPartsResponse> {
-  final SessionRepository _sessionRepository;
+/// Handles `POST /session/messages` — returns a page of a session's messages,
+/// or the whole transcript when the request carries no limit.
+class GetSessionMessagesHandler extends BodyRequestHandler<SessionMessagesRequest, MessageWithPartsResponse> {
+  final ChatHistoryService _chatHistoryService;
 
-  GetSessionMessagesHandler({required SessionRepository sessionRepository})
-    : _sessionRepository = sessionRepository,
+  GetSessionMessagesHandler({required ChatHistoryService chatHistoryService})
+    : _chatHistoryService = chatHistoryService,
       super(
         HttpMethod.post,
         "/session/messages",
-        fromJson: SessionIdRequest.fromJson,
+        fromJson: SessionMessagesRequest.fromJson,
       );
 
   @override
   Future<MessageWithPartsResponse> handle(
     RelayRequest request, {
-    required SessionIdRequest body,
+    required SessionMessagesRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
@@ -27,9 +28,18 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, Mes
     if (sessionId.isEmpty) {
       throw buildErrorResponse(request, 400, "empty session id");
     }
+    // A non-positive limit has no honest answer: it is neither "the whole
+    // transcript" (null) nor a page anyone can page onward from, so refuse it
+    // rather than returning an empty page that never terminates.
+    if (body.limit case final limit? when limit <= 0) {
+      throw buildErrorResponse(request, 400, "limit must be greater than zero");
+    }
 
-    return MessageWithPartsResponse(
-      messages: await _sessionRepository.getSessionMessages(sessionId: sessionId),
+    final page = await _chatHistoryService.getSessionMessages(
+      sessionId: sessionId,
+      limit: body.limit,
+      before: body.before,
     );
+    return MessageWithPartsResponse(messages: page.messages, nextCursor: page.nextCursor);
   }
 }

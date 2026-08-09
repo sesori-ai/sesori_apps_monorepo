@@ -276,7 +276,68 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       return const {PluginControlCapability.setupRefresh};
     }
-    return super.managementCapabilities(config: config);
+    return {
+      ...super.managementCapabilities(config: config),
+      if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+    };
+  }
+
+  /// Whether the pinned managed OpenCode runtime can be installed on request:
+  /// no explicit binary override (that binary is authoritative) and a
+  /// published release asset for this platform.
+  bool _supportsManagedInstall({required PluginConfig config}) {
+    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
+    if (explicitBin != null && explicitBin.isNotEmpty) return false;
+    final PlatformTarget target;
+    try {
+      target = PlatformTarget.current();
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode] platform detection failed; managed install unavailable", error, stackTrace);
+      return false;
+    }
+    return const OpenCodeRuntimeManifest().assetFor(target: target) != null;
+  }
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) async* {
+    const manifest = OpenCodeRuntimeManifest();
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: null,
+    );
+    final httpClient = http.Client();
+    try {
+      final installService = ManagedRuntimeInstallService(
+        manifest: manifest,
+        versionValidator: RuntimeVersionValidator(
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+          probeTimeout: _versionProbeTimeout,
+        ),
+        installService: RuntimeInstallService(
+          downloadClient: BinaryDownloadClient(httpClient: httpClient),
+          checksumValidator: ChecksumValidator(),
+          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+        ),
+        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+      );
+      yield* installService.install(
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+      );
+    } finally {
+      httpClient.close();
+    }
   }
 
   @override
@@ -428,6 +489,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
         runtimeId: manifest.runtimeId,
         probeTimeout: _versionProbeTimeout,
       ),
+      // OpenCode has no desktop app bundling a CLI.
+      fallbackExecutableCandidates: const [],
     );
   }
 

@@ -21,6 +21,9 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    // Without a dedicated worktree there is nothing to clean up, so the sheet
+    // confirms the deletion and offers no cleanup choices.
+    final hasWorktree = widget.session.hasWorktree;
 
     // Transparent Material so the checkbox tiles' ink paints on top of the
     // sheet surface instead of behind it on the modal's transparent Material.
@@ -39,23 +42,25 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            CheckboxListTile(
-              value: _deleteWorktree,
-              onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
-              title: Text(loc.sessionListDeleteWorktreeCheckbox),
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            ),
-            CheckboxListTile(
-              value: _deleteBranch,
-              onChanged: (v) => setState(() => _deleteBranch = v ?? false),
-              title: Text(loc.sessionListDeleteBranchCheckbox),
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            ),
-            const SizedBox(height: 12),
+            if (hasWorktree) ...[
+              CheckboxListTile(
+                value: _deleteWorktree,
+                onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
+                title: Text(loc.sessionListDeleteWorktreeCheckbox),
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              CheckboxListTile(
+                value: _deleteBranch,
+                onChanged: (v) => setState(() => _deleteBranch = v ?? false),
+                title: Text(loc.sessionListDeleteBranchCheckbox),
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 12),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -69,8 +74,8 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
                   onPressed: () {
                     context.pop();
                     widget.onConfirm(
-                      deleteWorktree: _deleteWorktree,
-                      deleteBranch: _deleteBranch,
+                      deleteWorktree: hasWorktree && _deleteWorktree,
+                      deleteBranch: hasWorktree && _deleteBranch,
                     );
                   },
                   child: Text(loc.sessionListDeleteConfirmAction),
@@ -105,6 +110,9 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    // Without a dedicated worktree there is nothing to clean up, so the sheet
+    // confirms the permanent archive and offers no cleanup choices.
+    final hasWorktree = widget.session.hasWorktree;
 
     // Transparent Material so the checkbox tiles' ink paints on top of the
     // sheet surface instead of behind it on the modal's transparent Material.
@@ -123,23 +131,25 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            CheckboxListTile(
-              value: _deleteWorktree,
-              onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
-              title: Text(loc.sessionListDeleteWorktreeCheckbox),
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            ),
-            CheckboxListTile(
-              value: _deleteBranch,
-              onChanged: (v) => setState(() => _deleteBranch = v ?? false),
-              title: Text(loc.sessionListDeleteBranchCheckbox),
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            ),
-            const SizedBox(height: 12),
+            if (hasWorktree) ...[
+              CheckboxListTile(
+                value: _deleteWorktree,
+                onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
+                title: Text(loc.sessionListDeleteWorktreeCheckbox),
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              CheckboxListTile(
+                value: _deleteBranch,
+                onChanged: (v) => setState(() => _deleteBranch = v ?? false),
+                title: Text(loc.sessionListDeleteBranchCheckbox),
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 12),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -152,8 +162,8 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
                   onPressed: () {
                     context.pop();
                     widget.onConfirm(
-                      deleteWorktree: _deleteWorktree,
-                      deleteBranch: _deleteBranch,
+                      deleteWorktree: hasWorktree && _deleteWorktree,
+                      deleteBranch: hasWorktree && _deleteBranch,
                     );
                   },
                   child: Text(loc.sessionListArchiveConfirmAction),

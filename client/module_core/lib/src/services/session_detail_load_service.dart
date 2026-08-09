@@ -11,6 +11,14 @@ import "../repositories/session_repository.dart";
 
 @lazySingleton
 class SessionDetailLoadService {
+  /// Messages fetched when a session opens. Large enough that most sessions
+  /// arrive complete in one page, small enough that a very long one does not
+  /// ship in full before anything renders.
+  static const initialPageSize = 50;
+
+  /// Messages fetched per load-older request.
+  static const olderPageSize = 50;
+
   final SessionRepository _repository;
   final ProjectRepository _projectRepository;
   final PluginRepository _pluginRepository;
@@ -34,6 +42,29 @@ class SessionDetailLoadService {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
+  /// One page of messages older than [before], for a load-older action.
+  ///
+  /// Returns null when the page could not be fetched, so the caller can keep
+  /// the cursor and let the user retry rather than treating it as the end of
+  /// the transcript.
+  Future<SessionMessagePage?> loadOlderMessages({
+    required String sessionId,
+    required int before,
+  }) async {
+    final response = await _repository.getMessages(
+      sessionId: sessionId,
+      limit: olderPageSize,
+      before: before,
+    );
+    return switch (response) {
+      SuccessResponse(:final data) => (messages: data.messages, olderMessagesCursor: data.nextCursor),
+      ErrorResponse(:final error) => () {
+        logw("Failed to load older messages: ${error.toString()}");
+        return null;
+      }(),
+    };
+  }
+
   Future<SessionDetailLoadResult> _loadSnapshot({
     required String sessionId,
     required String projectId,
@@ -44,7 +75,13 @@ class SessionDetailLoadService {
 
     try {
       final routeProjectId = projectId.normalize();
-      final messagesFuture = _repository.getMessages(sessionId: sessionId);
+      // Only the newest page: a long transcript otherwise ships in full on
+      // every open, reconnect, and reload. Older messages load on demand.
+      final messagesFuture = _repository.getMessages(
+        sessionId: sessionId,
+        limit: initialPageSize,
+        before: null,
+      );
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
       final sessionResponse = await _repository.getSession(sessionId: sessionId);
       final session = switch (sessionResponse) {
@@ -86,8 +123,8 @@ class SessionDetailLoadService {
       ).wait;
       final promptDefaults = session?.promptDefaults;
 
-      final messages = switch (messagesResponse) {
-        SuccessResponse(:final data) => data.messages,
+      final (messages, olderMessagesCursor) = switch (messagesResponse) {
+        SuccessResponse(:final data) => (data.messages, data.nextCursor),
         ErrorResponse(:final error) => throw error,
       };
 
@@ -135,6 +172,7 @@ class SessionDetailLoadService {
           pluginId: pluginId,
           supportsPromptAttachments: supportsPromptAttachments,
           messages: messages,
+          olderMessagesCursor: olderMessagesCursor,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
           childSessions: childSessions,
@@ -232,6 +270,11 @@ class SessionDetailSnapshot {
   /// support, or `null` when plugin metadata could not be resolved.
   final bool? supportsPromptAttachments;
   final List<MessageWithParts> messages;
+
+  /// Cursor for the page before [messages], or null when the transcript is
+  /// complete — either because it all fits, or because the bridge predates
+  /// pagination and always sends everything.
+  final int? olderMessagesCursor;
   final List<PendingQuestion> pendingQuestions;
   final List<PendingPermission> pendingPermissions;
   final List<Session> childSessions;
@@ -253,6 +296,7 @@ class SessionDetailSnapshot {
     required this.pluginId,
     required this.supportsPromptAttachments,
     required this.messages,
+    required this.olderMessagesCursor,
     required this.pendingQuestions,
     required this.pendingPermissions,
     required this.childSessions,
@@ -266,6 +310,9 @@ class SessionDetailSnapshot {
     required this.isArchived,
   });
 }
+
+/// One page of history plus the cursor for the page before it.
+typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor});
 
 sealed class SessionDetailLoadResult {
   const SessionDetailLoadResult();

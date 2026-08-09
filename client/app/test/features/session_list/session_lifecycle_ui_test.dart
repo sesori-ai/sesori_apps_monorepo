@@ -140,16 +140,15 @@ class _TestSessionListBody extends StatelessWidget {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
-              title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                if (!isArchived) {
+            if (!isArchived)
+              ListTile(
+                leading: const Icon(Icons.archive_outlined),
+                title: Text(loc.sessionListArchive),
+                onTap: () {
+                  Navigator.pop(sheetContext);
                   _showArchiveSheet(context, cubit, session);
-                }
-              },
-            ),
+                },
+              ),
             ListTile(
               leading: Icon(Icons.delete_outlined, color: Theme.of(context).colorScheme.error),
               title: Text(

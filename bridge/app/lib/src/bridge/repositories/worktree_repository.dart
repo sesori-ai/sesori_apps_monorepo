@@ -269,22 +269,6 @@ class WorktreeRepository {
     );
   }
 
-  Future<bool> restoreWorktree({
-    required String projectPath,
-    required String worktreePath,
-    required String branchName,
-    required String baseBranch,
-    required String? baseCommit,
-  }) async {
-    return _gitApi.restoreWorktree(
-      projectPath: projectPath,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: baseBranch,
-      baseCommit: baseCommit,
-    );
-  }
-
   bool isValidWorktreePath({required String projectPath, required String worktreePath}) {
     final expectedPrefix = "$projectPath/$_worktreeDir/";
     return worktreePath.startsWith(expectedPrefix);

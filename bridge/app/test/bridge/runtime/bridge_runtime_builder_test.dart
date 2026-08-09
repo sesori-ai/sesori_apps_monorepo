@@ -24,6 +24,7 @@ import "package:test/test.dart";
 
 import "../../helpers/plugin_lifecycle_test_support.dart";
 import "../../helpers/restart_test_support.dart";
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 import "../routing/routing_test_helpers.dart" show FakeBridgePlugin, makeRequest;
@@ -52,6 +53,7 @@ void main() {
     final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
     final failureReporter = FakeFailureReporter();
     final restartService = buildTestRestartService();
+    final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       config: const BridgeConfig(
         relayURL: "ws://127.0.0.1:9999",
@@ -70,6 +72,10 @@ void main() {
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
+    archivedSessionStorage: testChatHistory.archivedStorage,
+    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -83,6 +89,7 @@ void main() {
     ).create();
     final runtime = BridgeRuntime(
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
       failureReporter: failureReporter,
       composition: composition,
     );

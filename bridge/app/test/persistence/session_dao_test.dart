@@ -276,7 +276,7 @@ void main() {
       expect(await dao.getTombstonedSessionIds(pluginId: "codex"), isEmpty);
     });
 
-    test("setArchived and clearArchived update archivedAt", () async {
+    test("setArchived updates archivedAt", () async {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-4",
@@ -299,16 +299,8 @@ void main() {
         updatedAt: 1234567890,
         projectionUpdatedAt: 1234567890,
       );
-      var result = await dao.getSession(sessionId: "ses-4");
+      final result = await dao.getSession(sessionId: "ses-4");
       expect(result!.archivedAt, equals(1234567890));
-
-      await dao.clearArchived(
-        sessionId: "ses-4",
-        updatedAt: 1234567891,
-        projectionUpdatedAt: 1234567891,
-      );
-      result = await dao.getSession(sessionId: "ses-4");
-      expect(result!.archivedAt, isNull);
     });
 
     test("getSessionsByProject and getSessionsByIds return expected sessions", () async {

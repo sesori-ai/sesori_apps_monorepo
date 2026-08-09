@@ -266,6 +266,7 @@ class _ReadyView extends StatelessWidget {
                         plugin: response.plugins[index],
                         isDefault: response.plugins[index].setup.id == response.defaultPluginId,
                         action: state.action,
+                        install: state.installs[response.plugins[index].setup.id],
                       ),
                       if (index != response.plugins.length - 1) const SizedBox(height: PregoSpacing.md),
                     ],
@@ -312,11 +313,19 @@ class _MessageRow extends StatelessWidget {
 }
 
 class _HarnessControlCard extends StatelessWidget {
-  const _HarnessControlCard({required this.plugin, required this.isDefault, required this.action});
+  const _HarnessControlCard({
+    required this.plugin,
+    required this.isDefault,
+    required this.action,
+    required this.install,
+  });
 
   final PluginManagementMetadata plugin;
   final bool isDefault;
   final PluginManagementActionState action;
+
+  /// This harness' in-flight managed runtime install, when one is running.
+  final PluginInstallProgress? install;
 
   @override
   Widget build(BuildContext context) {
@@ -334,6 +343,12 @@ class _HarnessControlCard extends StatelessWidget {
     final showRuntime = showOperational;
     final showWork = showOperational && plugin.workState != PluginManagementWorkState.unknown;
     final showLifecycle = supportsLifecycle && runtimeKnown;
+    // Install is offered only while the bridge advertises it and the runtime
+    // is genuinely missing or too old — the two states a managed install fixes.
+    final showInstall =
+        capabilities.contains(PluginManagementCapability.install) &&
+        (plugin.setup.state == PluginSetupState.runtimeMissing ||
+            plugin.setup.state == PluginSetupState.unavailable);
     final showRestart = showOperational && supportsLifecycle;
     final showTimeout = showOperational && supportsIdleTimeout;
     final showClearTimeout = showTimeout && plugin.hasIdleTimeoutOverride;
@@ -349,6 +364,11 @@ class _HarnessControlCard extends StatelessWidget {
       PluginManagementActionForceConfirmationRequired() => false,
     };
     final actionHint = plugin.actionHint ?? plugin.setup.actionHint;
+    // The service reports an install as in-flight from the moment its command
+    // is issued until the bridge's terminal event, so this covers the window
+    // before the first progress event without borrowing the generic action
+    // spinner (which any harness action would trigger).
+    final installing = install != null;
 
     return KeyedSubtree(
       key: Key("harness_management_card_$pluginId"),
@@ -376,6 +396,7 @@ class _HarnessControlCard extends StatelessWidget {
                 !(showRuntime ||
                     showWork ||
                     showExternal ||
+                    showInstall ||
                     showLifecycle ||
                     showSetupRefresh ||
                     showRestart ||
@@ -389,6 +410,7 @@ class _HarnessControlCard extends StatelessWidget {
               isLast:
                   !(showWork ||
                       showExternal ||
+                      showInstall ||
                       showLifecycle ||
                       showSetupRefresh ||
                       showRestart ||
@@ -401,6 +423,7 @@ class _HarnessControlCard extends StatelessWidget {
               value: _workStatus(context: context, state: plugin.workState),
               isLast:
                   !(showExternal ||
+                      showInstall ||
                       showLifecycle ||
                       showSetupRefresh ||
                       showRestart ||
@@ -413,6 +436,37 @@ class _HarnessControlCard extends StatelessWidget {
               icon: TablerRegular.info_circle,
               title: Text(loc.harnessManagementExternalTitle),
               subtitle: Text(loc.harnessManagementExternalDescription),
+              isLast:
+                  !(showInstall || showLifecycle || showSetupRefresh || showRestart || showTimeout || showClearTimeout),
+            ),
+          if (showInstall)
+            PregoGroupedRow(
+              key: Key("harness_management_install_$pluginId"),
+              icon: TablerRegular.download,
+              title: Text(loc.harnessManagementInstall),
+              subtitle: Text(
+                switch (install) {
+                  null => loc.harnessManagementInstallDescription,
+                  PluginInstallProgress(phase: PluginInstallPhase.downloading, :final percent?) =>
+                    loc.harnessManagementInstallDownloadingPercent(percent),
+                  PluginInstallProgress(phase: PluginInstallPhase.downloading) =>
+                    loc.harnessManagementInstallDownloading,
+                  PluginInstallProgress(phase: PluginInstallPhase.verifying) => loc.harnessManagementInstallVerifying,
+                  PluginInstallProgress(phase: PluginInstallPhase.extracting) => loc.harnessManagementInstallExtracting,
+                  PluginInstallProgress(phase: PluginInstallPhase.finalizing) =>
+                    loc.harnessManagementInstallFinishing,
+                  // A phase only a newer bridge names: report work without
+                  // claiming which step it is.
+                  PluginInstallProgress() => loc.harnessManagementInstallInProgress,
+                },
+              ),
+              trailing: installing ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary) : null,
+              // Also blocked between the tap and the first progress event: the
+              // command returns as soon as the bridge accepts it, long before
+              // any phase arrives.
+              onTap: blocked || installing
+                  ? null
+                  : () => context.read<PluginManagementCubit>().install(pluginId: pluginId),
               isLast: !(showLifecycle || showSetupRefresh || showRestart || showTimeout || showClearTimeout),
             ),
           if (showLifecycle)

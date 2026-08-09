@@ -12,6 +12,7 @@ analyzer:
       modules/no_slop_linter/test/**,
       drift_schemas/**,
       test/drift/default/generated/**,
+      test/drift/chat_history/generated/**,
       "**.freezed.dart",
       "**.config.dart",
       "**.g.dart",

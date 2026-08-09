@@ -12,6 +12,7 @@ import "plugin_session_options_scope.dart";
 import "plugin_setup_status.dart";
 import "plugin_state_storage.dart";
 import "runtime_provision_progress.dart";
+import "start_abort_signal.dart";
 
 /// The registration unit for a bridge plugin.
 ///
@@ -95,6 +96,35 @@ abstract class BridgePluginDescriptor {
     required Map<String, String> environment,
     required String stateDirectory,
   }) async => const PluginSetupReady();
+
+  /// Installs this plugin's pinned managed runtime into [stateDirectory] and
+  /// reports progress.
+  ///
+  /// Only invoked for plugins whose [managementCapabilities] declare
+  /// [PluginControlCapability.install]. Unlike [ensureRuntime] this seam is
+  /// allowed to download, verify, extract, and place the managed binary, and
+  /// to sweep superseded managed versions after success. It must never touch
+  /// files outside the plugin's managed runtime area or start the backend.
+  ///
+  /// The stream's final event is terminal: [ProvisionReady] carries the
+  /// installed binary path, [ProvisionFailed] a sanitized user-facing message
+  /// (no local paths or raw command output). Long phases must observe
+  /// [startAborted] at phase boundaries and surface an abort as
+  /// [PluginStartAbortedException].
+  ///
+  /// The default fails: a descriptor that declares the install capability must
+  /// override this.
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) {
+    return Stream<RuntimeProvisionProgress>.value(
+      ProvisionFailed(message: "$displayName does not support installing a managed runtime."),
+    );
+  }
 
   /// Resolves an already-present backend runtime and reports progress.
   ///

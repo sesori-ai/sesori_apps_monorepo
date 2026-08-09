@@ -159,3 +159,18 @@ _SessionIdRequest _$SessionIdRequestFromJson(Map json) =>
 
 Map<String, dynamic> _$SessionIdRequestToJson(_SessionIdRequest instance) =>
     <String, dynamic>{'sessionId': instance.sessionId};
+
+_SessionMessagesRequest _$SessionMessagesRequestFromJson(Map json) =>
+    _SessionMessagesRequest(
+      sessionId: json['sessionId'] as String,
+      limit: (json['limit'] as num?)?.toInt(),
+      before: (json['before'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$SessionMessagesRequestToJson(
+  _SessionMessagesRequest instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'limit': ?instance.limit,
+  'before': ?instance.before,
+};

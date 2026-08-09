@@ -142,6 +142,16 @@ enum AnalyticsPermissionDecision {
   const AnalyticsPermissionDecision({required this.wireValue});
 }
 
+/// Outcome of a phone-triggered managed harness runtime install. Bounded on
+/// purpose: the harness identity and any failure text stay off the wire.
+enum AnalyticsHarnessInstallOutcome {
+  completed(wireValue: "completed"),
+  failed(wireValue: "failed");
+
+  final String wireValue;
+  const AnalyticsHarnessInstallOutcome({required this.wireValue});
+}
+
 enum AnalyticsChangeState {
   empty(wireValue: "empty"),
   nonEmpty(wireValue: "non_empty");
@@ -180,6 +190,9 @@ sealed class ProductAnalyticsEvent {
     required AnalyticsPermissionDecision decision,
   }) = SessionPermissionAnsweredEvent;
   const factory ProductAnalyticsEvent.sessionAbortSucceeded() = SessionAbortSucceededEvent;
+  const factory ProductAnalyticsEvent.harnessInstallFinished({
+    required AnalyticsHarnessInstallOutcome outcome,
+  }) = HarnessInstallFinishedEvent;
   const factory ProductAnalyticsEvent.sessionDiffViewed({
     required AnalyticsChangeState changeState,
   }) = SessionDiffViewedEvent;
@@ -367,6 +380,20 @@ final class SessionAbortSucceededEvent extends ProductAnalyticsEvent {
 
   @override
   Map<String, String> get parameters => const {};
+}
+
+/// Whether a phone-triggered harness runtime install actually succeeded — the
+/// adoption signal for install-from-phone. Reported at the bridge's terminal
+/// install event, not at the tap.
+final class HarnessInstallFinishedEvent extends ProductAnalyticsEvent {
+  final AnalyticsHarnessInstallOutcome outcome;
+  const HarnessInstallFinishedEvent({required this.outcome});
+
+  @override
+  String get wireName => "harness_install_finished";
+
+  @override
+  Map<String, String> get parameters => {"outcome": outcome.wireValue};
 }
 
 final class SessionDiffViewedEvent extends ProductAnalyticsEvent {

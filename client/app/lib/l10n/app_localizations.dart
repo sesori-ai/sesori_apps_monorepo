@@ -559,6 +559,54 @@ abstract class AppLocalizations {
   /// **'Refresh setup'**
   String get harnessManagementRefreshSetup;
 
+  /// No description provided for @harnessManagementInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install runtime'**
+  String get harnessManagementInstall;
+
+  /// No description provided for @harnessManagementInstallDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Download this harness for Sesori only. Your system stays untouched.'**
+  String get harnessManagementInstallDescription;
+
+  /// No description provided for @harnessManagementInstallDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get harnessManagementInstallDownloading;
+
+  /// No description provided for @harnessManagementInstallDownloadingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading… {percent}%'**
+  String harnessManagementInstallDownloadingPercent(int percent);
+
+  /// No description provided for @harnessManagementInstallVerifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying download…'**
+  String get harnessManagementInstallVerifying;
+
+  /// No description provided for @harnessManagementInstallExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting…'**
+  String get harnessManagementInstallExtracting;
+
+  /// No description provided for @harnessManagementInstallFinishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing up…'**
+  String get harnessManagementInstallFinishing;
+
+  /// No description provided for @harnessManagementInstallInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing…'**
+  String get harnessManagementInstallInProgress;
+
   /// No description provided for @harnessManagementRestart.
   ///
   /// In en, this message translates to:
@@ -1813,12 +1861,6 @@ abstract class AppLocalizations {
   /// **'Archive'**
   String get sessionListArchive;
 
-  /// No description provided for @sessionListUnarchive.
-  ///
-  /// In en, this message translates to:
-  /// **'Unarchive'**
-  String get sessionListUnarchive;
-
   /// No description provided for @sessionListMarkRead.
   ///
   /// In en, this message translates to:
@@ -1843,23 +1885,11 @@ abstract class AppLocalizations {
   /// **'Session archived'**
   String get sessionListArchived;
 
-  /// No description provided for @sessionListUnarchived.
-  ///
-  /// In en, this message translates to:
-  /// **'Session unarchived'**
-  String get sessionListUnarchived;
-
   /// No description provided for @sessionListDeleted.
   ///
   /// In en, this message translates to:
   /// **'Session deleted'**
   String get sessionListDeleted;
-
-  /// No description provided for @sessionListUndo.
-  ///
-  /// In en, this message translates to:
-  /// **'Undo'**
-  String get sessionListUndo;
 
   /// No description provided for @sessionListDeleteConfirmTitle.
   ///
@@ -2611,6 +2641,12 @@ abstract class AppLocalizations {
   /// **'Delete branch'**
   String get sessionListDeleteBranchCheckbox;
 
+  /// No description provided for @sessionDetailArchivedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is archived and read-only.'**
+  String get sessionDetailArchivedNotice;
+
   /// No description provided for @sessionListArchiveConfirmTitle.
   ///
   /// In en, this message translates to:
@@ -2620,7 +2656,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionListArchiveConfirmMessage.
   ///
   /// In en, this message translates to:
-  /// **'This session will be archived and hidden from the active list.'**
+  /// **'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.'**
   String get sessionListArchiveConfirmMessage;
 
   /// No description provided for @sessionListArchiveConfirmAction.

@@ -4,24 +4,14 @@ part of "session_list_action_dispatcher.dart";
 // Archive
 // ---------------------------------------------------------------------------
 
+/// Archiving is permanent, so every session confirms it — including one
+/// without a dedicated worktree, where the sheet simply has no cleanup
+/// checkboxes to offer.
 void _showArchiveSheet({
   required BuildContext context,
   required SessionListCubit cubit,
   required Session session,
 }) {
-  // Sessions without a dedicated worktree have nothing to clean up — bypass
-  // the "delete worktree and branch" sheet and archive directly.
-  if (!session.hasWorktree) {
-    _archiveSession(
-      context: context,
-      cubit: cubit,
-      sessionId: session.id,
-      deleteWorktree: false,
-      deleteBranch: false,
-    );
-    return;
-  }
-
   showPregoBottomSheet<void>(
     context: context,
     title: context.loc.sessionListArchiveConfirmTitle,
@@ -58,7 +48,9 @@ Future<void> _archiveSession({
   if (!context.mounted) return;
 
   if (success) {
-    _showUndoSnackBar(context: context, cubit: cubit, message: loc.sessionListArchived);
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(loc.sessionListArchived)));
     return;
   }
 
@@ -81,73 +73,19 @@ Future<void> _archiveSession({
   }
 }
 
-Future<void> _unarchiveSession({
-  required BuildContext context,
-  required SessionListCubit cubit,
-  required String sessionId,
-}) async {
-  final loc = context.loc;
-  final success = await cubit.unarchiveSession(sessionId);
-  if (!success || !context.mounted) return;
-
-  _showUndoSnackBar(context: context, cubit: cubit, message: loc.sessionListUnarchived);
-}
-
-void _showUndoSnackBar({
-  required BuildContext context,
-  required SessionListCubit cubit,
-  required String message,
-}) {
-  final loc = context.loc;
-
-  ScaffoldMessenger.of(context).clearSnackBars();
-  ScaffoldMessenger.of(context)
-      .showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: kSnackBarDuration,
-          action: SnackBarAction(
-            label: loc.sessionListUndo,
-            onPressed: () => cubit.undoLastArchiveAction(),
-          ),
-        ),
-      )
-      .closed
-      .then((reason) {
-        // Clear undo state only when the snackbar genuinely expired or was
-        // swiped away. Skip on:
-        //  - action: user pressed undo — cubit already cleared the snapshot.
-        //  - remove: clearSnackBars() was called because a new archive/unarchive
-        //    action replaced this snackbar — clearing now would wipe the *new*
-        //    action's undo state.
-        if (reason == SnackBarClosedReason.timeout || reason == SnackBarClosedReason.swipe) {
-          cubit.clearLastActionUndo();
-        }
-      });
-}
-
 // ---------------------------------------------------------------------------
 // Delete
 // ---------------------------------------------------------------------------
 
+/// Deleting destroys the session outright, so every session confirms it —
+/// including one without a dedicated worktree, where the sheet simply has no
+/// cleanup checkboxes to offer. An archived row's full swipe commits delete,
+/// so this path must never destroy anything unconfirmed.
 void _showDeleteSheet({
   required BuildContext context,
   required SessionListCubit cubit,
   required Session session,
 }) {
-  // Sessions without a dedicated worktree have nothing to clean up — bypass
-  // the "delete worktree and branch" sheet and delete directly.
-  if (!session.hasWorktree) {
-    _deleteSession(
-      context: context,
-      cubit: cubit,
-      sessionId: session.id,
-      deleteWorktree: false,
-      deleteBranch: false,
-    );
-    return;
-  }
-
   showPregoBottomSheet<void>(
     context: context,
     title: context.loc.sessionListDeleteConfirmTitle,

@@ -552,28 +552,6 @@ class GitCliApi {
     return result.exitCode == 0;
   }
 
-  Future<bool> restoreWorktree({
-    required String projectPath,
-    required String worktreePath,
-    required String branchName,
-    required String baseBranch,
-    required String? baseCommit,
-  }) async {
-    final startPoint = baseCommit ?? baseBranch;
-    final verifyResult = await runGit(
-      projectPath: projectPath,
-      arguments: ["rev-parse", "--verify", "--", "refs/heads/$branchName"],
-    );
-
-    final addResult = await runGit(
-      projectPath: projectPath,
-      arguments: verifyResult.exitCode == 0
-          ? ["worktree", "add", "--", worktreePath, branchName]
-          : ["worktree", "add", "-b", branchName, "--", worktreePath, startPoint],
-    );
-    return addResult.exitCode == 0;
-  }
-
   Future<ProcessResult> runGit({required String projectPath, required List<String> arguments}) {
     return _processRunner.run("git", arguments, workingDirectory: projectPath);
   }

@@ -12,6 +12,66 @@ void main() {
     expect(SesoriSseEvent.fromJson(json), event);
   });
 
+  group('plugin install progress', () {
+    test('round-trips a downloading phase with percent', () {
+      const event = SesoriSseEvent.pluginInstallProgress(
+        pluginId: 'codex',
+        phase: PluginInstallPhase.downloading,
+        percent: 42,
+        message: null,
+      );
+
+      final json = event.toJson();
+
+      expect(json, {
+        'type': 'plugin.install.progress',
+        'pluginId': 'codex',
+        'phase': 'downloading',
+        'percent': 42,
+      });
+      expect(SesoriSseEvent.fromJson(json), event);
+    });
+
+    test('round-trips a terminal failure with a message', () {
+      const event = SesoriSseEvent.pluginInstallProgress(
+        pluginId: 'opencode',
+        phase: PluginInstallPhase.failed,
+        percent: null,
+        message: 'checksum verification failed',
+      );
+
+      final json = event.toJson();
+
+      expect(json['phase'], 'failed');
+      expect(json['message'], 'checksum verification failed');
+      expect(SesoriSseEvent.fromJson(json), event);
+    });
+
+    test('future phases decode to unknown', () {
+      final parsed = SesoriSseEvent.fromJson({
+        'type': 'plugin.install.progress',
+        'pluginId': 'codex',
+        'phase': 'futurePhase',
+      });
+
+      expect(parsed, isA<SesoriPluginInstallProgress>());
+      final cast = parsed as SesoriPluginInstallProgress;
+      expect(cast.phase, PluginInstallPhase.unknown);
+      expect(cast.percent, isNull);
+      expect(cast.message, isNull);
+    });
+
+    test('is not a session-scoped event', () {
+      const event = SesoriSseEvent.pluginInstallProgress(
+        pluginId: 'codex',
+        phase: PluginInstallPhase.completed,
+        percent: null,
+        message: null,
+      );
+      expect(event, isNot(isA<SesoriSessionEvent>()));
+    });
+  });
+
   test('command catalog update round-trips its plugin scope', () {
     const event = SesoriSseEvent.commandCatalogUpdated(pluginId: 'cursor');
 

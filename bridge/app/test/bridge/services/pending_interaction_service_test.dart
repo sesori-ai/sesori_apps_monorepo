@@ -1,9 +1,11 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
 import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
@@ -31,6 +33,7 @@ void main() {
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
         dispatcher: dispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         legacyMissingPluginId: "legacy",
       );
       autoApproval = PermissionAutoApprovalService(
@@ -112,6 +115,9 @@ class _FamilyRepository implements SessionRepository {
     required String sessionId,
     required SessionOperation operation,
   }) async => scopes[sessionId]!;
+
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -3,6 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "catalog_import_progress.dart";
 import "message.dart";
 import "message_part.dart";
+import "plugin_management.dart";
 import "project_activity_summary.dart";
 import "question.dart";
 import "session.dart";
@@ -54,6 +55,18 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.pluginManagementChanged({
     required String snapshotToken,
   }) = SesoriPluginManagementChanged;
+
+  /// Progress of a phone-triggered managed runtime install for one plugin.
+  /// [percent] is only meaningful while [PluginInstallPhase.downloading] with a
+  /// known total; [message] carries a sanitized failure description only on
+  /// [PluginInstallPhase.failed].
+  @FreezedUnionValue("plugin.install.progress")
+  const factory SesoriSseEvent.pluginInstallProgress({
+    required String pluginId,
+    @JsonKey(unknownEnumValue: PluginInstallPhase.unknown) required PluginInstallPhase phase,
+    required int? percent,
+    required String? message,
+  }) = SesoriPluginInstallProgress;
 
   /// Invalidates the process-wide slash-command catalog for one plugin.
   @FreezedUnionValue("command.catalog.updated")

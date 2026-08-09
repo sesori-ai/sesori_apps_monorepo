@@ -39,10 +39,15 @@ class QuestionRepository {
       sessionId: sessionId,
       operation: SessionOperation.getPendingQuestions,
     );
-    return _runtime.use(
+    // Deliberately does not start a stopped backend. Pending questions live in
+    // the backend process — an in-memory approval registry for ACP, the
+    // running HTTP server for OpenCode — so a stopped one holds none. Starting
+    // it could only ever answer "none" after paying the full start cost, and
+    // harnesses are slow to respond for a while after starting.
+    final pending = await _runtime.useIfActive(
       pluginId: binding.pluginId,
       operation: SessionOperation.getPendingQuestions,
-      body: (plugin) async {
+      body: (plugin, _) async {
         Set<String>? tombstoned;
         if (plugin is BridgeDerivedProjectsPluginApi) {
           tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
@@ -58,6 +63,9 @@ class QuestionRepository {
         );
       },
     );
+    // Null means the backend is not running, which is indistinguishable from
+    // "it has none" for this question.
+    return pending ?? const [];
   }
 
   /// All pending questions for [projectId].

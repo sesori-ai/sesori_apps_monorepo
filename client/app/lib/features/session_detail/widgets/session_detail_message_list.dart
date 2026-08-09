@@ -78,6 +78,10 @@ class SessionDetailMessageList extends StatefulWidget {
   /// it and dissolves into the bar's fade.
   final double topInset;
 
+  /// Requests the page of messages before the ones shown, or null when the
+  /// start of the transcript is already loaded.
+  final Future<void> Function()? onLoadOlderMessages;
+
   const SessionDetailMessageList({
     super.key,
     required this.projectId,
@@ -85,6 +89,7 @@ class SessionDetailMessageList extends StatefulWidget {
     required this.streamingText,
     required this.children,
     required this.childStatuses,
+    required this.onLoadOlderMessages,
     this.retryErrorMessage,
     this.bottomInset = 0,
     this.topInset = 0,
@@ -222,9 +227,27 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     // While detached the controller is intentionally left stale so the
     // list structure cannot shift under the reader; `_onFollowChanged`
     // re-syncs on reattach.
-    if (_follow.following) {
+    //
+    // Older pages are the exception: the reader is detached precisely
+    // because they scrolled back for them, and they are prepended *above*
+    // the viewport, so rendering them cannot shift what is being read.
+    // Freezing them would leave the page loaded but invisible until the
+    // user returned to the newest message.
+    if (_follow.following || _hasOlderMessages(oldWidget: oldWidget)) {
       _syncChatController();
+      if (!_follow.following) {
+        _snapshot = null;
+      }
     }
+  }
+
+  /// Whether this update prepended history above what was already shown.
+  bool _hasOlderMessages({required SessionDetailMessageList oldWidget}) {
+    if (widget.messages.length <= oldWidget.messages.length) return false;
+    final previousOldestId = oldWidget.messages.firstOrNull?.info.id;
+    if (previousOldestId == null) return false;
+    final oldestIndex = widget.messages.indexWhere((message) => message.info.id == previousOldestId);
+    return oldestIndex > 0;
   }
 
   void _onFollowChanged() {
@@ -429,6 +452,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
               // Always allow overscroll/bounce, even when the transcript is
               // shorter than the viewport, so the list never feels locked.
               physics: const AlwaysScrollableScrollPhysics(),
+              // The list is reversed, so "end" is the top: scrolling back
+              // through history is what asks for the older page. Null once
+              // the start is loaded, which stops the package asking again.
+              onEndReached: widget.onLoadOlderMessages,
             ),
           ),
         ),

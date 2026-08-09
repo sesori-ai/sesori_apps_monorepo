@@ -68,6 +68,7 @@ final class DeferredProductAnalyticsCandidates {
     SessionQuestionRejectedEvent() ||
     SessionPermissionAnsweredEvent() ||
     SessionAbortSucceededEvent() ||
+    HarnessInstallFinishedEvent() ||
     SessionDiffViewedEvent(changeState: AnalyticsChangeState.empty) ||
     NeedHelpMenuOpenedEvent() ||
     SupportLinkOpenedEvent() ||

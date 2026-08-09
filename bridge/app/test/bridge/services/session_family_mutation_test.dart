@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_deletion_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
@@ -13,6 +14,8 @@ import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+import "../../helpers/test_chat_history.dart";
 
 void main() {
   group("session family mutations", () {
@@ -89,48 +92,37 @@ void main() {
       expect(fixture.repository.actionCalls, isZero);
     });
 
-    for (final archived in [true, false]) {
-      final operationName = archived ? "archive" : "unarchive";
+    test("earlier archive finishes before deletion", () async {
+      fixture.repository.setArchived(sessionId: "root", archived: false);
+      final lifecycleStarted = Completer<void>();
+      final releaseLifecycle = Completer<void>();
+      fixture.repository
+        ..archiveStarted = lifecycleStarted
+        ..archiveGate = releaseLifecycle.future;
 
-      test("earlier $operationName finishes before deletion", () async {
-        fixture.repository.setArchived(sessionId: "root", archived: !archived);
-        final lifecycleStarted = Completer<void>();
-        final releaseLifecycle = Completer<void>();
-        if (archived) {
-          fixture.repository
-            ..archiveStarted = lifecycleStarted
-            ..archiveGate = releaseLifecycle.future;
-        } else {
-          fixture.worktree
-            ..restoreStarted = lifecycleStarted
-            ..restoreGate = releaseLifecycle.future;
-        }
+      final lifecycle = fixture.updateArchiveStatus(archived: true);
+      await lifecycleStarted.future;
+      final deletion = fixture.deleteRoot();
+      await _flushEvents();
 
-        final lifecycle = fixture.updateArchiveStatus(archived: archived);
-        await lifecycleStarted.future;
-        final deletion = fixture.deleteRoot();
-        await _flushEvents();
+      expect(fixture.repository.deleteStarted.isCompleted, isFalse);
+      releaseLifecycle.complete();
+      await Future.wait([lifecycle, deletion]);
+    });
 
-        expect(fixture.repository.deleteStarted.isCompleted, isFalse);
-        releaseLifecycle.complete();
-        await Future.wait([lifecycle, deletion]);
-      });
+    test("earlier deletion prevents later archive", () async {
+      fixture.repository.setArchived(sessionId: "root", archived: false);
+      final releaseDelete = Completer<void>();
+      fixture.repository.deleteGate = releaseDelete.future;
 
-      test("earlier deletion prevents later $operationName", () async {
-        fixture.repository.setArchived(sessionId: "root", archived: !archived);
-        final releaseDelete = Completer<void>();
-        fixture.repository.deleteGate = releaseDelete.future;
+      final deletion = fixture.deleteRoot();
+      await fixture.repository.deleteStarted.future;
+      final lifecycle = fixture.updateArchiveStatus(archived: true);
+      releaseDelete.complete();
 
-        final deletion = fixture.deleteRoot();
-        await fixture.repository.deleteStarted.future;
-        final lifecycle = fixture.updateArchiveStatus(archived: archived);
-        releaseDelete.complete();
-
-        await deletion;
-        await expectLater(lifecycle, throwsA(_isNotFound));
-        expect(fixture.worktree.restoreCalls, isZero);
-      });
-    }
+      await deletion;
+      await expectLater(lifecycle, throwsA(_isNotFound));
+    });
 
     test("cleanup rejection releases the family without deleting", () async {
       fixture.worktree.safetyResult = WorktreeUnsafe(issues: [UnstagedChanges()]);
@@ -221,6 +213,7 @@ class _Fixture {
   late final _FamilyWorktreeService worktree;
   late final SessionLifecycleService lifecycle;
   late final SessionDeletionService deletions;
+  late final TestChatHistory chatHistory;
 
   _Fixture() {
     repository = _FamilyRepository();
@@ -235,10 +228,14 @@ class _Fixture {
       sessionRepository: repository,
       filesystemRepository: _MissingFilesystemRepository(),
       sessionOperationDispatcher: operations,
+      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+        chatHistoryService: createTestChatHistory().service,
     );
+    chatHistory = createTestChatHistory();
     deletions = SessionDeletionService(
       sessionLifecycleService: lifecycle,
       sessionMutationDispatcher: mutations,
+      chatHistoryService: chatHistory.service,
     );
   }
 
@@ -340,7 +337,7 @@ class _FamilyRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> deleteSession({required String sessionId}) async {
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async {
     deleteCalls++;
     if (!deleteStarted.isCompleted) deleteStarted.complete();
     final snapshot = _sessions[sessionId];
@@ -350,8 +347,12 @@ class _FamilyRepository implements SessionRepository {
     if (!_sessions.containsKey(sessionId)) {
       throw _notFound(sessionId: sessionId, operation: SessionOperation.deleteSession);
     }
+    final removed = [
+      for (final record in _sessions.values)
+        if (record.rootId == sessionId || record.id == sessionId) record.id,
+    ];
     _sessions.removeWhere((_, record) => record.rootId == sessionId || record.id == sessionId);
-    return snapshot.session;
+    return (session: snapshot.session, sessionIds: removed);
   }
 
   @override
@@ -363,6 +364,12 @@ class _FamilyRepository implements SessionRepository {
     if (record == null) throw _notFound(sessionId: sessionId, operation: operation);
     return record.stored;
   }
+
+  @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async => [
+    for (final record in _sessions.values)
+      if (record.id == sessionId || record.rootId == sessionId) record.id,
+  ];
 
   @override
   Future<bool> hasOtherActiveSessionsSharing({
@@ -381,13 +388,6 @@ class _FamilyRepository implements SessionRepository {
     final record = _sessions[sessionId];
     if (record == null) throw _notFound(sessionId: sessionId, operation: SessionOperation.archiveSession);
     record.archivedAt = archivedAt;
-  }
-
-  @override
-  Future<void> unarchiveStoredSession({required String sessionId}) async {
-    final record = _sessions[sessionId];
-    if (record == null) throw _notFound(sessionId: sessionId, operation: SessionOperation.updateSessionArchiveStatus);
-    record.archivedAt = null;
   }
 
   @override
@@ -458,9 +458,6 @@ class _SessionRecord {
 
 class _FamilyWorktreeService implements WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
-  Completer<void>? restoreStarted;
-  Future<void>? restoreGate;
-  int restoreCalls = 0;
 
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
@@ -482,21 +479,6 @@ class _FamilyWorktreeService implements WorktreeService {
   @override
   Future<bool> branchExists({required String projectId, required String branchName}) async => false;
 
-  @override
-  Future<bool> restoreWorktree({
-    required String projectId,
-    required String worktreePath,
-    required String branchName,
-    required String baseBranch,
-    required String? baseCommit,
-  }) async {
-    restoreCalls++;
-    final started = restoreStarted;
-    if (started != null && !started.isCompleted) started.complete();
-    final gate = restoreGate;
-    if (gate != null) await gate;
-    return true;
-  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -48,6 +48,11 @@ enum _SessionRefreshResult { applied, failed, waitingForConnection, staleConnect
 
 class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionDetailLoadService _loadService;
+
+  /// Bumped whenever the transcript is replaced wholesale (a refresh or
+  /// reload), so an older-page request that started before it can tell its
+  /// result no longer joins onto what is shown.
+  int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
@@ -250,6 +255,54 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> reload() async {
     await _loadMessages(isReload: true);
+  }
+
+  /// Loads the page of messages before the ones currently shown.
+  ///
+  /// A no-op when the start of the transcript is already loaded or a request
+  /// is already running, so repeated scroll-to-top gestures cannot stack.
+  Future<void> loadOlderMessages() async {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final cursor = current.olderMessagesCursor;
+    if (cursor == null || current.isLoadingOlderMessages) return;
+
+    final generation = _transcriptGeneration;
+    emit(current.copyWith(isLoadingOlderMessages: true));
+    final page = await _loadService.loadOlderMessages(sessionId: _sessionId, before: cursor);
+    if (isClosed) return;
+
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return;
+    // A refresh may have replaced the transcript while this page was in
+    // flight. This page describes the transcript as it was before that, so
+    // prepending it would splice unrelated history onto the refreshed page,
+    // leaving a gap. Compared by generation rather than by cursor value,
+    // because a refresh can legitimately land on the same cursor.
+    if (_transcriptGeneration != generation) return;
+
+    if (page == null) {
+      // Keep the cursor: the transcript did not end, the request failed, so
+      // the user can retry.
+      emit(latest.copyWith(isLoadingOlderMessages: false));
+      return;
+    }
+
+    // Merge by id rather than concatenating. Live events can append a message
+    // while the page is in flight, and an older page must never duplicate or
+    // reorder what is already shown.
+    final known = {for (final message in latest.messages) message.info.id};
+    final older = [
+      for (final message in page.messages)
+        if (!known.contains(message.info.id)) message,
+    ];
+    emit(
+      latest.copyWith(
+        messages: [...older, ...latest.messages],
+        olderMessagesCursor: page.olderMessagesCursor,
+        isLoadingOlderMessages: false,
+      ),
+    );
   }
 
   Future<void> _runLoadingRefresh({required _SessionRefreshTrigger trigger}) async {
@@ -492,9 +545,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SessionStatusBusy() => null,
           };
 
+          // The transcript is being replaced wholesale, so any older-page
+          // request still in flight no longer joins onto it.
+          _transcriptGeneration++;
           emit(
             latest.copyWith(
               messages: snapshot.messages,
+              // A refresh re-reads the newest page, so previously paged-back
+              // history is dropped and the cursor returns to that page's edge.
+              // Keeping older pages would leave a gap between them and the
+              // refreshed page whenever the session moved on meanwhile.
+              olderMessagesCursor: snapshot.olderMessagesCursor,
+              isLoadingOlderMessages: false,
               streamingText: streamingText,
               sessionStatus: refreshedSessionStatus,
               retryErrorMessage: retryMessage,
@@ -766,6 +828,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriGlobalDisposed() ||
       SesoriCatalogImportProgress() ||
       SesoriPluginManagementChanged() ||
+      SesoriPluginInstallProgress() ||
       SesoriSessionsUpdated() ||
       SesoriSessionDeleted() ||
       SesoriSessionDiff() ||
@@ -848,6 +911,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
             SesoriPluginManagementChanged() ||
+            SesoriPluginInstallProgress() ||
             SesoriSessionsUpdated() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
@@ -1257,6 +1321,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final normalizedCommand = command?.normalize();
     if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
 
+    if (_refuseWhenArchived(action: "send a prompt")) return;
+
     // The bridge's command paths carry only the text part, so sending this
     // combination would drop the images without telling anyone. Refuse it at
     // the seam that formats the wire payload, not only in the composer.
@@ -1333,6 +1399,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
+    if (_refuseWhenArchived(action: "drain the prompt queue")) return;
 
     final pendingSubmission = _promptQueue.items.firstOrNull;
     if (pendingSubmission == null) return;
@@ -1523,11 +1590,23 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(pendingPermissions: pending));
   }
 
+  /// Archiving is permanent, so an archived session is audit-only: every
+  /// mutation refuses here rather than in the widgets. Returns `true` when the
+  /// caller must stop.
+  bool _refuseWhenArchived({required String action}) {
+    final current = state;
+    if (current is! SessionDetailLoaded || !current.isArchived) return false;
+    logw("Refused to $action for archived session $_sessionId");
+    return true;
+  }
+
   Future<bool> replyToQuestion({
     required String requestId,
     required String sessionId,
     required List<ReplyAnswer> answers,
   }) async {
+    if (_refuseWhenArchived(action: "reply to a question")) return false;
+
     // Optimistically remove before the API call so the screen sees the
     // updated state synchronously (prevents auto-chain re-opening the
     // same question).
@@ -1552,6 +1631,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   Future<bool> rejectQuestion(String requestId) async {
+    if (_refuseWhenArchived(action: "reject a question")) return false;
+
     // Reject against the question's owning session (which may be a child/
     // sub-agent surfaced on this root), mirroring the reply path, so the bridge
     // clears its tracker under the correct session instead of the open root.
@@ -1580,6 +1661,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String sessionId,
     required PermissionReply reply,
   }) async {
+    if (_refuseWhenArchived(action: "reply to a permission")) return false;
+
     _onPermissionResolved(requestId);
     _notificationCanceller.cancelForSession(sessionId: sessionId);
     try {
@@ -1803,8 +1886,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SessionStatusBusy() => null,
     };
 
+    _transcriptGeneration++;
     return SessionDetailLoaded(
       messages: snapshot.messages,
+      olderMessagesCursor: snapshot.olderMessagesCursor,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       retryErrorMessage: initialRetryMessage,

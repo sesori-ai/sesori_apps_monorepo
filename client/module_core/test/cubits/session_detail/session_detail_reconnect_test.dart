@@ -109,7 +109,7 @@ void main() {
     await _awaitLoaded(cubit);
 
     expect(cubit.state, isA<SessionDetailLoaded>());
-    verify(() => mockSessionService.getMessages(sessionId: _sessionId)).called(1);
+    verify(() => mockSessionService.getMessages(sessionId: _sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
   });
 
   test("reloads immediately when waiting result arrives after connection already recovered", () async {
@@ -163,6 +163,7 @@ void main() {
           pluginId: "opencode",
           supportsPromptAttachments: false,
           messages: <MessageWithParts>[],
+          olderMessagesCursor: null,
           pendingQuestions: <PendingQuestion>[],
           pendingPermissions: <PendingPermission>[],
           childSessions: <Session>[],
@@ -243,6 +244,7 @@ void main() {
         pluginId: "opencode",
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
+        olderMessagesCursor: null,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -318,8 +320,8 @@ void main() {
 
 void _stubLoadApis(MockSessionService service) {
   when(
-    () => service.getMessages(sessionId: _sessionId),
-  ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
+    () => service.getMessages(sessionId: _sessionId, limit: any(named: "limit"), before: any(named: "before")),
+  ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)));
   when(
     () => service.getPendingQuestions(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));

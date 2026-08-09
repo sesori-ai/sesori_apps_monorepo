@@ -1,24 +1,52 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
+import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+
 void main() {
+  late _MockProductAnalyticsService analytics;
+  late List<ProductAnalyticsEvent> reportedEvents;
+
+  setUpAll(() {
+    registerFallbackValue(const ProductAnalyticsEvent.sessionAbortSucceeded());
+  });
+
+  setUp(() {
+    analytics = _MockProductAnalyticsService();
+    reportedEvents = [];
+    when(
+      () => analytics.logEvent(event: any(named: "event"), occurredAtUtc: any(named: "occurredAtUtc")),
+    ).thenAnswer((invocation) async {
+      reportedEvents.add(invocation.namedArguments[#event]! as ProductAnalyticsEvent);
+      return AnalyticsDeliveryResult.acceptedBySdk;
+    });
+  });
+
   group("refresh synchronization", () {
     test("already-connected construction performs exactly one replay-triggered load", () async {
       final repository = _FakePluginRepository()..queueLoad(_supported(_response(token: "one")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -34,7 +62,11 @@ void main() {
     test("disconnected construction defers its first load until connected", () async {
       final repository = _FakePluginRepository()..queueLoad(_supported(_response(token: "connected")));
       final connection = _FakeConnectionService(initialStatus: const ConnectionStatus.disconnected());
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -54,7 +86,11 @@ void main() {
         ..queueLoad(first.future)
         ..queueLoad(_supported(_response(token: "trailing")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -79,7 +115,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "changed")))
         ..queueLoad(_supported(_response(token: "replay")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -105,7 +145,11 @@ void main() {
         ..queueLoad(PluginManagementLoadResult.failure(error: error))
         ..queueLoad(_supported(_response(token: "recovered", bridgeId: "br_a")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -130,7 +174,11 @@ void main() {
         ..queueLoad(PluginManagementLoadResult.failure(error: ApiError.generic()))
         ..queueLoad(_supported(_response(token: "b", bridgeId: "br_b")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -153,7 +201,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "a", bridgeId: "br_a")))
         ..queueLoad(newBridgeLoad.future);
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -180,7 +232,11 @@ void main() {
         ..queueLoad(PluginManagementLoadResult.failure(error: error))
         ..queueLoad(PluginManagementLoadResult.failure(error: error));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -203,7 +259,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "b1", bridgeId: "br_b")))
         ..queueLoad(_supported(_response(token: "b2", bridgeId: "br_b")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -222,7 +282,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueLoad(const PluginManagementLoadResult.unsupported());
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -244,7 +308,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "authoritative")))
         ..queueMutation(_success(_response(token: "mutation")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -273,7 +341,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "authoritative")))
         ..queueMutation(mutation.future);
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -299,7 +371,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueMutation(mutation.future);
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -326,7 +402,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "authoritative", bridgeId: "br_b")))
         ..queueMutation(mutation.future);
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -358,7 +438,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueLoad(refresh.future);
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -381,7 +465,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "authoritative")))
         ..queueMutation(const PluginManagementMutationResult.uncertain());
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -403,7 +491,11 @@ void main() {
         ..queueLoad(_supported(_response(token: "a2", bridgeId: "br_a")))
         ..queueMutation(_success(_response(token: "b", bridgeId: "br_b")));
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -430,7 +522,11 @@ void main() {
         ..queueMutation(firstMutation.future)
         ..queueMutation(secondMutation.future);
       final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -458,7 +554,11 @@ void main() {
     test("offline mutations fail without dispatch", () async {
       final repository = _FakePluginRepository();
       final connection = _FakeConnectionService(initialStatus: const ConnectionStatus.disconnected());
-      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
       addTearDown(() async {
         await service.onDispose();
         await connection.dispose();
@@ -480,7 +580,11 @@ void main() {
 
     setUp(() {
       connection = _FakeConnectionService(initialStatus: const ConnectionStatus.disconnected());
-      service = PluginManagementService(pluginRepository: _FakePluginRepository(), connectionService: connection);
+      service = PluginManagementService(
+        pluginRepository: _FakePluginRepository(),
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
     });
 
     tearDown(() async {
@@ -599,7 +703,11 @@ void main() {
     final activeLoad = Completer<PluginManagementLoadResult>();
     final repository = _FakePluginRepository()..queueLoad(activeLoad.future);
     final connection = _FakeConnectionService(initialStatus: _connected);
-    final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+    final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
     await _waitFor(() => repository.loadCalls == 1);
 
     final snapshotsDone = expectLater(service.snapshots, emitsDone);
@@ -615,6 +723,329 @@ void main() {
     await snapshotsDone;
     expect(repository.loadCalls, 1);
     await connection.dispose();
+  });
+
+  group("install progress", () {
+    test("tracks phases per plugin and drops the entry on a terminal event", () async {
+      final repository = _FakePluginRepository()..queueLoad(_supported(_response(token: "one")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 30);
+      await _pump();
+      expect(
+        service.installProgress.value,
+        const {"codex": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 30)},
+      );
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.extracting);
+      await _pump();
+      expect(
+        service.installProgress.value,
+        const {"codex": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null)},
+      );
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+      expect(service.installProgress.value, isEmpty);
+      // The terminal outcome does not itself refresh; the bridge's snapshot
+      // invalidation does, exactly as for any other management change.
+      expect(repository.loadCalls, 1);
+      // This surface only watched the install, so it is not its outcome to
+      // report — otherwise the metric would count surfaces, not installs.
+      expect(reportedEvents, isEmpty);
+    });
+
+    test("reports the outcome only for an install this app started", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(_success(_response(token: "one")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      // An install another surface started is watched but never reported.
+      connection.emitInstallProgress(pluginId: "opencode", phase: PluginInstallPhase.downloading, percent: 5);
+      await _pump();
+      connection.emitInstallProgress(pluginId: "opencode", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect(reportedEvents, isEmpty);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
+      await _pump();
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.failed);
+      await _pump();
+
+      // Bounded and identity-free: only the outcome crosses the wire.
+      expect(reportedEvents.single, isA<HarnessInstallFinishedEvent>());
+      expect(reportedEvents.single.parameters, {"outcome": "failed"});
+      expect(reportedEvents.single.wireName, "harness_install_finished");
+    });
+
+    test("an install that settles before its command returns still reports once", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(mutation.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final command = service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      // The row is busy from the tap, before any progress event arrives.
+      await _pump();
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      // A cached install can finish inside the request round trip.
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+      expect(reportedEvents, isEmpty);
+
+      mutation.complete(_success(_response(token: "one")));
+      await command;
+      await _pump();
+
+      expect(reportedEvents.single.parameters, {"outcome": "completed"});
+      expect(service.installProgress.value, isEmpty);
+    });
+
+    test("the row stays busy from acceptance until the first progress event", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(_success(_response(token: "one")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      await _pump();
+
+      // Accepted, but the bridge has not reported a phase yet: the harness must
+      // still read as installing so the row cannot be tapped again.
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
+      await _pump();
+      expect(
+        service.installProgress.value["codex"],
+        const PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 5),
+      );
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+      expect(service.installProgress.value, isEmpty);
+    });
+
+    test("a reconnect during an unresolved install command leaves no busy row", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(mutation.future)
+        ..queueLoad(_supported(_response(token: "two")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final command = service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      await _pump();
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      connection.emitStatus(const ConnectionStatus.disconnected());
+      await _pump();
+      expect(service.installProgress.value, isEmpty);
+
+      // The orphaned command resolving later must not resurrect the row.
+      mutation.complete(_success(_response(token: "one")));
+      await command;
+      await _pump();
+
+      expect(service.installProgress.value, isEmpty);
+      expect(reportedEvents, isEmpty);
+    });
+
+    test("an uncertain install keeps the busy row and still reports its outcome", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(const PluginManagementMutationResult.uncertain())
+        ..queueLoad(_supported(_response(token: "two")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      await _pump();
+
+      // The command may still have reached the bridge, so Install must not
+      // become tappable and start a second download.
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+
+      expect(service.installProgress.value, isEmpty);
+      expect(reportedEvents.single.parameters, {"outcome": "completed"});
+    });
+
+    test("an uncertain response still settles an install that finished during the request", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(mutation.future)
+        ..queueLoad(_supported(_response(token: "two")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final command = service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      // The install completes while the response is still in flight, and the
+      // response then comes back uncertain: the terminal event is proof the
+      // bridge ran it, so the row must not stay blocked until a reconnect.
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+      mutation.complete(const PluginManagementMutationResult.uncertain());
+      await command;
+      await _pump();
+
+      expect(service.installProgress.value, isEmpty);
+      expect(reportedEvents.single.parameters, {"outcome": "completed"});
+    });
+
+    test("a rejected install command never claims a later install", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(PluginManagementMutationResult.failure(error: ApiError.generic()));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      await _pump();
+
+      // A rejected command must also release the busy row, or Install could
+      // never be retried.
+      expect(service.installProgress.value, isEmpty);
+
+      // The bridge never accepted it, so a later install of the same harness
+      // (started elsewhere) is not this app's outcome.
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
+      await _pump();
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+
+      expect(reportedEvents, isEmpty);
+    });
+
+    test("a reconnect clears progress that belonged to the previous connection", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueLoad(_supported(_response(token: "two")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 10);
+      await _pump();
+      expect(service.installProgress.value, isNotEmpty);
+
+      connection.emitStatus(const ConnectionStatus.disconnected());
+      await _pump();
+
+      expect(service.installProgress.value, isEmpty);
+    });
   });
 }
 
@@ -756,6 +1187,23 @@ class _FakeConnectionService implements ConnectionService {
     _events.add(
       SseEvent(
         data: SesoriSseEvent.pluginManagementChanged(snapshotToken: snapshotToken),
+      ),
+    );
+  }
+
+  void emitInstallProgress({
+    required String pluginId,
+    required PluginInstallPhase phase,
+    int? percent,
+  }) {
+    _events.add(
+      SseEvent(
+        data: SesoriSseEvent.pluginInstallProgress(
+          pluginId: pluginId,
+          phase: phase,
+          percent: percent,
+          message: null,
+        ),
       ),
     );
   }

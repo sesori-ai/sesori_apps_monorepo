@@ -156,7 +156,10 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
           // it; the inline title is used instead, as on the new-session screen.
           final SessionDetailLoaded loaded => SliverFillRemaining(
             hasScrollBody: true,
-            child: widget.readOnly
+            // Archiving is permanent, so an archived session is audit-only:
+            // it renders through the same read-only variant as a background
+            // task, with no composer or mutating controls.
+            child: widget.readOnly || loaded.isArchived
                 ? SessionDetailLoadedView.readOnly(
                     projectId: widget.projectId,
                     state: loaded,
@@ -200,9 +203,14 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void _showQuestionModal(SesoriQuestionAsked question) {
     if (!_isCurrentPage) return;
     final cubit = context.read<SessionDetailCubit>();
+    // An archived session is audit-only, so its requests are not answerable —
+    // treating them as no longer pending both keeps the modal from opening and
+    // dismisses one that was already open when the archive landed.
     bool isPending() {
       final state = cubit.state;
-      return state is SessionDetailLoaded && state.pendingQuestions.any((q) => q.id == question.id);
+      return state is SessionDetailLoaded &&
+          !state.isArchived &&
+          state.pendingQuestions.any((q) => q.id == question.id);
     }
 
     if (!isPending()) return;
@@ -236,7 +244,9 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     final cubit = context.read<SessionDetailCubit>();
     bool isPending() {
       final state = cubit.state;
-      return state is SessionDetailLoaded && state.pendingPermissions.any((p) => p.requestID == permission.requestID);
+      return state is SessionDetailLoaded &&
+          !state.isArchived &&
+          state.pendingPermissions.any((p) => p.requestID == permission.requestID);
     }
 
     if (!isPending()) return;

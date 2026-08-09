@@ -1034,12 +1034,21 @@ $ApiErrorCopyWith<$Res> get error {
 
 
 class PluginManagementReady implements PluginManagementState {
-  const PluginManagementReady({required this.response, required this.refresh, required this.action});
+  const PluginManagementReady({required this.response, required this.refresh, required this.action, required final  Map<String, PluginInstallProgress> installs}): _installs = installs;
   
 
  final  PluginManagementResponse response;
  final  PluginManagementRefreshState refresh;
  final  PluginManagementActionState action;
+/// In-flight managed runtime installs, keyed by plugin id.
+ final  Map<String, PluginInstallProgress> _installs;
+/// In-flight managed runtime installs, keyed by plugin id.
+ Map<String, PluginInstallProgress> get installs {
+  if (_installs is EqualUnmodifiableMapView) return _installs;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_installs);
+}
+
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
@@ -1051,16 +1060,16 @@ $PluginManagementReadyCopyWith<PluginManagementReady> get copyWith => _$PluginMa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action)&&const DeepCollectionEquality().equals(other._installs, _installs));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,response,refresh,action);
+int get hashCode => Object.hash(runtimeType,response,refresh,action,const DeepCollectionEquality().hash(_installs));
 
 @override
 String toString() {
-  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action)';
+  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action, installs: $installs)';
 }
 
 
@@ -1071,7 +1080,7 @@ abstract mixin class $PluginManagementReadyCopyWith<$Res> implements $PluginMana
   factory $PluginManagementReadyCopyWith(PluginManagementReady value, $Res Function(PluginManagementReady) _then) = _$PluginManagementReadyCopyWithImpl;
 @useResult
 $Res call({
- PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action
+ PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, Map<String, PluginInstallProgress> installs
 });
 
 
@@ -1088,12 +1097,13 @@ class _$PluginManagementReadyCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,Object? installs = null,}) {
   return _then(PluginManagementReady(
 response: null == response ? _self.response : response // ignore: cast_nullable_to_non_nullable
 as PluginManagementResponse,refresh: null == refresh ? _self.refresh : refresh // ignore: cast_nullable_to_non_nullable
 as PluginManagementRefreshState,action: null == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
-as PluginManagementActionState,
+as PluginManagementActionState,installs: null == installs ? _self._installs : installs // ignore: cast_nullable_to_non_nullable
+as Map<String, PluginInstallProgress>,
   ));
 }
 

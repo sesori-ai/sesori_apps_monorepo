@@ -92,6 +92,17 @@ edge cases, and fixing those spawns the next round. Do not loop indefinitely:
   cosmetic transients, and pre-existing behavior merely exposed by the PR get
   a `Not addressed` reply with the rationale — that is a fully valid
   resolution, not a failure.
+- **Name the flow or decline.** Before writing a guard a bot asked for, name
+  the concrete caller or sequence that reaches the bad state. "The API
+  technically accepts it" and "a misbehaving client might" are not flows. A
+  guard for an unreachable state adds code to the path that runs constantly to
+  defend one that never runs, so it is a net loss even when the bot is
+  technically correct.
+- **A finding that widens a check is suspect.** Pressure to extend an invariant
+  from the entity the caller named out to its parents, children, family, or
+  related entities usually asks you to buy tree walks and extra queries with no
+  reachable state behind them. Decline, and if the same push returns, ask the
+  user instead of widening further.
 - **Repeated findings in one seam are a signal, not a to-do list.** If several
   rounds of comments cluster around the same structural seam, stop patching
   point-by-point: fix the seam once at its root, or surface the pattern to the

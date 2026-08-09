@@ -2,6 +2,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_action_dispatcher.dart";
@@ -43,14 +44,13 @@ void main() {
 
     const dispatcher = SessionListActionDispatcher();
 
-    await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>(
-        create: (_) => StubConnectionOverlayCubit(),
-        child: MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
+    // A router, not a plain MaterialApp: the archive confirmation sheet closes
+    // itself through GoRouter, which the lint requires over direct Navigator.
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: "/",
+          builder: (context, state) => Scaffold(
             body: BlocProvider<SessionListCubit>.value(
               value: cubit,
               child: SessionListPanel(
@@ -62,6 +62,18 @@ void main() {
               ),
             ),
           ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      BlocProvider<ConnectionOverlayCubit>(
+        create: (_) => StubConnectionOverlayCubit(),
+        child: MaterialApp.router(
+          routerConfig: router,
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
         ),
       ),
     );
@@ -133,6 +145,20 @@ void main() {
     await tester.tap(find.text("Archive"));
     await tester.pumpAndSettle();
 
+    // Archiving is permanent, so the pill confirms before it commits.
+    expect(find.textContaining("Archiving is permanent"), findsOneWidget);
+    verifyNever(
+      () => cubit.archiveSession(
+        sessionId: any(named: "sessionId"),
+        deleteWorktree: any(named: "deleteWorktree"),
+        deleteBranch: any(named: "deleteBranch"),
+        force: any(named: "force"),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, "Archive"));
+    await tester.pumpAndSettle();
+
     verify(
       () => cubit.archiveSession(
         sessionId: session.id,
@@ -142,7 +168,8 @@ void main() {
       ),
     ).called(1);
     expect(find.text("Session archived"), findsOneWidget);
-    expect(find.text("Undo"), findsOneWidget);
+    // Archiving is one-way, so there is no undo affordance any more.
+    expect(find.text("Undo"), findsNothing);
   });
 
   testWidgets("a full swipe archives without touching the pills", (tester) async {
@@ -161,6 +188,9 @@ void main() {
     await tester.drag(tile("My Session"), const Offset(-520, 0));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.widgetWithText(FilledButton, "Archive"));
+    await tester.pumpAndSettle();
+
     verify(
       () => cubit.archiveSession(
         sessionId: session.id,
@@ -172,21 +202,39 @@ void main() {
     expect(find.text("Session archived"), findsOneWidget);
   });
 
-  testWidgets("an archived row's pill reads Unarchive and unarchives on tap", (tester) async {
+  testWidgets("an archived row offers delete only — archiving is permanent", (tester) async {
     final session = testSession(title: "Old Session").copyWith(
       time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: 1700000001000),
     );
-    when(() => cubit.unarchiveSession(any())).thenAnswer((_) async => true);
 
     await pumpPanel(tester, session: session);
     await swipeOpen(tester, title: "Old Session", dx: -220);
 
     expect(find.text("Archive"), findsNothing);
-    await tester.tap(find.text("Unarchive"));
+    expect(find.text("Unarchive"), findsNothing);
+    expect(find.text("Delete"), findsOneWidget);
+  });
+
+  testWidgets("an archived row's full swipe confirms before deleting", (tester) async {
+    // Delete is the archived row's full-swipe commit, and archiving is now
+    // one-way — an accidental swipe must never destroy the session outright.
+    final session = testSession(title: "Old Session").copyWith(
+      time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: 1700000001000),
+    );
+
+    await pumpPanel(tester, session: session);
+    await tester.drag(tile("Old Session"), const Offset(-520, 0));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.unarchiveSession(session.id)).called(1);
-    expect(find.text("Session unarchived"), findsOneWidget);
+    expect(find.text("Delete session?"), findsOneWidget);
+    verifyNever(
+      () => cubit.deleteSession(
+        sessionId: any(named: "sessionId"),
+        deleteWorktree: any(named: "deleteWorktree"),
+        deleteBranch: any(named: "deleteBranch"),
+        force: any(named: "force"),
+      ),
+    );
   });
 
   testWidgets("the Delete pill opens the confirmation sheet for a worktree session without acting", (tester) async {
