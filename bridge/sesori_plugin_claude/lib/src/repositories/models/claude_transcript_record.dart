@@ -26,23 +26,6 @@ sealed class ClaudeTranscriptRecord {
   final Map<String, Object?> raw;
 }
 
-/// A transcript role that produces a user-visible message.
-enum ClaudeTranscriptMessageKind {
-  user(wireType: "user"),
-  assistant(wireType: "assistant");
-
-  const ClaudeTranscriptMessageKind({required this.wireType});
-
-  final String wireType;
-
-  static ClaudeTranscriptMessageKind? tryParse(String raw) {
-    for (final kind in values) {
-      if (kind.wireType == raw) return kind;
-    }
-    return null;
-  }
-}
-
 /// A non-message record that still attributes a transcript to a project.
 enum ClaudeTranscriptContextKind {
   attachment(wireType: "attachment"),
@@ -89,13 +72,10 @@ sealed class ClaudeTranscriptAttributedRecord extends ClaudeTranscriptRecord {
   final String? version;
 }
 
-/// A persisted user or assistant message record.
-final class ClaudeTranscriptMessageRecord extends ClaudeTranscriptAttributedRecord {
-  const ClaudeTranscriptMessageRecord({
-    required this.kind,
-    required this.uuid,
-    required this.messageId,
-    required this.model,
+/// A persisted user message.
+final class ClaudeTranscriptUserRecord extends ClaudeTranscriptAttributedRecord {
+  const ClaudeTranscriptUserRecord({
+    required this.id,
     required this.content,
     required this.isMeta,
     required this.isVisibleInTranscriptOnly,
@@ -108,13 +88,53 @@ final class ClaudeTranscriptMessageRecord extends ClaudeTranscriptAttributedReco
     required super.raw,
   });
 
-  final ClaudeTranscriptMessageKind kind;
-  final String? uuid;
-  final String? messageId;
+  static const String wireType = "user";
+
+  final String id;
+  final Object? content;
+  final bool isMeta;
+  final bool isVisibleInTranscriptOnly;
+}
+
+/// A persisted assistant message block.
+///
+/// Claude can split one Anthropic message across several transcript records;
+/// records carrying the same [id] belong to one plugin message.
+final class ClaudeTranscriptAssistantRecord extends ClaudeTranscriptAttributedRecord {
+  const ClaudeTranscriptAssistantRecord({
+    required this.id,
+    required this.model,
+    required this.content,
+    required super.cwd,
+    required super.timestamp,
+    required super.isSidechain,
+    required super.gitBranch,
+    required super.version,
+    required super.sessionId,
+    required super.raw,
+  });
+
+  static const String wireType = "assistant";
+
+  final String id;
   final String? model;
   final Object? content;
-  final bool? isMeta;
-  final bool? isVisibleInTranscriptOnly;
+}
+
+/// A user or assistant record with no usable persisted message identity.
+///
+/// It can still attribute the transcript to a project, but cannot be replayed
+/// as a plugin message without inventing an id.
+final class ClaudeTranscriptUnreplayableMessageRecord extends ClaudeTranscriptAttributedRecord {
+  const ClaudeTranscriptUnreplayableMessageRecord({
+    required super.cwd,
+    required super.timestamp,
+    required super.isSidechain,
+    required super.gitBranch,
+    required super.version,
+    required super.sessionId,
+    required super.raw,
+  });
 }
 
 /// Internal context attached by Claude rather than a user-visible message.

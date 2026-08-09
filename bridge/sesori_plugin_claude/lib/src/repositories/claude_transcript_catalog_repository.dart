@@ -228,24 +228,43 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
     return ClaudeTranscriptUnknownRecord(type: null, sessionId: dto.sessionId, raw: line.raw);
   }
 
-  final messageKind = ClaudeTranscriptMessageKind.tryParse(type);
-  if (messageKind != null) {
-    return ClaudeTranscriptMessageRecord(
-      kind: messageKind,
-      uuid: dto.uuid,
-      messageId: dto.message?.id,
-      model: dto.message?.model,
-      content: dto.message?.content,
-      isMeta: dto.isMeta,
-      isVisibleInTranscriptOnly: dto.isVisibleInTranscriptOnly,
-      cwd: dto.cwd,
-      timestamp: dto.timestamp,
-      isSidechain: dto.isSidechain,
-      gitBranch: dto.gitBranch,
-      version: dto.version,
-      sessionId: dto.sessionId,
-      raw: line.raw,
-    );
+  if (type == ClaudeTranscriptUserRecord.wireType) {
+    final id = _nonEmpty(dto.uuid);
+    if (id != null) {
+      return ClaudeTranscriptUserRecord(
+        id: id,
+        content: dto.message?.content,
+        isMeta: dto.isMeta ?? false,
+        isVisibleInTranscriptOnly: dto.isVisibleInTranscriptOnly ?? false,
+        cwd: dto.cwd,
+        timestamp: dto.timestamp,
+        isSidechain: dto.isSidechain,
+        gitBranch: dto.gitBranch,
+        version: dto.version,
+        sessionId: dto.sessionId,
+        raw: line.raw,
+      );
+    }
+    return _unreplayableMessageRecord(line: line);
+  }
+
+  if (type == ClaudeTranscriptAssistantRecord.wireType) {
+    final id = _nonEmpty(dto.message?.id) ?? _nonEmpty(dto.uuid);
+    if (id != null) {
+      return ClaudeTranscriptAssistantRecord(
+        id: id,
+        model: _nonEmpty(dto.message?.model),
+        content: dto.message?.content,
+        cwd: dto.cwd,
+        timestamp: dto.timestamp,
+        isSidechain: dto.isSidechain,
+        gitBranch: dto.gitBranch,
+        version: dto.version,
+        sessionId: dto.sessionId,
+        raw: line.raw,
+      );
+    }
+    return _unreplayableMessageRecord(line: line);
   }
 
   final contextKind = ClaudeTranscriptContextKind.tryParse(type);
@@ -270,4 +289,17 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
   }
 
   return ClaudeTranscriptUnknownRecord(type: type, sessionId: dto.sessionId, raw: line.raw);
+}
+
+ClaudeTranscriptUnreplayableMessageRecord _unreplayableMessageRecord({required ClaudeTranscriptLineDto line}) {
+  final dto = line.record;
+  return ClaudeTranscriptUnreplayableMessageRecord(
+    cwd: dto.cwd,
+    timestamp: dto.timestamp,
+    isSidechain: dto.isSidechain,
+    gitBranch: dto.gitBranch,
+    version: dto.version,
+    sessionId: dto.sessionId,
+    raw: line.raw,
+  );
 }

@@ -36,36 +36,31 @@ final class ClaudeHistoryMapper {
     final assistantsByToolId = <String, _AssistantHistoryMessage>{};
 
     for (final record in records) {
-      if (record is! ClaudeTranscriptMessageRecord ||
-          record.isSidechain == true ||
-          (record.sessionId != null && record.sessionId != sessionId) ||
-          record.isMeta == true ||
-          record.isVisibleInTranscriptOnly == true) {
-        continue;
-      }
-
-      final blocks = _content.map(content: record.content);
-      switch (record.kind) {
-        case ClaudeTranscriptMessageKind.assistant:
-          final messageId = _nonEmpty(record.messageId) ?? _nonEmpty(record.uuid);
-          if (messageId == null) continue;
-          final assistant = assistantsByMessageId.putIfAbsent(messageId, () {
+      switch (record) {
+        case ClaudeTranscriptAssistantRecord():
+          if (_skipRecord(record: record, sessionId: sessionId)) continue;
+          final blocks = _content.map(content: record.content);
+          final assistant = assistantsByMessageId.putIfAbsent(record.id, () {
             final created = _AssistantHistoryMessage(
-              id: messageId,
+              id: record.id,
               timestamp: record.timestamp,
-              model: _nonEmpty(record.model),
+              model: record.model,
             );
             entries.add(created);
             return created;
           });
           assistant.content.add(record.content);
-          assistant.model ??= _nonEmpty(record.model);
+          assistant.model ??= record.model;
           for (final block in blocks) {
             if (block case ClaudeMappedToolUseContentBlock(:final id)) {
               assistantsByToolId[id] = assistant;
             }
           }
-        case ClaudeTranscriptMessageKind.user:
+        case ClaudeTranscriptUserRecord():
+          if (_skipRecord(record: record, sessionId: sessionId) || record.isMeta || record.isVisibleInTranscriptOnly) {
+            continue;
+          }
+          final blocks = _content.map(content: record.content);
           final results = [
             for (final block in blocks)
               if (block is ClaudeMappedToolResultContentBlock) block,
@@ -78,19 +73,17 @@ final class ClaudeHistoryMapper {
             continue;
           }
 
-          final messageId = _nonEmpty(record.uuid);
-          if (messageId == null) continue;
           final parts = _content.mapParts(
             content: record.content,
             sessionId: sessionId,
-            messageId: messageId,
+            messageId: record.id,
           );
           if (!parts.any((part) => part.type.isVisible)) continue;
           entries.add(
             _UserHistoryMessage(
               message: PluginMessageWithParts(
                 info: PluginMessage.user(
-                  id: messageId,
+                  id: record.id,
                   sessionID: sessionId,
                   agent: null,
                   time: _messageTime(record.timestamp),
@@ -99,6 +92,11 @@ final class ClaudeHistoryMapper {
               ),
             ),
           );
+        case ClaudeTranscriptContextRecord() ||
+            ClaudeTranscriptUnreplayableMessageRecord() ||
+            ClaudeTranscriptTitleRecord() ||
+            ClaudeTranscriptUnknownRecord():
+          continue;
       }
     }
 
@@ -157,6 +155,9 @@ final class ClaudeHistoryMapper {
   }
 }
 
+bool _skipRecord({required ClaudeTranscriptAttributedRecord record, required String sessionId}) =>
+    record.isSidechain == true || (record.sessionId != null && record.sessionId != sessionId);
+
 sealed class _ClaudeHistoryEntry {
   const _ClaudeHistoryEntry();
 }
@@ -178,8 +179,3 @@ final class _AssistantHistoryMessage extends _ClaudeHistoryEntry {
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);
-
-String? _nonEmpty(String? value) {
-  final trimmed = value?.trim();
-  return trimmed == null || trimmed.isEmpty ? null : trimmed;
-}
