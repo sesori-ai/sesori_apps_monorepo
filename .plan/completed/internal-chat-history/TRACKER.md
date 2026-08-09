@@ -9,9 +9,12 @@
 - **Plan PR:** [#763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763) merged
 - **Prerequisite:** satisfied — the `read-only-archiving` series merged fully on
   2026-08-07 (through [PR #771](https://github.com/sesori-ai/sesori_apps_monorepo/pull/771)).
-- **Next action:** none — the series is complete. The remaining harness-free work
-  (agents/providers/commands on a stopped backend) is assessed in `PLAN.md`
-  § Step 9/9 for a follow-up plan pending product decisions.
+- **Next action:** none — the series is complete. Two groups of remaining
+  harness-free work are assessed in `PLAN.md` § Step 9/9 for a follow-up plan
+  pending product decisions: agents/providers/commands on a stopped backend,
+  and history on a cold or stale session (which backfills through
+  `_runtime.use` and fails a first-time or stale open when a no-auto-start
+  backend is unavailable).
 
 ## Delivery Steps
 
