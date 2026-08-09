@@ -172,8 +172,8 @@ class ClaudeTranscriptCatalogRepository {
 
   PluginSession _toPluginSession(ClaudeSessionRecord record) {
     final directory = normalizeProjectDirectory(directory: record.cwd);
-    final created = record.createdAt?.millisecondsSinceEpoch;
-    final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
+    final created = (record.createdAt ?? record.updatedAt)?.millisecondsSinceEpoch;
+    final updated = (record.updatedAt ?? record.createdAt)?.millisecondsSinceEpoch;
     return PluginSession(
       id: record.id,
       projectID: directory,

@@ -189,6 +189,15 @@ void main() {
       expect(output, isEmpty, reason: "a half-written trailing line is expected, not a fault");
     });
 
+    test("keeps complete records when the final write splits a UTF-8 rune", () {
+      final path = p.join(claudeHome.path, "projects", "-work-alpha", "$_sessionA.jsonl");
+      Directory(p.dirname(path)).createSync(recursive: true);
+      final complete = utf8.encode("${jsonEncode(_userRecord(_sessionA))}\n");
+      File(path).writeAsBytesSync([...complete, ...utf8.encode('{"type":"user","message":"'), 0xF0, 0x9F]);
+
+      expect(api.readTranscript(transcriptPath: path), hasLength(1));
+    });
+
     test("warns once per malformed interior record without quoting it", () {
       final path = p.join(claudeHome.path, "projects", "-work-alpha", "$_sessionA.jsonl");
       Directory(p.dirname(path)).createSync(recursive: true);

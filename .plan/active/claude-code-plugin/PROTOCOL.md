@@ -424,10 +424,13 @@ un-munge**.
 
 Corrected in Step 4. The original capture came from one freshly created
 single-turn transcript, which made the tree look far more uniform than it is. A
-survey of a real long-lived `~/.claude` found **1,888 transcript files of which
-only 193 were sessions**. The rest are subagent transcripts named
+survey of a real long-lived `~/.claude` found **1,888 transcript files, of which
+193 had UUID session filenames**. The rest are subagent transcripts named
 `agent-<slug>-<hex>.jsonl`, sitting in the same `projects/<munged-cwd>/`
 directories.
+
+Of those 193 UUID-named candidates, 13 contained only sidechain records, leaving
+**180 sessions** after both filters were applied.
 
 So "the filename minus `.jsonl` is the session id" holds **only for files whose
 stem is a UUID**. Enumerating every `.jsonl` reports roughly ten times too many
