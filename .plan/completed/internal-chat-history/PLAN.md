@@ -636,11 +636,16 @@ The success criterion "archiving exports without starting the backend" is not
 what the code does. `ChatHistoryService.exportSessionHistory` backfills
 through `_runtime.use` whenever the stored transcript is missing or stale, and
 `SessionLifecycleService._doArchive` calls `notifySessionArchived` — also
-`_runtime.use` — even when history is current. What the series *does*
-guarantee is narrower but still the point: **archiving never modifies or
-deletes the backend's stored transcript**, so the export/purge is never the
-only copy. A stopped backend can be started by archiving, but never destroyed
-by it.
+`_runtime.use` — even when history is current. Archiving also **modifies**
+backend session state, not just history: `OpenCodePlugin.archiveSession`
+PATCHes the session's `time.archived` field
+(`bridge/sesori_plugin_opencode/lib/src/opencode_plugin_impl.dart:573`).
+
+What the series *does* guarantee is narrower but still the point: **archiving
+never deletes the backend's stored history** (the transcript messages remain,
+retained, even though the archived flag is set), so the export/purge is never
+the only copy. A stopped backend can be started and its session state modified
+by archiving, but its transcript is never destroyed.
 
 ### Why these three differ from the step 8/9 pair
 
@@ -693,17 +698,28 @@ when the cache is cold and the backend *can* be started. A no-auto-start
 backend with a cold cache is the one case that needs a real UI decision
 (question 2).
 
-This direction needs a **cache-only variant of the options loader**, not a
-straight reuse of `SessionOptionsService.loadDynamic`. `loadDynamic` falls
-back to `_refresh` with `SessionOptionsCaptureActivation.mayActivate` when the
-cache is absent or stale, and that refresh reaches `_runtime.useWithGeneration`
-— it starts the stopped backend the follow-up is trying not to start, and
-fails outright against a `--no-auto-start` backend before the cold-cache
-affordance can be shown. The follow-up must add a `loadCacheOnly` (or an
-active-only refresh) for the stopped-backend path, reusing `loadDynamic`'s
-cache read and resolution logic without its activation fallback. The one
-honest residue is config staleness while a backend is stopped, which the
-30-day retention already bounds for the composer.
+This direction must **wire the existing `SessionOptionsService.loadCacheOnly`**
+(`bridge/app/lib/src/bridge/services/session_options_service.dart:136`) into
+the stopped-backend session-detail path, not add a new loader. `loadCacheOnly`
+already implements exactly the needed semantics: it reads the valid cache,
+returns `SessionOptionsCacheUnavailable` when absent or stale, and never falls
+back to `_refresh` or activation — unlike `loadDynamic`, whose cache-miss path
+refreshes with `SessionOptionsCaptureActivation.mayActivate` via
+`_runtime.useWithGeneration`, starting the stopped backend the follow-up is
+trying not to start and failing outright against a `--no-auto-start` backend
+before a cold-cache affordance can be shown. The remaining work is to expose
+`loadCacheOnly` through the session-detail client flow and handle its
+`SessionOptionsCacheUnavailable` outcome.
+
+One caveat to resolve in that work: `loadCacheOnly` returns `cached.response`
+without checking the entry's `completeness`, and the cache can hold a
+`partial` observation (ACP records one before its command tracker has a
+snapshot; Codex when model or command discovery falls back). Serving a partial
+entry as authoritative would silently present an incomplete options list.
+Either require a `complete` entry on the stopped-backend path or carry the
+incomplete state to the UI. The one honest residue is config staleness while a
+backend is stopped, which the 30-day retention already bounds for the
+composer.
 
 ## Verification
 

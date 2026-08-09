@@ -141,9 +141,15 @@
   shipped.
 - **2026-08-08 — Step 9/9: series complete.** All implementation steps merged
   (1–8, plus the two follow-up fixes for paging render and the detach freeze).
-  The remaining harness-starting calls in session open are the three options
-  lookups (`listAgents`, `listProviders`, `listCommands`), which still use
-  `_runtime.use`. The assessment in `PLAN.md` § Step 9/9 recommends serving
-  them from the existing `session_options_cache_table` when the backend is
-  stopped, and flags the `--no-auto-start` backend as the decisive case
-  needing a product decision. Follow-up plan pending those decisions.
+  Two groups of calls can still start a stopped backend in session open: the
+  three options lookups (`listAgents`, `listProviders`, `listCommands`), which
+  use `_runtime.use`, and **history on a cold or stale session**, which
+  backfills through `_runtime.use` when the store is missing, unsynced, or
+  behind observed backend activity. Current, previously synced history is
+  served entirely from the store. The assessment in `PLAN.md` § Step 9/9
+  recommends wiring the existing `SessionOptionsService.loadCacheOnly` (not
+  `loadDynamic`, whose cache-miss path starts the backend) into the
+  stopped-backend path, requires a `complete` cache entry so a `partial`
+  snapshot is not served as authoritative, and flags the `--no-auto-start`
+  backend as the decisive case needing a product decision. Follow-up plan
+  pending those decisions.
