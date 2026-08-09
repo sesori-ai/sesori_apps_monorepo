@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
@@ -325,6 +326,7 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
+  delegateSessionOptionsRepositoryToService(repository: repository, service: service);
   when(
     () => repository.listAgents(
       projectId: any(named: "projectId"),
@@ -359,7 +361,8 @@ void delegateSessionRepositoryToService({
     ),
   );
   when(
-    () => repository.sendMessage(attachments: const [],
+    () => repository.sendMessage(
+      attachments: const [],
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
       agent: any(named: "agent"),
@@ -368,7 +371,8 @@ void delegateSessionRepositoryToService({
       command: any(named: "command"),
     ),
   ).thenAnswer(
-    (invocation) => service.sendMessage(attachments: const [],
+    (invocation) => service.sendMessage(
+      attachments: const [],
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
       agent: invocation.namedArguments[#agent] as String?,
@@ -386,13 +390,7 @@ void delegateSessionOptionsRepositoryToService({
   required MockSessionRepository repository,
   required MockSessionService service,
 }) {
-  when(
-    () => repository.loadSessionOptions(
-      projectId: any(named: "projectId"),
-      pluginId: any(named: "pluginId"),
-      forceRefresh: any(named: "forceRefresh"),
-    ),
-  ).thenAnswer((invocation) async {
+  Future<SessionOptionsRepositoryResult> loadOptions(Invocation invocation) async {
     final projectId = invocation.namedArguments[#projectId]! as String;
     final pluginId = invocation.namedArguments[#pluginId]! as String;
     final (agents, providers, commands) = await (
@@ -410,6 +408,7 @@ void delegateSessionOptionsRepositoryToService({
           catalog: SessionOptionsCatalog(
             agents: agentData.agents,
             providers: providerData.items,
+            providersConnectedOnly: providerData.connectedOnly,
             commands: commandData.items,
           ),
         ),
@@ -417,7 +416,15 @@ void delegateSessionOptionsRepositoryToService({
       (_, ErrorResponse(:final error), _) => SessionOptionsRepositoryFailure(error: error),
       (_, _, ErrorResponse(:final error)) => SessionOptionsRepositoryFailure(error: error),
     };
-  });
+  }
+
+  when(
+    () => repository.loadSessionOptions(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+      mode: any(named: "mode"),
+    ),
+  ).thenAnswer(loadOptions);
 }
 
 void stubSessionRepositoryGetSession({
@@ -435,6 +442,7 @@ void registerAllFallbackValues() {
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+  registerFallbackValue(SessionOptionsRequestMode.dynamic);
   registerFallbackValue(ProjectViewClaim());
   registerFallbackValue(ProjectViewPaneClaim());
   registerFallbackValue(DateTime.utc(2026));

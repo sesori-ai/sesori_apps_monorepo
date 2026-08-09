@@ -109,6 +109,7 @@ export "src/foundation/models/product_analytics/analytics_runtime_capability.dar
 export "src/foundation/models/product_analytics/installation_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_preference.dart";
+export "src/foundation/models/session_options/session_options_request_mode.dart";
 export "src/foundation/platform/analytics_client.dart";
 export "src/foundation/platform/image_clipboard.dart";
 export "src/foundation/platform/image_saver.dart";

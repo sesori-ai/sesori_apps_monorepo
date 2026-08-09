@@ -4,6 +4,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/session_repository.dart";
 import "../utils/model_filter/default_model_selector.dart";
@@ -104,7 +105,9 @@ class NewSessionOptionsService {
     final result = await _sessionRepository.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      forceRefresh: mode == NewSessionOptionsLoadMode.forcedRefresh,
+      mode: mode == NewSessionOptionsLoadMode.forcedRefresh
+          ? SessionOptionsRequestMode.forceRefresh
+          : SessionOptionsRequestMode.dynamic,
     );
     return switch (result) {
       SessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(
@@ -115,6 +118,7 @@ class NewSessionOptionsService {
         ),
         source: NewSessionOptionsSource.aggregate,
       ),
+      SessionOptionsRepositoryUnsupported() => const NewSessionOptionsUnsupported(),
       SessionOptionsRepositoryCacheUnavailable() => const NewSessionOptionsUnavailable(),
       SessionOptionsRepositoryProjectNotFound(:final error) => NewSessionOptionsFailureUnavailable(
         error: error,
@@ -153,6 +157,11 @@ class NewSessionOptionsService {
           previousOptions: previousOptions,
         ),
         source: NewSessionOptionsSource.legacy,
+      ),
+      LegacySessionOptionsRepositoryPartial(:final error) => _transientFailure(
+        error: error,
+        source: NewSessionOptionsSource.legacy,
+        previousOptions: previousOptions,
       ),
       LegacySessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,

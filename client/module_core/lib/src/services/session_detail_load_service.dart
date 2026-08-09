@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
+import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/plugin_repository.dart";
@@ -95,8 +96,15 @@ class SessionDetailLoadService {
       final fallbackContext = session == null ? await _loadProjectSessionContext(sessionId: sessionId) : null;
       final effectiveProjectId = routeProjectId ?? session?.projectID.normalize() ?? fallbackContext?.projectId;
       final pluginId = session?.pluginId ?? fallbackContext?.pluginId;
-      final optionsFuture = _loadSessionOptions(projectId: effectiveProjectId, pluginId: pluginId);
-      final promptAttachmentSupportFuture = _loadPromptAttachmentSupport(pluginId: pluginId);
+      final isArchived = session?.time?.archived != null;
+      final optionsFuture = isArchived
+          ? Future<_SessionDetailOptions>.value(
+              (agents: const <AgentInfo>[], providerData: null, commands: const <CommandInfo>[]),
+            )
+          : _loadSessionOptions(projectId: effectiveProjectId, pluginId: pluginId);
+      final promptAttachmentSupportFuture = isArchived
+          ? Future<bool?>.value(null)
+          : _loadPromptAttachmentSupport(pluginId: pluginId);
       // Stage 4 child discovery persists legacy bindings. Pending input must
       // observe those bindings rather than race the compatibility backfill.
       final childrenResponse = await childrenFuture;
@@ -158,7 +166,7 @@ class SessionDetailLoadService {
           canonicalSessionTitle: session?.title ?? fallbackContext?.sessionTitle,
           promptDefaults: promptDefaults,
           isRootSession: session != null ? session.parentID == null : null,
-          isArchived: session?.time?.archived != null,
+          isArchived: isArchived,
         ),
         isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
@@ -182,7 +190,10 @@ class SessionDetailLoadService {
 
     _SessionDetailOptions fromCatalog(SessionOptionsCatalog catalog) => (
       agents: catalog.agents,
-      providerData: ProviderListResponse(items: catalog.providers, connectedOnly: true),
+      providerData: ProviderListResponse(
+        items: catalog.providers,
+        connectedOnly: catalog.providersConnectedOnly,
+      ),
       commands: catalog.commands,
     );
     const unavailable = (
@@ -194,16 +205,19 @@ class SessionDetailLoadService {
     final result = await _repository.loadSessionOptions(
       projectId: normalizedProjectId,
       pluginId: pluginId,
-      forceRefresh: false,
+      mode: SessionOptionsRequestMode.dynamic,
     );
     switch (result) {
       case SessionOptionsRepositoryAvailable(:final catalog):
         return fromCatalog(catalog);
-      case SessionOptionsRepositoryFailure(error: NonSuccessCodeError(errorCode: 404)):
+      case SessionOptionsRepositoryUnsupported():
         // COMPATIBILITY 2026-08-09 (v1.8.0): Published older bridges do not
         // expose /session/options. Remove this fallback with support for them.
         switch (await _repository.loadLegacySessionOptions(projectId: normalizedProjectId, pluginId: pluginId)) {
           case LegacySessionOptionsRepositoryAvailable(:final catalog):
+            return fromCatalog(catalog);
+          case LegacySessionOptionsRepositoryPartial(:final catalog, :final error):
+            loge("Failed to load some legacy session options", error);
             return fromCatalog(catalog);
           case LegacySessionOptionsRepositoryFailure(:final error):
             loge("Failed to load legacy session options", error);
@@ -213,7 +227,6 @@ class SessionDetailLoadService {
         loge("Failed to load session options", error);
         return unavailable;
       case SessionOptionsRepositoryCacheUnavailable():
-        logw("Session options cache is unavailable");
         return unavailable;
       case SessionOptionsRepositoryRefreshFailedRetained():
         logw("Failed to refresh session options; cached options were retained");

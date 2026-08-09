@@ -22,7 +22,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProjectViewClaim,
         ProjectViewPaneClaim,
         ProjectViewingService,
-        RouteSource;
+        RouteSource,
+        SessionOptionsRequestMode;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
@@ -537,6 +538,7 @@ void registerAllFallbackValues() {
   registerFallbackValue(ProjectViewClaim());
   registerFallbackValue(ProjectViewPaneClaim());
   registerFallbackValue(DateTime.utc(2000));
+  registerFallbackValue(SessionOptionsRequestMode.dynamic);
   registerFallbackValue(
     const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
   );

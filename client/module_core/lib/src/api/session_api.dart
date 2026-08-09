@@ -5,6 +5,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/composer/composer_attachment.dart";
+import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
 import "client/relay_http_client.dart";
 
@@ -47,13 +48,17 @@ class SessionApi {
   Future<ApiResponse<SessionOptionsResponse>> loadSessionOptions({
     required String projectId,
     required String pluginId,
-    required bool forceRefresh,
+    required SessionOptionsRequestMode mode,
   }) {
     return _client.post(
       "/session/options",
       fromJson: SessionOptionsResponse.fromJson,
       body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
-      queryParameters: forceRefresh ? const {"refresh": "true"} : null,
+      queryParameters: switch (mode) {
+        SessionOptionsRequestMode.dynamic => null,
+        SessionOptionsRequestMode.cacheOnly => const {"refresh": "false"},
+        SessionOptionsRequestMode.forceRefresh => const {"refresh": "true"},
+      },
     );
   }
 

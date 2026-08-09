@@ -5,6 +5,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
@@ -82,7 +83,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-1",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).called(1);
       verifyNever(
@@ -106,33 +107,41 @@ void main() {
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
-    test("falls back to legacy options loading when the aggregate route is unsupported", () async {
+    test("legacy fallback preserves successful options when one request fails", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
+      final catalog = _sessionOptionsCatalog();
       when(
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-1",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).thenAnswer(
-        (_) async => SessionOptionsRepositoryFailure(
-          error: ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null),
-        ),
+        (_) async => const SessionOptionsRepositoryUnsupported(),
       );
+      final error = ApiError.generic();
       when(
         () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
       ).thenAnswer(
-        (_) async => LegacySessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
+        (_) async => LegacySessionOptionsRepositoryPartial(
+          catalog: SessionOptionsCatalog(
+            agents: catalog.agents,
+            providers: catalog.providers,
+            providersConnectedOnly: catalog.providersConnectedOnly,
+            commands: const <CommandInfo>[],
+          ),
+          error: error,
+        ),
       );
 
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
-      expect((result as SessionDetailLoadResultLoaded).snapshot.commands, hasLength(1));
-      verify(
-        () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
-      ).called(1);
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.agents, hasLength(1));
+      expect(snapshot.providerData?.items, hasLength(1));
+      expect(snapshot.commands, isEmpty);
     });
 
     test("the initial snapshot requests only the newest page", () async {
@@ -181,7 +190,20 @@ void main() {
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
-      expect((result as SessionDetailLoadResultLoaded).snapshot.isArchived, isTrue);
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.isArchived, isTrue);
+      expect(snapshot.agents, isEmpty);
+      expect(snapshot.providerData, isNull);
+      expect(snapshot.commands, isEmpty);
+      expect(snapshot.supportsPromptAttachments, isNull);
+      verifyNever(
+        () => repository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          mode: any(named: "mode"),
+        ),
+      );
+      verifyNever(pluginRepository.listPlugins);
     });
 
     test("load gives the route project id precedence over session metadata", () async {
@@ -202,7 +224,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-1",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).called(1);
     });
@@ -228,7 +250,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "catalog-plugin",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).called(1);
     });
@@ -296,7 +318,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-1",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).thenAnswer(
         (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
@@ -342,14 +364,14 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-1",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).called(1);
       verifyNever(
         () => repository.loadSessionOptions(
           projectId: "",
           pluginId: "plugin-1",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       );
     });
@@ -373,7 +395,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          forceRefresh: any(named: "forceRefresh"),
+          mode: any(named: "mode"),
         ),
       );
     });
@@ -401,7 +423,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          forceRefresh: any(named: "forceRefresh"),
+          mode: any(named: "mode"),
         ),
       );
     });
@@ -429,7 +451,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "catalog-plugin",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).called(1);
     });
@@ -465,7 +487,7 @@ void _stubRepositorySnapshot({
     () => repository.loadSessionOptions(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
-      forceRefresh: false,
+      mode: SessionOptionsRequestMode.dynamic,
     ),
   ).thenAnswer(
     (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
@@ -499,6 +521,7 @@ SessionOptionsCatalog _sessionOptionsCatalog() {
         },
       ),
     ],
+    providersConnectedOnly: true,
     commands: const [
       CommandInfo(
         name: "review",

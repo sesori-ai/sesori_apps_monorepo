@@ -5,6 +5,7 @@ final class SessionOptionsCatalog {
   SessionOptionsCatalog({
     required List<AgentInfo> agents,
     required List<ProviderInfo> providers,
+    required this.providersConnectedOnly,
     required List<CommandInfo> commands,
   }) : agents = List.unmodifiable(agents),
        providers = List.unmodifiable(providers),
@@ -12,6 +13,7 @@ final class SessionOptionsCatalog {
 
   final List<AgentInfo> agents;
   final List<ProviderInfo> providers;
+  final bool providersConnectedOnly;
   final List<CommandInfo> commands;
 }
 
@@ -31,6 +33,13 @@ final class LegacySessionOptionsRepositoryFailure extends LegacySessionOptionsRe
   final ApiError error;
 }
 
+final class LegacySessionOptionsRepositoryPartial extends LegacySessionOptionsRepositoryResult {
+  const LegacySessionOptionsRepositoryPartial({required this.catalog, required this.error});
+
+  final SessionOptionsCatalog catalog;
+  final ApiError error;
+}
+
 sealed class SessionOptionsRepositoryResult {
   const SessionOptionsRepositoryResult();
 }
@@ -43,6 +52,10 @@ final class SessionOptionsRepositoryAvailable extends SessionOptionsRepositoryRe
 
 final class SessionOptionsRepositoryCacheUnavailable extends SessionOptionsRepositoryResult {
   const SessionOptionsRepositoryCacheUnavailable();
+}
+
+final class SessionOptionsRepositoryUnsupported extends SessionOptionsRepositoryResult {
+  const SessionOptionsRepositoryUnsupported();
 }
 
 final class SessionOptionsRepositoryProjectNotFound extends SessionOptionsRepositoryResult {
