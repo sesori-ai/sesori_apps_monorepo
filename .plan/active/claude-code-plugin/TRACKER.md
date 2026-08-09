@@ -212,7 +212,7 @@
   do not expose tool or image payloads. `dart analyze --fatal-infos`, all 106
   package tests, codegen, and `git diff --check` pass. Architecture
   implementation review of the Step 5 branch against Step 4 returned
-  `APPROVED` with no findings. The measured diff is 1,304 changed lines, within
+  `APPROVED` with no findings. The measured diff is 1,317 changed lines, within
   the 1,000-1,400 estimate and under the soft cap.
 
 ## Findings And Plan Deltas
