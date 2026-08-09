@@ -3,13 +3,15 @@
 ## Current State
 
 - **Plan slug:** `internal-chat-history`
-- **Implementation base:** `origin/main` at `3d9fe379`
-- **Series state:** Steps 1–7 merged; step 8/9 in PR
-- **Current step:** 8/9
+- **Implementation base:** `origin/main` at `e884a580`
+- **Series state:** Complete — all steps merged
+- **Current step:** retired (plan moved to `.plan/completed/`)
 - **Plan PR:** [#763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763) merged
 - **Prerequisite:** satisfied — the `read-only-archiving` series merged fully on
   2026-08-07 (through [PR #771](https://github.com/sesori-ai/sesori_apps_monorepo/pull/771)).
-- **Next action:** merge step 8/9, then start step 9/9 (retire the plan and scope the remaining harness-free work).
+- **Next action:** none — the series is complete. The remaining harness-free work
+  (agents/providers/commands on a stopped backend) is assessed in `PLAN.md`
+  § Step 9/9 for a follow-up plan pending product decisions.
 
 ## Delivery Steps
 
@@ -22,8 +24,8 @@
 | [x] | 5/8 | `⚙️ [internal-chat-history] Paginate session messages [step 5/8]` | 600–1,000 | [PR #783](https://github.com/sesori-ai/sesori_apps_monorepo/pull/783) merged |
 | [x] | 6/8 | `🚧 [internal-chat-history] Export archives and purge history on archive [step 6/8]` | 1,000–1,500 | [PR #785](https://github.com/sesori-ai/sesori_apps_monorepo/pull/785) merged |
 | [x] | 7/9 | `🌿 [internal-chat-history] Load history pages on demand in the client [step 7/9]` | 500–900 | [PR #787](https://github.com/sesori-ai/sesori_apps_monorepo/pull/787) merged |
-| [ ] | 8/9 | `⚙️ [internal-chat-history] Stop waking a harness for pending questions and permissions [step 8/9]` | 300–600 | in progress |
-| [ ] | 9/9 | `🌱 [internal-chat-history] Retire plan and scope the remaining harness-free work [step 9/9]` | 150–400 | pending |
+| [x] | 8/9 | `⚙️ [internal-chat-history] Stop waking a harness for pending questions and permissions [step 8/9]` | 300–600 | [PR #788](https://github.com/sesori-ai/sesori_apps_monorepo/pull/788) merged |
+| [x] | 9/9 | `🌱 [internal-chat-history] Retire plan and scope the remaining harness-free work [step 9/9]` | 150–400 | in progress |
 
 ## Execution Rules
 
@@ -137,3 +139,11 @@
   ([PR #786](https://github.com/sesori-ai/sesori_apps_monorepo/pull/786)).
   Raised separately from the series because it changed code step 6 had already
   shipped.
+- **2026-08-08 — Step 9/9: series complete.** All implementation steps merged
+  (1–8, plus the two follow-up fixes for paging render and the detach freeze).
+  The remaining harness-starting calls in session open are the three options
+  lookups (`listAgents`, `listProviders`, `listCommands`), which still use
+  `_runtime.use`. The assessment in `PLAN.md` § Step 9/9 recommends serving
+  them from the existing `session_options_cache_table` when the backend is
+  stopped, and flags the `--no-auto-start` backend as the decisive case
+  needing a product decision. Follow-up plan pending those decisions.
