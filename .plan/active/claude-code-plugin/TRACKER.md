@@ -6,10 +6,10 @@
 - **Implementation base:** `origin/main` at
   `9f139f8f` (Step 4 synchronized with it after Step 3 merged)
 - **Series state:** Steps 1-3/17 merged; Step 4/17 PR open
-- **Current step:** 4/17 — transcript session catalog
+- **Current step:** 5/17 — content block mapper (local successor)
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Address review feedback and merge the Step 4 PR
+- **Next action:** Finish Step 5 locally while monitoring the Step 4 PR
 
 ## Plan Review
 
@@ -48,7 +48,7 @@
 | [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | [PR #752](https://github.com/sesori-ai/sesori_apps_monorepo/pull/752) merged 2026-08-09 as `7e460bc9`; see the verification log for the measured diff |
 | [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | [PR #792](https://github.com/sesori-ai/sesori_apps_monorepo/pull/792) merged 2026-08-09 as `9f139f8f`; see the verification log for the measured diff |
 | [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 (recorded overage) | [PR #794](https://github.com/sesori-ai/sesori_apps_monorepo/pull/794) open against `main` |
-| [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | Not started |
+| [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | In progress locally; held until Step 4 merges |
 | [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Not started |
 | [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Not started |
 | [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Not started |
