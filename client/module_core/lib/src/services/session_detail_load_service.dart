@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../logging/logging.dart";
+import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
@@ -94,9 +95,7 @@ class SessionDetailLoadService {
       final fallbackContext = session == null ? await _loadProjectSessionContext(sessionId: sessionId) : null;
       final effectiveProjectId = routeProjectId ?? session?.projectID.normalize() ?? fallbackContext?.projectId;
       final pluginId = session?.pluginId ?? fallbackContext?.pluginId;
-      final commandsFuture = _listCommands(projectId: effectiveProjectId, pluginId: pluginId);
-      final agentsFuture = _listAgents(projectId: effectiveProjectId, pluginId: pluginId);
-      final providersFuture = _listProviders(projectId: effectiveProjectId, pluginId: pluginId);
+      final optionsFuture = _loadSessionOptions(projectId: effectiveProjectId, pluginId: pluginId);
       final promptAttachmentSupportFuture = _loadPromptAttachmentSupport(pluginId: pluginId);
       // Stage 4 child discovery persists legacy bindings. Pending input must
       // observe those bindings rather than race the compatibility backfill.
@@ -115,10 +114,8 @@ class SessionDetailLoadService {
         permissionsFuture,
         statusesFuture,
       ).wait;
-      final (commandsResponse, agentsResponse, providersResponse, supportsPromptAttachments) = await (
-        commandsFuture,
-        agentsFuture,
-        providersFuture,
+      final (options, supportsPromptAttachments) = await (
+        optionsFuture,
         promptAttachmentSupportFuture,
       ).wait;
       final promptDefaults = session?.promptDefaults;
@@ -144,28 +141,6 @@ class SessionDetailLoadService {
         SuccessResponse(:final data) => data.statuses,
         ErrorResponse() => <String, SessionStatus>{},
       };
-      final agents = switch (agentsResponse) {
-        SuccessResponse(:final data) => data.agents,
-        ErrorResponse(:final error) => () {
-          loge("Failed to load agents: ${error.toString()}");
-          return <AgentInfo>[];
-        }(),
-      };
-      final providerData = switch (providersResponse) {
-        SuccessResponse(:final data) => data,
-        ErrorResponse(:final error) => () {
-          loge("Failed to load providers: ${error.toString()}");
-          return null;
-        }(),
-      };
-      final commands = switch (commandsResponse) {
-        SuccessResponse(:final data) => data.items,
-        ErrorResponse(:final error) => () {
-          loge("Failed to load commands: ${error.toString()}");
-          return <CommandInfo>[];
-        }(),
-      };
-
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: effectiveProjectId,
@@ -177,9 +152,9 @@ class SessionDetailLoadService {
           pendingPermissions: pendingPermissions,
           childSessions: childSessions,
           statuses: statuses,
-          agents: agents,
-          providerData: providerData,
-          commands: commands,
+          agents: options.agents,
+          providerData: options.providerData,
+          commands: options.commands,
           canonicalSessionTitle: session?.title ?? fallbackContext?.sessionTitle,
           promptDefaults: promptDefaults,
           isRootSession: session != null ? session.parentID == null : null,
@@ -192,41 +167,61 @@ class SessionDetailLoadService {
     }
   }
 
-  Future<ApiResponse<Agents>> _listAgents({required String? projectId, required String? pluginId}) {
+  Future<_SessionDetailOptions> _loadSessionOptions({
+    required String? projectId,
+    required String? pluginId,
+  }) async {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null || pluginId == null) {
-      // Without any project context there is no way to scope the agent list;
-      // an empty list keeps the UI consistent instead of guessing a project.
-      return Future<ApiResponse<Agents>>.value(
-        ApiResponse.success(const Agents(agents: <AgentInfo>[])),
+      return (
+        agents: const <AgentInfo>[],
+        providerData: const ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
+        commands: const <CommandInfo>[],
       );
     }
 
-    return _repository.listAgents(projectId: normalizedProjectId, pluginId: pluginId);
-  }
+    _SessionDetailOptions fromCatalog(SessionOptionsCatalog catalog) => (
+      agents: catalog.agents,
+      providerData: ProviderListResponse(items: catalog.providers, connectedOnly: true),
+      commands: catalog.commands,
+    );
+    const unavailable = (
+      agents: <AgentInfo>[],
+      providerData: null,
+      commands: <CommandInfo>[],
+    );
 
-  Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId, required String? pluginId}) {
-    final normalizedProjectId = projectId?.normalize();
-    if (normalizedProjectId == null || pluginId == null) {
-      return Future<ApiResponse<CommandListResponse>>.value(
-        ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
+    final result = await _repository.loadSessionOptions(
+      projectId: normalizedProjectId,
+      pluginId: pluginId,
+      forceRefresh: false,
+    );
+    switch (result) {
+      case SessionOptionsRepositoryAvailable(:final catalog):
+        return fromCatalog(catalog);
+      case SessionOptionsRepositoryFailure(error: NonSuccessCodeError(errorCode: 404)):
+        // COMPATIBILITY 2026-08-09 (v1.8.0): Published older bridges do not
+        // expose /session/options. Remove this fallback with support for them.
+        switch (await _repository.loadLegacySessionOptions(projectId: normalizedProjectId, pluginId: pluginId)) {
+          case LegacySessionOptionsRepositoryAvailable(:final catalog):
+            return fromCatalog(catalog);
+          case LegacySessionOptionsRepositoryFailure(:final error):
+            loge("Failed to load legacy session options", error);
+            return unavailable;
+        }
+      case SessionOptionsRepositoryProjectNotFound(:final error) || SessionOptionsRepositoryFailure(:final error):
+        loge("Failed to load session options", error);
+        return unavailable;
+      case SessionOptionsRepositoryCacheUnavailable():
+        logw("Session options cache is unavailable");
+        return unavailable;
+      case SessionOptionsRepositoryRefreshFailedRetained():
+        logw("Failed to refresh session options; cached options were retained");
+        return unavailable;
+      case SessionOptionsRepositoryRefreshFailedUnavailable():
+        logw("Failed to refresh session options and no cached options are available");
+        return unavailable;
     }
-
-    return _repository.listCommands(projectId: normalizedProjectId, pluginId: pluginId);
-  }
-
-  Future<ApiResponse<ProviderListResponse>> _listProviders({required String? projectId, required String? pluginId}) {
-    final normalizedProjectId = projectId?.normalize();
-    if (normalizedProjectId == null || pluginId == null) {
-      // Without any project context there is no project to scope providers to;
-      // an empty list keeps the UI consistent instead of guessing a project.
-      return Future<ApiResponse<ProviderListResponse>>.value(
-        ApiResponse.success(const ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false)),
-      );
-    }
-
-    return _repository.listProviders(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
   Future<bool?> _loadPromptAttachmentSupport({required String? pluginId}) async {
@@ -313,6 +308,12 @@ class SessionDetailSnapshot {
 
 /// One page of history plus the cursor for the page before it.
 typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor});
+
+typedef _SessionDetailOptions = ({
+  List<AgentInfo> agents,
+  ProviderListResponse? providerData,
+  List<CommandInfo> commands,
+});
 
 sealed class SessionDetailLoadResult {
   const SessionDetailLoadResult();

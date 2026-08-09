@@ -5,6 +5,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -70,15 +71,68 @@ void main() {
       final loaded = result as SessionDetailLoadResultLoaded;
       expect(loaded.isBridgeConnected, isTrue);
       expect(loaded.snapshot.messages, hasLength(1));
+      expect(loaded.snapshot.agents, hasLength(1));
+      expect(loaded.snapshot.providerData?.items, hasLength(1));
       expect(loaded.snapshot.commands, hasLength(1));
       expect(loaded.snapshot.canonicalSessionTitle, "Canonical title");
       expect(loaded.snapshot.isArchived, isFalse);
       expect(loaded.snapshot.supportsPromptAttachments, isTrue);
       verify(() => pluginRepository.listPlugins()).called(1);
-      verify(() => repository.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
-      verify(() => repository.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
-      verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+      verify(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          forceRefresh: false,
+        ),
+      ).called(1);
+      verifyNever(
+        () => repository.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
+      verifyNever(
+        () => repository.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
+      verifyNever(
+        () => repository.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
+    });
+
+    test("falls back to legacy options loading when the aggregate route is unsupported", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          forceRefresh: false,
+        ),
+      ).thenAnswer(
+        (_) async => SessionOptionsRepositoryFailure(
+          error: ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null),
+        ),
+      );
+      when(
+        () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => LegacySessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
+      );
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      expect((result as SessionDetailLoadResultLoaded).snapshot.commands, hasLength(1));
+      verify(
+        () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
+      ).called(1);
     });
 
     test("the initial snapshot requests only the newest page", () async {
@@ -144,7 +198,13 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
       expect(loaded.snapshot.commands, hasLength(1));
-      verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+      verify(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          forceRefresh: false,
+        ),
+      ).called(1);
     });
 
     test("load uses catalog fallback plugin identity when session detail is unavailable", () async {
@@ -160,17 +220,17 @@ void main() {
           sessionTitle: "Recovered title",
         ),
       );
-      when(
-        () => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin"),
-      ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
-
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.canonicalSessionTitle, "Recovered title");
-      verify(() => repository.listAgents(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
-      verify(() => repository.listProviders(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
-      verify(() => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
+      verify(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "catalog-plugin",
+          forceRefresh: false,
+        ),
+      ).called(1);
     });
 
     test("initial load waits for connection readiness and then loads", () async {
@@ -209,7 +269,11 @@ void main() {
     test("connected API failure does not auto-loop", () async {
       connectionStatus.add(connectedStatus);
       when(
-        () => repository.getMessages(sessionId: "session-1", limit: any(named: "limit"), before: any(named: "before")),
+        () => repository.getMessages(
+          sessionId: "session-1",
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       when(
         () => repository.getPendingQuestions(sessionId: "session-1"),
@@ -223,28 +287,31 @@ void main() {
       when(() => repository.getSessionStatuses()).thenAnswer(
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
+      stubSessionRepositoryGetSession(
+        repository: repository,
+        sessionId: "session-1",
+        session: testSession(id: "session-1"),
+      );
       when(
-        () => repository.listAgents(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
-      when(
-        () => repository.listProviders(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          forceRefresh: false,
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
-      );
-      when(() => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin")).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
       );
 
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultFailed>());
-      verify(() => repository.getMessages(sessionId: "session-1", limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => repository.getMessages(
+          sessionId: "session-1",
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
     });
 
     test("load falls back to carried title state when canonical title is unavailable", () async {
@@ -271,8 +338,20 @@ void main() {
       // Providers must be requested with the project resolved from the session
       // context — never the raw blank route id, which backends would normalize
       // to the bridge process CWD (the wrong project).
-      verify(() => repository.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
-      verifyNever(() => repository.listProviders(projectId: "", pluginId: "plugin-1"));
+      verify(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          forceRefresh: false,
+        ),
+      ).called(1);
+      verifyNever(
+        () => repository.loadSessionOptions(
+          projectId: "",
+          pluginId: "plugin-1",
+          forceRefresh: false,
+        ),
+      );
     });
 
     test("no route project and no session metadata loads empty providers without a request", () async {
@@ -291,21 +370,10 @@ void main() {
       expect(loaded.snapshot.agents, isEmpty);
       expect(loaded.snapshot.commands, isEmpty);
       verifyNever(
-        () => repository.listAgents(
+        () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-        ),
-      );
-      verifyNever(
-        () => repository.listProviders(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      );
-      verifyNever(
-        () => repository.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       );
     });
@@ -330,9 +398,10 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect(logs, contains(allOf(contains("Failed to load project session context"), contains(error.toString()))));
       verifyNever(
-        () => repository.listProviders(
+        () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       );
     });
@@ -350,17 +419,19 @@ void main() {
           sessionTitle: "Recovered title",
         ),
       );
-      when(() => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin")).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
-
       final result = await service.load(sessionId: "session-1", projectId: "");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
       expect(loaded.snapshot.projectId, "project-1");
       expect(loaded.snapshot.canonicalSessionTitle, "Recovered title");
-      verify(() => repository.listProviders(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
+      verify(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "catalog-plugin",
+          forceRefresh: false,
+        ),
+      ).called(1);
     });
   });
 }
@@ -370,7 +441,11 @@ void _stubRepositorySnapshot({
   String? canonicalSessionTitle = "Canonical title",
 }) {
   when(
-    () => repository.getMessages(sessionId: "session-1", limit: any(named: "limit"), before: any(named: "before")),
+    () => repository.getMessages(
+      sessionId: "session-1",
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
   ).thenAnswer(
     (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
   );
@@ -387,71 +462,56 @@ void _stubRepositorySnapshot({
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
   when(
-    () => repository.listAgents(
+    () => repository.loadSessionOptions(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
+      forceRefresh: false,
     ),
   ).thenAnswer(
-    (_) async => ApiResponse.success(
-      const Agents(
-        agents: [
-          AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
-        ],
-      ),
-    ),
-  );
-  when(
-    () => repository.listProviders(
-      projectId: any(named: "projectId"),
-      pluginId: any(named: "pluginId"),
-    ),
-  ).thenAnswer(
-    (_) async => ApiResponse.success(
-      const ProviderListResponse(
-        connectedOnly: false,
-        items: [
-          ProviderInfo(
-            id: "openai",
-            name: "OpenAI",
-            defaultModelID: "gpt-4.1",
-            models: {
-              "gpt-4.1": ProviderModel(
-                id: "gpt-4.1",
-                providerID: "openai",
-                name: "GPT-4.1",
-                variants: [],
-                family: null,
-                releaseDate: null,
-              ),
-            },
-          ),
-        ],
-      ),
-    ),
-  );
-  when(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).thenAnswer(
-    (_) async => ApiResponse.success(
-      const CommandListResponse(
-        items: <CommandInfo>[
-          CommandInfo(
-            name: "review",
-            template: "/review",
-            hints: <String>[],
-            description: "Review file",
-            agent: null,
-            model: null,
-            provider: null,
-            source: CommandSource.command,
-            subtask: false,
-          ),
-        ],
-      ),
-    ),
+    (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
   );
   stubSessionRepositoryGetSession(
     repository: repository,
     sessionId: "session-1",
     session: testSession(id: "session-1", title: canonicalSessionTitle),
+  );
+}
+
+SessionOptionsCatalog _sessionOptionsCatalog() {
+  return SessionOptionsCatalog(
+    agents: const [
+      AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
+    ],
+    providers: const [
+      ProviderInfo(
+        id: "openai",
+        name: "OpenAI",
+        defaultModelID: "gpt-4.1",
+        models: {
+          "gpt-4.1": ProviderModel(
+            id: "gpt-4.1",
+            providerID: "openai",
+            name: "GPT-4.1",
+            variants: [],
+            family: null,
+            releaseDate: null,
+          ),
+        },
+      ),
+    ],
+    commands: const [
+      CommandInfo(
+        name: "review",
+        template: "/review",
+        hints: <String>[],
+        description: "Review file",
+        agent: null,
+        model: null,
+        provider: null,
+        source: CommandSource.command,
+        subtask: false,
+      ),
+    ],
   );
 }
 
