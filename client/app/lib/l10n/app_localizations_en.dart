@@ -1346,7 +1346,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionNoHarnessDescription =>
-      'The connected bridge has no coding harness it can run. Install one on that computer, then check again.';
+      'The connected bridge has no coding harness it can run. Install one from Harness settings.';
 
   @override
   String get newSessionHarnessesRefresh => 'Check for harnesses';

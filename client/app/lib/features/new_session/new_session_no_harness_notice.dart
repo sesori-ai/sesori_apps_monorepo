@@ -9,9 +9,6 @@ import "../../core/extensions/build_context_x.dart";
 /// left the screen blank: the chooser has nothing to offer and the composer has
 /// nothing to send to. This names the reason in the chooser's place and points
 /// at harness settings, where each harness reports what it is still missing.
-///
-/// The floating refresh action above the composer is the other half of the
-/// answer — it re-runs discovery once a harness has been installed.
 class NewSessionNoHarnessNotice extends StatelessWidget {
   final VoidCallback onSettingsPressed;
 
