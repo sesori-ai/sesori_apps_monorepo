@@ -249,7 +249,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
   }
 
   if (type == ClaudeTranscriptAssistantRecord.wireType) {
-    final id = _nonEmpty(dto.message?.id) ?? _nonEmpty(dto.uuid);
+    final id = _nonEmpty(dto.message?.id);
     if (id != null) {
       return ClaudeTranscriptAssistantRecord(
         id: id,

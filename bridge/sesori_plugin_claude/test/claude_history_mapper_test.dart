@@ -147,6 +147,13 @@ void main() {
             messageId: "malformed-assistant-message",
             content: 42,
           ),
+          _messageRecord(
+            type: "assistant",
+            uuid: "record-id-is-not-a-message-id",
+            content: [
+              {"type": "text", "text": "hidden"},
+            ],
+          ),
           {"type": "future-record", "sessionId": _sessionId},
         ],
       );
