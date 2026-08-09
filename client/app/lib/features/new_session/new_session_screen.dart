@@ -248,9 +248,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   /// it acts on. Floating rather than in flow: a cramped viewport — landscape
   /// with a multiline draft — must still spend its height on the composer.
   ///
-  /// With no harness to load options for it reloads the harness list instead,
-  /// and says so: the user's next step is installing one on the bridge's
-  /// machine, not reloading a model list that cannot exist yet.
+  /// When harness discovery itself failed before identifying a harness, it
+  /// retries discovery instead and says so. A confirmed empty harness list has
+  /// its own notice and no refresh action.
   Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isHarnessDiscovery}) {
     return Positioned(
       bottom: _refreshBottomGap,
@@ -340,11 +340,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
     final hasNoHarnesses = cubit.hasNoHarnesses;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
-    // With no harness known the refresh action stands on its own: the notice
-    // above it, or the error banner, already carries the explanation the status
-    // line would have given. It must outlive a failed retry — hiding the action
-    // the user just pressed would strand them.
-    final showsRefresh = needsHarnessDiscovery || optionsStatus != null;
+    // A confirmed empty harness list is explained by the notice and has no
+    // refresh action. Keep discovery retry available only when discovery failed
+    // before the bridge could confirm what it runs.
+    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null;
     final optionsBottomPadding = showsRefresh
         ? _optionsBottomPadding + _refreshBandHeight(context)
         : _optionsBottomPadding;
