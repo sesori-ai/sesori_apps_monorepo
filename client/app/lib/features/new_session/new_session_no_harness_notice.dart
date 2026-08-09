@@ -18,10 +18,10 @@ class NewSessionNoHarnessNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
 
-    // The options block sits on a narrower inset than the composer so that its
-    // chrome-less rows land on the design's margin. This card carries no such
-    // padding of its own, so it takes the difference back to line its edges up
-    // with the composer below.
+    // The options block sits on a narrower inset than the page content so that
+    // its chrome-less rows land on the design's margin. This card carries no
+    // such padding of its own, so it takes the difference back to align those
+    // edges.
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.sm),
       child: PregoGroupedRows(

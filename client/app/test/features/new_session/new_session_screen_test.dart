@@ -1164,7 +1164,7 @@ void main() {
     );
   });
 
-  testWidgets("names the missing harness and hides the refresh action", (tester) async {
+  testWidgets("names the missing harness and hides unavailable controls", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
@@ -1176,18 +1176,70 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     // A machine with no coding tool installed reports no harness at all. The
-    // page has to name that rather than render blank.
+    // page has to name that rather than render blank or unusable controls.
     expect(find.text(loc.newSessionNoHarnessTitle), findsOneWidget);
     expect(find.text(loc.newSessionNoHarnessDescription), findsOneWidget);
     expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
     expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
     expect(find.byKey(const Key("new_session_options_refresh")), findsNothing);
+    expect(find.byType(PromptInput), findsNothing);
+  });
+
+  testWidgets("restores the chooser and composer when reconnect finds a harness", (tester) async {
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) async {
+      discoveryCalls++;
+      return ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: discoveryCalls == 1
+              ? const []
+              : const [
+                  PluginMetadata(
+                    id: "plugin-1",
+                    displayName: "Plugin One",
+                    isDefault: true,
+                    state: PluginLifecycleState.ready,
+                    actionHint: null,
+                  ),
+                ],
+        ),
+      );
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(discoveryCalls, 1);
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+
+    connectionStatus
+      ..add(const ConnectionStatus.disconnected())
+      ..add(
+        const ConnectionStatus.connected(
+          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          health: HealthResponse(
+            healthy: true,
+            version: "test",
+            filesystemAccessDegraded: null,
+          ),
+        ),
+      );
+    await tester.pumpAndSettle();
+
+    expect(discoveryCalls, 2);
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
+    expect(find.byType(NewSessionPluginChooser), findsOneWidget);
+    expect(find.byType(PromptInput), findsOneWidget);
     expect(
-      find.ancestor(
-        of: find.byType(PromptInput),
-        matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
-      ),
-      findsOneWidget,
+      tester
+          .widget<IgnorePointer>(
+            find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+          )
+          .ignoring,
+      isFalse,
     );
   });
 

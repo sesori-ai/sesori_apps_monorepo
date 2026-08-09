@@ -444,51 +444,52 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Semantics(
-                      enabled: isComposerEnabled,
-                      child: ExcludeFocus(
-                        excluding: !isComposerEnabled,
-                        child: IgnorePointer(
-                          ignoring: !isComposerEnabled,
-                          child: PromptInput(
-                            draftIdentity: ComposerDraftRepository.newSessionIdentity(
-                              projectId: widget.projectId,
+                  if (!hasNoHarnesses)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Semantics(
+                        enabled: isComposerEnabled,
+                        child: ExcludeFocus(
+                          excluding: !isComposerEnabled,
+                          child: IgnorePointer(
+                            ignoring: !isComposerEnabled,
+                            child: PromptInput(
+                              draftIdentity: ComposerDraftRepository.newSessionIdentity(
+                                projectId: widget.projectId,
+                              ),
+                              initialDraft: context.read<NewSessionCubit>().composerDraft,
+                              hasMessages: false,
+                              attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+                              isBusy: state is NewSessionSending,
+                              onSend: ({required text, required command, required inputMode, required attachments}) {
+                                context.read<NewSessionCubit>().createSession(
+                                  text: text,
+                                  command: command,
+                                  inputMode: inputMode,
+                                  attachments: attachments,
+                                  dedicatedWorktree: _dedicatedWorktree,
+                                );
+                              },
+                              onVoiceTranscriptionCompleted: context
+                                  .read<NewSessionCubit>()
+                                  .reportVoiceTranscriptionCompleted,
+                              onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
+                                draft: draft,
+                              ),
+                              onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
+                              onAbort: _dismissScreen,
+                              surfaceStyleController: _composerSurfaceStyle,
+                              header: _buildErrorBanner(state),
+                              composerHeader: _buildComposerHeader(state),
+                              availableCommands: composerData?.commands ?? const [],
+                              stagedCommand: composerData?.stagedCommand,
+                              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                             ),
-                            initialDraft: context.read<NewSessionCubit>().composerDraft,
-                            hasMessages: false,
-                            attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
-                            isBusy: state is NewSessionSending,
-                            onSend: ({required text, required command, required inputMode, required attachments}) {
-                              context.read<NewSessionCubit>().createSession(
-                                text: text,
-                                command: command,
-                                inputMode: inputMode,
-                                attachments: attachments,
-                                dedicatedWorktree: _dedicatedWorktree,
-                              );
-                            },
-                            onVoiceTranscriptionCompleted: context
-                                .read<NewSessionCubit>()
-                                .reportVoiceTranscriptionCompleted,
-                            onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
-                              draft: draft,
-                            ),
-                            onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
-                            onAbort: _dismissScreen,
-                            surfaceStyleController: _composerSurfaceStyle,
-                            header: _buildErrorBanner(state),
-                            composerHeader: _buildComposerHeader(state),
-                            availableCommands: composerData?.commands ?? const [],
-                            stagedCommand: composerData?.stagedCommand,
-                            onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                            onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                           ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
