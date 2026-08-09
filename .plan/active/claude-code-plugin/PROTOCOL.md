@@ -495,6 +495,35 @@ Consequences for the catalog and history mapper:
   anomaly worth skipping.
 - `attachment` records are context attachments (memory files and similar), not
   user images.
+- A full-tree shape survey before Step 6 confirmed `attachment.attachment` is
+  always an internal context object: observed variants covered reminders,
+  skills, plans, hooks, directory state, allowed tools, and similar CLI
+  metadata. User-pasted images instead appear as `image` blocks in
+  `user.message.content`, so history replay skips `attachment` records and sends
+  user image blocks through the normal content mapper.
+- One persisted Anthropic assistant message is commonly split across multiple
+  transcript records: grouping by `message.id` found between 1 and 18 records
+  per message. The top-level record `uuid` was distinct from `message.id`, so it
+  is not an assistant message-id fallback.
+
+### History shape contract
+
+Step 6 established the history shape that Step 8 live mapping must match:
+
+- User envelopes use the transcript record `uuid`; assistant envelopes use the
+  nested Anthropic `message.id` and group every record carrying that id.
+- Assistant envelopes stamp `agent: claude`, `providerID: anthropic`, and the
+  nested message model. User envelopes keep `agent` null.
+- `time.created` is the persisted record timestamp in epoch milliseconds and
+  `time.completed` is null. Every part repeats the envelope's session and
+  message ids.
+- Assistant content blocks retain transcript order. A user `tool_result` record
+  updates the matching assistant `tool_use` part by tool id rather than becoming
+  a duplicate user or tool message.
+- Sidechain, meta, transcript-only, system, attachment, unknown, and records
+  without their role's persisted message identity do not produce messages.
+- A missing or unreadable transcript throws `PluginOperationException`; an
+  empty list means the transcript loaded but held no replayable messages.
 
 ### Enumeration cost
 
@@ -515,10 +544,6 @@ mtime — exact for an append-only file.
 Measured end to end on the surveyed tree: 37 ms to enumerate paths, **993 ms to
 scan 180 session headers** inside `Isolate.run`. Acceptable for a refresh-time
 operation off the main isolate; it would not be acceptable on it.
-
-**OPEN:** the `attachment.attachment` payload shape, and whether user-supplied
-images appear as `user` message content blocks or as `attachment` records.
-Resolve before Step 6.
 
 ## 10. Known Traps
 
@@ -551,7 +576,6 @@ Carried into their consuming steps rather than blocking the scaffold:
 | `AskUserQuestion` / `ExitPlanMode` live captures and answer-key shape | Step 9 |
 | Image content-block round-trip | Step 15 |
 | Slash-command dispatch in stream-json | Step 12 |
-| `attachment` record payload shape | Step 6 |
 | Auto-update / telemetry environment variables | Step 13 |
 
 ## 12. Captured Fixtures

@@ -5,11 +5,13 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `42cd0c72` (Step 5 synchronized with it after Step 4 merged)
-- **Series state:** Steps 1-4/17 merged; Step 5/17 PR open
-- **Current step:** 5/17 — content block mapper
+- **Series state:** Steps 1-4/17 merged; Step 5/17 PR open; Step 6/17 complete
+  locally
+- **Current step:** 6/17 — transcript history replay
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Address review feedback and merge the Step 5 PR
+- **Next action:** Merge the Step 5 PR, synchronize Step 6 with `main`, and open
+  the Step 6 PR
 
 ## Plan Review
 
@@ -49,7 +51,7 @@
 | [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | [PR #792](https://github.com/sesori-ai/sesori_apps_monorepo/pull/792) merged 2026-08-09 as `9f139f8f`; see the verification log for the measured diff |
 | [x] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 (recorded overage) | [PR #794](https://github.com/sesori-ai/sesori_apps_monorepo/pull/794) merged 2026-08-09 as `42cd0c72`; see the verification log for the measured diff |
 | [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | [PR #795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/795) open against `main` |
-| [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Not started |
+| [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Implemented and verified locally; awaiting Step 5 merge |
 | [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Not started |
 | [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Not started |
 | [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Not started |
@@ -209,11 +211,28 @@
   `ClaudeContentBlockDto` union and `ClaudeContentMapper` for text, thinking,
   tool use/results, inline images, metadata degradation, unknown blocks, exact
   tool-output bounds, and aggregate attachment budgeting. Generated DTO strings
-  do not expose tool or image payloads. `dart analyze --fatal-infos`, all 106
+  do not expose tool or image payloads. `dart analyze --fatal-infos`, all 107
   package tests, codegen, and `git diff --check` pass. Architecture
   implementation review of the Step 5 branch against Step 4 returned
   `APPROVED` with no findings. The measured diff is 1,317 changed lines, within
   the 1,000-1,400 estimate and under the soft cap.
+- Step 6/17 (2026-08-09): added generated nested transcript message DTO fields,
+  repository-normalized sealed user/assistant/unreplayable record variants, an
+  isolate-backed full transcript read, and top-level `ClaudeHistoryMapper`.
+  Replay groups assistant records by nested Anthropic message id, preserves
+  ordered user/assistant identity, timestamps, model and provider fields, folds
+  persisted tool results into their originating tool part, and skips internal
+  context and non-visible records. Missing/read failures retain their cause in a
+  `PluginOperationException` instead of returning an empty history. Full-tree
+  structural surveys resolved the attachment and identity questions without
+  printing paths, ids, prompts, transcript text, or tool payloads.
+
+  `dart analyze --fatal-infos`, all 110 package tests, codegen, and
+  `git diff --check` pass. Two architecture implementation-review passes found
+  one flattened role model and one invalid assistant-id fallback; both findings
+  were applied, and the second review reported no other in-scope violations.
+  The measured production/test diff is 800 changed lines against Step 5, below
+  the 1,000-1,400 estimate and the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
 
@@ -250,6 +269,16 @@
   about 88% but is the user's own prompt text, so it is deliberately not used as
   a title fallback; untitled sessions map to a null title. Revisit only if this
   looks wrong in the Step 16 live run.
+- **2026-08-09 — Attachment records are internal context, while user images are
+  message blocks:** the full-tree shape survey found only reminder, skill, plan,
+  hook, directory, and related CLI context variants under `attachment`; pasted
+  images appeared under `user.message.content`. History therefore skips
+  attachment records and maps image blocks through `ClaudeContentMapper`.
+- **2026-08-09 — Assistant identity is nested and groups records:** one
+  `message.id` grouped 1-18 assistant records and never equaled the top-level
+  record UUID in the survey. History groups on nested `message.id`, never falls
+  back to record UUID, and keeps an identity-less assistant record attributable
+  to the catalog but unreplayable.
 - **2026-08-05 — `always` must filter suggestions, not echo them (from PR #752
   review):** the plan said `always` echoes the request's own
   `permission_suggestions`, treating "what the backend suggested" as a safe
