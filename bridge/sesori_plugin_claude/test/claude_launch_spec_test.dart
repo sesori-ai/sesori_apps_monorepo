@@ -115,6 +115,24 @@ void main() {
       );
     });
 
+    test("keeps environment overrides immutable", () {
+      final environment = {"CLAUDE_CONFIG_DIR": "/tmp/claude-config"};
+      final spec = ClaudeLaunchSpec(
+        binaryPath: "claude",
+        workingDirectory: "/tmp/project",
+        launch: ClaudeNewSession(sessionId: _newSessionId),
+        model: null,
+        effort: null,
+        permissionMode: null,
+        environment: environment,
+      );
+
+      environment["HOME"] = "/tmp/test-home";
+
+      expect(spec.environment, {"CLAUDE_CONFIG_DIR": "/tmp/claude-config"});
+      expect(() => spec.environment["HOME"] = "/tmp/test-home", throwsUnsupportedError);
+    });
+
     test("spells the standard mode the way the command line expects", () {
       final arguments = specFor(
         ClaudeNewSession(sessionId: _newSessionId),

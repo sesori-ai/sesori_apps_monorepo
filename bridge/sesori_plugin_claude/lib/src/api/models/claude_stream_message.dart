@@ -278,7 +278,7 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
     final denials = json["permission_denials"];
     return ClaudeResultMessage(
       subtype: _stringOrNull(json["subtype"]),
-      isError: json["is_error"] is bool && json["is_error"]! as bool,
+      isError: json["is_error"] == true,
       result: _stringOrNull(json["result"]),
       stopReason: _stringOrNull(json["stop_reason"]),
       terminalReason: _stringOrNull(json["terminal_reason"]),
