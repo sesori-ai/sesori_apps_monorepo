@@ -163,9 +163,24 @@ class NewSessionOptionsService {
         );
       case LegacySessionOptionsRepositoryPartial(:final catalog, :final errors):
         _logLegacyErrors(errors);
+        final failedSources = errors.map((failure) => failure.source).toSet();
+        final retainedCatalog = previousOptions == null
+            ? catalog
+            : SessionOptionsCatalog(
+                agents: failedSources.contains(LegacySessionOptionSource.agents)
+                    ? previousOptions.agents
+                    : catalog.agents,
+                providers: failedSources.contains(LegacySessionOptionSource.providers)
+                    ? previousOptions.providers
+                    : catalog.providers,
+                providersConnectedOnly: catalog.providersConnectedOnly,
+                commands: failedSources.contains(LegacySessionOptionSource.commands)
+                    ? previousOptions.commands
+                    : catalog.commands,
+              );
         return NewSessionOptionsLoaded(
           options: _resolve(
-            catalog: catalog,
+            catalog: retainedCatalog,
             restoredSelection: restoredSelection,
             previousOptions: previousOptions,
           ),

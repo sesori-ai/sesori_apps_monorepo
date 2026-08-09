@@ -37,11 +37,11 @@ class SessionDetailLoadService {
        _connectionService = connectionService;
 
   Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
-    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
+    return _loadSnapshot(sessionId: sessionId, projectId: projectId, requireCompleteOptions: false);
   }
 
   Future<SessionDetailLoadResult> reload({required String sessionId, required String projectId}) {
-    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
+    return _loadSnapshot(sessionId: sessionId, projectId: projectId, requireCompleteOptions: true);
   }
 
   /// One page of messages older than [before], for a load-older action.
@@ -70,6 +70,7 @@ class SessionDetailLoadService {
   Future<SessionDetailLoadResult> _loadSnapshot({
     required String sessionId,
     required String projectId,
+    required bool requireCompleteOptions,
   }) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
@@ -98,10 +99,20 @@ class SessionDetailLoadService {
       final pluginId = session?.pluginId ?? fallbackContext?.pluginId;
       final isArchived = session?.time?.archived != null;
       final optionsFuture = isArchived
-          ? Future<_SessionDetailOptions>.value(
-              (agents: const <AgentInfo>[], providerData: null, commands: const <CommandInfo>[]),
+          ? Future<_SessionDetailOptionsResult>.value(
+              const _SessionDetailOptionsAvailable(
+                options: (
+                  agents: <AgentInfo>[],
+                  providerData: null,
+                  commands: <CommandInfo>[],
+                ),
+              ),
             )
-          : _loadSessionOptions(projectId: effectiveProjectId, pluginId: pluginId);
+          : _loadSessionOptions(
+              projectId: effectiveProjectId,
+              pluginId: pluginId,
+              requireComplete: requireCompleteOptions,
+            );
       final promptAttachmentSupportFuture = isArchived
           ? Future<bool?>.value(null)
           : _loadPromptAttachmentSupport(pluginId: pluginId);
@@ -122,10 +133,14 @@ class SessionDetailLoadService {
         permissionsFuture,
         statusesFuture,
       ).wait;
-      final (options, supportsPromptAttachments) = await (
+      final (optionsResult, supportsPromptAttachments) = await (
         optionsFuture,
         promptAttachmentSupportFuture,
       ).wait;
+      final options = switch (optionsResult) {
+        _SessionDetailOptionsAvailable(:final options) => options,
+        _SessionDetailOptionsFailure(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace),
+      };
       final promptDefaults = session?.promptDefaults;
 
       final (messages, olderMessagesCursor) = switch (messagesResponse) {
@@ -175,31 +190,38 @@ class SessionDetailLoadService {
     }
   }
 
-  Future<_SessionDetailOptions> _loadSessionOptions({
+  Future<_SessionDetailOptionsResult> _loadSessionOptions({
     required String? projectId,
     required String? pluginId,
+    required bool requireComplete,
   }) async {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null || pluginId == null) {
-      return (
-        agents: const <AgentInfo>[],
-        providerData: const ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
-        commands: const <CommandInfo>[],
+      return const _SessionDetailOptionsAvailable(
+        options: (
+          agents: <AgentInfo>[],
+          providerData: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
+          commands: <CommandInfo>[],
+        ),
       );
     }
 
-    _SessionDetailOptions fromCatalog(SessionOptionsCatalog catalog) => (
-      agents: catalog.agents,
-      providerData: ProviderListResponse(
-        items: catalog.providers,
-        connectedOnly: catalog.providersConnectedOnly,
+    _SessionDetailOptionsResult fromCatalog(SessionOptionsCatalog catalog) => _SessionDetailOptionsAvailable(
+      options: (
+        agents: catalog.agents,
+        providerData: ProviderListResponse(
+          items: catalog.providers,
+          connectedOnly: catalog.providersConnectedOnly,
+        ),
+        commands: catalog.commands,
       ),
-      commands: catalog.commands,
     );
-    const unavailable = (
-      agents: <AgentInfo>[],
-      providerData: null,
-      commands: <CommandInfo>[],
+    const unavailable = _SessionDetailOptionsAvailable(
+      options: (
+        agents: <AgentInfo>[],
+        providerData: null,
+        commands: <CommandInfo>[],
+      ),
     );
 
     final result = await _repository.loadSessionOptions(
@@ -217,25 +239,56 @@ class SessionDetailLoadService {
           case LegacySessionOptionsRepositoryAvailable(:final catalog):
             return fromCatalog(catalog);
           case LegacySessionOptionsRepositoryPartial(:final catalog, :final errors):
+            if (requireComplete) {
+              return _SessionDetailOptionsFailure(
+                error: _LegacySessionOptionsLoadError(errors: errors),
+                stackTrace: StackTrace.current,
+              );
+            }
             for (final failure in errors) {
               loge("Failed to load legacy ${failure.source.name}", failure.error);
             }
             return fromCatalog(catalog);
           case LegacySessionOptionsRepositoryFailure(:final errors):
+            if (requireComplete) {
+              return _SessionDetailOptionsFailure(
+                error: _LegacySessionOptionsLoadError(errors: errors),
+                stackTrace: StackTrace.current,
+              );
+            }
             for (final failure in errors) {
               loge("Failed to load legacy ${failure.source.name}", failure.error);
             }
             return unavailable;
         }
       case SessionOptionsRepositoryProjectNotFound(:final error) || SessionOptionsRepositoryFailure(:final error):
+        if (requireComplete) return _SessionDetailOptionsFailure(error: error, stackTrace: StackTrace.current);
         loge("Failed to load session options", error);
         return unavailable;
       case SessionOptionsRepositoryCacheUnavailable():
+        if (requireComplete) {
+          return _SessionDetailOptionsFailure(
+            error: StateError("Session options cache is unavailable"),
+            stackTrace: StackTrace.current,
+          );
+        }
         return unavailable;
       case SessionOptionsRepositoryRefreshFailedRetained():
+        if (requireComplete) {
+          return _SessionDetailOptionsFailure(
+            error: StateError("Session options refresh failed"),
+            stackTrace: StackTrace.current,
+          );
+        }
         logw("Failed to refresh session options; cached options were retained");
         return unavailable;
       case SessionOptionsRepositoryRefreshFailedUnavailable():
+        if (requireComplete) {
+          return _SessionDetailOptionsFailure(
+            error: StateError("Session options refresh failed with no cached options"),
+            stackTrace: StackTrace.current,
+          );
+        }
         logw("Failed to refresh session options and no cached options are available");
         return unavailable;
     }
@@ -331,6 +384,33 @@ typedef _SessionDetailOptions = ({
   ProviderListResponse? providerData,
   List<CommandInfo> commands,
 });
+
+sealed class _SessionDetailOptionsResult {
+  const _SessionDetailOptionsResult();
+}
+
+final class _SessionDetailOptionsAvailable extends _SessionDetailOptionsResult {
+  const _SessionDetailOptionsAvailable({required this.options});
+
+  final _SessionDetailOptions options;
+}
+
+final class _SessionDetailOptionsFailure extends _SessionDetailOptionsResult {
+  const _SessionDetailOptionsFailure({required this.error, required this.stackTrace});
+
+  // ignore: no_slop_linter/prefer_specific_type, transport and internal option failures share this outcome
+  final Object error;
+  final StackTrace stackTrace;
+}
+
+final class _LegacySessionOptionsLoadError implements Exception {
+  _LegacySessionOptionsLoadError({required List<LegacySessionOptionError> errors}) : errors = List.unmodifiable(errors);
+
+  final List<LegacySessionOptionError> errors;
+
+  @override
+  String toString() => errors.map((failure) => "${failure.source.name}: ${failure.error.toString()}").join("; ");
+}
 
 sealed class SessionDetailLoadResult {
   const SessionDetailLoadResult();

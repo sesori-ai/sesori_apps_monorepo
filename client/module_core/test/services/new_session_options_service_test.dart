@@ -126,6 +126,53 @@ void main() {
       );
     });
 
+    test("partial legacy refresh retains prior data only for failed sources", () async {
+      final previousProviders = _providers().items;
+      final previous = NewSessionOptionsData(
+        agents: [_agent(name: "old-agent")],
+        providers: previousProviders,
+        commands: [_command(name: "old-command")],
+        selectedAgent: "old-agent",
+        selectedAgentModel: const AgentModel(providerID: "provider-a", modelID: "model-a", variant: null),
+        stagedCommand: null,
+        availableVariants: const [],
+      );
+      final catalog = SessionOptionsCatalog(
+        agents: [_agent(name: "new-agent")],
+        providers: const [],
+        providersConnectedOnly: false,
+        commands: [_command(name: "new-command")],
+      );
+      when(
+        () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => LegacySessionOptionsRepositoryPartial(
+          catalog: catalog,
+          errors: [
+            LegacySessionOptionError(
+              source: LegacySessionOptionSource.providers,
+              error: ApiError.generic(),
+            ),
+          ],
+        ),
+      );
+
+      final result =
+          await service.load(
+                projectId: "project-1",
+                pluginId: "plugin-1",
+                source: NewSessionOptionsSource.legacy,
+                mode: NewSessionOptionsLoadMode.forcedRefresh,
+                restoredSelection: null,
+                previousOptions: previous,
+              )
+              as NewSessionOptionsLoaded;
+
+      expect(result.options.agents.single.name, "new-agent");
+      expect(result.options.providers, previousProviders);
+      expect(result.options.commands.single.name, "new-command");
+    });
+
     test("legacy repository failure remains a legacy load failure", () async {
       final error = ApiError.generic();
       when(
