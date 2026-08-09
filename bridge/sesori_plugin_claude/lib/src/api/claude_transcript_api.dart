@@ -6,7 +6,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
-import "models/claude_transcript_record.dart";
+import "models/claude_transcript_record_dto.dart";
 
 /// Layer-1 filesystem boundary for Claude Code's on-disk transcripts.
 ///
@@ -19,7 +19,7 @@ import "models/claude_transcript_record.dart";
 /// Every read is synchronous so the catalog can hoist the whole call tree into
 /// `Isolate.run`.
 class ClaudeTranscriptApi {
-  ClaudeTranscriptApi({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
+  ClaudeTranscriptApi({required Map<String, String> environment}) : _environment = Map.unmodifiable(environment);
 
   final Map<String, String> _environment;
 
@@ -71,9 +71,8 @@ class ClaudeTranscriptApi {
   }
 
   /// Decodes at most [headerLineBudget] leading records.
-  List<ClaudeTranscriptRecord> readHeader({required String transcriptPath}) {
+  List<ClaudeTranscriptLineDto> readHeader({required String transcriptPath}) {
     final file = File(transcriptPath);
-    if (!file.existsSync()) return const [];
     final lines = _readPrefixLines(file: file, maxLines: headerLineBudget);
     // The budget can cut the last line mid-record, exactly like a transcript
     // still being appended to, so the same suppression applies.
@@ -81,20 +80,17 @@ class ClaudeTranscriptApi {
   }
 
   /// Decodes every record in a transcript.
-  List<ClaudeTranscriptRecord> readTranscript({required String transcriptPath}) {
+  List<ClaudeTranscriptLineDto> readTranscript({required String transcriptPath}) {
     final file = File(transcriptPath);
-    if (!file.existsSync()) return const [];
     return _decodeRecords(file.readAsLinesSync(), ignoreMalformedLastLine: true);
   }
 
   /// Last-modified time, which for an append-only transcript is the session's
   /// last activity. Null when the file is gone or unreadable.
   DateTime? lastModified({required String transcriptPath}) {
-    try {
-      return File(transcriptPath).lastModifiedSync().toUtc();
-    } on Object {
-      return null;
-    }
+    final file = File(transcriptPath);
+    if (!file.existsSync()) return null;
+    return file.lastModifiedSync().toUtc();
   }
 
   void deleteTranscript({required String transcriptPath}) {
@@ -129,18 +125,18 @@ class ClaudeTranscriptApi {
     return const LineSplitter().convert(const Utf8Decoder(allowMalformed: true).convert(bytes));
   }
 
-  List<ClaudeTranscriptRecord> _decodeRecords(
+  List<ClaudeTranscriptLineDto> _decodeRecords(
     List<String> lines, {
     required bool ignoreMalformedLastLine,
   }) {
-    final records = <ClaudeTranscriptRecord>[];
+    final records = <ClaudeTranscriptLineDto>[];
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
       if (line.trim().isEmpty) continue;
       Map<String, dynamic>? json;
       try {
         json = jsonDecodeMap(line);
-        records.add(ClaudeTranscriptRecord.parse(json));
+        records.add((record: ClaudeTranscriptRecordDto.fromJson(json), raw: Map.unmodifiable(json)));
       } on Object catch (error) {
         // The CLI appends to a live transcript, so a half-written final line is
         // expected rather than a fault, and is not warned about.

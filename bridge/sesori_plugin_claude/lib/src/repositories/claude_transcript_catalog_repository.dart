@@ -5,8 +5,9 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
 
 import "../api/claude_transcript_api.dart";
-import "../api/models/claude_transcript_record.dart";
+import "../api/models/claude_transcript_record_dto.dart";
 import "models/claude_session_record.dart";
+import "models/claude_transcript_record.dart";
 
 /// Layer-2 session catalog over the on-disk transcript tree.
 ///
@@ -53,7 +54,7 @@ class ClaudeTranscriptCatalogRepository {
   /// real directory — so nothing is filtered and the argument is unused.
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
     final records = await listSessionRecordsInIsolate();
-    return records.map(_toPluginSession).nonNulls.toList(growable: false);
+    return records.map(_toPluginSession).toList(growable: false);
   }
 
   /// Sessions for one bridge-derived project, paginated.
@@ -66,7 +67,6 @@ class ClaudeTranscriptCatalogRepository {
     final target = normalizeProjectDirectory(directory: projectId);
     final sessions = records
         .map(_toPluginSession)
-        .nonNulls
         .where((session) => session.directory == target)
         .toList(growable: false);
 
@@ -104,14 +104,7 @@ class ClaudeTranscriptCatalogRepository {
     }
   }
 
-  List<String> _listTranscriptPaths() {
-    try {
-      return _transcriptApi.listTranscriptPaths();
-    } on Object catch (error, stackTrace) {
-      Log.w("[claude] failed to enumerate transcripts", error, stackTrace);
-      return const [];
-    }
-  }
+  List<String> _listTranscriptPaths() => _transcriptApi.listTranscriptPaths();
 
   /// Reads one transcript's header into a catalog record, or null when it is
   /// not a session.
@@ -119,9 +112,11 @@ class ClaudeTranscriptCatalogRepository {
     final id = _sessionIdFromTranscriptName(p.basename(path));
     if (id == null) return null;
 
-    final List<ClaudeTranscriptRecord> header;
+    final List<ClaudeTranscriptLineDto> header;
+    final DateTime? updatedAt;
     try {
       header = _transcriptApi.readHeader(transcriptPath: path);
+      updatedAt = _transcriptApi.lastModified(transcriptPath: path);
     } on Object catch (error, stackTrace) {
       Log.w("[claude] failed to read transcript header", error, stackTrace);
       return null;
@@ -134,20 +129,23 @@ class ClaudeTranscriptCatalogRepository {
     String? cliVersion;
     DateTime? createdAt;
     var sawContent = false;
-    var sawOwnRecord = false;
 
-    for (final record in header) {
+    for (final line in header) {
+      final record = _mapTranscriptRecord(line);
       switch (record) {
         case ClaudeTranscriptContentRecord():
           // A subagent's records never describe the parent session.
           if (record.isSidechain ?? false) continue;
+          // The filename is authoritative. A present record id is only a
+          // cross-check and records for another session cannot supply metadata.
+          if (record.sessionId != null && record.sessionId != id) continue;
           sawContent = true;
-          if (record.sessionId == id) sawOwnRecord = true;
           cwd ??= _nonEmpty(record.cwd);
           gitBranch ??= _nonEmpty(record.gitBranch);
           cliVersion ??= _nonEmpty(record.version);
           createdAt ??= record.timestamp;
         case ClaudeTranscriptTitleRecord():
+          if (record.sessionId != null && record.sessionId != id) continue;
           title ??= record.title;
         case ClaudeTranscriptUnknownRecord():
           break;
@@ -157,12 +155,6 @@ class ClaudeTranscriptCatalogRepository {
     // A file whose header is entirely subagent records is a subagent
     // transcript that happens to be UUID-named, not a session.
     if (!sawContent) return null;
-    // The filename is authoritative, but a transcript whose own records claim a
-    // different session is not one this catalog can reason about.
-    if (!sawOwnRecord) {
-      Log.w("[claude] skipping transcript whose records do not match its filename id");
-      return null;
-    }
     // Without a directory the bridge cannot attribute the session to a project.
     if (cwd == null) return null;
 
@@ -172,16 +164,14 @@ class ClaudeTranscriptCatalogRepository {
       cwd: cwd,
       title: title,
       createdAt: createdAt,
-      updatedAt: _transcriptApi.lastModified(transcriptPath: path) ?? createdAt,
+      updatedAt: updatedAt ?? createdAt,
       gitBranch: gitBranch,
       cliVersion: cliVersion,
     );
   }
 
-  PluginSession? _toPluginSession(ClaudeSessionRecord record) {
-    final cwd = record.cwd;
-    if (cwd == null) return null;
-    final directory = normalizeProjectDirectory(directory: cwd);
+  PluginSession _toPluginSession(ClaudeSessionRecord record) {
+    final directory = normalizeProjectDirectory(directory: record.cwd);
     final created = record.createdAt?.millisecondsSinceEpoch;
     final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
     return PluginSession(
@@ -216,4 +206,36 @@ final RegExp _uuidPattern = RegExp(
 String? _nonEmpty(String? value) {
   final trimmed = value?.trim();
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+/// Maps the generated API DTO into the closed variants the repository uses.
+ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
+  final dto = line.record;
+  final type = dto.type;
+  if (type == null) {
+    return ClaudeTranscriptUnknownRecord(type: null, sessionId: dto.sessionId, raw: line.raw);
+  }
+
+  final kind = ClaudeTranscriptContentKind.tryParse(type);
+  if (kind != null) {
+    return ClaudeTranscriptContentRecord(
+      kind: kind,
+      cwd: dto.cwd,
+      timestamp: dto.timestamp,
+      isSidechain: dto.isSidechain,
+      gitBranch: dto.gitBranch,
+      version: dto.version,
+      sessionId: dto.sessionId,
+      raw: line.raw,
+    );
+  }
+
+  if (type == ClaudeTranscriptTitleRecord.wireType) {
+    final title = dto.aiTitle?.trim();
+    if (title != null && title.isNotEmpty) {
+      return ClaudeTranscriptTitleRecord(title: title, sessionId: dto.sessionId, raw: line.raw);
+    }
+  }
+
+  return ClaudeTranscriptUnknownRecord(type: type, sessionId: dto.sessionId, raw: line.raw);
 }

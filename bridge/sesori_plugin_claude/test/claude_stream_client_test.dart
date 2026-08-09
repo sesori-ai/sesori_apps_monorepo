@@ -88,7 +88,10 @@ void main() {
       connected.fake.emitRaw(
         ndjson([
           {"type": "system", "subtype": "status", "status": "requesting"},
-          {"type": "stream_event", "event": {"type": "message_stop"}},
+          {
+            "type": "stream_event",
+            "event": {"type": "message_stop"},
+          },
           {"type": "result", "subtype": "success"},
         ]),
       );
@@ -197,6 +200,25 @@ void main() {
       expect(request["model"], "small");
     });
 
+    test("does not let params replace the requested subtype", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+
+      unawaited(
+        connected.client
+            .sendControlRequest(
+              subtype: "set_model",
+              params: {"subtype": "interrupt", "model": "small"},
+            )
+            .catchError((Object _) => <String, Object?>{}),
+      );
+      await pump();
+
+      final request = connected.fake.written.last["request"]! as Map;
+      expect(request["subtype"], "set_model");
+      expect(request["model"], "small");
+    });
+
     test("ignores a response for an unknown request id", () async {
       final connected = await connectTestClient();
       addTearDown(connected.client.dispose);
@@ -279,6 +301,18 @@ void main() {
       expect((message["content"]! as List).single, {"type": "text", "text": "hello"});
     });
 
+    test("fails a user turn after the process exits", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+      connected.fake.exit(1);
+      await pump(10);
+
+      expect(
+        () => connected.client.sendUserMessage(content: const []),
+        throwsA(isA<ClaudeControlException>()),
+      );
+    });
+
     test("answers a control request with a success payload", () async {
       final connected = await connectTestClient();
       addTearDown(connected.client.dispose);
@@ -312,9 +346,11 @@ void main() {
       await connected.client.dispose();
       final before = connected.fake.written.length;
 
-      connected.client.sendUserMessage(content: [
-        {"type": "text", "text": "late"},
-      ]);
+      connected.client.sendUserMessage(
+        content: [
+          {"type": "text", "text": "late"},
+        ],
+      );
       connected.client.sendControlResponse(requestId: "ask-3", payload: const {});
       await pump();
 
@@ -332,6 +368,18 @@ void main() {
       // before signalling.
       expect((connected.fake.stdin as CapturingIOSink).closed, isTrue);
       expect(connected.fake.killed, isTrue);
+      expect(connected.client.isConnected, isFalse);
+    });
+
+    test("terminates when closing stdin stalls", () async {
+      final fake = FakeClaudeProcess(stdinCloseCompletes: false);
+      final connected = await connectTestClient(process: fake);
+
+      await connected.client.dispose(
+        gracefulTimeout: const Duration(milliseconds: 20),
+      );
+
+      expect(fake.killed, isTrue);
       expect(connected.client.isConnected, isFalse);
     });
 

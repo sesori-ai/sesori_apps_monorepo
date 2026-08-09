@@ -4,12 +4,12 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `7e460bc9` (Step 3 rebased onto it after Step 2 merged)
-- **Series state:** Steps 1-2/17 merged; Step 3/17 complete locally
-- **Current step:** 3/17 — stream-json transport
+  `9f139f8f` (Step 4 synchronized with it after Step 3 merged)
+- **Series state:** Steps 1-3/17 merged; Step 4/17 complete locally
+- **Current step:** 4/17 — transcript session catalog
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Open the Step 3 PR against `main`
+- **Next action:** Open the Step 4 PR against `main`
 
 ## Plan Review
 
@@ -46,8 +46,8 @@
 |---|---|---|---|---:|---|
 | [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,200-1,400 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) merged; see the verification log for the measured diff |
 | [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | [PR #752](https://github.com/sesori-ai/sesori_apps_monorepo/pull/752) merged 2026-08-09 as `7e460bc9`; see the verification log for the measured diff |
-| [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | Complete locally and rebased onto merged Step 2; ready to open against `main` |
-| [x] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 | Complete locally; awaiting Step 3 before its PR opens |
+| [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | [PR #792](https://github.com/sesori-ai/sesori_apps_monorepo/pull/792) merged 2026-08-09 as `9f139f8f`; see the verification log for the measured diff |
+| [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 (recorded overage) | Complete locally and verified against merged Step 3; ready to open against `main` |
 | [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | Not started |
 | [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Not started |
 | [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Not started |
@@ -167,7 +167,7 @@
 
 - Step 3/17 (2026-08-04): added `ClaudeStreamMessage` with its dispatching
   parser, `ClaudeStreamClient`, the host process seam, `FakeClaudeProcess`, and
-  the `claude_testing.dart` barrel. `dart analyze --fatal-infos`, all 53 package
+  the `claude_testing.dart` barrel. `dart analyze --fatal-infos`, all 59 package
   tests, and `git diff --check` pass. Architecture implementation review of
   `origin/main..claude-code-plugin-stream-client` returned `APPROVED` with no
   actionable findings.
@@ -190,7 +190,8 @@
 
 - Step 4/17 (2026-08-04): added `ClaudeTranscriptRecord`, `ClaudeTranscriptApi`,
   `ClaudeSessionRecord`, and `ClaudeTranscriptCatalogRepository`.
-  `dart analyze --fatal-infos` and all 76 package tests pass.
+  `dart analyze --fatal-infos` and all 93 package tests pass after synchronization
+  with merged Step 3.
 
   Verified live against the developer's real `~/.claude`: **1,888 transcript
   files reduced to 180 sessions**, 143 titled, all 180 carrying a git branch,
@@ -199,9 +200,10 @@
   paths and 993 ms to scan headers inside `Isolate.run`. Synthetic fixtures
   alone would not have caught the filename finding below.
 
-  1,251 changed lines against the Step 3 base, within the 1,200-1,500 estimate
-  and under the soft cap — the hand-written-envelope decision below is what kept
-  it there.
+  1,584 changed lines against the Step 3 base, 84 over the 1,500 soft cap. The
+  generated JSON boundary required by implementation review cannot be split from
+  its only production consumer; one flat tolerant DTO keeps the overage smaller
+  than a generated union over every observed record type.
 
 ## Findings And Plan Deltas
 
@@ -226,15 +228,13 @@
   viable. Everything the catalog needs is in the first ≤50 lines (title record
   median line 13), so the API reads a bounded 64-line header and takes
   `updatedAt` from file mtime.
-- **2026-08-04 — Step 4 envelopes are hand-written, revising "run codegen":**
-  the open record-type set makes absorption the real work, the four
-  catalog-relevant types share one field set, and a generated union measured at
-  roughly 800 extra lines against a 1,500 cap. Consistent with the boundary Step
-  3 set for this package: hand-written envelopes, generated content shapes.
-  Step 5's content blocks remain the only candidate for generation. The
-  `freezed`/`json_serializable` dependencies were removed from the scaffold in
-  the Step 2 review (below) because nothing used them; they return in whichever
-  step first generates a file, if any does.
+- **2026-08-04 — Step 4 uses one generated wire DTO plus hand-written domain
+  variants:** the open record-type set makes absorption the real work, and the
+  four catalog-relevant types share one field set. A generated union measured at
+  roughly 800 extra lines, so the generated JSON boundary is one tolerant flat
+  DTO that maps into content, title, and unknown domain variants. This satisfies
+  the generated parsing rule without flattening domain state or modelling all
+  sixteen observed wire types independently.
 - **2026-08-04 — Titles are 79% covered and stay first-party:** `ai-title` was
   present in 143 of 180 real sessions. `last-prompt.lastPrompt` would reach
   about 88% but is the user's own prompt text, so it is deliberately not used as

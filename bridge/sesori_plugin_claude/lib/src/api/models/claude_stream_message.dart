@@ -33,20 +33,20 @@ sealed class ClaudeStreamMessage {
   /// [ClaudeUnknownMessage], because the protocol gains message types
   /// frequently and a strict parser would drop a whole turn over one new frame.
   static ClaudeStreamMessage parse(Map<String, Object?> json) {
-    final sessionId = json["session_id"] as String?;
-    final uuid = json["uuid"] as String?;
+    final sessionId = _stringOrNull(json["session_id"]);
+    final uuid = _stringOrNull(json["uuid"]);
     final type = json["type"];
     if (type is! String) {
       return ClaudeUnknownMessage(type: null, subtype: null, sessionId: sessionId, uuid: uuid, raw: json);
     }
-    final subtype = json["subtype"] as String?;
+    final subtype = _stringOrNull(json["subtype"]);
 
     switch (type) {
       case "system":
         return switch (subtype) {
           "init" => ClaudeInitMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
           "status" => ClaudeStatusMessage(
-            status: json["status"] as String?,
+            status: _stringOrNull(json["status"]),
             sessionId: sessionId,
             uuid: uuid,
             raw: json,
@@ -58,7 +58,7 @@ sealed class ClaudeStreamMessage {
       case "user":
         return ClaudeUserMessage(
           message: _mapOrEmpty(json["message"]),
-          parentToolUseId: json["parent_tool_use_id"] as String?,
+          parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
           sessionId: sessionId,
           uuid: uuid,
           raw: json,
@@ -84,11 +84,17 @@ sealed class ClaudeStreamMessage {
   }
 }
 
+String? _stringOrNull(Object? value) => value is String ? value : null;
+
 Map<String, Object?> _mapOrEmpty(Object? value) =>
     value is Map ? value.cast<String, Object?>() : const <String, Object?>{};
 
-List<String> _stringList(Object? value) =>
-    value is List ? [for (final entry in value) if (entry is String) entry] : const <String>[];
+List<String> _stringList(Object? value) => value is List
+    ? [
+        for (final entry in value)
+          if (entry is String) entry,
+      ]
+    : const <String>[];
 
 /// `system`/`init` — the per-process handshake frame.
 final class ClaudeInitMessage extends ClaudeStreamMessage {
@@ -111,13 +117,13 @@ final class ClaudeInitMessage extends ClaudeStreamMessage {
     required String? uuid,
   }) {
     return ClaudeInitMessage(
-      model: json["model"] as String?,
-      permissionMode: ClaudePermissionMode.tryParse(json["permissionMode"] as String?),
+      model: _stringOrNull(json["model"]),
+      permissionMode: ClaudePermissionMode.tryParse(_stringOrNull(json["permissionMode"])),
       capabilities: _stringList(json["capabilities"]),
       tools: _stringList(json["tools"]),
       slashCommands: _stringList(json["slash_commands"]),
-      cliVersion: json["claude_code_version"] as String?,
-      cwd: json["cwd"] as String?,
+      cliVersion: _stringOrNull(json["claude_code_version"]),
+      cwd: _stringOrNull(json["cwd"]),
       sessionId: sessionId,
       uuid: uuid,
       raw: json,
@@ -177,9 +183,9 @@ final class ClaudeAssistantMessage extends ClaudeStreamMessage {
     final message = _mapOrEmpty(json["message"]);
     return ClaudeAssistantMessage(
       message: message,
-      messageId: message["id"] as String?,
-      model: message["model"] as String?,
-      parentToolUseId: json["parent_tool_use_id"] as String?,
+      messageId: _stringOrNull(message["id"]),
+      model: _stringOrNull(message["model"]),
+      parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
       sessionId: sessionId,
       uuid: uuid,
       raw: json,
@@ -233,8 +239,8 @@ final class ClaudeStreamEventMessage extends ClaudeStreamMessage {
     final event = _mapOrEmpty(json["event"]);
     return ClaudeStreamEventMessage(
       event: event,
-      eventType: event["type"] as String?,
-      parentToolUseId: json["parent_tool_use_id"] as String?,
+      eventType: _stringOrNull(event["type"]),
+      parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
       sessionId: sessionId,
       uuid: uuid,
       raw: json,
@@ -271,13 +277,16 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
   }) {
     final denials = json["permission_denials"];
     return ClaudeResultMessage(
-      subtype: json["subtype"] as String?,
-      isError: json["is_error"] as bool? ?? false,
-      result: json["result"] as String?,
-      stopReason: json["stop_reason"] as String?,
-      terminalReason: json["terminal_reason"] as String?,
+      subtype: _stringOrNull(json["subtype"]),
+      isError: json["is_error"] == true,
+      result: _stringOrNull(json["result"]),
+      stopReason: _stringOrNull(json["stop_reason"]),
+      terminalReason: _stringOrNull(json["terminal_reason"]),
       permissionDenials: denials is List
-          ? [for (final entry in denials) if (entry is Map) entry.cast<String, Object?>()]
+          ? [
+              for (final entry in denials)
+                if (entry is Map) entry.cast<String, Object?>(),
+            ]
           : const <Map<String, Object?>>[],
       sessionId: sessionId,
       uuid: uuid,
@@ -317,8 +326,8 @@ final class ClaudeControlRequestMessage extends ClaudeStreamMessage {
   }) {
     final request = _mapOrEmpty(json["request"]);
     return ClaudeControlRequestMessage(
-      requestId: json["request_id"] as String?,
-      subtype: request["subtype"] as String?,
+      requestId: _stringOrNull(json["request_id"]),
+      subtype: _stringOrNull(request["subtype"]),
       request: request,
       sessionId: sessionId,
       uuid: uuid,
@@ -351,14 +360,14 @@ final class ClaudeControlResponseMessage extends ClaudeStreamMessage {
     required String? uuid,
   }) {
     final response = _mapOrEmpty(json["response"]);
-    final subtype = response["subtype"] as String?;
+    final subtype = _stringOrNull(response["subtype"]);
     return ClaudeControlResponseMessage(
-      requestId: response["request_id"] as String?,
+      requestId: _stringOrNull(response["request_id"]),
       // Anything that is not an explicit success is treated as a failure, so a
       // subtype this build does not know cannot be mistaken for one.
       isSuccess: subtype == "success",
       payload: _mapOrEmpty(response["response"]),
-      error: response["error"] as String?,
+      error: _stringOrNull(response["error"]),
       sessionId: sessionId,
       uuid: uuid,
       raw: json,
@@ -382,7 +391,7 @@ final class ClaudeRateLimitMessage extends ClaudeStreamMessage {
 
   final Map<String, Object?> info;
 
-  String? get status => info["status"] as String?;
+  String? get status => _stringOrNull(info["status"]);
 }
 
 /// Any frame this build does not model.

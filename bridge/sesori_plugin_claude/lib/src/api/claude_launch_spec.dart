@@ -55,8 +55,16 @@ class ClaudeLaunchSpec {
     required this.model,
     required this.effort,
     required this.permissionMode,
-    this.environment = const {},
-  });
+    Map<String, String> environment = const {},
+  }) : environment = Map.unmodifiable(environment) {
+    if (this.environment.containsKey("HOME")) {
+      throw ArgumentError.value(
+        this.environment,
+        "environment",
+        "must not override HOME; use CLAUDE_CONFIG_DIR for isolation",
+      );
+    }
+  }
 
   /// The `claude` executable: a `--claude-bin` override or a PATH name.
   final String binaryPath;

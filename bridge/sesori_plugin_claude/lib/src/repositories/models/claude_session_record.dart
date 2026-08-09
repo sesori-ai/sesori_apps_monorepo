@@ -19,9 +19,8 @@ class ClaudeSessionRecord {
 
   final String transcriptPath;
 
-  /// The directory the session ran in. Null when no header record carried one,
-  /// which leaves the session unattributable and therefore unlistable.
-  final String? cwd;
+  /// The directory the session ran in.
+  final String cwd;
 
   /// From the CLI's own `ai-title` record. Null when it never wrote one.
   final String? title;

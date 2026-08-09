@@ -3,12 +3,11 @@
 /// Transcripts live at `$CLAUDE_CONFIG_DIR ?? ~/.claude` +
 /// `/projects/<munged-cwd>/<session-id>.jsonl`, one JSON object per line.
 ///
-/// Hand-written for the same reason as [ClaudeStreamMessage]: these are
-/// envelopes discriminated by a single `type` string, and the type set is open.
-/// A survey of 1,888 real transcripts found **sixteen** record types where the
-/// protocol capture had recorded six, so absorbing the unrecognized rest is the
-/// primary requirement rather than modelling each one. Generated DTOs in this
-/// package stay reserved for content shapes.
+/// The API returns a generated wire DTO; the transcript catalog repository maps
+/// it into these hand-written domain variants. The type set is open: a survey of
+/// 1,888 real transcripts found **sixteen** record types where the protocol
+/// capture had recorded six, so absorbing the unrecognized rest is the primary
+/// requirement rather than modelling each one as a generated union variant.
 ///
 /// Only the fields the session catalog consumes are modelled here. Message
 /// content lands with the history mapper that reads it.
@@ -28,43 +27,6 @@ sealed class ClaudeTranscriptRecord {
   /// The undecoded record, so later steps can reach fields this build does not
   /// model without a second parse.
   final Map<String, Object?> raw;
-
-  /// Parses one decoded transcript line.
-  ///
-  /// Never throws and never returns null — an unrecognized `type` becomes
-  /// [ClaudeTranscriptUnknownRecord].
-  static ClaudeTranscriptRecord parse(Map<String, Object?> json) {
-    final sessionId = json["sessionId"] as String?;
-    final type = json["type"];
-    if (type is! String) {
-      return ClaudeTranscriptUnknownRecord(type: null, sessionId: sessionId, raw: json);
-    }
-
-    final kind = ClaudeTranscriptContentKind.tryParse(type);
-    if (kind != null) {
-      return ClaudeTranscriptContentRecord(
-        kind: kind,
-        cwd: json["cwd"] as String?,
-        timestamp: _timestamp(json["timestamp"]),
-        isSidechain: json["isSidechain"] as bool?,
-        gitBranch: json["gitBranch"] as String?,
-        version: json["version"] as String?,
-        sessionId: sessionId,
-        raw: json,
-      );
-    }
-
-    if (type == ClaudeTranscriptTitleRecord.wireType) {
-      final title = json["aiTitle"];
-      // A title record with no usable title is worth no more than any other
-      // unrecognized line.
-      if (title is String && title.trim().isNotEmpty) {
-        return ClaudeTranscriptTitleRecord(title: title.trim(), sessionId: sessionId, raw: json);
-      }
-    }
-
-    return ClaudeTranscriptUnknownRecord(type: type, sessionId: sessionId, raw: json);
-  }
 }
 
 /// The record types that carry a working directory and a wall-clock time.
@@ -143,5 +105,3 @@ final class ClaudeTranscriptUnknownRecord extends ClaudeTranscriptRecord {
   /// Null when the record had no string `type` at all.
   final String? type;
 }
-
-DateTime? _timestamp(Object? value) => value is String ? DateTime.tryParse(value)?.toUtc() : null;

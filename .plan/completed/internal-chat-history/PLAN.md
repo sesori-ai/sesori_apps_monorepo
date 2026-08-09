@@ -3,12 +3,17 @@
 ## Status
 
 - **Plan slug:** `internal-chat-history`
-- **Status:** Active — plan raised, implementation not started
+- **Status:** **Complete** — all eight implementation steps and two follow-up
+  fixes merged. Moved here from `.plan/active/` on 2026-08-08.
 - **Plan date:** 2026-08-06 (revised 2026-08-06 after comparison with the
   parallel `session-history-store` draft, PR #764; its superior mechanisms
   were merged into this plan and that draft is superseded)
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Base:** `main` at `232974e1`
+- **Base:** `main` at `232974e1` (merged through `e884a580`)
+- **Follow-up:** two groups of calls can still start a stopped backend —
+  agents/providers/commands, and history on a cold or stale session (backfill
+  through `_runtime.use`). Both are assessed in § Step 9/9, pending product
+  decisions.
 - **Prerequisite (satisfied 2026-08-07):** the `read-only-archiving` plan has
   landed and merged fully. It removed unarchive end to end and made archived
   sessions read-only; this plan builds its archive export/purge on that
@@ -583,48 +588,192 @@ Scope limits, deliberately:
 
 ## Step 9/9: Remaining Harness-Free Session Open (assessment, not implementation)
 
-Serving history from the store removes one plugin call from session open, but
-the snapshot still wakes an idle backend through other calls, so the user does
-not perceive the win. Step 9/9 retires this plan **and** produces an aligned,
-code-informed assessment of what it would take to open a session with every
-harness stopped. Deliverable is a written proposal — a follow-up plan — not an
-implementation, so this series stays scoped.
+This series is complete. Opening a session with current, previously synced
+history serves that history from `chat_history.db`, never starts a harness to
+learn there is no pending interaction, and pages older messages on both sides.
+Archiving never deletes the backend's stored transcript; it can still touch —
+and start — the backend when bringing the store current or notifying the
+plugin (see the archive note below).
 
-Observed on 2026-08-08 against a bridge running step 4/8: the store served
-history correctly (`chat_history.db` populated, sessions `synced_at` with a
-current watermark), yet opening a session still felt unchanged because the
-remaining calls started the backend anyway.
+Two groups of calls can still start an idle backend, so a fully stopped
+harness is not yet a fully passive session open: the three picker lookups
+**and** history on a cold or stale session (backfill). This section is the
+code-informed assessment for a follow-up plan, written after steps 1–8
+landed.
 
-Calls in `SessionDetailLoadService._loadSnapshot` still to classify, each as
-"can it be answered without the plugin?" (pending questions and permissions
-are handled in step 8/9 and excluded here):
+### What the session-open snapshot actually calls
 
-- `getSession`, `getChildren` — already catalog-backed in the common path;
-  confirm no plugin fallback fires for a stored session.
-- `listAgents` / `listProviders` / `listCommands` — plugin-backed, but a
-  session-options cache already exists (`session_options_cache_table`);
-  assess whether the cached snapshot can answer an open on a stopped backend.
-- `getSessionStatuses` — already correct: uses `useIfActive`
-  (`startIfNeeded: false`), so it degrades instead of starting. This is the
-  shape the others should be measured against.
+`SessionDetailLoadService._loadSnapshot` fires, with each call classified
+against the merged code:
 
-Questions to answer explicitly, with the user, before any implementation:
+| Call | Bridge path | Starts a stopped backend? |
+|---|---|---|
+| history | `ChatHistoryService.getSessionMessages` | No *when the store is current* — served from `chat_history.db`. A session with no sync row, a null `syncedAt`, or a stale watermark triggers `backfillSession`, which reaches `SessionRepository.getSessionMessages` → `_runtime.use` and **can start a stopped backend**. See the cold/stale note below. |
+| `getSession` | `SessionRepository.getSessionForProject` | No — pure `_sessionDao.getSession` read |
+| `getChildren` | `SessionRepository.getChildSessions` | No — pure `_sessionDao.getChildCatalogSessions` read |
+| `getSessionStatuses` | `useIfActive` | No — degrades to empty when stopped |
+| `getPendingQuestions` / `getPendingPermissions` | `useIfActive` (step 8/9) | No — empty when stopped |
+| `listAgents` | `AgentRepository.getAgents` → `_runtime.use` | **Yes** |
+| `listProviders` | `ProviderRepository.getProviders` → `_runtime.use` | **Yes** |
+| `listCommands` | `SessionRepository.getCommands` → `_runtime.use` | **Yes** |
 
-0. What should a backend that never auto-starts (for example OpenCode
-   configured not to start on demand) do for each of these? That case makes
-   "start it to find out" not merely slow but unavailable, so it is the
-   sharpest test of every answer below.
-1. Which of these must be live-accurate, and which may serve a bridge-side
-   cached or empty answer while the backend is stopped?
-2. What should the UI show for a stopped-backend field — last known value,
-   empty, or an explicit "unavailable until the backend starts" state? A
-   silently empty pending-questions list is a correctness risk if a question
-   really is outstanding.
-3. Does opening a session imply intent to *use* it (so a deliberate,
-   non-blocking background start is right), or should the backend start only
-   when the user actually acts?
-4. Given harnesses respond poorly right after starting, should any such start
-   be explicitly backgrounded so it never blocks first paint?
+So a stopped backend is woken for two groups, not one: the three picker calls
+**and** any history read on a cold or stale session (a session never synced,
+or advanced outside Sesori since the last sync). A session with current,
+previously synced history answers entirely from the store; catalog reads,
+status, and pending state never wake it.
+
+**Cold/stale history is a real gap, not a corner case.** Opening a session the
+bridge has never backfilled, or one advanced through the backend CLI since its
+last sync, starts the backend purely to fetch history — and against a
+`--opencode-no-auto-start` backend that open fails at history, before the
+composer options ever matter. The follow-up plan must decide what a cold or
+stale session means for a stopped backend: serve what the store has with an
+explicit "possibly incomplete" marker, or block open until the backend is
+started. Serving stale history without a marker is a correctness risk (the
+store may be missing messages the backend has); failing the open outright
+defeats the point of the feature for first-time opens.
+
+### Archive can still touch the backend (for the record)
+
+The success criterion "archiving exports without starting the backend" is not
+what the code does. `ChatHistoryService.exportSessionHistory` backfills
+through `_runtime.use` whenever the stored transcript is missing or stale, and
+`SessionLifecycleService._doArchive` calls `notifySessionArchived` — also
+`_runtime.use` — even when history is current. Archiving also **modifies**
+backend session state, not just history: `OpenCodePlugin.archiveSession`
+PATCHes the session's `time.archived` field
+(`bridge/sesori_plugin_opencode/lib/src/opencode_plugin_impl.dart:573`).
+
+What the series *does* guarantee is narrower but still the point: **archiving
+never deletes the backend's stored history** (the transcript messages remain,
+retained, even though the archived flag is set), so the export/purge is never
+the only copy. A stopped backend can be started and its session state modified
+by archiving, but its transcript is never destroyed.
+
+### Why these three differ from the step 8/9 pair
+
+`useIfActive`-returning-empty was correct for pending questions and
+permissions because that state **cannot exist** on a stopped backend — ACP
+keeps it in an in-memory registry, OpenCode in its running HTTP server. Agents,
+providers, and commands are the opposite: they are **configuration the backend
+genuinely has while stopped** (read from disk / config), so returning an empty
+list would not be a faithful "none", it would be a lie that silently removes
+the composer's options.
+
+**One caveat to that reasoning, for the follow-up:** `useIfActive` keys off the
+bridge runtime slot, not the backend. In OpenCode's attach mode the bridge
+does not own the server — it connects to an independently owned one and never
+kills it, so that server can outlive a bridge restart while holding pending
+questions or permissions. If the follow-up moves the pickers to cache-only and
+no remaining `_runtime.use` call activates the plugin, `useIfActive` returns
+null purely because the slot is not routable — not because the backend is
+stopped — and the client would get an empty pending list despite a live
+external server. The follow-up must distinguish "bridge runtime inactive" from
+"backend unavailable" for externally owned servers, or step 8/9's reasoning
+would silently miss pending interactions in that mode.
+
+### A cache already exists that could answer them
+
+`session_options_cache_table` persists exactly this data
+(`SessionOptionsService.loadDynamic` serves it with a 30-day retention, no
+plugin call, when the cached revision matches the current project resolution).
+But the session-**detail** open path does not use it — it calls the raw
+`/agent`, `/provider`, `/command` routes, which go straight to `_runtime.use`.
+The cache serves the create-session composer flow (`/session/options`) instead.
+
+The bridge therefore already has the machinery to serve these three without a
+start; it is simply wired to the wrong consumer.
+
+### Open questions for the follow-up plan (need user decisions)
+
+0. **The no-auto-start backend is the decisive case.** A backend launched with
+   `--opencode-no-auto-start` (as the reporter runs) cannot be started on
+   demand at all, so "start it to find out" is *unavailable*, not merely slow.
+   Against such a backend, opening a session must have a non-starting answer
+   for agents/providers/commands, or the composer **degrades** — the client
+   already renders a loaded snapshot when these fail, with agents and commands
+   as empty lists and providers null (`session_detail_load_service.dart`), so
+   the real problem is a composer that silently loses its options, not a
+   blocked one.
+1. **Fresh vs cached vs empty.** Must the three pickers be live-accurate on
+   every open, or may a fresh-enough cached snapshot answer while the backend
+   is stopped (matching the composer flow's 30-day cache)?
+2. **What the UI shows when the backend is stopped and the cache is cold.**
+   Last-known value, empty with an "unavailable until the backend starts"
+   affordance, or block the composer? Empty is a correctness risk here (unlike
+   pending questions) because the options genuinely exist.
+3. **Does opening imply intent?** A deliberate, non-blocking background start
+   on open would let the pickers populate shortly after first paint — but that
+   reintroduces the harness-start-on-open cost this whole series removes.
+4. **First-paint budget.** Any start that remains must be backgrounded so it
+   never blocks the transcript rendering.
+
+### Recommended direction
+
+Serve the three pickers from the options cache when it is fresh and the
+backend is stopped, refreshing in the background when the backend is running,
+and show an explicit "starting the backend to load options" affordance only
+when the cache is cold and the backend *can* be started. A no-auto-start
+backend with a cold cache is the one case that needs a real UI decision
+(question 2).
+
+**Archived sessions should skip the pickers entirely, not route them through
+the cache.** `SessionDetailBody` always renders archived sessions in the
+read-only variant with no composer or mutating controls
+(`session_detail_body.dart`), yet `_loadSnapshot` still launches all three
+picker requests. Wasting option work on a UI that cannot consume it would
+otherwise retain the cache-miss handling the follow-up is adding.
+
+This direction must **wire the existing `SessionOptionsService.loadCacheOnly`**
+(`bridge/app/lib/src/bridge/services/session_options_service.dart:136`) into
+the stopped-backend session-detail path, not add a new loader. `loadCacheOnly`
+already implements exactly the needed semantics: it reads the valid cache,
+returns `SessionOptionsCacheUnavailable` when absent or stale, and never falls
+back to `_refresh` or activation — unlike `loadDynamic`, whose cache-miss path
+refreshes with `SessionOptionsCaptureActivation.mayActivate` via
+`_runtime.useWithGeneration`, starting the stopped backend the follow-up is
+trying not to start and failing outright against a `--no-auto-start` backend
+before a cold-cache affordance can be shown. The remaining work is to expose
+`loadCacheOnly` through the session-detail client flow and handle its
+`SessionOptionsCacheUnavailable` outcome.
+
+One caveat to resolve in that work: `loadCacheOnly` returns `cached.response`
+without checking the entry's `completeness`, and the cache can hold a
+`partial` observation (ACP records one before its command tracker has a
+snapshot; Codex when model or command discovery falls back). Serving a partial
+entry as authoritative would silently present an incomplete options list.
+Either require a `complete` entry on the stopped-backend path or carry the
+incomplete state to the UI. The one honest residue is config staleness while a
+backend is stopped, which the 30-day retention already bounds for the
+composer.
+
+**Capability gating, for older bridges.** `loadCacheOnly` is exposed via
+`/session/options?refresh=false`, which is unavailable on a published older
+bridge whose `supportsSessionOptions` defaults to false — for those, the three
+raw `/agent`, `/provider`, `/command` routes are the only option-loading path.
+The follow-up must gate the cache-only call on the advertised capability and
+retain the legacy raw requests (or explicitly degrade) for older bridges,
+otherwise a newer app's session composer silently loses its options against
+them. This is the usual older-peer rule applied to a new capability.
+
+**Wiring only `loadCacheOnly` is not enough to deliver the promised behavior.**
+The recommendation says "refresh in the background when the backend is
+running", but `loadCacheOnly` never refreshes — on a cold or stale cache it
+returns `SessionOptionsCacheUnavailable` and stops. The alternative modes on
+the route are both wrong for this purpose: no `refresh` param runs
+`loadDynamic`, which falls back to activation and can start a stopped backend,
+and `refresh=true` runs `refreshExplicit`, which definitely does. What the
+follow-up actually needs is an **active-only refresh** — and
+`SessionOptionsService.refreshActiveOnly` (`session_options_service.dart:170`)
+already exists with exactly that semantics, but it is internal and not exposed
+on the route. The follow-up must expose it as an active-only bridge operation
+(or provide an equivalent atomic bridge-side selection between cache-only and
+active-only refresh). Doing the selection client-side from observed state
+would race a backend going dormant, so the decision belongs on the bridge.
+Without this, "refresh in the background when running" is unimplementable, and
+opening a session would either never refresh cold options or wake the
+backend.
 
 ## Verification
 

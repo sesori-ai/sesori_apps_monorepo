@@ -76,6 +76,37 @@ void main() {
       expect(catalog.listSessionRecords(), isEmpty);
     });
 
+    test("accepts records without a session id because the filename is authoritative", () {
+      final record = _userRecord(_sessionA, cwd: "/work/alpha")..remove("sessionId");
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [record],
+      );
+
+      expect(catalog.listSessionRecords().single.cwd, "/work/alpha");
+    });
+
+    test("does not borrow metadata from records for another session", () {
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionB, cwd: "/work/wrong"),
+          _userRecord(_sessionA, cwd: "/work/alpha"),
+          {"type": "ai-title", "aiTitle": "Wrong title", "sessionId": _sessionB},
+          {"type": "ai-title", "aiTitle": "Right title", "sessionId": _sessionA},
+        ],
+      );
+
+      final record = catalog.listSessionRecords().single;
+
+      expect(record.cwd, "/work/alpha");
+      expect(record.title, "Right title");
+    });
+
     test("skips a transcript with no working directory to attribute it to", () {
       _writeTranscript(
         claudeHome,
@@ -91,6 +122,12 @@ void main() {
 
     test("leaves a session untitled when the CLI wrote no title", () {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
+
+      expect(catalog.listSessionRecords().single.title, isNull);
+    });
+
+    test("treats a blank title as untitled", () {
+      _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "   ");
 
       expect(catalog.listSessionRecords().single.title, isNull);
     });
@@ -170,6 +207,14 @@ void main() {
       expect(catalog.listSessionRecords(), isEmpty);
     });
 
+    test("surfaces transcript enumeration failures", () {
+      final catalog = ClaudeTranscriptCatalogRepository(
+        transcriptApi: _ThrowingTranscriptApi(),
+      );
+
+      expect(catalog.listSessionRecords, throwsA(isA<FileSystemException>()));
+    });
+
     test("enumerates off the main isolate", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
 
@@ -233,4 +278,12 @@ String _writeTranscript(
 
 void _setModified(Directory claudeHome, {required String id, required DateTime to, String project = "-work-alpha"}) {
   File(p.join(claudeHome.path, "projects", project, "$id.jsonl")).setLastModifiedSync(to);
+}
+
+class _ThrowingTranscriptApi implements ClaudeTranscriptApi {
+  @override
+  List<String> listTranscriptPaths() => throw const FileSystemException("cannot enumerate transcripts");
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

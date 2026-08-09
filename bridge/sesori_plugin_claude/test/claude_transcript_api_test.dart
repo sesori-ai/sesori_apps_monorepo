@@ -33,6 +33,15 @@ void main() {
       expect(api.projectsDirectory, p.join("/pinned/config", "projects"));
     });
 
+    test("keeps environment lookup pinned to the injected snapshot", () {
+      final environment = {"CLAUDE_CONFIG_DIR": "/pinned/config"};
+      final api = ClaudeTranscriptApi(environment: environment);
+
+      environment["CLAUDE_CONFIG_DIR"] = "/mutated/config";
+
+      expect(api.claudeHome, "/pinned/config");
+    });
+
     test("falls back to the user home when no config dir is set", () {
       final api = ClaudeTranscriptApi(environment: {"HOME": "/user/home", "USERPROFILE": "/user/home"});
 
@@ -86,15 +95,15 @@ void main() {
       final records = api.readTranscript(transcriptPath: path);
 
       expect(records, hasLength(3));
-      final content = records[0] as ClaudeTranscriptContentRecord;
-      expect(content.kind, ClaudeTranscriptContentKind.user);
+      final content = records[0].record;
+      expect(content.type, "user");
       expect(content.cwd, "/work/alpha");
       expect(content.gitBranch, "main");
       expect(content.version, "2.1.221");
       expect(content.isSidechain, isFalse);
       expect(content.timestamp, DateTime.utc(2026, 8, 4, 10));
-      expect((records[1] as ClaudeTranscriptTitleRecord).title, "Refactor the parser");
-      expect((records[2] as ClaudeTranscriptUnknownRecord).type, "pr-link");
+      expect(records[1].record.aiTitle, "Refactor the parser");
+      expect(records[2].record.type, "pr-link");
     });
 
     test("absorbs a record type this build does not model", () {
@@ -111,11 +120,39 @@ void main() {
       final records = api.readTranscript(transcriptPath: path);
 
       expect(records, hasLength(2));
-      expect((records[0] as ClaudeTranscriptUnknownRecord).type, "some-future-record");
-      expect((records[1] as ClaudeTranscriptUnknownRecord).type, isNull);
+      expect(records[0].record.type, "some-future-record");
+      expect(records[1].record.type, isNull);
     });
 
-    test("treats a blank title record as unrecognized rather than an empty title", () {
+    test("tolerates wrong-typed catalog fields without dropping the record", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          {
+            "type": "user",
+            "sessionId": 1,
+            "cwd": false,
+            "isSidechain": "false",
+            "timestamp": 2,
+            "gitBranch": <Object?>[],
+            "version": true,
+          },
+        ],
+      );
+
+      final record = api.readTranscript(transcriptPath: path).single.record;
+
+      expect(record.sessionId, isNull);
+      expect(record.cwd, isNull);
+      expect(record.isSidechain, isNull);
+      expect(record.timestamp, isNull);
+      expect(record.gitBranch, isNull);
+      expect(record.version, isNull);
+    });
+
+    test("keeps a blank title for repository validation", () {
       final path = _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -125,7 +162,7 @@ void main() {
         ],
       );
 
-      expect(api.readTranscript(transcriptPath: path).single, isA<ClaudeTranscriptUnknownRecord>());
+      expect(api.readTranscript(transcriptPath: path).single.record.aiTitle, "   ");
     });
 
     test("stops the header read at the line budget", () {
@@ -185,10 +222,12 @@ void main() {
       expect(output, isNot(contains("secret-prompt-text")));
     });
 
-    test("reads a missing transcript as empty rather than throwing", () {
-      expect(api.readTranscript(transcriptPath: p.join(claudeHome.path, "nope.jsonl")), isEmpty);
-      expect(api.readHeader(transcriptPath: p.join(claudeHome.path, "nope.jsonl")), isEmpty);
-      expect(api.lastModified(transcriptPath: p.join(claudeHome.path, "nope.jsonl")), isNull);
+    test("surfaces a missing transcript read", () {
+      final path = p.join(claudeHome.path, "nope.jsonl");
+
+      expect(() => api.readTranscript(transcriptPath: path), throwsA(isA<FileSystemException>()));
+      expect(() => api.readHeader(transcriptPath: path), throwsA(isA<FileSystemException>()));
+      expect(api.lastModified(transcriptPath: path), isNull);
     });
 
     test("deletes a transcript and tolerates a repeat delete", () {

@@ -406,9 +406,11 @@ injected map is also the tests' pinning seam. Directory scans run in
 `Isolate.run`. JSONL decoding is per-record tolerant because the last line may be
 half-written, and that specific case is not warned. Malformed-line diagnostics
 report a redacted schema shape and never raw content, because transcript content
-is user data. Sidechain and subagent records are excluded from enumeration. No
-live tailer is needed: the live stream carries everything, and externally started
-sessions appear on the next enumeration.
+is user data. The API returns generated DTOs paired with their raw wire maps;
+the repository owns type dispatch and mapping into sealed catalog variants.
+Sidechain and subagent records are excluded from enumeration. No live tailer is
+needed: the live stream carries everything, and externally started sessions
+appear on the next enumeration.
 
 **`ClaudeHistoryMapper`** — lives at `lib/src/` for the same reason as the event
 mapper: it consumes a Layer-2 component.
@@ -714,9 +716,9 @@ work is one coherent layer with no generated code, so it is delivered whole.
 
 ### Step 4/17 — Enumerate Transcript Sessions
 
-- Add the transcript record envelopes this step consumes — a content variant
-  covering `user`, `assistant`, `attachment`, and `system`, plus `ai-title` and
-  an unknown fallback. Hand-written, not generated: see the note below.
+- Add a generated tolerant transcript wire DTO, then map it into the domain
+  envelopes this step consumes — a content variant covering `user`, `assistant`,
+  `attachment`, and `system`, plus `ai-title` and an unknown fallback.
 - Add `ClaudeTranscriptApi` with injected-environment root resolution and
   `ClaudeTranscriptCatalogRepository` with isolate-backed scanning over a
   bounded header read.
@@ -730,17 +732,19 @@ work is one coherent layer with no generated code, so it is delivered whole.
 - Verify: focused and full package tests, fatal analysis, a live run against a
   real `~/.claude` tree, implementation review.
 
-**These envelopes are hand-written, revising this step's original "run
-codegen".** Two reasons, both discovered during the step. First, the record type
-set is open — sixteen types observed against six documented — so the work is
-absorbing unknown types, not modelling each one, and the four types the catalog
-cares about carry identical fields and collapse into one variant with a closed
-`kind` enum. Second, the cap: Freezed expands roughly tenfold in this
-repository, and a generated union here measured out at roughly 800 generated
-lines, which would have pushed the step past 1,500. Step 3 already established
-the boundary this package follows — hand-written envelopes, generated content
-shapes — and transcript records are envelopes. Step 5's content blocks remain
-the generated-DTO case.
+**The wire DTO is generated; the domain variants stay hand-written.** The record
+type set is open — sixteen types observed against six documented — so a generated
+union would spend roughly 800 lines modelling variants the catalog does not use.
+One tolerant flat DTO satisfies the generated JSON-boundary rule, then maps the
+four catalog-relevant content types into one domain variant with a closed `kind`
+enum, plus title and unknown variants. This keeps unknown absorption explicit
+without flattening domain state or duplicating every wire variant.
+
+**Recorded overage: 1,584 changed lines against the 1,500 soft cap.** The
+generated JSON boundary was required by implementation review. The single flat
+DTO is the smallest compliant shape; splitting it from this step would ship a
+wire model whose only production consumer remains on another branch, repeating
+the unused-architecture problem avoided in Step 3.
 
 ### Step 5/17 — Map Content Blocks To Parts
 
