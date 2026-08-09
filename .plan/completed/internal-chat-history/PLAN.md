@@ -593,9 +593,11 @@ Archiving never deletes the backend's stored transcript; it can still touch —
 and start — the backend when bringing the store current or notifying the
 plugin (see the archive note below).
 
-One group of calls still starts an idle backend, so a fully stopped harness is
-not yet a fully passive session open. This section is the code-informed
-assessment for a follow-up plan, written after steps 1–8 landed.
+Two groups of calls can still start an idle backend, so a fully stopped
+harness is not yet a fully passive session open: the three picker lookups
+**and** history on a cold or stale session (backfill). This section is the
+code-informed assessment for a follow-up plan, written after steps 1–8
+landed.
 
 ### What the session-open snapshot actually calls
 
@@ -657,6 +659,18 @@ genuinely has while stopped** (read from disk / config), so returning an empty
 list would not be a faithful "none", it would be a lie that silently removes
 the composer's options.
 
+**One caveat to that reasoning, for the follow-up:** `useIfActive` keys off the
+bridge runtime slot, not the backend. In OpenCode's attach mode the bridge
+does not own the server — it connects to an independently owned one and never
+kills it, so that server can outlive a bridge restart while holding pending
+questions or permissions. If the follow-up moves the pickers to cache-only and
+no remaining `_runtime.use` call activates the plugin, `useIfActive` returns
+null purely because the slot is not routable — not because the backend is
+stopped — and the client would get an empty pending list despite a live
+external server. The follow-up must distinguish "bridge runtime inactive" from
+"backend unavailable" for externally owned servers, or step 8/9's reasoning
+would silently miss pending interactions in that mode.
+
 ### A cache already exists that could answer them
 
 `session_options_cache_table` persists exactly this data
@@ -675,7 +689,11 @@ start; it is simply wired to the wrong consumer.
    `--opencode-no-auto-start` (as the reporter runs) cannot be started on
    demand at all, so "start it to find out" is *unavailable*, not merely slow.
    Against such a backend, opening a session must have a non-starting answer
-   for agents/providers/commands or the composer cannot render.
+   for agents/providers/commands, or the composer **degrades** — the client
+   already renders a loaded snapshot when these fail, with agents and commands
+   as empty lists and providers null (`session_detail_load_service.dart`), so
+   the real problem is a composer that silently loses its options, not a
+   blocked one.
 1. **Fresh vs cached vs empty.** Must the three pickers be live-accurate on
    every open, or may a fresh-enough cached snapshot answer while the backend
    is stopped (matching the composer flow's 30-day cache)?
@@ -697,6 +715,13 @@ and show an explicit "starting the backend to load options" affordance only
 when the cache is cold and the backend *can* be started. A no-auto-start
 backend with a cold cache is the one case that needs a real UI decision
 (question 2).
+
+**Archived sessions should skip the pickers entirely, not route them through
+the cache.** `SessionDetailBody` always renders archived sessions in the
+read-only variant with no composer or mutating controls
+(`session_detail_body.dart`), yet `_loadSnapshot` still launches all three
+picker requests. Wasting option work on a UI that cannot consume it would
+otherwise retain the cache-miss handling the follow-up is adding.
 
 This direction must **wire the existing `SessionOptionsService.loadCacheOnly`**
 (`bridge/app/lib/src/bridge/services/session_options_service.dart:136`) into
