@@ -9,9 +9,6 @@
 /// capture had recorded six, so absorbing the unrecognized rest is the primary
 /// requirement rather than modelling each one as a generated union variant.
 ///
-/// Only the fields the session catalog consumes are modelled here. Message
-/// content lands with the history mapper that reads it.
-///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/active/claude-code-plugin/PROTOCOL.md` section 9.
 sealed class ClaudeTranscriptRecord {
@@ -29,22 +26,16 @@ sealed class ClaudeTranscriptRecord {
   final Map<String, Object?> raw;
 }
 
-/// The record types that carry a working directory and a wall-clock time.
-///
-/// These four behave identically for the catalog, so they are one variant with
-/// a closed scalar kind rather than four variants with identical fields. They
-/// diverge once message content is modelled; the variant splits then.
-enum ClaudeTranscriptContentKind {
+/// A transcript role that produces a user-visible message.
+enum ClaudeTranscriptMessageKind {
   user(wireType: "user"),
-  assistant(wireType: "assistant"),
-  attachment(wireType: "attachment"),
-  system(wireType: "system");
+  assistant(wireType: "assistant");
 
-  const ClaudeTranscriptContentKind({required this.wireType});
+  const ClaudeTranscriptMessageKind({required this.wireType});
 
   final String wireType;
 
-  static ClaudeTranscriptContentKind? tryParse(String raw) {
+  static ClaudeTranscriptMessageKind? tryParse(String raw) {
     for (final kind in values) {
       if (kind.wireType == raw) return kind;
     }
@@ -52,10 +43,26 @@ enum ClaudeTranscriptContentKind {
   }
 }
 
-/// A `user`, `assistant`, `attachment`, or `system` record.
-final class ClaudeTranscriptContentRecord extends ClaudeTranscriptRecord {
-  const ClaudeTranscriptContentRecord({
-    required this.kind,
+/// A non-message record that still attributes a transcript to a project.
+enum ClaudeTranscriptContextKind {
+  attachment(wireType: "attachment"),
+  system(wireType: "system");
+
+  const ClaudeTranscriptContextKind({required this.wireType});
+
+  final String wireType;
+
+  static ClaudeTranscriptContextKind? tryParse(String raw) {
+    for (final kind in values) {
+      if (kind.wireType == raw) return kind;
+    }
+    return null;
+  }
+}
+
+/// Common project and timestamp fields on message and context records.
+sealed class ClaudeTranscriptAttributedRecord extends ClaudeTranscriptRecord {
+  const ClaudeTranscriptAttributedRecord({
     required this.cwd,
     required this.timestamp,
     required this.isSidechain,
@@ -64,8 +71,6 @@ final class ClaudeTranscriptContentRecord extends ClaudeTranscriptRecord {
     required super.sessionId,
     required super.raw,
   });
-
-  final ClaudeTranscriptContentKind kind;
 
   /// The directory the session ran in. This is what the bridge groups sessions
   /// by, so the munged transcript directory name is never un-munged.
@@ -84,14 +89,57 @@ final class ClaudeTranscriptContentRecord extends ClaudeTranscriptRecord {
   final String? version;
 }
 
+/// A persisted user or assistant message record.
+final class ClaudeTranscriptMessageRecord extends ClaudeTranscriptAttributedRecord {
+  const ClaudeTranscriptMessageRecord({
+    required this.kind,
+    required this.uuid,
+    required this.messageId,
+    required this.model,
+    required this.content,
+    required this.isMeta,
+    required this.isVisibleInTranscriptOnly,
+    required super.cwd,
+    required super.timestamp,
+    required super.isSidechain,
+    required super.gitBranch,
+    required super.version,
+    required super.sessionId,
+    required super.raw,
+  });
+
+  final ClaudeTranscriptMessageKind kind;
+  final String? uuid;
+  final String? messageId;
+  final String? model;
+  final Object? content;
+  final bool? isMeta;
+  final bool? isVisibleInTranscriptOnly;
+}
+
+/// Internal context attached by Claude rather than a user-visible message.
+final class ClaudeTranscriptContextRecord extends ClaudeTranscriptAttributedRecord {
+  const ClaudeTranscriptContextRecord({
+    required this.kind,
+    required super.cwd,
+    required super.timestamp,
+    required super.isSidechain,
+    required super.gitBranch,
+    required super.version,
+    required super.sessionId,
+    required super.raw,
+  });
+
+  final ClaudeTranscriptContextKind kind;
+}
+
 /// An `ai-title` record — the session title, written by the CLI itself.
 final class ClaudeTranscriptTitleRecord extends ClaudeTranscriptRecord {
   const ClaudeTranscriptTitleRecord({required this.title, required super.sessionId, required super.raw});
 
   static const String wireType = "ai-title";
 
-  /// Non-empty by construction; [ClaudeTranscriptRecord.parse] rejects a blank
-  /// title rather than storing one.
+  /// Non-empty by construction; the repository rejects a blank title.
   final String title;
 }
 

@@ -12,7 +12,7 @@ typedef ClaudeTranscriptLineDto = ({ClaudeTranscriptRecordDto record, Map<String
 /// lets generated JSON decoding absorb missing and wrong-typed catalog fields;
 /// the repository maps it into the smaller sealed variants the catalog actually
 /// consumes.
-@Freezed(fromJson: true, toJson: false)
+@Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
   const factory ClaudeTranscriptRecordDto({
     @JsonKey(fromJson: _stringOrNull) required String? type,
@@ -23,13 +23,32 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _stringOrNull) required String? gitBranch,
     @JsonKey(fromJson: _stringOrNull) required String? version,
     @JsonKey(fromJson: _stringOrNull) required String? aiTitle,
+    @JsonKey(fromJson: _stringOrNull) required String? uuid,
+    @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
+    @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,
+    @JsonKey(fromJson: _messageOrNull) required ClaudeTranscriptMessageDto? message,
   }) = _ClaudeTranscriptRecordDto;
 
   factory ClaudeTranscriptRecordDto.fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
 }
 
+/// The nested Anthropic message persisted by `user` and `assistant` records.
+@Freezed(fromJson: true, toJson: false, toStringOverride: false)
+sealed class ClaudeTranscriptMessageDto with _$ClaudeTranscriptMessageDto {
+  const factory ClaudeTranscriptMessageDto({
+    @JsonKey(fromJson: _stringOrNull) required String? id,
+    @JsonKey(fromJson: _stringOrNull) required String? model,
+    required Object? content,
+  }) = _ClaudeTranscriptMessageDto;
+
+  factory ClaudeTranscriptMessageDto.fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptMessageDtoFromJson(json);
+}
+
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 bool? _boolOrNull(Object? value) => value is bool ? value : null;
+
+ClaudeTranscriptMessageDto? _messageOrNull(Object? value) =>
+    value is Map ? ClaudeTranscriptMessageDto.fromJson(value.cast<String, dynamic>()) : null;
 
 DateTime? _timestampOrNull(Object? value) => value is String ? DateTime.tryParse(value)?.toUtc() : null;

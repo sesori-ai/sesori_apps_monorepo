@@ -16,4 +16,15 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       gitBranch: _stringOrNull(json['gitBranch']),
       version: _stringOrNull(json['version']),
       aiTitle: _stringOrNull(json['aiTitle']),
+      uuid: _stringOrNull(json['uuid']),
+      isMeta: _boolOrNull(json['isMeta']),
+      isVisibleInTranscriptOnly: _boolOrNull(json['isVisibleInTranscriptOnly']),
+      message: _messageOrNull(json['message']),
+    );
+
+_ClaudeTranscriptMessageDto _$ClaudeTranscriptMessageDtoFromJson(Map json) =>
+    _ClaudeTranscriptMessageDto(
+      id: _stringOrNull(json['id']),
+      model: _stringOrNull(json['model']),
+      content: json['content'],
     );
