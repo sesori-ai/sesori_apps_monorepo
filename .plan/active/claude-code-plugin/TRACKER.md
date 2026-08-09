@@ -190,7 +190,7 @@
 
 - Step 4/17 (2026-08-04): added `ClaudeTranscriptRecord`, `ClaudeTranscriptApi`,
   `ClaudeSessionRecord`, and `ClaudeTranscriptCatalogRepository`.
-  `dart analyze --fatal-infos` and all 93 package tests pass after synchronization
+  `dart analyze --fatal-infos` and all 95 package tests pass after synchronization
   with merged Step 3.
 
   Verified live against the developer's real `~/.claude`: **1,888 transcript
@@ -200,7 +200,7 @@
   paths and 993 ms to scan headers inside `Isolate.run`. Synthetic fixtures
   alone would not have caught the filename finding below.
 
-  1,584 changed lines against the Step 3 base, 84 over the 1,500 soft cap. The
+  1,620 changed lines against the Step 3 base, 120 over the 1,500 soft cap. The
   generated JSON boundary required by implementation review cannot be split from
   its only production consumer; one flat tolerant DTO keeps the overage smaller
   than a generated union over every observed record type.

@@ -740,7 +740,7 @@ four catalog-relevant content types into one domain variant with a closed `kind`
 enum, plus title and unknown variants. This keeps unknown absorption explicit
 without flattening domain state or duplicating every wire variant.
 
-**Recorded overage: 1,584 changed lines against the 1,500 soft cap.** The
+**Recorded overage: 1,620 changed lines against the 1,500 soft cap.** The
 generated JSON boundary was required by implementation review. The single flat
 DTO is the smallest compliant shape; splitting it from this step would ship a
 wire model whose only production consumer remains on another branch, repeating

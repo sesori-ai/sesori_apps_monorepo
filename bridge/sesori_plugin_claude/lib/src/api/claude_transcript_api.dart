@@ -82,7 +82,8 @@ class ClaudeTranscriptApi {
   /// Decodes every record in a transcript.
   List<ClaudeTranscriptLineDto> readTranscript({required String transcriptPath}) {
     final file = File(transcriptPath);
-    return _decodeRecords(file.readAsLinesSync(), ignoreMalformedLastLine: true);
+    final decoded = const Utf8Decoder(allowMalformed: true).convert(file.readAsBytesSync());
+    return _decodeRecords(const LineSplitter().convert(decoded), ignoreMalformedLastLine: true);
   }
 
   /// Last-modified time, which for an append-only transcript is the session's

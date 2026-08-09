@@ -155,6 +155,29 @@ void main() {
       expect(session.time?.archived, isNull);
     });
 
+    test("uses transcript mtime when the record creation time is unavailable", () async {
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          {
+            "type": "user",
+            "sessionId": _sessionA,
+            "cwd": "/work/alpha",
+            "isSidechain": false,
+          },
+        ],
+      );
+      final modified = DateTime.utc(2026, 8, 5, 12);
+      _setModified(claudeHome, id: _sessionA, to: modified);
+
+      final session = (await catalog.listAllSessions(knownDirectories: const {})).single;
+
+      expect(session.time?.created, modified.millisecondsSinceEpoch);
+      expect(session.time?.updated, modified.millisecondsSinceEpoch);
+    });
+
     test("filters sessions to one project, normalizing the requested id", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", project: "-work-alpha");
       _writeSession(claudeHome, id: _sessionB, cwd: "/work/beta", project: "-work-beta");
