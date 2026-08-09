@@ -216,11 +216,15 @@ class SessionDetailLoadService {
         switch (await _repository.loadLegacySessionOptions(projectId: normalizedProjectId, pluginId: pluginId)) {
           case LegacySessionOptionsRepositoryAvailable(:final catalog):
             return fromCatalog(catalog);
-          case LegacySessionOptionsRepositoryPartial(:final catalog, :final error):
-            loge("Failed to load some legacy session options", error);
+          case LegacySessionOptionsRepositoryPartial(:final catalog, :final errors):
+            for (final failure in errors) {
+              loge("Failed to load legacy ${failure.source.name}", failure.error);
+            }
             return fromCatalog(catalog);
-          case LegacySessionOptionsRepositoryFailure(:final error):
-            loge("Failed to load legacy session options", error);
+          case LegacySessionOptionsRepositoryFailure(:final errors):
+            for (final failure in errors) {
+              loge("Failed to load legacy ${failure.source.name}", failure.error);
+            }
             return unavailable;
         }
       case SessionOptionsRepositoryProjectNotFound(:final error) || SessionOptionsRepositoryFailure(:final error):

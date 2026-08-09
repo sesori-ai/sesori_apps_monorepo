@@ -305,9 +305,15 @@ void main() {
               commands: commandData.items,
             ),
           ),
-        (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(error: error),
-        (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(error: error),
-        (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(error: error),
+        (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error)],
+        ),
+        (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.providers, error: error)],
+        ),
+        (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.commands, error: error)],
+        ),
       };
     });
     when(

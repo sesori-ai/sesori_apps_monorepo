@@ -131,7 +131,7 @@ void main() {
             providersConnectedOnly: catalog.providersConnectedOnly,
             commands: const <CommandInfo>[],
           ),
-          error: error,
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.commands, error: error)],
         ),
       );
 

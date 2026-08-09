@@ -227,13 +227,47 @@ void main() {
 
       expect(
         result,
-        isA<LegacySessionOptionsRepositoryPartial>().having((value) => value.error, "error", error),
+        isA<LegacySessionOptionsRepositoryPartial>()
+            .having((value) => value.errors.single.source.name, "source", failureSource.name)
+            .having((value) => value.errors.single.error, "error", error),
         reason: "failed to map $failureSource",
       );
       verify(() => api.listAgents(projectId: "p1", pluginId: "plugin-1")).called(1);
       verify(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).called(1);
       verify(() => api.listCommands(projectId: "p1", pluginId: "plugin-1")).called(1);
     }
+  });
+
+  test("loadLegacySessionOptions preserves every source error", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+    final agentsError = ApiError.generic();
+    final commandsError = ApiError.generic();
+    when(
+      () => api.listAgents(projectId: "p1", pluginId: "plugin-1"),
+    ).thenAnswer((_) async => ApiResponse<Agents>.error(agentsError));
+    when(
+      () => api.listProviders(projectId: "p1", pluginId: "plugin-1"),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: [])),
+    );
+    when(
+      () => api.listCommands(projectId: "p1", pluginId: "plugin-1"),
+    ).thenAnswer((_) async => ApiResponse<CommandListResponse>.error(commandsError));
+
+    final result = await repository.loadLegacySessionOptions(projectId: "p1", pluginId: "plugin-1");
+
+    expect(
+      result,
+      isA<LegacySessionOptionsRepositoryPartial>().having(
+        (value) => value.errors.map((failure) => (failure.source, failure.error)),
+        "errors",
+        [
+          (LegacySessionOptionSource.agents, agentsError),
+          (LegacySessionOptionSource.commands, commandsError),
+        ],
+      ),
+    );
   });
 
   test("loadSessionOptions maps a successful aggregate", () async {

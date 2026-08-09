@@ -91,11 +91,50 @@ void main() {
       );
     });
 
+    test("partial legacy refresh preserves the available catalog", () async {
+      final error = ApiError.generic();
+      final catalog = SessionOptionsCatalog(
+        agents: const [],
+        providers: _providers().items,
+        providersConnectedOnly: false,
+        commands: [_command(name: "review")],
+      );
+      when(
+        () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => LegacySessionOptionsRepositoryPartial(
+          catalog: catalog,
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error)],
+        ),
+      );
+
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.legacy,
+        mode: NewSessionOptionsLoadMode.forcedRefresh,
+        restoredSelection: null,
+        previousOptions: null,
+      );
+
+      expect(
+        result,
+        isA<NewSessionOptionsLoaded>()
+            .having((value) => value.source, "source", NewSessionOptionsSource.legacy)
+            .having((value) => value.options.providers, "providers", catalog.providers)
+            .having((value) => value.options.commands.single.name, "command", "review"),
+      );
+    });
+
     test("legacy repository failure remains a legacy load failure", () async {
       final error = ApiError.generic();
       when(
         () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
-      ).thenAnswer((_) async => LegacySessionOptionsRepositoryFailure(error: error));
+      ).thenAnswer(
+        (_) async => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error)],
+        ),
+      );
 
       final result = await service.load(
         projectId: "project-1",

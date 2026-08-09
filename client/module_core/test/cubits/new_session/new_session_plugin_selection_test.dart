@@ -633,7 +633,14 @@ void main() {
                   commands: [command],
                 ),
               )
-            : LegacySessionOptionsRepositoryFailure(error: ApiError.generic());
+            : LegacySessionOptionsRepositoryFailure(
+                errors: [
+                  LegacySessionOptionError(
+                    source: LegacySessionOptionSource.providers,
+                    error: ApiError.generic(),
+                  ),
+                ],
+              );
       });
       final cubit = buildCubit(
         optionsService: NewSessionOptionsService(

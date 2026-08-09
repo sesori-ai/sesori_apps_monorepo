@@ -21,6 +21,15 @@ sealed class LegacySessionOptionsRepositoryResult {
   const LegacySessionOptionsRepositoryResult();
 }
 
+enum LegacySessionOptionSource { agents, providers, commands }
+
+final class LegacySessionOptionError {
+  const LegacySessionOptionError({required this.source, required this.error});
+
+  final LegacySessionOptionSource source;
+  final ApiError error;
+}
+
 final class LegacySessionOptionsRepositoryAvailable extends LegacySessionOptionsRepositoryResult {
   const LegacySessionOptionsRepositoryAvailable({required this.catalog});
 
@@ -28,16 +37,18 @@ final class LegacySessionOptionsRepositoryAvailable extends LegacySessionOptions
 }
 
 final class LegacySessionOptionsRepositoryFailure extends LegacySessionOptionsRepositoryResult {
-  const LegacySessionOptionsRepositoryFailure({required this.error});
+  LegacySessionOptionsRepositoryFailure({required List<LegacySessionOptionError> errors})
+    : errors = List.unmodifiable(errors);
 
-  final ApiError error;
+  final List<LegacySessionOptionError> errors;
 }
 
 final class LegacySessionOptionsRepositoryPartial extends LegacySessionOptionsRepositoryResult {
-  const LegacySessionOptionsRepositoryPartial({required this.catalog, required this.error});
+  LegacySessionOptionsRepositoryPartial({required this.catalog, required List<LegacySessionOptionError> errors})
+    : errors = List.unmodifiable(errors);
 
   final SessionOptionsCatalog catalog;
-  final ApiError error;
+  final List<LegacySessionOptionError> errors;
 }
 
 sealed class SessionOptionsRepositoryResult {

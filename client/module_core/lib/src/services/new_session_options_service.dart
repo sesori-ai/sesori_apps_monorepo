@@ -5,6 +5,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "../logging/logging.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/session_repository.dart";
 import "../utils/model_filter/default_model_selector.dart";
@@ -149,26 +150,41 @@ class NewSessionOptionsService {
     required NewSessionSelectionIntent? restoredSelection,
     required NewSessionOptionsData? previousOptions,
   }) async {
-    return switch (await _sessionRepository.loadLegacySessionOptions(projectId: projectId, pluginId: pluginId)) {
-      LegacySessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(
-        options: _resolve(
-          catalog: catalog,
-          restoredSelection: restoredSelection,
+    final result = await _sessionRepository.loadLegacySessionOptions(projectId: projectId, pluginId: pluginId);
+    switch (result) {
+      case LegacySessionOptionsRepositoryAvailable(:final catalog):
+        return NewSessionOptionsLoaded(
+          options: _resolve(
+            catalog: catalog,
+            restoredSelection: restoredSelection,
+            previousOptions: previousOptions,
+          ),
+          source: NewSessionOptionsSource.legacy,
+        );
+      case LegacySessionOptionsRepositoryPartial(:final catalog, :final errors):
+        _logLegacyErrors(errors);
+        return NewSessionOptionsLoaded(
+          options: _resolve(
+            catalog: catalog,
+            restoredSelection: restoredSelection,
+            previousOptions: previousOptions,
+          ),
+          source: NewSessionOptionsSource.legacy,
+        );
+      case LegacySessionOptionsRepositoryFailure(:final errors):
+        _logLegacyErrors(errors);
+        return _transientFailure(
+          error: errors.first.error,
+          source: NewSessionOptionsSource.legacy,
           previousOptions: previousOptions,
-        ),
-        source: NewSessionOptionsSource.legacy,
-      ),
-      LegacySessionOptionsRepositoryPartial(:final error) => _transientFailure(
-        error: error,
-        source: NewSessionOptionsSource.legacy,
-        previousOptions: previousOptions,
-      ),
-      LegacySessionOptionsRepositoryFailure(:final error) => _transientFailure(
-        error: error,
-        source: NewSessionOptionsSource.legacy,
-        previousOptions: previousOptions,
-      ),
-    };
+        );
+    }
+  }
+
+  void _logLegacyErrors(List<LegacySessionOptionError> errors) {
+    for (final failure in errors) {
+      loge("Failed to load legacy ${failure.source.name}", failure.error);
+    }
   }
 
   NewSessionOptionsLoadResult _transientFailure({

@@ -141,16 +141,19 @@ class SessionRepository {
         ErrorResponse() => const <CommandInfo>[],
       },
     );
-    final errors = <ApiError>[
-      if (agents case ErrorResponse(:final error)) error,
-      if (providers case ErrorResponse(:final error)) error,
-      if (commands case ErrorResponse(:final error)) error,
+    final errors = <LegacySessionOptionError>[
+      if (agents case ErrorResponse(:final error))
+        LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error),
+      if (providers case ErrorResponse(:final error))
+        LegacySessionOptionError(source: LegacySessionOptionSource.providers, error: error),
+      if (commands case ErrorResponse(:final error))
+        LegacySessionOptionError(source: LegacySessionOptionSource.commands, error: error),
     ];
     if (errors.isEmpty) return LegacySessionOptionsRepositoryAvailable(catalog: catalog);
     final anyAvailable = agents is SuccessResponse || providers is SuccessResponse || commands is SuccessResponse;
     return anyAvailable
-        ? LegacySessionOptionsRepositoryPartial(catalog: catalog, error: errors.first)
-        : LegacySessionOptionsRepositoryFailure(error: errors.first);
+        ? LegacySessionOptionsRepositoryPartial(catalog: catalog, errors: errors)
+        : LegacySessionOptionsRepositoryFailure(errors: errors);
   }
 
   Future<SessionOptionsRepositoryResult> loadSessionOptions({

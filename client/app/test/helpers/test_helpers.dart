@@ -23,6 +23,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProjectViewPaneClaim,
         ProjectViewingService,
         RouteSource,
+        SessionOptionsCatalog,
+        SessionOptionsRepositoryAvailable,
+        SessionOptionsRepositoryFailure,
         SessionOptionsRequestMode;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
@@ -484,6 +487,39 @@ void delegateSessionRepositoryToService({
       pluginId: invocation.namedArguments[#pluginId] as String,
     ),
   );
+  when(
+    () => repository.loadSessionOptions(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+      mode: any(named: "mode"),
+    ),
+  ).thenAnswer((invocation) async {
+    final projectId = invocation.namedArguments[#projectId]! as String;
+    final pluginId = invocation.namedArguments[#pluginId]! as String;
+    final (agents, providers, commands) = await (
+      service.listAgents(projectId: projectId, pluginId: pluginId),
+      service.listProviders(projectId: projectId, pluginId: pluginId),
+      service.listCommands(projectId: projectId, pluginId: pluginId),
+    ).wait;
+    return switch ((agents, providers, commands)) {
+      (
+        SuccessResponse(data: final agentData),
+        SuccessResponse(data: final providerData),
+        SuccessResponse(data: final commandData),
+      ) =>
+        SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: agentData.agents,
+            providers: providerData.items,
+            providersConnectedOnly: providerData.connectedOnly,
+            commands: commandData.items,
+          ),
+        ),
+      (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),
+      (_, ErrorResponse(:final error), _) => SessionOptionsRepositoryFailure(error: error),
+      (_, _, ErrorResponse(:final error)) => SessionOptionsRepositoryFailure(error: error),
+    };
+  });
   registerFallbackValue(const <ComposerAttachment>[]);
   when(
     () => repository.sendMessage(
