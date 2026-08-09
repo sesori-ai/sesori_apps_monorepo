@@ -10,8 +10,10 @@
   were merged into this plan and that draft is superseded)
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Base:** `main` at `232974e1` (merged through `e884a580`)
-- **Follow-up:** serving agents/providers/commands on a stopped backend is
-  assessed in § Step 9/9, pending product decisions.
+- **Follow-up:** two groups of calls can still start a stopped backend —
+  agents/providers/commands, and history on a cold or stale session (backfill
+  through `_runtime.use`). Both are assessed in § Step 9/9, pending product
+  decisions.
 - **Prerequisite (satisfied 2026-08-07):** the `read-only-archiving` plan has
   landed and merged fully. It removed unarchive end to end and made archived
   sessions read-only; this plan builds its archive export/purge on that
@@ -745,6 +747,15 @@ Either require a `complete` entry on the stopped-backend path or carry the
 incomplete state to the UI. The one honest residue is config staleness while a
 backend is stopped, which the 30-day retention already bounds for the
 composer.
+
+**Capability gating, for older bridges.** `loadCacheOnly` is exposed via
+`/session/options?refresh=false`, which is unavailable on a published older
+bridge whose `supportsSessionOptions` defaults to false — for those, the three
+raw `/agent`, `/provider`, `/command` routes are the only option-loading path.
+The follow-up must gate the cache-only call on the advertised capability and
+retain the legacy raw requests (or explicitly degrade) for older bridges,
+otherwise a newer app's session composer silently loses its options against
+them. This is the usual older-peer rule applied to a new capability.
 
 ## Verification
 
