@@ -4,12 +4,12 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `22f65807` (Step 2 rebased onto it after Step 1 merged)
-- **Series state:** Step 1/17 merged; Step 2/17 open for review
-- **Current step:** 2/17 — protocol ground truth and package scaffold
+  `7e460bc9` (Step 3 rebased onto it after Step 2 merged)
+- **Series state:** Steps 1-2/17 merged; Step 3/17 complete locally
+- **Current step:** 3/17 — stream-json transport
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Step 3 stream-json transport
+- **Next action:** Open the Step 3 PR against `main`
 
 ## Plan Review
 
@@ -45,8 +45,8 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,200-1,400 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) merged; see the verification log for the measured diff |
-| [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | [PR #752](https://github.com/sesori-ai/sesori_apps_monorepo/pull/752) open; see the verification log for the measured diff |
-| [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | Complete locally; awaiting step 2 merge before its PR opens |
+| [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | [PR #752](https://github.com/sesori-ai/sesori_apps_monorepo/pull/752) merged 2026-08-09 as `7e460bc9`; see the verification log for the measured diff |
+| [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | Complete locally and rebased onto merged Step 2; ready to open against `main` |
 | [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 | Not started |
 | [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | Not started |
 | [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Not started |
@@ -167,8 +167,10 @@
 
 - Step 3/17 (2026-08-04): added `ClaudeStreamMessage` with its dispatching
   parser, `ClaudeStreamClient`, the host process seam, `FakeClaudeProcess`, and
-  the `claude_testing.dart` barrel. `dart analyze --fatal-infos` and all 48
-  package tests pass, and `git diff --check` passes.
+  the `claude_testing.dart` barrel. `dart analyze --fatal-infos`, all 53 package
+  tests, and `git diff --check` pass. Architecture implementation review of
+  `origin/main..claude-code-plugin-stream-client` returned `APPROVED` with no
+  actionable findings.
 
   The transport was also driven against the real `claude` 2.1.221: the
   `initialize` handshake completed in ~1.1 s returning 5 models and 66 commands,
@@ -176,14 +178,15 @@
   process with 143 (SIGTERM), confirming the graceful path. That run also
   produced the `system/init` timing correction below.
 
-  Recorded overage: **1,767 changed lines** against the 1,500 soft cap, measured
-  after the rebase onto the Step 2 branch with
-  `git diff --numstat claude-code-plugin-protocol-scaffold HEAD`. An earlier
-  estimate of ~1,730 predates that rebase and is superseded. The rationale is in
-  `PLAN.md` under Step 3: no coherent split exists because the parser's only
-  production consumer is the transport itself, so splitting would ship
-  unconsumed architecture. Tests are 0.67x source, below the repository's
-  1.2-1.9x norm, so the overage is production code rather than test bulk.
+  Recorded overage: **1,793 changed lines** against the 1,500 soft cap, measured
+  after the rebase onto merged Step 2 with
+  `git diff $(git merge-base origin/main HEAD) --numstat`. The earlier 1,767-line
+  figure was measured before the final tracker handoff onto merged `main` and is
+  superseded. The rationale is in `PLAN.md` under Step 3: no coherent split
+  exists because the parser's only production consumer is the transport itself,
+  so splitting would ship unconsumed architecture. Tests are 0.67x source,
+  below the repository's 1.2-1.9x norm, so the overage is production code rather
+  than test bulk.
 
 ## Findings And Plan Deltas
 
