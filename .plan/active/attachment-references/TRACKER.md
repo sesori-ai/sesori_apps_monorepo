@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 1 ready
+- **Series state:** Step 1 PR open
 - **Current step:** 1/11
 - **Implementation base:** `origin/main` at `944e07e7`
-- **Plan PR:** Not opened
-- **Next action:** Commit, push, and open Step 1
+- **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
+- **Next action:** Monitor Step 1 review and CI; begin Step 2 only after merge
 
 ## Plan Review
 
@@ -28,7 +28,7 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,050 | Ready to open |
+| [ ] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,050 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) open |
 | [ ] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 900-1,450 | Pending |
 | [ ] | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Pending |
 | [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Pending |
@@ -63,9 +63,11 @@
 ## Verification Log
 
 - Step 1: Architecture review completed with four findings applied; corrected
-  draft intentionally not re-reviewed. The documentation diff is 984 changed
-  lines, within its 650-1,050 target, and `git diff --check` passes. No
-  Dart/Flutter suites were run for this documentation-only step.
+  draft intentionally not re-reviewed. The initial documentation commit is 986
+  changed lines, within its 650-1,050 target, and `git diff --check` passes. No
+  Dart/Flutter suites were run for this documentation-only step. Committed as
+  `6998f477`, pushed, and opened as
+  [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807).
 
 ## Findings And Plan Deltas
 
