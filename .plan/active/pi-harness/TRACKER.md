@@ -76,11 +76,11 @@ OpenCode default, or no-new-analytics decisions without the user.
   findings applied without re-review.
 - Upstream repository/tag, RPC/session docs, and all six release digests match.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
-- Diff: +1,500/-0 = 1,500 changed lines; generated lines: 0; tests run: 0.
+- Diff: +1,513/-0 = 1,513 changed lines; generated lines: 0; tests run: 0.
 - Recorded overage: final review gaps belong in the canonical initial plan and
   cannot form an independently valid implementation PR.
 - Dart/Flutter suites: not run for this documentation-only step.
-- Plan/content commit `813ca4ca`; PR
+- Plan/content commit `72811b5c`; PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
 
 ## Findings And Plan Deltas
