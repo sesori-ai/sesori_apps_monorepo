@@ -143,6 +143,7 @@ final class ClaudeToolTracker {
   }) {
     final tool = _sessions[sessionId]?.tools[toolId];
     if (tool == null) return null;
+    if (_isTerminal(tool.status)) return tool.snapshot(sessionDiffRequired: false);
     tool
       ..status = isError ? PluginToolStatus.error : PluginToolStatus.completed
       ..output = isError ? null : output

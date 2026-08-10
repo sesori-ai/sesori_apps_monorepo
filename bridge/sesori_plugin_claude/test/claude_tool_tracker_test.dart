@@ -202,6 +202,39 @@ void main() {
       expect(lateStop?.state.status, PluginToolStatus.completed);
     });
 
+    test("retains the first terminal result when a duplicate arrives", () {
+      tracker.start(
+        sessionId: "session-1",
+        messageId: "message-1",
+        blockIndex: 0,
+        toolId: "toolu-1",
+        name: "Write",
+        input: null,
+      );
+      final first = tracker.complete(
+        sessionId: "session-1",
+        toolId: "toolu-1",
+        output: "first failure",
+        isError: true,
+        attachments: const [],
+      );
+
+      final duplicate = tracker.complete(
+        sessionId: "session-1",
+        toolId: "toolu-1",
+        output: "later success",
+        isError: false,
+        attachments: const [PluginMessageAttachment.metadata(mime: "image/png", filename: null)],
+      );
+
+      expect(first?.sessionDiffRequired, isTrue);
+      expect(duplicate?.sessionDiffRequired, isFalse);
+      expect(duplicate?.state.status, PluginToolStatus.error);
+      expect(duplicate?.state.error, "first failure");
+      expect(duplicate?.state.output, isNull);
+      expect(duplicate?.state.attachments, isEmpty);
+    });
+
     test("edit-shaped results request one session diff", () {
       for (final name in ["Write", "Edit", "MultiEdit", "NotebookEdit"]) {
         tracker.start(
