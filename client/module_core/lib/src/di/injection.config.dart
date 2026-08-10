@@ -96,6 +96,8 @@ import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/session_view_repository.dart'
     as _i150;
+import 'package:sesori_dart_core/src/repositories/yolo_settings_repository.dart'
+    as _i378;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
@@ -381,6 +383,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i106.PullRequestRefreshSettingsRepository>(
       () => _i106.PullRequestRefreshSettingsRepository(
+        bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
+      ),
+    );
+    gh.lazySingleton<_i378.YoloSettingsRepository>(
+      () => _i378.YoloSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
       ),
     );

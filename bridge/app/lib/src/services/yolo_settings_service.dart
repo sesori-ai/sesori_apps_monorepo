@@ -1,13 +1,18 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../bridge/services/permission_auto_approval_service.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 
 class YoloSettingsService {
-  YoloSettingsService({required BridgeSettingsRepository bridgeSettingsRepository})
-    : _bridgeSettingsRepository = bridgeSettingsRepository;
+  YoloSettingsService({
+    required BridgeSettingsRepository bridgeSettingsRepository,
+    required PermissionAutoApprovalService permissionAutoApprovalService,
+  }) : _bridgeSettingsRepository = bridgeSettingsRepository,
+       _permissionAutoApprovalService = permissionAutoApprovalService;
 
   final BridgeSettingsRepository _bridgeSettingsRepository;
+  final PermissionAutoApprovalService _permissionAutoApprovalService;
 
   YoloSettingsResponse get currentSettings => _response(settings: _bridgeSettingsRepository.currentSettings);
 
@@ -15,14 +20,16 @@ class YoloSettingsService {
     return _response(settings: await _bridgeSettingsRepository.readCommittedSettings());
   }
 
-  Stream<YoloSettingsResponse> get changes => _bridgeSettingsRepository.settingsChanges
-      .where((change) => change.previous.yolo != change.current.yolo)
-      .map((change) => _response(settings: change.current));
-
   Future<YoloSettingsResponse> update({required bool enabled}) async {
+    var shouldApprovePending = false;
     final committed = await _bridgeSettingsRepository.mutateSettings(
-      mutation: ({required current}) => current.yolo == enabled ? current : current.copyWith(yolo: enabled),
+      mutation: ({required current}) {
+        if (current.yolo == enabled) return current;
+        shouldApprovePending = enabled;
+        return current.copyWith(yolo: enabled);
+      },
     );
+    if (shouldApprovePending) await _permissionAutoApprovalService.approvePending();
     return _response(settings: committed);
   }
 

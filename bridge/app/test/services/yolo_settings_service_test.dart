@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/bridge_settings_api.dart";
+import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -9,6 +10,7 @@ import "package:test/test.dart";
 void main() {
   group("YoloSettingsService", () {
     late _MemoryBridgeSettingsApi api;
+    late _FakePermissionAutoApprovalService permissionAutoApprovalService;
     late BridgeSettingsRepository repository;
     late YoloSettingsService service;
 
@@ -16,35 +18,55 @@ void main() {
       api = _MemoryBridgeSettingsApi();
       repository = BridgeSettingsRepository(api: api);
       await repository.loadSettings();
-      service = YoloSettingsService(bridgeSettingsRepository: repository);
+      permissionAutoApprovalService = _FakePermissionAutoApprovalService();
+      service = YoloSettingsService(
+        bridgeSettingsRepository: repository,
+        permissionAutoApprovalService: permissionAutoApprovalService,
+      );
     });
 
     tearDown(() => repository.dispose());
 
-    test("returns, persists, and publishes the live setting", () async {
+    test("enabling persists and approves pending permissions", () async {
       expect(service.currentSettings, const YoloSettingsResponse(enabled: false));
-      final changes = <YoloSettingsResponse>[];
-      final subscription = service.changes.listen(changes.add);
 
       expect(await service.update(enabled: true), const YoloSettingsResponse(enabled: true));
 
       expect(service.currentSettings.enabled, isTrue);
       expect(jsonDecodeMap(api.config!)["yolo"], isTrue);
-      expect(changes, [const YoloSettingsResponse(enabled: true)]);
-      await subscription.cancel();
+      expect(permissionAutoApprovalService.approvePendingCalls, 1);
     });
 
-    test("an unchanged value does not rewrite or publish", () async {
-      final changes = <YoloSettingsResponse>[];
-      final subscription = service.changes.listen(changes.add);
+    test("disabling persists without approving pending permissions", () async {
+      await service.update(enabled: true);
+      permissionAutoApprovalService.approvePendingCalls = 0;
 
       expect(await service.update(enabled: false), const YoloSettingsResponse(enabled: false));
 
-      expect(api.writeCount, 0);
-      expect(changes, isEmpty);
-      await subscription.cancel();
+      expect(jsonDecodeMap(api.config!)["yolo"], isFalse);
+      expect(permissionAutoApprovalService.approvePendingCalls, 0);
+    });
+
+    test("an unchanged value does not rewrite or approve pending permissions", () async {
+      await service.update(enabled: true);
+      permissionAutoApprovalService.approvePendingCalls = 0;
+
+      expect(await service.update(enabled: true), const YoloSettingsResponse(enabled: true));
+
+      expect(api.writeCount, 1);
+      expect(permissionAutoApprovalService.approvePendingCalls, 0);
     });
   });
+}
+
+class _FakePermissionAutoApprovalService implements PermissionAutoApprovalService {
+  int approvePendingCalls = 0;
+
+  @override
+  Future<void> approvePending() async => approvePendingCalls++;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _MemoryBridgeSettingsApi implements BridgeSettingsApi {

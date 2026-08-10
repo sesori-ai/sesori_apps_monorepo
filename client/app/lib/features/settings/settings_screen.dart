@@ -49,6 +49,12 @@ class SettingsScreen extends StatelessWidget {
             connectionService: getIt<ConnectionService>(),
           ),
         ),
+        BlocProvider(
+          create: (_) => YoloSettingsCubit(
+            repository: getIt<YoloSettingsRepository>(),
+            connectionService: getIt<ConnectionService>(),
+          ),
+        ),
       ],
       child: const _SettingsBody(),
     );
@@ -66,7 +72,12 @@ class _SettingsBody extends StatelessWidget {
     return PregoGlassScaffold(
       title: loc.settingsTitle,
       banner: ConnectionBanner.maybeFor(context),
-      onRefresh: context.read<PullRequestRefreshSettingsCubit>().refresh,
+      onRefresh: () async {
+        await Future.wait([
+          context.read<PullRequestRefreshSettingsCubit>().refresh(),
+          context.read<YoloSettingsCubit>().refresh(),
+        ]);
+      },
       automaticallyImplyLeading: false,
       actions: [
         PregoButtonsIconGlass(

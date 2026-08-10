@@ -44,6 +44,8 @@ class _MockLegalRepository extends Mock implements LegalRepository {}
 
 class _MockPullRequestRefreshSettingsRepository extends Mock implements PullRequestRefreshSettingsRepository {}
 
+class _MockYoloSettingsRepository extends Mock implements YoloSettingsRepository {}
+
 const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com");
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
@@ -106,6 +108,7 @@ void main() {
   late MockProductAnalyticsService productAnalyticsService;
   late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
   late _MockPullRequestRefreshSettingsRepository pullRequestRefreshSettingsRepository;
+  late _MockYoloSettingsRepository yoloSettingsRepository;
   late MockConnectionService connectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
 
@@ -194,6 +197,16 @@ void main() {
     GetIt.instance.registerSingleton<PullRequestRefreshSettingsService>(
       PullRequestRefreshSettingsService(repository: pullRequestRefreshSettingsRepository),
     );
+
+    yoloSettingsRepository = _MockYoloSettingsRepository();
+    when(yoloSettingsRepository.load).thenAnswer(
+      (_) async => const YoloSettingsLoadSupported(response: YoloSettingsResponse(enabled: false)),
+    );
+    when(() => yoloSettingsRepository.update(enabled: any(named: "enabled"))).thenAnswer((invocation) async {
+      final enabled = invocation.namedArguments[#enabled] as bool;
+      return YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: enabled));
+    });
+    GetIt.instance.registerSingleton<YoloSettingsRepository>(yoloSettingsRepository);
   });
 
   tearDown(() async {
@@ -245,6 +258,78 @@ void main() {
     expect(find.text("30 seconds"), findsOneWidget);
   });
 
+  testWidgets("shows YOLO warning and toggles from the authoritative value", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("YOLO mode"), findsOneWidget);
+    expect(
+      find.text("Automatically approves all permission requests. Use with caution."),
+      findsOneWidget,
+    );
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isFalse);
+
+    await tester.tap(find.byKey(const Key("yolo_switch")));
+    await tester.pumpAndSettle();
+
+    verify(() => yoloSettingsRepository.update(enabled: true)).called(1);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isTrue);
+  });
+
+  testWidgets("YOLO disables interaction while an update is in progress", (tester) async {
+    _useTallSurface(tester);
+    final mutation = Completer<YoloSettingsMutationResult>();
+    when(() => yoloSettingsRepository.update(enabled: true)).thenAnswer((_) => mutation.future);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("yolo_switch")));
+    await tester.pump();
+
+    expect(find.byKey(const Key("yolo_switch")), findsNothing);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
+    await tester.tap(find.text("YOLO mode"));
+    verify(() => yoloSettingsRepository.update(enabled: true)).called(1);
+
+    mutation.complete(
+      const YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: true)),
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("old bridges show YOLO as unsupported while keeping refresh settings", (tester) async {
+    _useTallSurface(tester);
+    when(yoloSettingsRepository.load).thenAnswer((_) async => const YoloSettingsLoadUnsupported());
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Update the connected bridge to configure this setting."), findsOneWidget);
+    expect(find.byKey(const Key("yolo_switch")), findsNothing);
+    expect(find.text("Pull request refresh"), findsOneWidget);
+    expect(find.text("30 seconds"), findsOneWidget);
+  });
+
+  testWidgets("uncertain YOLO mutation reloads and displays the authoritative value", (tester) async {
+    _useTallSurface(tester);
+    var loads = 0;
+    when(yoloSettingsRepository.load).thenAnswer((_) async {
+      loads++;
+      return YoloSettingsLoadSupported(response: YoloSettingsResponse(enabled: loads > 1));
+    });
+    when(() => yoloSettingsRepository.update(enabled: true)).thenAnswer(
+      (_) async => const YoloSettingsMutationUncertain(),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("yolo_switch")));
+    await tester.pumpAndSettle();
+
+    expect(loads, 2);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isTrue);
+  });
+
   testWidgets("shows a stable offline setting before a bridge connects", (tester) async {
     _useTallSurface(tester);
     connectionStatuses.add(const ConnectionStatus.disconnected());
@@ -252,7 +337,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Connect to a bridge to configure this setting."), findsOneWidget);
+    expect(find.text("Connect to a bridge to configure this setting."), findsNWidgets(2));
     expect(find.text("Offline"), findsOneWidget);
     verifyNever(pullRequestRefreshSettingsRepository.load);
   });

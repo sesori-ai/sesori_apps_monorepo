@@ -17,6 +17,13 @@ class BridgeSettingsApi {
     );
   }
 
+  Future<ApiResponse<YoloSettingsResponse>> getYoloSettings() {
+    return _client.get<YoloSettingsResponse>(
+      "/settings/yolo",
+      fromJson: YoloSettingsResponse.fromJson,
+    );
+  }
+
   Future<BridgeSettingUpdateApiResult> update({required BridgeSettingUpdate update}) async {
     return switch (await _client.patch<BridgeSettingUpdate>(
       "/settings",

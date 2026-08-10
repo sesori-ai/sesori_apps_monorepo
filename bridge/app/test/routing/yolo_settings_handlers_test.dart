@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/bridge_settings_api.dart";
+import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/routing/get_yolo_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
@@ -22,7 +23,10 @@ void main() {
       api = _MemoryBridgeSettingsApi();
       repository = BridgeSettingsRepository(api: api);
       await repository.loadSettings();
-      service = YoloSettingsService(bridgeSettingsRepository: repository);
+      service = YoloSettingsService(
+        bridgeSettingsRepository: repository,
+        permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
+      );
       patchHandler = PatchBridgeSettingsHandler(
         pullRequestRefreshSettingsService: PullRequestRefreshSettingsService(
           bridgeSettingsRepository: repository,
@@ -61,6 +65,14 @@ void main() {
       expect(jsonDecodeMap(api.config!)["yolo"], isTrue);
     });
   });
+}
+
+class _FakePermissionAutoApprovalService implements PermissionAutoApprovalService {
+  @override
+  Future<void> approvePending() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _MemoryBridgeSettingsApi implements BridgeSettingsApi {

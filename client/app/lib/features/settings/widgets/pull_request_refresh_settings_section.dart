@@ -20,6 +20,7 @@ class PullRequestRefreshSettingsSection extends StatelessWidget {
       title: context.loc.settingsSectionBridge,
       child: PregoGroupedRows(
         children: [
+          const _YoloSettingsRow(),
           PregoGroupedRow(
             key: const Key("pull_request_refresh_interval"),
             icon: TablerRegular.refresh,
@@ -43,6 +44,68 @@ class PullRequestRefreshSettingsSection extends StatelessWidget {
       ),
     );
   }
+}
+
+class _YoloSettingsRow extends StatelessWidget {
+  const _YoloSettingsRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<YoloSettingsCubit>().state;
+    final ready = state is YoloSettingsReady ? state : null;
+    final updating = ready?.mutation is YoloSettingsMutationInProgress;
+
+    void toggle({required bool enabled}) {
+      final current = ready;
+      if (current == null || updating) return;
+      unawaited(context.read<YoloSettingsCubit>().update(enabled: enabled, expectedState: current));
+    }
+
+    return MergeSemantics(
+      child: PregoGroupedRow(
+        key: const Key("yolo_setting"),
+        icon: TablerRegular.shield_off,
+        title: Text(context.loc.settingsYoloTitle),
+        subtitle: Text(_yoloDescription(context: context, state: state)),
+        trailing: switch (state) {
+          YoloSettingsLoading() || YoloSettingsReady(mutation: YoloSettingsMutationInProgress()) =>
+            PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+          YoloSettingsReady(:final enabled) => PregoSwitch(
+            key: const Key("yolo_switch"),
+            value: enabled,
+            onChanged: (enabled) => toggle(enabled: enabled),
+          ),
+          YoloSettingsUnsupported() => Text(
+            context.loc.settingsPullRequestRefreshUnavailable,
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          YoloSettingsDisconnected() => Text(
+            context.loc.settingsPullRequestRefreshOffline,
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          YoloSettingsFailure() || YoloSettingsUncertain() => IconButton(
+            key: const Key("yolo_retry"),
+            tooltip: context.loc.settingsYoloRetry,
+            onPressed: context.read<YoloSettingsCubit>().refresh,
+            icon: const Icon(TablerRegular.refresh),
+          ),
+        },
+        onTap: ready == null || updating ? null : () => toggle(enabled: !ready.enabled),
+      ),
+    );
+  }
+}
+
+String _yoloDescription({required BuildContext context, required YoloSettingsState state}) {
+  return switch (state) {
+    YoloSettingsLoading() => context.loc.settingsYoloLoading,
+    YoloSettingsDisconnected() => context.loc.settingsYoloDisconnected,
+    YoloSettingsUnsupported() => context.loc.settingsYoloUnsupported,
+    YoloSettingsFailure() => context.loc.settingsYoloLoadFailed,
+    YoloSettingsUncertain() => context.loc.settingsYoloUncertain,
+    YoloSettingsReady(mutation: YoloSettingsMutationFailed()) => context.loc.settingsYoloUpdateFailed,
+    YoloSettingsReady() => context.loc.settingsYoloWarning,
+  };
 }
 
 String _description({required BuildContext context, required PullRequestRefreshSettingsState state}) {

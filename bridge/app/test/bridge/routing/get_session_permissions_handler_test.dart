@@ -390,9 +390,6 @@ class _FakeYoloSettingsService implements YoloSettingsService {
   Future<YoloSettingsResponse> readCommittedSettings() async => _settings;
 
   @override
-  Stream<YoloSettingsResponse> get changes => const Stream.empty();
-
-  @override
   Future<YoloSettingsResponse> update({required bool enabled}) async {
     return _settings = YoloSettingsResponse(enabled: enabled);
   }

@@ -366,9 +366,6 @@ class Orchestrator {
     final pullRequestRefreshSettingsService = PullRequestRefreshSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
     );
-    final yoloSettingsService = YoloSettingsService(
-      bridgeSettingsRepository: _bridgeSettingsRepository,
-    );
     final viewedProjectPrRefreshListener = ViewedProjectPrRefreshListener(
       tracker: projectViewTracker,
       prSyncService: prSyncService,
@@ -522,6 +519,10 @@ class Orchestrator {
       sessionRepository: sessionRepository,
       permissionRepository: permissionRepository,
       pendingInteractionService: pendingInteractionService,
+    );
+    final yoloSettingsService = YoloSettingsService(
+      bridgeSettingsRepository: _bridgeSettingsRepository,
+      permissionAutoApprovalService: permissionAutoApprovalService,
     );
     final pluginEventListeners = [
       PluginEventListener(source: _pluginRuntime.backendEvents, dispatcher: sessionEventDispatcher),
@@ -881,10 +882,6 @@ class OrchestratorSession {
               );
           }
         })
-        .addTo(_subscriptions);
-    _yoloSettingsService.changes
-        .where((settings) => settings.enabled)
-        .listen((_) => unawaited(_permissionAutoApprovalService.approvePending()))
         .addTo(_subscriptions);
     catalogImportProgress
         .listen((progress) {

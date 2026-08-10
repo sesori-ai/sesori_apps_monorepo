@@ -409,6 +409,60 @@ abstract class AppLocalizations {
   /// **'Bridge'**
   String get settingsSectionBridge;
 
+  /// No description provided for @settingsYoloTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'YOLO mode'**
+  String get settingsYoloTitle;
+
+  /// No description provided for @settingsYoloWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically approves all permission requests. Use with caution.'**
+  String get settingsYoloWarning;
+
+  /// No description provided for @settingsYoloLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the bridge setting…'**
+  String get settingsYoloLoading;
+
+  /// No description provided for @settingsYoloDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to configure this setting.'**
+  String get settingsYoloDisconnected;
+
+  /// No description provided for @settingsYoloUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to configure this setting.'**
+  String get settingsYoloUnsupported;
+
+  /// No description provided for @settingsYoloLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the bridge setting. Check your connection and try again.'**
+  String get settingsYoloLoadFailed;
+
+  /// No description provided for @settingsYoloUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsYoloUncertain;
+
+  /// No description provided for @settingsYoloUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsYoloUpdateFailed;
+
+  /// No description provided for @settingsYoloRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry YOLO setting'**
+  String get settingsYoloRetry;
+
   /// No description provided for @settingsPullRequestRefreshTitle.
   ///
   /// In en, this message translates to:

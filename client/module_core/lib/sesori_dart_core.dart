@@ -98,6 +98,8 @@ export "src/cubits/settings/settings_cubit.dart";
 export "src/cubits/settings/settings_state.dart";
 export "src/cubits/splash/splash_cubit.dart";
 export "src/cubits/splash/splash_state.dart";
+export "src/cubits/yolo_settings/yolo_settings_cubit.dart";
+export "src/cubits/yolo_settings/yolo_settings_state.dart";
 // DI
 export "src/di/injection.dart";
 // Errors
@@ -141,6 +143,7 @@ export "src/repositories/models/product_analytics_preference_models.dart";
 export "src/repositories/models/pull_request_refresh_settings_result.dart";
 export "src/repositories/models/repo_provider.dart";
 export "src/repositories/models/session_options_repository_result.dart";
+export "src/repositories/models/yolo_settings_result.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
@@ -151,6 +154,7 @@ export "src/repositories/project_repository.dart";
 export "src/repositories/pull_request_refresh_settings_repository.dart";
 export "src/repositories/registered_bridges_store.dart";
 export "src/repositories/session_repository.dart";
+export "src/repositories/yolo_settings_repository.dart";
 // Routing
 export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";

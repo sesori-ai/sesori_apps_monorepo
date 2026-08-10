@@ -180,6 +180,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionBridge => 'Bridge';
 
   @override
+  String get settingsYoloTitle => 'YOLO mode';
+
+  @override
+  String get settingsYoloWarning => 'Automatically approves all permission requests. Use with caution.';
+
+  @override
+  String get settingsYoloLoading => 'Loading the bridge setting…';
+
+  @override
+  String get settingsYoloDisconnected => 'Connect to a bridge to configure this setting.';
+
+  @override
+  String get settingsYoloUnsupported => 'Update the connected bridge to configure this setting.';
+
+  @override
+  String get settingsYoloLoadFailed => 'Couldn\'t load the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsYoloUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsYoloUpdateFailed => 'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsYoloRetry => 'Retry YOLO setting';
+
+  @override
   String get settingsPullRequestRefreshTitle => 'Pull request refresh';
 
   @override
