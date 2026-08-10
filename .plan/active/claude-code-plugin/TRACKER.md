@@ -22,7 +22,7 @@
   per the repository plan-review process — added the Layer-2
   `ClaudeSessionProcessRepository` so no `services/` file imports `api/`; moved
   `initialize` DTO mapping into a new `ClaudeBackendCatalogRepository` and gave
-  the two catalogs distinct names; moved `ClaudeEventMapper` and
+  the two catalogs distinct names; moved `ClaudeEventDispatcher` and
   `ClaudeHistoryMapper` up to `lib/src/` to remove Layer-2 peer dependencies;
   gave applied model/agent/mode a single owner; declared constructor
   collaborators for every non-trivial class; declared the launch contract's files
@@ -253,7 +253,7 @@
   against `origin/main`, below the 1,000-1,400 estimate and the 1,500-line soft
   cap.
 
-- Step 8/17 (2026-08-10): added top-level `ClaudeEventMapper` over the content
+- Step 8/17 (2026-08-10): added top-level `ClaudeEventDispatcher` over the content
   mapper and tool tracker, plus typed stream-event, retry, assistant-error,
   result-subtype, and terminal-reason parsing at the transport boundary. Live
   events now carry schema-valid message/part/status payloads; resolved assistant
@@ -267,7 +267,10 @@
   and the non-obvious API failure whose subtype remains `success` while
   `is_error` is true. `PROTOCOL.md` records the redacted shapes; raw backend
   error strings are retained only at the plugin transport boundary and are not
-  forwarded to clients. `dart analyze --fatal-infos`, all 131 package tests,
+  forwarded to clients. Review renamed the stateful pipeline owner from mapper
+  to dispatcher and deferred assistant envelopes until visible content exists,
+  preserving live/history parity for redacted or unknown-only messages.
+  `dart analyze --fatal-infos`, all 132 package tests,
   and `git diff --check` pass. Architecture implementation review approved the
   uncommitted Step 8 scope with no findings. The measured implementation/test
   diff before this documentation is 1,120 changed lines, below the 1,200-1,500

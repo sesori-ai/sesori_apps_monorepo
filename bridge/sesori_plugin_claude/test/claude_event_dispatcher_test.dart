@@ -4,14 +4,14 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 void main() {
-  group("ClaudeEventMapper", () {
-    late ClaudeEventMapper mapper;
+  group("ClaudeEventDispatcher", () {
+    late ClaudeEventDispatcher mapper;
 
     setUp(() {
-      mapper = ClaudeEventMapper(content: const ClaudeContentMapper(), tools: ClaudeToolTracker());
+      mapper = ClaudeEventDispatcher(content: const ClaudeContentMapper(), tools: ClaudeToolTracker());
     });
 
-    test("maps message starts and text/thinking deltas with resolved model stamping", () {
+    test("creates an assistant when its first visible block starts", () {
       final started = _map(
         mapper,
         _stream(
@@ -52,19 +52,55 @@ void main() {
         ),
       );
 
-      final info = shared.Message.fromJson((started.single as BridgeSseMessageUpdated).info);
+      expect(started, isEmpty);
+      final info = shared.Message.fromJson((textStart.first as BridgeSseMessageUpdated).info);
       expect(info, isA<shared.MessageAssistant>());
       final assistant = info as shared.MessageAssistant;
       expect(assistant.id, "msg-1");
       expect(assistant.agent, "claude");
       expect(assistant.modelID, "claude-opus-5");
       expect(assistant.providerID, "anthropic");
-      expect((textStart.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
+      expect((textStart.last as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
       expect((thinkingStart.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.reasoning);
       final delta = textDelta.single as BridgeSseMessagePartDelta;
       expect(delta.partID, "msg-1-block-0");
       expect(delta.field, "text");
       expect(delta.delta, "hello");
+    });
+
+    test("does not create an empty assistant for non-visible content", () {
+      final started = _map(
+        mapper,
+        _stream(
+          "message_start",
+          event: {
+            "message": {"id": "msg-hidden", "model": "claude-opus-5"},
+          },
+        ),
+      );
+      final block = _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 0,
+            "content_block": {"type": "redacted_thinking", "data": "opaque"},
+          },
+        ),
+      );
+      final complete = _map(
+        mapper,
+        _assistant(
+          id: "msg-hidden",
+          content: const [
+            {"type": "redacted_thinking", "data": "opaque"},
+          ],
+        ),
+      );
+
+      expect(started, isEmpty);
+      expect(block, isEmpty);
+      expect(complete, isEmpty);
     });
 
     test("maps tool input and completion with one diff signal", () {
@@ -127,7 +163,10 @@ void main() {
         ),
       );
 
-      expect((started.single as BridgeSseMessagePartUpdated).part.state?.status, PluginToolStatus.pending);
+      expect(
+        started.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status,
+        PluginToolStatus.pending,
+      );
       expect((input.single as BridgeSseMessagePartUpdated).part.state?.status, PluginToolStatus.running);
       expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
       final terminal = completed.whereType<BridgeSseMessagePartUpdated>().single.part;
@@ -345,7 +384,7 @@ void main() {
   });
 }
 
-List<BridgeSseEvent> _map(ClaudeEventMapper mapper, Map<String, Object?> frame) =>
+List<BridgeSseEvent> _map(ClaudeEventDispatcher mapper, Map<String, Object?> frame) =>
     mapper.map(message: ClaudeStreamMessage.parse(frame));
 
 Map<String, Object?> _stream(String eventType, {required Map<String, Object?> event}) => {
@@ -383,7 +422,7 @@ Map<String, Object?> _user({
   "message": {"role": "user", "content": content},
 };
 
-void _startMessage(ClaudeEventMapper mapper, {required String messageId, String model = "claude-opus-5"}) {
+void _startMessage(ClaudeEventDispatcher mapper, {required String messageId, String model = "claude-opus-5"}) {
   _map(
     mapper,
     _stream(

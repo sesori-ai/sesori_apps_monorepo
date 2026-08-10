@@ -5,9 +5,9 @@ import "api/models/claude_stream_message.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
 
-/// Maps Claude stream-json frames into bridge-neutral live events.
-final class ClaudeEventMapper {
-  ClaudeEventMapper({
+/// Dispatches Claude stream-json frames as bridge-neutral live events.
+final class ClaudeEventDispatcher {
+  ClaudeEventDispatcher({
     required ClaudeContentMapper content,
     required ClaudeToolTracker tools,
   }) : _content = content,
@@ -16,15 +16,18 @@ final class ClaudeEventMapper {
   final ClaudeContentMapper _content;
   final ClaudeToolTracker _tools;
   final Map<String, String> _messageIds = {};
+  final Map<String, String> _announcedMessageIds = {};
   final Map<String, String> _models = {};
 
   void beginTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
+    _announcedMessageIds.remove(sessionId);
     _tools.beginTurn(sessionId: sessionId);
   }
 
   void forgetSession({required String sessionId}) {
     _messageIds.remove(sessionId);
+    _announcedMessageIds.remove(sessionId);
     _models.remove(sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
@@ -75,11 +78,7 @@ final class ClaudeEventMapper {
     final model = _nonEmptyString(rawMessage?["model"]);
     _messageIds[sessionId] = messageId;
     if (model != null) _models[sessionId] = model;
-    return [
-      BridgeSseMessageUpdated(
-        info: _assistantMessage(sessionId: sessionId, messageId: messageId).toJson(),
-      ),
-    ];
+    return const [];
   }
 
   List<BridgeSseEvent> _contentStart({
@@ -123,7 +122,12 @@ final class ClaudeEventMapper {
       ClaudeMappedUnsupportedContentBlock() ||
       ClaudeMappedUnknownContentBlock() => null,
     };
-    return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
+    return part == null
+        ? const []
+        : [
+            ..._announceAssistant(sessionId: sessionId, messageId: messageId),
+            BridgeSseMessagePartUpdated(part: part),
+          ];
   }
 
   List<BridgeSseEvent> _contentDelta({
@@ -197,6 +201,8 @@ final class ClaudeEventMapper {
     if (_nonEmptyString(message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
     final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
+    if (!parts.any((part) => part.type.isVisible)) return const [];
+    _announcedMessageIds[sessionId] = messageId;
     final events = <BridgeSseEvent>[
       BridgeSseMessageUpdated(
         info: _assistantMessage(
@@ -328,6 +334,16 @@ final class ClaudeEventMapper {
     providerID: "anthropic",
     time: time,
   );
+
+  List<BridgeSseEvent> _announceAssistant({required String sessionId, required String messageId}) {
+    if (_announcedMessageIds[sessionId] == messageId) return const [];
+    _announcedMessageIds[sessionId] = messageId;
+    return [
+      BridgeSseMessageUpdated(
+        info: _assistantMessage(sessionId: sessionId, messageId: messageId).toJson(),
+      ),
+    ];
+  }
 }
 
 PluginMessagePart _textPart({
