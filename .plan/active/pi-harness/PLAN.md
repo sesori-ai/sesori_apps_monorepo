@@ -388,9 +388,10 @@ dialogs, which appear as questions because Pi supplies no permission semantics.
 and idle reap. Prompt admission marks the session busy and returns immediately;
 the lane later applies selection, dispatches, and tracks settlement. A command
 is rejected synchronously while any turn is active/queued; otherwise its turn
-owns an acceptance completer and `sendCommand` returns only after the correlated
-Pi prompt response succeeds. Pre-acceptance failure/exit completes it with an
-error; later failures emit session events. IDs are secure UUIDs validated by `PiLaunchSpec`.
+owns an acceptance completer. `sendCommand` returns when either the correlated
+response succeeds or a generation-matched extension dialog proves Pi began
+handling it. Pre-acceptance failure/exit throws; later failures emit events.
+IDs are secure UUIDs validated by `PiLaunchSpec`.
 
 A correlated prompt `success: false` is terminal without `agent_settled`: emit
 the session error/auth toast, clear the active turn, advance the next queued
@@ -417,22 +418,23 @@ non-image data are not fetched, stringified, or silently dropped: dispatch fails
 before acceptance with a privacy-safe `PluginOperationException` explaining
 that Pi supports inline image data only.
 
-Commands use Pi's normal `/name args` prompt path only from an idle lane. The
-correlated successful prompt response completes `sendCommand` acceptance; the
-service then holds the lane through a `get_state` barrier and earlier protocol
-events. It treats a command as no-run only when no generation-matched
-`agent_start` arrived and state reports neither streaming nor pending messages;
-otherwise it waits for `agent_settled`. Command context uses the same marker
-scheme, and live/replay presentation uses only `userVisibleArguments`.
+Commands use Pi's normal `/name args` prompt path only from an idle lane. A
+dialog-first acceptance detaches the phone request while response/dialog failure
+continues through session events. Every prompt path, including manually typed
+slash commands, applies the same no-run classifier: after the prompt response,
+if no generation-matched `agent_start` arrived, hold the lane through a
+`get_state` barrier and earlier protocol events; settle when state is neither
+streaming nor pending, otherwise await `agent_settled`. Command context uses the
+same marker; presentation uses only `userVisibleArguments`.
 
 Abort invalidates the session generation, rejects pending dialogs and queued
 turns, sends Pi's `abort`, and tears down that session process. Teardown is
 required because Pi's RPC `abort` does not clear its steering/follow-up queues.
 The next accepted turn resumes from the persisted session.
 
-Delete first applies the same generation invalidation and rejects active/queued
-turns and dialogs, then stops the process and removes marker/file state. Its exit
-callback cannot advance the invalidated lane or relaunch deleted work.
+Delete resolves imported descendants, invalidates/rejects every affected lane
+and dialog, and stops their resident processes before removing only the named
+root's marker/file. Exit callbacks cannot advance or relaunch tombstoned work.
 
 ### Catalogs and selections
 
@@ -525,14 +527,14 @@ user's telemetry choice remain Pi's.
 | `getSessionOptions` | reuse/refresh through project tracker; observed complete/partial or failed |
 | `createSession` | emit created, then admit first turn only when `parts` is non-empty |
 | `renameSession` | resident or bounded transient lease for RPC `set_session_name` |
-| `deleteSession` | invalidate lane/dialogs, stop process, then delete marker/file |
+| `deleteSession` | stop root/descendant work, then delete the named root marker/file |
 | `deletePersistedSession` | resolve by ID and idempotently delete the exact file without spawning Pi |
 | `archiveSession`, `deleteWorkspace` | no-op under best-effort contracts |
 | `getChildSessions` | catalog filter by resolved parent ID |
 | `getSessionStatuses` | session service work/queue state |
 | `getSessionMessages` | RPC/file active-branch history; throw on non-fallback failure |
 | `sendPrompt` | admit exact turn immediately; later dispatch failures become events |
-| `sendCommand` | reject busy; otherwise await acceptance; event later failures |
+| `sendCommand` | reject busy; await response-or-dialog acceptance; event later failures |
 | `abortSession` | abort and process teardown, clearing queued work/dialogs |
 | `getAgents` | one synthesized primary Pi agent |
 | questions | extension UI service with owner/root/project tracker indexes |
@@ -730,9 +732,9 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Cover spawn races, serialization, cross-session parallelism, lazy persistence,
   resume after reap, transient history/rename leases, ID/attachment validation,
   immediate prompt admission, busy-command rejection, acceptance completers,
-  rejection followed by the next prompt, response-before-`agent_start` barriers,
-  command-without-run, post-acceptance exit, project-scoped auth/toast behavior,
-  abort, and shutdown.
+  dialog-first command acceptance, rejection followed by the next prompt,
+  response-before-`agent_start` barriers, typed-slash no-run, post-acceptance
+  exit, project-scoped auth/toast behavior, abort, and shutdown.
 
 ### Step 9/15: Expose models and commands
 
@@ -765,8 +767,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   honest empty/not-found results.
 - Cover full contract behavior, missing session/path, lazy persistence,
   empty-parts command creation, created-before-output ordering, delete during an
-  active turn with a queued prompt, buffered first listener, cause-preserving
-  errors, and disposal order.
+  active turn with queued work, active-child root deletion, buffered first
+  listener, cause-preserving errors, and disposal order.
 
 ### Step 11/15: Add managed runtime and lifecycle
 
