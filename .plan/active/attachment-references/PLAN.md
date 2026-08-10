@@ -42,8 +42,8 @@ viewer actions without making bridge content public or readable by the relay.
 6. GIF and animated WebP previews are static first frames; their originals
    animate in the viewer through Flutter's normal image codec.
 7. Thumbnails survive app restarts in an app-private bounded cache. Originals
-   fetched for viewing remain temporary and are not persisted as an offline
-   media library.
+   fetched for viewing remain temporary, are released when the viewer closes,
+   and are not persisted as an offline media library.
 8. Bridge-owned transcript images support up to 20 MB each and 50 MB aggregate
    per existing logical attachment collection. The existing four-candidate
    collection limit remains unchanged.
@@ -249,7 +249,8 @@ The concrete bridge owners are:
   encodes one rendition. It owns no files, cache decisions, or queue.
 - `ChatHistoryRepository` remains the Layer-2 aggregate owner of live/archive
   attachment files. New methods store an original, read an original or derived
-  thumbnail from the live and archived spill roots, and atomically persist a
+  thumbnail from the live and archived spill roots, project a stored message's
+  attachment collection for capable/legacy delivery, and atomically persist a
   generated thumbnail through the existing Layer-1 storage APIs.
 - `MessageAttachmentService` in
   `bridge/app/lib/src/bridge/services/message_attachment_service.dart` requires
@@ -290,23 +291,36 @@ behavior.
 Do not coordinate `ChatHistoryListener` and `Orchestrator` with callbacks,
 acknowledgements, or another event stream.
 
-For a mapped `SesoriSseEvent.messagePartUpdated` containing bridge-owned inline
-images, the injected `MessageAttachmentService` calls a named
-`ChatHistoryRepository.storeAttachmentOriginal` method and awaits that
-repository operation before a reference variant can be enqueued. The
-repository alone reaches the same live `AttachmentSpillStorage` used by history
-capture. The service returns:
+`ChatHistoryService.requiresAwaitedAttachmentCapture(part:)` is the single
+predicate for whether a shared message part contains inline images in its file
+slot or tool attachments. Both consumers call that same service-owned method.
+For those events only, `ChatHistoryListener` deliberately skips its ordinary
+unawaited part capture and Orchestrator calls a named
+`ChatHistoryService.capturePartForDelivery` method after mapping/truncation and
+before wire delivery. Non-image parts and every other history event retain the
+existing listener path.
+
+`capturePartForDelivery` enters the existing per-session queue, performs the one
+decode/spill/database write through `ChatHistoryRepository`, advances the same
+sync state as ordinary capture, and returns a sealed result containing:
 
 - a reference-shaped event for capable subscribers; and
 - a legacy event with the existing 5 MiB inline/metadata budget for old
   subscribers.
 
-`ChatHistoryListener` reaches the same repository seam through
-`ChatHistoryService` and may reach the content-addressed write before or after
-that projection. The write is atomic and idempotent, so the concrete ordinary
-race is harmless and does not justify a lock or listener dependency. If the
-awaited materialization fails, the bridge logs the original error and sends a
+This makes the write outcome directly available to wire delivery without a
+callback, result registry, or second event. It also joins archive
+export/flip/purge ordering instead of writing a new live spill outside the
+session queue. If capture fails, the method logs the original error, clears
+`syncedAt`, and returns a typed unavailable result; Orchestrator sends the mapped
 legacy-safe inline/metadata shape rather than a dangling identifier.
+
+Legacy projection evaluates the complete persisted logical collection, not
+only the current SSE part. Tool attachments are already one part; ordered ACP
+assistant image parts are projected against earlier stored sibling parts. This
+preserves the released 5 MiB aggregate decision even after plugin trackers can
+retain 50 MB for capable clients, without adding mutable bridge-side collection
+accounting.
 
 `SSEManager` records attachment delivery mode with each subscriber queue and
 selects the corresponding event when enqueuing. Orphan queues retain their
@@ -362,7 +376,9 @@ Add `AttachmentThumbnailStorage` under
 read, atomic write, list metadata, and delete within a caller-supplied scope. Its
 `FlutterAttachmentThumbnailStorage` implementation under
 `client/app/lib/core/platform/` resolves the OS app-private cache directory and
-performs only those IO primitives. It does not construct keys, choose eviction,
+performs only those IO primitives. It requires the existing
+`TemporaryDirectoryClient` constructor dependency rather than calling
+`path_provider` statically. It does not construct keys, choose eviction,
 coalesce requests, or react to authentication.
 
 `MessageImageRepository` in `module_core` owns scoped key construction,
@@ -371,7 +387,11 @@ total-size/oldest-file pruning policy. Keys include account, bridge, session,
 attachment id, and rendition version; only encoded thumbnails are persisted.
 A small `MessageThumbnailCacheService` in `module_core` requires
 `MessageImageRepository` plus the existing authenticated-account transition
-source and owns account-scope cleanup on logout/local account removal.
+source and owns account-scope cleanup on logout/local account removal. Cleanup
+first retires the account generation, rejects new or late writes for that
+generation, awaits its already-started fetch/write futures, and only then
+deletes the scope. A later completion therefore cannot recreate decrypted
+thumbnail content after logout.
 
 Do not add a persistent database, cache index, background cache worker, or full
 original cache. The OS may evict cache files at any time; a miss simply refetches
@@ -380,10 +400,14 @@ the thumbnail.
 Extend the existing `MessageImageCubit` in `module_core` to own thumbnail and
 original load intents through `MessageImageRepository`. Its sealed state models
 preview loading/ready/failure independently from original loading/ready/failure.
-`FilePartWidget` continues to construct that cubit at the existing composition
-seam; Flutter widgets only render emitted encoded bytes through standard
-`MemoryImage`/`ResizeImage` providers and dispatch retry/open intents back to the
-cubit. No Flutter provider or feature widget calls the repository directly.
+Every attachment collection threads its authoritative `MessagePart.sessionID`
+as a required value through `FilePartWidget` into the cubit and repository; no
+loader or cache key reads a global current-session fallback. `FilePartWidget`
+continues to construct the cubit at the existing composition seam. Flutter
+widgets only render emitted encoded bytes through standard
+`MemoryImage`/`ResizeImage` providers and dispatch retry/open/close intents back
+to the cubit. No Flutter provider or feature widget calls the repository
+directly.
 
 ### 7. Presentation
 
@@ -401,7 +425,10 @@ For a stored image, the viewer receives thumbnail bytes from
 opening. On success it replaces the standard in-memory provider without closing
 the route and constructs the existing original-backed action state. On failure
 it retains the thumbnail, shows retry, and leaves original actions unavailable.
-Do not add page swiping or another viewer route.
+Viewer route completion always dispatches `releaseOriginal`, returning the
+tile-owned cubit to thumbnail-ready state and dropping encoded original bytes;
+the repository coalesces only in-flight original requests and retains no
+completed original cache. Do not add page swiping or another viewer route.
 
 ## Compatibility Matrix
 
@@ -419,7 +446,7 @@ subscription because multiple app versions may use one bridge concurrently.
 
 | Failure | User outcome | Local observability |
 |---|---|---|
-| Live spill write fails before reference emission | Legacy-safe image or metadata remains in the live event; no dangling reference. | Bridge logs original error, stack, session/part operation context, and no content. |
+| Queued live capture fails before reference emission | Projection returns unavailable; the mapped legacy-safe image or metadata remains in the live event, with no dangling reference. | Bridge logs original error, stack, session/part operation context, and no content. |
 | Original was purged or missing | Cached thumbnail remains visible; viewer reports unavailable and offers retry. | Fetch route returns 404; storage error context remains local. |
 | Thumbnail decode is unsupported or unsafe | Stable square error tile with retry; original is not deleted. | Bridge reports bounded rendition failure without payload data. |
 | Thumbnail cache read is corrupt | Cache entry is removed and fetched again. | Client logs cache operation context without paths in analytics. |
@@ -480,6 +507,8 @@ baseline is intentionally raised in a separate task.
 |---|---|---|---|
 | Reference history images | Observed ordinary flow: every open/reload sends paged inline originals. | Repeated bandwidth, base64 work, and memory. | Implement. |
 | Reference live images | Observed ordinary flow: finalized part events and replay queues carry full snapshots. | Duplicate live/reconnect traffic and bridge queue memory. | Implement with per-subscriber shaping. |
+| Queue live capture and projection together | Archive and live activity can overlap for one session. | A post-copy spill could be purged before the emitted reference is usable. | One awaited service call reuses the existing per-session queue. |
+| Project the complete legacy collection | ACP assistant images arrive as separate part updates. | Per-event shaping could exceed the released 5 MiB aggregate behavior. | Query bounded stored sibling parts; no mutable accounting registry. |
 | Serialize thumbnail generation | Ordinary page can request several uncached previews together. | Concurrent full decodes can spike bridge memory. | One coarse lane, no keyed lock registry. |
 | Persist one bridge thumbnail | Multiple devices/cache eviction can request the same derived image. | Repeated CPU-heavy decode. | One versioned sibling file, existing purge lifecycle. |
 | Chunk/resume transfers | Theoretical benefit for this bounded image-only scope; no observed failed 20 MB attachment flow. | A failed transfer retries the complete image. | Accept and defer. |
@@ -512,7 +541,7 @@ baseline is intentionally raised in a separate task.
 
 | Step | Exact PR title | Estimate | Boundary |
 |---|---|---:|---|
-| 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,050 | Active plan/tracker and upload considerations only. |
+| 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | Active plan/tracker and upload considerations only. |
 | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 900-1,450 | Shared variant, rendition models, delivery mode defaults, generated code, exhaustive compile-safe consumers. No peer enables references. |
 | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Versioned thumbnail storage/builder, live/archive lookup, typed fetch handler, decode/size/security tests. |
 | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Capability-aware active/archive projection and legacy budget preservation. |
@@ -587,17 +616,21 @@ receive lightweight references in history pages.
 
 ### Step 5/11 - Live references
 
-- Materialize mapped live inline images through
-  `MessageAttachmentService -> ChatHistoryRepository -> AttachmentSpillStorage`
-  before emitting references.
+- Add `ChatHistoryService.requiresAwaitedAttachmentCapture(part:)` as the one
+  predicate used by `ChatHistoryListener` and Orchestrator; the listener skips
+  only those inline-image parts and retains its path for all others.
+- Add one awaited `ChatHistoryService.capturePartForDelivery` call that joins the
+  per-session queue, persists once, and returns typed reference/legacy shapes.
 - Produce reference and legacy-safe event shapes without a new event type.
+- Calculate legacy eligibility from the complete stored logical collection so
+  separate ACP image-part updates preserve the released aggregate limit.
 - Store subscriber delivery mode with active/orphan queues and only adopt a
   matching-mode orphan.
 - Ensure reference queues never retain original base64 while legacy queues keep
   released behavior.
 - Cover multiple simultaneous old/new subscribers, reconnect replay, write
-  failure fallback, tool updates, event ordering, generation fencing, and local
-  debug behavior.
+  failure fallback, ACP multi-part legacy budgeting, archive/capture ordering,
+  one materialization per event, generation fencing, and local debug behavior.
 - Run bridge app SSE/orchestrator/storage tests, full bridge app tests, fatal
   analysis, and architecture implementation review.
 
@@ -634,6 +667,8 @@ larger backend-produced raster originals.
 - Coalesce concurrent requests for the same scoped rendition in memory.
 - Extend `MessageImageCubit` to own preview/original load and retry intents; the
   Flutter shell consumes state and never calls the repository directly.
+- Require message-owned `sessionId` through widget, cubit, repository request,
+  and cache key; never infer it from global route/connection state.
 - Keep both delivery-mode call sites set to `inline`.
 - Run module_core focused/full tests, codegen/DI generation, analysis, downstream
   mobile analysis, and architecture implementation review.
@@ -645,10 +680,12 @@ when supplied in a test fixture.
 
 - Add dumb `AttachmentThumbnailStorage` file primitives in module_core and
   `FlutterAttachmentThumbnailStorage` over the app-private OS cache directory.
+- Inject the existing `TemporaryDirectoryClient` into the Flutter storage
+  adapter; do not call static `path_provider` APIs from the adapter.
 - Keep scoped keys, corruption recovery, in-flight coalescing, oldest-on-write
   pruning in `MessageImageRepository`; add `MessageThumbnailCacheService` for
-  authenticated-scope cleanup; keep backup exclusion in the platform IO
-  configuration.
+  generation-fenced authenticated-scope cleanup that settles in-flight writes
+  before deletion; keep backup exclusion in the platform IO configuration.
 - Integrate the cache behind `MessageImageRepository` and the existing
   `MessageImageCubit`; widgets render emitted bytes with standard Flutter image
   providers and receive no repository, public URL, or relay/auth token.
@@ -678,14 +715,17 @@ presentation; stored delivery remains disabled.
 
 - Open stored images with the thumbnail already visible, automatically load the
   original, retain the thumbnail on failure, and retry the complete original.
+- Release original bytes from the tile-owned cubit when the viewer route closes;
+  retain only thumbnail-ready state and no completed-original repository cache.
 - Enable copy/share/save only after validated original bytes arrive.
 - Preserve current single-image gestures, route/back behavior, Hero transition,
   remote open-original action, and animated-original behavior.
 - Set history requests and SSE subscriptions to `storedReference`.
 - Cover all four app/bridge compatibility pairings, live/history/archive parity,
   cache cold/warm behavior, original timeout/retry, missing-after-thumbnail,
-  action gating, GIF/WebP preview/original behavior, and no eager original
-  request while scrolling.
+  logout during fetch/write, required session scoping, original release after
+  close, action gating, GIF/WebP preview/original behavior, and no eager
+  original request while scrolling.
 - Run module_core and mobile focused/full tests, analysis/codegen, a local bridge
   integration check with cold/warm history and reconnect, and architecture
   implementation review.
@@ -707,7 +747,9 @@ Expected result: no user-visible, wire, database, or runtime behavior change.
 
 | Risk | Mitigation |
 |---|---|
-| Reference event outruns file persistence. | Await one idempotent spill write before enqueue; fetch does not depend on the later DB row. |
+| Reference event outruns file persistence. | Await the single queued image-part capture and its typed result before enqueue. |
+| Archive races live materialization. | Capture, projection, export, flip, and purge share the existing per-session queue. |
+| Legacy ACP image parts exceed their old aggregate budget. | Project each event against the complete stored logical collection, not only the current part. |
 | Old app receives an unknown source and hides it. | Default both independent delivery surfaces to inline and shape per subscriber/request. |
 | New app requests a route from an old bridge. | It only calls the route for a received `stored_image`; old bridges never emit that variant. |
 | A page triggers several expensive decodes. | One fixed rendition, lazy generation, decoded-pixel ceiling, and one coarse generation lane. |
@@ -726,6 +768,13 @@ routes live writes through `ChatHistoryRepository`, names the bridge builder,
 service, and handler with required dependencies, keeps cache policy in
 `module_core`, and routes image loading through `MessageImageCubit`. Subsequent
 PR review further moved the thumbnail builder beside Layer-2 attachment mapping,
-made attachment parse failures content-redacted, and named the timeout path
-through both client transport layers. Per repository process, the corrected
-draft was not re-reviewed merely to obtain an approval verdict.
+made attachment parse failures content-redacted, named the timeout path through
+both client transport layers, and then consolidated live capture/projection on
+the existing session queue. It also pins message-owned session scope, releases
+viewer originals, injects the directory client, and generation-fences logout
+cleanup. Per repository process, the corrected draft was not re-reviewed merely
+to obtain an approval verdict. A focused second architecture review accepted the
+revised capture, legacy collection, viewer, cache, and session-scope seams but
+rejected the unnamed capture-split predicate. The plan now assigns that invariant
+to `ChatHistoryService.requiresAwaitedAttachmentCapture(part:)`; this direct
+finding correction was not reviewed again.

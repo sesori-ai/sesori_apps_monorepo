@@ -22,13 +22,15 @@
   `GetSessionAttachmentHandler` have explicit placement/dependencies; cache
   policy and auth cleanup stay in module_core while the Flutter adapter is dumb
   IO; stored-image loading stays in `MessageImageCubit` and the shell renders
-  emitted bytes without repository access
+  emitted bytes without repository access. A focused second review accepted the
+  revised seams and assigned its one unnamed capture predicate finding to
+  `ChatHistoryService.requiresAwaitedAttachmentCapture(part:)`.
 
 ## Delivery Steps
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,050 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) open |
+| [ ] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) open |
 | [ ] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 900-1,450 | Pending |
 | [ ] | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Pending |
 | [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Pending |
@@ -64,7 +66,8 @@
 
 - Step 1: Architecture review completed with four findings applied; corrected
   draft intentionally not re-reviewed. The initial documentation commit is 986
-  changed lines, within its 650-1,050 target, and `git diff --check` passes. No
+  changed lines, within its current 650-1,100 target, and `git diff --check`
+  passes. No
   Dart/Flutter suites were run for this documentation-only step. Committed as
   `6998f477`, pushed, and opened as
   [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807).
@@ -89,3 +92,12 @@
   attachment mapping, made malformed attachment responses content-redacted,
   threaded the longer timeout through both relay client layers, and kept all
   preview/original intents in `MessageImageCubit`.
+- **2026-08-10 - PR review root seam:** Moved only inline-image part capture to
+  one awaited `ChatHistoryService.capturePartForDelivery` call, eliminating the
+  archive race and duplicate decode while preserving legacy ACP aggregate
+  budgeting from complete stored collection state. Also required message-owned
+  session scope, viewer-close original release, injected directory lookup, and
+  generation-fenced logout cleanup.
+- **2026-08-10 - Step 1 review budget:** Raised the documentation target from
+  1,050 to 1,100 changed lines to record the valid second-round review findings;
+  the step remains well below the repository's 1,500-line soft cap.
