@@ -4,14 +4,12 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `1e40bf02` (Step 6 synchronized with it after Step 5 merged)
-- **Series state:** Steps 1-5/17 merged; Step 6/17 PR open; Step 7/17 complete
-  locally
-- **Current step:** 6/17 — transcript history replay
+  `d323c3c4` (Step 7 synchronized with it after Step 6 merged)
+- **Series state:** Steps 1-6/17 merged; Step 7/17 ready for PR
+- **Current step:** 7/17 — tool lifecycle tracking
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Merge the Step 6 PR, synchronize Step 7 with `main`, and open
-  the Step 7 PR
+- **Next action:** Open the Step 7 PR, then start Step 8 locally
 
 ## Plan Review
 
@@ -51,8 +49,8 @@
 | [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | [PR #792](https://github.com/sesori-ai/sesori_apps_monorepo/pull/792) merged 2026-08-09 as `9f139f8f`; see the verification log for the measured diff |
 | [x] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 (recorded overage) | [PR #794](https://github.com/sesori-ai/sesori_apps_monorepo/pull/794) merged 2026-08-09 as `42cd0c72`; see the verification log for the measured diff |
 | [x] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | [PR #795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/795) merged 2026-08-10 as `cfb8cc45` |
-| [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) open against `main` |
-| [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Implemented and verified locally; awaiting Step 6 merge |
+| [x] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) merged 2026-08-10 as `d323c3c4` |
+| [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Implemented, verified, and synchronized with merged Step 6; ready for PR |
 | [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Not started |
 | [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Not started |
 | [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Not started |
@@ -248,8 +246,9 @@
   pass. Architecture implementation review first rejected raw edit-tool string
   decisions; the tracker now parses names into a closed tool-kind enum at its
   boundary, and the second review approved the step with no remaining findings.
-  The measured production/test diff before this tracker entry is 555 lines
-  against Step 6, below the 1,000-1,400 estimate and the 1,500-line soft cap.
+  After synchronization with merged Step 6, the measured diff is 575 lines
+  against `origin/main`, below the 1,000-1,400 estimate and the 1,500-line soft
+  cap.
 
 ## Findings And Plan Deltas
 
