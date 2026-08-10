@@ -45,6 +45,7 @@ sealed class ClaudeStreamMessage {
       case "system":
         return switch (subtype) {
           "init" => ClaudeInitMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
+          "api_retry" => ClaudeApiRetryMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
           "status" => ClaudeStatusMessage(
             status: _stringOrNull(json["status"]),
             sessionId: sessionId,
@@ -59,6 +60,7 @@ sealed class ClaudeStreamMessage {
         return ClaudeUserMessage(
           message: _mapOrEmpty(json["message"]),
           parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
+          timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
           uuid: uuid,
           raw: json,
@@ -85,6 +87,10 @@ sealed class ClaudeStreamMessage {
 }
 
 String? _stringOrNull(Object? value) => value is String ? value : null;
+
+int? _intOrNull(Object? value) => value is num ? value.toInt() : null;
+
+DateTime? _dateTimeOrNull(Object? value) => value is String ? DateTime.tryParse(value) : null;
 
 Map<String, Object?> _mapOrEmpty(Object? value) =>
     value is Map ? value.cast<String, Object?>() : const <String, Object?>{};
@@ -160,6 +166,67 @@ final class ClaudeStatusMessage extends ClaudeStreamMessage {
   final String? status;
 }
 
+enum ClaudeAssistantError {
+  authenticationFailed,
+  oauthOrgNotAllowed,
+  billingError,
+  rateLimit,
+  overloaded,
+  invalidRequest,
+  modelNotFound,
+  serverError,
+  maxOutputTokens,
+  unknown;
+
+  static ClaudeAssistantError parse(Object? raw) => switch (raw) {
+    "authentication_failed" => authenticationFailed,
+    "oauth_org_not_allowed" => oauthOrgNotAllowed,
+    "billing_error" => billingError,
+    "rate_limit" => rateLimit,
+    "overloaded" => overloaded,
+    "invalid_request" => invalidRequest,
+    "model_not_found" => modelNotFound,
+    "server_error" => serverError,
+    "max_output_tokens" => maxOutputTokens,
+    _ => unknown,
+  };
+}
+
+/// `system`/`api_retry` — a retryable API failure with a scheduled retry.
+final class ClaudeApiRetryMessage extends ClaudeStreamMessage {
+  const ClaudeApiRetryMessage({
+    required this.attempt,
+    required this.maxRetries,
+    required this.retryDelayMs,
+    required this.errorStatus,
+    required this.error,
+    required super.sessionId,
+    required super.uuid,
+    required super.raw,
+  });
+
+  factory ClaudeApiRetryMessage.fromJson(
+    Map<String, Object?> json, {
+    required String? sessionId,
+    required String? uuid,
+  }) => ClaudeApiRetryMessage(
+    attempt: _intOrNull(json["attempt"]),
+    maxRetries: _intOrNull(json["max_retries"]),
+    retryDelayMs: _intOrNull(json["retry_delay_ms"]),
+    errorStatus: _intOrNull(json["error_status"]),
+    error: ClaudeAssistantError.parse(json["error"]),
+    sessionId: sessionId,
+    uuid: uuid,
+    raw: json,
+  );
+
+  final int? attempt;
+  final int? maxRetries;
+  final int? retryDelayMs;
+  final int? errorStatus;
+  final ClaudeAssistantError error;
+}
+
 /// A complete assistant message.
 ///
 /// Ordering trap: this frame arrives *before* the turn's `content_block_stop`,
@@ -170,6 +237,8 @@ final class ClaudeAssistantMessage extends ClaudeStreamMessage {
     required this.messageId,
     required this.model,
     required this.parentToolUseId,
+    required this.error,
+    required this.timestamp,
     required super.sessionId,
     required super.uuid,
     required super.raw,
@@ -186,6 +255,8 @@ final class ClaudeAssistantMessage extends ClaudeStreamMessage {
       messageId: _stringOrNull(message["id"]),
       model: _stringOrNull(message["model"]),
       parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
+      error: ClaudeAssistantError.parse(json["error"]),
+      timestamp: _dateTimeOrNull(json["timestamp"]),
       sessionId: sessionId,
       uuid: uuid,
       raw: json,
@@ -204,6 +275,8 @@ final class ClaudeAssistantMessage extends ClaudeStreamMessage {
 
   /// Non-null marks subagent traffic.
   final String? parentToolUseId;
+  final ClaudeAssistantError error;
+  final DateTime? timestamp;
 }
 
 /// A user frame. Also carries `tool_result` blocks that complete tool calls.
@@ -211,6 +284,7 @@ final class ClaudeUserMessage extends ClaudeStreamMessage {
   const ClaudeUserMessage({
     required this.message,
     required this.parentToolUseId,
+    required this.timestamp,
     required super.sessionId,
     required super.uuid,
     required super.raw,
@@ -218,6 +292,101 @@ final class ClaudeUserMessage extends ClaudeStreamMessage {
 
   final Map<String, Object?> message;
   final String? parentToolUseId;
+  final DateTime? timestamp;
+}
+
+enum ClaudeStreamEventType {
+  messageStart,
+  contentBlockStart,
+  contentBlockDelta,
+  contentBlockStop,
+  other;
+
+  static ClaudeStreamEventType parse(Object? raw) => switch (raw) {
+    "message_start" => messageStart,
+    "content_block_start" => contentBlockStart,
+    "content_block_delta" => contentBlockDelta,
+    "content_block_stop" => contentBlockStop,
+    _ => other,
+  };
+}
+
+enum ClaudeStreamDeltaType {
+  text,
+  thinking,
+  inputJson,
+  other;
+
+  static ClaudeStreamDeltaType parse(Object? raw) => switch (raw) {
+    "text_delta" => text,
+    "thinking_delta" => thinking,
+    "input_json_delta" => inputJson,
+    _ => other,
+  };
+}
+
+enum ClaudeResultSubtype {
+  success,
+  errorDuringExecution,
+  errorMaxTurns,
+  errorMaxBudgetUsd,
+  errorMaxStructuredOutputRetries,
+  unknown;
+
+  static ClaudeResultSubtype parse(Object? raw) => switch (raw) {
+    "success" => success,
+    "error_during_execution" => errorDuringExecution,
+    "error_max_turns" => errorMaxTurns,
+    "error_max_budget_usd" => errorMaxBudgetUsd,
+    "error_max_structured_output_retries" => errorMaxStructuredOutputRetries,
+    _ => unknown,
+  };
+}
+
+enum ClaudeTerminalReason {
+  blockingLimit,
+  rapidRefillBreaker,
+  promptTooLong,
+  imageError,
+  modelError,
+  apiError,
+  malformedToolUseExhausted,
+  abortedStreaming,
+  abortedTools,
+  stopHookPrevented,
+  hookStopped,
+  toolDeferred,
+  maxTurns,
+  backgroundRequested,
+  completed,
+  budgetExhausted,
+  structuredOutputRetryExhausted,
+  toolDeferredUnavailable,
+  turnSetupFailed,
+  unknown;
+
+  static ClaudeTerminalReason parse(Object? raw) => switch (raw) {
+    "blocking_limit" => blockingLimit,
+    "rapid_refill_breaker" => rapidRefillBreaker,
+    "prompt_too_long" => promptTooLong,
+    "image_error" => imageError,
+    "model_error" => modelError,
+    "api_error" => apiError,
+    "malformed_tool_use_exhausted" => malformedToolUseExhausted,
+    "aborted_streaming" => abortedStreaming,
+    "aborted_tools" => abortedTools,
+    "stop_hook_prevented" => stopHookPrevented,
+    "hook_stopped" => hookStopped,
+    "tool_deferred" => toolDeferred,
+    "max_turns" => maxTurns,
+    "background_requested" => backgroundRequested,
+    "completed" => completed,
+    "budget_exhausted" => budgetExhausted,
+    "structured_output_retry_exhausted" => structuredOutputRetryExhausted,
+    "tool_deferred_unavailable" => toolDeferredUnavailable,
+    "turn_setup_failed" => turnSetupFailed,
+    _ => unknown,
+  };
 }
 
 /// A raw Anthropic streaming event carrying token-level deltas.
@@ -239,7 +408,7 @@ final class ClaudeStreamEventMessage extends ClaudeStreamMessage {
     final event = _mapOrEmpty(json["event"]);
     return ClaudeStreamEventMessage(
       event: event,
-      eventType: _stringOrNull(event["type"]),
+      eventType: ClaudeStreamEventType.parse(event["type"]),
       parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
       sessionId: sessionId,
       uuid: uuid,
@@ -251,7 +420,12 @@ final class ClaudeStreamEventMessage extends ClaudeStreamMessage {
 
   /// `message_start`, `content_block_start`, `content_block_delta`,
   /// `content_block_stop`, `message_delta`, or `message_stop`.
-  final String? eventType;
+  final ClaudeStreamEventType eventType;
+
+  int? get blockIndex => _intOrNull(event["index"]);
+  Map<String, Object?> get contentBlock => _mapOrEmpty(event["content_block"]);
+  Map<String, Object?> get delta => _mapOrEmpty(event["delta"]);
+  ClaudeStreamDeltaType get deltaType => ClaudeStreamDeltaType.parse(delta["type"]);
 
   final String? parentToolUseId;
 }
@@ -265,6 +439,8 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
     required this.stopReason,
     required this.terminalReason,
     required this.permissionDenials,
+    required this.errors,
+    required this.apiErrorStatus,
     required super.sessionId,
     required super.uuid,
     required super.raw,
@@ -277,28 +453,30 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
   }) {
     final denials = json["permission_denials"];
     return ClaudeResultMessage(
-      subtype: _stringOrNull(json["subtype"]),
+      subtype: ClaudeResultSubtype.parse(json["subtype"]),
       isError: json["is_error"] == true,
       result: _stringOrNull(json["result"]),
       stopReason: _stringOrNull(json["stop_reason"]),
-      terminalReason: _stringOrNull(json["terminal_reason"]),
+      terminalReason: ClaudeTerminalReason.parse(json["terminal_reason"]),
       permissionDenials: denials is List
           ? [
               for (final entry in denials)
                 if (entry is Map) entry.cast<String, Object?>(),
             ]
           : const <Map<String, Object?>>[],
+      errors: _stringList(json["errors"]),
+      apiErrorStatus: _intOrNull(json["api_error_status"]),
       sessionId: sessionId,
       uuid: uuid,
       raw: json,
     );
   }
 
-  final String? subtype;
+  final ClaudeResultSubtype subtype;
   final bool isError;
   final String? result;
   final String? stopReason;
-  final String? terminalReason;
+  final ClaudeTerminalReason terminalReason;
 
   /// Tools refused without the host being asked.
   ///
@@ -306,6 +484,8 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
   /// missing `--permission-prompt-tool stdio`, so it is surfaced rather than
   /// dropped.
   final List<Map<String, Object?>> permissionDenials;
+  final List<String> errors;
+  final int? apiErrorStatus;
 }
 
 /// A CLI-originated control request, notably `can_use_tool`.

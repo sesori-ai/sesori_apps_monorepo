@@ -16,6 +16,7 @@ export "src/api/claude_transcript_api.dart";
 export "src/api/models/claude_content_block_dto.dart";
 export "src/api/models/claude_stream_message.dart";
 export "src/api/models/claude_transcript_record_dto.dart";
+export "src/claude_event_mapper.dart";
 export "src/claude_history_mapper.dart";
 export "src/models/claude_effort_level.dart";
 export "src/models/claude_permission_mode.dart";

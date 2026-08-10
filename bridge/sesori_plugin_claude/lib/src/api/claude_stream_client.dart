@@ -301,6 +301,7 @@ class ClaudeStreamClient {
         // frequently and a warning would drown the log on a routine upgrade.
         Log.d("[$_logTag] unmodelled frame type=$type subtype=$subtype");
       case ClaudeStatusMessage():
+      case ClaudeApiRetryMessage():
       case ClaudeAssistantMessage():
       case ClaudeUserMessage():
       case ClaudeStreamEventMessage():

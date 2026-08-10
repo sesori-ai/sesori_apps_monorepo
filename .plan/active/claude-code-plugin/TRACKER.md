@@ -5,11 +5,13 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `d323c3c4` (Step 7 synchronized with it after Step 6 merged)
-- **Series state:** Steps 1-6/17 merged; Step 7/17 PR open
+- **Series state:** Steps 1-6/17 merged; Step 7/17 PR open; Step 8/17 complete
+  locally
 - **Current step:** 7/17 — tool lifecycle tracking
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Start Step 8 locally while Step 7 is in review
+- **Next action:** Merge Step 7, synchronize Step 8 with `main`, and open the
+  Step 8 PR
 
 ## Plan Review
 
@@ -51,7 +53,7 @@
 | [x] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | [PR #795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/795) merged 2026-08-10 as `cfb8cc45` |
 | [x] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) merged 2026-08-10 as `d323c3c4` |
 | [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) open against `main` |
-| [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Not started |
+| [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Implemented and verified locally; awaiting Step 7 merge |
 | [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Not started |
 | [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Not started |
 | [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Not started |
@@ -252,6 +254,27 @@
   measured diff is 617 changed lines
   against `origin/main`, below the 1,000-1,400 estimate and the 1,500-line soft
   cap.
+
+- Step 8/17 (2026-08-10): added top-level `ClaudeEventMapper` over the content
+  mapper and tool tracker, plus typed stream-event, retry, assistant-error,
+  result-subtype, and terminal-reason parsing at the transport boundary. Live
+  events now carry schema-valid message/part/status payloads; resolved assistant
+  model plus Claude/Anthropic identity; text and thinking deltas; sticky tool
+  completion; one-shot diff and todo refresh signals; privacy-safe retry and
+  error presentation; exact turn/session cleanup; and subagent suppression.
+  A direct test proves complete live assistant/tool shapes equal Step 6 history
+  replay shapes.
+
+  Live CLI 2.1.226 probes captured both the declared budget-exhaustion result
+  and the non-obvious API failure whose subtype remains `success` while
+  `is_error` is true. `PROTOCOL.md` records the redacted shapes; raw backend
+  error strings are retained only at the plugin transport boundary and are not
+  forwarded to clients. `dart analyze --fatal-infos`, all 131 package tests,
+  and `git diff --check` pass. Architecture implementation review approved the
+  uncommitted Step 8 scope with no findings. The measured implementation/test
+  diff before this documentation is 1,120 changed lines, below the 1,200-1,500
+  estimate. The final measured diff including plan artifacts is 1,192 changed
+  lines, also below the estimate and the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
 

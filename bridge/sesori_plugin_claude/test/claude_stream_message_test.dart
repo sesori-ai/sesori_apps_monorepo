@@ -68,7 +68,8 @@ void main() {
               })
               as ClaudeStreamEventMessage;
 
-      expect(message.eventType, "content_block_delta");
+      expect(message.eventType, ClaudeStreamEventType.contentBlockDelta);
+      expect(message.deltaType, ClaudeStreamDeltaType.text);
       expect(message.event["index"], 0);
     });
 
@@ -90,12 +91,61 @@ void main() {
               })
               as ClaudeResultMessage;
 
-      expect(message.subtype, "success");
+      expect(message.subtype, ClaudeResultSubtype.success);
       expect(message.isError, isFalse);
       expect(message.stopReason, "end_turn");
-      expect(message.terminalReason, "completed");
+      expect(message.terminalReason, ClaudeTerminalReason.completed);
       expect(message.permissionDenials, hasLength(1));
       expect(message.permissionDenials.single["tool_name"], "Write");
+    });
+
+    test("reads an API retry frame without retaining raw error text", () {
+      final message =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "api_retry",
+                "session_id": "session-1",
+                "attempt": 2,
+                "max_retries": 4,
+                "retry_delay_ms": 1500,
+                "error_status": 429,
+                "error": "rate_limit",
+              })
+              as ClaudeApiRetryMessage;
+
+      expect(message.attempt, 2);
+      expect(message.maxRetries, 4);
+      expect(message.retryDelayMs, 1500);
+      expect(message.errorStatus, 429);
+      expect(message.error, ClaudeAssistantError.rateLimit);
+    });
+
+    test("reads both declared and success-shaped error results", () {
+      final budget =
+          ClaudeStreamMessage.parse({
+                "type": "result",
+                "subtype": "error_max_budget_usd",
+                "is_error": true,
+                "terminal_reason": "budget_exhausted",
+                "errors": ["raw backend detail"],
+              })
+              as ClaudeResultMessage;
+      final apiError =
+          ClaudeStreamMessage.parse({
+                "type": "result",
+                "subtype": "success",
+                "is_error": true,
+                "terminal_reason": "api_error",
+                "api_error_status": 404,
+              })
+              as ClaudeResultMessage;
+
+      expect(budget.subtype, ClaudeResultSubtype.errorMaxBudgetUsd);
+      expect(budget.terminalReason, ClaudeTerminalReason.budgetExhausted);
+      expect(budget.errors, ["raw backend detail"]);
+      expect(apiError.subtype, ClaudeResultSubtype.success);
+      expect(apiError.isError, isTrue);
+      expect(apiError.apiErrorStatus, 404);
     });
 
     test("reads a can_use_tool control request", () {
@@ -178,10 +228,11 @@ void main() {
 
       expect(result.sessionId, isNull);
       expect(result.uuid, isNull);
-      expect(result.subtype, isNull);
+      expect(result.subtype, ClaudeResultSubtype.unknown);
       expect(result.isError, isFalse);
       expect(result.result, isNull);
       expect(result.stopReason, isNull);
+      expect(result.terminalReason, ClaudeTerminalReason.unknown);
     });
 
     test("tolerates malformed nested payloads without throwing", () {
