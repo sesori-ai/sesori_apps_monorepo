@@ -888,9 +888,12 @@ class BridgeRuntimeRunner {
       final sessionStart = activeRuntime.session.start();
       sessionStart.ignore();
       sessionRun = activeRuntime.session.waitUntilStopped();
-      // Arm ordered shutdown before eager startup so a signal or control
-      // request aborts a plugin that is still establishing its event stream.
-      activeRuntime.session.shutdownRequested.then((_) => shutdownCoordinator.shutdown()).ignore();
+      // Abort eager startup promptly, but defer the full coordinator until all
+      // startup resources have registered their teardown actions below.
+      activeRuntime.session.shutdownRequested.then((_) {
+        startAbortController.abort();
+        activePluginRuntime.beginShutdown();
+      }).ignore();
       await activePluginRuntime.startEager(pluginIds: startupPolicy.eagerPluginIds);
       await startDebugServerIfRequested(
         debugPort: options.debugPort,
@@ -926,6 +929,11 @@ class BridgeRuntimeRunner {
       } else {
         onboardingPreparation = null;
       }
+
+      // Start the ordered shutdown once every startup resource has registered
+      // its teardown. If shutdown was already requested, Future.then schedules
+      // this immediately and joins the same memoized shutdown used in finally.
+      activeRuntime.session.shutdownRequested.then((_) => shutdownCoordinator.shutdown()).ignore();
 
       final startResult = await sessionStart;
       if (startResult == OrchestratorSessionStartResult.ready) {
