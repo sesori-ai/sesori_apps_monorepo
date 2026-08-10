@@ -197,9 +197,9 @@ bridge/sesori_plugin_pi/
   lib/src/repositories/{pi_session_catalog_repository,pi_session_process_repository}.dart
   lib/src/repositories/pi_backend_catalog_repository.dart
   lib/src/repositories/mappers/{pi_content_mapper,pi_history_mapper}.dart
-  lib/src/trackers/{pi_catalog_tracker,pi_tool_tracker}.dart
-  lib/src/services/{pi_session_service,pi_catalog_service}.dart
-  lib/src/{pi_event_dispatcher,pi_extension_ui_registry}.dart
+  lib/src/trackers/{pi_catalog_tracker,pi_tool_tracker,pi_extension_ui_tracker}.dart
+  lib/src/services/{pi_session_service,pi_catalog_service,pi_extension_ui_service}.dart
+  lib/src/pi_event_dispatcher.dart
   lib/src/pi_plugin_impl.dart
   lib/src/runtime/{pi_runtime_manifest,pi_plugin_descriptor,pi_bridge_plugin}.dart
   lib/src/testing/fake_pi_process.dart
@@ -213,8 +213,7 @@ The placement follows `Foundation -> API -> Repository -> Service -> Consumer`:
 - repositories consume APIs and own mapping, without Layer-2 peer dependencies;
 - trackers own queryable Layer-2 catalog and tool state;
 - services coordinate repositories and trackers; and
-- dispatch/extension registries live at `lib/src/` when they consume
-  multiple Layer-2 components.
+- the plugin implementation and event dispatcher are consumers.
 
 No generic RPC abstraction is extracted into shared packages. ACP, Claude, and
 Pi have materially different framing, request, event, and lifecycle contracts.
@@ -237,10 +236,10 @@ One client owns one child process and:
 - closes stdin first, then uses bounded SIGTERM/SIGKILL on POSIX and bounded
   process termination on Windows.
 
-The top-level open envelope is a small hand-written sealed dispatch boundary,
-matching the ACP and Claude transport precedent. Closed nested content shapes
-used by mappers are generated DTOs and land with their first consumer so codegen
-does not create unconsumed multi-thousand-line PRs.
+Only top-level discriminator routing and the unknown-envelope fallback are
+hand-written. Every known response, event, dialog, and nested payload uses a
+generated DTO; DTOs land with their first consumer so codegen does not create
+unconsumed multi-thousand-line PRs.
 
 ### Session catalog
 
@@ -286,9 +285,9 @@ pre-compaction entries without making reads resident.
 
 Mapping rules:
 
-- for creation, `userVisibleText` identifies the authored suffix; the repository
-  wraps only the proven leading execution context in a plugin-owned marker before
-  RPC, and the mapper strips that marker in both live and replay paths;
+- `userVisibleText` and `userVisibleArguments` identify authored suffixes; the
+  repository wraps only proven leading execution context in a plugin-owned
+  marker before RPC, and strips it in live and replay paths;
 - remaining user text/images become a user envelope plus text/file parts; an
   unprovable split fails creation rather than exposing or duplicating context;
 - assistant text, thinking, and tool calls become existing text, reasoning, and
@@ -330,7 +329,7 @@ the final message repairs it. Live/replay parity is a direct test requirement.
 
 ### Extension UI
 
-`PiExtensionUiRegistry` keeps pending dialog state per session:
+`PiExtensionUiTracker` keeps pending dialog state per session:
 
 | Pi method | Sesori mapping |
 |---|---|
@@ -341,17 +340,16 @@ the final message repairs it. Live/replay parity is a direct test requirement.
 | `notify` | existing `BridgeSseTuiToastShow` |
 | `setStatus`, `setWidget`, `setTitle`, `set_editor_text` | parsed, debug-recorded, deliberately ignored |
 
-The registry answers with Pi's exact `extension_ui_response` variants. Reject,
-timeout, abort, idle reap, process exit, and plugin disposal resolve or clear
-every pending card. Pi does not expose re-enumeration after process loss, so
-there is no persisted pending-dialog state.
+`PiExtensionUiService` coordinates the catalog repository, process repository,
+and tracker: it resolves display roots, routes Pi's exact response variants, and
+exposes notifications for the plugin consumer. Reject, timeout, abort, reap,
+exit, and disposal clear every card; no dialog state is persisted.
 
-At request time the registry resolves the owning session's top-most imported
-parent from the catalog snapshot, stores it as `displaySessionId`, and indexes
-the card by owner and display root. `getPendingQuestions(root)` returns the
-root's own and matching descendant cards without rescanning the session tree.
+At request time the service resolves the owning session's top-most imported
+parent from the catalog snapshot. The tracker stores `displaySessionId` and
+indexes by owner/root, so root queries need no session-tree rescan.
 
-`PluginQuestionInfo` has no editable-prefill field. For `editor`, the registry
+`PluginQuestionInfo` has no editable-prefill field. For `editor`, the service
 therefore appends a bounded, clearly labelled prefill excerpt to the question
 and tells the user that their answer is the complete replacement. Truncation is
 stated in the prompt; no hidden prefill is silently retained.
@@ -372,18 +370,17 @@ dialogs, which appear as questions because Pi supplies no permission semantics.
 - request dispatch and extension-dialog responses; and
 - merged session-tagged frame/exit streams.
 
-`PiSessionService` owns the per-session turn lane, status/work state, abort, and
-idle reap. It mints each new backend ID as a secure UUID and `PiLaunchSpec`
-validates that ID against Pi's documented grammar before process launch. A turn
-applies its selected model and thinking level immediately before dispatch,
-waits only for Pi's prompt acceptance to report acceptance to the caller, and
-tracks the run through `agent_settled`. This prevents a model selection for a
-queued phone message from changing an earlier turn.
+`PiSessionService` owns per-session turn admission, status/work state, abort,
+and idle reap. Admission marks the session busy and returns immediately; the
+lane later applies that turn's selection, dispatches, and tracks settlement.
+Post-admission connect/selection/prompt failures emit a session error rather
+than reopening the phone request. IDs are secure UUIDs validated by
+`PiLaunchSpec`.
 
-A generation-matched process exit before `agent_settled` terminalizes the
-accepted turn as failed, rejects queued acceptance futures, clears resident and
-dialog state, and returns the session to idle. A later explicit turn resolves
-through the file or pending-new marker; none remains indefinitely busy.
+A generation-matched process exit before `agent_settled` fails the active turn
+and clears resident/dialog state. The lane re-resolves for the next admitted
+turn and becomes idle only when its queue empties; resolution uses the file or
+pending-new marker, so none remains indefinitely busy.
 
 Creation asks `PiSessionStorageApi` to write a per-session pending-new marker
 before spawn and remove it only after the JSONL file is observable. Resolution
@@ -401,7 +398,8 @@ Commands use Pi's normal `/name args` prompt path. After acceptance, the service
 holds the lane through a correlated `get_state` barrier and all earlier queued
 events. It treats a command as no-run only when no generation-matched
 `agent_start` arrived and state reports neither streaming nor pending messages;
-otherwise it waits for `agent_settled`.
+otherwise it waits for `agent_settled`. Command context uses the same marker
+scheme, and live/replay presentation uses only `userVisibleArguments`.
 
 Abort invalidates the session generation, rejects pending dialogs and queued
 turns, sends Pi's `abort`, and tears down that session process. Teardown is
@@ -419,6 +417,8 @@ coordinates the repository and tracker.
 
 - `get_available_models` supplies provider/model IDs, display names, reasoning,
   and image support.
+- Initial `get_state.model` is captured before the thinking sweep; its provider
+  is ordered first and publishes that model as `defaultModelID`.
 - For each reasoning-capable model, the probe selects it and asks
   `get_available_thinking_levels`; this is safe because the session is
   in-memory.
@@ -493,13 +493,13 @@ user's telemetry choice remain Pi's.
 | `getChildSessions` | catalog filter by resolved parent ID |
 | `getSessionStatuses` | session service work/queue state |
 | `getSessionMessages` | RPC entries/tree history mapper; throw on failure |
-| `sendPrompt` | queue exact turn, return on acceptance |
-| `sendCommand` | `/command arguments`, return on acceptance |
+| `sendPrompt` | admit exact turn immediately; later dispatch failures become events |
+| `sendCommand` | admit marked `/command arguments`; later failures become events |
 | `abortSession` | abort and process teardown, clearing queued work/dialogs |
 | `getAgents` | one synthesized primary Pi agent |
-| questions | extension UI registry |
+| questions | extension UI service/tracker |
 | permissions | empty/not-found; Pi has no native permission protocol |
-| `healthCheck` | bounded RPC `get_state` round trip |
+| `healthCheck` | bounded resolved-binary `--version`, independent of project models |
 | `getProviders` | project-scoped catalog result |
 | `getActiveSessionsSummary` | synchronous session-service summary by cwd |
 | `dispose` | idempotent process/dialog/event teardown |
@@ -600,8 +600,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 ### Step 3/15: Add the JSONL RPC transport
 
-- Add the open top-level RPC envelope parser and response/error/event/dialog
-  variants consumed by the client.
+- Add hand-written discriminator/unknown routing plus generated DTOs for every
+  known response, event, dialog, and consumed nested payload.
 - Add `PiRpcClient` with strict LF framing, request IDs, asynchronous prompt
   acknowledgement, continuous stdout draining, bounded stderr diagnostics,
   pending failure on exit, and graceful/forced teardown.
@@ -637,7 +637,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   empty history.
 - Cover branches, pre-compaction history, unknown entries, timestamp fallback,
   tool result folding, attachment bounds, hidden-context stripping, marker-like
-  authored text, live/replay parity, and no payload logging.
+  prompt/command text, live/replay parity, and no payload logging.
 
 ### Step 6/15: Map live messages and tools
 
@@ -654,8 +654,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 ### Step 7/15: Bridge extension dialogs
 
-- Add `PiExtensionUiRegistry` for select/confirm/input/editor questions and
-  notification toasts.
+- Add `PiExtensionUiTracker` and coordinating `PiExtensionUiService` for
+  select/confirm/input/editor questions and notification toasts.
 - Implement exact value/confirmed/cancelled responses and session-keyed routing.
 - Resolve/store each dialog's display root and aggregate descendant cards for
   root-session queries.
@@ -678,15 +678,15 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Mint secure UUID session IDs in the service and validate Pi's ID grammar in
   `PiLaunchSpec`; map validated inline image data to RPC and reject path, URL,
   or non-image parts before prompt acceptance.
-- Apply model/thinking immediately before each queued turn; return on prompt or
-  command acceptance, track through `agent_settled`, and handle extension
-  commands that settle without an agent run.
+- Apply model/thinking immediately before each queued turn; return on lane
+  admission, track dispatch through `agent_settled`, and surface later failures
+  through session events.
 - Abort by invalidating queued work, rejecting dialogs, sending `abort`, and
   tearing down the process so Pi's own hidden queues cannot continue.
 - Preserve concurrent turns across different sessions.
 - Cover spawn races, serialization, cross-session parallelism, lazy persistence,
   resume after reap, transient history/rename leases, ID/attachment validation,
-  queued selections, response-before-`agent_start` command barriers,
+  immediate queued admission, response-before-`agent_start` command barriers,
   command-without-run, post-acceptance exit, auth failure, abort, and shutdown.
 
 ### Step 9/15: Expose models and commands
@@ -697,6 +697,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Let the API own each project-cwd, no-session, approved process; let the
   repository enumerate/map models, exact thinking variants, providers, and
   commands; synthesize one Pi agent.
+- Preserve the initial state model as the default and order its provider first.
 - Implement project-scoped `reuse`/`refresh`, complete/partial observed results,
   explicit failed results, and atomic replacement of coherent snapshots only.
 - Classify no-model/auth preflight honestly without logging provider account
@@ -731,7 +732,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   `--approve` to every real/probe process.
 - Extend `update-backend-runtimes` with Pi release/API/digest/package checks.
 - Test runtime precedence, explicit-bin behavior, six targets, archive layout,
-  install capability, checksum failure, cwd-less setup, abort rollback,
+  install capability, checksum failure, cwd-less setup/sessionless health,
   lifecycle status/work state, and package asset preservation.
 - Perform a local managed install from the official asset and run `--version`
   plus an RPC `get_state` probe from the installed tree.

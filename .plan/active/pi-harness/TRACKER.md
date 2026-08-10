@@ -77,7 +77,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 - Architecture review: initial draft rejected; all six findings applied.
 - Upstream repository/tag, RPC/session docs, and all six release digests match.
 - `git diff --check origin/main...HEAD`: pass.
-- Diff: +1,495/-0 = 1,495 changed lines; generated lines: 0; tests run: 0.
+- Diff: +1,474/-0 = 1,474 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
 - Commit `1bf4aea2`; PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
 
@@ -93,3 +93,5 @@ OpenCode default, or no-new-analytics decisions without the user.
   classification from cwd-less setup to project-scoped operations.
 - Follow-up review pinned safe prompt projection, descendant dialogs,
   pending-new recovery, command barriers, and empty-parts creation.
+- Later review aligned extension UI layers, RPC DTOs, lane admission, command
+  projection, model defaults, health, and runtime-only setup.

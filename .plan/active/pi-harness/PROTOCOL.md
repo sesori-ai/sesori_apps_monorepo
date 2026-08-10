@@ -256,32 +256,9 @@ Empty names are rejected.
 
 ## 6. Event Stream
 
-Top-level event types at `v0.84.1`:
-
-```text
-agent_start
-agent_end
-agent_settled
-turn_start
-turn_end
-message_start
-message_update
-message_end
-bash_execution_update
-tool_execution_start
-tool_execution_update
-tool_execution_end
-queue_update
-compaction_start
-compaction_end
-auto_retry_start
-auto_retry_end
-summarization_retry_scheduled
-summarization_retry_attempt_start
-summarization_retry_finished
-extension_error
-extension_ui_request
-```
+Top-level event types include agent/turn/message start-update-end, tool/bash
+execution, queue updates, compaction/retry/summarization lifecycle,
+`extension_error`, `extension_ui_request`, and final `agent_settled`.
 
 Typical order is `agent_start` -> `turn_start` -> user/assistant message frames
 and tool execution -> `turn_end` -> `agent_end` -> `agent_settled`.
@@ -548,10 +525,9 @@ Shape:
 {"status":"ready|not_ready|invalid","provider":"...","reason":"..."}
 ```
 
-Because Pi may have many/custom project providers, setup first checks whether a
-no-session approved RPC process resolves any usable model. Provider-specific
-checks are used only when the provider is known. Prompt preflight remains the
-authoritative operational auth check.
+Setup validates runtime only because it has no project cwd. Authentication is
+classified by approved project-scoped discovery or prompt preflight, where
+custom providers and models are loaded.
 
 Action hint is local: run Pi, execute `/login`, then refresh setup. Auth output
 may contain credentials/account data and is never logged or forwarded.
