@@ -4,13 +4,13 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `5d310aba` (Step 10 synchronized after Step 9 merged)
-- **Series state:** Steps 1-9/17 merged; Step 10/17 PR open
-- **Current step:** 10/17 — session residency and turn queue in review
+  `fcca943c` (Step 11 started after Step 10 merged)
+- **Series state:** Steps 1-10/17 merged; Step 11/17 implementation complete
+- **Current step:** 11/17 — model and agent catalog ready for PR
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Wait for Step 10 PR #808 to merge; do not start or prepare
-  Step 11 without new user direction
+- **Next action:** Open the Step 11 PR against `main`, then wait for explicit
+  direction before starting Step 12
 
 ## Plan Review
 
@@ -54,8 +54,8 @@
 | [x] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) merged 2026-08-10 as `c169452b` |
 | [x] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | [PR #803](https://github.com/sesori-ai/sesori_apps_monorepo/pull/803) merged 2026-08-10 as `944e07e7` |
 | [x] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | [PR #805](https://github.com/sesori-ai/sesori_apps_monorepo/pull/805) merged 2026-08-10 as `8280e691` |
-| [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | [PR #808](https://github.com/sesori-ai/sesori_apps_monorepo/pull/808) open against `main` |
-| [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Not started |
+| [x] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | [PR #808](https://github.com/sesori-ai/sesori_apps_monorepo/pull/808) merged 2026-08-11 as `fcca943c` |
+| [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Implementation complete; PR pending |
 | [ ] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | Not started |
 | [ ] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | Not started |
 | [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | Not started |
@@ -310,7 +310,7 @@
   listed above. The step remains below the 1,500-line soft cap, so no overage
   rationale is required.
 
-- Step 10/17 local successor (2026-08-10): added
+- Step 10/17 (2026-08-10): added
   `ClaudeSessionProcessRepository` as the sole owner of per-session clients,
   spawn-versus-resume choice, retained handshake and applied selections,
   session-keyed control dispatch, process-exit events, and teardown fencing.
@@ -337,6 +337,26 @@
   The final PR diff measured 1,169 changed lines: 1,131 additions and 38
   deletions across 13 files. No generated files changed. The step remains below
   the 1,200-1,500 estimate and the 1,500-line soft cap.
+
+- Step 11/17 (2026-08-11): added a generated, tolerant DTO boundary for the
+  catalog-safe subset of Claude's retained `initialize` response. Account PII
+  is neither parsed nor retained, and Claude's first-party agents remain
+  deliberately outside the product contract. `ClaudeBackendCatalogRepository`
+  maps models, declared effort variants, slash commands, one Anthropic provider,
+  and the Default/Plan permission-mode agents. `ClaudeCatalogService` composes
+  that pure mapping with the resident process repository for retained-catalog
+  reads, `list_models` refresh, `set_model`, and `set_permission_mode`, while
+  applied selection state remains owned by the process repository.
+
+  Focused repository and service tests cover malformed catalog absorption,
+  model/provider/command mapping, effort filtering, internal-agent exclusion,
+  retained-handshake reuse, model refresh, default-model reset, effort
+  retention, permission-mode switching, and unknown-agent rejection. All 172
+  package tests, `dart analyze --fatal-infos`, and `git diff --cached --check`
+  pass. Architecture implementation review approved the complete staged scope
+  with no findings. The measured diff is 935 additions across 9 files,
+  including generated Freezed/JSON output, within the 900-1,300 estimate and
+  below the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
 
