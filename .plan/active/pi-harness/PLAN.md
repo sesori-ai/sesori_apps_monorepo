@@ -27,7 +27,7 @@ desktop surfaces without leaking Pi-specific behavior outside the plugin.
 - managed runtime install on every platform for which Pi publishes a release;
 - existing and Sesori-created Pi sessions grouped by their real working
   directories;
-- new, resumed, and parent-forked sessions;
+- new and resumed sessions;
 - persisted history and live text/reasoning streaming;
 - tool calls, partial output, completion, errors, retries, compaction, and
   abort;
@@ -55,9 +55,8 @@ desktop surfaces without leaking Pi-specific behavior outside the plugin.
 5. Existing sessions under the user's normal Pi session store import without
    reading prompt or transcript text merely to build the catalog. Explicit Pi
    names are used as titles; first prompts are not promoted into bridge titles.
-6. Parent session creation uses Pi's supported fork path, preserves history,
-   records the parent relationship, uses the requested target cwd, and keeps the
-   bridge-generated child ID.
+6. Imported Pi sessions retain resolvable `parentSession` relationships and
+   appear through the existing child-session catalog.
 7. Multiple Pi sessions may run concurrently. Each active session owns its own
    lazily spawned RPC process; idle processes are reaped and resume from their
    absolute session file on the next turn.
@@ -70,9 +69,9 @@ desktop surfaces without leaking Pi-specific behavior outside the plugin.
    than breaking the run.
 10. Pi's native no-permission-prompt behavior is preserved. The plugin reports
     no pending permissions and does not install a Sesori permission extension.
-11. Missing authentication becomes `authenticationRequired` with guidance to
-    run Pi locally and use `/login`; the bridge never initiates, stores, or
-    proxies provider credentials.
+11. Project-scoped discovery and prompt failures surface missing-auth guidance
+    to run Pi locally and use `/login`; cwd-less setup inspection never blocks a
+    valid project configuration as unauthenticated.
 12. Supported inline image data reaches Pi's RPC `images` field. Path, URL, and
     non-image variants fail visibly and never become accidental prompt strings.
 13. No Pi protocol value, path layout, provider assumption, tool name, or
@@ -96,7 +95,7 @@ load-bearing conclusions for this plan are:
   session list, delete, login, attach, or native permission protocol.
 - Catalog import therefore reads only bounded metadata from Pi's documented
   JSONL session files; it never reads transcript text merely to enumerate.
-- New, absolute-path resume, and parent-fork launch forms are supported; new
+- Upstream supports new, absolute-path resume, and parent-fork launches; new
   files appear only after the first assistant message is persisted.
 - Auth uses normal Pi environment/config or local `/login`; pending dialogs are
   process-local and cannot survive process replacement.
@@ -144,7 +143,7 @@ with the bridge user's permissions. The implementation must test that
 - New `bridge/sesori_plugin_pi/` pure-Dart package.
 - Bespoke strict-JSONL RPC, metadata-only session catalog, bridge-derived
   projects, and default/configured/known session roots.
-- Full existing plugin API mapping: new/resume/fork, rename/delete, history,
+- Full reachable plugin API mapping: new/resume, rename/delete, history,
   commands/prompts, abort, health, catalogs, summaries, and cleanup.
 - Per-session process residency with idle reap and full teardown.
 - Text, thinking, tools, image attachments, retry/compaction/status events.
@@ -159,6 +158,8 @@ with the bridge user's permissions. The implementation must test that
 - Provider login or credential entry from phone.
 - A Sesori permission-gate Pi extension.
 - Attaching to an already-running terminal Pi process.
+- Sesori-created parent forks; the current generic create flow supplies no
+  parent ID. Imported upstream parent relationships remain supported.
 - Pi TUI-only pickers/settings/themes/components/clipboard/raw input.
 - New relay routes, database schema, shared message-part variants, or a
   Pi-specific client state branch.
@@ -195,10 +196,10 @@ bridge/sesori_plugin_pi/
   lib/src/models/                     # Pi domain variants/enums
   lib/src/repositories/{pi_session_catalog_repository,pi_session_process_repository}.dart
   lib/src/repositories/pi_backend_catalog_repository.dart
-  lib/src/repositories/mappers/pi_content_mapper.dart
+  lib/src/repositories/mappers/{pi_content_mapper,pi_history_mapper}.dart
   lib/src/trackers/{pi_catalog_tracker,pi_tool_tracker}.dart
   lib/src/services/{pi_session_service,pi_catalog_service}.dart
-  lib/src/{pi_event_dispatcher,pi_history_mapper,pi_extension_ui_registry}.dart
+  lib/src/{pi_event_dispatcher,pi_extension_ui_registry}.dart
   lib/src/pi_plugin_impl.dart
   lib/src/runtime/{pi_runtime_manifest,pi_plugin_descriptor,pi_bridge_plugin}.dart
   lib/src/testing/fake_pi_process.dart
@@ -275,13 +276,12 @@ enough to invalidate a bridge-created row because Pi persists lazily.
 
 ### History and content mapping
 
-History acquires a client through `PiSessionProcessRepository`, uses Pi RPC
-`get_entries` and its `leafId`, then walks parent links to the active branch.
-The repository reuses a resident client when present; otherwise it opens a
-bounded non-resident lease for the resolved absolute session path and tears it
-down after the operation. Rename uses the same lease path. This retains
-pre-compaction history without turning read-only operations into resident
-sessions.
+`PiSessionProcessRepository.loadHistory` owns the client lease, RPC
+`get_entries`, `leafId` branch traversal, and invocation of the repository-local
+`PiHistoryMapper`; no `PiRpcClient` or Pi DTO escapes Layer 2. It reuses a
+resident client or opens a bounded non-resident lease for the resolved path and
+tears it down afterward. Rename uses the same lease path, while history retains
+pre-compaction entries without making reads resident.
 
 Mapping rules:
 
@@ -355,7 +355,7 @@ dialogs, which appear as questions because Pi supplies no permission semantics.
 `PiSessionProcessRepository` owns:
 
 - `sessionId -> resident PiRpcClient`;
-- new/resume/fork launch choice, using `PiSessionStorageApi` for absolute paths;
+- new/resume launch choice, using `PiSessionStorageApi` for absolute paths;
 - bounded resident-or-transient client leases for history and rename;
 - process connection generations and late-spawn rollback;
 - applied provider/model/thinking state;
@@ -369,6 +369,11 @@ applies its selected model and thinking level immediately before dispatch,
 waits only for Pi's prompt acceptance to report acceptance to the caller, and
 tracks the run through `agent_settled`. This prevents a model selection for a
 queued phone message from changing an earlier turn.
+
+A generation-matched process exit before `agent_settled` terminalizes the
+accepted turn as failed, rejects queued acceptance futures, clears resident and
+dialog state, and returns the session to idle. A later explicit turn resumes
+from the persisted file; no accepted turn remains indefinitely busy.
 
 `PiSessionProcessRepository` also maps prompts. Text remains text; inline
 `fileData` with a supported image MIME becomes Pi's base64 `images` field after
@@ -437,11 +442,12 @@ same protocol/E2E checks.
   are all assumed.
 - Managed pin: exact current tested stable release.
 
-`inspectSetup` mirrors managed precedence without mutation, then starts a
-bounded no-session RPC probe. No usable model or a typed authentication
-preflight failure becomes `PluginSetupAuthenticationRequired`; process timeout
-or unrecognized behavior becomes `PluginSetupUnknown` rather than a false auth
-claim.
+`inspectSetup` mirrors managed precedence and validates only runtime
+availability/version. Its contract has no project cwd, so an empty cwd-less
+model catalog is never classified as unauthenticated. Authentication is checked
+by the approved project-scoped catalog/prompt path, which preserves the typed
+failure cause and presents local `/login` guidance without globally blocking
+plugin startup.
 
 `ensureRuntime` uses `ManagedRuntimeProvisionService` and remains read-only.
 `installRuntime` uses `ManagedRuntimeInstallService` and the package-directory
@@ -463,7 +469,7 @@ user's telemetry choice remain Pi's.
 | `primeSessionDirectory` | retain bridge attribution until file metadata is observable |
 | `getCommands` | project-scoped throwaway RPC `get_commands` |
 | `getSessionOptions` | reuse/refresh through project tracker; observed complete/partial or failed |
-| `createSession` | bridge ID; new or `--fork` launch; enqueue first turn |
+| `createSession` | bridge ID; new launch; enqueue first turn |
 | `renameSession` | resident or bounded transient lease for RPC `set_session_name` |
 | `deleteSession` | stop resident process, clear dialogs/cache, resolve then delete exact JSONL file |
 | `deletePersistedSession` | resolve by ID and idempotently delete the exact file without spawning Pi |
@@ -569,12 +575,12 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   baseline unless a newer pin is selected and the protocol record is updated.
 - Create `sesori_plugin_pi`, public/testing barrels, analysis config, and only
   the dependencies used in this step.
-- Add `PiLaunchSpec`, process handle/factory seam, new/resume/fork launch
+- Add `PiLaunchSpec`, process handle/factory seam, new/resume launch
   variants, `--approve`, and inherited-environment policy.
 - Add the closed Pi thinking-level enum and protocol fixture helpers.
 - Land Wave-1 workspace, Makefile, CI, and dependency-update inventory entries.
-- Unit-test exact argument vectors, absolute-path resume/fork behavior,
-  Windows entry name, and environment preservation.
+- Unit-test exact argument vectors, absolute-path resume behavior, Windows entry
+  name, and environment preservation.
 
 ### Step 3/15: Add the JSONL RPC transport
 
@@ -606,8 +612,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 ### Step 5/15: Replay Pi session history
 
 - Add the session-entry/message/content DTOs this step consumes and run codegen.
-- Add `PiContentMapper` and `PiHistoryMapper` over RPC `get_entries` plus
-  `leafId` active-branch traversal.
+- Add the history-only `PiSessionProcessRepository` operation plus repository
+  mappers over RPC `get_entries` and `leafId` active-branch traversal.
 - Map text, reasoning, images, tool calls/results, visible custom messages,
   bash execution, errors, and compaction under current size/privacy limits.
 - Keep replay message/part IDs deterministic for Step 6 live parity.
@@ -645,8 +651,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 ### Step 8/15: Manage session residency and turns
 
-- Add `PiSessionProcessRepository` and `PiSessionService` with one lazy process
-  per active session, generation-fenced connects, new/resume/fork launch,
+- Extend `PiSessionProcessRepository` and add `PiSessionService` with one lazy
+  process per active session, generation-fenced connects, new/resume launch,
   selection state, per-session turn lanes, merged events, and idle reap.
 - Mint secure UUID session IDs in the service and validate Pi's ID grammar in
   `PiLaunchSpec`; map validated inline image data to RPC and reject path, URL,
@@ -657,10 +663,10 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Abort by invalidating queued work, rejecting dialogs, sending `abort`, and
   tearing down the process so Pi's own hidden queues cannot continue.
 - Preserve concurrent turns across different sessions.
-- Cover spawn races, serialization, cross-session parallelism, lazy file
-  persistence, resume after reap, transient history/rename leases, fork
-  cwd/parent/ID, ID validation, attachment variants, queued selections,
-  command-without-run, auth failure, abort, and shutdown.
+- Cover spawn races, serialization, cross-session parallelism, lazy persistence,
+  resume after reap, transient history/rename leases, ID/attachment validation,
+  queued selections, command-without-run, post-acceptance process exit, auth
+  failure, abort, and shutdown.
 
 ### Step 9/15: Expose models and commands
 
@@ -696,13 +702,13 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Require merged package-directory runtime support from the dependency section.
 - Add `PiRuntimeManifest` with the six official assets, full-package layout,
   semantic pin/floor, URLs, and digests refreshed for the chosen stable release.
-- Add descriptor config/capability/setup inspection, read-only ensure, explicit
-  install, auth probe, start/abort rollback, and `PiBridgePlugin` lifecycle.
+- Add descriptor config/capability/runtime-only setup inspection, read-only
+  ensure, explicit install, start/abort rollback, and `PiBridgePlugin` lifecycle.
 - Set `PI_SKIP_VERSION_CHECK=1`, preserve other Pi environment/config, and pass
   `--approve` to every real/probe process.
 - Extend `update-backend-runtimes` with Pi release/API/digest/package checks.
 - Test runtime precedence, explicit-bin behavior, six targets, archive layout,
-  install capability, checksum failure, auth/unknown states, abort rollback,
+  install capability, checksum failure, cwd-less setup, abort rollback,
   lifecycle status/work state, and package asset preservation.
 - Perform a local managed install from the official asset and run `--version`
   plus an RPC `get_state` probe from the installed tree.
@@ -735,7 +741,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   image prompt, live reasoning, read/edit/bash tools, model/thinking switch,
   skill/template/extension command, extension dialog, retry/error, abort,
   resume after process reap/bridge restart, rename, delete, external import,
-  documented terminal handoff, and parent fork.
+  documented terminal handoff, imported parent relationships, and missing auth.
 - Run the applicable mobile and desktop presentation paths and confirm no Pi
   logic exists outside declared identity/brand points.
 - Record redacted results and any protocol corrections in `PROTOCOL.md` and

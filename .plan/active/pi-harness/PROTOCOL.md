@@ -254,14 +254,6 @@ Unknown `since` returns `success: false`.
 Name is trimmed, newline-normalized, and appended as a `session_info` entry.
 Empty names are rejected.
 
-### Other commands not exposed in v1 Sesori UI
-
-Pi also defines cycle-model/thinking, queue mode changes, manual compaction,
-auto-compaction/retry settings, direct bash, HTML export, runtime session
-switch/new/fork/clone, fork-message/tree reads, and last-assistant-text. They
-remain private protocol capabilities unless an existing `BridgePluginApi`
-operation needs them.
-
 ## 6. Event Stream
 
 Top-level event types at `v0.84.1`:
@@ -628,7 +620,7 @@ choices.
 - Capture redacted authenticated event ordering and model readiness for API-key,
   OAuth, and extension-defined providers.
 - Verify cross-platform custom roots and all six assets, including one live host
-  install; verify missing worktrees and parent-fork identity/path mapping.
+  install; verify missing worktrees and imported-parent identity/path mapping.
 - Verify extension dialogs, editor-prefill degradation, supported inline image
   MIME/size handling, and visible rejection of other attachment variants.
 - Measure cold start/RSS before choosing idle reap; add no process pool without

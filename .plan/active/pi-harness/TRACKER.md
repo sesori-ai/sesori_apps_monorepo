@@ -67,8 +67,8 @@ OpenCode default, or no-new-analytics decisions without the user.
 - **Reviewer:** `architecture-plan-review` sub-agent, 2026-08-10
 - **Scope:** `PLAN.md`, with this tracker and `PROTOCOL.md` as supporting context
 - **Verdict:** initial draft rejected; corrected plan not re-reviewed
-- **Corrections:** added explicit catalog layers/cache semantics, path resolver
-  and transient leases, editor/attachment degradation, and ID ownership
+- **Corrections:** catalog layering; tracker/discovery semantics; session
+  path/lease ownership; editor prefill; attachment variants; session ID ownership
 
 ## Verification Log
 
@@ -76,7 +76,8 @@ OpenCode default, or no-new-analytics decisions without the user.
 
 - Architecture review: initial draft rejected; all six findings applied.
 - Upstream repository/tag, RPC/session docs, and all six release digests match.
-- `git diff --check`: pass; three documentation files, 1,496 additions.
+- `git diff --check origin/main...HEAD`: pass.
+- Diff: +1,497/-0 = 1,497 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
 - Commit `1bf4aea2`; PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
 
@@ -88,3 +89,5 @@ OpenCode default, or no-new-analytics decisions without the user.
   degradation, attachment variants, and session-ID ownership.
 - Duplicate research and delivery text was removed so Step 1 remains under the
   1,500-line soft cap without splitting the required initial plan artifacts.
+- PR review removed unreachable Sesori-created parent forks and moved auth
+  classification from cwd-less setup to project-scoped operations.
