@@ -508,22 +508,19 @@ which is exactly when `createSession` dispatches its first prompt.
 
 ### Respawn state durability
 
-Idle reaping plus `--resume` means a session's process is replaced underneath the
-user, so anything the plugin believes about a process must survive that or be
-re-derived. Two properties are unresolved and are settled with evidence before
-Step 10 relies on them, then covered live in Step 16:
+Idle reaping plus `--resume` replaces a session's process underneath the user,
+so process-local state must be reapplied. A live Claude CLI 2.1.226 probe before
+Step 10 established both properties, which remain covered live in Step 16:
 
-1. **Does `--resume` restore the session's last-used model?** If the resumed
-   process honors a persisted model while the plugin believes "default", the
-   applied-model bookkeeping drifts from reality. The nav-bar subtitle is
-   server-stamped from the latest assistant message, so the UI would show one
-   model while the next `set_model` decision is made against another. If resume
-   does restore it, the process repository seeds applied-model from the first
-   post-resume assistant message rather than assuming a default.
-2. **Does an `always` permission grant survive a respawn?** If grants are
-   in-memory session state, users re-see permission cards after every idle
-   window — a visible regression that a transparent-resume check would not catch,
-   because that only asserts the turn completes.
+1. **The selected model is not restored by `--resume` alone.** A resumed turn
+   without an explicit model resolved to a different model than the preceding
+   turn. Every respawn therefore receives the requested model again, and the
+   repository retains the applied selection for Step 11's control path.
+2. **A session-scoped `addRules` grant does not survive process replacement.**
+   The same Write request prompted on both sides of a respawn. The approval
+   registry therefore retains only rules that already passed Step 9's strict
+   session-only filter, and resumed launches restore those rules through
+   `--allowedTools`.
 
 ### Prompt parts to content blocks
 
@@ -597,12 +594,11 @@ transport field, cache, flag, job, or test was found.
   validation, not Dart or Flutter suites.
 - Step 17 retires the plan by moving `.plan/active/claude-code-plugin/` to
   `.plan/completed/claude-code-plugin/`, with no production change.
-- Steps form one ordered dependency chain and **only one PR is open at a time**.
-  Do not stack a successor on an open predecessor. The next step is developed
-  locally on its own branch and its PR is opened only after the current PR
-  merges, so every PR targets `main` and reviewers never face a queue of
-  interdependent branches. Merges therefore occur in numeric order by
-  construction, and every PR is independently valid at its own base.
+- Steps form one ordered dependency chain and **only one PR is open or prepared
+  at a time**. Do not stack or locally prepare a successor while its predecessor
+  is open. Per user direction on 2026-08-10, wait for explicit direction after
+  each merge before starting the next step. Every PR targets `main`, merges in
+  numeric order, and remains independently valid at its own base.
 - Count additions plus deletions from `git diff --numstat`, including generated
   code and tests. Target no more than 1,500 changed lines per PR as a soft cap,
   reassessing at roughly 1,300. In this repository tests run about 1.2–1.9× the

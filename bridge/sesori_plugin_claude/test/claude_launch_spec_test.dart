@@ -12,6 +12,7 @@ void main() {
       String? model,
       ClaudeEffortLevel? effort,
       ClaudePermissionMode? permissionMode,
+      List<String> allowedTools = const [],
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
@@ -20,6 +21,7 @@ void main() {
         model: model,
         effort: effort,
         permissionMode: permissionMode,
+        allowedTools: allowedTools,
       );
     }
 
@@ -100,6 +102,15 @@ void main() {
       expect(arguments, containsAllInOrder(["--permission-mode", "plan"]));
     });
 
+    test("restores session-scoped tool rules when resuming", () {
+      final arguments = specFor(
+        ClaudeResumedSession(sessionId: _oldSessionId),
+        allowedTools: const ["Write", "Bash(git status:*)"],
+      ).arguments;
+
+      expect(arguments, containsAllInOrder(["--allowedTools", "Write", "Bash(git status:*)"]));
+    });
+
     test("rejects a HOME override", () {
       expect(
         () => ClaudeLaunchSpec(
@@ -109,6 +120,7 @@ void main() {
           model: null,
           effort: null,
           permissionMode: null,
+          allowedTools: const [],
           environment: const {"HOME": "/tmp/test-home"},
         ),
         throwsA(isA<ArgumentError>()),
@@ -124,6 +136,7 @@ void main() {
         model: null,
         effort: null,
         permissionMode: null,
+        allowedTools: const [],
         environment: environment,
       );
 

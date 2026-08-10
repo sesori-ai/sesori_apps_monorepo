@@ -49,6 +49,7 @@ ClaudeLaunchSpec testLaunchSpec({String sessionId = testSessionId}) {
     model: null,
     effort: null,
     permissionMode: null,
+    allowedTools: const [],
   );
 }
 
@@ -129,5 +130,4 @@ Map<String, Object?> sampleInit({String sessionId = testSessionId}) => {
 };
 
 /// Encodes [frames] as one ndjson byte block, for framing tests.
-List<int> ndjson(List<Map<String, Object?>> frames) =>
-    utf8.encode(frames.map(jsonEncode).join("\n"));
+List<int> ndjson(List<Map<String, Object?>> frames) => utf8.encode(frames.map(jsonEncode).join("\n"));

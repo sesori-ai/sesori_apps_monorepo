@@ -55,8 +55,10 @@ class ClaudeLaunchSpec {
     required this.model,
     required this.effort,
     required this.permissionMode,
+    required List<String> allowedTools,
     Map<String, String> environment = const {},
-  }) : environment = Map.unmodifiable(environment) {
+  }) : allowedTools = List.unmodifiable(allowedTools),
+       environment = Map.unmodifiable(environment) {
     if (this.environment.containsKey("HOME")) {
       throw ArgumentError.value(
         this.environment,
@@ -93,6 +95,9 @@ class ClaudeLaunchSpec {
   /// Starting permission mode, or null to accept the CLI's own default.
   final ClaudePermissionMode? permissionMode;
 
+  /// Session-scoped rules granted by the user and restored after idle respawn.
+  final List<String> allowedTools;
+
   /// Routes tool-permission asks to us over stdio as `can_use_tool` control
   /// requests.
   ///
@@ -122,6 +127,7 @@ class ClaudeLaunchSpec {
     if (permissionMode case final mode?) ...["--permission-mode", mode.cliValue],
     if (model case final model?) ...["--model", model],
     if (effort case final effort?) ...["--effort", effort.wireValue],
+    if (allowedTools.isNotEmpty) ...["--allowedTools", ...allowedTools],
     // Single-token `--flag=value`, matching the Agent SDK's own argument builder
     // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI
     // accepts both spellings, so this is parity rather than correctness — but

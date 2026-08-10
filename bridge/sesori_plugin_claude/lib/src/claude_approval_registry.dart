@@ -127,6 +127,7 @@ final class ClaudeApprovalRegistry {
   final void Function(BridgeSseEvent event) _emit;
   final ClaudeApprovalResponder _respond;
   final Map<String, _PendingApproval> _pending = {};
+  final Map<String, Set<String>> _allowedTools = {};
   int _sequence = 0;
 
   bool handle({required ClaudeControlRequestMessage message}) {
@@ -216,6 +217,9 @@ final class ClaudeApprovalRegistry {
         ),
   ];
 
+  List<String> allowedToolsForSession({required String sessionId}) =>
+      List.unmodifiable(_allowedTools[sessionId] ?? const <String>{});
+
   bool replyPermission({required String id, required PluginPermissionReply reply}) {
     final entry = _pending[id];
     if (entry is! _PendingPermission) return false;
@@ -235,6 +239,15 @@ final class ClaudeApprovalRegistry {
       PluginPermissionReply.reject => <String, Object?>{"behavior": "deny", "message": "User denied permission."},
     };
     if (!_respond(sessionId: entry.sessionId, requestId: entry.requestId, payload: payload)) return false;
+    if (reply == PluginPermissionReply.always) {
+      final allowedTools = _allowedTools.putIfAbsent(entry.sessionId, () => {});
+      for (final suggestion in entry.suggestions) {
+        if (suggestion case _SessionAddRules(:final raw)) {
+          allowedTools.addAll(_allowedToolRules(raw));
+        }
+      }
+      if (allowedTools.isEmpty) _allowedTools.remove(entry.sessionId);
+    }
     _pending.remove(id);
     _emit(
       BridgeSsePermissionReplied(
@@ -285,7 +298,13 @@ final class ClaudeApprovalRegistry {
   void dispose() {
     final entries = _pending.values.toList(growable: false);
     _pending.clear();
+    _allowedTools.clear();
     entries.forEach(_cancel);
+  }
+
+  void forgetSession({required String sessionId}) {
+    cancelForSession(sessionId: sessionId);
+    _allowedTools.remove(sessionId);
   }
 
   void _cancel(_PendingApproval entry) {
@@ -318,6 +337,15 @@ final class ClaudeApprovalRegistry {
     requestId: entry.requestId,
     payload: {"behavior": "deny", "message": message},
   );
+}
+
+Iterable<String> _allowedToolRules(Map<String, Object?> suggestion) sync* {
+  for (final rule in _maps(suggestion["rules"])) {
+    final toolName = _nonEmptyString(rule["toolName"]);
+    if (toolName == null) continue;
+    final content = _nonEmptyString(rule["ruleContent"]);
+    yield content == null ? toolName : "$toolName($content)";
+  }
 }
 
 List<PluginQuestionInfo> _questions({

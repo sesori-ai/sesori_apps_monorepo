@@ -4,12 +4,13 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `944e07e7` (Step 9 synchronized with it after Step 8 merged)
-- **Series state:** Steps 1-8/17 merged; Step 9/17 ready for PR
-- **Current step:** 9/17 — permission and question registry complete locally
+  `5d310aba` (Step 10 synchronized after Step 9 merged)
+- **Series state:** Steps 1-9/17 merged; Step 10/17 ready for PR
+- **Current step:** 10/17 — session residency and turn queue complete locally
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Open Step 9 against `main`, then start Step 10 locally
+- **Next action:** Open Step 10 against `main`, then wait for it to merge; do
+  not start or prepare Step 11 without new user direction
 
 ## Plan Review
 
@@ -52,8 +53,8 @@
 | [x] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) merged 2026-08-10 as `d323c3c4` |
 | [x] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) merged 2026-08-10 as `c169452b` |
 | [x] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | [PR #803](https://github.com/sesori-ai/sesori_apps_monorepo/pull/803) merged 2026-08-10 as `944e07e7` |
-| [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Complete, verified, and synchronized with merged Step 8; ready for PR |
-| [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Not started |
+| [x] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | [PR #805](https://github.com/sesori-ai/sesori_apps_monorepo/pull/805) merged 2026-08-10 as `8280e691` |
+| [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Complete, verified, and synchronized with merged Step 9; ready for PR |
 | [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Not started |
 | [ ] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | Not started |
 | [ ] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | Not started |
@@ -87,8 +88,9 @@
 - **Only one PR is open at a time.** Never stack a successor on an open
   predecessor. Build the next step locally on its own branch and open its PR only
   after the current one merges, so every PR targets `main`.
-- After a PR merges, continue automatically with the next numbered step without
-  waiting for another user prompt. Stop only for a material decision or blocker.
+- Per user direction on 2026-08-10, do not prepare a successor while its
+  predecessor PR is open and do not advance automatically after merge. Wait for
+  explicit direction before starting each next numbered step.
 - Merge in numeric order; each step must remain independently buildable and
   valid at its own base.
 - Count additions plus deletions, including generated files and tests, against
@@ -308,6 +310,33 @@
   listed above. The step remains below the 1,500-line soft cap, so no overage
   rationale is required.
 
+- Step 10/17 local successor (2026-08-10): added
+  `ClaudeSessionProcessRepository` as the sole owner of per-session clients,
+  spawn-versus-resume choice, retained handshake and applied selections,
+  session-keyed control dispatch, process-exit events, and teardown fencing.
+  Added `ClaudeSessionService` over that repository with serialized per-session
+  turns, abort generations rechecked after every await, work/status events,
+  approval dispatch and exit cleanup, and clock-driven idle reaping.
+
+  A live Claude CLI 2.1.226 probe settled both pre-Step-10 respawn questions.
+  Resuming without an explicit model changed the resolved model, so every
+  respawn receives the requested model again. A session-scoped `addRules` grant
+  prompted again after process replacement, so the approval registry now
+  retains only its already-filtered tool rules and resumed launches restore
+  them through `--allowedTools`. The probe completed both turns successfully
+  and removed its exact temporary transcript afterward.
+
+  Focused tests cover new-versus-resumed launch arguments, first-turn
+  commitment, unsupported inline data, late-connect disposal, turn
+  serialization, abort fencing, unexpected exits, approval cleanup, and idle
+  reap followed by transparent resume with model and permission restoration.
+  `dart analyze --fatal-infos` and all 161 package tests pass. Architecture
+  implementation review rejected one pass-through listener ownership issue;
+  the repository now wires the subscription while resident state retains and
+  cancels it, and the second review approved the complete Step 10 scope.
+  The implementation and tests measured 990 changed lines before this tracker
+  update, below the 1,200-1,500 estimate and the 1,500-line soft cap.
+
 ## Findings And Plan Deltas
 
 - **2026-08-04 — Most of `projects/` is not sessions:** the Step 2 capture came
@@ -388,10 +417,12 @@
   `sessionId`. The plan still treats init's reported id as authoritative and
   cross-checks it, because the identity chain is load-bearing for enumeration,
   replay, resume, and delete.
-- **2026-08-04 — Respawn-state durability is an open question:** PR review asked
-  whether `--resume` restores the last-used model and whether an `always` grant
-  survives a respawn. Neither is answered yet; both are now recorded in PLAN.md
-  as pre-Step-10 evidence items with E2E rows 18a and 18b.
+- **2026-08-10 — Respawn state must be reapplied:** a live CLI 2.1.226 probe
+  showed that `--resume` without a model did not retain the prior resolved model,
+  and a session-scoped `addRules` grant prompted again after process replacement.
+  Resumed launches therefore receive the requested model and the registry's
+  filtered session rules through `--allowedTools`; E2E rows 18a and 18b remain
+  as final product verification rather than open protocol questions.
 - **2026-08-04 — Prompt-attachment gate stays a client branch (user decision):**
   plan review wanted a `PluginMetadata` capability flag replacing
   `harnessSupportsPromptAttachments`. The user chose to widen the existing dated

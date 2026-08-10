@@ -88,6 +88,7 @@ void main() {
           ],
         },
       ]);
+      expect(registry.allowedToolsForSession(sessionId: "session-1"), ["Write"]);
     });
 
     for (final suggestion in const <Map<String, Object?>>[
