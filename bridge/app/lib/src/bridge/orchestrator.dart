@@ -545,14 +545,7 @@ class Orchestrator {
       source: catalogImportRepository.backendActivity,
       chatHistoryService: chatHistoryService,
     );
-    final normalizedPluginEvents = sessionEventDispatcher.events.doOnListen(() {
-      for (final listener in pluginEventListeners) {
-        listener.start();
-      }
-      sessionBindingCommitListener.start();
-      sessionDeletionListener.start();
-      chatHistoryListener.start();
-    });
+    final normalizedPluginEvents = sessionEventDispatcher.events;
     final restartDispatcher = BridgeRestartDispatcher(restartService: _restartService);
     final router = RequestRouter(
       handlers: [
@@ -927,6 +920,41 @@ class OrchestratorSession {
       return Future.error(StateError("OrchestratorSession has already started"), StackTrace.current);
     }
 
+    _sessionAbortService.abortStartedSessions
+        .listen(_completionListener.markSessionAbortPending)
+        .addTo(_subscriptions);
+    _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
+    _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
+    _completionListener.start();
+    _pluginEvents
+        .listen(
+          (source) {
+            unawaited(_processPluginEventInOrder(source));
+          },
+          onError: (Object e, StackTrace st) {
+            Log.w("plugin event stream error: $e");
+            unawaited(
+              _failureReporter.recordFailure(
+                error: e,
+                stackTrace: st,
+                uniqueIdentifier: "bridge.plugin.events",
+                fatal: false,
+                reason: "plugin event stream failure",
+                information: const [],
+              ),
+            );
+          },
+          onDone: () {
+            Log.w("plugin event stream closed");
+          },
+        )
+        .addTo(_subscriptions);
+    _chatHistoryListener.start();
+    _sessionBindingCommitListener.start();
+    _sessionDeletionListener.start();
+    for (final listener in _pluginEventListeners) {
+      listener.start();
+    }
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
     _viewedProjectPrRefreshListener.start();
@@ -1013,12 +1041,6 @@ class OrchestratorSession {
         return;
       }
 
-      _sessionAbortService.abortStartedSessions
-          .listen(_completionListener.markSessionAbortPending)
-          .addTo(_subscriptions);
-      _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
-      _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
-      _completionListener.start();
       _maintenanceListener.start();
       _projectActivityService.changes
           .listen((change) {
@@ -1039,31 +1061,6 @@ class OrchestratorSession {
           _statusNotifier?.handleProjectsSummary(summary: startupSummary);
         }
       }
-      Log.d("subscribing to plugin event stream...");
-      _pluginEvents
-          .listen(
-            (source) {
-              unawaited(_processPluginEventInOrder(source));
-            },
-            onError: (Object e, StackTrace st) {
-              Log.w("plugin event stream error: $e");
-              unawaited(
-                _failureReporter.recordFailure(
-                  error: e,
-                  stackTrace: st,
-                  uniqueIdentifier: "bridge.plugin.events",
-                  fatal: false,
-                  reason: "plugin event stream failure",
-                  information: const [],
-                ),
-              );
-            },
-            onDone: () {
-              Log.w("plugin event stream closed");
-            },
-          )
-          .addTo(_subscriptions);
-      Log.d("plugin event stream subscribed");
       _prSyncService.renderedChanges
           .listen((change) {
             _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: change.projectId));

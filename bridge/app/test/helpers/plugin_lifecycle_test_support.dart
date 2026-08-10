@@ -43,6 +43,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
               (
                 id: plugin.id,
                 displayName: plugin.id,
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,

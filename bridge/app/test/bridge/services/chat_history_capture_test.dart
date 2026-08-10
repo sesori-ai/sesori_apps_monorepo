@@ -5,6 +5,9 @@ import "dart:typed_data";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/chat_history_reconcile_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_event_dispatcher.dart";
+import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -76,6 +79,90 @@ void main() {
       expect(state!.syncedAt, isNull, reason: "only a completed backfill may claim a complete transcript");
       expect(state.watermark, greaterThan(0));
       expect(state.backendActivityAt, greaterThan(0));
+    });
+
+    test("an event-stream gap invalidates only this plugin's stored history", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [_messageWithParts(id: "m1")],
+        pluginSessionIds: const {
+          "opencode": {"ses_a"},
+          "codex": {"ses_b"},
+        },
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      await history.service.backfillSession(sessionId: "ses_b");
+      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
+      expect((await history.repository.getSyncState(sessionId: "ses_b"))!.syncedAt, isNotNull);
+
+      await history.service.invalidatePluginHistory(pluginId: "opencode");
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m2"),
+      );
+
+      expect(
+        (await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt,
+        isNull,
+        reason: "live captures cannot claim that events missed during the gap were recovered",
+      );
+      expect(
+        (await history.repository.getSyncState(sessionId: "ses_b"))!.syncedAt,
+        isNotNull,
+        reason: "another plugin's transcript did not cross the event-stream gap",
+      );
+    });
+
+    test("a server-connected event invalidates its source plugin", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [_messageWithParts(id: "m1")],
+        pluginSessionIds: const {
+          "opencode": {"ses_a"},
+        },
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      final source = StreamController<NormalizedSourcedBridgeEvent>();
+      final listener = ChatHistoryListener(
+        source: source.stream,
+        chatHistoryService: history.service,
+      )..start();
+
+      source.add((
+        pluginId: "opencode",
+        generation: 1,
+        event: const BridgeSseServerConnected(),
+        allowDuringStop: false,
+        terminalHandoffConsumed: null,
+      ));
+      await source.close();
+      await listener.dispose();
+
+      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNull);
+    });
+
+    test("an invalidation failure does not fail listener teardown", () async {
+      final repository = _FakeSessionRepository(
+        transcript: const [],
+        pluginSessionLookupError: StateError("database unavailable"),
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      final source = StreamController<NormalizedSourcedBridgeEvent>();
+      final listener = ChatHistoryListener(
+        source: source.stream,
+        chatHistoryService: history.service,
+      )..start();
+
+      source.add((
+        pluginId: "opencode",
+        generation: 1,
+        event: const BridgeSseServerConnected(),
+        allowDuringStop: false,
+        terminalHandoffConsumed: null,
+      ));
+      await source.close();
+
+      await expectLater(listener.dispose(), completes);
     });
 
     test("inline attachment bytes are spilled to disk, never stored in the database", () async {
@@ -332,12 +419,16 @@ class _FakeSessionRepository implements SessionRepository {
   _FakeSessionRepository({
     required this.transcript,
     this.error,
+    this.pluginSessionLookupError,
     this.existingSessionIds = const {},
+    this.pluginSessionIds = const {},
   });
 
   final List<MessageWithParts> transcript;
   final Object? error;
+  final Object? pluginSessionLookupError;
   final Set<String> existingSessionIds;
+  final Map<String, Set<String>> pluginSessionIds;
   int fetchCount = 0;
 
   /// Runs while the fetch is in flight, so a test can interleave live events.
@@ -361,6 +452,16 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async =>
       sessionIds.intersection(existingSessionIds);
+
+  @override
+  Future<Set<String>> getStoredSessionIdsForPlugin({required String pluginId}) async {
+    final failure = pluginSessionLookupError;
+    if (failure != null) throw failure;
+    return pluginSessionIds[pluginId] ?? const {};
+  }
+
+  @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async => const {};
 
   /// Not archived: these suites exercise the live-store path.
   @override

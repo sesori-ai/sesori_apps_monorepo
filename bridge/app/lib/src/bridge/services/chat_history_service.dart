@@ -106,6 +106,31 @@ class ChatHistoryService {
     );
   }
 
+  /// Marks this plugin's stored live transcripts incomplete across an event
+  /// stream gap. Later captures preserve that state because only a full
+  /// backfill writes a non-null sync marker.
+  Future<void> invalidatePluginHistory({required String pluginId}) async {
+    try {
+      final results = await Future.wait<Set<String>>([
+        _chatHistoryRepository.getStoredSessionIds(),
+        _sessionRepository.getStoredSessionIdsForPlugin(pluginId: pluginId),
+      ]);
+      final sessionIds = results[0].intersection(results[1]).toList(growable: false)..sort();
+      if (sessionIds.isEmpty) return;
+      await _enqueueAll(
+        sessionIds: sessionIds,
+        write: () => _chatHistoryRepository.clearSyncedAtForSessions(sessionIds: sessionIds),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Failed to invalidate chat history after the $pluginId event stream connected; "
+        "stored transcripts may remain stale until a later invalidation succeeds",
+        error,
+        stackTrace,
+      );
+    }
+  }
+
   /// Records a finalized message from the live event stream.
   Future<void> captureMessage({required String sessionId, required Message message}) {
     return _capture(

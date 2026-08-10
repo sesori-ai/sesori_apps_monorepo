@@ -29,7 +29,7 @@ class ChatHistoryListener {
   void start() {
     if (_subscription != null || _disposed) return;
     _subscription = _source.listen(
-      (sourced) => _track(capture: _capture(event: sourced.event)),
+      (sourced) => _track(capture: _capture(pluginId: sourced.pluginId, event: sourced.event)),
       // Source errors are surfaced by the dispatcher's own consumers; capture
       // simply has nothing to store for a failed event.
       onError: (Object _) {},
@@ -43,8 +43,9 @@ class ChatHistoryListener {
     unawaited(capture.whenComplete(() => _pendingCaptures.remove(capture)));
   }
 
-  Future<void> _capture({required BridgeSseEvent event}) {
+  Future<void> _capture({required String pluginId, required BridgeSseEvent event}) {
     return switch (event) {
+      BridgeSseServerConnected() => _chatHistoryService.invalidatePluginHistory(pluginId: pluginId),
       BridgeSseMessageUpdated(:final info) => _captureMessage(info: info),
       BridgeSseMessagePartUpdated(:final part) => _chatHistoryService.capturePart(
         sessionId: part.sessionID,

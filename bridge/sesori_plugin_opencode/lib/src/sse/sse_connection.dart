@@ -15,6 +15,9 @@ class SseConnection {
   bool _active = false;
   int _generation = 0;
   http.Client? _currentClient;
+  final Completer<void> _firstConnected = Completer<void>();
+
+  Future<void> get firstConnected => _firstConnected.future;
 
   SseConnection({
     required String targetUrl,
@@ -43,6 +46,7 @@ class SseConnection {
     _generation++;
     _currentClient?.close();
     _currentClient = null;
+    if (!_firstConnected.isCompleted) _firstConnected.complete();
   }
 
   Future<void> _streamLoop(int generation) async {
@@ -75,6 +79,7 @@ class SseConnection {
         // The transport is live: signal connected on the first connect and on
         // every reconnect (the lifecycle status follows the live stream).
         _onConnected?.call();
+        if (!_firstConnected.isCompleted) _firstConnected.complete();
 
         if (!isFirstConnect && _onReconnect != null) {
           final reconnectSw = Stopwatch()..start();

@@ -654,6 +654,7 @@ class BridgeRuntimeRunner {
                 (
                   id: descriptor.id,
                   displayName: descriptor.displayName,
+                  activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
                   residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
                   sessionOptionsScope: descriptor.sessionOptionsScope,
                   managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
@@ -887,6 +888,7 @@ class BridgeRuntimeRunner {
       final sessionStart = activeRuntime.session.start();
       sessionStart.ignore();
       sessionRun = activeRuntime.session.waitUntilStopped();
+      await activePluginRuntime.startEager(pluginIds: startupPolicy.eagerPluginIds);
       await startDebugServerIfRequested(
         debugPort: options.debugPort,
         runtime: activeRuntime,

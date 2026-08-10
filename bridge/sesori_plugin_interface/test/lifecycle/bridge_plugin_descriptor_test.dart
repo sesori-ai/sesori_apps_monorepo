@@ -26,6 +26,15 @@ void main() {
       );
     });
 
+    test('activates on demand by default', () {
+      const descriptor = _MinimalDescriptor();
+
+      expect(
+        descriptor.activationPolicy(config: const PluginConfig.empty()),
+        PluginActivationPolicy.onDemand,
+      );
+    });
+
     test('supports every management capability by default', () {
       const descriptor = _MinimalDescriptor();
 

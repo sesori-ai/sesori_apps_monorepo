@@ -837,6 +837,9 @@ class _NoopSessionRepository implements SessionRepository {
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
   @override
+  Future<Set<String>> getStoredSessionIdsForPlugin({required String pluginId}) async => const {};
+
+  @override
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
     required SessionOperation operation,
@@ -1089,6 +1092,9 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  Future<Set<String>> getStoredSessionIdsForPlugin({required String pluginId}) async => const {};
 
   @override
   Future<void> dispose() async {}

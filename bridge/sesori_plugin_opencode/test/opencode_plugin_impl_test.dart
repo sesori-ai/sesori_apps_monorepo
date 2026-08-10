@@ -45,6 +45,36 @@ void main() {
       expect(server.requestLog.where((entry) => entry.contains("/global/event")), isEmpty);
     });
 
+    test("initialize waits until the SSE listener is connected", () async {
+      server.holdSseResponse = Completer<void>();
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      addTearDown(plugin.dispose);
+      var completed = false;
+      final initialize = plugin.initialize().whenComplete(() => completed = true);
+      while (!server.requestLog.contains("GET /global/event")) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(completed, isFalse);
+
+      server.holdSseResponse!.complete();
+      await initialize.timeout(const Duration(seconds: 1));
+      expect(completed, isTrue);
+    });
+
+    test("dispose unblocks initialize while the SSE listener is connecting", () async {
+      server.holdSseResponse = Completer<void>();
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final initialize = plugin.initialize();
+      while (!server.requestLog.contains("GET /global/event")) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      await plugin.dispose().timeout(const Duration(seconds: 1));
+      await initialize.timeout(const Duration(seconds: 1));
+    });
+
     test("getProjects maps internal projects to plugin projects", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
@@ -952,6 +982,7 @@ class _FakeOpenCodeServer {
   /// When set, `GET /project` waits on this gate before responding, so a test
   /// can hold a cold-start in flight.
   Completer<void>? holdProjects;
+  Completer<void>? holdSseResponse;
   Map<String, dynamic>? lastPromptBody;
   String? lastPromptDirectoryHeader;
   Map<String, dynamic>? lastCommandBody;
@@ -1791,6 +1822,7 @@ class _FakeOpenCodeServer {
       }
 
       if (request.method == "GET" && path == "/global/event") {
+        await holdSseResponse?.future;
         if (!acceptSseConnections) {
           request.response.statusCode = HttpStatus.serviceUnavailable;
           await request.response.close();
