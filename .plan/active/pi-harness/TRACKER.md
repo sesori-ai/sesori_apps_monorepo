@@ -4,10 +4,10 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** `origin/main` at `3803df12`
-- **Series state:** Step 1/15 being prepared
+- **Series state:** Step 1/15 in review
 - **Current step:** 1/15, durable plan and protocol research
-- **Plan PR:** pending
-- **Next action:** validate, commit, push, and open Step 1
+- **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
+- **Next action:** monitor Step 1 and address review feedback
 
 ## Locked Decisions
 
@@ -29,7 +29,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [ ] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 | In progress |
+| [ ] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 | In review |
 | [ ] | 2/15 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/15]` | 900-1,300 | Not started |
 | [ ] | 3/15 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/15]` | 1,200-1,500 | Not started |
 | [ ] | 4/15 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 4/15]` | 1,000-1,400 | Not started |
@@ -78,7 +78,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 - Upstream repository/tag, RPC/session docs, and all six release digests match.
 - `git diff --check`: pass; three documentation files, 1,496 additions.
 - Dart/Flutter suites: not run for this documentation-only step.
-- Commit and PR link: pending.
+- Commit `1bf4aea2`; PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
 
 ## Findings And Plan Deltas
 

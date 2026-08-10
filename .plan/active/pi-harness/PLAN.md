@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `pi-harness`
-- **Status:** Step 1/15, plan PR being prepared
+- **Status:** Step 1/15, plan PR open
 - **Plan date:** 2026-08-10
 - **Implementation base:** `origin/main` at
   `3803df12d2afa41abe6894df88146ad6543e9ec6`
