@@ -3,11 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 2 implementation complete; PR preparation
+- **Series state:** Step 2 PR open
 - **Current step:** 2/11
 - **Implementation base:** `origin/main` at `3803df12`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Next action:** Commit and open the Step 2 shared-contract PR
+- **Current PR:** [#812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812)
+- **Next action:** Monitor Step 2 review/CI and begin Step 3 locally
 
 ## Plan Review
 
@@ -31,7 +32,7 @@
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
 | [x] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) merged |
-| [ ] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | Implementation complete; PR pending |
+| [ ] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812) open |
 | [ ] | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Pending |
 | [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Pending |
 | [ ] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Pending |
@@ -77,6 +78,8 @@
   Shared full tests, focused bridge/client tests, and source analysis across
   shared, bridge, mobile, module_core, and desktop pass. Architecture
   implementation review approved the contract and compatibility boundaries.
+  Committed as `9753d350`, pushed, and opened as
+  [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812).
 
 ## Findings And Plan Deltas
 
