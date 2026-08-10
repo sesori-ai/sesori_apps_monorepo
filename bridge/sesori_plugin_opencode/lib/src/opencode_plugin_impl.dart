@@ -152,7 +152,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     // background initialize from a failed attach probe, or an aborted-start
     // rollback): starting the transport now would revive it after teardown.
     if (!_disposed) {
-      _sseConnection.start();
+      _sseConnection.start(recoverOnFirstConnect: coldStartError != null);
       // A successful cold-start is about to expose this generation to prompt
       // operations. Wait until OpenCode has registered the event listener so
       // the prompt's first message/part frames cannot precede it.

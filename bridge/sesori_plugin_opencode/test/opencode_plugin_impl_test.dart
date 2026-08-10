@@ -75,6 +75,18 @@ void main() {
       await initialize.timeout(const Duration(seconds: 1));
     });
 
+    test("first SSE connection retries a failed cold start", () async {
+      server.projectFailuresRemaining = 1;
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      addTearDown(plugin.dispose);
+      final recovered = plugin.events.firstWhere((event) => event is BridgeSseProjectUpdated);
+
+      await expectLater(plugin.initialize(), throwsA(isA<OpenCodeApiException>()));
+      await recovered.timeout(const Duration(seconds: 2));
+
+      expect(server.requestLog.where((entry) => entry == "GET /project"), hasLength(2));
+    });
+
     test("getProjects maps internal projects to plugin projects", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
@@ -983,6 +995,7 @@ class _FakeOpenCodeServer {
   /// can hold a cold-start in flight.
   Completer<void>? holdProjects;
   Completer<void>? holdSseResponse;
+  int projectFailuresRemaining = 0;
   Map<String, dynamic>? lastPromptBody;
   String? lastPromptDirectoryHeader;
   Map<String, dynamic>? lastCommandBody;
@@ -1044,6 +1057,12 @@ class _FakeOpenCodeServer {
         final hold = holdProjects;
         if (hold != null) {
           await hold.future;
+        }
+        if (projectFailuresRemaining > 0) {
+          projectFailuresRemaining--;
+          request.response.statusCode = HttpStatus.internalServerError;
+          await request.response.close();
+          return;
         }
         await _sendJson(request.response, _projects.values.toList());
         return;

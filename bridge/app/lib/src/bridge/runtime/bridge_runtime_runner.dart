@@ -888,6 +888,9 @@ class BridgeRuntimeRunner {
       final sessionStart = activeRuntime.session.start();
       sessionStart.ignore();
       sessionRun = activeRuntime.session.waitUntilStopped();
+      // Arm ordered shutdown before eager startup so a signal or control
+      // request aborts a plugin that is still establishing its event stream.
+      activeRuntime.session.shutdownRequested.then((_) => shutdownCoordinator.shutdown()).ignore();
       await activePluginRuntime.startEager(pluginIds: startupPolicy.eagerPluginIds);
       await startDebugServerIfRequested(
         debugPort: options.debugPort,
@@ -923,18 +926,6 @@ class BridgeRuntimeRunner {
       } else {
         onboardingPreparation = null;
       }
-
-      // Start the ordered shutdown the moment the session begins shutting down
-      // (any trigger: signal, supervised logout/restart, control-channel loss),
-      // so the coordinator's signal phase interrupts in-flight agent work and
-      // its backstop bounds the session teardown itself — a teardown blocked
-      // on agent-coupled requests must not hang the process with no deadline.
-      // Registered after startup wiring so every phase action and disposable
-      // above is in place (no agent-coupled work can exist before startup
-      // completes anyway). The runner's finally joins the same (memoized)
-      // shutdown future and applies the exit-code policy there, so this
-      // early-start copy only marks its error as handled.
-      activeRuntime.session.shutdownRequested.then((_) => shutdownCoordinator.shutdown()).ignore();
 
       final startResult = await sessionStart;
       if (startResult == OrchestratorSessionStartResult.ready) {
