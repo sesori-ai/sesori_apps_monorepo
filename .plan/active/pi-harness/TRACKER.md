@@ -95,3 +95,5 @@ OpenCode default, or no-new-analytics decisions without the user.
   pending-new recovery, command barriers, and empty-parts creation.
 - Later review aligned extension UI layers, RPC DTOs, lane admission, command
   projection, model defaults, health, and runtime-only setup.
+- Latest review pinned collision-free message IDs, scoped auth handling, and
+  created-before-first-turn event ordering.

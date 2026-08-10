@@ -69,9 +69,9 @@ desktop surfaces without leaking Pi-specific behavior outside the plugin.
    than breaking the run.
 10. Pi's native no-permission-prompt behavior is preserved. The plugin reports
     no pending permissions and does not install a Sesori permission extension.
-11. Project-scoped discovery and prompt failures surface missing-auth guidance
-    to run Pi locally and use `/login`; cwd-less setup inspection never blocks a
-    valid project configuration as unauthenticated.
+11. Project-scoped discovery and prompt failures use ordinary operation/session
+    failure plus an existing guidance toast for local `/login`; they never
+    disable Pi for other projects through plugin-global auth state.
 12. Supported inline image data reaches Pi's RPC `images` field. Path, URL, and
     non-image variants fail visibly and never become accidental prompt strings.
 13. No Pi protocol value, path layout, provider assumption, tool name, or
@@ -300,10 +300,10 @@ Mapping rules:
 - model/thinking/label/custom-state entries produce no chat message; and
 - unknown roles/blocks are ignored with bounded diagnostics.
 
-Pi messages do not carry a persistent message ID. The mapper derives the same
-plugin-local stable ID in live and replay paths from session, role, and the
-persisted millisecond timestamp, with the session entry ID as the fallback when
-timestamp is absent. Tool call IDs remain Pi's stable IDs.
+Pi messages do not carry a persistent message ID. Live and replay both derive
+IDs from session, role, timestamp-or-sentinel, and the occurrence ordinal among
+matching messages in event/active-branch order. This disambiguates synchronous
+same-millisecond custom messages. Tool call IDs remain Pi's stable IDs.
 
 History failures throw a cause-preserving `PluginOperationException`. Only a
 successfully loaded active branch with no visible messages returns `[]`.
@@ -387,6 +387,10 @@ before spawn and remove it only after the JSONL file is observable. Resolution
 prefers a file; otherwise the marker relaunches `--session-id` in its recorded
 cwd. Delete clears both, so external missing sessions are never resurrected.
 
+Creation emits a synthetic `BridgeSseSessionCreated` before admitting the first
+turn. Bridge core can then buffer early status/message/dialog events until the
+binding commit, matching the established ACP creation ordering.
+
 `PiSessionProcessRepository` also maps prompts. Text remains text; inline
 `fileData` with a supported image MIME becomes Pi's base64 `images` field after
 the existing attachment-size and base64 validation. `filePath`, `fileUrl`, and
@@ -465,6 +469,12 @@ by the approved project-scoped catalog/prompt path, which preserves the typed
 failure cause and presents local `/login` guidance without globally blocking
 plugin startup.
 
+Project-scoped auth failures never escape as
+`PluginAuthenticationRequiredException`, which bridge core interprets as
+plugin-global auth loss. Synchronous calls use an ordinary cause-preserving
+operation failure; admitted turns emit existing `session.error` plus a bounded
+guidance toast. No new wire event is required.
+
 `ensureRuntime` uses `ManagedRuntimeProvisionService` and remains read-only.
 `installRuntime` uses `ManagedRuntimeInstallService` and the package-directory
 layout. Install capability is declared only when no explicit bin is configured
@@ -485,7 +495,7 @@ user's telemetry choice remain Pi's.
 | `primeSessionDirectory` | retain bridge attribution until file metadata is observable |
 | `getCommands` | project-scoped throwaway RPC `get_commands` |
 | `getSessionOptions` | reuse/refresh through project tracker; observed complete/partial or failed |
-| `createSession` | bridge ID; new launch; enqueue only when `parts` is non-empty |
+| `createSession` | emit created, then admit first turn only when `parts` is non-empty |
 | `renameSession` | resident or bounded transient lease for RPC `set_session_name` |
 | `deleteSession` | stop resident process, clear dialogs/cache, resolve then delete exact JSONL file |
 | `deletePersistedSession` | resolve by ID and idempotently delete the exact file without spawning Pi |
@@ -637,7 +647,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   empty history.
 - Cover branches, pre-compaction history, unknown entries, timestamp fallback,
   tool result folding, attachment bounds, hidden-context stripping, marker-like
-  prompt/command text, live/replay parity, and no payload logging.
+  prompt/command text, equal-timestamp ordinals, live/replay parity, and no
+  payload logging.
 
 ### Step 6/15: Map live messages and tools
 
@@ -687,7 +698,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Cover spawn races, serialization, cross-session parallelism, lazy persistence,
   resume after reap, transient history/rename leases, ID/attachment validation,
   immediate queued admission, response-before-`agent_start` command barriers,
-  command-without-run, post-acceptance exit, auth failure, abort, and shutdown.
+  command-without-run, post-acceptance exit, project-scoped auth/toast behavior,
+  abort, and shutdown.
 
 ### Step 9/15: Expose models and commands
 
@@ -704,7 +716,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   data or credentials.
 - Cover custom providers, known provider mapping, duplicate IDs, reasoning and
   non-reasoning models, `max`, command sources, project-specific resources,
-  empty/auth state, probe exit, and refresh fallback.
+  empty/auth state without global teardown, probe exit, and refresh fallback.
 
 ### Step 10/15: Implement the plugin API
 
@@ -715,11 +727,12 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   providers, health, summaries, and idempotent disposal.
 - Empty creation `parts` starts an idle session only; the bridge's subsequent
   `sendCommand` owns the first execution.
+- Emit session-created before first-turn admission so pre-commit events buffer.
 - Keep archive/workspace operations honest no-ops and permission methods
   honest empty/not-found results.
 - Cover full contract behavior, missing session/path, lazy persistence,
-  empty-parts command creation, buffered first event listener, operation errors
-  with causes, and disposal order.
+  empty-parts command creation, created-before-output ordering, buffered first
+  event listener, operation errors with causes, and disposal order.
 
 ### Step 11/15: Add managed runtime and lifecycle
 
