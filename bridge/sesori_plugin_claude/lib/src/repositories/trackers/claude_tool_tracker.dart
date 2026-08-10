@@ -177,14 +177,22 @@ final class _TrackedTool {
   _TrackedTool({
     required this.id,
     required this.messageId,
-    required this.name,
+    required String name,
     required this.input,
     required this.status,
-  });
+  }) : _name = name,
+       kind = _ClaudeToolKind.parse(name);
 
   final String id;
   final String messageId;
-  String name;
+  String get name => _name;
+  String _name;
+  set name(String value) {
+    _name = value;
+    kind = _ClaudeToolKind.parse(value);
+  }
+
+  _ClaudeToolKind kind;
   Object? input;
   PluginToolStatus status;
   String? output;
@@ -192,7 +200,7 @@ final class _TrackedTool {
   List<PluginMessageAttachment> attachments = const [];
   bool diffEmitted = false;
 
-  bool get isEdit => const {"edit", "multiedit", "notebookedit", "write"}.contains(name.toLowerCase());
+  bool get isEdit => kind == _ClaudeToolKind.edit;
 
   ClaudeTrackedTool snapshot({required bool sessionDiffRequired}) => ClaudeTrackedTool(
     id: id,
@@ -211,3 +219,13 @@ final class _TrackedTool {
 }
 
 bool _isTerminal(PluginToolStatus status) => status == PluginToolStatus.completed || status == PluginToolStatus.error;
+
+enum _ClaudeToolKind {
+  edit,
+  other;
+
+  static _ClaudeToolKind parse(String raw) => switch (raw.toLowerCase()) {
+    "edit" || "multiedit" || "notebookedit" || "write" => edit,
+    _ => other,
+  };
+}
