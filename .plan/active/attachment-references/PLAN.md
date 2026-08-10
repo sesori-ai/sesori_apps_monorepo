@@ -241,8 +241,9 @@ Generate the thumbnail lazily on the first request and persist it atomically.
 The concrete bridge owners are:
 
 - `AttachmentThumbnailBuilder` in
-  `bridge/app/lib/src/foundation/attachment_thumbnail_builder.dart` is a pure,
-  zero-collaborator byte transformation over the pure-Dart image codec. It runs
+  `bridge/app/lib/src/bridge/repositories/builders/attachment_thumbnail_builder.dart`
+  is a pure, zero-collaborator Layer-2 transformation over the pure-Dart image
+  codec, beside the attachment projection/mapping policy it implements. It runs
   off the main isolate, reads metadata first, rejects dimensions/pixel counts
   above its documented decode-memory ceiling, bakes orientation, crops, and
   encodes one rendition. It owns no files, cache decisions, or queue.
@@ -343,9 +344,18 @@ stored image. Continue validating MIME, byte length, and magic bytes after
 fetch; a bridge response is authenticated and encrypted but still treated as
 untrusted image input.
 
-Use an attachment-specific request timeout long enough for one 20 MB original
-on an ordinary mobile connection. This is not resumability: a disconnect or
-timeout retries the complete image.
+The attachment API uses a sensitive-response mode on `RelayHttpApiClient`.
+Malformed JSON or DTO fields retain the caught error/stack in a typed local log,
+but the returned `JsonParsingError` carries only a fixed privacy-safe marker;
+the decrypted response body and its base64 field are never retained in an API
+error or interpolated into diagnostics.
+
+Add a named `RelayHttpApiClient.postWithTimeout` path and thread its required
+duration through `_sendViaRelay` into a required per-request timeout on
+`RelayClient.sendRequest`. Ordinary API methods continue to pass the existing
+30-second default explicitly; `MessageAttachmentApi` passes the longer bounded
+attachment timeout. This is not resumability: a disconnect or timeout retries
+the complete image.
 
 Add `AttachmentThumbnailStorage` under
 `client/module_core/lib/src/foundation/platform/` as a dumb file-IO capability:
@@ -367,14 +377,13 @@ Do not add a persistent database, cache index, background cache worker, or full
 original cache. The OS may evict cache files at any time; a miss simply refetches
 the thumbnail.
 
-`StoredAttachmentImageProvider` lives with session-detail presentation under
-`client/app/lib/features/session_detail/widgets/`. It delegates byte loading to
-a required `MessageImageRepository` constructor dependency rather than opening
-a URL or resolving DI itself. The session-detail composition root resolves that
-repository once and passes it through the attachment collection/tile
-constructors. Provider equality uses the scoped attachment identity, so
-Flutter's in-memory `ImageCache` and the app-private encoded cache cooperate
-without bypassing client layers.
+Extend the existing `MessageImageCubit` in `module_core` to own thumbnail and
+original load intents through `MessageImageRepository`. Its sealed state models
+preview loading/ready/failure independently from original loading/ready/failure.
+`FilePartWidget` continues to construct that cubit at the existing composition
+seam; Flutter widgets only render emitted encoded bytes through standard
+`MemoryImage`/`ResizeImage` providers and dispatch retry/open intents back to the
+cubit. No Flutter provider or feature widget calls the repository directly.
 
 ### 7. Presentation
 
@@ -387,11 +396,12 @@ be grouped.
 Inline images from old bridges and directly fetched HTTPS images use the same
 square presentation. Their existing bytes/URL paths remain unchanged.
 
-For a stored image, the viewer receives the loaded thumbnail immediately and
-starts the original request after opening. On success it replaces the provider
-without closing the route and constructs the existing original-backed action
-state. On failure it retains the thumbnail, shows retry, and leaves original
-actions unavailable. Do not add page swiping or another viewer route.
+For a stored image, the viewer receives thumbnail bytes from
+`MessageImageCubit` immediately and dispatches the original-load intent after
+opening. On success it replaces the standard in-memory provider without closing
+the route and constructs the existing original-backed action state. On failure
+it retains the thumbnail, shows retry, and leaves original actions unavailable.
+Do not add page swiping or another viewer route.
 
 ## Compatibility Matrix
 
@@ -509,7 +519,7 @@ baseline is intentionally raised in a separate task.
 | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Awaited materialization, dual event shapes, subscriber/orphan delivery mode, SSE memory/compatibility coverage. |
 | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | OpenCode, Codex, ACP, Cursor, and Claude output limits move to 20 MB each/50 MB aggregate while legacy projection stays 5 MiB. |
 | 7/11 | `⚙️ [attachment-references] feat(client): load stored image renditions [step 7/11]` | 850-1,350 | Typed API/repository/state support, validation, timeout, request coalescing, but delivery mode remains inline. |
-| 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Platform cache boundary/adapter, scoped atomic storage/pruning/cleanup, Flutter image provider, tests. |
+| 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Platform cache boundary/adapter, scoped atomic storage/pruning/cleanup, Cubit integration, tests. |
 | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Square/grid/overlay/loading/error presentation for existing and reference-capable attachment widgets; capability remains disabled. |
 | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Thumbnail-first viewer, original retry/actions, enable history/SSE reference mode, end-to-end compatibility tests. |
 | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Final evidence and plan move to completed. |
@@ -542,8 +552,9 @@ the documented defaults.
 
 ### Step 3/11 - Bridge rendition endpoint
 
-- Add zero-collaborator `AttachmentThumbnailBuilder` in bridge foundation with
-  the pure-Dart thumbnail dependency and bounded, off-main-isolate decoding.
+- Add zero-collaborator `AttachmentThumbnailBuilder` beside bridge repository
+  mapping/building policy with the pure-Dart thumbnail dependency and bounded,
+  off-main-isolate decoding.
 - Extend spill storage for versioned derived thumbnails using existing atomic
   write, archive-copy, hardening, and purge conventions.
 - Add live-then-archive original/thumbnail methods to
@@ -613,9 +624,16 @@ larger backend-produced raster originals.
 - Extend image loading state to distinguish preview availability from original
   loading/failure without flattening them into nullable booleans.
 - Retain MIME/signature/size validation for inline, remote, and stored sources.
-- Add complete-request retry semantics and an attachment-specific timeout; do
-  not add chunk offsets or fake progress.
+- Add sensitive-response parsing so malformed attachment responses retain no
+  decrypted body/base64 in `JsonParsingError` or diagnostics.
+- Thread a required attachment timeout from a named `RelayHttpApiClient` method
+  through `_sendViaRelay` and `RelayClient.sendRequest`; prove ordinary requests
+  retain their 30-second default and attachment requests survive beyond it.
+- Add complete-request retry semantics; do not add chunk offsets or fake
+  progress.
 - Coalesce concurrent requests for the same scoped rendition in memory.
+- Extend `MessageImageCubit` to own preview/original load and retry intents; the
+  Flutter shell consumes state and never calls the repository directly.
 - Keep both delivery-mode call sites set to `inline`.
 - Run module_core focused/full tests, codegen/DI generation, analysis, downstream
   mobile analysis, and architecture implementation review.
@@ -631,12 +649,11 @@ when supplied in a test fixture.
   pruning in `MessageImageRepository`; add `MessageThumbnailCacheService` for
   authenticated-scope cleanup; keep backup exclusion in the platform IO
   configuration.
-- Add `StoredAttachmentImageProvider` in the app session-detail presentation
-  package. The session-detail composition root injects its required
-  `MessageImageRepository`; the provider receives no public URL or relay/auth
-  token and never resolves the repository itself.
-- Run module_core tests, app platform/provider tests, codegen/DI generation,
-  mobile analysis/tests, and architecture implementation review.
+- Integrate the cache behind `MessageImageRepository` and the existing
+  `MessageImageCubit`; widgets render emitted bytes with standard Flutter image
+  providers and receive no repository, public URL, or relay/auth token.
+- Run module_core tests, app platform/cache tests, codegen/DI generation, mobile
+  analysis/tests, and architecture implementation review.
 
 Expected result: no reference delivery is enabled, but stored-image fixtures
 reuse cached encoded thumbnails across widget remounts/app initialization.
@@ -707,6 +724,8 @@ owners, Flutter cache policy incorrectly left ambiguous at the platform
 adapter, and image-provider ownership/injection left unspecified. The draft now
 routes live writes through `ChatHistoryRepository`, names the bridge builder,
 service, and handler with required dependencies, keeps cache policy in
-`module_core`, and places an explicitly injected provider in the app
-session-detail package. Per repository process, the corrected draft was not
-re-reviewed merely to obtain an approval verdict.
+`module_core`, and routes image loading through `MessageImageCubit`. Subsequent
+PR review further moved the thumbnail builder beside Layer-2 attachment mapping,
+made attachment parse failures content-redacted, and named the timeout path
+through both client transport layers. Per repository process, the corrected
+draft was not re-reviewed merely to obtain an approval verdict.

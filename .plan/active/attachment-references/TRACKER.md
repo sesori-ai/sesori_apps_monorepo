@@ -21,8 +21,8 @@
   `AttachmentThumbnailBuilder`, `MessageAttachmentService`, and
   `GetSessionAttachmentHandler` have explicit placement/dependencies; cache
   policy and auth cleanup stay in module_core while the Flutter adapter is dumb
-  IO; `StoredAttachmentImageProvider` has explicit app ownership and
-  constructor-injected repository access
+  IO; stored-image loading stays in `MessageImageCubit` and the shell renders
+  emitted bytes without repository access
 
 ## Delivery Steps
 
@@ -83,5 +83,9 @@
 - **2026-08-10 - Lean viewer:** The user approved square grids and retained the
   current single-image viewer without gallery swiping.
 - **2026-08-10 - Architecture review:** Applied the repository-layer live-write
-  seam, named bridge owners, module_core cache-policy ownership, and explicit
-  app-provider injection requested by the reviewer. No scope expansion.
+  seam, named bridge owners, module_core cache-policy ownership, and Cubit-owned
+  image loading requested by reviewers. No scope expansion.
+- **2026-08-10 - PR review:** Moved thumbnail transformation beside Layer-2
+  attachment mapping, made malformed attachment responses content-redacted,
+  threaded the longer timeout through both relay client layers, and kept all
+  preview/original intents in `MessageImageCubit`.
