@@ -267,9 +267,10 @@ The concrete bridge owners are:
 The single service lane addresses an ordinary reachable flow with meaningful
 memory impact; no per-session or per-digest lock registry is needed. A rejected
 thumbnail does not delete or invalidate the original. Fetch tries the live
-spill root, then the archived spill root. Original reads and the final derived
-write remain inside the existing session queue, so archive-copy and purge cannot
-interleave and a completed generation cannot recreate a purged session root.
+spill root, then the archived spill root. Source selection, original read, and
+the final derived write remain inside the existing session queue. The thumbnail
+is persisted beside its source original, so archive and purge cannot interleave
+or cause generation to recreate a purged live root.
 
 ### 3. History and archive projection
 
@@ -362,10 +363,11 @@ fetch; a bridge response is authenticated and encrypted but still treated as
 untrusted image input.
 
 The attachment API uses a sensitive-response mode on `RelayHttpApiClient`.
-Malformed JSON or DTO fields retain the caught error/stack in a typed local log,
-but the returned `JsonParsingError` carries only a fixed privacy-safe marker;
-the decrypted response body and its base64 field are never retained in an API
-error or interpolated into diagnostics.
+Malformed JSON or DTO fields log source-free parser details (type, message,
+offset, stack, and operation context), never the caught exception whose
+`FormatException.source` may retain decrypted bytes. The returned
+`JsonParsingError` carries only a fixed privacy-safe marker; no response body or
+base64 field is retained in an API error or diagnostics.
 
 Add a named `RelayHttpApiClient.postWithTimeout` path and thread its required
 duration through `_sendViaRelay` into a required per-request timeout on
@@ -477,9 +479,9 @@ subscription because multiple app versions may use one bridge concurrently.
 - Thumbnail cache files contain decrypted user content. They remain app-private,
   are excluded from backup where the platform requires explicit configuration,
   and are cleared with the local authenticated scope.
-- Image decode concurrency and decoded-pixel bounds protect both the headless
-  bridge and mobile renderer from compressed images with disproportionate memory
-  requirements.
+- Decode concurrency and decoded-pixel bounds protect bridge thumbnail
+  generation from disproportionate memory requirements. Original rendering
+  retains the existing Flutter codec behavior and remains lazy behind the preview.
 
 ## Analytics
 
@@ -598,8 +600,9 @@ the documented defaults.
 - Extend spill storage for versioned derived thumbnails using existing atomic
   write, archive-copy, hardening, and purge conventions.
 - Add live-then-archive original/thumbnail methods to
-  `ChatHistoryRepository`; extend `ChatHistoryService(repository, builder)` with
-  session-queued rendition selection and the single generation lane; and
+  `ChatHistoryRepository`; extend
+  `ChatHistoryService(repository, builder, bridgeIdProvider)` with session-queued
+  rendition selection and the single generation lane; and
   register `GetSessionAttachmentHandler(chatHistoryService)` for
   `POST /session/attachment`.
 - Cover original/thumbnail success, first-frame behavior, transparency,
@@ -669,8 +672,8 @@ larger backend-produced raster originals.
 - Extend image loading state to distinguish preview availability from original
   loading/failure without flattening them into nullable booleans.
 - Retain MIME/signature/size validation for inline, remote, and stored sources.
-- Add sensitive-response parsing so malformed attachment responses retain no
-  decrypted body/base64 in `JsonParsingError` or diagnostics.
+- Add source-free sensitive-response diagnostics and assert malformed attachment
+  body/base64 substrings never reach `JsonParsingError`, logs, or diagnostics.
 - Thread a required attachment timeout from a named `RelayHttpApiClient` method
   through `_sendViaRelay` and `RelayClient.sendRequest`; prove ordinary requests
   retain their 30-second default and attachment requests survive beyond it.

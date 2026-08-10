@@ -66,7 +66,7 @@
 
 - Step 1: Architecture review completed with four findings applied; corrected
   draft intentionally not re-reviewed. Against merge base `944e07e7`,
-  `git diff --numstat` reports 1,094 additions and 0 deletions across the three
+  `git diff --numstat` reports 1,097 additions and 0 deletions across the three
   plan documents, within the 650-1,100 target; `git diff --check` passes. No
   Dart/Flutter suites were run for this documentation-only step. Committed as
   `6998f477`, pushed, and opened as
@@ -102,7 +102,7 @@
   1,050 to 1,100 changed lines to record the valid second-round review findings;
   the step remains well below the repository's 1,500-line soft cap.
 - **2026-08-10 - PR review lifecycle closure:** Routed rendition reads and
-  thumbnail generation through the existing history session queue, made bridge
-  identity part of stored references, captured authenticated account scope at
-  the repository boundary, and made cache cleanup an eager disposable core
-  singleton.
+  source-root thumbnail writes through the history session queue, made bridge
+  identity/account scope explicit, made cache cleanup eager and disposable, and
+  required source-free parser diagnostics. Declined later bot suggestions that
+  added machinery only to already-safe or self-healing failure paths.
