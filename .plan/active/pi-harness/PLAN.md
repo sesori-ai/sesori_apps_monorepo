@@ -229,7 +229,8 @@ One client owns one child process and:
 - decodes top-level response, event, extension-UI, and unknown envelopes;
 - correlates responses by request ID without assuming a prompt response arrives
   before agent events;
-- exposes a broadcast event stream tagged later with its owning session ID;
+- buffers parsed frames until the first routing listener attaches, then exposes
+  a broadcast stream tagged later with its owning session ID;
 - never logs raw stdout frames, prompts, transcript content, tool payloads, or
   extension input;
 - redacts known credential fields from diagnostic strings;
@@ -429,6 +430,10 @@ turns, sends Pi's `abort`, and tears down that session process. Teardown is
 required because Pi's RPC `abort` does not clear its steering/follow-up queues.
 The next accepted turn resumes from the persisted session.
 
+Delete first applies the same generation invalidation and rejects active/queued
+turns and dialogs, then stops the process and removes marker/file state. Its exit
+callback cannot advance the invalidated lane or relaunch deleted work.
+
 ### Catalogs and selections
 
 `PiBackendCatalogRepository` owns a bounded short-lived lease over the injected
@@ -520,7 +525,7 @@ user's telemetry choice remain Pi's.
 | `getSessionOptions` | reuse/refresh through project tracker; observed complete/partial or failed |
 | `createSession` | emit created, then admit first turn only when `parts` is non-empty |
 | `renameSession` | resident or bounded transient lease for RPC `set_session_name` |
-| `deleteSession` | stop resident process, clear dialogs/cache, resolve then delete exact JSONL file |
+| `deleteSession` | invalidate lane/dialogs, stop process, then delete marker/file |
 | `deletePersistedSession` | resolve by ID and idempotently delete the exact file without spawning Pi |
 | `archiveSession`, `deleteWorkspace` | no-op under best-effort contracts |
 | `getChildSessions` | catalog filter by resolved parent ID |
@@ -643,8 +648,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Add `FakePiProcess` and `pi_testing.dart` exports.
 - Cover split/multiple UTF-8 chunks, CRLF input tolerance, U+2028/U+2029 inside
   JSON strings, response/event reordering, unknown frames, process exit,
-  stdout/verbose-stderr backpressure, broken pipes, bounded redaction, and
-  teardown fencing.
+  startup frames before router attachment, stdout/verbose-stderr backpressure,
+  broken pipes, bounded redaction, and teardown fencing.
 
 ### Step 4/15: Enumerate persisted sessions
 
@@ -759,8 +764,9 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Keep archive/workspace operations honest no-ops and permission methods
   honest empty/not-found results.
 - Cover full contract behavior, missing session/path, lazy persistence,
-  empty-parts command creation, created-before-output ordering, buffered first
-  event listener, operation errors with causes, and disposal order.
+  empty-parts command creation, created-before-output ordering, delete during an
+  active turn with a queued prompt, buffered first listener, cause-preserving
+  errors, and disposal order.
 
 ### Step 11/15: Add managed runtime and lifecycle
 
