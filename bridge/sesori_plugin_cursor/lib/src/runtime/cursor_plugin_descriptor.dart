@@ -118,6 +118,9 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
 
   @override
+  bool get supportsPromptAttachments => true;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   @override

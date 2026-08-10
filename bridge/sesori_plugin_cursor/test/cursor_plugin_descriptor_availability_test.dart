@@ -27,6 +27,10 @@ void main() {
       expect(const CursorPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.plugin);
     });
 
+    test("declares support for prompt attachments", () {
+      expect(const CursorPluginDescriptor().supportsPromptAttachments, isTrue);
+    });
+
     test("reports ready after version and read-only authentication probes", () async {
       final processes = _ProbeProcessService(
         processSequence: [
