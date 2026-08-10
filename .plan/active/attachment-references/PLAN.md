@@ -168,15 +168,17 @@ Add a new image-specific attachment source to `MessageAttachment`:
 ```text
 stored_image
   attachmentId
+  bridgeId
   mime
   filename?
   byteLength
 ```
 
 The exact identifier remains an opaque client contract even if the first bridge
-implementation uses the existing content address internally. Every fetch also
-requires `sessionId`, and the client cache key includes bridge and session
-scope; clients must not treat the identifier as a globally reusable URL.
+implementation uses the existing content address internally. `bridgeId` is the
+required identity from the bridge's existing `BridgeIdProvider`; every fetch
+also requires `sessionId`. Clients must not treat the identifier as a globally
+reusable URL.
 
 Keep `fallbackUnion: "unknown"`. A capable reference must nevertheless never be
 sent to an old app because that app currently hides unknown attachment sources.
@@ -252,21 +254,22 @@ The concrete bridge owners are:
   thumbnail from the live and archived spill roots, project a stored message's
   attachment collection for capable/legacy delivery, and atomically persist a
   generated thumbnail through the existing Layer-1 storage APIs.
-- `MessageAttachmentService` in
-  `bridge/app/lib/src/bridge/services/message_attachment_service.dart` requires
-  `ChatHistoryRepository` and `AttachmentThumbnailBuilder`. It owns lazy
-  rendition selection and one coarse generation lane so a page of uncached
-  previews cannot launch many full-image decodes concurrently. It does not
-  touch `AttachmentSpillStorage` directly.
+- `ChatHistoryService` requires `AttachmentThumbnailBuilder` and the existing
+  `BridgeIdProvider`; its attachment-read method enters the existing
+  per-session queue before live/archive selection, and it owns one coarse
+  generation lane inside that queue so a page of uncached previews cannot
+  launch many full-image decodes concurrently. It does not touch
+  `AttachmentSpillStorage` directly.
 - `GetSessionAttachmentHandler` in
   `bridge/app/lib/src/bridge/routing/get_session_attachment_handler.dart`
-  requires `MessageAttachmentService` and maps typed route success/failure only.
+  requires `ChatHistoryService` and maps typed route success/failure only.
 
 The single service lane addresses an ordinary reachable flow with meaningful
 memory impact; no per-session or per-digest lock registry is needed. A rejected
 thumbnail does not delete or invalidate the original. Fetch tries the live
-spill root, then the archived spill root. Existing archive-copy and purge
-ordering remains authoritative.
+spill root, then the archived spill root. Original reads and the final derived
+write remain inside the existing session queue, so archive-copy and purge cannot
+interleave and a completed generation cannot recreate a purged session root.
 
 ### 3. History and archive projection
 
@@ -381,17 +384,23 @@ performs only those IO primitives. It requires the existing
 `path_provider` statically. It does not construct keys, choose eviction,
 coalesce requests, or react to authentication.
 
-`MessageImageRepository` in `module_core` owns scoped key construction,
-validation, corruption recovery, one in-flight fetch per key, and the simple
-total-size/oldest-file pruning policy. Keys include account, bridge, session,
-attachment id, and rendition version; only encoded thumbnails are persisted.
-A small `MessageThumbnailCacheService` in `module_core` requires
-`MessageImageRepository` plus the existing authenticated-account transition
-source and owns account-scope cleanup on logout/local account removal. Cleanup
-first retires the account generation, rejects new or late writes for that
-generation, awaits its already-started fetch/write futures, and only then
+`MessageImageRepository` in `module_core` requires `AuthSession` and owns scoped
+key construction, validation, corruption recovery, one in-flight fetch per key,
+and the simple total-size/oldest-file pruning policy. At each stored-image load
+boundary it captures the authenticated `AuthUser.id` from
+`AuthSession.currentState`, takes `bridgeId` from the required `stored_image`
+field, and receives the message-owned `sessionId`; these values form the cache
+scope with attachment id and rendition version. No cache operation reads a
+global current-bridge fallback. Only encoded thumbnails are persisted.
+
+An eager `@singleton` `MessageThumbnailCacheService` in `module_core` requires
+`MessageImageRepository` plus `AuthSession`, subscribes during core DI
+initialization, and owns account-scope cleanup on logout/local account removal.
+Cleanup first retires the account generation, rejects new or late writes for
+that generation, awaits its already-started fetch/write futures, and only then
 deletes the scope. A later completion therefore cannot recreate decrypted
-thumbnail content after logout.
+thumbnail content after logout. Its `@disposeMethod` cancels the auth
+subscription during dependency-container teardown.
 
 Do not add a persistent database, cache index, background cache worker, or full
 original cache. The OS may evict cache files at any time; a miss simply refetches
@@ -401,8 +410,9 @@ Extend the existing `MessageImageCubit` in `module_core` to own thumbnail and
 original load intents through `MessageImageRepository`. Its sealed state models
 preview loading/ready/failure independently from original loading/ready/failure.
 Every attachment collection threads its authoritative `MessagePart.sessionID`
-as a required value through `FilePartWidget` into the cubit and repository; no
-loader or cache key reads a global current-session fallback. `FilePartWidget`
+as a required value through `FilePartWidget` into the cubit and repository; the
+stored reference supplies its authoritative bridge identity. No loader or cache
+key reads global current-session or current-bridge state. `FilePartWidget`
 continues to construct the cubit at the existing composition seam. Flutter
 widgets only render emitted encoded bytes through standard
 `MemoryImage`/`ResizeImage` providers and dispatch retry/open/close intents back
@@ -543,7 +553,7 @@ baseline is intentionally raised in a separate task.
 |---|---|---:|---|
 | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | Active plan/tracker and upload considerations only. |
 | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 900-1,450 | Shared variant, rendition models, delivery mode defaults, generated code, exhaustive compile-safe consumers. No peer enables references. |
-| 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Versioned thumbnail storage/builder, live/archive lookup, typed fetch handler, decode/size/security tests. |
+| 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Versioned thumbnail storage/builder, session-queued live/archive lookup, typed fetch handler, decode/size/security tests. |
 | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Capability-aware active/archive projection and legacy budget preservation. |
 | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Awaited materialization, dual event shapes, subscriber/orphan delivery mode, SSE memory/compatibility coverage. |
 | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | OpenCode, Codex, ACP, Cursor, and Claude output limits move to 20 MB each/50 MB aggregate while legacy projection stays 5 MiB. |
@@ -568,7 +578,8 @@ Expected result: no user-visible, wire, database, or runtime behavior change.
 ### Step 2/11 - Shared contract
 
 - Add `MessageAttachment.storedImage` and update every exhaustive in-repo
-  consumer to a safe compile-time placeholder without enabling delivery.
+  consumer to a safe compile-time placeholder without enabling delivery. Its
+  required `bridgeId` comes from the bridge's existing `BridgeIdProvider`.
 - Add `MessageAttachmentDelivery` with legacy `inline` defaults on
   `SessionMessagesRequest` and `RelaySseSubscribe`.
 - Add typed attachment rendition request/response models and exports.
@@ -587,12 +598,13 @@ the documented defaults.
 - Extend spill storage for versioned derived thumbnails using existing atomic
   write, archive-copy, hardening, and purge conventions.
 - Add live-then-archive original/thumbnail methods to
-  `ChatHistoryRepository`; add `MessageAttachmentService(repository, builder)`
-  for lazy selection and the single generation lane; and register
-  `GetSessionAttachmentHandler(service)` for `POST /session/attachment`.
+  `ChatHistoryRepository`; extend `ChatHistoryService(repository, builder)` with
+  session-queued rendition selection and the single generation lane; and
+  register `GetSessionAttachmentHandler(chatHistoryService)` for
+  `POST /session/attachment`.
 - Cover original/thumbnail success, first-frame behavior, transparency,
   orientation, concurrent generation, corrupt/oversized input, missing files,
-  archive lookup, traversal rejection, and response bounds.
+  archive lookup, generation racing purge, traversal rejection, and response bounds.
 - Run bridge app focused/full tests, fatal analysis, build/codegen as required,
   and architecture implementation review.
 
@@ -668,7 +680,9 @@ larger backend-produced raster originals.
 - Extend `MessageImageCubit` to own preview/original load and retry intents; the
   Flutter shell consumes state and never calls the repository directly.
 - Require message-owned `sessionId` through widget, cubit, repository request,
-  and cache key; never infer it from global route/connection state.
+  and cache key. Capture account scope from `AuthSession.currentState` at the
+  repository boundary and take bridge scope from the stored reference; never
+  infer either identity from global route/connection state.
 - Keep both delivery-mode call sites set to `inline`.
 - Run module_core focused/full tests, codegen/DI generation, analysis, downstream
   mobile analysis, and architecture implementation review.
@@ -683,14 +697,16 @@ when supplied in a test fixture.
 - Inject the existing `TemporaryDirectoryClient` into the Flutter storage
   adapter; do not call static `path_provider` APIs from the adapter.
 - Keep scoped keys, corruption recovery, in-flight coalescing, oldest-on-write
-  pruning in `MessageImageRepository`; add `MessageThumbnailCacheService` for
-  generation-fenced authenticated-scope cleanup that settles in-flight writes
-  before deletion; keep backup exclusion in the platform IO configuration.
+  pruning in `MessageImageRepository`; register `MessageThumbnailCacheService`
+  as an eager core singleton for generation-fenced authenticated-scope cleanup
+  that settles in-flight writes before deletion and disposes its auth
+  subscription; keep backup exclusion in the platform IO configuration.
 - Integrate the cache behind `MessageImageRepository` and the existing
   `MessageImageCubit`; widgets render emitted bytes with standard Flutter image
   providers and receive no repository, public URL, or relay/auth token.
 - Run module_core tests, app platform/cache tests, codegen/DI generation, mobile
-  analysis/tests, and architecture implementation review.
+  analysis/tests including account-switch and eager-cleanup activation, and
+  architecture implementation review.
 
 Expected result: no reference delivery is enabled, but stored-image fixtures
 reuse cached encoded thumbnails across widget remounts/app initialization.
@@ -749,6 +765,7 @@ Expected result: no user-visible, wire, database, or runtime behavior change.
 |---|---|
 | Reference event outruns file persistence. | Await the single queued image-part capture and its typed result before enqueue. |
 | Archive races live materialization. | Capture, projection, export, flip, and purge share the existing per-session queue. |
+| Thumbnail generation races archive or purge. | Original selection, generation, and final derived write share the existing per-session queue. |
 | Legacy ACP image parts exceed their old aggregate budget. | Project each event against the complete stored logical collection, not only the current part. |
 | Old app receives an unknown source and hides it. | Default both independent delivery surfaces to inline and shape per subscriber/request. |
 | New app requests a route from an old bridge. | It only calls the route for a received `stored_image`; old bridges never emit that variant. |
@@ -765,7 +782,7 @@ actionable findings: one live materialization layer skip plus unnamed bridge
 owners, Flutter cache policy incorrectly left ambiguous at the platform
 adapter, and image-provider ownership/injection left unspecified. The draft now
 routes live writes through `ChatHistoryRepository`, names the bridge builder,
-service, and handler with required dependencies, keeps cache policy in
+handler with required dependencies, keeps cache policy in
 `module_core`, and routes image loading through `MessageImageCubit`. Subsequent
 PR review further moved the thumbnail builder beside Layer-2 attachment mapping,
 made attachment parse failures content-redacted, named the timeout path through

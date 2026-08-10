@@ -18,7 +18,7 @@
   current bridge/shared/client architecture, with tracker and upload
   considerations checked for scope consistency
 - **Applied findings:** live writes now route through `ChatHistoryRepository`;
-  `AttachmentThumbnailBuilder`, `MessageAttachmentService`, and
+  `AttachmentThumbnailBuilder`, `ChatHistoryService`, and
   `GetSessionAttachmentHandler` have explicit placement/dependencies; cache
   policy and auth cleanup stay in module_core while the Flutter adapter is dumb
   IO; stored-image loading stays in `MessageImageCubit` and the shell renders
@@ -65,9 +65,9 @@
 ## Verification Log
 
 - Step 1: Architecture review completed with four findings applied; corrected
-  draft intentionally not re-reviewed. The initial documentation commit is 986
-  changed lines, within its current 650-1,100 target, and `git diff --check`
-  passes. No
+  draft intentionally not re-reviewed. Against merge base `944e07e7`,
+  `git diff --numstat` reports 1,094 additions and 0 deletions across the three
+  plan documents, within the 650-1,100 target; `git diff --check` passes. No
   Dart/Flutter suites were run for this documentation-only step. Committed as
   `6998f477`, pushed, and opened as
   [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807).
@@ -101,3 +101,8 @@
 - **2026-08-10 - Step 1 review budget:** Raised the documentation target from
   1,050 to 1,100 changed lines to record the valid second-round review findings;
   the step remains well below the repository's 1,500-line soft cap.
+- **2026-08-10 - PR review lifecycle closure:** Routed rendition reads and
+  thumbnail generation through the existing history session queue, made bridge
+  identity part of stored references, captured authenticated account scope at
+  the repository boundary, and made cache cleanup an eager disposable core
+  singleton.
