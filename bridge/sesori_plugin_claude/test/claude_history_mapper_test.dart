@@ -19,10 +19,7 @@ void main() {
       transcripts = ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temp.path}),
       );
-      mapper = ClaudeHistoryMapper(
-        content: const ClaudeContentMapper(),
-        transcripts: transcripts,
-      );
+      mapper = const ClaudeHistoryMapper(content: ClaudeContentMapper());
     });
 
     tearDown(() => temp.deleteSync(recursive: true));
@@ -91,7 +88,10 @@ void main() {
         ],
       );
 
-      final messages = await mapper.map(sessionId: _sessionId);
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+      );
 
       expect(messages, hasLength(2));
       final user = messages[0];
@@ -158,17 +158,19 @@ void main() {
         ],
       );
 
-      expect(await mapper.map(sessionId: _sessionId), isEmpty);
+      expect(
+        mapper.map(
+          sessionId: _sessionId,
+          records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        ),
+        isEmpty,
+      );
     });
 
-    test("throws a plugin operation failure when the transcript cannot load", () async {
+    test("does not convert a missing transcript into empty history", () async {
       expect(
-        () => mapper.map(sessionId: _sessionId),
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.operation, "operation", "read Claude session transcript")
-              .having((error) => error.cause, "cause", isA<StateError>()),
-        ),
+        () => transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        throwsA(isA<StateError>()),
       );
     });
   });

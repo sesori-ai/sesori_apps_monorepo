@@ -220,10 +220,12 @@
   Replay groups assistant records by nested Anthropic message id, preserves
   ordered user/assistant identity, timestamps, model and provider fields, folds
   persisted tool results into their originating tool part, and skips internal
-  context and non-visible records. Missing/read failures retain their cause in a
-  `PluginOperationException` instead of returning an empty history. Full-tree
-  structural surveys resolved the attachment and identity questions without
-  printing paths, ids, prompts, transcript text, or tool payloads.
+  context and non-visible records. The mapper is a pure transformation over
+  loaded records; missing/read failures remain thrown for Step 12 to translate
+  into a cause-preserving `PluginOperationException` at the plugin API boundary,
+  instead of returning an empty history. Full-tree structural surveys resolved
+  the attachment and identity questions without printing paths, ids, prompts,
+  transcript text, or tool payloads.
 
   `dart analyze --fatal-infos`, all 110 package tests, codegen, and
   `git diff --check` pass. Two architecture implementation-review passes found

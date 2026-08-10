@@ -414,14 +414,15 @@ appear on the next enumeration.
 
 **`ClaudeHistoryMapper`** — lives at `lib/src/` for the same reason as the event
 mapper: it consumes a Layer-2 component.
-`ClaudeHistoryMapper({required ClaudeContentMapper content,
-required ClaudeTranscriptCatalogRepository transcripts})`.
+`ClaudeHistoryMapper({required ClaudeContentMapper content})`.
 
-Transcript records to `PluginMessageWithParts`, reusing the content mapper so
-replayed history matches live rendering. A failed load throws
-`PluginOperationException`; it never returns an empty list, because an empty list
-means a genuinely empty thread and the phone renders error-with-retry only for
-throws.
+Loaded transcript records to `PluginMessageWithParts`, reusing the content mapper
+so replayed history matches live rendering. The mapper stays a pure
+transformation; Step 12's `getSessionMessages` implementation reads through
+`ClaudeTranscriptCatalogRepository` and translates a failed load into a
+cause-preserving `PluginOperationException`. It never substitutes an empty list,
+because an empty list means a genuinely empty thread and the phone renders
+error-with-retry only for throws.
 
 **`ClaudePlugin`** — the Layer-4 composition root. It constructs one instance of
 each component and injects every collaborator explicitly:
@@ -760,8 +761,9 @@ the unused-architecture problem avoided in Step 3.
 - Add `ClaudeHistoryMapper` at `lib/src/` — not in `repositories/mappers/`,
   because it consumes the Layer-2 content mapper — producing
   `PluginMessageWithParts` from transcript records through the Step 5 mapper.
-- Prove throw-on-failure rather than empty-list, and record the shape parity that
-  Step 8 must match.
+- Prove the transcript repository throws on read failure rather than returning an
+  empty list; Step 12 translates that failure at the plugin API boundary. Record
+  the shape parity that Step 8 must match.
 - Verify: focused and full package tests, fatal analysis, implementation review.
 
 ### Step 7/17 — Track Tool Lifecycle

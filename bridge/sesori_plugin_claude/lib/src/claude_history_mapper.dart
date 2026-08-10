@@ -1,6 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "repositories/claude_transcript_catalog_repository.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/models/claude_transcript_record.dart";
 
@@ -9,28 +8,14 @@ import "repositories/models/claude_transcript_record.dart";
 final class ClaudeHistoryMapper {
   const ClaudeHistoryMapper({
     required ClaudeContentMapper content,
-    required ClaudeTranscriptCatalogRepository transcripts,
-  }) : _content = content,
-       _transcripts = transcripts;
+  }) : _content = content;
 
   final ClaudeContentMapper _content;
-  final ClaudeTranscriptCatalogRepository _transcripts;
 
-  Future<List<PluginMessageWithParts>> map({required String sessionId}) async {
-    final List<ClaudeTranscriptRecord> records;
-    try {
-      records = await _transcripts.readTranscriptRecordsInIsolate(sessionId: sessionId);
-    } on Object catch (error, stackTrace) {
-      Error.throwWithStackTrace(
-        PluginOperationException(
-          "read Claude session transcript",
-          message: "history read for $sessionId failed",
-          cause: error,
-        ),
-        stackTrace,
-      );
-    }
-
+  List<PluginMessageWithParts> map({
+    required String sessionId,
+    required List<ClaudeTranscriptRecord> records,
+  }) {
     final entries = <_ClaudeHistoryEntry>[];
     final assistantsByMessageId = <String, _AssistantHistoryMessage>{};
     final assistantsByToolId = <String, _AssistantHistoryMessage>{};
