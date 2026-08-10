@@ -245,7 +245,10 @@
   and unmatched results do not invent orphan tool cards.
 
   `dart analyze --fatal-infos`, all 121 package tests, and `git diff --check`
-  pass. The measured production/test diff before this tracker entry is 537 lines
+  pass. Architecture implementation review first rejected raw edit-tool string
+  decisions; the tracker now parses names into a closed tool-kind enum at its
+  boundary, and the second review approved the step with no remaining findings.
+  The measured production/test diff before this tracker entry is 555 lines
   against Step 6, below the 1,000-1,400 estimate and the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
