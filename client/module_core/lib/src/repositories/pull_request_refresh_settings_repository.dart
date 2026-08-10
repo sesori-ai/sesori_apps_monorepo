@@ -37,6 +37,8 @@ class PullRequestRefreshSettingsRepository {
         ),
       BridgeSettingUpdateApiCommitted(update: UnknownBridgeSettingUpdate()) =>
         const PullRequestRefreshSettingsMutationUncertain(),
+      BridgeSettingUpdateApiCommitted(update: YoloSettingUpdate()) =>
+        const PullRequestRefreshSettingsMutationUncertain(),
       BridgeSettingUpdateApiRejected(
         rejection: PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection(
           :final minimumIntervalSeconds,

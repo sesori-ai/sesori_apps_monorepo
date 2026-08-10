@@ -138,5 +138,13 @@ void main() {
     );
 
     expect(await repository.update(intervalSeconds: 45), isA<PullRequestRefreshSettingsMutationUncertain>());
+
+    when(
+      () => bridgeSettingsApi.update(update: any(named: "update")),
+    ).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(update: BridgeSettingUpdate.yolo(enabled: true)),
+    );
+
+    expect(await repository.update(intervalSeconds: 45), isA<PullRequestRefreshSettingsMutationUncertain>());
   });
 }
