@@ -341,6 +341,24 @@ void main() {
       expect(response["error"], "no");
     });
 
+    test("rejects control responses after the process exits", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+      connected.fake.exit(1);
+      await pump(10);
+      final before = connected.fake.written.length;
+
+      expect(
+        connected.client.sendControlResponse(requestId: "ask-3", payload: const {}),
+        isFalse,
+      );
+      expect(
+        connected.client.sendControlResponseError(requestId: "ask-4", message: "no"),
+        isFalse,
+      );
+      expect(connected.fake.written, hasLength(before));
+    });
+
     test("drops outbound writes after teardown instead of throwing", () async {
       final connected = await connectTestClient();
       await connected.client.dispose();

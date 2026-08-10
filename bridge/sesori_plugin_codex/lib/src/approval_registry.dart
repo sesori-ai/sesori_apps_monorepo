@@ -317,6 +317,7 @@ class ApprovalRegistry {
     _pending[bridgeRequestId] = entry;
 
     if (isPermission) {
+      final allowAlways = _allowsAlways(entry);
       _emit(
         BridgeSsePermissionAsked(
           requestID: bridgeRequestId,
@@ -326,7 +327,7 @@ class ApprovalRegistry {
           displaySessionId: entry.sessionId,
           tool: _toolHintFor(method),
           description: _permissionDescriptionFor(entry),
-          allowAlways: true,
+          allowAlways: allowAlways,
         ),
       );
     } else {
@@ -359,8 +360,14 @@ class ApprovalRegistry {
       displaySessionId: entry.sessionId,
       tool: _toolHintFor(entry.method),
       description: _permissionDescriptionFor(entry),
-      allowAlways: true,
+      allowAlways: _allowsAlways(entry),
     );
+  }
+
+  bool _allowsAlways(_PendingApproval entry) {
+    if (entry.method != _elicitationMethod) return true;
+    final persist = _asMap(entry.params["_meta"])?["persist"];
+    return persist is List && persist.contains("always");
   }
 
   /// Builds the single free-form question payload for a codex elicitation /
