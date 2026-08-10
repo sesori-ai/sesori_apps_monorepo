@@ -260,8 +260,9 @@ Scans run in `Isolate.run`, deduplicate normalized absolute paths, and never
 follow an unbounded symlink tree.
 
 Both `PiSessionCatalogRepository` and `PiSessionProcessRepository` consume this
-Layer-1 resolver directly; neither repository depends on the other. A missing
-or duplicate ID is an explicit lookup failure rather than a guessed path.
+Layer-1 resolver directly; neither repository depends on the other. Duplicate
+paths fail. A missing file is new only with that API's pending marker; otherwise
+it is not-found rather than a guessed path.
 
 For each candidate JSONL file:
 
@@ -285,7 +286,11 @@ pre-compaction entries without making reads resident.
 
 Mapping rules:
 
-- user text and images become a user envelope plus text/file parts;
+- for creation, `userVisibleText` identifies the authored suffix; the repository
+  wraps only the proven leading execution context in a plugin-owned marker before
+  RPC, and the mapper strips that marker in both live and replay paths;
+- remaining user text/images become a user envelope plus text/file parts; an
+  unprovable split fails creation rather than exposing or duplicating context;
 - assistant text, thinking, and tool calls become existing text, reasoning, and
   tool parts;
 - tool-result messages update the originating tool part by `toolCallId`;
@@ -341,6 +346,11 @@ timeout, abort, idle reap, process exit, and plugin disposal resolve or clear
 every pending card. Pi does not expose re-enumeration after process loss, so
 there is no persisted pending-dialog state.
 
+At request time the registry resolves the owning session's top-most imported
+parent from the catalog snapshot, stores it as `displaySessionId`, and indexes
+the card by owner and display root. `getPendingQuestions(root)` returns the
+root's own and matching descendant cards without rescanning the session tree.
+
 `PluginQuestionInfo` has no editable-prefill field. For `editor`, the registry
 therefore appends a bounded, clearly labelled prefill excerpt to the question
 and tells the user that their answer is the complete replacement. Truncation is
@@ -355,7 +365,7 @@ dialogs, which appear as questions because Pi supplies no permission semantics.
 `PiSessionProcessRepository` owns:
 
 - `sessionId -> resident PiRpcClient`;
-- new/resume launch choice, using `PiSessionStorageApi` for absolute paths;
+- new/resume launch choice using `PiSessionStorageApi` paths/pending markers;
 - bounded resident-or-transient client leases for history and rename;
 - process connection generations and late-spawn rollback;
 - applied provider/model/thinking state;
@@ -372,8 +382,13 @@ queued phone message from changing an earlier turn.
 
 A generation-matched process exit before `agent_settled` terminalizes the
 accepted turn as failed, rejects queued acceptance futures, clears resident and
-dialog state, and returns the session to idle. A later explicit turn resumes
-from the persisted file; no accepted turn remains indefinitely busy.
+dialog state, and returns the session to idle. A later explicit turn resolves
+through the file or pending-new marker; none remains indefinitely busy.
+
+Creation asks `PiSessionStorageApi` to write a per-session pending-new marker
+before spawn and remove it only after the JSONL file is observable. Resolution
+prefers a file; otherwise the marker relaunches `--session-id` in its recorded
+cwd. Delete clears both, so external missing sessions are never resurrected.
 
 `PiSessionProcessRepository` also maps prompts. Text remains text; inline
 `fileData` with a supported image MIME becomes Pi's base64 `images` field after
@@ -382,10 +397,11 @@ non-image data are not fetched, stringified, or silently dropped: dispatch fails
 before acceptance with a privacy-safe `PluginOperationException` explaining
 that Pi supports inline image data only.
 
-Commands use Pi's normal `/name args` prompt path. An extension command can
-finish at acceptance without starting an agent run; the service checks current
-state rather than waiting forever for an `agent_settled` that will never be
-emitted.
+Commands use Pi's normal `/name args` prompt path. After acceptance, the service
+holds the lane through a correlated `get_state` barrier and all earlier queued
+events. It treats a command as no-run only when no generation-matched
+`agent_start` arrived and state reports neither streaming nor pending messages;
+otherwise it waits for `agent_settled`.
 
 Abort invalidates the session generation, rejects pending dialogs and queued
 turns, sends Pi's `abort`, and tears down that session process. Teardown is
@@ -469,7 +485,7 @@ user's telemetry choice remain Pi's.
 | `primeSessionDirectory` | retain bridge attribution until file metadata is observable |
 | `getCommands` | project-scoped throwaway RPC `get_commands` |
 | `getSessionOptions` | reuse/refresh through project tracker; observed complete/partial or failed |
-| `createSession` | bridge ID; new launch; enqueue first turn |
+| `createSession` | bridge ID; new launch; enqueue only when `parts` is non-empty |
 | `renameSession` | resident or bounded transient lease for RPC `set_session_name` |
 | `deleteSession` | stop resident process, clear dialogs/cache, resolve then delete exact JSONL file |
 | `deletePersistedSession` | resolve by ID and idempotently delete the exact file without spawning Pi |
@@ -620,7 +636,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Throw cause-preserving failures; never turn transport/auth/parse failure into
   empty history.
 - Cover branches, pre-compaction history, unknown entries, timestamp fallback,
-  tool result folding, attachment bounds, and no payload logging.
+  tool result folding, attachment bounds, hidden-context stripping, marker-like
+  authored text, live/replay parity, and no payload logging.
 
 ### Step 6/15: Map live messages and tools
 
@@ -640,20 +657,24 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Add `PiExtensionUiRegistry` for select/confirm/input/editor questions and
   notification toasts.
 - Implement exact value/confirmed/cancelled responses and session-keyed routing.
+- Resolve/store each dialog's display root and aggregate descendant cards for
+  root-session queries.
 - Present editor prefill as a bounded labelled excerpt and make full-replacement
   semantics explicit because the shared question contract has no prefill field.
 - Parse and explicitly degrade unsupported fire-and-forget UI methods.
 - Clear or reject on timeout, abort, process exit, idle reap, and disposal.
 - Keep permissions empty by the locked native-Pi decision.
 - Cover late replies, timeout races, process replacement, reject semantics,
-  multiline answers, prefill truncation/replacement, and sensitive prefill/title
-  non-logging.
+  imported parent chains, multiline answers, prefill truncation/replacement,
+  and sensitive prefill/title non-logging.
 
 ### Step 8/15: Manage session residency and turns
 
 - Extend `PiSessionProcessRepository` and add `PiSessionService` with one lazy
   process per active session, generation-fenced connects, new/resume launch,
   selection state, per-session turn lanes, merged events, and idle reap.
+- Persist privacy-safe pending-new markers until file observation; relaunch an
+  unpersisted session as new after child/bridge restart.
 - Mint secure UUID session IDs in the service and validate Pi's ID grammar in
   `PiLaunchSpec`; map validated inline image data to RPC and reject path, URL,
   or non-image parts before prompt acceptance.
@@ -665,8 +686,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Preserve concurrent turns across different sessions.
 - Cover spawn races, serialization, cross-session parallelism, lazy persistence,
   resume after reap, transient history/rename leases, ID/attachment validation,
-  queued selections, command-without-run, post-acceptance process exit, auth
-  failure, abort, and shutdown.
+  queued selections, response-before-`agent_start` command barriers,
+  command-without-run, post-acceptance exit, auth failure, abort, and shutdown.
 
 ### Step 9/15: Expose models and commands
 
@@ -691,11 +712,13 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Wire buffered plugin events, catalog/path lookup, session creation, rename,
   delete, child sessions, history, prompt/command, questions, statuses,
   providers, health, summaries, and idempotent disposal.
+- Empty creation `parts` starts an idle session only; the bridge's subsequent
+  `sendCommand` owns the first execution.
 - Keep archive/workspace operations honest no-ops and permission methods
   honest empty/not-found results.
 - Cover full contract behavior, missing session/path, lazy persistence,
-  buffered first event listener, operation errors with causes, and disposal
-  order.
+  empty-parts command creation, buffered first event listener, operation errors
+  with causes, and disposal order.
 
 ### Step 11/15: Add managed runtime and lifecycle
 

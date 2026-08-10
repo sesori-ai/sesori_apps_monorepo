@@ -283,22 +283,8 @@ extension_error
 extension_ui_request
 ```
 
-Canonical run shape:
-
-```text
-agent_start
-  turn_start
-    message_start(user)
-    message_end(user)
-    message_start(assistant)
-    message_update(... deltas ...)
-    message_end(assistant)
-    tool_execution_start/update/end (when tools run)
-    message_start/end(toolResult)
-  turn_end
-agent_end
-agent_settled
-```
+Typical order is `agent_start` -> `turn_start` -> user/assistant message frames
+and tool execution -> `turn_end` -> `agent_end` -> `agent_settled`.
 
 The exact tool/message interleaving can vary with sequential versus parallel
 tool execution and provider behavior. Correlate by message content index and
@@ -585,21 +571,8 @@ Archive layout:
 - macOS/Linux `.tar.gz`: wrapper directory `pi/`, entry `pi/pi`.
 - Windows `.zip`: flat package, entry `pi.exe`.
 
-Published package siblings include:
-
-```text
-assets/
-theme/
-export-html/
-native/
-node_modules/
-docs/
-examples/
-package.json
-README.md
-CHANGELOG.md
-photon_rs_bg.wasm
-```
+Published siblings include asset/theme/export/native/module trees, docs,
+examples, package metadata, and `photon_rs_bg.wasm`.
 
 The release script builds x64 Bun baseline targets and arm64 targets. No other
 OS/architecture assets are promised. Managed capability is absent outside the
