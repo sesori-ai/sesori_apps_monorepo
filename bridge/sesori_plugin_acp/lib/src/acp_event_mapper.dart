@@ -164,6 +164,7 @@ class AcpEventMapper {
     _turnSeq.remove(sessionId);
     _startedParts.remove(sessionId);
     _contentTrackers.remove(sessionId);
+    _textPartAccumulators.remove(sessionId);
     _sentUserSeq.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
@@ -202,6 +203,11 @@ class AcpEventMapper {
   /// exact for opaque session and ACP message identifiers.
   final Map<String, Map<String, AcpContentTracker>> _contentTrackers = {};
 
+  /// Text accumulated from ACP deltas until the serialized prompt turn settles.
+  /// ACP emits an empty part snapshot followed by deltas, while chat history
+  /// persists complete part snapshots only.
+  final Map<String, Map<String, _TextPartAccumulator>> _textPartAccumulators = {};
+
   /// Sequence for user messages accepted by this plugin. These are emitted
   /// locally because ACP agents do not reliably echo `user_message_chunk`.
   final Map<String, int> _sentUserSeq = {};
@@ -220,12 +226,35 @@ class AcpEventMapper {
     // dead weight — drop them to bound memory in long sessions.
     _startedParts.remove(sessionId);
     _contentTrackers.remove(sessionId);
+    _textPartAccumulators.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
     // Tool state is retained across a turn (so a reordered late `tool_call_update`
     // still merges onto its terminal state instead of blanking the card), and
     // cleared here at the turn boundary to keep it bounded.
     _liveTools.remove(sessionId);
+  }
+
+  /// Emits complete snapshots for text and reasoning parts streamed during the
+  /// current turn. The caller owns the turn boundary and must call this before
+  /// the next turn starts.
+  List<BridgeSseEvent> finalizeTurn({required String sessionId}) {
+    final accumulators = _textPartAccumulators.remove(sessionId);
+    if (accumulators == null) return const [];
+
+    return [
+      for (final accumulator in accumulators.values)
+        BridgeSseMessagePartUpdated(
+          part: _part(
+            partId: accumulator.partId,
+            messageId: accumulator.messageId,
+            sessionId: sessionId,
+            type: accumulator.type,
+            text: accumulator.text.toString(),
+            attachment: null,
+          ),
+        ),
+    ];
   }
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
@@ -508,6 +537,13 @@ class AcpEventMapper {
       final partId = "${identity.messageId}-${mutation.partIdSuffix}";
       switch (mutation) {
         case AcpTextDeltaMutation(:final delta):
+          _recordTextDelta(
+            sessionId: sessionId,
+            messageId: identity.messageId,
+            partId: partId,
+            type: PluginMessagePartType.text,
+            delta: delta,
+          );
           if (started.add(partId)) {
             events.add(
               BridgeSseMessagePartUpdated(
@@ -614,10 +650,35 @@ class AcpEventMapper {
         delta: text,
       ),
     );
+    _recordTextDelta(
+      sessionId: sessionId,
+      messageId: messageId,
+      partId: partId,
+      type: partType,
+      delta: text,
+    );
     if (role == _ChunkRole.assistant && !identity.hasAcpMessageId) {
       _openIdlessAssistant.add(sessionId);
     }
     return events;
+  }
+
+  void _recordTextDelta({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+    required PluginMessagePartType type,
+    required String delta,
+  }) {
+    final accumulator = (_textPartAccumulators[sessionId] ??= {}).putIfAbsent(
+      partId,
+      () => _TextPartAccumulator(
+        partId: partId,
+        messageId: messageId,
+        type: type,
+      ),
+    );
+    accumulator.text.write(delta);
   }
 
   ({String messageId, bool hasAcpMessageId}) _chunkIdentity({
@@ -1003,6 +1064,19 @@ class _SessionSnapshot {
   String? title;
   int? createdMs;
   int? updatedMs;
+}
+
+class _TextPartAccumulator {
+  _TextPartAccumulator({
+    required this.partId,
+    required this.messageId,
+    required this.type,
+  });
+
+  final String partId;
+  final String messageId;
+  final PluginMessagePartType type;
+  final StringBuffer text = StringBuffer();
 }
 
 /// The last-rendered state of one live tool call, so a partial

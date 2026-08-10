@@ -301,8 +301,8 @@
   variants own response and eligibility behavior. The second review approved
   the complete scope with no remaining findings.
 
-  The committed PR diff against `origin/main` measured 967 changed lines: 911
-  additions and 56 deletions across 35 files. Generated Freezed/JSON output
+  The committed PR diff against `origin/main` measured 1,179 changed lines: 1,074
+  additions and 105 deletions across 38 files. Generated Freezed/JSON output
   accounts for 89 of those lines (54 additions, 35 deletions). The full Claude
   package suite passed 150 tests in addition to the focused cross-layer suites
   listed above. The step remains below the 1,500-line soft cap, so no overage
