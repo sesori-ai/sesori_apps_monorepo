@@ -238,7 +238,12 @@ class SessionApi {
     return _client.post(
       "/session/messages",
       fromJson: MessageWithPartsResponse.fromJson,
-      body: SessionMessagesRequest(sessionId: sessionId, limit: limit, before: before),
+      body: SessionMessagesRequest(
+        sessionId: sessionId,
+        limit: limit,
+        before: before,
+        attachmentDelivery: MessageAttachmentDelivery.inline,
+      ),
     );
   }
 

@@ -361,10 +361,12 @@ as String,
 @JsonSerializable()
 
 class RelaySseSubscribe implements RelayMessage {
-  const RelaySseSubscribe({required this.path, final  String? $type}): $type = $type ?? 'sse_subscribe';
+  const RelaySseSubscribe({required this.path, this.attachmentDelivery = MessageAttachmentDelivery.inline, final  String? $type}): $type = $type ?? 'sse_subscribe';
   factory RelaySseSubscribe.fromJson(Map<String, dynamic> json) => _$RelaySseSubscribeFromJson(json);
 
  final  String path;
+// COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
+@JsonKey() final  MessageAttachmentDelivery attachmentDelivery;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -383,16 +385,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseSubscribe&&(identical(other.path, path) || other.path == path));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseSubscribe&&(identical(other.path, path) || other.path == path)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path);
+int get hashCode => Object.hash(runtimeType,path,attachmentDelivery);
 
 @override
 String toString() {
-  return 'RelayMessage.sseSubscribe(path: $path)';
+  return 'RelayMessage.sseSubscribe(path: $path, attachmentDelivery: $attachmentDelivery)';
 }
 
 
@@ -403,7 +405,7 @@ abstract mixin class $RelaySseSubscribeCopyWith<$Res> implements $RelayMessageCo
   factory $RelaySseSubscribeCopyWith(RelaySseSubscribe value, $Res Function(RelaySseSubscribe) _then) = _$RelaySseSubscribeCopyWithImpl;
 @useResult
 $Res call({
- String path
+ String path, MessageAttachmentDelivery attachmentDelivery
 });
 
 
@@ -420,10 +422,11 @@ class _$RelaySseSubscribeCopyWithImpl<$Res>
 
 /// Create a copy of RelayMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? path = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? path = null,Object? attachmentDelivery = null,}) {
   return _then(RelaySseSubscribe(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String,
+as String,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,
   ));
 }
 

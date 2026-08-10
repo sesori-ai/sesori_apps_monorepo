@@ -554,7 +554,7 @@ baseline is intentionally raised in a separate task.
 | Step | Exact PR title | Estimate | Boundary |
 |---|---|---:|---|
 | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | Active plan/tracker and upload considerations only. |
-| 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 900-1,450 | Shared variant, rendition models, delivery mode defaults, generated code, exhaustive compile-safe consumers. No peer enables references. |
+| 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | Shared variant, rendition models, delivery mode defaults, generated code, exhaustive compile-safe consumers. No peer enables references. |
 | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Versioned thumbnail storage/builder, session-queued live/archive lookup, typed fetch handler, decode/size/security tests. |
 | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Capability-aware active/archive projection and legacy budget preservation. |
 | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Awaited materialization, dual event shapes, subscriber/orphan delivery mode, SSE memory/compatibility coverage. |

@@ -101,6 +101,9 @@ enum MessagePartType {
   compaction,
 }
 
+@JsonEnum()
+enum MessageAttachmentDelivery { inline, storedReference }
+
 @Freezed(fromJson: true, toJson: true)
 sealed class MessagePart with _$MessagePart {
   const factory MessagePart({
@@ -150,6 +153,15 @@ sealed class MessageAttachment with _$MessageAttachment {
     required String? filename,
   }) = MessageAttachmentRemoteUrl;
 
+  @FreezedUnionValue("stored_image")
+  const factory MessageAttachment.storedImage({
+    required String attachmentId,
+    required String bridgeId,
+    required String mime,
+    required String? filename,
+    required int byteLength,
+  }) = MessageAttachmentStoredImage;
+
   const factory MessageAttachment.metadata({
     required String mime,
     required String? filename,
@@ -166,7 +178,10 @@ extension MessageAttachmentSafety on MessageAttachment {
   Uri? get safeRemoteUri {
     final rawUrl = switch (this) {
       MessageAttachmentRemoteUrl(:final url) => url,
-      MessageAttachmentInlineImage() || MessageAttachmentMetadata() || MessageAttachmentUnknown() => null,
+      MessageAttachmentInlineImage() ||
+      MessageAttachmentStoredImage() ||
+      MessageAttachmentMetadata() ||
+      MessageAttachmentUnknown() => null,
     };
     if (rawUrl == null) return null;
 

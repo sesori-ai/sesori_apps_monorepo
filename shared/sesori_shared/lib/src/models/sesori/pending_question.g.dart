@@ -6,13 +6,15 @@ part of 'pending_question.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_PendingQuestionResponse _$PendingQuestionResponseFromJson(Map json) => _PendingQuestionResponse(
-  data: (json['data'] as List<dynamic>)
-      .map(
-        (e) => PendingQuestion.fromJson(Map<String, dynamic>.from(e as Map)),
-      )
-      .toList(),
-);
+_PendingQuestionResponse _$PendingQuestionResponseFromJson(Map json) =>
+    _PendingQuestionResponse(
+      data: (json['data'] as List<dynamic>)
+          .map(
+            (e) =>
+                PendingQuestion.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList(),
+    );
 
 Map<String, dynamic> _$PendingQuestionResponseToJson(
   _PendingQuestionResponse instance,
@@ -27,9 +29,10 @@ _PendingQuestion _$PendingQuestionFromJson(Map json) => _PendingQuestion(
       .toList(),
 );
 
-Map<String, dynamic> _$PendingQuestionToJson(_PendingQuestion instance) => <String, dynamic>{
-  'id': instance.id,
-  'sessionID': instance.sessionID,
-  'displaySessionId': ?instance.displaySessionId,
-  'questions': instance.questions.map((e) => e.toJson()).toList(),
-};
+Map<String, dynamic> _$PendingQuestionToJson(_PendingQuestion instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'displaySessionId': ?instance.displaySessionId,
+      'questions': instance.questions.map((e) => e.toJson()).toList(),
+    };

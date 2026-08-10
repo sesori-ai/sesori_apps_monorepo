@@ -244,6 +244,10 @@ MessageAttachment _$MessageAttachmentFromJson(
           return MessageAttachmentRemoteUrl.fromJson(
             json
           );
+                case 'stored_image':
+          return MessageAttachmentStoredImage.fromJson(
+            json
+          );
                 case 'metadata':
           return MessageAttachmentMetadata.fromJson(
             json
@@ -426,6 +430,83 @@ mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
 as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessageAttachmentStoredImage implements MessageAttachment {
+  const MessageAttachmentStoredImage({required this.attachmentId, required this.bridgeId, required this.mime, required this.filename, required this.byteLength, final  String? $type}): $type = $type ?? 'stored_image';
+  factory MessageAttachmentStoredImage.fromJson(Map<String, dynamic> json) => _$MessageAttachmentStoredImageFromJson(json);
+
+ final  String attachmentId;
+ final  String bridgeId;
+ final  String mime;
+ final  String? filename;
+ final  int byteLength;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageAttachmentStoredImageCopyWith<MessageAttachmentStoredImage> get copyWith => _$MessageAttachmentStoredImageCopyWithImpl<MessageAttachmentStoredImage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageAttachmentStoredImageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentStoredImage&&(identical(other.attachmentId, attachmentId) || other.attachmentId == attachmentId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.byteLength, byteLength) || other.byteLength == byteLength));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,attachmentId,bridgeId,mime,filename,byteLength);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageAttachmentStoredImageCopyWith<$Res> implements $MessageAttachmentCopyWith<$Res> {
+  factory $MessageAttachmentStoredImageCopyWith(MessageAttachmentStoredImage value, $Res Function(MessageAttachmentStoredImage) _then) = _$MessageAttachmentStoredImageCopyWithImpl;
+@useResult
+$Res call({
+ String attachmentId, String bridgeId, String mime, String? filename, int byteLength
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageAttachmentStoredImageCopyWithImpl<$Res>
+    implements $MessageAttachmentStoredImageCopyWith<$Res> {
+  _$MessageAttachmentStoredImageCopyWithImpl(this._self, this._then);
+
+  final MessageAttachmentStoredImage _self;
+  final $Res Function(MessageAttachmentStoredImage) _then;
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? attachmentId = null,Object? bridgeId = null,Object? mime = null,Object? filename = freezed,Object? byteLength = null,}) {
+  return _then(MessageAttachmentStoredImage(
+attachmentId: null == attachmentId ? _self.attachmentId : attachmentId // ignore: cast_nullable_to_non_nullable
+as String,bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,byteLength: null == byteLength ? _self.byteLength : byteLength // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

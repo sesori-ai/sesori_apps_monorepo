@@ -1345,7 +1345,8 @@ mixin _$SessionMessagesRequest {
 // COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
  int? get limit;/// Exclusive cursor: return messages ordered strictly before this one.
 /// Null starts from the newest message.
- int? get before;
+ int? get before;// COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
+ MessageAttachmentDelivery get attachmentDelivery;
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1358,16 +1359,16 @@ $SessionMessagesRequestCopyWith<SessionMessagesRequest> get copyWith => _$Sessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,limit,before);
+int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery);
 
 @override
 String toString() {
-  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before)';
+  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery)';
 }
 
 
@@ -1378,7 +1379,7 @@ abstract mixin class $SessionMessagesRequestCopyWith<$Res>  {
   factory $SessionMessagesRequestCopyWith(SessionMessagesRequest value, $Res Function(SessionMessagesRequest) _then) = _$SessionMessagesRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, int? limit, int? before
+ String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery
 });
 
 
@@ -1395,12 +1396,13 @@ class _$SessionMessagesRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,}) {
   return _then(_self.copyWith(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,
   ));
 }
 
@@ -1412,7 +1414,7 @@ as int?,
 @JsonSerializable()
 
 class _SessionMessagesRequest implements SessionMessagesRequest {
-  const _SessionMessagesRequest({required this.sessionId, required this.limit, required this.before});
+  const _SessionMessagesRequest({required this.sessionId, required this.limit, required this.before, this.attachmentDelivery = MessageAttachmentDelivery.inline});
   factory _SessionMessagesRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
 
 @override final  String sessionId;
@@ -1423,6 +1425,8 @@ class _SessionMessagesRequest implements SessionMessagesRequest {
 /// Exclusive cursor: return messages ordered strictly before this one.
 /// Null starts from the newest message.
 @override final  int? before;
+// COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
+@override@JsonKey() final  MessageAttachmentDelivery attachmentDelivery;
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -1437,16 +1441,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,limit,before);
+int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery);
 
 @override
 String toString() {
-  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before)';
+  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery)';
 }
 
 
@@ -1457,7 +1461,7 @@ abstract mixin class _$SessionMessagesRequestCopyWith<$Res> implements $SessionM
   factory _$SessionMessagesRequestCopyWith(_SessionMessagesRequest value, $Res Function(_SessionMessagesRequest) _then) = __$SessionMessagesRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, int? limit, int? before
+ String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery
 });
 
 
@@ -1474,12 +1478,13 @@ class __$SessionMessagesRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,}) {
   return _then(_SessionMessagesRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,
   ));
 }
 

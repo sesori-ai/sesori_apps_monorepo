@@ -100,5 +100,26 @@ void main() {
 
       expect(MessageAttachment.fromJson(attachment.toJson()), attachment);
     });
+
+    test("stored images round-trip with scoped opaque identity", () {
+      const attachment = MessageAttachment.storedImage(
+        attachmentId: "sha256-opaque",
+        bridgeId: "bridge-1",
+        mime: "image/png",
+        filename: "image.png",
+        byteLength: 1234,
+      );
+
+      expect(attachment.safeRemoteUri, isNull);
+      expect(attachment.toJson(), {
+        "source": "stored_image",
+        "attachmentId": "sha256-opaque",
+        "bridgeId": "bridge-1",
+        "mime": "image/png",
+        "filename": "image.png",
+        "byteLength": 1234,
+      });
+      expect(MessageAttachment.fromJson(attachment.toJson()), attachment);
+    });
   });
 }

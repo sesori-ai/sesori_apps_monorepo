@@ -92,6 +92,27 @@ Map<String, dynamic> _$MessageAttachmentRemoteUrlToJson(
   'source': instance.$type,
 };
 
+MessageAttachmentStoredImage _$MessageAttachmentStoredImageFromJson(Map json) =>
+    MessageAttachmentStoredImage(
+      attachmentId: json['attachmentId'] as String,
+      bridgeId: json['bridgeId'] as String,
+      mime: json['mime'] as String,
+      filename: json['filename'] as String?,
+      byteLength: (json['byteLength'] as num).toInt(),
+      $type: json['source'] as String?,
+    );
+
+Map<String, dynamic> _$MessageAttachmentStoredImageToJson(
+  MessageAttachmentStoredImage instance,
+) => <String, dynamic>{
+  'attachmentId': instance.attachmentId,
+  'bridgeId': instance.bridgeId,
+  'mime': instance.mime,
+  'filename': ?instance.filename,
+  'byteLength': instance.byteLength,
+  'source': instance.$type,
+};
+
 MessageAttachmentMetadata _$MessageAttachmentMetadataFromJson(Map json) =>
     MessageAttachmentMetadata(
       mime: json['mime'] as String,

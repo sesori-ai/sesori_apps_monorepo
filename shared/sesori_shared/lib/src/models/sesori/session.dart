@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "agent_info.dart";
+import "message_part.dart";
 import "plugin_identity.dart";
 import "pull_request_info.dart";
 
@@ -145,6 +146,9 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
     /// Exclusive cursor: return messages ordered strictly before this one.
     /// Null starts from the newest message.
     required int? before,
+
+    // COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
+    @Default(MessageAttachmentDelivery.inline) MessageAttachmentDelivery attachmentDelivery,
   }) = _SessionMessagesRequest;
 
   factory SessionMessagesRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);

@@ -425,7 +425,11 @@ class RelayClient {
 
     final controller = StreamController<RelaySseEvent>.broadcast();
     _sseController = controller;
-    unawaited(_sendEncryptedMessage(RelayMessage.sseSubscribe(path: path)));
+    unawaited(
+      _sendEncryptedMessage(
+        RelayMessage.sseSubscribe(path: path, attachmentDelivery: MessageAttachmentDelivery.inline),
+      ),
+    );
     return controller.stream;
   }
 

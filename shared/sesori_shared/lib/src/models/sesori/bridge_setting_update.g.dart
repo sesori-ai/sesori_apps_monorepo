@@ -6,7 +6,8 @@ part of 'bridge_setting_update.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-PullRequestRefreshIntervalSettingUpdate _$PullRequestRefreshIntervalSettingUpdateFromJson(Map json) =>
+PullRequestRefreshIntervalSettingUpdate
+_$PullRequestRefreshIntervalSettingUpdateFromJson(Map json) =>
     PullRequestRefreshIntervalSettingUpdate(
       intervalSeconds: strictIntJsonConverter.fromJson(json['intervalSeconds']),
       $type: json['type'] as String?,
@@ -24,10 +25,8 @@ YoloSettingUpdate _$YoloSettingUpdateFromJson(Map json) => YoloSettingUpdate(
   $type: json['type'] as String?,
 );
 
-Map<String, dynamic> _$YoloSettingUpdateToJson(YoloSettingUpdate instance) => <String, dynamic>{
-  'enabled': instance.enabled,
-  'type': instance.$type,
-};
+Map<String, dynamic> _$YoloSettingUpdateToJson(YoloSettingUpdate instance) =>
+    <String, dynamic>{'enabled': instance.enabled, 'type': instance.$type};
 
 UnknownBridgeSettingUpdate _$UnknownBridgeSettingUpdateFromJson(Map json) =>
     UnknownBridgeSettingUpdate($type: json['type'] as String?);
@@ -49,7 +48,8 @@ _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionFromJson(
   $type: json['type'] as String?,
 );
 
-Map<String, dynamic> _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionToJson(
+Map<String, dynamic>
+_$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionToJson(
   PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection instance,
 ) => <String, dynamic>{
   'minimumIntervalSeconds': ?strictIntJsonConverter.toJson(
@@ -61,7 +61,8 @@ Map<String, dynamic> _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectio
   'type': instance.$type,
 };
 
-UnknownBridgeSettingUpdateRejection _$UnknownBridgeSettingUpdateRejectionFromJson(Map json) =>
+UnknownBridgeSettingUpdateRejection
+_$UnknownBridgeSettingUpdateRejectionFromJson(Map json) =>
     UnknownBridgeSettingUpdateRejection($type: json['type'] as String?);
 
 Map<String, dynamic> _$UnknownBridgeSettingUpdateRejectionToJson(

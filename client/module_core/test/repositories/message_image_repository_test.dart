@@ -98,6 +98,29 @@ void main() {
     expect(requests, 0);
   });
 
+  test("does not load stored images before reference delivery is enabled", () async {
+    var requests = 0;
+    final repository = MessageImageRepository(
+      api: MessageImageApi(
+        client: MockClient((_) async {
+          requests++;
+          return http.Response("unexpected", 200);
+        }),
+      ),
+    );
+    const attachment = MessageAttachment.storedImage(
+      attachmentId: "attachment-1",
+      bridgeId: "bridge-1",
+      mime: "image/png",
+      filename: "preview.png",
+      byteLength: 1024,
+    );
+
+    expect(repository.canLoad(attachment: attachment), isFalse);
+    expect(await repository.load(attachment: attachment), isA<MessageImageLoadUnsupported>());
+    expect(requests, 0);
+  });
+
   test("rejects an HTTPS redirect that downgrades to HTTP", () async {
     var requests = 0;
     final repository = MessageImageRepository(
