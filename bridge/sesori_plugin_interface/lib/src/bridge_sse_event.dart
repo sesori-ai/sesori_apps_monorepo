@@ -181,12 +181,14 @@ class BridgeSsePermissionAsked extends BridgeSseEvent {
   final String? displaySessionId;
   final String tool;
   final String description;
+  final bool allowAlways;
   const BridgeSsePermissionAsked({
     required this.requestID,
     required this.sessionID,
     required this.displaySessionId,
     required this.tool,
     required this.description,
+    required this.allowAlways,
   });
 }
 

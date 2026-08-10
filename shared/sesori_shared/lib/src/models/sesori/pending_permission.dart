@@ -26,6 +26,9 @@ sealed class PendingPermission with _$PendingPermission {
     required String? displaySessionId,
     required String tool,
     required String description,
+    // COMPATIBILITY 2026-08-10 (v1.8.0): Older bridges omit this capability;
+    // remove the default after the minimum supported bridge sends it.
+    @Default(true) bool allowAlways,
   }) = _PendingPermission;
 
   factory PendingPermission.fromJson(Map<String, dynamic> json) => _$PendingPermissionFromJson(json);

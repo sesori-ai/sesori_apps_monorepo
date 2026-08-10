@@ -22,8 +22,7 @@ void main() {
       registry = ApprovalRegistry(
         emit: emitted.add,
         respond: (id, result) => respondCalls.add(_RespondCall(id, result)),
-        respondError: (id, code, message) =>
-            errorCalls.add(_RespondError(id, code, message)),
+        respondError: (id, code, message) => errorCalls.add(_RespondError(id, code, message)),
       );
       registry.attach(requests.stream);
     });
@@ -226,7 +225,9 @@ void main() {
       "item/permissions/requestApproval grants the requested profile on approve",
       () async {
         const requested = {
-          "fileSystem": {"writableRoots": <String>["/repo"]},
+          "fileSystem": {
+            "writableRoots": <String>["/repo"],
+          },
         };
         requests.add(
           const CodexServerRequest(
@@ -357,7 +358,9 @@ void main() {
         final asked = emitted.single as BridgeSsePermissionAsked;
         expect(asked.sessionID, equals("t-3"));
         expect(asked.description, equals("Allow Calendar to create an event?"));
+        expect(asked.allowAlways, isTrue);
         expect(registry.pendingPermissionsForSession("t-3"), hasLength(1));
+        expect(registry.pendingPermissionsForSession("t-3").single.allowAlways, isTrue);
         expect(registry.pendingForSession("t-3"), isEmpty);
 
         final replied = registry.replyPermission(
@@ -374,6 +377,37 @@ void main() {
             "_meta": null,
           }),
         );
+      },
+    );
+
+    test(
+      "MCP tool approval without always persistence hides Always live and pending",
+      () async {
+        requests.add(
+          const CodexServerRequest(
+            id: 197,
+            method: "mcpServer/elicitation/request",
+            params: {
+              "threadId": "t-3",
+              "serverName": "codex_apps",
+              "mode": "form",
+              "message": "Allow Calendar to read events?",
+              "_meta": {
+                "codex_approval_kind": "mcp_tool_call",
+                "persist": ["session"],
+                "tool_name": "calendar_read_events",
+              },
+              "requestedSchema": {
+                "type": "object",
+                "properties": <String, Object?>{},
+              },
+            },
+          ),
+        );
+        await pump();
+
+        expect((emitted.single as BridgeSsePermissionAsked).allowAlways, isFalse);
+        expect(registry.pendingPermissionsForSession("t-3").single.allowAlways, isFalse);
       },
     );
 
@@ -489,7 +523,12 @@ void main() {
         expect(ok, isTrue);
         expect(respondCalls.single.id, equals(201));
         final answers = (respondCalls.single.result as Map)["answers"] as Map;
-        expect(answers["name"], equals({"answers": ["Daniil"]}));
+        expect(
+          answers["name"],
+          equals({
+            "answers": ["Daniil"],
+          }),
+        );
       },
     );
 

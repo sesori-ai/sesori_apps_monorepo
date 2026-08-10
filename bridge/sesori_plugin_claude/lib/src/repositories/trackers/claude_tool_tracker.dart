@@ -10,6 +10,7 @@ final class ClaudeTrackedTool {
     required this.input,
     required this.state,
     required this.sessionDiffRequired,
+    required this.todoRefreshRequired,
   });
 
   final String id;
@@ -20,6 +21,9 @@ final class ClaudeTrackedTool {
 
   /// Whether this update should emit the session's one-shot diff signal.
   final bool sessionDiffRequired;
+
+  /// Whether this terminal update invalidates the session's todo projection.
+  final bool todoRefreshRequired;
 }
 
 /// Tracks Claude `tool_use` blocks from their streamed start through the
@@ -143,7 +147,9 @@ final class ClaudeToolTracker {
   }) {
     final tool = _sessions[sessionId]?.tools[toolId];
     if (tool == null) return null;
-    if (_isTerminal(tool.status)) return tool.snapshot(sessionDiffRequired: false);
+    if (_isTerminal(tool.status)) {
+      return tool.snapshot(sessionDiffRequired: false, todoRefreshRequired: false);
+    }
     tool
       ..status = isError ? PluginToolStatus.error : PluginToolStatus.completed
       ..output = isError ? null : output
@@ -151,7 +157,10 @@ final class ClaudeToolTracker {
       ..attachments = List.unmodifiable(attachments);
     final sessionDiffRequired = tool.isEdit && !tool.diffEmitted;
     if (sessionDiffRequired) tool.diffEmitted = true;
-    return tool.snapshot(sessionDiffRequired: sessionDiffRequired);
+    return tool.snapshot(
+      sessionDiffRequired: sessionDiffRequired,
+      todoRefreshRequired: tool.isTodoWrite,
+    );
   }
 
   /// Starts a new turn with no retained block or result correlation state.
@@ -202,31 +211,36 @@ final class _TrackedTool {
   bool diffEmitted = false;
 
   bool get isEdit => kind == _ClaudeToolKind.edit;
+  bool get isTodoWrite => kind == _ClaudeToolKind.todoWrite;
 
-  ClaudeTrackedTool snapshot({required bool sessionDiffRequired}) => ClaudeTrackedTool(
-    id: id,
-    messageId: messageId,
-    name: name,
-    input: input,
-    state: PluginToolState(
-      status: status,
-      title: null,
-      output: output,
-      error: error,
-      attachments: attachments,
-    ),
-    sessionDiffRequired: sessionDiffRequired,
-  );
+  ClaudeTrackedTool snapshot({required bool sessionDiffRequired, bool todoRefreshRequired = false}) =>
+      ClaudeTrackedTool(
+        id: id,
+        messageId: messageId,
+        name: name,
+        input: input,
+        state: PluginToolState(
+          status: status,
+          title: null,
+          output: output,
+          error: error,
+          attachments: attachments,
+        ),
+        sessionDiffRequired: sessionDiffRequired,
+        todoRefreshRequired: todoRefreshRequired,
+      );
 }
 
 bool _isTerminal(PluginToolStatus status) => status == PluginToolStatus.completed || status == PluginToolStatus.error;
 
 enum _ClaudeToolKind {
   edit,
+  todoWrite,
   other;
 
   static _ClaudeToolKind parse(String raw) => switch (raw.toLowerCase()) {
     "edit" || "multiedit" || "notebookedit" || "write" => edit,
+    "todowrite" => todoWrite,
     _ => other,
   };
 }

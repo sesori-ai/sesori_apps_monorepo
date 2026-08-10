@@ -116,6 +116,7 @@ class PluginModelMapper {
       displaySessionId: displaySessionId,
       tool: permission.permission,
       description: permission.patterns.join(", "),
+      allowAlways: true,
     );
   }
 

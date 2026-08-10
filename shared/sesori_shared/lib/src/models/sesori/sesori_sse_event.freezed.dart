@@ -2091,7 +2091,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, final  String? $type}): $type = $type ?? 'permission.asked';
+  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, this.allowAlways = true, final  String? $type}): $type = $type ?? 'permission.asked';
   factory SesoriPermissionAsked.fromJson(Map<String, dynamic> json) => _$SesoriPermissionAskedFromJson(json);
 
  final  String requestID;
@@ -2102,6 +2102,9 @@ class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
  final  String? displaySessionId;
  final  String tool;
  final  String description;
+// COMPATIBILITY 2026-08-10 (v1.8.0): Older bridges omit this capability;
+// remove the default after the minimum supported bridge sends it.
+@JsonKey() final  bool allowAlways;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -2120,16 +2123,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId,tool,description);
+int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId,tool,description,allowAlways);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description)';
+  return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
 }
 
 
@@ -2140,7 +2143,7 @@ abstract mixin class $SesoriPermissionAskedCopyWith<$Res> implements $SesoriSseE
   factory $SesoriPermissionAskedCopyWith(SesoriPermissionAsked value, $Res Function(SesoriPermissionAsked) _then) = _$SesoriPermissionAskedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String? displaySessionId, String tool, String description
+ String requestID, String sessionID, String? displaySessionId, String tool, String description, bool allowAlways
 });
 
 
@@ -2157,14 +2160,15 @@ class _$SesoriPermissionAskedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? allowAlways = null,}) {
   return _then(SesoriPermissionAsked(
 requestID: null == requestID ? _self.requestID : requestID // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
 as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,
+as String,allowAlways: null == allowAlways ? _self.allowAlways : allowAlways // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

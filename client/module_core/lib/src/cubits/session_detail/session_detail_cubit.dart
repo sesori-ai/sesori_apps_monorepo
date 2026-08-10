@@ -1955,6 +1955,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             displaySessionId: p.displaySessionId,
             tool: p.tool,
             description: p.description,
+            allowAlways: p.allowAlways,
           ),
         )
         .toList();

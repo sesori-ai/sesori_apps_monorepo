@@ -283,11 +283,40 @@ void main() {
 
     expect(find.byKey(const Key("yolo_switch")), findsNothing);
     expect(find.byType(PregoActivityIndicator), findsOneWidget);
+    expect(
+      tester.widget<PregoGroupedRow>(find.byKey(const Key("pull_request_refresh_interval"))).onTap,
+      isNull,
+    );
     await tester.tap(find.text("YOLO mode"));
     verify(() => bridgeSettingsRepository.updateYolo(enabled: true)).called(1);
 
     mutation.complete(
       const YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: true)),
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("YOLO disables interaction while a refresh update is in progress", (tester) async {
+    _useTallSurface(tester);
+    final mutation = Completer<PullRequestRefreshSettingsMutationResult>();
+    when(
+      () => bridgeSettingsRepository.updatePullRequestRefresh(intervalSeconds: 45),
+    ).thenAnswer((_) => mutation.future);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).onChanged, isNull);
+
+    mutation.complete(
+      const PullRequestRefreshSettingsMutationCommitted(
+        response: PullRequestRefreshSettingsResponse(intervalSeconds: 45),
+      ),
     );
     await tester.pumpAndSettle();
   });

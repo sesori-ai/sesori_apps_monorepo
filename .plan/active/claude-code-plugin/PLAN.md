@@ -244,7 +244,7 @@ bridge/sesori_plugin_claude/
                                   policy, interrupt, exit classification
     claude_catalog_service.dart   catalog exposure + switch requests
   lib/src/                        above Layer 2 — consumers of Layer-2 components
-    claude_event_mapper.dart      stream messages -> BridgeSseEvent
+    claude_event_dispatcher.dart  stream messages -> BridgeSseEvent
     claude_history_mapper.dart    transcript -> PluginMessageWithParts
     claude_approval_registry.dart can_use_tool -> permissions/questions
     claude_plugin_impl.dart       ClaudePlugin — LAYER 4 composition root
@@ -267,7 +267,7 @@ plugins rather than invented here:
   belongs to a repository, so `ClaudeSessionProcessRepository` is the Layer-2
   boundary every service and mapper goes through to reach a process.
 - **No Layer-2 component depends on another Layer-2 component.**
-  `ClaudeEventMapper` consumes the content mapper and the tool tracker, and
+  `ClaudeEventDispatcher` consumes the content mapper and the tool tracker, and
   `ClaudeHistoryMapper` consumes the content mapper, so both consumers live at
   `lib/src/` — exactly where ACP puts `acp_event_mapper.dart` and
   `acp_session_loader.dart` relative to its own `repositories/` components.
@@ -342,9 +342,9 @@ rule that outlives the session — and is withheld entirely when
 `decision_reason` may carry ANSI escapes and is sanitized before it reaches the
 phone.
 
-**`ClaudeEventMapper`** — lives at `lib/src/`, not in `repositories/`, because it
+**`ClaudeEventDispatcher`** — lives at `lib/src/`, not in `repositories/`, because it
 consumes two Layer-2 components.
-`ClaudeEventMapper({required ClaudeContentMapper content,
+`ClaudeEventDispatcher({required ClaudeContentMapper content,
 required ClaudeToolTracker tools})`.
 
 It carries the hard contract shared with the Codex and ACP
@@ -432,7 +432,7 @@ required ClaudeBackendCatalogRepository catalog,
 required ClaudeSessionService sessions,
 required ClaudeCatalogService catalogService,
 required ClaudeApprovalRegistry approvals,
-required ClaudeEventMapper events,
+required ClaudeEventDispatcher events,
 required ClaudeHistoryMapper history})`. No constructor default creates a hidden
 production dependency.
 
@@ -775,7 +775,7 @@ the unused-architecture problem avoided in Step 3.
 
 ### Step 8/17 — Map Stream Events To SSE
 
-- Add `ClaudeEventMapper` at `lib/src/` — not in `repositories/mappers/`, because
+- Add `ClaudeEventDispatcher` at `lib/src/` — not in `repositories/mappers/`, because
   it consumes the Layer-2 content mapper and tool tracker — over the Step 5 and
   Step 7 components: message and part envelopes, text and thinking deltas, tool
   parts, retry status, the todo staleness signal, error result envelopes, and
@@ -795,6 +795,10 @@ the unused-architecture problem avoided in Step 3.
   interaction-shaped tools appear.
 - Honor `suppress_always_allow_rule` by withholding the always affordance, and
   sanitize ANSI escapes out of `decision_reason` before it reaches the phone.
+- Extend the backward-compatible permission event and pending-response wire
+  shapes with `allowAlways`, defaulting omitted values to true for released
+  peers. Existing plugins always send true; Claude sends false when suppression
+  is required, and the mobile modal hides the affordance.
 - Filter `permission_suggestions` before echoing them for `always`: session-scoped
   `addRules` only, never `setMode`, `addDirectories`, or a destination that
   persists past the session, degrading to a plain allow when nothing qualifies.
@@ -971,7 +975,7 @@ only repositories and `AcpStdioClient` is owned by `AcpPlugin`. A Layer-2
 `ClaudeSessionProcessRepository` now owns the per-session client map and is the
 only component that touches `api/`. `initialize`-payload DTO mapping moved out of
 the service into `ClaudeBackendCatalogRepository`, and the two catalogs were given
-distinct names. `ClaudeEventMapper` and `ClaudeHistoryMapper` moved from
+distinct names. `ClaudeEventDispatcher` and `ClaudeHistoryMapper` moved from
 `repositories/mappers/` up to `lib/src/`, because a Layer-2 component may not
 depend on another Layer-2 component — the placement ACP already uses.
 

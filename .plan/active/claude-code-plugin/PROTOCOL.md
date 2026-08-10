@@ -149,9 +149,46 @@ A successful turn is `subtype: "success"`, `is_error: false`,
 is populated when a tool was refused **without** the host being asked — the
 silent-denial signature described in section 1.
 
-**OPEN:** the exhaustive `subtype` and `terminal_reason` value sets for error
-turns (usage limit, auth expiry, max turns). Capture before the event mapper
-maps error envelopes.
+The pinned SDK declares error subtypes `error_during_execution`,
+`error_max_turns`, `error_max_budget_usd`, and
+`error_max_structured_output_retries`. Its `TerminalReason` union is the typed
+source for terminal classification; unknown additions degrade to a generic
+error rather than being matched as strings above the transport boundary.
+
+Step 8 captured two terminal failures live against CLI 2.1.226:
+
+- A minimal positive `--max-budget-usd` emitted `subtype:
+  "error_max_budget_usd"`, `is_error: true`, `terminal_reason:
+  "budget_exhausted"`, and an `errors` string list.
+- An unavailable model emitted the protocol's non-obvious API-error shape:
+  `subtype: "success"`, `is_error: true`, `terminal_reason: "api_error"`, and
+  `api_error_status: 404`. The preceding assistant frame carried
+  `error: "model_not_found"` and a synthetic explanatory message.
+
+The event mapper therefore treats `is_error` as authoritative even when the
+subtype says success. It never forwards raw `result` or `errors` strings into
+the error envelope because backend failures may echo request details; it maps
+typed terminal reasons and HTTP status to bounded, privacy-safe presentation.
+
+### `system`/`api_retry`
+
+The pinned SDK declares this required shape (no matching local transcript was
+found during the redacted structural survey):
+
+```ts
+{
+  type: 'system', subtype: 'api_retry', attempt: number,
+  max_retries: number, retry_delay_ms: number,
+  error_status: number | null, error: SDKAssistantMessageError,
+  uuid: string, session_id: string
+}
+```
+
+`error` is a closed category such as `rate_limit`, `overloaded`,
+`authentication_failed`, or `server_error`, not free-form text. The mapper
+uses that category for a privacy-safe retry status and converts
+`retry_delay_ms` into the absolute epoch-millisecond `SessionStatus.retry.next`
+value expected by the existing client contract.
 
 ## 3. Stdin Message Types
 
@@ -348,8 +385,13 @@ This satisfies Success Criterion 3 literally: `always` never escalates beyond
 what the backend suggested *and* never beyond what the user asked for. The two
 are not the same thing, which is the trap.
 
-**OPEN:** live `can_use_tool` captures for `AskUserQuestion` and `ExitPlanMode`,
-including whether answer keys are the full question text. Capture before Step 9.
+**Verified with CLI 2.1.226.** Both `AskUserQuestion` and `ExitPlanMode` set
+`requires_user_interaction: true`. `AskUserQuestion.input` carries the declared
+`questions` array, and a successful response returns the original input plus
+`answers: {<full question text>: <selected labels joined by comma+space>}` in
+`updatedInput`. `ExitPlanMode.input` carries `plan` and `planFilePath`; approval
+returns that input unchanged in `updatedInput`. These payloads were exercised
+through successful live tool results, not inferred only from declarations.
 
 ## 6. Models, Agents, And Modes
 
@@ -573,7 +615,7 @@ Carried into their consuming steps rather than blocking the scaffold:
 | Item | Needed by |
 |---|---|
 | Error `result` subtypes and `terminal_reason` values | Step 8 |
-| `AskUserQuestion` / `ExitPlanMode` live captures and answer-key shape | Step 9 |
+| `AskUserQuestion` / `ExitPlanMode` live captures and answer-key shape | Resolved in Step 9 |
 | Image content-block round-trip | Step 15 |
 | Slash-command dispatch in stream-json | Step 12 |
 | Auto-update / telemetry environment variables | Step 13 |

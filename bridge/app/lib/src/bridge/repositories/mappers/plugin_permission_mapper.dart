@@ -12,5 +12,6 @@ extension PluginPendingPermissionMapping on PluginPendingPermission {
     displaySessionId: displaySessionId,
     tool: tool,
     description: description,
+    allowAlways: allowAlways,
   );
 }

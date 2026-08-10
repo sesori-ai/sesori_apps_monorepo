@@ -60,6 +60,51 @@ void main() {
       expect(second.whereType<BridgeSseMessagePartDelta>().single.delta, "lo");
     });
 
+    test("finalizeTurn emits complete text and reasoning snapshots", () {
+      mapper.beginTurn("s1");
+      mapper.map(update({
+        "sessionUpdate": "agent_thought_chunk",
+        "content": {"type": "text", "text": "thinking"},
+      }));
+      mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "Hello "},
+      }));
+      mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "world"},
+      }));
+
+      final parts = mapper
+          .finalizeTurn(sessionId: "s1")
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .toList();
+
+      expect(parts.map((part) => part.id), [
+        "s1-t1-assistant-a0-reasoning",
+        "s1-t1-assistant-a0-text",
+      ]);
+      expect(parts.map((part) => part.type), [
+        PluginMessagePartType.reasoning,
+        PluginMessagePartType.text,
+      ]);
+      expect(parts.map((part) => part.text), ["thinking", "Hello world"]);
+      expect(mapper.finalizeTurn(sessionId: "s1"), isEmpty);
+    });
+
+    test("forgetSession drops pending text snapshots", () {
+      mapper.beginTurn("s1");
+      mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "discarded"},
+      }));
+
+      mapper.forgetSession("s1");
+
+      expect(mapper.finalizeTurn(sessionId: "s1"), isEmpty);
+    });
+
     test("agent message content preserves mixed text and image order", () {
       mapper.beginTurn("s1");
       final events = mapper.map(update({

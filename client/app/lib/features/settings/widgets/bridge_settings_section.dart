@@ -31,7 +31,8 @@ class BridgeSettingsSection extends StatelessWidget {
               BridgeSettingsReady(:final pullRequestRefreshMutation)
                   when pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
                       pullRequestRefreshMutation is! PullRequestRefreshMutationUncertain &&
-                      pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported =>
+                      pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported &&
+                      (state is! BridgeSettingsReadyFull || state.yoloMutation is! YoloMutationInProgress) =>
                 () => unawaited(_editInterval(context: context, state: state)),
               BridgeSettingsLoading() ||
               BridgeSettingsDisconnected() ||
@@ -58,7 +59,8 @@ class _YoloSettingsRow extends StatelessWidget {
         ready != null &&
         ready.yoloMutation is! YoloMutationInProgress &&
         ready.yoloMutation is! YoloMutationUncertain &&
-        ready.yoloMutation is! YoloMutationUnsupported;
+        ready.yoloMutation is! YoloMutationUnsupported &&
+        ready.pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress;
 
     void toggle({required bool enabled}) {
       final current = ready;
@@ -82,7 +84,7 @@ class _YoloSettingsRow extends StatelessWidget {
           BridgeSettingsReadyFull(:final yoloEnabled) => PregoSwitch(
             key: const Key("yolo_switch"),
             value: yoloEnabled,
-            onChanged: (enabled) => toggle(enabled: enabled),
+            onChanged: interactive ? (enabled) => toggle(enabled: enabled) : null,
           ),
           BridgeSettingsReadyLegacyPartial() || BridgeSettingsUnsupported() => Text(
             context.loc.settingsPullRequestRefreshUnavailable,

@@ -75,6 +75,7 @@ void main() {
         displaySessionId: "session",
         tool: "read",
         description: "read a file",
+        allowAlways: true,
       ),
     );
 
@@ -129,6 +130,7 @@ void main() {
             displaySessionId: "session",
             tool: "read",
             description: "stale",
+            allowAlways: true,
           ),
         ),
         (
@@ -139,6 +141,7 @@ void main() {
             displaySessionId: "session",
             tool: "read",
             description: "current",
+            allowAlways: true,
           ),
         ),
       ];

@@ -378,6 +378,7 @@ class AcpApprovalRegistry {
       params: request.params,
     );
     final summary = _permissionSummary(request.params);
+    final allowAlways = _allowsAlways(request.params);
     _emit(
       BridgeSsePermissionAsked(
         requestID: bridgeRequestId,
@@ -387,6 +388,7 @@ class AcpApprovalRegistry {
         displaySessionId: sessionId,
         tool: summary.tool,
         description: summary.description,
+        allowAlways: allowAlways,
       ),
     );
   }
@@ -428,8 +430,12 @@ class AcpApprovalRegistry {
       displaySessionId: entry.sessionId,
       tool: summary.tool,
       description: summary.description,
+      allowAlways: _allowsAlways(entry.params),
     );
   }
+
+  bool _allowsAlways(Map<String, dynamic> params) =>
+      _optionsFrom(params).any((option) => option["kind"] == "allow_always");
 
   List<Map<String, dynamic>> _optionsFrom(Map<String, dynamic> params) {
     final raw = params["options"];

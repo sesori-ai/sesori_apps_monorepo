@@ -4,12 +4,12 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `d323c3c4` (Step 7 synchronized with it after Step 6 merged)
-- **Series state:** Steps 1-6/17 merged; Step 7/17 PR open
-- **Current step:** 7/17 — tool lifecycle tracking
+  `944e07e7` (Step 9 synchronized with it after Step 8 merged)
+- **Series state:** Steps 1-8/17 merged; Step 9/17 ready for PR
+- **Current step:** 9/17 — permission and question registry complete locally
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Start Step 8 locally while Step 7 is in review
+- **Next action:** Open Step 9 against `main`, then start Step 10 locally
 
 ## Plan Review
 
@@ -22,7 +22,7 @@
   per the repository plan-review process — added the Layer-2
   `ClaudeSessionProcessRepository` so no `services/` file imports `api/`; moved
   `initialize` DTO mapping into a new `ClaudeBackendCatalogRepository` and gave
-  the two catalogs distinct names; moved `ClaudeEventMapper` and
+  the two catalogs distinct names; moved `ClaudeEventDispatcher` and
   `ClaudeHistoryMapper` up to `lib/src/` to remove Layer-2 peer dependencies;
   gave applied model/agent/mode a single owner; declared constructor
   collaborators for every non-trivial class; declared the launch contract's files
@@ -50,9 +50,9 @@
 | [x] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 (recorded overage) | [PR #794](https://github.com/sesori-ai/sesori_apps_monorepo/pull/794) merged 2026-08-09 as `42cd0c72`; see the verification log for the measured diff |
 | [x] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | [PR #795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/795) merged 2026-08-10 as `cfb8cc45` |
 | [x] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) merged 2026-08-10 as `d323c3c4` |
-| [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) open against `main` |
-| [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Not started |
-| [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Not started |
+| [x] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) merged 2026-08-10 as `c169452b` |
+| [x] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | [PR #803](https://github.com/sesori-ai/sesori_apps_monorepo/pull/803) merged 2026-08-10 as `944e07e7` |
+| [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Complete, verified, and synchronized with merged Step 8; ready for PR |
 | [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Not started |
 | [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Not started |
 | [ ] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | Not started |
@@ -252,6 +252,61 @@
   measured diff is 617 changed lines
   against `origin/main`, below the 1,000-1,400 estimate and the 1,500-line soft
   cap.
+
+- Step 8/17 (2026-08-10): added top-level `ClaudeEventDispatcher` over the content
+  mapper and tool tracker, plus typed stream-event, retry, assistant-error,
+  result-subtype, and terminal-reason parsing at the transport boundary. Live
+  events now carry schema-valid message/part/status payloads; resolved assistant
+  model plus Claude/Anthropic identity; text and thinking deltas; sticky tool
+  completion; one-shot diff and todo refresh signals; privacy-safe retry and
+  error presentation; exact turn/session cleanup; and subagent suppression.
+  A direct test proves complete live assistant/tool shapes equal Step 6 history
+  replay shapes.
+
+  Live CLI 2.1.226 probes captured both the declared budget-exhaustion result
+  and the non-obvious API failure whose subtype remains `success` while
+  `is_error` is true. `PROTOCOL.md` records the redacted shapes; raw backend
+  error strings are retained only at the plugin transport boundary and are not
+  forwarded to clients. Review renamed the stateful pipeline owner from mapper
+  to dispatcher and deferred assistant envelopes until visible content exists,
+  preserving live/history parity for redacted or unknown-only messages.
+  `dart analyze --fatal-infos`, all 132 package tests,
+  and `git diff --check` pass. Architecture implementation review approved the
+  uncommitted Step 8 scope with no findings. The measured implementation/test
+  diff before this documentation is 1,120 changed lines, below the 1,200-1,500
+  estimate. After synchronization with merged Step 7, the final measured diff
+  including plan artifacts is 1,196 changed
+  lines, also below the estimate and the 1,500-line soft cap.
+
+- Step 9/17 local successor (2026-08-10): added `ClaudeApprovalRegistry` with
+  session-keyed permission/question responses, verified AskUserQuestion answer
+  keys and ExitPlanMode approval input, filtered session-only `addRules`, ANSI
+  sanitization, and cancellation clearing events. The user approved widening
+  this step after implementation exposed that `suppress_always_allow_rule`
+  could not be represented by the released permission contract: the shared SSE
+  and pending-response shapes now carry backward-compatible `allowAlways`
+  defaulting to true, existing plugins send true, and mobile hides Always when
+  false. Older clients may still send Always, so Claude independently degrades
+  that response to one-time allow rather than escalating it.
+
+  Live CLI 2.1.226 probes confirmed both interaction tools set
+  `requires_user_interaction`, AskUserQuestion accepts full-question-text answer
+  keys in `updatedInput.answers`, and ExitPlanMode approval preserves its plan
+  input. Focused cross-layer tests pass for shared compatibility, plugin
+  contracts, bridge mapping/routing, module-core hydration, and the mobile
+  modal; the full Claude package suite passes. Fatal analysis passes in every
+  touched package. Architecture implementation review first rejected response
+  ownership and flattened protocol variants; failed writes now retain pending
+  state, teardown attempts every cancellation, and sealed question/suggestion
+  variants own response and eligibility behavior. The second review approved
+  the complete scope with no remaining findings.
+
+  The committed PR diff against `origin/main` measured 1,179 changed lines: 1,074
+  additions and 105 deletions across 38 files. Generated Freezed/JSON output
+  accounts for 89 of those lines (54 additions, 35 deletions). The full Claude
+  package suite passed 150 tests in addition to the focused cross-layer suites
+  listed above. The step remains below the 1,500-line soft cap, so no overage
+  rationale is required.
 
 ## Findings And Plan Deltas
 

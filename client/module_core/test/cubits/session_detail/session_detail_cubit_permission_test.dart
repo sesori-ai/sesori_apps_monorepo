@@ -491,6 +491,7 @@ void main() {
                 displaySessionId: sessionId,
                 tool: "bash",
                 description: "Run ls",
+                allowAlways: false,
               ),
             ],
           ),
@@ -512,6 +513,7 @@ void main() {
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions.map((p) => p.requestID), ["perm-child"]);
+      expect(loaded.pendingPermissions.single.allowAlways, isFalse);
       expect(loaded.pendingPermissions.single.displaySessionId, sessionId);
     });
 

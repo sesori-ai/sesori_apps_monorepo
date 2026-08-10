@@ -803,6 +803,7 @@ void main() {
             displaySessionId: "busy",
             tool: "shell",
             description: "must remain fenced",
+            allowAlways: true,
           ),
         )
         ..add(
