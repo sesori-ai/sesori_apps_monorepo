@@ -68,6 +68,7 @@ finding, run its relevant package tests and analysis before resuming:
 
 ```sh
 cd client/app && flutter test
+cd client/app && flutter analyze
 cd ../module_core && dart test && dart analyze
 ```
 
@@ -94,8 +95,15 @@ pass.
 
 Claim one unused local slot before starting any process. Keep the same slot for
 the bridge, account, debug port, simulator, and data directory for the whole
-run. The local testing skill defines the slot-to-account mapping; do not put a
-password or token in this document or in shell history.
+run. The repository's development slot mapping is:
+
+| Slot `x` | Sesori dev account | Debug port | Bridge data directory | Simulator |
+|---|---|---|---|---|
+| `1` through `9` | `{x}@sesori.com` | `997{x}` | `~/.local/share/sesori-dev-{x}` | `sesori-dev-{x}` |
+
+Use only the dev account for the claimed slot. Obtain its dev-only password
+through the local testing credential source; never put a password or token in
+this document, shell history, or captured evidence.
 
 Check ports first and do not reuse an occupied slot:
 
@@ -156,12 +164,17 @@ For every user-visible scenario, compare:
    and session metadata.
 3. The rendered iOS session after the relevant UI action.
 
-Start event capture before creating or opening a test session:
+Start raw SSE capture before creating or opening a test session:
 
 ```sh
 curl -N "http://127.0.0.1:${DEBUG_PORT}/global/event" \
-  > "${EVIDENCE_DIR}/events.ndjson"
+  > "${EVIDENCE_DIR}/events.sse"
 ```
+
+The raw file is SSE, not NDJSON: discard the initial `: ok` comment and blank
+lines, remove the `data: ` prefix, and write one JSON payload per line to an
+external `${EVIDENCE_DIR}/events.ndjson` normalization file before comparing
+events. Keep both files outside the repository.
 
 Use `/global/health` as the readiness check. Use the typed shared request
 models, the mobile app, or a small external helper for request bodies; do not
@@ -191,6 +204,35 @@ from a route is evidence of a failed scenario unless that status is the
 explicit expected result. Treat an expected `409` cleanup rejection or `503`
 options-cache unavailability as a scenario result, not as a generic proxy
 failure.
+
+### Source-build restart and capture
+
+`POST /global/restart` is valid for a supervised installed bridge. It does not
+relaunch the current `dart run bin/bridge.dart` source process. For source-build
+testing, stop and relaunch the same command manually, preserving the same slot,
+data directory, Cursor binary, and evidence directory. After each replacement
+bridge reports healthy and the phone reconnects, start a new raw SSE capture
+file for that bridge generation and normalize it separately. A single
+`curl -N` process cannot observe events after its bridge socket closes.
+
+### Live ACP trace
+
+The normal bridge log and debug SSE are not a complete ACP stdio trace. For
+scenarios that require the exact Cursor response contract, use an external
+pass-through wrapper and an explicit `--cursor-bin` override. The wrapper must
+forward every stdin/stdout byte unchanged while teeing the newline-delimited
+JSON-RPC streams to files outside the repository:
+
+```sh
+tee "${EVIDENCE_DIR}/acp-stdin.ndjson" \
+  | "${REAL_CURSOR_BINARY}" "$@" \
+  | tee "${EVIDENCE_DIR}/acp-stdout.ndjson"
+```
+
+Make the wrapper executable, point the bridge at it with `--cursor-bin`, and
+verify that only the wrapper's pass-through stdout reaches the bridge. Redact
+the captured frames before sharing them; never commit them. Use this procedure
+for the live plan-rejection trace and any undocumented extension-shape case.
 
 ### Capture rules
 
@@ -297,6 +339,7 @@ source-code screenshots.
 
 | ID | Scenario and actions | Expected invariant | Evidence / reset |
 |---|---|---|---|
+| IMG-00 | Create a fresh session whose first prompt contains a small PNG, then repeat with an attachment-only PNG. | `session/create` preserves the first-turn image part and Cursor receives it; the image is not lost because creation and prompt dispatch share one request. | Create request, SSE/messages/UI. Reset. |
 | IMG-01 | Select the small PNG from the phone attachment picker and send a prompt asking Cursor to describe it. | The app sends an inline image part, Cursor receives it, and the assistant response demonstrates that the image was available. | Request metadata, UI screenshots, messages. Continue. |
 | IMG-02 | Repeat IMG-01 with the JPEG and a text-plus-image prompt. | Text and image preserve their intended order; the image MIME and filename remain correct. | Event/messages/UI. Continue. |
 | IMG-03 | Leave the session and reopen it after the image prompt completes. | The prompt contains one expandable attachment with stable metadata and no generated local path leaked as visible text. | Before/after messages and UI. Continue. |
@@ -318,13 +361,14 @@ source-code screenshots.
 | REC-02 | Switch repeatedly between two active Cursor sessions. | Text, tools, images, pending prompts, and status never bleed across session IDs. | Two-session snapshots/UI. Continue. |
 | REC-03 | Background and foreground the app during an active tool and during a pending question. | The app reconnects without duplicating messages or losing the pending decision. | Recording, event count, status. Continue. |
 | REC-04 | Terminate and relaunch the app during an active turn. | The session reopens with honest status and the completed/active output; no synthetic user message or duplicate tool is introduced. | Cold messages/status/UI. Continue. |
-| REC-05 | Stop the bridge during an active text or tool turn, then start it again. | Interrupted work is not left falsely running forever; completed history remains readable and the next turn can respawn/reload Cursor. | Bridge logs, status, messages/UI. Continue. |
+| REC-05 | Stop the source bridge during an active text or tool turn, relaunch the same source command, wait for health and phone reconnect, then start a new SSE capture. | Interrupted work is not left falsely running forever; completed history remains readable and the next turn can respawn/reload Cursor. | Per-generation bridge logs, SSE, status, messages/UI. Continue. |
 | REC-06 | Send a prompt immediately after a cold restart without first enumerating sessions. | The stored session directory is primed and Cursor loads/resumes in the correct directory. | ACP cwd trace, filesystem, UI. Continue. |
 | REC-07 | Cause a transient resume/load failure, then send another prompt. | Failed transient loads are retried on the next turn; permanently unsupported load is not retried forever. | Logs/trace/status. Reset. |
 | REC-08 | Fetch history through the messages route while the session is live. | Replay uses an isolated client and cannot clobber the live connection/configuration; empty history and failed history are distinguishable. | Route response, logs, UI. Continue. |
 | REC-09 | Compare live, navigation, app-relaunch, and bridge-restart message order for text, tools, edits, and images. | The same canonical sequence, titles, statuses, attachments, and timestamps are preserved. | Normalized snapshots and UI. Continue. |
 | REC-10 | Restart after rename, archive, and delete operations. | Titles and archive state persist; deleted sessions do not reappear from Cursor enumeration or bridge storage. | Before/after routes/UI. Reset. |
 | REC-11 | Run two sessions concurrently while one agent process reconnects. | Connection reset state is isolated; the other session remains routable and no selection/turn attribution crosses sessions. | Logs, event stream, two-session snapshots. Reset. |
+| REC-12 | Start a second isolated bridge under another slot/account, connect a second phone, and exercise Cursor session creation, options, pending approvals, events, reconnect, and teardown on both bridges. | Bridge IDs, projects, sessions, options, approvals, and SSE events remain isolated; stopping one bridge cannot affect the other bridge or phone. | Two sets of per-generation logs/SSE/snapshots and both UIs. Reset both slots. |
 
 ### Abort, gate, and failure recovery
 
