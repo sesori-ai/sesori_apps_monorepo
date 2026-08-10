@@ -80,7 +80,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 - Recorded overage: final review gaps belong in the canonical initial plan and
   cannot form an independently valid implementation PR.
 - Dart/Flutter suites: not run for this documentation-only step.
-- Plan/content commit `9ac7b497`; PR
+- Plan content through `9ac7b497`; reproduce from the current PR head at
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
 
 ## Findings And Plan Deltas
