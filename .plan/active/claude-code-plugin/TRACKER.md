@@ -330,7 +330,7 @@
   commitment, unsupported inline data, late-connect disposal, turn
   serialization, abort fencing, unexpected exits, approval cleanup, and idle
   reap followed by transparent resume with model and permission restoration.
-  `dart analyze --fatal-infos` and all 161 package tests pass. Architecture
+  `dart analyze --fatal-infos` and all 163 package tests pass. Architecture
   implementation review rejected one pass-through listener ownership issue;
   the repository now wires the subscription while resident state retains and
   cancels it, and the second review approved the complete Step 10 scope.
