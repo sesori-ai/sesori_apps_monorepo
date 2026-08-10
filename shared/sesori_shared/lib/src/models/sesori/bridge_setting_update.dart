@@ -18,6 +18,9 @@ sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
     @strictIntJsonConverter required int intervalSeconds,
   }) = PullRequestRefreshIntervalSettingUpdate;
 
+  @FreezedUnionValue("yolo")
+  const factory BridgeSettingUpdate.yolo({required bool enabled}) = YoloSettingUpdate;
+
   const factory BridgeSettingUpdate.unknown() = UnknownBridgeSettingUpdate;
 
   factory BridgeSettingUpdate.fromJson(Map<String, dynamic> json) => _$BridgeSettingUpdateFromJson(json);

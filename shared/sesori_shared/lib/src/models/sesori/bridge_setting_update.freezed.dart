@@ -19,6 +19,10 @@ BridgeSettingUpdate _$BridgeSettingUpdateFromJson(
           return PullRequestRefreshIntervalSettingUpdate.fromJson(
             json
           );
+                case 'yolo':
+          return YoloSettingUpdate.fromJson(
+            json
+          );
         
           default:
             return UnknownBridgeSettingUpdate.fromJson(
@@ -89,6 +93,45 @@ int get hashCode => Object.hash(runtimeType,intervalSeconds);
 @override
 String toString() {
   return 'BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: $intervalSeconds)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class YoloSettingUpdate implements BridgeSettingUpdate {
+  const YoloSettingUpdate({required this.enabled, final  String? $type}): $type = $type ?? 'yolo';
+  factory YoloSettingUpdate.fromJson(Map<String, dynamic> json) => _$YoloSettingUpdateFromJson(json);
+
+ final  bool enabled;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$YoloSettingUpdateToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is YoloSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,enabled);
+
+@override
+String toString() {
+  return 'BridgeSettingUpdate.yolo(enabled: $enabled)';
 }
 
 

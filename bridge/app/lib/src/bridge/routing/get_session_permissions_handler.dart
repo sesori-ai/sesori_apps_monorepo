@@ -1,5 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../services/yolo_settings_service.dart";
 import "../repositories/permission_repository.dart";
 import "request_handler.dart";
 
@@ -8,13 +9,13 @@ import "request_handler.dart";
 /// (sub-agent) session whose top-most root resolves to this session.
 class GetSessionPermissionsHandler extends BodyRequestHandler<SessionIdRequest, PendingPermissionResponse> {
   final PermissionRepository _permissionRepository;
-  final bool _suppressPendingPermissions;
+  final YoloSettingsService _yoloSettingsService;
 
   GetSessionPermissionsHandler({
     required PermissionRepository permissionRepository,
-    required bool suppressPendingPermissions,
+    required YoloSettingsService yoloSettingsService,
   }) : _permissionRepository = permissionRepository,
-       _suppressPendingPermissions = suppressPendingPermissions,
+       _yoloSettingsService = yoloSettingsService,
        super(
          HttpMethod.post,
          "/session/permissions",
@@ -37,7 +38,7 @@ class GetSessionPermissionsHandler extends BodyRequestHandler<SessionIdRequest, 
     final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
 
     // Query first to preserve binding/plugin errors; YOLO suppresses only the snapshot response payload.
-    if (_suppressPendingPermissions) {
+    if (_yoloSettingsService.currentSettings.enabled) {
       return const PendingPermissionResponse(data: []);
     }
 

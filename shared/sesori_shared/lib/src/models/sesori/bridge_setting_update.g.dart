@@ -6,8 +6,7 @@ part of 'bridge_setting_update.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-PullRequestRefreshIntervalSettingUpdate
-_$PullRequestRefreshIntervalSettingUpdateFromJson(Map json) =>
+PullRequestRefreshIntervalSettingUpdate _$PullRequestRefreshIntervalSettingUpdateFromJson(Map json) =>
     PullRequestRefreshIntervalSettingUpdate(
       intervalSeconds: strictIntJsonConverter.fromJson(json['intervalSeconds']),
       $type: json['type'] as String?,
@@ -17,6 +16,16 @@ Map<String, dynamic> _$PullRequestRefreshIntervalSettingUpdateToJson(
   PullRequestRefreshIntervalSettingUpdate instance,
 ) => <String, dynamic>{
   'intervalSeconds': ?strictIntJsonConverter.toJson(instance.intervalSeconds),
+  'type': instance.$type,
+};
+
+YoloSettingUpdate _$YoloSettingUpdateFromJson(Map json) => YoloSettingUpdate(
+  enabled: json['enabled'] as bool,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$YoloSettingUpdateToJson(YoloSettingUpdate instance) => <String, dynamic>{
+  'enabled': instance.enabled,
   'type': instance.$type,
 };
 
@@ -40,8 +49,7 @@ _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionFromJson(
   $type: json['type'] as String?,
 );
 
-Map<String, dynamic>
-_$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionToJson(
+Map<String, dynamic> _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionToJson(
   PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection instance,
 ) => <String, dynamic>{
   'minimumIntervalSeconds': ?strictIntJsonConverter.toJson(
@@ -53,8 +61,7 @@ _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionToJson(
   'type': instance.$type,
 };
 
-UnknownBridgeSettingUpdateRejection
-_$UnknownBridgeSettingUpdateRejectionFromJson(Map json) =>
+UnknownBridgeSettingUpdateRejection _$UnknownBridgeSettingUpdateRejectionFromJson(Map json) =>
     UnknownBridgeSettingUpdateRejection($type: json['type'] as String?);
 
 Map<String, dynamic> _$UnknownBridgeSettingUpdateRejectionToJson(

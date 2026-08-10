@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/routing/get_pull_request_refresh_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
+import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -16,12 +17,14 @@ void main() {
     late _MemoryBridgeSettingsApi api;
     late BridgeSettingsRepository repository;
     late PullRequestRefreshSettingsService service;
+    late YoloSettingsService yoloService;
 
     setUp(() async {
       api = _MemoryBridgeSettingsApi();
       repository = BridgeSettingsRepository(api: api);
       await repository.loadSettings();
       service = PullRequestRefreshSettingsService(bridgeSettingsRepository: repository);
+      yoloService = YoloSettingsService(bridgeSettingsRepository: repository);
     });
 
     tearDown(() => repository.dispose());
@@ -44,6 +47,7 @@ void main() {
     test("PATCH declares only the generic settings route", () {
       final handler = PatchBridgeSettingsHandler(
         pullRequestRefreshSettingsService: service,
+        yoloSettingsService: yoloService,
       );
 
       expect(handler.method, HttpMethod.patch);
@@ -61,6 +65,7 @@ void main() {
       final response =
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
+            yoloSettingsService: yoloService,
           ).handleInternal(
             makeRequest(
               "PATCH",
@@ -86,6 +91,7 @@ void main() {
       final response =
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
+            yoloSettingsService: yoloService,
           ).handleInternal(
             makeRequest(
               "PATCH",
@@ -115,6 +121,7 @@ void main() {
       final response =
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
+            yoloSettingsService: yoloService,
           ).handleInternal(
             makeRequest(
               "PATCH",
@@ -137,6 +144,7 @@ void main() {
       final response =
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
+            yoloSettingsService: yoloService,
           ).handleInternal(
             makeRequest(
               "PATCH",

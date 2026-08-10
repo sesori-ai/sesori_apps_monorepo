@@ -29,6 +29,23 @@ void main() {
       );
     });
 
+    test("yolo variant round trips with its discriminator", () {
+      const update = BridgeSettingUpdate.yolo(enabled: true);
+
+      expect(update.toJson(), {"type": "yolo", "enabled": true});
+      expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
+    });
+
+    test("yolo enabled rejects missing, null, and non-boolean values", () {
+      for (final enabled in <Object?>[null, "true", 1]) {
+        expect(
+          () => BridgeSettingUpdate.fromJson({"type": "yolo", "enabled": enabled}),
+          throwsA(isA<TypeError>()),
+        );
+      }
+      expect(() => BridgeSettingUpdate.fromJson(const {"type": "yolo"}), throwsA(isA<TypeError>()));
+    });
+
     test("unknown setting types degrade to an explicit variant", () {
       expect(
         BridgeSettingUpdate.fromJson(const {"type": "futureSetting", "enabled": true}),

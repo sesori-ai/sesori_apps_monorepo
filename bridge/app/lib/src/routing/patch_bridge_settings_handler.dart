@@ -4,11 +4,14 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../bridge/routing/request_handler.dart";
 import "../services/pull_request_refresh_settings_service.dart";
+import "../services/yolo_settings_service.dart";
 
 class PatchBridgeSettingsHandler extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
   PatchBridgeSettingsHandler({
     required PullRequestRefreshSettingsService pullRequestRefreshSettingsService,
+    required YoloSettingsService yoloSettingsService,
   }) : _pullRequestRefreshSettingsService = pullRequestRefreshSettingsService,
+       _yoloSettingsService = yoloSettingsService,
        super(
          HttpMethod.patch,
          "/settings",
@@ -16,6 +19,7 @@ class PatchBridgeSettingsHandler extends BodyRequestHandler<BridgeSettingUpdate,
        );
 
   final PullRequestRefreshSettingsService _pullRequestRefreshSettingsService;
+  final YoloSettingsService _yoloSettingsService;
 
   @override
   Future<BridgeSettingUpdate> handle(
@@ -47,6 +51,9 @@ class PatchBridgeSettingsHandler extends BodyRequestHandler<BridgeSettingUpdate,
             ),
           );
         }
+      case YoloSettingUpdate(:final enabled):
+        final committed = await _yoloSettingsService.update(enabled: enabled);
+        return BridgeSettingUpdate.yolo(enabled: committed.enabled);
       case UnknownBridgeSettingUpdate():
         throw RelayResponse(
           id: request.id,
