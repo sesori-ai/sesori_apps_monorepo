@@ -56,6 +56,14 @@ cd ../sesori_plugin_acp && dart analyze --fatal-infos
 cd ../sesori_plugin_cursor && dart analyze --fatal-infos
 ```
 
+If a change touches `shared/sesori_shared`, regenerate its source-owned
+artifacts first, then verify the shared package directly:
+
+```sh
+cd shared/sesori_shared && dart run build_runner build --delete-conflicting-outputs
+cd shared/sesori_shared && dart analyze && dart test
+```
+
 The full bridge workspace may be run when the change or failure crosses plugin
 boundaries:
 
@@ -183,7 +191,7 @@ invent inline JSON shapes when a Freezed DTO exists.
 Useful debug routes include:
 
 - `GET /global/health`
-- `GET /projects` and `GET /sessions`
+- `GET /projects` and `POST /sessions`
 - `GET /plugin`, `/plugin/setup`, and `/plugin/management`
 - `POST /session/create`
 - `POST /session/prompt_async`
@@ -224,15 +232,25 @@ forward every stdin/stdout byte unchanged while teeing the newline-delimited
 JSON-RPC streams to files outside the repository:
 
 ```sh
-tee "${EVIDENCE_DIR}/acp-stdin.ndjson" \
+#!/bin/bash
+set -o pipefail
+
+trace_id="${CURSOR_TRACE_ID:-$(date +%s)-$$}"
+tee "${EVIDENCE_DIR}/acp-${trace_id}-stdin.ndjson" \
   | "${REAL_CURSOR_BINARY}" "$@" \
-  | tee "${EVIDENCE_DIR}/acp-stdout.ndjson"
+  | tee "${EVIDENCE_DIR}/acp-${trace_id}-stdout.ndjson"
+cursor_exit=${PIPESTATUS[1]}
+exit "${cursor_exit}"
 ```
 
-Make the wrapper executable, point the bridge at it with `--cursor-bin`, and
-verify that only the wrapper's pass-through stdout reaches the bridge. Redact
-the captured frames before sharing them; never commit them. Use this procedure
-for the live plan-rejection trace and any undocumented extension-shape case.
+Save this as an executable wrapper outside the repository, set
+`REAL_CURSOR_BINARY` and `EVIDENCE_DIR` in its environment, point the bridge at
+it with `--cursor-bin`, and verify that only the wrapper's pass-through stdout
+reaches the bridge. The per-process PID/timestamp path prevents setup probes,
+respawns, and concurrent processes from overwriting one another. The wrapper
+returns Cursor's actual exit status so failure and recovery cases remain real.
+Redact captured frames before sharing them; never commit them. Use this
+procedure for the live plan-rejection trace and undocumented extension shapes.
 
 ### Capture rules
 
@@ -378,7 +396,7 @@ source-code screenshots.
 | ERR-02 | Abort during an active shell/file tool. | The tool has one terminal failed/cancelled representation; late completion updates that identity rather than forking it. | Events/UI/filesystem. Reset. |
 | ERR-03 | Abort while permission/question/plan UI is pending. | The phone prompt clears and the agent does not remain blocked after restart. | Pending routes, events, UI. Reset. |
 | ERR-04 | Capture Cursor's exact account/plan gate notice, including decorated/case-varied and ordinary-prose controls in a harness where needed. | Exact gate text becomes a visible `cursor_gate` error; ordinary prose containing the phrase remains ordinary text; one gate is not duplicated. | Event/messages/UI. Reset. |
-| ERR-05 | Kill Cursor after a request is queued but before dispatch and after dispatch. | A recoverable agent exit respawns and retries safely; an unrecoverable failure is visible and the bridge remains healthy. | Process/log/status/UI. Reset. |
+| ERR-05 | Kill Cursor once while a request is queued before dispatch and once after dispatch. | A queued, undispatched turn may retry after a recoverable exit; an already-dispatched turn is not retried and instead becomes a visible terminal failure, avoiding duplicate side effects. | Process/log/status/UI. Reset. |
 | ERR-06 | Disconnect the relay or phone briefly while a turn completes. | Reconnection restores the session without duplicating durable messages or losing terminal status. | Relay/bridge log, UI, snapshots. Reset. |
 | ERR-07 | Submit malformed request data through a controlled debug client. | The bridge returns a typed client error, preserves process health, and does not mutate unrelated sessions. | Status code and health. Reset. |
 
@@ -416,7 +434,10 @@ A scenario passes only when all applicable checks are true:
 - Navigation/relaunch/restart preserves the expected durable behavior.
 - No duplicate user message, tool identity, diff, image, or terminal event is
   introduced.
-- No private payload data appears in transport diagnostics or the report.
+- No private payload data appears in ordinary logs, shared reports, or
+  transport outside the secured evidence directory. Raw ACP/SSE captures may
+  contain payloads by design, but remain access-controlled, external, and
+  uncommitted.
 
 ### Fail
 
