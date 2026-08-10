@@ -1,5 +1,4 @@
 import "../models/claude_agent_selection.dart";
-import "../models/claude_effort_level.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
 
@@ -30,7 +29,6 @@ final class ClaudeCatalogService {
   Future<void> selectModel({
     required String sessionId,
     required String modelId,
-    required String? variant,
   }) async {
     final isDefault = modelId == "default";
     await _processes.sendControlRequest(
@@ -42,7 +40,7 @@ final class ClaudeCatalogService {
     _processes.recordAppliedSelection(
       sessionId: sessionId,
       model: isDefault ? null : modelId,
-      effort: ClaudeEffortLevel.tryParse(variant),
+      effort: applied?.effort,
       permissionMode: applied?.permissionMode,
     );
   }

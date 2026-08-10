@@ -69,11 +69,10 @@ void main() {
       expect(catalog.commands.single.name, "review");
     });
 
-    test("switches model and records the selected effort", () async {
+    test("switches model without changing the process launch effort", () async {
       final selected = service.selectModel(
         sessionId: testSessionId,
         modelId: "large",
-        variant: "high",
       );
       final request = await _waitForControl(process, "set_model");
       expect(_requestPayload(request)["model"], "large");
@@ -82,15 +81,14 @@ void main() {
 
       final applied = processes.appliedSelection(sessionId: testSessionId)!;
       expect(applied.model, "large");
-      expect(applied.effort, ClaudeEffortLevel.high);
+      expect(applied.effort, ClaudeEffortLevel.low);
       expect(applied.permissionMode, ClaudePermissionMode.standard);
     });
 
-    test("resets the default model without discarding the selected mode", () async {
+    test("resets the default model without discarding launch selections", () async {
       final selected = service.selectModel(
         sessionId: testSessionId,
         modelId: "default",
-        variant: null,
       );
       final request = await _waitForControl(process, "set_model");
       expect(_requestPayload(request), containsPair("model", null));
@@ -99,7 +97,7 @@ void main() {
 
       final applied = processes.appliedSelection(sessionId: testSessionId)!;
       expect(applied.model, isNull);
-      expect(applied.effort, isNull);
+      expect(applied.effort, ClaudeEffortLevel.low);
       expect(applied.permissionMode, ClaudePermissionMode.standard);
     });
 
