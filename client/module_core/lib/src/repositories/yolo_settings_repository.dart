@@ -1,11 +1,8 @@
-import "dart:async";
-
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/bridge_settings_api.dart";
-import "../capabilities/relay/relay_client.dart";
 import "models/yolo_settings_result.dart";
 
 @lazySingleton
@@ -33,15 +30,9 @@ class YoloSettingsRepository {
       BridgeSettingUpdateApiRejected(:final error) => YoloSettingsMutationFailure(error: error),
       BridgeSettingUpdateApiFailure(error: NonSuccessCodeError(errorCode: 404)) =>
         const YoloSettingsMutationUnsupported(),
-      BridgeSettingUpdateApiFailure(error: final error) when _isUncertain(error: error) =>
+      BridgeSettingUpdateApiFailure(isCommitUncertain: true) =>
         const YoloSettingsMutationUncertain(),
       BridgeSettingUpdateApiFailure(:final error) => YoloSettingsMutationFailure(error: error),
     };
   }
 }
-
-bool _isUncertain({required ApiError error}) => switch (error) {
-  JsonParsingError() || EmptyResponseError() => true,
-  DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()) => true,
-  GenericError() || NotAuthenticatedError() || NonSuccessCodeError() || DartHttpClientError() => false,
-};

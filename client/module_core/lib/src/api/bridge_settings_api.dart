@@ -1,7 +1,10 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../capabilities/relay/relay_client.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
@@ -74,4 +77,10 @@ final class BridgeSettingUpdateApiFailure extends BridgeSettingUpdateApiResult {
   const BridgeSettingUpdateApiFailure({required this.error});
 
   final ApiError error;
+
+  bool get isCommitUncertain => switch (error) {
+    JsonParsingError() || EmptyResponseError() => true,
+    DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()) => true,
+    GenericError() || NotAuthenticatedError() || NonSuccessCodeError() || DartHttpClientError() => false,
+  };
 }
