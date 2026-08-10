@@ -5,11 +5,11 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `c169452b` (Step 8 synchronized with it after Step 7 merged)
-- **Series state:** Steps 1-7/17 merged; Step 8/17 ready for PR
+- **Series state:** Steps 1-7/17 merged; Step 8/17 PR open
 - **Current step:** 8/17 — stream event mapping
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Open the Step 8 PR, then start Step 9 locally
+- **Next action:** Start Step 9 locally while Step 8 is in review
 
 ## Plan Review
 
@@ -51,7 +51,7 @@
 | [x] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | [PR #795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/795) merged 2026-08-10 as `cfb8cc45` |
 | [x] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) merged 2026-08-10 as `d323c3c4` |
 | [x] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) merged 2026-08-10 as `c169452b` |
-| [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Implemented, verified, and synchronized with merged Step 7; ready for PR |
+| [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | [PR #803](https://github.com/sesori-ai/sesori_apps_monorepo/pull/803) open against `main` |
 | [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Not started |
 | [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Not started |
 | [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Not started |
@@ -271,7 +271,8 @@
   and `git diff --check` pass. Architecture implementation review approved the
   uncommitted Step 8 scope with no findings. The measured implementation/test
   diff before this documentation is 1,120 changed lines, below the 1,200-1,500
-  estimate. The final measured diff including plan artifacts is 1,192 changed
+  estimate. After synchronization with merged Step 7, the final measured diff
+  including plan artifacts is 1,196 changed
   lines, also below the estimate and the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
