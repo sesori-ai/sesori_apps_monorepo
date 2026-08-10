@@ -245,6 +245,10 @@ Entries are append order and include pre-compaction history and abandoned
 branches. Walk parent links from `leafId` to replay only the active branch.
 Unknown `since` returns `success: false`.
 
+The pinned file loader rebuilds its leaf as the last valid parsed entry. A
+read-only file fallback can reproduce that active branch without model/auth
+startup and must apply the loader's v1-v3 migration semantics in memory.
+
 ### Rename
 
 ```json

@@ -199,8 +199,8 @@ bridge/sesori_plugin_pi/
   lib/src/repositories/pi_backend_catalog_repository.dart
   lib/src/repositories/mappers/{pi_content_mapper,pi_history_mapper}.dart
   lib/src/trackers/{pi_catalog_tracker,pi_tool_tracker,pi_extension_ui_tracker}.dart
-  lib/src/services/{pi_session_service,pi_catalog_service,pi_extension_ui_service}.dart
-  lib/src/pi_event_dispatcher.dart
+  lib/src/services/{pi_session_service,pi_catalog_service}.dart
+  lib/src/services/{pi_extension_ui_service,pi_event_dispatcher}.dart
   lib/src/pi_plugin_impl.dart
   lib/src/runtime/{pi_runtime_manifest,pi_plugin_descriptor,pi_bridge_plugin}.dart
   lib/src/testing/fake_pi_process.dart
@@ -213,8 +213,8 @@ The placement follows `Foundation -> API -> Repository -> Service -> Consumer`:
   isolated catalog-probe process.
 - repositories consume APIs and own mapping, without Layer-2 peer dependencies;
 - trackers own queryable Layer-2 catalog and tool state;
-- services coordinate repositories and trackers; and
-- the plugin implementation and event dispatcher are consumers.
+- services and the Layer-3 event dispatcher coordinate repositories/trackers;
+- the plugin implementation is the consumer and composition root.
 
 No generic RPC abstraction is extracted into shared packages. ACP, Claude, and
 Pi have materially different framing, request, event, and lifecycle contracts.
@@ -288,6 +288,12 @@ resident client or opens a bounded non-resident lease for the resolved path and
 tears it down afterward. Rename uses the same lease path, while history retains
 pre-compaction entries without making reads resident.
 
+If a resolved persisted session cannot start RPC specifically because auth/model
+selection fails before request dispatch, `PiSessionStorageApi` reads the file
+entry DTOs, applies the pinned v1-v3 migration semantics in memory, and uses the
+last valid tree entry as leaf, matching upstream reload. The repository logs the
+cause before this fallback; arbitrary RPC/parse failures remain thrown.
+
 Mapping rules:
 
 - `userVisibleText` and `userVisibleArguments` identify authored suffixes; the
@@ -315,7 +321,7 @@ successfully loaded active branch with no visible messages returns `[]`.
 
 ### Live events and tools
 
-`PiEventDispatcher` and `PiToolTracker` map:
+Layer-3 `PiEventDispatcher` coordinates `PiToolTracker` and pure mappers to map:
 
 - `message_start/update/end` with content-index text/reasoning deltas;
 - `toolcall_end` into a pending tool part, followed by
@@ -353,8 +359,9 @@ mutation. `PiPlugin` maps those to `BridgeSseQuestionAsked`,
 abort, reap, exit, and disposal reject every card; no state is persisted.
 
 At request time the service resolves the owning session's top-most imported
-parent from the catalog snapshot. The tracker stores `displaySessionId` and
-indexes by owner/root, so root queries need no session-tree rescan.
+parent and normalized cwd from the catalog/process snapshot. The tracker stores
+`displaySessionId` plus `projectId` and indexes by owner/root/project, so root
+and `getProjectQuestions` queries need no session-tree rescan.
 
 `PluginQuestionInfo` has no editable-prefill field. For `editor`, the service
 therefore appends a bounded, clearly labelled prefill excerpt to the question
@@ -513,12 +520,12 @@ user's telemetry choice remain Pi's.
 | `archiveSession`, `deleteWorkspace` | no-op under best-effort contracts |
 | `getChildSessions` | catalog filter by resolved parent ID |
 | `getSessionStatuses` | session service work/queue state |
-| `getSessionMessages` | RPC entries/tree history mapper; throw on failure |
+| `getSessionMessages` | RPC/file active-branch history; throw on non-fallback failure |
 | `sendPrompt` | admit exact turn immediately; later dispatch failures become events |
 | `sendCommand` | reject busy; otherwise await acceptance; event later failures |
 | `abortSession` | abort and process teardown, clearing queued work/dialogs |
 | `getAgents` | one synthesized primary Pi agent |
-| questions | extension UI service/tracker |
+| questions | extension UI service with owner/root/project tracker indexes |
 | permissions | empty/not-found; Pi has no native permission protocol |
 | `healthCheck` | bounded resolved-binary `--version`, independent of project models |
 | `getProviders` | project-scoped catalog result |
@@ -653,22 +660,22 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 ### Step 5/15: Replay Pi session history
 
 - Add the session-entry/message/content DTOs this step consumes and run codegen.
-- Add the history-only `PiSessionProcessRepository` operation plus repository
-  mappers over RPC `get_entries` and `leafId` active-branch traversal.
+- Add history DTO/file input plus the `PiSessionProcessRepository` operation and
+  mappers over RPC/file entries with active-branch traversal.
 - Map text, reasoning, images, tool calls/results, visible custom messages,
   bash execution, errors, visible compaction cards, and branch-summary omission.
 - Keep replay message/part IDs deterministic for Step 6 live parity.
 - Throw cause-preserving failures; never turn transport/auth/parse failure into
   empty history.
 - Cover branches, pre-compaction history, unknown entries, timestamp fallback,
-  tool results, compaction parity, attachment bounds, hidden-context stripping,
-  marker-like prompt/command text, equal-timestamp ordinals, live/replay parity,
-  and no payload logging.
+  no-model/auth file fallback, v1-v3 migration, tool results, compaction parity,
+  attachment bounds, hidden-context stripping, marker-like prompt/command text,
+  equal-timestamp ordinals, live/replay parity, and no payload logging.
 
 ### Step 6/15: Map live messages and tools
 
-- Add `PiToolTracker` and top-level `PiEventDispatcher` over session-tagged RPC
-  frames and the content mapper.
+- Add `PiToolTracker` and Layer-3 `PiEventDispatcher` over session-tagged RPC
+  frames and pure mappers.
 - Map message deltas/finals, tool start/cumulative update/end, retries,
   compaction, typed failures, status, diff staleness, and true settlement.
 - Treat final messages/results as authoritative and prune all per-turn/session
@@ -684,15 +691,15 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   select/confirm/input/editor questions, lifecycle events, and bounded toasts.
 - Implement exact value/confirmed/cancelled responses and session-keyed routing.
 - Resolve/store each dialog's display root and aggregate descendant cards for
-  root-session queries.
+  root-session queries; index normalized cwd for project-level queries.
 - Present editor prefill as a bounded labelled excerpt and make full-replacement
   semantics explicit because the shared question contract has no prefill field.
 - Parse and explicitly degrade unsupported fire-and-forget UI methods.
 - Clear or reject on timeout, abort, process exit, idle reap, and disposal.
 - Keep permissions empty by the locked native-Pi decision.
 - Cover late replies, timeout races, process replacement, reject semantics,
-  imported parent chains, multiline answers, prefill truncation/replacement,
-  and sensitive prefill/title non-logging.
+  imported parent chains, project/worktree queries, multiline answers, prefill
+  truncation/replacement, and sensitive prefill/title non-logging.
 
 ### Step 8/15: Manage session residency and turns
 

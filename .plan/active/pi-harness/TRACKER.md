@@ -28,7 +28,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [ ] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 | In review |
+| [ ] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 (recorded overage) | In review |
 | [ ] | 2/15 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/15]` | 900-1,300 | Not started |
 | [ ] | 3/15 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/15]` | 1,200-1,500 | Not started |
 | [ ] | 4/15 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 4/15]` | 1,000-1,400 | Not started |
@@ -77,6 +77,8 @@ OpenCode default, or no-new-analytics decisions without the user.
 - Upstream repository/tag, RPC/session docs, and all six release digests match.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
 - Diff: +1,500/-0 = 1,500 changed lines; generated lines: 0; tests run: 0.
+- Recorded overage: final review gaps belong in the canonical initial plan and
+  cannot form an independently valid implementation PR.
 - Dart/Flutter suites: not run for this documentation-only step.
 - Plan/content commit `813ca4ca`; PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
@@ -84,4 +86,4 @@ OpenCode default, or no-new-analytics decisions without the user.
 ## Findings And Plan Deltas
 
 - Reviews corrected architecture/lifecycle and added rendered toasts, visible
-  compaction, bounded catalog scans, command acceptance, and current sequencing.
+  compaction, bounded scans, history fallback, project questions, and sequencing.
