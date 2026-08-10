@@ -223,8 +223,9 @@ Pi have materially different framing, request, event, and lifecycle contracts.
 One client owns one child process and:
 
 - launches from a typed `PiLaunchSpec`;
-- consumes stdout continuously through an LF-only UTF-8 framer so pipe
-  backpressure can never stall Pi;
+- consumes stdout and stderr continuously so neither pipe can stall Pi; stdout
+  uses the LF-only UTF-8 framer, while stderr retains only a bounded redacted
+  diagnostic tail;
 - decodes top-level response, event, extension-UI, and unknown envelopes;
 - correlates responses by request ID without assuming a prompt response arrives
   before agent events;
@@ -342,8 +343,10 @@ the final message repairs it. Live/replay parity is a direct test requirement.
 
 `PiExtensionUiService` coordinates the catalog repository, process repository,
 and tracker: it resolves display roots, routes Pi's exact response variants, and
-exposes notifications for the plugin consumer. Reject, timeout, abort, reap,
-exit, and disposal clear every card; no dialog state is persisted.
+exposes typed asked/replied/rejected lifecycle notifications after tracker
+mutation. `PiPlugin` maps those to `BridgeSseQuestionAsked`,
+`BridgeSseQuestionReplied`, and `BridgeSseQuestionRejected`. Reject, timeout,
+abort, reap, exit, and disposal reject every card; no state is persisted.
 
 At request time the service resolves the owning session's top-most imported
 parent from the catalog snapshot. The tracker stores `displaySessionId` and
@@ -371,11 +374,12 @@ dialogs, which appear as questions because Pi supplies no permission semantics.
 - merged session-tagged frame/exit streams.
 
 `PiSessionService` owns per-session turn admission, status/work state, abort,
-and idle reap. Admission marks the session busy and returns immediately; the
-lane later applies that turn's selection, dispatches, and tracks settlement.
-Post-admission connect/selection/prompt failures emit a session error rather
-than reopening the phone request. IDs are secure UUIDs validated by
-`PiLaunchSpec`.
+and idle reap. Prompt admission marks the session busy and returns immediately;
+the lane later applies selection, dispatches, and tracks settlement. A command
+queue item also owns an acceptance completer: `sendCommand` returns only after
+its correlated Pi prompt response succeeds, and pre-acceptance invalidation,
+connect/selection/dispatch failure, or exit completes it with an error. Later
+failures emit a session error. IDs are secure UUIDs validated by `PiLaunchSpec`.
 
 A generation-matched process exit before `agent_settled` fails the active turn
 and clears resident/dialog state. The lane re-resolves for the next admitted
@@ -398,9 +402,10 @@ non-image data are not fetched, stringified, or silently dropped: dispatch fails
 before acceptance with a privacy-safe `PluginOperationException` explaining
 that Pi supports inline image data only.
 
-Commands use Pi's normal `/name args` prompt path. After acceptance, the service
-holds the lane through a correlated `get_state` barrier and all earlier queued
-events. It treats a command as no-run only when no generation-matched
+Commands use Pi's normal `/name args` prompt path. The correlated successful
+prompt response completes `sendCommand` acceptance; the service then holds the
+lane through a `get_state` barrier and all earlier queued events. It treats a
+command as no-run only when no generation-matched
 `agent_start` arrived and state reports neither streaming nor pending messages;
 otherwise it waits for `agent_settled`. Command context uses the same marker
 scheme, and live/replay presentation uses only `userVisibleArguments`.
@@ -620,7 +625,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Add `FakePiProcess` and `pi_testing.dart` exports.
 - Cover split/multiple UTF-8 chunks, CRLF input tolerance, U+2028/U+2029 inside
   JSON strings, response/event reordering, unknown frames, process exit,
-  backpressure consumption, broken pipes, redaction, and teardown fencing.
+  stdout/verbose-stderr backpressure, broken pipes, bounded redaction, and
+  teardown fencing.
 
 ### Step 4/15: Enumerate persisted sessions
 
@@ -668,7 +674,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 ### Step 7/15: Bridge extension dialogs
 
 - Add `PiExtensionUiTracker` and coordinating `PiExtensionUiService` for
-  select/confirm/input/editor questions and notification toasts.
+  select/confirm/input/editor questions, lifecycle events, and notification toasts.
 - Implement exact value/confirmed/cancelled responses and session-keyed routing.
 - Resolve/store each dialog's display root and aggregate descendant cards for
   root-session queries.
@@ -691,17 +697,17 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Mint secure UUID session IDs in the service and validate Pi's ID grammar in
   `PiLaunchSpec`; map validated inline image data to RPC and reject path, URL,
   or non-image parts before prompt acceptance.
-- Apply model/thinking immediately before each queued turn; return on lane
-  admission, track dispatch through `agent_settled`, and surface later failures
-  through session events.
+- Apply model/thinking immediately before each queued turn; prompts return on
+  lane admission, commands await correlated backend acceptance, dispatch tracks
+  through `agent_settled`, and later failures surface through session events.
 - Abort by invalidating queued work, rejecting dialogs, sending `abort`, and
   tearing down the process so Pi's own hidden queues cannot continue.
 - Preserve concurrent turns across different sessions.
 - Cover spawn races, serialization, cross-session parallelism, lazy persistence,
   resume after reap, transient history/rename leases, ID/attachment validation,
-  immediate queued admission, response-before-`agent_start` command barriers,
-  command-without-run, post-acceptance exit, project-scoped auth/toast behavior,
-  abort, and shutdown.
+  immediate prompt admission, command acceptance/failure completers,
+  response-before-`agent_start` barriers, command-without-run, post-acceptance
+  exit, project-scoped auth/toast behavior, abort, and shutdown.
 
 ### Step 9/15: Expose models and commands
 

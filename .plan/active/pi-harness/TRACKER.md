@@ -97,3 +97,5 @@ OpenCode default, or no-new-analytics decisions without the user.
   projection, model defaults, health, and runtime-only setup.
 - Latest review pinned collision-free message IDs, scoped auth handling, and
   created-before-first-turn event ordering.
+- Follow-up review pinned stderr draining, question lifecycle events, and
+  command completion on backend acceptance.
