@@ -213,7 +213,7 @@ The placement follows `Foundation -> API -> Repository -> Service -> Consumer`:
 - repositories consume APIs and own mapping, without Layer-2 peer dependencies;
 - trackers own queryable Layer-2 catalog and tool state;
 - services coordinate repositories and trackers; and
-- dispatch/history/extension registries live at `lib/src/` when they consume
+- dispatch/extension registries live at `lib/src/` when they consume
   multiple Layer-2 components.
 
 No generic RPC abstraction is extracted into shared packages. ACP, Claude, and
