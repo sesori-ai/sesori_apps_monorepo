@@ -471,9 +471,11 @@ plugin startup.
 
 Project-scoped auth failures never escape as
 `PluginAuthenticationRequiredException`, which bridge core interprets as
-plugin-global auth loss. Synchronous calls use an ordinary cause-preserving
-operation failure; admitted turns emit existing `session.error` plus a bounded
-guidance toast. No new wire event is required.
+plugin-global auth loss. Catalog discovery returns
+`PluginSessionOptionsDiscoveryResult.failed` plus an existing bounded guidance
+toast; admitted turns emit existing `session.error` plus that toast. Other
+synchronous calls use ordinary cause-preserving operation failures. No new wire
+event is required.
 
 `ensureRuntime` uses `ManagedRuntimeProvisionService` and remains read-only.
 `installRuntime` uses `ManagedRuntimeInstallService` and the package-directory
