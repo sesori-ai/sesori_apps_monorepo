@@ -23,3 +23,4 @@ export "src/repositories/claude_transcript_catalog_repository.dart";
 export "src/repositories/mappers/claude_content_mapper.dart";
 export "src/repositories/models/claude_session_record.dart";
 export "src/repositories/models/claude_transcript_record.dart";
+export "src/repositories/trackers/claude_tool_tracker.dart";
