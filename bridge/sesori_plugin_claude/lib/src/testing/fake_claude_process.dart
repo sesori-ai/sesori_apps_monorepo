@@ -47,6 +47,10 @@ class FakeClaudeProcess implements ClaudeProcessHandle {
   /// Frames the client wrote to stdin, decoded from ndjson.
   List<Map<String, Object?>> get written => _stdin.frames;
 
+  bool get stdinClosed => _stdin.closed;
+
+  void completeStdinClose() => _stdin.completeClose();
+
   /// Pushes one stdout frame as an ndjson line.
   void emit(Map<String, Object?> message) {
     if (_stdout.isClosed) return;
@@ -137,6 +141,11 @@ class CapturingIOSink implements IOSink {
   Future<void> close() {
     closed = true;
     return _closeCompleter?.future ?? Future<void>.value();
+  }
+
+  void completeClose() {
+    final completer = _closeCompleter;
+    if (completer != null && !completer.isCompleted) completer.complete();
   }
 
   @override

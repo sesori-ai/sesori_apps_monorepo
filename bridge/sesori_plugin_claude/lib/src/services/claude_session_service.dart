@@ -36,7 +36,9 @@ final class ClaudeSessionService {
   final Map<String, _SessionTurnState> _turns = {};
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
+  final Set<Future<void>> _inFlightTeardowns = {};
   late final StreamSubscription<ClaudeSessionProcessEvent> _processEvents;
+  Future<void>? _disposeFuture;
   bool _disposed = false;
 
   Stream<BridgeSseEvent> get events => _events.stream;
@@ -120,6 +122,10 @@ final class ClaudeSessionService {
   Future<void> abort({required String sessionId}) async {
     final state = _turns[sessionId];
     if (state == null) return;
+    if (state.pending == 0) {
+      _approvals.cancelForSession(sessionId: sessionId);
+      return;
+    }
     state.generation++;
     state.idleGeneration++;
     _approvals.cancelForSession(sessionId: sessionId);
@@ -130,8 +136,9 @@ final class ClaudeSessionService {
     }
   }
 
-  Future<void> dispose() async {
-    if (_disposed) return;
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
     _disposed = true;
     for (final state in _turns.values) {
       state.generation++;
@@ -140,6 +147,7 @@ final class ClaudeSessionService {
     await _processEvents.cancel();
     _approvals.dispose();
     await _processes.dispose();
+    await Future.wait(_inFlightTeardowns.toList(growable: false));
     await _events.close();
     await _workState.close();
   }
@@ -169,7 +177,16 @@ final class ClaudeSessionService {
           state.idleGeneration != generation) {
         return;
       }
-      await _processes.teardown(sessionId: sessionId);
+      final teardown = _processes.teardown(sessionId: sessionId);
+      _inFlightTeardowns.add(teardown);
+      try {
+        await teardown;
+      } finally {
+        _inFlightTeardowns.remove(teardown);
+        if (identical(_turns[sessionId], state) && state.pending == 0 && state.idleGeneration == generation) {
+          _turns.remove(sessionId);
+        }
+      }
     }());
   }
 

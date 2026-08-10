@@ -116,11 +116,49 @@ void main() {
       expect(harness.specs.last.model, "haiku");
       expect(harness.specs.last.allowedTools, ["Write"]);
     });
+
+    test("aborting an idle session preserves its scheduled reap", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      await harness.service.abort(sessionId: testSessionId);
+      harness.clock.elapse();
+      await pump();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("concurrent disposal waits for an in-flight idle teardown", () async {
+      await harness.dispose();
+      harness = _ServiceHarness(stdinCloseCompletes: false);
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+      harness.clock.elapse();
+      await _waitForStdinClose(process);
+
+      final first = harness.service.dispose();
+      final second = harness.service.dispose();
+      var completed = false;
+      unawaited(first.then((_) => completed = true));
+      await pump();
+
+      expect(identical(first, second), isTrue);
+      expect(completed, isFalse);
+      process.completeStdinClose();
+      await first;
+      expect(completed, isTrue);
+    });
   });
 }
 
 final class _ServiceHarness {
-  _ServiceHarness() {
+  _ServiceHarness({this.stdinCloseCompletes = true}) {
     repository = ClaudeSessionProcessRepository(
       processFactory: _spawn,
       binaryPath: "claude",
@@ -144,6 +182,7 @@ final class _ServiceHarness {
   final List<FakeClaudeProcess> processes = [];
   final List<BridgeSseEvent> events = [];
   final _ControlledClock clock = _ControlledClock();
+  final bool stdinCloseCompletes;
   late final ClaudeSessionProcessRepository repository;
   late final ClaudeApprovalRegistry approvals;
   late final ClaudeSessionService service;
@@ -152,7 +191,7 @@ final class _ServiceHarness {
   Future<FakeClaudeProcess> get firstProcess => processAt(0);
 
   Future<ClaudeProcessHandle> _spawn(ClaudeLaunchSpec spec) async {
-    final process = FakeClaudeProcess();
+    final process = FakeClaudeProcess(stdinCloseCompletes: stdinCloseCompletes);
     specs.add(spec);
     processes.add(process);
     unawaited(() async {
@@ -228,6 +267,14 @@ Future<void> _waitForUserFrames(FakeClaudeProcess process, int count) async {
     await pump();
   }
   throw StateError("expected $count user frames, saw ${_userFrames(process).length}");
+}
+
+Future<void> _waitForStdinClose(FakeClaudeProcess process) async {
+  for (var attempt = 0; attempt < 100; attempt++) {
+    if (process.stdinClosed) return;
+    await pump();
+  }
+  throw StateError("process stdin was not closed");
 }
 
 Future<Map<String, Object?>> _waitForControlSubtype(FakeClaudeProcess process, String subtype) async {

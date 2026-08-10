@@ -334,8 +334,9 @@
   implementation review rejected one pass-through listener ownership issue;
   the repository now wires the subscription while resident state retains and
   cancels it, and the second review approved the complete Step 10 scope.
-  The implementation and tests measured 990 changed lines before this tracker
-  update, below the 1,200-1,500 estimate and the 1,500-line soft cap.
+  The final PR diff measured 1,169 changed lines: 1,131 additions and 38
+  deletions across 13 files. No generated files changed. The step remains below
+  the 1,200-1,500 estimate and the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
 
