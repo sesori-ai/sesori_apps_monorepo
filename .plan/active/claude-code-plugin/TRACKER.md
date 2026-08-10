@@ -5,11 +5,11 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `fcca943c` (Step 11 started after Step 10 merged)
-- **Series state:** Steps 1-10/17 merged; Step 11/17 implementation complete
-- **Current step:** 11/17 — model and agent catalog ready for PR
+- **Series state:** Steps 1-10/17 merged; Step 11/17 PR open
+- **Current step:** 11/17 — model and agent catalog in review
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Open the Step 11 PR against `main`, then wait for explicit
+- **Next action:** Wait for Step 11 PR #809 to merge, then wait for explicit
   direction before starting Step 12
 
 ## Plan Review
@@ -55,7 +55,7 @@
 | [x] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | [PR #803](https://github.com/sesori-ai/sesori_apps_monorepo/pull/803) merged 2026-08-10 as `944e07e7` |
 | [x] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | [PR #805](https://github.com/sesori-ai/sesori_apps_monorepo/pull/805) merged 2026-08-10 as `8280e691` |
 | [x] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | [PR #808](https://github.com/sesori-ai/sesori_apps_monorepo/pull/808) merged 2026-08-11 as `fcca943c` |
-| [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Implementation complete; PR pending |
+| [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | [PR #809](https://github.com/sesori-ai/sesori_apps_monorepo/pull/809) open against `main` |
 | [ ] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | Not started |
 | [ ] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | Not started |
 | [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | Not started |
