@@ -192,7 +192,7 @@ bridge/sesori_plugin_pi/
   pubspec.yaml, analysis_options.yaml, build.yaml
   lib/pi_plugin.dart, lib/pi_testing.dart
   lib/src/api/{pi_launch_spec,pi_process_factory,pi_rpc_client}.dart
-  lib/src/api/{pi_catalog_probe_api,pi_session_storage_api}.dart
+  lib/src/api/pi_session_storage_api.dart
   lib/src/api/models/                 # Pi wire DTOs only
   lib/src/models/                     # Pi domain variants/enums
   lib/src/repositories/{pi_session_catalog_repository,pi_session_process_repository}.dart
@@ -209,8 +209,7 @@ bridge/sesori_plugin_pi/
 
 The placement follows `Foundation -> API -> Repository -> Service -> Consumer`:
 
-- `api/` owns process invocation, wire framing, session-file input, and the
-  isolated catalog-probe process.
+- `api/` owns process invocation, wire framing, and session-file input.
 - repositories consume APIs and own mapping, without Layer-2 peer dependencies;
 - trackers own queryable Layer-2 catalog and tool state;
 - services and the Layer-3 event dispatcher coordinate repositories/trackers;
@@ -432,15 +431,14 @@ The next accepted turn resumes from the persisted session.
 
 ### Catalogs and selections
 
-`PiCatalogProbeApi` owns a short-lived project-cwd process launched through
-`PiProcessFactory` with `--mode rpc --no-session --approve`, and always tears it
-down after the bounded probe. `PiBackendCatalogRepository` consumes that API and
-maps Pi DTOs into plugin catalog values. `PiCatalogTracker` owns the last
-coherent snapshot for each normalized project; `PiCatalogService` only
-coordinates the repository and tracker.
+`PiBackendCatalogRepository` owns a bounded short-lived lease over the injected
+`PiProcessFactory`/`PiRpcClient` boundary, launched in project cwd with
+`--mode rpc --no-session --approve`. It maps Pi DTOs and always tears the client
+down. `PiCatalogTracker` owns the last coherent snapshot for each normalized
+project; `PiCatalogService` only coordinates the repository and tracker.
 
-The probe answers every `extension_ui_request` with deterministic cancellation,
-including no-timeout editor requests; no probe dialog enters session UI state.
+The repository answers every probe `extension_ui_request` with deterministic
+cancellation, including editor; no probe dialog enters session UI state.
 
 - `get_available_models` supplies provider/model IDs, display names, reasoning,
   and image support.
@@ -733,12 +731,11 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 ### Step 9/15: Expose models and commands
 
-- Add generated model/command DTOs, `PiCatalogProbeApi`,
-  `PiBackendCatalogRepository`, `PiCatalogTracker`, and coordinating
-  `PiCatalogService`.
-- Let the API own each project-cwd, no-session, approved process; let the
-  repository enumerate/map models, exact thinking variants, providers, and
-  commands; synthesize one Pi agent.
+- Add generated model/command DTOs, `PiBackendCatalogRepository`,
+  `PiCatalogTracker`, and coordinating `PiCatalogService`.
+- Let the repository own each bounded project-cwd, no-session client lease and
+  enumerate/map models, thinking variants, providers, and commands; synthesize
+  one Pi agent.
 - Preserve the initial state model as the default and order its provider first.
 - Implement project-scoped `reuse`/`refresh`, complete/partial observed results,
   explicit failed results, and atomic replacement of coherent snapshots only.
