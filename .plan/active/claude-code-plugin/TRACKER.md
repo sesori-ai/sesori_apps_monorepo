@@ -6,10 +6,11 @@
 - **Implementation base:** `origin/main` at
   `c169452b` (Step 8 synchronized with it after Step 7 merged)
 - **Series state:** Steps 1-7/17 merged; Step 8/17 PR open
-- **Current step:** 8/17 — stream event mapping
+- **Current step:** 9/17 — permission and question registry complete locally
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Start Step 9 locally while Step 8 is in review
+- **Next action:** Wait for Step 8 to merge, synchronize Step 9 with `main`, then
+  open its PR
 
 ## Plan Review
 
@@ -52,7 +53,7 @@
 | [x] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) merged 2026-08-10 as `d323c3c4` |
 | [x] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) merged 2026-08-10 as `c169452b` |
 | [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | [PR #803](https://github.com/sesori-ai/sesori_apps_monorepo/pull/803) open against `main` |
-| [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Not started |
+| [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Complete and verified locally atop Step 8; wait for PR #803 to merge before delivery |
 | [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Not started |
 | [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | Not started |
 | [ ] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | Not started |
@@ -277,6 +278,29 @@
   estimate. After synchronization with merged Step 7, the final measured diff
   including plan artifacts is 1,196 changed
   lines, also below the estimate and the 1,500-line soft cap.
+
+- Step 9/17 local successor (2026-08-10): added `ClaudeApprovalRegistry` with
+  session-keyed permission/question responses, verified AskUserQuestion answer
+  keys and ExitPlanMode approval input, filtered session-only `addRules`, ANSI
+  sanitization, and cancellation clearing events. The user approved widening
+  this step after implementation exposed that `suppress_always_allow_rule`
+  could not be represented by the released permission contract: the shared SSE
+  and pending-response shapes now carry backward-compatible `allowAlways`
+  defaulting to true, existing plugins send true, and mobile hides Always when
+  false. Older clients may still send Always, so Claude independently degrades
+  that response to one-time allow rather than escalating it.
+
+  Live CLI 2.1.226 probes confirmed both interaction tools set
+  `requires_user_interaction`, AskUserQuestion accepts full-question-text answer
+  keys in `updatedInput.answers`, and ExitPlanMode approval preserves its plan
+  input. Focused cross-layer tests pass for shared compatibility, plugin
+  contracts, bridge mapping/routing, module-core hydration, and the mobile
+  modal; the full Claude package suite passes. Fatal analysis passes in every
+  touched package. Architecture implementation review first rejected response
+  ownership and flattened protocol variants; failed writes now retain pending
+  state, teardown attempts every cancellation, and sealed question/suggestion
+  variants own response and eligibility behavior. The second review approved
+  the complete scope with no remaining findings.
 
 ## Findings And Plan Deltas
 

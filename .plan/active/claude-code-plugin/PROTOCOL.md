@@ -385,8 +385,13 @@ This satisfies Success Criterion 3 literally: `always` never escalates beyond
 what the backend suggested *and* never beyond what the user asked for. The two
 are not the same thing, which is the trap.
 
-**OPEN:** live `can_use_tool` captures for `AskUserQuestion` and `ExitPlanMode`,
-including whether answer keys are the full question text. Capture before Step 9.
+**Verified with CLI 2.1.226.** Both `AskUserQuestion` and `ExitPlanMode` set
+`requires_user_interaction: true`. `AskUserQuestion.input` carries the declared
+`questions` array, and a successful response returns the original input plus
+`answers: {<full question text>: <selected labels joined by comma+space>}` in
+`updatedInput`. `ExitPlanMode.input` carries `plan` and `planFilePath`; approval
+returns that input unchanged in `updatedInput`. These payloads were exercised
+through successful live tool results, not inferred only from declarations.
 
 ## 6. Models, Agents, And Modes
 
@@ -610,7 +615,7 @@ Carried into their consuming steps rather than blocking the scaffold:
 | Item | Needed by |
 |---|---|
 | Error `result` subtypes and `terminal_reason` values | Step 8 |
-| `AskUserQuestion` / `ExitPlanMode` live captures and answer-key shape | Step 9 |
+| `AskUserQuestion` / `ExitPlanMode` live captures and answer-key shape | Resolved in Step 9 |
 | Image content-block round-trip | Step 15 |
 | Slash-command dispatch in stream-json | Step 12 |
 | Auto-update / telemetry environment variables | Step 13 |

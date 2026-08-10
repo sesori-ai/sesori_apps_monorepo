@@ -335,6 +335,7 @@ SesoriPermissionAsked _$SesoriPermissionAskedFromJson(Map json) =>
       displaySessionId: json['displaySessionId'] as String?,
       tool: json['tool'] as String,
       description: json['description'] as String,
+      allowAlways: json['allowAlways'] as bool? ?? true,
       $type: json['type'] as String?,
     );
 
@@ -346,6 +347,7 @@ Map<String, dynamic> _$SesoriPermissionAskedToJson(
   'displaySessionId': ?instance.displaySessionId,
   'tool': instance.tool,
   'description': instance.description,
+  'allowAlways': instance.allowAlways,
   'type': instance.$type,
 };
 

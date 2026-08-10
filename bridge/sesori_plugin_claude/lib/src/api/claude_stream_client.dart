@@ -234,20 +234,20 @@ class ClaudeStreamClient {
   }
 
   /// Answers a CLI-originated control request, e.g. a `can_use_tool` ask.
-  void sendControlResponse({required String requestId, required Map<String, Object?> payload}) {
+  bool sendControlResponse({required String requestId, required Map<String, Object?> payload}) {
     final process = _process;
-    if (process == null) return;
-    _writeFrame(process, {
+    if (process == null) return false;
+    return _writeFrame(process, {
       "type": "control_response",
       "response": {"subtype": "success", "request_id": requestId, "response": payload},
     });
   }
 
   /// Answers a CLI-originated control request with a failure.
-  void sendControlResponseError({required String requestId, required String message}) {
+  bool sendControlResponseError({required String requestId, required String message}) {
     final process = _process;
-    if (process == null) return;
-    _writeFrame(process, {
+    if (process == null) return false;
+    return _writeFrame(process, {
       "type": "control_response",
       "response": {"subtype": "error", "request_id": requestId, "error": message},
     });

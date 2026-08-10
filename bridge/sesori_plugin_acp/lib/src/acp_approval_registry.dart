@@ -387,6 +387,7 @@ class AcpApprovalRegistry {
         displaySessionId: sessionId,
         tool: summary.tool,
         description: summary.description,
+        allowAlways: true,
       ),
     );
   }
@@ -428,6 +429,7 @@ class AcpApprovalRegistry {
       displaySessionId: entry.sessionId,
       tool: summary.tool,
       description: summary.description,
+      allowAlways: true,
     );
   }
 

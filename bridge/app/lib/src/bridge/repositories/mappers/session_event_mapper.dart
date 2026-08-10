@@ -191,6 +191,7 @@ class SessionEventMapper {
         :final displaySessionId,
         :final tool,
         :final description,
+        :final allowAlways,
       ) =>
         switch ((mapped(sessionID), mappedOptional(displaySessionId))) {
           (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
@@ -200,6 +201,7 @@ class SessionEventMapper {
               displaySessionId: displayId,
               tool: tool,
               description: description,
+              allowAlways: allowAlways,
             ),
           _ => null,
         },

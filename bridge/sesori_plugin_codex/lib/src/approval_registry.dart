@@ -326,6 +326,7 @@ class ApprovalRegistry {
           displaySessionId: entry.sessionId,
           tool: _toolHintFor(method),
           description: _permissionDescriptionFor(entry),
+          allowAlways: true,
         ),
       );
     } else {
@@ -358,6 +359,7 @@ class ApprovalRegistry {
       displaySessionId: entry.sessionId,
       tool: _toolHintFor(entry.method),
       description: _permissionDescriptionFor(entry),
+      allowAlways: true,
     );
   }
 

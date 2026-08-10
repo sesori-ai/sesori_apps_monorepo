@@ -16,6 +16,7 @@ const _permission = SesoriPermissionAsked(
   displaySessionId: null,
   tool: "bash",
   description: _command,
+  allowAlways: true,
 );
 
 class _ReplyCapture {
@@ -151,5 +152,21 @@ void main() {
     expect(find.text("Once"), findsOneWidget);
     expect(find.text("Always Allow"), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("hides always allow when the backend forbids it", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      permission: _permission.copyWith(allowAlways: false),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+
+    expect(find.text("Reject"), findsOneWidget);
+    expect(find.text("Once"), findsOneWidget);
+    expect(find.text("Always Allow"), findsNothing);
   });
 }

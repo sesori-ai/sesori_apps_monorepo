@@ -171,6 +171,7 @@ void main() {
               displaySessionId: "backend-root",
               tool: "shell",
               description: "stale permission",
+              allowAlways: true,
             ),
           ),
         ),
@@ -512,6 +513,7 @@ void main() {
             displaySessionId: "unknown-display",
             tool: "bash",
             description: "run",
+            allowAlways: true,
           ),
         ),
       );
@@ -816,6 +818,7 @@ void main() {
         displaySessionId: "backend-root",
         tool: "bash",
         description: "continue root",
+        allowAlways: true,
       );
       const childPermissionEvent = BridgeSsePermissionAsked(
         requestID: "child-permission",
@@ -823,6 +826,7 @@ void main() {
         displaySessionId: "backend-root",
         tool: "bash",
         description: "continue child",
+        allowAlways: true,
       );
 
       expect(
@@ -911,6 +915,7 @@ void main() {
           displaySessionId: "backend-root",
           tool: "bash",
           description: "continue child",
+          allowAlways: true,
         ),
         BridgeSseSessionUpdated(info: childInfo, titleChanged: false),
       ];

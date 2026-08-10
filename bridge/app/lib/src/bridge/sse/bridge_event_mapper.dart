@@ -94,6 +94,7 @@ class BridgeEventMapper {
           :final displaySessionId,
           :final tool,
           :final description,
+          :final allowAlways,
         ) =>
           SesoriSseEvent.permissionAsked(
             requestID: requestID,
@@ -101,6 +102,7 @@ class BridgeEventMapper {
             displaySessionId: displaySessionId,
             tool: tool,
             description: description,
+            allowAlways: allowAlways,
           ),
         BridgeSsePermissionReplied(:final requestID, :final sessionID, :final displaySessionId, :final reply) =>
           SesoriSseEvent.permissionReplied(

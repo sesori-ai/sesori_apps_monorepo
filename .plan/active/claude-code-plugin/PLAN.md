@@ -795,6 +795,10 @@ the unused-architecture problem avoided in Step 3.
   interaction-shaped tools appear.
 - Honor `suppress_always_allow_rule` by withholding the always affordance, and
   sanitize ANSI escapes out of `decision_reason` before it reaches the phone.
+- Extend the backward-compatible permission event and pending-response wire
+  shapes with `allowAlways`, defaulting omitted values to true for released
+  peers. Existing plugins always send true; Claude sends false when suppression
+  is required, and the mobile modal hides the affordance.
 - Filter `permission_suggestions` before echoing them for `always`: session-scoped
   `addRules` only, never `setMode`, `addDirectories`, or a destination that
   persists past the session, degrading to a plain allow when nothing qualifies.

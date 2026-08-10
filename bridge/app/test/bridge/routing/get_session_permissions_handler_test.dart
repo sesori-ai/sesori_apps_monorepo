@@ -108,6 +108,7 @@ void main() {
           displaySessionId: "backend-root",
           tool: "bash",
           description: "Run ls",
+          allowAlways: true,
         ),
       ];
       final suppressedHandler = GetSessionPermissionsHandler(
@@ -134,6 +135,7 @@ void main() {
           displaySessionId: "backend-root",
           tool: "bash",
           description: "Run ls",
+          allowAlways: false,
         ),
       ];
 
@@ -152,6 +154,7 @@ void main() {
       expect(item.displaySessionId, equals("root"));
       expect(item.tool, equals("bash"));
       expect(item.description, equals("Run ls"));
+      expect(item.allowAlways, isFalse);
     });
 
     test("does not query a derived plugin for a tombstoned session", () async {
@@ -201,6 +204,7 @@ void main() {
             displaySessionId: "root",
             tool: "shell",
             description: "child",
+            allowAlways: true,
           ),
           PluginPendingPermission(
             id: "deleted-root",
@@ -208,6 +212,7 @@ void main() {
             displaySessionId: "gone-root",
             tool: "shell",
             description: "root",
+            allowAlways: true,
           ),
           PluginPendingPermission(
             id: "visible",
@@ -215,6 +220,7 @@ void main() {
             displaySessionId: "root",
             tool: "shell",
             description: "visible",
+            allowAlways: true,
           ),
         ];
       await recordSessionBinding(
@@ -270,6 +276,7 @@ void main() {
             displaySessionId: "gone-root",
             tool: "shell",
             description: "stale",
+            allowAlways: true,
           ),
         ];
       await db.sessionDao.insertSessionTombstone(
@@ -310,6 +317,7 @@ void main() {
             displaySessionId: "live-root",
             tool: "shell",
             description: "stale child",
+            allowAlways: true,
           ),
         ];
       await db.sessionDao.insertSessionTombstone(
