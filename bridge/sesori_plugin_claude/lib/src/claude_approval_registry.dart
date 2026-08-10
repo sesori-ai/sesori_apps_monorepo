@@ -239,7 +239,7 @@ final class ClaudeApprovalRegistry {
       PluginPermissionReply.reject => <String, Object?>{"behavior": "deny", "message": "User denied permission."},
     };
     if (!_respond(sessionId: entry.sessionId, requestId: entry.requestId, payload: payload)) return false;
-    if (reply == PluginPermissionReply.always) {
+    if (reply == PluginPermissionReply.always && entry.allowAlways) {
       final allowedTools = _allowedTools.putIfAbsent(entry.sessionId, () => {});
       for (final suggestion in entry.suggestions) {
         if (suggestion case _SessionAddRules(:final raw)) {

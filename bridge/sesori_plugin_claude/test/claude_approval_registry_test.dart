@@ -119,7 +119,13 @@ void main() {
         message: _permission(
           suppressAlways: true,
           suggestions: const [
-            {"type": "addRules", "destination": "session", "rules": []},
+            {
+              "type": "addRules",
+              "destination": "session",
+              "rules": [
+                {"toolName": "Write"},
+              ],
+            },
           ],
         ),
       );
@@ -130,6 +136,7 @@ void main() {
         "behavior": "allow",
         "updatedInput": {"file_path": "a.dart"},
       });
+      expect(registry.allowedToolsForSession(sessionId: "session-1"), isEmpty);
     });
 
     test("AskUserQuestion maps answers by full question text", () {
