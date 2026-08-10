@@ -138,6 +138,7 @@ void main() {
           displaySessionId: "backend-root",
           tool: "bash",
           description: "Run ls",
+          allowAlways: true,
         ),
       ];
 
