@@ -17,7 +17,7 @@ sealed class SessionAttachmentRequest with _$SessionAttachmentRequest {
   factory SessionAttachmentRequest.fromJson(Map<String, dynamic> json) => _$SessionAttachmentRequestFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: true)
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
 sealed class SessionAttachmentResponse with _$SessionAttachmentResponse {
   const factory SessionAttachmentResponse({
     required String mime,

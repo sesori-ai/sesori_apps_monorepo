@@ -53,5 +53,6 @@ void main() {
 
     expect(SessionAttachmentRequest.fromJson(request.toJson()), request);
     expect(SessionAttachmentResponse.fromJson(response.toJson()), response);
+    expect(response.toString(), isNot(contains("aGVsbG8=")));
   });
 }

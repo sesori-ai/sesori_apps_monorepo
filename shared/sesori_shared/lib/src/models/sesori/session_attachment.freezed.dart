@@ -175,10 +175,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,mime,base64,byteLength);
 
-@override
-String toString() {
-  return 'SessionAttachmentResponse(mime: $mime, base64: $base64, byteLength: $byteLength)';
-}
 
 
 }
@@ -249,10 +245,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,mime,base64,byteLength);
 
-@override
-String toString() {
-  return 'SessionAttachmentResponse(mime: $mime, base64: $base64, byteLength: $byteLength)';
-}
 
 
 }
