@@ -395,14 +395,14 @@ field, and receives the message-owned `sessionId`; these values form the cache
 scope with attachment id and rendition version. No cache operation reads a
 global current-bridge fallback. Only encoded thumbnails are persisted.
 
-An eager `@singleton` `MessageThumbnailCacheService` in `module_core` requires
-`MessageImageRepository` plus `AuthSession`, subscribes during core DI
-initialization, and owns account-scope cleanup on logout/local account removal.
-Cleanup first retires the account generation, rejects new or late writes for
-that generation, awaits its already-started fetch/write futures, and only then
-deletes the scope. A later completion therefore cannot recreate decrypted
-thumbnail content after logout. Its `@disposeMethod` cancels the auth
-subscription during dependency-container teardown.
+A `@lazySingleton` `MessageThumbnailCacheService` in `module_core` requires
+`MessageImageRepository` plus `AuthSession` and owns account-scope cleanup. The
+mobile shell resolves it once immediately after `configureCoreDependencies`,
+after registering its storage adapter; construction subscribes to auth before
+any session UI can cache a thumbnail. Desktop neither binds nor resolves this
+mobile cache path. Cleanup retires the account generation, rejects late writes,
+settles started fetch/write futures, and only then deletes the scope. Its
+`@disposeMethod` cancels the subscription during container teardown.
 
 Do not add a persistent database, cache index, background cache worker, or full
 original cache. The OS may evict cache files at any time; a miss simply refetches
@@ -701,15 +701,15 @@ when supplied in a test fixture.
   adapter; do not call static `path_provider` APIs from the adapter.
 - Keep scoped keys, corruption recovery, in-flight coalescing, oldest-on-write
   pruning in `MessageImageRepository`; register `MessageThumbnailCacheService`
-  as an eager core singleton for generation-fenced authenticated-scope cleanup
-  that settles in-flight writes before deletion and disposes its auth
-  subscription; keep backup exclusion in the platform IO configuration.
+  as a lazy core singleton, explicitly resolve it during mobile DI after the
+  storage binding, and retain generation-fenced cleanup/disposal; keep backup
+  exclusion in the platform IO configuration.
 - Integrate the cache behind `MessageImageRepository` and the existing
   `MessageImageCubit`; widgets render emitted bytes with standard Flutter image
   providers and receive no repository, public URL, or relay/auth token.
 - Run module_core tests, app platform/cache tests, codegen/DI generation, mobile
-  analysis/tests including account-switch and eager-cleanup activation, and
-  architecture implementation review.
+  analysis/tests including account-switch/mobile activation and desktop DI
+  startup without the storage binding, and architecture implementation review.
 
 Expected result: no reference delivery is enabled, but stored-image fixtures
 reuse cached encoded thumbnails across widget remounts/app initialization.

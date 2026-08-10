@@ -103,6 +103,6 @@
   the step remains well below the repository's 1,500-line soft cap.
 - **2026-08-10 - PR review lifecycle closure:** Routed rendition reads and
   source-root thumbnail writes through the history session queue, made bridge
-  identity/account scope explicit, made cache cleanup eager and disposable, and
-  required source-free parser diagnostics. Declined later bot suggestions that
+  identity/account scope explicit, made cache cleanup mobile-activated and
+  disposable, and required source-free diagnostics. Declined suggestions that
   added machinery only to already-safe or self-healing failure paths.
