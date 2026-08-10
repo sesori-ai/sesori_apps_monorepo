@@ -1140,6 +1140,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       _syncWorkState();
       return;
     }
+    eventMapper.finalizeTurn(sessionId: sessionId).forEach(_eventBuffer.add);
     if (state.pending == 0) {
       _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
       _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
