@@ -10,12 +10,12 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "settings_section.dart";
 
-class PullRequestRefreshSettingsSection extends StatelessWidget {
-  const PullRequestRefreshSettingsSection({super.key});
+class BridgeSettingsSection extends StatelessWidget {
+  const BridgeSettingsSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<PullRequestRefreshSettingsCubit>().state;
+    final state = context.watch<BridgeSettingsCubit>().state;
     return SettingsSection(
       title: context.loc.settingsSectionBridge,
       child: PregoGroupedRows(
@@ -28,15 +28,16 @@ class PullRequestRefreshSettingsSection extends StatelessWidget {
             subtitle: Text(_description(context: context, state: state)),
             trailing: _trailing(context: context, state: state),
             onTap: switch (state) {
-              PullRequestRefreshSettingsReady(:final mutation)
-                  when mutation is! PullRequestRefreshSettingsMutationInProgress =>
+              BridgeSettingsReady(:final pullRequestRefreshMutation)
+                  when pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
+                      pullRequestRefreshMutation is! PullRequestRefreshMutationUncertain &&
+                      pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported =>
                 () => unawaited(_editInterval(context: context, state: state)),
-              PullRequestRefreshSettingsLoading() ||
-              PullRequestRefreshSettingsDisconnected() ||
-              PullRequestRefreshSettingsUnsupported() ||
-              PullRequestRefreshSettingsFailure() ||
-              PullRequestRefreshSettingsUncertain() ||
-              PullRequestRefreshSettingsReady() => null,
+              BridgeSettingsLoading() ||
+              BridgeSettingsDisconnected() ||
+              BridgeSettingsUnsupported() ||
+              BridgeSettingsFailure() ||
+              BridgeSettingsReady() => null,
             },
             isLast: true,
           ),
@@ -51,14 +52,18 @@ class _YoloSettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<YoloSettingsCubit>().state;
-    final ready = state is YoloSettingsReady ? state : null;
-    final updating = ready?.mutation is YoloSettingsMutationInProgress;
+    final state = context.watch<BridgeSettingsCubit>().state;
+    final ready = state is BridgeSettingsReadyFull ? state : null;
+    final interactive =
+        ready != null &&
+        ready.yoloMutation is! YoloMutationInProgress &&
+        ready.yoloMutation is! YoloMutationUncertain &&
+        ready.yoloMutation is! YoloMutationUnsupported;
 
     void toggle({required bool enabled}) {
       final current = ready;
-      if (current == null || updating) return;
-      unawaited(context.read<YoloSettingsCubit>().update(enabled: enabled, expectedState: current));
+      if (current == null || !interactive) return;
+      unawaited(context.read<BridgeSettingsCubit>().updateYolo(enabled: enabled, expectedState: current));
     }
 
     return MergeSemantics(
@@ -68,91 +73,114 @@ class _YoloSettingsRow extends StatelessWidget {
         title: Text(context.loc.settingsYoloTitle),
         subtitle: Text(_yoloDescription(context: context, state: state)),
         trailing: switch (state) {
-          YoloSettingsLoading() || YoloSettingsReady(mutation: YoloSettingsMutationInProgress()) =>
+          BridgeSettingsLoading() || BridgeSettingsReadyFull(yoloMutation: YoloMutationInProgress()) =>
             PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
-          YoloSettingsReady(:final enabled) => PregoSwitch(
-            key: const Key("yolo_switch"),
-            value: enabled,
-            onChanged: (enabled) => toggle(enabled: enabled),
-          ),
-          YoloSettingsUnsupported() => Text(
+          BridgeSettingsReadyFull(yoloMutation: YoloMutationUnsupported()) => Text(
             context.loc.settingsPullRequestRefreshUnavailable,
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
-          YoloSettingsDisconnected() => Text(
+          BridgeSettingsReadyFull(:final yoloEnabled) => PregoSwitch(
+            key: const Key("yolo_switch"),
+            value: yoloEnabled,
+            onChanged: (enabled) => toggle(enabled: enabled),
+          ),
+          BridgeSettingsReadyLegacyPartial() || BridgeSettingsUnsupported() => Text(
+            context.loc.settingsPullRequestRefreshUnavailable,
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          BridgeSettingsDisconnected() => Text(
             context.loc.settingsPullRequestRefreshOffline,
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
-          YoloSettingsFailure() || YoloSettingsUncertain() => IconButton(
+          BridgeSettingsFailure() || BridgeSettingsReadyFull(yoloMutation: YoloMutationUncertain()) => IconButton(
             key: const Key("yolo_retry"),
             tooltip: context.loc.settingsYoloRetry,
-            onPressed: context.read<YoloSettingsCubit>().refresh,
+            onPressed: context.read<BridgeSettingsCubit>().refresh,
             icon: const Icon(TablerRegular.refresh),
           ),
         },
-        onTap: ready == null || updating ? null : () => toggle(enabled: !ready.enabled),
+        onTap: !interactive ? null : () => toggle(enabled: !ready.yoloEnabled),
       ),
     );
   }
 }
 
-String _yoloDescription({required BuildContext context, required YoloSettingsState state}) {
+String _yoloDescription({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
-    YoloSettingsLoading() => context.loc.settingsYoloLoading,
-    YoloSettingsDisconnected() => context.loc.settingsYoloDisconnected,
-    YoloSettingsUnsupported() => context.loc.settingsYoloUnsupported,
-    YoloSettingsFailure() => context.loc.settingsYoloLoadFailed,
-    YoloSettingsUncertain() => context.loc.settingsYoloUncertain,
-    YoloSettingsReady(mutation: YoloSettingsMutationFailed()) => context.loc.settingsYoloUpdateFailed,
-    YoloSettingsReady() => context.loc.settingsYoloWarning,
+    BridgeSettingsLoading() => context.loc.settingsYoloLoading,
+    BridgeSettingsDisconnected() => context.loc.settingsYoloDisconnected,
+    BridgeSettingsUnsupported() ||
+    BridgeSettingsReadyLegacyPartial() ||
+    BridgeSettingsReadyFull(yoloMutation: YoloMutationUnsupported()) => context.loc.settingsYoloUnsupported,
+    BridgeSettingsFailure() => context.loc.settingsYoloLoadFailed,
+    BridgeSettingsReadyFull(yoloMutation: YoloMutationUncertain()) => context.loc.settingsYoloUncertain,
+    BridgeSettingsReadyFull(yoloMutation: YoloMutationFailed()) => context.loc.settingsYoloUpdateFailed,
+    BridgeSettingsReadyFull() => context.loc.settingsYoloWarning,
   };
 }
 
-String _description({required BuildContext context, required PullRequestRefreshSettingsState state}) {
+String _description({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
-    PullRequestRefreshSettingsLoading() => context.loc.settingsPullRequestRefreshLoading,
-    PullRequestRefreshSettingsDisconnected() => context.loc.settingsPullRequestRefreshDisconnected,
-    PullRequestRefreshSettingsUnsupported() => context.loc.settingsPullRequestRefreshUnsupported,
-    PullRequestRefreshSettingsFailure() => context.loc.settingsPullRequestRefreshLoadFailed,
-    PullRequestRefreshSettingsUncertain() => context.loc.settingsPullRequestRefreshUncertain,
-    PullRequestRefreshSettingsReady(
-      mutation: PullRequestRefreshSettingsMutationRangeRejected(:final bounds),
+    BridgeSettingsLoading() => context.loc.settingsPullRequestRefreshLoading,
+    BridgeSettingsDisconnected() => context.loc.settingsPullRequestRefreshDisconnected,
+    BridgeSettingsUnsupported() => context.loc.settingsPullRequestRefreshUnsupported,
+    BridgeSettingsFailure() => context.loc.settingsPullRequestRefreshLoadFailed,
+    BridgeSettingsReady(
+      pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported(),
+    ) =>
+      context.loc.settingsPullRequestRefreshUnsupported,
+    BridgeSettingsReady(
+      pullRequestRefreshMutation: PullRequestRefreshMutationUncertain(),
+    ) =>
+      context.loc.settingsPullRequestRefreshUncertain,
+    BridgeSettingsReady(
+      pullRequestRefreshMutation: PullRequestRefreshMutationRangeRejected(:final bounds),
     ) =>
       context.loc.settingsPullRequestRefreshRangeInvalid(
         bounds.minimumIntervalSeconds,
         bounds.maximumIntervalSeconds,
       ),
-    PullRequestRefreshSettingsReady(mutation: final PullRequestRefreshSettingsMutationFailed failure) =>
+    BridgeSettingsReady(pullRequestRefreshMutation: final PullRequestRefreshMutationFailed failure) =>
       switch (failure.error) {
-        PullRequestRefreshSettingsInvalidInput() => context.loc.settingsPullRequestRefreshInvalid,
-        PullRequestRefreshSettingsRequestFailed() => context.loc.settingsPullRequestRefreshUpdateFailed,
+        PullRequestRefreshInvalidInput() => context.loc.settingsPullRequestRefreshInvalid,
+        PullRequestRefreshRequestFailed() => context.loc.settingsPullRequestRefreshUpdateFailed,
       },
-    PullRequestRefreshSettingsReady() => context.loc.settingsPullRequestRefreshDescription,
+    BridgeSettingsReady() => context.loc.settingsPullRequestRefreshDescription,
   };
 }
 
-Widget _trailing({required BuildContext context, required PullRequestRefreshSettingsState state}) {
+Widget _trailing({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
-    PullRequestRefreshSettingsLoading() ||
-    PullRequestRefreshSettingsReady(
-      mutation: PullRequestRefreshSettingsMutationInProgress(),
+    BridgeSettingsLoading() ||
+    BridgeSettingsReady(
+      pullRequestRefreshMutation: PullRequestRefreshMutationInProgress(),
     ) => PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
-    PullRequestRefreshSettingsReady(:final intervalSeconds) => Text(
-      context.loc.settingsPullRequestRefreshSeconds(intervalSeconds),
-      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-    ),
-    PullRequestRefreshSettingsUnsupported() => Text(
+    BridgeSettingsReady(pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported()) => Text(
       context.loc.settingsPullRequestRefreshUnavailable,
       style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
     ),
-    PullRequestRefreshSettingsDisconnected() => Text(
+    BridgeSettingsReady(pullRequestRefreshMutation: PullRequestRefreshMutationUncertain()) => IconButton(
+      key: const Key("pull_request_refresh_retry"),
+      tooltip: context.loc.settingsPullRequestRefreshRetry,
+      onPressed: context.read<BridgeSettingsCubit>().refresh,
+      icon: const Icon(TablerRegular.refresh),
+    ),
+    BridgeSettingsReady(:final pullRequestRefreshIntervalSeconds) => Text(
+      context.loc.settingsPullRequestRefreshSeconds(pullRequestRefreshIntervalSeconds),
+      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+    ),
+    BridgeSettingsUnsupported() => Text(
+      context.loc.settingsPullRequestRefreshUnavailable,
+      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+    ),
+    BridgeSettingsDisconnected() => Text(
       context.loc.settingsPullRequestRefreshOffline,
       style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
     ),
-    PullRequestRefreshSettingsFailure() || PullRequestRefreshSettingsUncertain() => IconButton(
+    BridgeSettingsFailure() => IconButton(
       key: const Key("pull_request_refresh_retry"),
       tooltip: context.loc.settingsPullRequestRefreshRetry,
-      onPressed: context.read<PullRequestRefreshSettingsCubit>().refresh,
+      onPressed: context.read<BridgeSettingsCubit>().refresh,
       icon: const Icon(TablerRegular.refresh),
     ),
   };
@@ -160,21 +188,21 @@ Widget _trailing({required BuildContext context, required PullRequestRefreshSett
 
 Future<void> _editInterval({
   required BuildContext context,
-  required PullRequestRefreshSettingsReady state,
+  required BridgeSettingsReady state,
 }) async {
-  final cubit = context.read<PullRequestRefreshSettingsCubit>();
+  final cubit = context.read<BridgeSettingsCubit>();
   final result = await showPregoBottomSheet<String>(
     context: context,
     title: context.loc.settingsPullRequestRefreshDialogTitle,
     builder: (_) => _RefreshIntervalSheet(
       cubit: cubit,
-      initialSeconds: state.intervalSeconds,
+      initialSeconds: state.pullRequestRefreshIntervalSeconds,
       validationBounds: state.validationBounds,
     ),
   );
   if (result == null) return;
-  final acceptance = await cubit.update(input: result, expectedState: state);
-  if (!context.mounted || acceptance == PullRequestRefreshSettingsUpdateAcceptance.accepted) return;
+  final acceptance = await cubit.updatePullRequestRefresh(input: result, expectedState: state);
+  if (!context.mounted || acceptance == BridgeSettingsUpdateAcceptance.accepted) return;
   ScaffoldMessenger.of(context)
     ..clearSnackBars()
     ..showSnackBar(SnackBar(content: Text(context.loc.settingsPullRequestRefreshStateChanged)));
@@ -187,7 +215,7 @@ class _RefreshIntervalSheet extends StatefulWidget {
     required this.validationBounds,
   });
 
-  final PullRequestRefreshSettingsCubit cubit;
+  final BridgeSettingsCubit cubit;
   final int initialSeconds;
   final PullRequestRefreshSettingsBounds? validationBounds;
 
@@ -229,9 +257,9 @@ class _RefreshIntervalSheetState extends State<_RefreshIntervalSheet> {
               autocorrect: false,
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.done,
-              validator: (value) => switch (widget.cubit.validateUpdateInput(input: value ?? "")) {
-                PullRequestRefreshSettingsInputValidation.valid => null,
-                PullRequestRefreshSettingsInputValidation.invalid => _inputMessage(context: context),
+              validator: (value) => switch (widget.cubit.validatePullRequestRefreshInput(input: value ?? "")) {
+                PullRequestRefreshInputValidation.valid => null,
+                PullRequestRefreshInputValidation.invalid => _inputMessage(context: context),
               },
               onSubmitted: (_) => _submit(),
             ),

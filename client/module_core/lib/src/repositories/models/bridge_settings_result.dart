@@ -1,22 +1,28 @@
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-sealed class PullRequestRefreshSettingsLoadResult {
-  const PullRequestRefreshSettingsLoadResult();
+sealed class BridgeSettingsLoadResult {
+  const BridgeSettingsLoadResult();
 }
 
-final class PullRequestRefreshSettingsLoadSupported extends PullRequestRefreshSettingsLoadResult {
-  const PullRequestRefreshSettingsLoadSupported({required this.response});
+final class BridgeSettingsLoadSupported extends BridgeSettingsLoadResult {
+  const BridgeSettingsLoadSupported({required this.response});
 
-  final PullRequestRefreshSettingsResponse response;
+  final BridgeSettingsResponse response;
 }
 
-final class PullRequestRefreshSettingsLoadUnsupported extends PullRequestRefreshSettingsLoadResult {
-  const PullRequestRefreshSettingsLoadUnsupported();
+final class BridgeSettingsLoadLegacyPartial extends BridgeSettingsLoadResult {
+  const BridgeSettingsLoadLegacyPartial({required this.pullRequestRefresh});
+
+  final PullRequestRefreshSettingsResponse pullRequestRefresh;
 }
 
-final class PullRequestRefreshSettingsLoadFailure extends PullRequestRefreshSettingsLoadResult {
-  const PullRequestRefreshSettingsLoadFailure({required this.error});
+final class BridgeSettingsLoadUnsupported extends BridgeSettingsLoadResult {
+  const BridgeSettingsLoadUnsupported();
+}
+
+final class BridgeSettingsLoadFailure extends BridgeSettingsLoadResult {
+  const BridgeSettingsLoadFailure({required this.error});
 
   final ApiError error;
 }
@@ -47,6 +53,30 @@ final class PullRequestRefreshSettingsMutationUncertain extends PullRequestRefre
 
 final class PullRequestRefreshSettingsMutationFailure extends PullRequestRefreshSettingsMutationResult {
   const PullRequestRefreshSettingsMutationFailure({required this.error});
+
+  final ApiError error;
+}
+
+sealed class YoloSettingsMutationResult {
+  const YoloSettingsMutationResult();
+}
+
+final class YoloSettingsMutationCommitted extends YoloSettingsMutationResult {
+  const YoloSettingsMutationCommitted({required this.response});
+
+  final YoloSettingsResponse response;
+}
+
+final class YoloSettingsMutationUnsupported extends YoloSettingsMutationResult {
+  const YoloSettingsMutationUnsupported();
+}
+
+final class YoloSettingsMutationUncertain extends YoloSettingsMutationResult {
+  const YoloSettingsMutationUncertain();
+}
+
+final class YoloSettingsMutationFailure extends YoloSettingsMutationResult {
+  const YoloSettingsMutationFailure({required this.error});
 
   final ApiError error;
 }

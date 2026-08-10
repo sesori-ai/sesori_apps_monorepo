@@ -20,10 +20,10 @@ class BridgeSettingsApi {
     );
   }
 
-  Future<ApiResponse<YoloSettingsResponse>> getYoloSettings() {
-    return _client.get<YoloSettingsResponse>(
-      "/settings/yolo",
-      fromJson: YoloSettingsResponse.fromJson,
+  Future<ApiResponse<BridgeSettingsResponse>> getBridgeSettings() {
+    return _client.get<BridgeSettingsResponse>(
+      "/settings",
+      fromJson: BridgeSettingsResponse.fromJson,
     );
   }
 

@@ -42,12 +42,12 @@ import "../repositories/bridge_settings_repository.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
 import "../routing/cancel_catalog_import_handler.dart";
+import "../routing/get_bridge_settings_handler.dart";
 import "../routing/get_catalog_import_statuses_handler.dart";
 import "../routing/get_plugin_management_handler.dart";
 import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
 import "../routing/get_pull_request_refresh_settings_handler.dart";
-import "../routing/get_yolo_settings_handler.dart";
 import "../routing/patch_bridge_settings_handler.dart";
 import "../routing/patch_plugin_idle_timeout_handler.dart";
 import "../routing/post_plugin_lifecycle_command_handler.dart";
@@ -566,8 +566,8 @@ class Orchestrator {
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
+        GetBridgeSettingsHandler(settingsRepository: _bridgeSettingsRepository),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
-        GetYoloSettingsHandler(settingsService: yoloSettingsService),
         PatchBridgeSettingsHandler(
           pullRequestRefreshSettingsService: pullRequestRefreshSettingsService,
           yoloSettingsService: yoloSettingsService,

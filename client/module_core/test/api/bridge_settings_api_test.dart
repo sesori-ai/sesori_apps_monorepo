@@ -35,20 +35,27 @@ void main() {
     expect((result as SuccessResponse<PullRequestRefreshSettingsResponse>).data.intervalSeconds, 30);
   });
 
-  test("GET parses the authoritative YOLO setting", () async {
+  test("GET parses the aggregate bridge settings", () async {
     when(
-      () => client.get<YoloSettingsResponse>(
-        "/settings/yolo",
+      () => client.get<BridgeSettingsResponse>(
+        "/settings",
         fromJson: any(named: "fromJson"),
       ),
     ).thenAnswer((invocation) async {
-      final fromJson = invocation.namedArguments[#fromJson] as YoloSettingsResponse Function(Map<String, dynamic>);
-      return ApiResponse.success(fromJson({"enabled": true}));
+      final fromJson = invocation.namedArguments[#fromJson] as BridgeSettingsResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(
+        fromJson({
+          "pullRequestRefresh": {"intervalSeconds": 30},
+          "yolo": {"enabled": true},
+        }),
+      );
     });
 
-    final result = await api.getYoloSettings();
+    final result = await api.getBridgeSettings();
 
-    expect((result as SuccessResponse<YoloSettingsResponse>).data.enabled, isTrue);
+    final settings = (result as SuccessResponse<BridgeSettingsResponse>).data;
+    expect(settings.pullRequestRefresh.intervalSeconds, 30);
+    expect(settings.yolo.enabled, isTrue);
   });
 
   test("PATCH serializes and parses a committed setting variant", () async {

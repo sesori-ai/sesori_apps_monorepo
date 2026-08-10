@@ -1,21 +1,22 @@
 import "package:injectable/injectable.dart";
 
-import "../repositories/models/pull_request_refresh_settings_result.dart";
-import "../repositories/pull_request_refresh_settings_repository.dart";
+import "../repositories/bridge_settings_repository.dart";
+import "../repositories/models/bridge_settings_result.dart";
 
 @lazySingleton
-class PullRequestRefreshSettingsService {
-  PullRequestRefreshSettingsService({required PullRequestRefreshSettingsRepository repository})
-    : _repository = repository;
+class BridgeSettingsService {
+  BridgeSettingsService({required BridgeSettingsRepository repository}) : _repository = repository;
 
-  final PullRequestRefreshSettingsRepository _repository;
+  final BridgeSettingsRepository _repository;
 
-  Future<PullRequestRefreshSettingsLoadResult> load() => _repository.load();
+  Future<BridgeSettingsLoadResult> load() => _repository.load();
 
-  Future<PullRequestRefreshSettingsMutationResult> update({required int intervalSeconds}) =>
-      _repository.update(intervalSeconds: intervalSeconds);
+  Future<PullRequestRefreshSettingsMutationResult> updatePullRequestRefresh({required int intervalSeconds}) =>
+      _repository.updatePullRequestRefresh(intervalSeconds: intervalSeconds);
 
-  PullRequestRefreshSettingsUpdatePlan planUpdate({
+  Future<YoloSettingsMutationResult> updateYolo({required bool enabled}) => _repository.updateYolo(enabled: enabled);
+
+  PullRequestRefreshSettingsUpdatePlan planPullRequestRefreshUpdate({
     required String input,
     required PullRequestRefreshSettingsBounds? bounds,
   }) {
@@ -25,9 +26,7 @@ class PullRequestRefreshSettingsService {
         (bounds != null && !bounds.includes(intervalSeconds: intervalSeconds))) {
       return const PullRequestRefreshSettingsUpdateInvalid();
     }
-    return PullRequestRefreshSettingsUpdateRequest(
-      intervalSeconds: intervalSeconds,
-    );
+    return PullRequestRefreshSettingsUpdateRequest(intervalSeconds: intervalSeconds);
   }
 }
 

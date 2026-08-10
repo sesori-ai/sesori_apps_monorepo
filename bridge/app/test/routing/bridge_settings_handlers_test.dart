@@ -3,7 +3,7 @@ import "dart:convert";
 import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
-import "package:sesori_bridge/src/routing/get_yolo_settings_handler.dart";
+import "package:sesori_bridge/src/routing/get_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
@@ -13,7 +13,7 @@ import "package:test/test.dart";
 import "../bridge/routing/routing_test_helpers.dart";
 
 void main() {
-  group("YOLO settings handlers", () {
+  group("bridge settings handlers", () {
     late _MemoryBridgeSettingsApi api;
     late BridgeSettingsRepository repository;
     late YoloSettingsService service;
@@ -37,16 +37,22 @@ void main() {
 
     tearDown(() => repository.dispose());
 
-    test("GET returns the committed setting", () async {
-      final response = await GetYoloSettingsHandler(settingsService: service).handleInternal(
-        makeRequest("GET", "/settings/yolo"),
+    test("GET returns both settings from one committed snapshot", () async {
+      final response = await GetBridgeSettingsHandler(settingsRepository: repository).handleInternal(
+        makeRequest("GET", "/settings"),
         pathParams: const {},
         queryParams: const {},
         fragment: null,
       );
 
       expect(response.status, 200);
-      expect(YoloSettingsResponse.fromJson(jsonDecodeMap(response.body!)), const YoloSettingsResponse(enabled: false));
+      expect(
+        BridgeSettingsResponse.fromJson(jsonDecodeMap(response.body!)),
+        const BridgeSettingsResponse(
+          pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+          yolo: YoloSettingsResponse(enabled: false),
+        ),
+      );
     });
 
     test("PATCH persists and returns the committed setting", () async {

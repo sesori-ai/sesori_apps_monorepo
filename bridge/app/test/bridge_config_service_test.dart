@@ -3,6 +3,7 @@ import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
+import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -92,6 +93,14 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
 
   @override
   Future<BridgeSettings> readCommittedSettings() async => settings;
+
+  @override
+  Future<BridgeSettingsResponse> readCommittedResponse() async => BridgeSettingsResponse(
+    pullRequestRefresh: PullRequestRefreshSettingsResponse(
+      intervalSeconds: settings.pullRequestRefreshIntervalSeconds,
+    ),
+    yolo: YoloSettingsResponse(enabled: settings.yolo),
+  );
 
   @override
   Future<BridgeSettings> mutateSettings({

@@ -64,6 +64,8 @@ import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
+import 'package:sesori_dart_core/src/repositories/bridge_settings_repository.dart'
+    as _i101;
 import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
     as _i901;
 import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
@@ -88,20 +90,18 @@ import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/project_view_repository.dart'
     as _i271;
-import 'package:sesori_dart_core/src/repositories/pull_request_refresh_settings_repository.dart'
-    as _i106;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/session_view_repository.dart'
     as _i150;
-import 'package:sesori_dart_core/src/repositories/yolo_settings_repository.dart'
-    as _i378;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
+import 'package:sesori_dart_core/src/services/bridge_settings_service.dart'
+    as _i1033;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -126,8 +126,6 @@ import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
     as _i413;
-import 'package:sesori_dart_core/src/services/pull_request_refresh_settings_service.dart'
-    as _i351;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
@@ -381,13 +379,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i271.ProjectViewRepository>(
       () => _i271.ProjectViewRepository(api: gh<_i210.ProjectViewApi>()),
     );
-    gh.lazySingleton<_i106.PullRequestRefreshSettingsRepository>(
-      () => _i106.PullRequestRefreshSettingsRepository(
-        bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
-      ),
-    );
-    gh.lazySingleton<_i378.YoloSettingsRepository>(
-      () => _i378.YoloSettingsRepository(
+    gh.lazySingleton<_i101.BridgeSettingsRepository>(
+      () => _i101.BridgeSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
       ),
     );
@@ -466,9 +459,9 @@ extension GetItInjectableX on _i174.GetIt {
         lifecycleSource: gh<_i903.LifecycleSource>(),
       ),
     );
-    gh.lazySingleton<_i351.PullRequestRefreshSettingsService>(
-      () => _i351.PullRequestRefreshSettingsService(
-        repository: gh<_i106.PullRequestRefreshSettingsRepository>(),
+    gh.lazySingleton<_i1033.BridgeSettingsService>(
+      () => _i1033.BridgeSettingsService(
+        repository: gh<_i101.BridgeSettingsRepository>(),
       ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
