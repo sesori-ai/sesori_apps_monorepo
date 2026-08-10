@@ -64,22 +64,23 @@ desktop surfaces without leaking Pi-specific behavior outside the plugin.
    because Pi is launched with `--approve`, and exposes exact thinking levels
    by probing a non-persisted RPC session rather than hardcoding provider rules.
 9. Pi extension `select`, `confirm`, `input`, and `editor` dialogs round-trip as
-   Sesori questions. Notifications become existing toast events. Unsupported
-   fire-and-forget UI decorations are parsed and deliberately ignored rather
-   than breaking the run.
+   Sesori questions. Notifications use existing toast events and render through
+   backend-neutral client presentation. Unsupported fire-and-forget decorations
+   are parsed and deliberately ignored rather than breaking the run.
 10. Pi's native no-permission-prompt behavior is preserved. The plugin reports
     no pending permissions and does not install a Sesori permission extension.
 11. Project-scoped discovery and prompt failures use ordinary operation/session
-    failure plus an existing guidance toast for local `/login`; they never
-    disable Pi for other projects through plugin-global auth state.
+    failure plus a rendered guidance toast for local `/login`; they never disable
+    Pi for other projects through plugin-global auth state.
 12. Supported inline image data reaches Pi's RPC `images` field. Path, URL, and
     non-image variants fail visibly and never become accidental prompt strings.
 13. No Pi protocol value, path layout, provider assumption, tool name, or
     runtime quirk escapes `bridge/sesori_plugin_pi/`. The intentional shared
-    exceptions are `Harness.pi`, plugin registration, and Pi brand presentation.
+    exceptions are Pi identity, registration, and branding. Existing toast
+    events gain backend-neutral presentation with no Pi-specific branch.
 14. No new relay route, database column, or `MessagePartType` is introduced.
-    Older clients continue to render an unknown `pi` plugin through existing
-    data-driven contracts.
+    Older clients render unknown `pi` through data-driven contracts but ignore
+    notification and `/login` toasts until upgraded; generic failures remain.
 15. Every implementation PR is independently buildable and normally stays at
     or below 1,500 changed lines, including tests and generated output.
 
@@ -296,8 +297,8 @@ Mapping rules:
 - tool-result messages update the originating tool part by `toolCallId`;
 - visible custom extension messages map conservatively to displayable text;
 - direct bash-execution messages map to a tool card;
-- compaction/branch summaries use existing hidden compaction semantics where
-  useful and never create a new part type;
+- successful compaction becomes the visible completed `compact` tool card used
+  by Codex without exposing summary text; branch-summary metadata is ignored;
 - model/thinking/label/custom-state entries produce no chat message; and
 - unknown roles/blocks are ignored with bounded diagnostics.
 
@@ -318,8 +319,8 @@ successfully loaded active branch with no visible messages returns `[]`.
   `tool_execution_start/update/end` running and terminal updates;
 - cumulative `tool_execution_update.partialResult` by replacement, never
   append;
-- `auto_retry_*` and compaction events into existing retry/status/compaction
-  signals;
+- `auto_retry_*` and compaction events into existing retry/status/compacted
+  signals plus the replay-equivalent visible compaction card;
 - authoritative assistant envelopes from `message_end`;
 - `agent_settled`, not `agent_end`, into true completion/idle; and
 - typed edit/write built-in tool completion into existing diff staleness rather
@@ -478,9 +479,9 @@ Project-scoped auth failures never escape as
 `PluginAuthenticationRequiredException`, which bridge core interprets as
 plugin-global auth loss. Catalog discovery returns
 `PluginSessionOptionsDiscoveryResult.failed` plus an existing bounded guidance
-toast; admitted turns emit existing `session.error` plus that toast. Other
-synchronous calls use ordinary cause-preserving operation failures. No new wire
-event is required.
+toast rendered by Step 13; admitted turns emit existing `session.error` plus
+that toast. Other synchronous calls use ordinary cause-preserving operation
+failures. No new wire event is required.
 
 `ensureRuntime` uses `ManagedRuntimeProvisionService` and remains read-only.
 `installRuntime` uses `ManagedRuntimeInstallService` and the package-directory
@@ -511,7 +512,7 @@ user's telemetry choice remain Pi's.
 | `getSessionStatuses` | session service work/queue state |
 | `getSessionMessages` | RPC entries/tree history mapper; throw on failure |
 | `sendPrompt` | admit exact turn immediately; later dispatch failures become events |
-| `sendCommand` | admit marked `/command arguments`; later failures become events |
+| `sendCommand` | await correlated prompt acceptance; later run failures become events |
 | `abortSession` | abort and process teardown, clearing queued work/dialogs |
 | `getAgents` | one synthesized primary Pi agent |
 | questions | extension UI service/tracker |
@@ -531,10 +532,11 @@ Step 12 adds `Harness.pi`, the app dependency, and the sole concrete registratio
 in `plugin_registry.dart`, then updates exact-set fixtures. OpenCode remains the
 preferred default; string plugin identity keeps this additive change wire-safe.
 
-Step 13 adds official light/dark Pi assets, brand/display-name cases, scalable
-README copy, managed-runtime/local-login/project-trust guidance, and the
-terminal handoff warning. Existing backend-neutral attachment capability drives
-composer behavior; no Pi-specific client state is added.
+Step 13 adds Pi assets/branding/docs plus backend-neutral toast presentation.
+`SseToastCubit` maps existing toast events into closed presentation variants;
+the relay-connected mobile shell renders them through its root messenger.
+Existing attachment capability drives composer behavior; no Pi checks enter
+shared client state.
 
 ## Analytics Assessment
 
@@ -542,6 +544,8 @@ No new analytics event is planned.
 
 - Pi session creation and message actions use existing authoritative product
   events.
+- Rendering transport toasts is transient presentation, not a product outcome
+  or reporting question.
 - Managed install already emits the bounded completed/failed harness install
   outcome.
 - Existing privacy rules deliberately keep harness identity and provider/model
@@ -553,17 +557,16 @@ a corresponding reporting question. This series does neither.
 ## Dependencies And Sequencing
 
 1. **Package-directory runtime support:** Step 11 depends on
-   `phone-harness-install` Step 5 landing `RuntimeAssetLayout.packageDirectory`
-   and generalized `RuntimeVersion`. Work is already committed on the dedicated
-   `phone-harness-install-cursor` branch as of this plan, but is not on `main`.
-   Do not duplicate or cherry-pick it into an earlier Pi step. If it is deferred,
-   pause before Pi Step 11 and ask whether to move that shared primitive into
-   this series.
-2. **Claude activation overlap:** the active `claude-code-plugin` series will
-   edit `Harness`, app pubspec, registry, CI/package inventories, and brand
-   lookup files before its Step 15. Pi steps touching those files rebase on the
-   merged Claude work; they never replace Claude's entries or preserve stale
-   exact-set assertions.
+   `phone-harness-install` Step 5 landing `RuntimeAssetLayout.packageDirectory`.
+   Its local branch also generalizes `RuntimeVersion`; Pi consumes that if it
+   lands, but its semantic pin does not independently require the generalization.
+   Do not duplicate or cherry-pick either primitive. If deferred, pause before
+   Step 11 and ask whether package-directory support moves into this series.
+2. **Claude activation overlap:** Claude's workspace/CI inventory has merged;
+   its outstanding activation still owns `Harness`, app pubspec, registry, and
+   exact-set fixtures, followed by branding. Pi Step 12 waits if Claude
+   activation is not merged, then Pi registration/client work rebases and
+   preserves every Claude entry rather than stale exact-set assertions.
 3. Every Pi PR targets `main` and follows the prior Pi step. No implementation
    worktree or successor PR is created by this plan PR.
 
@@ -588,7 +591,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   15 moves it to `.plan/completed/pi-harness/`.
 - Every step follows repository line-count, generated-file, internal-contract,
   PR-body, sequential merge, and architecture-review rules.
-- Steps 2-12 run applicable codegen, focused/full owning-package tests, fatal
+- Steps 2-13 run applicable codegen, focused/full owning-package tests, fatal
   analysis, `git diff --check`, and architecture implementation review.
 
 ## Step Details And Verification
@@ -649,14 +652,14 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Add the history-only `PiSessionProcessRepository` operation plus repository
   mappers over RPC `get_entries` and `leafId` active-branch traversal.
 - Map text, reasoning, images, tool calls/results, visible custom messages,
-  bash execution, errors, and compaction under current size/privacy limits.
+  bash execution, errors, visible compaction cards, and branch-summary omission.
 - Keep replay message/part IDs deterministic for Step 6 live parity.
 - Throw cause-preserving failures; never turn transport/auth/parse failure into
   empty history.
 - Cover branches, pre-compaction history, unknown entries, timestamp fallback,
-  tool result folding, attachment bounds, hidden-context stripping, marker-like
-  prompt/command text, equal-timestamp ordinals, live/replay parity, and no
-  payload logging.
+  tool results, compaction parity, attachment bounds, hidden-context stripping,
+  marker-like prompt/command text, equal-timestamp ordinals, live/replay parity,
+  and no payload logging.
 
 ### Step 6/15: Map live messages and tools
 
@@ -674,7 +677,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 ### Step 7/15: Bridge extension dialogs
 
 - Add `PiExtensionUiTracker` and coordinating `PiExtensionUiService` for
-  select/confirm/input/editor questions, lifecycle events, and notification toasts.
+  select/confirm/input/editor questions, lifecycle events, and bounded toasts.
 - Implement exact value/confirmed/cancelled responses and session-keyed routing.
 - Resolve/store each dialog's display root and aggregate descendant cards for
   root-session queries.
@@ -764,7 +767,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   plugin tests.
 - Update any build/runtime enumeration fixture that intentionally lists every
   registered plugin.
-- Rebase on merged Claude activation and keep OpenCode as preferred default.
+- Wait for and rebase on merged Claude activation; keep OpenCode preferred.
 - Verify shared identity tests, app registry/lifecycle/catalog tests, Pi suite,
   app fatal analysis, and implementation review.
 
@@ -772,11 +775,19 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 - Add official light/dark Pi SVGs and brand/display-name cases with widget/unit
   coverage.
+- Add backend-neutral `SseToastCubit` in `module_core` with sealed idle/show
+  state; each show carries a monotonic sequence, title/message, and closed
+  `info|success|warning|error` variant. Null/unknown maps to info; empty is ignored.
+- Render the cubit's title/message/variant from the mobile app root through its
+  `ScaffoldMessenger`, independent of the current route.
+- Do not instantiate relay state solely in desktop's current auth-only shell;
+  reuse the shared cubit when its relay/session surface lands.
 - Update README/bridge docs for Pi, managed install, local `/login`,
   `--pi-bin`, project trust, and terminal-session handoff.
 - Make headline copy scalable instead of appending a fourth hardcoded backend.
-- Verify affected client/module_prego tests, analysis, asset rendering, link
-  validity, and `git diff --check`.
+- Test pure-Dart event mapping and mobile root presentation, including auth
+  guidance, extension notifications, variants, duplicates, and empty payloads.
+- Verify client/module_prego analysis, asset rendering, links, and diff checks.
 
 ### Step 14/15: Verify the end-to-end integration
 
