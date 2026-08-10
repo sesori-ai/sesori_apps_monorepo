@@ -338,8 +338,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Connect to a bridge to configure this setting."), findsNWidgets(2));
-    expect(find.text("Offline"), findsOneWidget);
+    expect(find.text("Offline"), findsNWidgets(2));
     verifyNever(pullRequestRefreshSettingsRepository.load);
+    verifyNever(yoloSettingsRepository.load);
   });
 
   testWidgets("saves a custom interval and displays the committed response", (tester) async {
