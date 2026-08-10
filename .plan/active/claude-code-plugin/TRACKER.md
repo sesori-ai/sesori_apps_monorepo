@@ -5,11 +5,11 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `d323c3c4` (Step 7 synchronized with it after Step 6 merged)
-- **Series state:** Steps 1-6/17 merged; Step 7/17 ready for PR
+- **Series state:** Steps 1-6/17 merged; Step 7/17 PR open
 - **Current step:** 7/17 — tool lifecycle tracking
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Open the Step 7 PR, then start Step 8 locally
+- **Next action:** Start Step 8 locally while Step 7 is in review
 
 ## Plan Review
 
@@ -50,7 +50,7 @@
 | [x] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 (recorded overage) | [PR #794](https://github.com/sesori-ai/sesori_apps_monorepo/pull/794) merged 2026-08-09 as `42cd0c72`; see the verification log for the measured diff |
 | [x] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | [PR #795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/795) merged 2026-08-10 as `cfb8cc45` |
 | [x] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | [PR #799](https://github.com/sesori-ai/sesori_apps_monorepo/pull/799) merged 2026-08-10 as `d323c3c4` |
-| [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Implemented, verified, and synchronized with merged Step 6; ready for PR |
+| [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | [PR #800](https://github.com/sesori-ai/sesori_apps_monorepo/pull/800) open against `main` |
 | [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Not started |
 | [ ] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | Not started |
 | [ ] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | Not started |
@@ -246,7 +246,10 @@
   pass. Architecture implementation review first rejected raw edit-tool string
   decisions; the tracker now parses names into a closed tool-kind enum at its
   boundary, and the second review approved the step with no remaining findings.
-  After synchronization with merged Step 6, the measured diff is 575 lines
+  Cubic review identified that a duplicate result could replace the first
+  terminal status and payload; terminal results are now sticky across duplicate
+  frames, with a regression test. After synchronization with merged Step 6, the
+  measured diff is 617 changed lines
   against `origin/main`, below the 1,000-1,400 estimate and the 1,500-line soft
   cap.
 
