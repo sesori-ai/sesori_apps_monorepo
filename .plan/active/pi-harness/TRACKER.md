@@ -72,12 +72,14 @@ OpenCode default, or no-new-analytics decisions without the user.
 
 ### Step 1/15
 
-- Architecture review: initial draft rejected; all six findings applied.
+- Architecture reviews: initial draft and toast delta rejected; all seven
+  findings applied without re-review.
 - Upstream repository/tag, RPC/session docs, and all six release digests match.
-- `git diff --check origin/main...HEAD`: pass.
-- Diff: +1,474/-0 = 1,474 changed lines; generated lines: 0; tests run: 0.
+- `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
+- Diff: +1,499/-0 = 1,499 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
-- Commit `1bf4aea2`; PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
+- Plan/content commit `6e544be8`; PR
+  https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
 
 ## Findings And Plan Deltas
 
