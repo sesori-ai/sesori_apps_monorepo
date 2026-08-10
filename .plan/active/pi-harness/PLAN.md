@@ -267,6 +267,9 @@ it is not-found rather than a guessed path.
 
 For each candidate JSONL file:
 
+- stream bytes through a bounded LF/discriminator scanner that retains only
+  header and `session_info` records; discard other/oversized bodies through the
+  newline without materializing or JSON-decoding them;
 - parse the bounded first session header;
 - inspect only `session_info` records for the latest explicit name;
 - use file mtime as updated time;
@@ -377,10 +380,10 @@ dialogs, which appear as questions because Pi supplies no permission semantics.
 `PiSessionService` owns per-session turn admission, status/work state, abort,
 and idle reap. Prompt admission marks the session busy and returns immediately;
 the lane later applies selection, dispatches, and tracks settlement. A command
-queue item also owns an acceptance completer: `sendCommand` returns only after
-its correlated Pi prompt response succeeds, and pre-acceptance invalidation,
-connect/selection/dispatch failure, or exit completes it with an error. Later
-failures emit a session error. IDs are secure UUIDs validated by `PiLaunchSpec`.
+is rejected synchronously while any turn is active/queued; otherwise its turn
+owns an acceptance completer and `sendCommand` returns only after the correlated
+Pi prompt response succeeds. Pre-acceptance failure/exit completes it with an
+error; later failures emit session events. IDs are secure UUIDs validated by `PiLaunchSpec`.
 
 A generation-matched process exit before `agent_settled` fails the active turn
 and clears resident/dialog state. The lane re-resolves for the next admitted
@@ -403,10 +406,10 @@ non-image data are not fetched, stringified, or silently dropped: dispatch fails
 before acceptance with a privacy-safe `PluginOperationException` explaining
 that Pi supports inline image data only.
 
-Commands use Pi's normal `/name args` prompt path. The correlated successful
-prompt response completes `sendCommand` acceptance; the service then holds the
-lane through a `get_state` barrier and all earlier queued events. It treats a
-command as no-run only when no generation-matched
+Commands use Pi's normal `/name args` prompt path only from an idle lane. The
+correlated successful prompt response completes `sendCommand` acceptance; the
+service then holds the lane through a `get_state` barrier and earlier protocol
+events. It treats a command as no-run only when no generation-matched
 `agent_start` arrived and state reports neither streaming nor pending messages;
 otherwise it waits for `agent_settled`. Command context uses the same marker
 scheme, and live/replay presentation uses only `userVisibleArguments`.
@@ -512,7 +515,7 @@ user's telemetry choice remain Pi's.
 | `getSessionStatuses` | session service work/queue state |
 | `getSessionMessages` | RPC entries/tree history mapper; throw on failure |
 | `sendPrompt` | admit exact turn immediately; later dispatch failures become events |
-| `sendCommand` | await correlated prompt acceptance; later run failures become events |
+| `sendCommand` | reject busy; otherwise await acceptance; event later failures |
 | `abortSession` | abort and process teardown, clearing queued work/dialogs |
 | `getAgents` | one synthesized primary Pi agent |
 | questions | extension UI service/tracker |
@@ -641,8 +644,9 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Scan metadata in an isolate, map explicit titles and parent paths, preserve
   lazy-new-session bridge attribution, and expose exact session paths privately.
 - Cover malformed headers, half-written final lines, title clear/replace,
-  duplicate roots/IDs, parent outside the first root, custom session dirs,
-  deleted cwd, symlinks, pagination, and privacy-safe diagnostics.
+  oversized non-metadata records, duplicate roots/IDs, parent outside the first
+  root, custom session dirs, deleted cwd, symlinks, pagination, and privacy-safe
+  diagnostics.
 - Validate against a synthetic tree and a privacy-preserving structural scan of
   a real Pi session root when available.
 
@@ -701,14 +705,14 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   `PiLaunchSpec`; map validated inline image data to RPC and reject path, URL,
   or non-image parts before prompt acceptance.
 - Apply model/thinking immediately before each queued turn; prompts return on
-  lane admission, commands await correlated backend acceptance, dispatch tracks
-  through `agent_settled`, and later failures surface through session events.
+  lane admission, while commands reject busy and otherwise await correlated
+  backend acceptance; later run failures surface through session events.
 - Abort by invalidating queued work, rejecting dialogs, sending `abort`, and
   tearing down the process so Pi's own hidden queues cannot continue.
 - Preserve concurrent turns across different sessions.
 - Cover spawn races, serialization, cross-session parallelism, lazy persistence,
   resume after reap, transient history/rename leases, ID/attachment validation,
-  immediate prompt admission, command acceptance/failure completers,
+  immediate prompt admission, busy-command rejection, acceptance completers,
   response-before-`agent_start` barriers, command-without-run, post-acceptance
   exit, project-scoped auth/toast behavior, abort, and shutdown.
 

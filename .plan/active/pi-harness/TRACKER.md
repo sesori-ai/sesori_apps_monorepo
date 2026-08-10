@@ -83,8 +83,5 @@ OpenCode default, or no-new-analytics decisions without the user.
 
 ## Findings And Plan Deltas
 
-- Architecture review corrected catalog/session ownership, editor degradation,
-  attachments, and ID ownership; later PR rounds corrected parent/auth scope,
-  replay/live identity, turn/creation ordering, dialogs, and process transport.
-- Deep review added rendered backend-neutral toasts, visible compaction parity,
-  current Claude/runtime sequencing, and refreshed verification bookkeeping.
+- Reviews corrected architecture/lifecycle and added rendered toasts, visible
+  compaction, bounded catalog scans, command acceptance, and current sequencing.
