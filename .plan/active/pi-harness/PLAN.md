@@ -290,9 +290,9 @@ pre-compaction entries without making reads resident.
 
 If a resolved persisted session cannot start RPC specifically because auth/model
 selection fails before request dispatch, `PiSessionStorageApi` reads the file
-entry DTOs, applies the pinned v1-v3 migration semantics in memory, and uses the
-last valid tree entry as leaf, matching upstream reload. The repository logs the
-cause before this fallback; arbitrary RPC/parse failures remain thrown.
+entry DTOs only. The repository-local mapper applies pinned v1-v3 migration in
+memory and selects the last valid tree entry as leaf, matching upstream reload.
+The repository logs the cause; arbitrary RPC/parse failures remain thrown.
 
 Mapping rules:
 
@@ -392,6 +392,10 @@ owns an acceptance completer and `sendCommand` returns only after the correlated
 Pi prompt response succeeds. Pre-acceptance failure/exit completes it with an
 error; later failures emit session events. IDs are secure UUIDs validated by `PiLaunchSpec`.
 
+A correlated prompt `success: false` is terminal without `agent_settled`: emit
+the session error/auth toast, clear the active turn, advance the next queued
+prompt, and return to idle when the queue is empty.
+
 A generation-matched process exit before `agent_settled` fails the active turn
 and clears resident/dialog state. The lane re-resolves for the next admitted
 turn and becomes idle only when its queue empties; resolution uses the file or
@@ -434,6 +438,9 @@ down after the bounded probe. `PiBackendCatalogRepository` consumes that API and
 maps Pi DTOs into plugin catalog values. `PiCatalogTracker` owns the last
 coherent snapshot for each normalized project; `PiCatalogService` only
 coordinates the repository and tracker.
+
+The probe answers every `extension_ui_request` with deterministic cancellation,
+including no-timeout editor requests; no probe dialog enters session UI state.
 
 - `get_available_models` supplies provider/model IDs, display names, reasoning,
   and image support.
@@ -720,8 +727,9 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Cover spawn races, serialization, cross-session parallelism, lazy persistence,
   resume after reap, transient history/rename leases, ID/attachment validation,
   immediate prompt admission, busy-command rejection, acceptance completers,
-  response-before-`agent_start` barriers, command-without-run, post-acceptance
-  exit, project-scoped auth/toast behavior, abort, and shutdown.
+  rejection followed by the next prompt, response-before-`agent_start` barriers,
+  command-without-run, post-acceptance exit, project-scoped auth/toast behavior,
+  abort, and shutdown.
 
 ### Step 9/15: Expose models and commands
 
@@ -738,7 +746,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   data or credentials.
 - Cover custom providers, known provider mapping, duplicate IDs, reasoning and
   non-reasoning models, `max`, command sources, project-specific resources,
-  empty/auth state without global teardown, probe exit, and refresh fallback.
+  empty/auth state without global teardown, probe-dialog cancellation, probe
+  exit, and refresh fallback.
 
 ### Step 10/15: Implement the plugin API
 
