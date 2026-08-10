@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show PendingPermission, PermissionReply;
 
+import "../../repositories/bridge_settings_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/session_repository.dart";
 import "pending_interaction_service.dart";
@@ -9,6 +10,7 @@ class PermissionAutoApprovalService {
   final SessionRepository _sessionRepository;
   final PermissionRepository _permissionRepository;
   final PendingInteractionService _pendingInteractionService;
+  final BridgeSettingsRepository _bridgeSettingsRepository;
   final Set<({String requestId, String sessionId})> _approvedPermissions = {};
 
   bool _disposed = false;
@@ -17,16 +19,18 @@ class PermissionAutoApprovalService {
     required SessionRepository sessionRepository,
     required PermissionRepository permissionRepository,
     required PendingInteractionService pendingInteractionService,
+    required BridgeSettingsRepository bridgeSettingsRepository,
   }) : _sessionRepository = sessionRepository,
        _permissionRepository = permissionRepository,
-       _pendingInteractionService = pendingInteractionService;
+       _pendingInteractionService = pendingInteractionService,
+       _bridgeSettingsRepository = bridgeSettingsRepository;
 
   bool consumeReply({required String requestId, required String sessionId}) {
     return _approvedPermissions.remove((requestId: requestId, sessionId: sessionId));
   }
 
   Future<void> approve({required String requestId, required String sessionId}) async {
-    if (_disposed) return;
+    if (_disposed || !_bridgeSettingsRepository.currentSettings.yolo) return;
     final key = (requestId: requestId, sessionId: sessionId);
     if (!_approvedPermissions.add(key)) return;
 

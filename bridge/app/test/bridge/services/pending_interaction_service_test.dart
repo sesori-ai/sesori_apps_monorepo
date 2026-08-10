@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
@@ -9,6 +10,7 @@ import "package:sesori_bridge/src/bridge/services/archived_session_validator.dar
 import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
 import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -20,14 +22,17 @@ void main() {
     late SessionOperationDispatcher dispatcher;
     late PendingInteractionService service;
     late PermissionAutoApprovalService autoApproval;
+    late BridgeSettingsRepository settingsRepository;
 
-    setUp(() {
+    setUp(() async {
       sessionRepository = _FamilyRepository({
         "session-one": (rootSessionId: "root-one", pluginId: "legacy"),
         "session-two": (rootSessionId: "root-two", pluginId: "legacy"),
       });
       permissionRepository = _PermissionRepository();
       questionRepository = _QuestionRepository();
+      settingsRepository = BridgeSettingsRepository(api: _BridgeSettingsApi());
+      await settingsRepository.loadSettings();
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = PendingInteractionService(
         permissionRepository: permissionRepository,
@@ -40,6 +45,7 @@ void main() {
         sessionRepository: sessionRepository,
         permissionRepository: permissionRepository,
         pendingInteractionService: service,
+        bridgeSettingsRepository: settingsRepository,
       );
     });
 
@@ -47,6 +53,7 @@ void main() {
       autoApproval.dispose();
       await dispatcher.dispose();
       service.dispose();
+      await settingsRepository.dispose();
     });
 
     test("keeps first permission and question responses authoritative", () async {
@@ -102,11 +109,54 @@ void main() {
       );
       expect(permissionRepository.calls, hasLength(2));
     });
+
+    test("stops an in-progress pending scan after yolo is disabled", () async {
+      sessionRepository.activitySummaries = const [
+        ProjectActivitySummary(
+          id: "project",
+          activeSessions: [ActiveSession(id: "session-one", awaitingInput: true)],
+        ),
+      ];
+      permissionRepository.pendingPermissions = const [
+        PendingPermission(
+          id: "first",
+          sessionID: "session-one",
+          displaySessionId: null,
+          tool: "tool",
+          description: "first",
+        ),
+        PendingPermission(
+          id: "second",
+          sessionID: "session-one",
+          displaySessionId: null,
+          tool: "tool",
+          description: "second",
+        ),
+      ];
+      final firstStarted = Completer<void>();
+      final firstGate = Completer<void>();
+      permissionRepository.onReply = ({required requestId, required sessionId, required reply}) async {
+        permissionRepository.requestIds.add(requestId);
+        if (requestId == "first") {
+          firstStarted.complete();
+          await firstGate.future;
+        }
+      };
+
+      final scan = autoApproval.approvePending();
+      await firstStarted.future;
+      await settingsRepository.updateYolo(enabled: false);
+      firstGate.complete();
+      await scan;
+
+      expect(permissionRepository.requestIds, ["first"]);
+    });
   });
 }
 
 class _FamilyRepository implements SessionRepository {
   final Map<String, SessionFamilyScope> scopes;
+  List<ProjectActivitySummary> activitySummaries = const [];
 
   _FamilyRepository(this.scopes);
 
@@ -120,11 +170,19 @@ class _FamilyRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => activitySummaries;
+
+  @override
+  Future<List<Session>> getChildSessions({required String sessionId}) async => const [];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _PermissionRepository implements PermissionRepository {
   final List<PermissionReply> calls = [];
+  final List<String> requestIds = [];
+  List<PendingPermission> pendingPermissions = const [];
   Future<void> Function({required String requestId, required String sessionId, required PermissionReply reply})?
   onReply;
 
@@ -136,6 +194,9 @@ class _PermissionRepository implements PermissionRepository {
   }) async {
     await onReply?.call(requestId: requestId, sessionId: sessionId, reply: reply);
   }
+
+  @override
+  Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async => pendingPermissions;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -162,4 +223,19 @@ class _QuestionRepository implements QuestionRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _BridgeSettingsApi implements BridgeSettingsApi {
+  String config = '{"yolo":true,"pullRequestRefreshIntervalSeconds":30}';
+
+  @override
+  String get configFilePath => "/tmp/config.json";
+
+  @override
+  Future<String?> readConfig() async => config;
+
+  @override
+  Future<void> writeConfig(String jsonContent) async {
+    config = jsonContent;
+  }
 }

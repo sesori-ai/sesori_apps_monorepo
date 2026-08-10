@@ -519,6 +519,7 @@ class Orchestrator {
       sessionRepository: sessionRepository,
       permissionRepository: permissionRepository,
       pendingInteractionService: pendingInteractionService,
+      bridgeSettingsRepository: _bridgeSettingsRepository,
     );
     final yoloSettingsService = YoloSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
