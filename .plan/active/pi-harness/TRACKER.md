@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `3803df12`
-- **Series state:** Step 1/15 in review
-- **Current step:** 1/15, durable plan and protocol research
+- **Implementation base:** `origin/main` at `9714f382`
+- **Series state:** Step 2/15 ready to raise
+- **Current step:** 2/15, protocol package scaffold
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
-- **Next action:** monitor Step 1 and address review feedback
+- **Next action:** raise and monitor Step 2
 
 ## Locked Decisions
 
@@ -28,8 +28,8 @@ OpenCode default, or no-new-analytics decisions without the user.
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [ ] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 (recorded overage) | In review |
-| [ ] | 2/15 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/15]` | 900-1,300 | Not started |
+| [x] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 (recorded overage) | Merged |
+| [ ] | 2/15 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/15]` | 900-1,300 | Ready to raise |
 | [ ] | 3/15 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/15]` | 1,200-1,500 | Not started |
 | [ ] | 4/15 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 4/15]` | 1,000-1,400 | Not started |
 | [ ] | 5/15 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 5/15]` | 1,100-1,500 | Not started |
@@ -82,6 +82,21 @@ OpenCode default, or no-new-analytics decisions without the user.
 - Dart/Flutter suites: not run for this documentation-only step.
 - Plan content through `b65b19f2`; reproduce from the current PR head at
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/811.
+
+### Step 2/15
+
+- Rechecked the latest stable upstream release on 2026-08-11; `v0.84.1`
+  remains current, so the compatibility baseline is unchanged.
+- `dart pub get` from `bridge/`: pass.
+- `dart test` from `bridge/sesori_plugin_pi/`: pass, 10 tests.
+- `dart analyze --fatal-infos` from `bridge/sesori_plugin_pi/`: pass.
+- Architecture implementation review rejected duplicate executable-name
+  ownership on `PiLaunchSpec`; the resolver was removed so Step 11's runtime
+  manifest remains the sole owner. No re-review required after applying the
+  finding.
+- Diff: +359/-8 = 367 changed lines; generated lines: 0; tests run: 10.
+- No user-visible, database, or persisted-data change.
+- `git diff --check`: pass.
 
 ## Findings And Plan Deltas
 
