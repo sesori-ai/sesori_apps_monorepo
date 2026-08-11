@@ -8,8 +8,7 @@
 - **Implementation base:** `origin/main` at `f91fee47`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** [#818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818)
-- **Next action:** Revise Step 3 to use shared backend-session-scoped attachment
-  storage, re-review, verify, and update PR #818; then restore Step 4 locally
+- **Next action:** Wait for PR #818 to merge while completing Step 4 locally
 
 ## Plan Review
 
@@ -92,7 +91,7 @@
   history purge, and session deletion retain shared files for manual cleanup.
   The obsolete live/archive spill split and its DI/copy/purge paths are removed.
   `dart analyze --fatal-infos` passes in the bridge app and foundation package;
-  all 2,553 bridge-app tests and all 70 foundation tests pass. Focused coverage
+  all 2,553 bridge-app tests and all 71 foundation tests pass. Focused coverage
   includes platform roots, separate-store reuse, scope isolation/traversal,
   archive access, retained bytes after purge, manual-deletion degradation,
   thumbnail bounds, and the typed route. Architecture implementation review
@@ -156,3 +155,6 @@
   explicit no-internal-compatibility decision superseded that finding, so it was
   not re-reviewed or implemented. The subsequent architecture implementation
   review approved the clean replacement with no blockers.
+- **2026-08-11 - Relative XDG review fix:** Relative `XDG_DATA_HOME` values now
+  fall back to the absolute home-based root, preventing attachment originals
+  from being written beneath the bridge's process working directory.
