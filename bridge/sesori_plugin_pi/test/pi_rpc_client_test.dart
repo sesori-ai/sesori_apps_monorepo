@@ -414,22 +414,31 @@ void main() {
         bytes: utf8.encode('{"access_token":"long-secret-${"x" * 600}"}\n'),
       );
       started.process.emitStderrRaw(bytes: utf8.encode('{"password": malformed-secret}\n'));
+      started.process.emitStderrRaw(bytes: utf8.encode('{"refreshToken":"refresh-secret"}\n'));
+      started.process.emitStderrRaw(
+        bytes: utf8.encode('{"token":["array-secret","second-secret"]}\n'),
+      );
       started.process.emitStderrRaw(bytes: utf8.encode("${"z" * 900}\n"));
       await pump(10);
 
       final tail = started.client.stderrDiagnostics;
       expect(tail, hasLength(20));
-      expect(tail.first, "warning 16");
+      expect(tail.first, "warning 18");
       expect(tail.join("\n"), isNot(contains("sk-live-secret")));
       expect(tail.join("\n"), isNot(contains("quoted-secret")));
       expect(tail.join("\n"), isNot(contains("header-secret")));
       expect(tail.join("\n"), isNot(contains("long-secret")));
       expect(tail.join("\n"), isNot(contains("malformed-secret")));
+      expect(tail.join("\n"), isNot(contains("refresh-secret")));
+      expect(tail.join("\n"), isNot(contains("array-secret")));
+      expect(tail.join("\n"), isNot(contains("second-secret")));
       expect(tail, contains('{"api_key":"***","note":"x"}'));
       expect(tail, contains('{"authorization":"***"}'));
       expect(tail, contains("Authorization: Bearer ***"));
       expect(tail, contains('{"access_token":"***"'));
       expect(tail, contains('{"password": ***}'));
+      expect(tail, contains('{"refreshToken":"***"}'));
+      expect(tail, contains('{"token":***'));
       expect(tail.last.length, 500);
       expect(started.client.isRunning, isTrue);
     });
@@ -495,6 +504,10 @@ void main() {
       await pump();
       // Dispose sees no process to reap, because the spawn has not returned.
       final disposing = client.dispose();
+      var disposeCompleted = false;
+      unawaited(disposing.then((_) => disposeCompleted = true));
+      await pump();
+      expect(disposeCompleted, isFalse);
       spawnGate.complete();
 
       await expectLater(starting, throwsStateError);

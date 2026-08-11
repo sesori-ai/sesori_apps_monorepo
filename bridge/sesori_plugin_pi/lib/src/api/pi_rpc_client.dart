@@ -106,6 +106,7 @@ class PiRpcClient {
   PiProcessHandle? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
+  Future<void>? _starting;
   bool _disposed = false;
   int _nextRequestId = 1;
   int _generation = 0;
@@ -144,6 +145,18 @@ class PiRpcClient {
     if (_process != null) throw StateError("PiRpcClient already started");
     if (_disposed) throw StateError("PiRpcClient is disposed");
 
+    final starting = _start();
+    final settled = starting.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    _starting = settled;
+    unawaited(
+      settled.whenComplete(() {
+        if (identical(_starting, settled)) _starting = null;
+      }),
+    );
+    await starting;
+  }
+
+  Future<void> _start() async {
     final generation = ++_generation;
     final process = await _processFactory(spec: _launchSpec);
     if (_disposed || generation != _generation) {
@@ -278,6 +291,7 @@ class PiRpcClient {
       gracefulTimeout: gracefulTimeout,
       pendingError: PiRpcException(command: "<teardown>", error: "pi transport was disposed", cause: null),
     );
+    await _starting;
     try {
       await _frames.close();
     } on Object catch (error, stack) {
@@ -383,11 +397,15 @@ class PiRpcClient {
   /// logged. A string scrub rather than a JSON re-encode, so partial and
   /// non-JSON output is redacted too.
   static final RegExp _secretJsonValue = RegExp(
-    r'("(?:access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*(?:"|$)',
+    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*(?:"|$)',
+    caseSensitive: false,
+  );
+  static final RegExp _secretStructuredJsonValue = RegExp(
+    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)(?:\[|\{).*$',
     caseSensitive: false,
   );
   static final RegExp _secretUnquotedJsonValue = RegExp(
-    r'("(?:access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)[^\s",;{}]+',
+    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)[^\s",;{}]+',
     caseSensitive: false,
   );
   static final RegExp _authorizationBearer = RegExp(
@@ -395,12 +413,13 @@ class PiRpcClient {
     caseSensitive: false,
   );
   static final RegExp _secretScalarValue = RegExp(
-    r'((?:access[_-]?token|token|api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
+    r'((?:refresh[_-]?token|access[_-]?token|token|api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
     caseSensitive: false,
   );
 
   String _redact(String value) => value
       .replaceAllMapped(_secretJsonValue, (match) => '${match.group(1)}"***"')
+      .replaceAllMapped(_secretStructuredJsonValue, (match) => "${match.group(1)}***")
       .replaceAllMapped(_secretUnquotedJsonValue, (match) => "${match.group(1)}***")
       .replaceAllMapped(_authorizationBearer, (match) => "${match.group(1)}***")
       .replaceAllMapped(_secretScalarValue, (match) => "${match.group(1)}***");
