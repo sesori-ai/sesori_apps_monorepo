@@ -20,9 +20,9 @@ record was finalized.
 - Installed Sesori app (`com.sesori.app`), signed into the same account as the
   bridge.
 - Source bridge on `127.0.0.1:9977`, using
-  `/Users/daniil/.local/share/sesori-dev` as its isolated data directory.
+  `$HOME/.local/share/sesori-dev` as its isolated data directory.
 - Real logged-in Claude Code CLI 2.1.226 on PATH.
-- Isolated project `/Users/daniil/Developer/sesori-claude-e2e`.
+- Isolated project `$HOME/Developer/sesori-claude-e2e`.
 - Hybrid assertions through the simulator and the bridge debug HTTP router.
 - YOLO mode disabled for permission and question checks.
 
