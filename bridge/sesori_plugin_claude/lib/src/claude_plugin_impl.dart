@@ -505,8 +505,11 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
         return;
       }
       if (message is ClaudeApiRetryMessage) {
-        final status = _eventDispatcher.retryStatus(message: message, now: _clock.now());
+        final now = _clock.now();
+        final status = _eventDispatcher.retryStatus(message: message, now: now);
         if (status != null) _sessions.recordRetryStatus(sessionId: event.sessionId, status: status);
+        _eventDispatcher.map(message: message, now: now).forEach(_eventBuffer.add);
+        return;
       }
       _eventDispatcher.map(message: message).forEach(_eventBuffer.add);
     }

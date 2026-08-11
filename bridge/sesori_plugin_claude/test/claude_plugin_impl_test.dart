@@ -141,6 +141,28 @@ void main() {
       await subscription.cancel();
     });
 
+    test("accepts a queued command without waiting for the active turn result", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      await harness.plugin
+          .sendCommand(
+            sessionId: testSessionId,
+            command: "review",
+            arguments: "src",
+            userVisibleArguments: "src",
+            variant: null,
+            agent: "Default",
+            model: (providerID: "anthropic", modelID: "default"),
+          )
+          .timeout(const Duration(seconds: 1));
+      expect(_userTexts(process), isNot(contains("/review src")));
+
+      process.emit(_result());
+      await _waitForUserText(process, "/review src");
+    });
+
     test("creates an empty session and reports command initialization failure", () async {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);
@@ -251,6 +273,8 @@ void main() {
     test("preserves API retry status for snapshots and activity", () async {
       await harness.createSession();
       final process = harness.processes.single;
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
       process.emit({
         "type": "system",
         "subtype": "api_retry",
@@ -267,7 +291,9 @@ void main() {
       final retry = (await harness.plugin.getSessionStatuses())[testSessionId]! as PluginSessionStatusRetry;
       expect(retry.attempt, 2);
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
+      expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+      await subscription.cancel();
     });
 
     test("persisted cleanup is idempotent for an absent transcript", () async {

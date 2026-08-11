@@ -46,7 +46,7 @@ final class ClaudeEventDispatcher {
     );
   }
 
-  List<BridgeSseEvent> map({required ClaudeStreamMessage message}) {
+  List<BridgeSseEvent> map({required ClaudeStreamMessage message, DateTime? now}) {
     if (message.sessionId case final sessionId? when sessionId.isNotEmpty) {
       if (message
           case ClaudeAssistantMessage(parentToolUseId: final String _) ||
@@ -58,7 +58,7 @@ final class ClaudeEventDispatcher {
         ClaudeStreamEventMessage() => _mapStream(sessionId: sessionId, message: message),
         ClaudeAssistantMessage() => _mapAssistant(sessionId: sessionId, message: message),
         ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message),
-        ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message),
+        ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
@@ -294,6 +294,7 @@ final class ClaudeEventDispatcher {
   List<BridgeSseEvent> _mapRetry({
     required String sessionId,
     required ClaudeApiRetryMessage message,
+    required DateTime now,
   }) {
     final attempt = message.attempt;
     final delay = message.retryDelayMs;
@@ -304,7 +305,7 @@ final class ClaudeEventDispatcher {
         status: shared.SessionStatus.retry(
           attempt: attempt,
           message: _retryMessage(message.error),
-          next: DateTime.now().millisecondsSinceEpoch + delay,
+          next: now.millisecondsSinceEpoch + delay,
         ).toJson(),
       ),
     ];

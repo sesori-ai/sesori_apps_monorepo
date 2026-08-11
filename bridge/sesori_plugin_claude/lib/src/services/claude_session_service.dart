@@ -68,6 +68,7 @@ final class ClaudeSessionService {
     }
     final acceptance = Completer<void>();
     final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    final queuedBehindActiveTurn = state.pending > 0;
     _retryStatuses.remove(sessionId);
     state.pending++;
     state.idleGeneration++;
@@ -91,6 +92,7 @@ final class ClaudeSessionService {
         acceptance: acceptance,
       ),
     );
+    if (queuedBehindActiveTurn) acceptance.complete();
     return acceptance.future;
   }
 
@@ -130,7 +132,7 @@ final class ClaudeSessionService {
       if (!dispatch.accepted) {
         throw StateError("Claude rejected the turn before dispatch");
       }
-      acceptance.complete();
+      if (!acceptance.isCompleted) acceptance.complete();
       final outcome = await dispatch.outcome;
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
         return _finish(sessionId, state, null);

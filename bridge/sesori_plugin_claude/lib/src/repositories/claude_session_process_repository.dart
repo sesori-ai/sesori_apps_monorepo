@@ -102,6 +102,7 @@ final class ClaudeSessionProcessRepository {
   final Map<String, String> _environment;
   final Map<String, _ResidentProcess> _resident = {};
   final Map<String, Future<void>> _connecting = {};
+  final Map<String, ClaudeStreamClient> _connectingClients = {};
   final Map<String, int> _sessionGenerations = {};
   final Set<String> _startedSessions = {};
   final StreamController<ClaudeSessionProcessEvent> _events = StreamController.broadcast();
@@ -267,6 +268,7 @@ final class ClaudeSessionProcessRepository {
   Future<void> teardown({required String sessionId}) async {
     _sessionGenerations[sessionId] = (_sessionGenerations[sessionId] ?? 0) + 1;
     final connection = _connecting[sessionId];
+    final connectingClient = _connectingClients[sessionId];
     final process = _resident.remove(sessionId);
     if (process != null) {
       try {
@@ -277,6 +279,7 @@ final class ClaudeSessionProcessRepository {
         await process.client.dispose();
       }
     }
+    if (connectingClient != null) await connectingClient.dispose();
     if (connection != null) {
       try {
         await connection;
@@ -339,7 +342,14 @@ final class ClaudeSessionProcessRepository {
       ),
       processFactory: _processFactory,
     );
-    await client.connect();
+    _connectingClients[sessionId] = client;
+    try {
+      await client.connect();
+    } finally {
+      if (identical(_connectingClients[sessionId], client)) {
+        _connectingClients.remove(sessionId);
+      }
+    }
     if (_disposed || (_sessionGenerations[sessionId] ?? 0) != generation) {
       await client.dispose();
       throw StateError("Claude session residency was cancelled");
