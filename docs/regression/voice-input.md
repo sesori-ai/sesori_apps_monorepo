@@ -15,8 +15,9 @@ transcription endpoint are external.
   incomplete recording.
 - While recording the composer shows live amplitude, holds a stable layout, keeps the screen awake, and offers
   drag-to-cancel; recording reaches a maximum duration and signals auto-stop instead of running indefinitely.
-- Cancel stops the recorder, releases the wake lock, deletes the audio file, and invalidates any in-flight
-  transcription so a late response cannot land in a newer interaction.
+- Cancel stops the recorder, releases the wake lock, attempts audio-file deletion,
+  and invalidates any in-flight transcription so a late response cannot land in
+  a newer interaction.
 - An empty or zero-byte recording fails as a recording error and is never uploaded as success. Errors map to distinct
   outcomes for permission, recording, auth, server, empty transcript, network, and cancellation.
 - File deletion is attempted after stop, cancel, failure, and disposal. A deletion
