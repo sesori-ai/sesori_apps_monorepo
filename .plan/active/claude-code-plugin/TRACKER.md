@@ -5,12 +5,12 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `ba2f6f7b` (Step 14 started after Step 13 merged)
-- **Series state:** Steps 1-13/17 merged; Step 14/17 ready for review
-- **Current step:** 14/17 — Claude Code harness registration verified
+- **Series state:** Steps 1-13/17 merged; Step 14/17 PR open
+- **Current step:** 14/17 — Claude Code harness registration in review
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Open and monitor the Step 14 PR, then wait for explicit
-  direction after merge before starting Step 15
+- **Next action:** Monitor Step 14 PR #816, then wait for explicit direction
+  after merge before starting Step 15
 
 ## Plan Review
 
@@ -58,7 +58,7 @@
 | [x] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | [PR #809](https://github.com/sesori-ai/sesori_apps_monorepo/pull/809) merged 2026-08-11 as `ca521672` |
 | [x] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | [PR #813](https://github.com/sesori-ai/sesori_apps_monorepo/pull/813) merged 2026-08-11 as `f0d705bc` |
 | [x] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | [PR #815](https://github.com/sesori-ai/sesori_apps_monorepo/pull/815) merged 2026-08-11 as `ba2f6f7b` |
-| [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | Implemented and verified on `claude-code-plugin-activation`; ready to open against `main` |
+| [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) open against `main` |
 | [ ] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | Not started |
 | [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Not started |
 | [ ] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Not started |
