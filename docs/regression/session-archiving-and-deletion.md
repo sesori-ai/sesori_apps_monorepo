@@ -7,9 +7,10 @@ entirely along with its transcript and, optionally, its worktree and branch.
 
 ## Required Behavior
 
-- Archiving is final. An archived session can never be unarchived, prompted, or
-  mutated; every attempt is refused with the same archived read-only rejection,
-  evaluated on the session the caller named.
+- Archiving is final. An archived session can never be unarchived, prompted,
+  renamed, replied to, or otherwise mutated in place; those attempts receive the
+  same archived read-only rejection evaluated on the session the caller named.
+  Permanent deletion remains allowed.
 - Archiving exports a versioned transcript audit record before the session flips
   to archived, then purges live history for it. When backend history is
   unavailable the export may proceed from stored content only and must record
@@ -33,7 +34,7 @@ entirely along with its transcript and, optionally, its worktree and branch.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later mutation. |
+| L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
 | L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree/branch cleanup, refusals presented to the user. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
@@ -50,7 +51,8 @@ branches that remain after the asserted cleanup behavior.
 
 ## Failure Signals
 
-- An archived session accepts a mutation, or becomes unarchived by any path.
+- An archived session accepts a prohibited non-deletion mutation, or becomes
+  unarchived by any path.
 - An audit record is missing or unreadable, history is purged without a durable
   record, or a partial export is recorded as complete.
 - Deletion residue survives startup reconciliation without an observable failure

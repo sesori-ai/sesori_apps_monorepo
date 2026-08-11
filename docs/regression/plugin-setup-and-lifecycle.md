@@ -29,7 +29,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | A started bridge inspects every registered harness, publishes coherent setup and management snapshots, and has at least one selectable harness. Headless bridge; all registered harnesses listed, one routable. |
+| L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
 | L2 Routine | Demand-driven start of a ready harness, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Headless bridge; representative harness for start, every registered harness for listing and ordering. |
 | L3 Release | The management surface as rendered: per-harness setup, runtime and work state, capability-appropriate controls, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
@@ -50,8 +50,8 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
   snapshot tokens that miss real changes.
 - A control offered for an undeclared capability, a supported control missing, a busy
   harness accepting a safe command, or idle suspension on a resident or busy harness.
-- One failing harness taking down the rest of the bridge, or an empty picker when none
-  is usable.
+- One failing harness taking down the rest of the bridge, or an empty picker
+  instead of the explicit no-harness state when none is usable.
 
 ## Known Limitations
 
