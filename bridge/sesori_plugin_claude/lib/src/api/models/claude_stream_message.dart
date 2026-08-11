@@ -13,7 +13,7 @@ import "../../models/claude_permission_mode.dart";
 /// build does not model, and so an unrecognized frame is never lost.
 ///
 /// Verified against Claude CLI 2.1.221 — see
-/// `.plan/active/claude-code-plugin/PROTOCOL.md` section 2.
+/// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 2.
 sealed class ClaudeStreamMessage {
   const ClaudeStreamMessage({required this.sessionId, required this.uuid, required this.raw});
 

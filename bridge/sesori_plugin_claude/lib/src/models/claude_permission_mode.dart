@@ -7,7 +7,7 @@
 /// either string.
 ///
 /// Verified against Claude CLI 2.1.221 — see
-/// `.plan/active/claude-code-plugin/PROTOCOL.md` section 6.
+/// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 6.
 enum ClaudePermissionMode {
   /// Prompts before dangerous operations. `manual` on the CLI, `default` in the
   /// control protocol.

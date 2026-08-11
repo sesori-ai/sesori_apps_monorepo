@@ -10,7 +10,7 @@
 /// requirement rather than modelling each one as a generated union variant.
 ///
 /// Verified against Claude CLI 2.1.221 — see
-/// `.plan/active/claude-code-plugin/PROTOCOL.md` section 9.
+/// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 9.
 sealed class ClaudeTranscriptRecord {
   const ClaudeTranscriptRecord({required this.sessionId, required this.raw});
 

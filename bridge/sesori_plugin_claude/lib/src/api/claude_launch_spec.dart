@@ -46,7 +46,7 @@ final RegExp _uuidPattern = RegExp(
 /// open; closing stdin is what ends it.
 ///
 /// Verified against Claude CLI 2.1.221 — see
-/// `.plan/active/claude-code-plugin/PROTOCOL.md` section 1.
+/// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 1.
 class ClaudeLaunchSpec {
   ClaudeLaunchSpec({
     required this.binaryPath,

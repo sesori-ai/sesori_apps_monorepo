@@ -4,12 +4,12 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at `82351fc2`
-- **Series state:** All 17 steps complete; final retirement delivered by
+- **Series state:** Steps 1-16/17 merged; Step 17/17 retires the plan via
   [PR #831](https://github.com/sesori-ai/sesori_apps_monorepo/pull/831)
-- **Current step:** Step 17/17 final retirement PR #831
+- **Current step:** Step 17/17 in review as PR #831
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** None after PR #831 merges
+- **Next action:** Merge the final documentation-only retirement PR #831
 
 ## Plan Review
 
@@ -60,7 +60,7 @@
 | [x] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) merged 2026-08-11 as `85438e1d` |
 | [x] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | [PR #817](https://github.com/sesori-ai/sesori_apps_monorepo/pull/817) merged 2026-08-11 as `c3d21c78` |
 | [x] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | [PR #828](https://github.com/sesori-ai/sesori_apps_monorepo/pull/828) merged 2026-08-11 as `82351fc2`; see the verification log for the measured diff |
-| [x] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Final retirement delivered by [PR #831](https://github.com/sesori-ai/sesori_apps_monorepo/pull/831) |
+| [x] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Final retirement is in [PR #831](https://github.com/sesori-ai/sesori_apps_monorepo/pull/831) and completes on merge |
 
 ## Exact PR Titles
 
@@ -524,7 +524,7 @@
   order through PR #828, archived all four plan artifacts under `.plan/completed/`,
   and removed the temporary `mobile-mcp` server from `.mcp.json`.
   `git diff --cached --check` and `jq empty .mcp.json` passed. The rename-aware
-  final diff is 33 changed lines (19 additions and 14 deletions), with 0
+  final diff is 45 changed lines (25 additions and 20 deletions), with 0
   generated lines; no implementation suites or architecture review apply.
 
 ## Findings And Plan Deltas
