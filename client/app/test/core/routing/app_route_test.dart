@@ -15,6 +15,7 @@ import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
+import "package:sesori_mobile/features/settings/default_input_settings_screen.dart";
 import "package:sesori_mobile/features/settings/harnesses_settings_screen.dart";
 import "package:sesori_mobile/features/settings/notification_settings_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
@@ -41,6 +42,7 @@ void main() {
       expect(const AppRoute.login().buildPath(), "/login");
       expect(const AppRoute.projects().buildPath(), "/projects");
       expect(const AppRoute.settings().buildPath(), "/settings");
+      expect(const AppRoute.settingsDefaultInput().buildPath(), "/settings/default-input");
     });
 
     test("carries the presentation for settingsHarnesses", () {
@@ -175,13 +177,16 @@ void main() {
       expect(settingsPage.child, isA<SettingsScreen>());
     });
 
-    test("settings child routes build notifications, Harnesses, and profile without management nesting", () {
+    test("settings child routes build their screens without management nesting", () {
       final settingsRoute = buildAppRoutes().whereType<GoRoute>().singleWhere(
         (route) => route.path == AppRouteDef.settings.path,
       );
       final children = settingsRoute.routes.whereType<GoRoute>().toList();
 
-      expect(children.map((route) => route.path), equals(["notifications", "harnesses", "profile"]));
+      expect(
+        children.map((route) => route.path),
+        equals(["notifications", "harnesses", "default-input", "profile"]),
+      );
       expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
       // Harnesses rise as a modal from the new-session harness menu and push
       // in from the settings list, so the route builds its own page per
@@ -206,7 +211,8 @@ void main() {
         HarnessSettingsPresentation.pushed,
       );
       expect(children[1].routes, isEmpty);
-      expect(children[2].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
+      expect(children[2].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<DefaultInputSettingsScreen>());
+      expect(children[3].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[0].path),
         AppRouteDef.settingsNotifications.path,
@@ -217,6 +223,10 @@ void main() {
       );
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[2].path),
+        AppRouteDef.settingsDefaultInput.path,
+      );
+      expect(
+        _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[3].path),
         AppRouteDef.settingsProfile.path,
       );
     });
@@ -275,6 +285,7 @@ void main() {
           AppRouteDef.settings.path,
           AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsHarnesses.path,
+          AppRouteDef.settingsDefaultInput.path,
           AppRouteDef.settingsProfile.path,
         ]),
       );

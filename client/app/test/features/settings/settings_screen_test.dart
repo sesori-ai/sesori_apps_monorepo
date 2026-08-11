@@ -11,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/support_links.dart";
+import "package:sesori_mobile/features/settings/default_input_settings_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -68,6 +69,13 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
       GoRoute(
         path: "/settings/harnesses",
         builder: (context, state) => const Scaffold(body: Text("harnesses-route")),
+      ),
+      GoRoute(
+        path: "/settings/default-input",
+        builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
+          value: StubConnectionOverlayCubit(),
+          child: const DefaultInputSettingsScreen(),
+        ),
       ),
     ],
   );
@@ -539,7 +547,7 @@ void main() {
     expect(appearance.state, AppearanceMode.dark);
   });
 
-  testWidgets("tapping a chat input tile switches and persists the mode", (tester) async {
+  testWidgets("Default input opens its page and persists a new selection", (tester) async {
     _useTallSurface(tester);
     final store = _MockChatInputModeStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
@@ -548,26 +556,34 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance, chatInputMode: chatInputMode));
     await tester.pumpAndSettle();
 
-    expect(find.text("Chat input"), findsOneWidget);
-    await tester.tap(find.text("Text first"));
+    expect(find.text("Default input"), findsOneWidget);
+    expect(find.text("Voice"), findsOneWidget);
+    expect(find.text("Chat input"), findsNothing);
+    await tester.tap(find.text("Default input"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Choose how you default talk to Sesori:"), findsOneWidget);
+    await tester.tap(find.text("Text"));
     await tester.pumpAndSettle();
 
     expect(chatInputMode.state, ChatInputMode.textFirst);
     verify(() => store.write(mode: ChatInputMode.textFirst)).called(1);
   });
 
-  testWidgets("the chat input tiles announce as one mutually exclusive choice", (tester) async {
+  testWidgets("the default input choices announce as one mutually exclusive choice", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Default input"));
     await tester.pumpAndSettle();
 
     final handle = tester.ensureSemantics();
 
     // Voice-first is the app default, so it is the checked tile.
     expect(
-      tester.getSemantics(find.text("Voice first")),
+      tester.getSemantics(find.text("Voice")),
       matchesSemantics(
-        label: "Voice first",
+        label: "Voice",
         isInMutuallyExclusiveGroup: true,
         hasCheckedState: true,
         isChecked: true,
@@ -575,9 +591,9 @@ void main() {
       ),
     );
     expect(
-      tester.getSemantics(find.text("Text first")),
+      tester.getSemantics(find.text("Text")),
       matchesSemantics(
-        label: "Text first",
+        label: "Text",
         isInMutuallyExclusiveGroup: true,
         hasCheckedState: true,
         hasTapAction: true,

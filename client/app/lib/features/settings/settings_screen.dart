@@ -18,7 +18,6 @@ import "../../core/widgets/sesori_logo.dart";
 import "widgets/account_row.dart";
 import "widgets/appearance_picker.dart";
 import "widgets/bridge_settings_section.dart";
-import "widgets/chat_input_mode_picker.dart";
 import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first settings section.
@@ -62,6 +61,11 @@ class _SettingsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final account = context.watch<SettingsCubit>().state.account;
+    final chatInputMode = context.watch<ChatInputModeCubit>().state;
+    final defaultInputLabel = switch (chatInputMode) {
+      ChatInputMode.voiceFirst => loc.settingsDefaultInputVoice,
+      ChatInputMode.textFirst => loc.settingsDefaultInputText,
+    };
 
     return PregoGlassScaffold(
       title: loc.settingsTitle,
@@ -128,6 +132,24 @@ class _SettingsBody extends StatelessWidget {
                           presentation: HarnessSettingsPresentation.pushed,
                         ),
                       ),
+                    ),
+                    PregoGroupedRow(
+                      icon: TablerRegular.keyboard,
+                      title: Text(loc.settingsDefaultInputTitle),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: PregoSpacing.md,
+                        children: [
+                          Text(
+                            defaultInputLabel,
+                            style: context.prego.textTheme.textSm.regular.copyWith(
+                              color: context.prego.colors.textSecondary,
+                            ),
+                          ),
+                          const Icon(TablerRegular.chevron_right),
+                        ],
+                      ),
+                      onTap: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
                       isLast: true,
                     ),
                   ],
@@ -138,11 +160,6 @@ class _SettingsBody extends StatelessWidget {
                 SettingsSection(
                   title: loc.settingsSectionAppearance,
                   child: const AppearancePicker(),
-                ),
-                const SizedBox(height: PregoSpacing.xl),
-                SettingsSection(
-                  title: loc.settingsSectionChatInput,
-                  child: const ChatInputModePicker(),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(

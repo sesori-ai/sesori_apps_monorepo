@@ -1111,23 +1111,35 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
-  /// Settings section choosing which input the session composer leads with
+  /// Settings entry and page title for choosing the default session composer input
   ///
   /// In en, this message translates to:
-  /// **'Chat input'**
-  String get settingsSectionChatInput;
+  /// **'Default input'**
+  String get settingsDefaultInputTitle;
 
-  /// Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation
+  /// Introduction above the default input choices
   ///
   /// In en, this message translates to:
-  /// **'Voice first'**
-  String get settingsChatInputVoiceFirst;
+  /// **'Choose how you default talk to Sesori:'**
+  String get settingsDefaultInputDescription;
 
-  /// Chat input option: the composer rests as a tap-to-type field with the microphone alongside
+  /// Default input option that leads with voice dictation
   ///
   /// In en, this message translates to:
-  /// **'Text first'**
-  String get settingsChatInputTextFirst;
+  /// **'Voice'**
+  String get settingsDefaultInputVoice;
+
+  /// Default input option that leads with typed text
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get settingsDefaultInputText;
+
+  /// Placeholder shown in the typed-input preview
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Sesori'**
+  String get settingsDefaultInputTextPreview;
 
   /// No description provided for @settingsSectionSupport.
   ///

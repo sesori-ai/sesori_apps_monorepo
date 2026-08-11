@@ -114,7 +114,9 @@ class AnalyticsRouteListener {
     AppRouteDef.splash => throw StateError("Splash is a readiness route, not an analytics screen"),
     AppRouteDef.login => AnalyticsScreen.login,
     AppRouteDef.projects => AnalyticsScreen.projects,
-    AppRouteDef.settings || AppRouteDef.settingsHarnesses => AnalyticsScreen.settings,
+    AppRouteDef.settings ||
+    AppRouteDef.settingsHarnesses ||
+    AppRouteDef.settingsDefaultInput => AnalyticsScreen.settings,
     AppRouteDef.settingsNotifications => AnalyticsScreen.settingsNotifications,
     AppRouteDef.settingsProfile => AnalyticsScreen.settingsProfile,
     AppRouteDef.sessions => AnalyticsScreen.sessions,

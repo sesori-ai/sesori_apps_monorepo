@@ -559,13 +559,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
-  String get settingsSectionChatInput => 'Chat input';
+  String get settingsDefaultInputTitle => 'Default input';
 
   @override
-  String get settingsChatInputVoiceFirst => 'Voice first';
+  String get settingsDefaultInputDescription => 'Choose how you default talk to Sesori:';
 
   @override
-  String get settingsChatInputTextFirst => 'Text first';
+  String get settingsDefaultInputVoice => 'Voice';
+
+  @override
+  String get settingsDefaultInputText => 'Text';
+
+  @override
+  String get settingsDefaultInputTextPreview => 'Ask Sesori';
 
   @override
   String get settingsSectionSupport => 'Support';

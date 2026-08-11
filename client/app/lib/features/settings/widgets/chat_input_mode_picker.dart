@@ -5,25 +5,15 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
-/// Width/height ratio of a preview tile, matching the appearance tiles above.
-const double _previewAspectRatio = 96 / 69;
-
-/// Corner radius of a preview tile, and of the selection ring around it.
-const double _previewRadius = PregoRadius.xl;
-const double _selectionRingWidth = 2.0;
-const double _selectionRadius = _previewRadius + _selectionRingWidth;
-
-/// Horizontal gap between the two tiles.
-const double _optionGap = PregoSpacing.x3l;
-
-/// Gap between a tile and its label.
+const double _optionHeight = 100.0;
+const double _previewHeight = 69.0;
 const double _labelGap = PregoSpacing.sm;
+const double _selectionRingWidth = 2.0;
+const double _composerHeight = 54.0;
+const double _composerWidth = 370.0;
+const double _composerInset = PregoSpacing.md;
 
-/// The "Chat input" section: two composer previews (voice first, text first)
-/// that switch which input the session composer leads with.
-///
-/// Reads and writes the app-wide [ChatInputModeCubit] the composer resolves
-/// its resting layout from, so a tap re-shapes every composer immediately.
+/// The two default composer input choices shown on the dedicated settings page.
 class ChatInputModePicker extends StatelessWidget {
   const ChatInputModePicker({super.key});
 
@@ -32,34 +22,27 @@ class ChatInputModePicker extends StatelessWidget {
     final loc = context.loc;
     final cubit = context.watch<ChatInputModeCubit>();
     final labels = <ChatInputMode, String>{
-      ChatInputMode.voiceFirst: loc.settingsChatInputVoiceFirst,
-      ChatInputMode.textFirst: loc.settingsChatInputTextFirst,
+      ChatInputMode.voiceFirst: loc.settingsDefaultInputVoice,
+      ChatInputMode.textFirst: loc.settingsDefaultInputText,
     };
 
-    return Padding(
-      // The tiles sit inset from the section header, matching the card
-      // padding the neighbouring grouped-row sections have.
-      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
-      child: Row(
-        spacing: _optionGap,
-        children: [
-          for (final MapEntry(key: mode, value: label) in labels.entries)
-            Expanded(
-              child: _ChatInputModeOption(
-                mode: mode,
-                label: label,
-                isSelected: cubit.state == mode,
-                onTap: () => cubit.select(mode: mode),
-              ),
+    return Row(
+      spacing: PregoSpacing.lg,
+      children: [
+        for (final MapEntry(key: mode, value: label) in labels.entries)
+          Expanded(
+            child: _ChatInputModeOption(
+              mode: mode,
+              label: label,
+              isSelected: cubit.state == mode,
+              onTap: () => cubit.select(mode: mode),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
 
-/// One input-mode choice: a preview tile in a selection ring, with its label
-/// below.
 class _ChatInputModeOption extends StatelessWidget {
   const _ChatInputModeOption({
     required this.mode,
@@ -79,45 +62,53 @@ class _ChatInputModeOption extends StatelessWidget {
 
     return MergeSemantics(
       child: Semantics(
-        // The two tiles are one choice, not two independent buttons — the
-        // same semantics a [Radio] carries, so assistive technology announces
-        // the selection as mutually exclusive.
         inMutuallyExclusiveGroup: true,
         checked: isSelected,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                // A Container (rather than a DecoratedBox) so the ring insets
-                // the preview instead of being painted underneath it. The ring
-                // stays transparent when unselected, so selecting one tile
-                // never resizes the row.
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(_selectionRadius),
-                  border: Border.all(
-                    color: isSelected ? prego.colors.borderBrand : Colors.transparent,
-                    width: _selectionRingWidth,
+          child: SizedBox(
+            height: _optionHeight,
+            child: Column(
+              children: [
+                Container(
+                  height: _previewHeight,
+                  decoration: BoxDecoration(
+                    color: prego.colors.bgSurface3,
+                    borderRadius: BorderRadius.circular(PregoRadius.lg),
+                    border: Border.all(
+                      color: isSelected ? prego.colors.borderBrand : Colors.transparent,
+                      width: _selectionRingWidth,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ExcludeSemantics(
+                    child: _ComposerPreview(mode: mode, isSelected: isSelected),
                   ),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(_previewRadius),
-                  child: AspectRatio(
-                    aspectRatio: _previewAspectRatio,
-                    child: _ComposerPreview(mode: mode),
-                  ),
+                const SizedBox(height: _labelGap),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: PregoSpacing.sm,
+                  children: [
+                    Icon(
+                      switch (mode) {
+                        ChatInputMode.voiceFirst => TablerRegular.microphone,
+                        ChatInputMode.textFirst => TablerRegular.keyboard,
+                      },
+                      size: 14,
+                      color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
+                    ),
+                    Text(
+                      label,
+                      style: prego.textTheme.textSm.regular.copyWith(
+                        color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: _labelGap),
-              Text(
-                label,
-                style: prego.textTheme.textSm.regular.copyWith(
-                  color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -125,86 +116,148 @@ class _ChatInputModeOption extends StatelessWidget {
   }
 }
 
-/// A stylised mini composer pill: a waveform for the voice-first mode, a text
-/// line with the microphone alongside for the text-first mode.
-///
-/// Drawn from the ambient theme — unlike the appearance previews, these tiles
-/// illustrate a layout rather than a palette.
 class _ComposerPreview extends StatelessWidget {
-  const _ComposerPreview({required this.mode});
+  const _ComposerPreview({required this.mode, required this.isSelected});
 
   final ChatInputMode mode;
-
-  /// Fractions of the tile, mirroring the appearance previews' scale.
-  static const double _pillBleed = 0.10;
-  static const double _pillTop = 0.30;
-  static const double _pillWidth = 1.2;
-  static const double _pillHeight = 0.40;
-
-  /// Relative heights of the mock waveform bars, echoing the recording state.
-  static const List<double> _waveformBars = [0.3, 0.55, 0.9, 0.65, 1.0, 0.5, 0.3];
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
-    final canvas = prego.colors.brightness == Brightness.light ? prego.colors.bgSurface3 : prego.colors.bgSurface1;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final height = constraints.maxHeight;
-
-        return DecoratedBox(
-          decoration: BoxDecoration(color: canvas),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned(
-                left: -width * _pillBleed,
-                top: height * _pillTop,
-                width: width * _pillWidth,
-                height: height * _pillHeight,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: prego.colors.bgSurface3,
-                    border: Border.all(color: prego.colors.borderSecondary),
-                    borderRadius: BorderRadius.circular(PregoRadius.full),
-                  ),
-                  child: switch (mode) {
-                    ChatInputMode.voiceFirst => _VoiceFirstPillContent(barHeight: height * _pillHeight * 0.55),
-                    ChatInputMode.textFirst => _TextFirstPillContent(width: width),
-                  },
+    return Stack(
+      children: [
+        Positioned(
+          left: _composerInset - (isSelected ? _selectionRingWidth : 0),
+          top: (_previewHeight - _composerHeight) / 2 - (isSelected ? _selectionRingWidth : 0),
+          width: _composerWidth,
+          height: _composerHeight,
+          child: _ComposerPill(mode: mode, isSelected: isSelected),
+        ),
+        PositionedDirectional(
+          end: 0,
+          top: 0,
+          width: 46,
+          height: _previewHeight,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: AlignmentDirectional.centerStart,
+                  end: AlignmentDirectional.centerEnd,
+                  colors: [
+                    context.prego.colors.bgSurface3.withValues(alpha: 0),
+                    context.prego.colors.bgSurface3,
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
 
-/// Centered mock waveform bars — the hold-to-talk pill mid-recording.
-class _VoiceFirstPillContent extends StatelessWidget {
-  const _VoiceFirstPillContent({required this.barHeight});
+class _ComposerPill extends StatelessWidget {
+  const _ComposerPill({required this.mode, required this.isSelected});
 
-  final double barHeight;
+  final ChatInputMode mode;
+  final bool isSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: prego.colors.bgSurface2,
+        border: Border.all(
+          color: mode == ChatInputMode.textFirst ? prego.colors.borderPrimary : prego.colors.borderSecondary,
+        ),
+        borderRadius: BorderRadius.circular(PregoRadius.full),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(PregoSpacing.sm),
+        child: Row(
+          spacing: PregoSpacing.md,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: prego.colors.bgSurface4,
+                border: Border.all(color: prego.colors.borderPrimary),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                switch (mode) {
+                  ChatInputMode.voiceFirst => TablerRegular.microphone,
+                  ChatInputMode.textFirst => TablerRegular.arrow_up,
+                },
+                size: mode == ChatInputMode.voiceFirst ? 14 : 18,
+                color: isSelected ? prego.colors.textPrimary : prego.colors.textTertiary,
+              ),
+            ),
+            switch (mode) {
+              ChatInputMode.voiceFirst => _Waveform(isSelected: isSelected),
+              ChatInputMode.textFirst => _TextPreview(isSelected: isSelected),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Waveform extends StatelessWidget {
+  const _Waveform({required this.isSelected});
+
+  final bool isSelected;
+
+  static const _barHeights = <double>[
+    6,
+    6,
+    6,
+    8,
+    12,
+    18,
+    15,
+    21,
+    18,
+    24,
+    18,
+    24,
+    18,
+    24,
+    24,
+    20,
+    22,
+    8,
+    14,
+    11,
+    6,
+    6,
+  ];
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      spacing: 2.5,
+      spacing: 3.7,
       children: [
-        for (final factor in _ComposerPreview._waveformBars)
+        for (var index = 0; index < _barHeights.length; index++)
           Container(
-            width: 2.5,
-            height: (barHeight * factor).clamp(2.5, barHeight),
+            width: 4.9,
+            height: _barHeights[index],
             decoration: BoxDecoration(
-              color: prego.colors.textPrimary,
-              borderRadius: BorderRadius.circular(PregoRadius.full),
+              color: index < 2
+                  ? prego.colors.fgQuaternary
+                  : isSelected
+                  ? prego.colors.textSecondaryOnBrand
+                  : prego.colors.textSecondary.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(PregoRadius.xxs),
             ),
           ),
       ],
@@ -212,40 +265,30 @@ class _VoiceFirstPillContent extends StatelessWidget {
   }
 }
 
-/// A text line with the trailing microphone — the tap-to-type pill.
-class _TextFirstPillContent extends StatelessWidget {
-  const _TextFirstPillContent({required this.width});
+class _TextPreview extends StatelessWidget {
+  const _TextPreview({required this.isSelected});
 
-  final double width;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: width * 0.10),
-      child: Row(
-        children: [
-          Expanded(
-            child: FractionallySizedBox(
-              alignment: AlignmentDirectional.centerStart,
-              widthFactor: 0.55,
-              heightFactor: 0.28,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: prego.colors.textSecondary,
-                  borderRadius: BorderRadius.circular(PregoRadius.full),
-                ),
-              ),
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 2,
+          height: 20,
+          color: isSelected ? prego.colors.borderBrand : prego.colors.textTertiary,
+        ),
+        Text(
+          context.loc.settingsDefaultInputTextPreview,
+          style: prego.textTheme.textMd.regular.copyWith(
+            color: isSelected ? prego.colors.textSecondary : prego.colors.textTertiary,
           ),
-          Icon(
-            TablerRegular.microphone,
-            size: width * 0.14,
-            color: prego.colors.textPrimary,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

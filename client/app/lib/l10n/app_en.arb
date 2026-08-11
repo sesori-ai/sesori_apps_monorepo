@@ -321,17 +321,25 @@
   "@settingsAppearanceSystem": {
     "description": "Theme option that follows the device appearance setting"
   },
-  "settingsSectionChatInput": "Chat input",
-  "@settingsSectionChatInput": {
-    "description": "Settings section choosing which input the session composer leads with"
+  "settingsDefaultInputTitle": "Default input",
+  "@settingsDefaultInputTitle": {
+    "description": "Settings entry and page title for choosing the default session composer input"
   },
-  "settingsChatInputVoiceFirst": "Voice first",
-  "@settingsChatInputVoiceFirst": {
-    "description": "Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation"
+  "settingsDefaultInputDescription": "Choose how you default talk to Sesori:",
+  "@settingsDefaultInputDescription": {
+    "description": "Introduction above the default input choices"
   },
-  "settingsChatInputTextFirst": "Text first",
-  "@settingsChatInputTextFirst": {
-    "description": "Chat input option: the composer rests as a tap-to-type field with the microphone alongside"
+  "settingsDefaultInputVoice": "Voice",
+  "@settingsDefaultInputVoice": {
+    "description": "Default input option that leads with voice dictation"
+  },
+  "settingsDefaultInputText": "Text",
+  "@settingsDefaultInputText": {
+    "description": "Default input option that leads with typed text"
+  },
+  "settingsDefaultInputTextPreview": "Ask Sesori",
+  "@settingsDefaultInputTextPreview": {
+    "description": "Placeholder shown in the typed-input preview"
   },
   "settingsSectionSupport": "Support",
   "settingsSupportEmail": "Email",
