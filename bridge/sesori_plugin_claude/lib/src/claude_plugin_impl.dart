@@ -497,12 +497,13 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   String? _directoryForSession(String sessionId) => _findSession(sessionId)?.directory;
 
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
-    if (event case ClaudeSessionProcessMessage(:final message)) {
+    if (event case ClaudeSessionProcessMessage(:final message, :final interrupted)) {
       if (message is ClaudeResultMessage) {
         final denialsWereHandled = _approvals.consumeHandledPermissionDenials(
           sessionId: event.sessionId,
           denials: message.permissionDenials,
         );
+        if (interrupted) return;
         if (!message.isError && message.subtype == ClaudeResultSubtype.success && denialsWereHandled) return;
       }
       if (message is ClaudeInitMessage && message.sessionId != event.sessionId) {
