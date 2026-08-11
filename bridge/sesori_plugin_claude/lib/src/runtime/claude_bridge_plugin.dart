@@ -70,14 +70,27 @@ final class ClaudeBridgePlugin with SteadyPluginLifecycle implements BridgePlugi
 
   @override
   Future<void> onShutdown({required Duration? budget}) async {
-    try {
-      await _spawnEvents.cancel();
-    } finally {
+    Object? firstError;
+    StackTrace? firstStackTrace;
+
+    Future<void> attempt(Future<void> Function() cleanup) async {
       try {
-        await _plugin.dispose();
-      } finally {
-        await _processFactory.dispose();
+        await cleanup();
+      } on Object catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
       }
     }
+
+    try {
+      await _spawnEvents.cancel();
+    } on Object catch (error, stackTrace) {
+      firstError = error;
+      firstStackTrace = stackTrace;
+    }
+    await attempt(_plugin.dispose);
+    await attempt(_processFactory.dispose);
+    final error = firstError;
+    if (error != null) Error.throwWithStackTrace(error, firstStackTrace!);
   }
 }

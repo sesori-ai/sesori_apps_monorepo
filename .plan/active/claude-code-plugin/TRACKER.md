@@ -413,8 +413,9 @@
   package suite passes 197 tests, `dart analyze --fatal-infos` reports no
   issues, generated DTO code was produced with `build_runner`, and
   `git diff --check` passes. Before this tracker update, the implementation was
-  1,063 changed lines (all additions), within the 1,100-1,500 estimate once plan
-  evidence is included and below the 1,500-line soft cap.
+  1,063 changed lines (all additions), including 145 generated lines, within the
+  1,100-1,500 estimate once plan evidence is included and below the 1,500-line
+  soft cap.
 
   Architecture implementation review of the full tracked and untracked Step 13
   diff against `main` returned `APPROVED` with no findings. It confirmed the
