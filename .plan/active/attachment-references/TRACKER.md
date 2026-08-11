@@ -98,7 +98,10 @@
   thumbnail bounds, and the typed route. Architecture implementation review
   approved the revised dependency, privacy, concurrency, and lifecycle seams
   with no blockers. The considerable shared-persistence revision raised Step 3
-  from moderate/900-1,400 to complex/1,800-2,300 changed lines.
+  from moderate/900-1,400 to complex/1,800-2,300 changed lines. Against the
+  current `origin/main`, the final PR diff has 1,907 additions and 343 deletions
+  across 34 files (2,250 changed lines), within that revised target;
+  `git diff --check origin/main...HEAD` passes.
   Implementation began in `865e0334`, synchronized with `origin/main` in
   `aa94152d`, and is open as
   [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818).
