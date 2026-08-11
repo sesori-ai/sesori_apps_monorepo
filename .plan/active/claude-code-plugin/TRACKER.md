@@ -456,7 +456,7 @@
   `dart pub get`, all 181 `module_prego` tests, the 26 affected app session-tile
   tests, `dart analyze` in `module_prego` and `app`, and `git diff $(git
   merge-base origin/main HEAD) --check` pass. Generated lines: 0. No database or
-  persisted-data change. The final diff is 85 changed lines (62 additions and 23
+  persisted-data change. The final diff is 102 changed lines (70 additions and 32
   deletions), below the 400-800 estimate because the vector mark and existing
   mapping seam are compact. Architecture implementation review is not required
   for localized brand assets, mapping cases, tests, and plan corrections.

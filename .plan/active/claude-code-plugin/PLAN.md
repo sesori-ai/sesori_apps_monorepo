@@ -54,13 +54,12 @@ binary the user already has installed and logged in.
    under the project matching their working directory.
 9. No Claude *backend payload* concept — tool name, model id, permission mode,
    transcript path, wire shape — escapes the plugin package into shared, bridge,
-   or client code. Three identity and presentation items are deliberate,
-   enumerated exceptions: `Harness.claude` in `sesori_shared`, the brand asset
-   and display name in `module_prego`, and the harness id in the dated composer
-   attachment gate. Every existing harness carries the same three.
+   or client code. Two identity and presentation items are deliberate,
+   enumerated exceptions: `Harness.claude` in `sesori_shared`, plus the brand
+   asset and display name in `module_prego`. Prompt-attachment support travels
+   through the backend-neutral descriptor capability shared by every plugin.
 10. No new `MessagePartType` value and no breaking wire change; the client
-    remains data-driven from `GET /plugin` apart from the brand asset and the
-    attachment gate.
+    remains data-driven from `GET /plugin` apart from the brand asset.
 11. Every implementation PR is independently buildable and targets no more than
     1,500 changed lines as a soft cap, counting additions plus deletions,
     generated output, and tests against that PR's base.
@@ -97,9 +96,9 @@ Three shipped plugins cover the two shapes this work needs:
 
 ### The client already renders an unknown harness gracefully
 
-Sessions, messages, tools, permissions, questions, models, and agents are all
-data-driven from `GET /plugin`. The only client work is the brand asset, its two
-lookup cases, and widening the temporary composer attachment gate.
+Sessions, messages, tools, permissions, questions, models, agents, and prompt
+attachment support are all data-driven from `GET /plugin`. The only client work
+is the brand asset and its two lookup cases.
 
 ### Local runtime evidence
 
