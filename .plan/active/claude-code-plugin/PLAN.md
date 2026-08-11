@@ -923,7 +923,7 @@ quota, so prompts stay minimal.
 | E2E-05 | An extended-thinking prompt renders a reasoning part |
 | E2E-06 | A file-listing prompt renders a tool card through to Done with output |
 | E2E-07 | A file-creating prompt raises a permission card; approve once succeeds, reject continues the turn with a denial |
-| E2E-08 | Approving always lets the next same-tool call proceed without a prompt |
+| E2E-08 | Always sends only an eligible session-scoped `addRules` grant; when Claude offers none, it safely degrades to once and the next same-tool call prompts again |
 | E2E-09 | A question-provoking prompt renders a question card and the answer reaches the turn |
 | E2E-10 | Plan agent plus a change request yields an ExitPlanMode card; approval resumes execution in default mode |
 | E2E-11 | The catalog lists real models and a mid-session switch updates the nav-bar subtitle after the next reply |
@@ -935,7 +935,7 @@ quota, so prompts stay minimal.
 | E2E-17 | The command catalog lists slash commands and one executes |
 | E2E-18 | A follow-up after the idle-reap window resumes transparently |
 | E2E-18a | After an idle reap, the model shown in the nav-bar subtitle still matches the model the plugin believes is applied |
-| E2E-18b | After an idle reap, a tool previously granted "always" runs without prompting again |
+| E2E-18b | After an idle reap, an eligible session-scoped grant is restored; when no eligible grant was offered, the same safe degradation remains |
 | E2E-19 | The harness settings card disables and re-enables Claude Code |
 | E2E-20 | The debug-level bridge log has no unhandled errors and no `claude` process leaks after shutdown |
 

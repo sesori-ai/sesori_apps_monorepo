@@ -3,15 +3,13 @@
 ## Current State
 
 - **Plan slug:** `claude-code-plugin`
-- **Implementation base:** `origin/main` at
-  `c3d21c78` (focused fix started after Step 15 merged)
-- **Series state:** Steps 1-15/17 merged; Step 16/17 blocked by a live launch
-  failure; focused fix PR #821 open
-- **Current step:** focused launch-environment fix in review
+- **Implementation base:** `origin/main` at `ea1bc354`
+- **Series state:** Steps 1-15/17 and all four Step 16 live-gate fixes merged;
+  Step 16 verification and documentation complete locally
+- **Current step:** Step 16/17 ready for review
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Monitor focused fix PR #821, then resume Step 16 live
-  verification after it merges
+- **Next action:** Open and monitor the Step 16 documentation PR
 
 ## Plan Review
 
@@ -61,7 +59,7 @@
 | [x] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | [PR #815](https://github.com/sesori-ai/sesori_apps_monorepo/pull/815) merged 2026-08-11 as `ba2f6f7b` |
 | [x] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) merged 2026-08-11 as `85438e1d` |
 | [x] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | [PR #817](https://github.com/sesori-ai/sesori_apps_monorepo/pull/817) merged 2026-08-11 as `c3d21c78` |
-| [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Not started |
+| [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Live verification complete locally; PR pending |
 | [ ] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Not started |
 
 ## Exact PR Titles
@@ -478,10 +476,47 @@
   pass. The final diff is 44 changed lines (36 additions and 8 deletions),
   measured with the matching `--numstat` command; generated lines: 0.
   A source bridge against the isolated E2E data directory then reported Claude
-  setup ready and returned HTTP 200 with real agents, providers, models, and commands from the
-  exact `/session/options` request that previously returned 502. Step 16 remains
-  paused until [PR #821](https://github.com/sesori-ai/sesori_apps_monorepo/pull/821)
-  merges. No database or persisted-data change.
+  setup ready and returned HTTP 200 with real agents, providers, models, and
+  commands from the exact `/session/options` request that previously returned
+  502. PR #821 merged as `83c73a7b`. No database or persisted-data change.
+
+- Step 16 approval-attribution fix (2026-08-11): live Write requests stayed
+  Running without a permission card because real `can_use_tool` frames contain
+  no `session_id`. The process event already owns authoritative attribution, so
+  PR #823 passes that session id explicitly into the approval registry. Focused
+  tests, all 197 package tests, fatal analysis, and a repeated simulator Write
+  passed; PR #823 merged as `3708d348`.
+
+- Step 16 handled-denial fix (2026-08-11): rejecting a live permission correctly
+  denied the tool and let the model continue, but the successful result's
+  `permission_denials` produced a false terminal error. PR #825 correlates
+  handled denials by `tool_use_id`, preserves genuine result errors, and treats
+  the CLI's successful result as transport completion. All 199 package tests,
+  fatal analysis, architecture review, and the repeated simulator rejection
+  passed; PR #825 merged as `336b8795`.
+
+- Step 16 interrupt-result fix (2026-08-11): Stop and pending-permission abort
+  returned idle and cleaned up, but their terminal result frame still rendered a
+  generic error. PR #826 snapshots resident interruption state on process events
+  and suppresses only that terminal mapping after denial cleanup. All 200 package
+  tests, fatal analysis, and architecture review passed; PR #826 merged as
+  `ea1bc354`.
+
+- Step 16/17 local verification (2026-08-11): completed the simulator matrix
+  against the source bridge and real Claude CLI 2.1.226. Setup, branding,
+  streaming, reasoning, tools, Once/reject permissions, questions, models,
+  interruption, pending abort, restart/history, external import, images,
+  commands, idle reap/model restore, settings policy, logs, and process cleanup
+  passed. `E2E.md` records exact evidence. ExitPlanMode was blocked by three
+  upstream overload responses; its real wire shape and approval path remain
+  covered by protocol capture and focused tests. The live CLI offered no safe
+  session-scoped `addRules` suggestion, so Always correctly degraded to Once
+  rather than applying broader or durable permission updates. README now marks
+  Claude Code Beta. No database migration or analytics change.
+
+  Documentation validation is `git diff --cached --check`; no Dart or Flutter
+  suites were rerun for this documentation-only step. The final diff is 169
+  changed lines, below the 200-500 estimate because the evidence fit one compact record.
 
 ## Findings And Plan Deltas
 
