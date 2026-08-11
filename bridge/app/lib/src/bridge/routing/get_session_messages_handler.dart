@@ -39,6 +39,7 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionMessagesReques
       sessionId: sessionId,
       limit: body.limit,
       before: body.before,
+      attachmentDelivery: body.attachmentDelivery,
     );
     return MessageWithPartsResponse(messages: page.messages, nextCursor: page.nextCursor);
   }

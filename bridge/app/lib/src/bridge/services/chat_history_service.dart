@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/attachment_spill_storage.dart";
 import "../../api/models/archived_session_file_dto.dart";
+import "../../auth/bridge_id_provider.dart";
 import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/chat_history_repository.dart";
 import "../repositories/models/stored_session.dart";
@@ -43,13 +44,16 @@ class ChatHistoryService {
     required ChatHistoryRepository chatHistoryRepository,
     required SessionRepository sessionRepository,
     required AttachmentThumbnailBuilder attachmentThumbnailBuilder,
+    required BridgeIdProvider bridgeIdProvider,
   }) : _chatHistoryRepository = chatHistoryRepository,
        _sessionRepository = sessionRepository,
-       _attachmentThumbnailBuilder = attachmentThumbnailBuilder;
+       _attachmentThumbnailBuilder = attachmentThumbnailBuilder,
+       _bridgeIdProvider = bridgeIdProvider;
 
   final ChatHistoryRepository _chatHistoryRepository;
   final SessionRepository _sessionRepository;
   final AttachmentThumbnailBuilder _attachmentThumbnailBuilder;
+  final BridgeIdProvider _bridgeIdProvider;
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
   Future<void> _thumbnailGenerationLane = Future.value();
@@ -69,7 +73,9 @@ class ChatHistoryService {
     required String sessionId,
     int? limit,
     int? before,
+    required MessageAttachmentDelivery attachmentDelivery,
   }) async {
+    final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
     // The archive check, the freshness decision, and the read all run inside
     // the session queue, so they observe one state. Deciding outside it would
     // let queued work — an observed import, or a failed capture clearing
@@ -91,6 +97,7 @@ class ChatHistoryService {
             storageScope: storageScope,
             limit: limit,
             before: before,
+            attachmentProjection: attachmentProjection,
           );
           if (archived != null) return archived;
         }
@@ -104,6 +111,7 @@ class ChatHistoryService {
           storageScope: storageScope,
           limit: limit,
           before: before,
+          attachmentProjection: attachmentProjection,
         );
       },
     );
@@ -120,9 +128,20 @@ class ChatHistoryService {
         storageScope: storageScope,
         limit: limit,
         before: before,
+        attachmentProjection: attachmentProjection,
       ),
     );
   }
+
+  MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>
+      switch (delivery) {
+        MessageAttachmentDelivery.inline => const InlineMessageAttachmentProjection(),
+        MessageAttachmentDelivery.storedReference => StoredReferenceMessageAttachmentProjection(
+          bridgeId:
+              _bridgeIdProvider.bridgeId ??
+              (throw StateError("stored attachment delivery requires bridge registration")),
+        ),
+      };
 
   Future<SessionAttachmentResult> getSessionAttachment({
     required String sessionId,
@@ -441,14 +460,17 @@ class ChatHistoryService {
     required String sessionId,
     int? limit,
     int? before,
+    required MessageAttachmentDelivery attachmentDelivery,
   }) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
     if (session == null) return null;
+    final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
     return _chatHistoryRepository.getArchivedSessionMessages(
       sessionId: sessionId,
       storageScope: _storageScopeFor(session: session),
       limit: limit,
       before: before,
+      attachmentProjection: attachmentProjection,
     );
   }
 

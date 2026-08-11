@@ -45,6 +45,20 @@ typedef StoredAttachmentThumbnail = ({
   AttachmentThumbnailFormat format,
 });
 
+sealed class MessageAttachmentProjection {
+  const MessageAttachmentProjection();
+}
+
+final class InlineMessageAttachmentProjection extends MessageAttachmentProjection {
+  const InlineMessageAttachmentProjection();
+}
+
+final class StoredReferenceMessageAttachmentProjection extends MessageAttachmentProjection {
+  final String bridgeId;
+
+  const StoredReferenceMessageAttachmentProjection({required this.bridgeId});
+}
+
 /// Owns the stored representation of chat history: database rows, their JSON
 /// payloads, and the attachment spill files those payloads reference.
 class ChatHistoryRepository {
@@ -111,6 +125,7 @@ class ChatHistoryRepository {
     required AttachmentStorageScope storageScope,
     int? limit,
     int? before,
+    required MessageAttachmentProjection attachmentProjection,
   }) async {
     final messageRows = await _chatHistoryDao.getMessages(
       sessionId: sessionId,
@@ -121,17 +136,19 @@ class ChatHistoryRepository {
       sessionId: sessionId,
       messageIds: limit == null ? null : [for (final row in messageRows) row.messageId],
     );
-    final partsByMessage = <String, List<MessagePart>>{};
+    final partJsonByMessage = <String, List<String>>{};
     for (final row in partRows) {
-      partsByMessage
-          .putIfAbsent(row.messageId, () => [])
-          .add(await _rehydratePart(storageScope: storageScope, partJson: row.partJson));
+      partJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
     }
     final messages = [
       for (final row in messageRows)
         MessageWithParts(
           info: Message.fromJson(jsonDecodeMap(row.infoJson)),
-          parts: partsByMessage[row.messageId] ?? const [],
+          parts: await _rehydrateParts(
+            storageScope: storageScope,
+            partJsons: partJsonByMessage[row.messageId] ?? const [],
+            attachmentProjection: attachmentProjection,
+          ),
         ),
     ];
     // A full page implies there may be more; a short one proves there is not,
@@ -351,6 +368,7 @@ class ChatHistoryRepository {
     required AttachmentStorageScope storageScope,
     int? limit,
     int? before,
+    required MessageAttachmentProjection attachmentProjection,
   }) async {
     final contents = await _archivedSessionStorage.read(sessionId: sessionId);
     if (contents == null) return null;
@@ -408,13 +426,11 @@ class ChatHistoryRepository {
         for (final entry in page)
           MessageWithParts(
             info: entry.info,
-            parts: [
-              for (final part in entry.parts)
-                await _rehydratePart(
-                  storageScope: storageScope,
-                  partJson: jsonEncode(part),
-                ),
-            ],
+            parts: await _rehydrateParts(
+              storageScope: storageScope,
+              partJsons: [for (final part in entry.parts) jsonEncode(part)],
+              attachmentProjection: attachmentProjection,
+            ),
           ),
       ],
       nextCursor: limit != null && page.isNotEmpty && page.length == limit && eligible.length > limit
@@ -456,8 +472,8 @@ class ChatHistoryRepository {
   /// files and replaced by a `stored_file` reference.
   ///
   /// The reference is a bridge-internal attachment source that exists only
-  /// inside `chat_history.db`; [_rehydratePart] turns it back into the inline
-  /// variant before anything can reach the wire.
+  /// inside `chat_history.db`; [_rehydratePart] projects it into the delivery
+  /// shape requested by the client before anything reaches the wire.
   Future<String> _encodePart({
     required AttachmentStorageScope storageScope,
     required MessagePart part,
@@ -508,53 +524,155 @@ class ChatHistoryRepository {
       "mime": attachment["mime"],
       "filename": attachment["filename"],
       "sha256": await _attachmentSpillStorage.write(scope: storageScope, bytes: bytes),
+      "byteLength": bytes.length,
     };
   }
 
-  Future<MessagePart> _rehydratePart({
+  Future<List<MessagePart>> _rehydrateParts({
+    required AttachmentStorageScope storageScope,
+    required List<String> partJsons,
+    required MessageAttachmentProjection attachmentProjection,
+  }) async {
+    var remainingInlineBytes = maxInlineMessageAttachmentBytes;
+    final parts = <MessagePart>[];
+    for (final partJson in partJsons) {
+      final projected = await _rehydratePart(
+        storageScope: storageScope,
+        partJson: partJson,
+        attachmentProjection: attachmentProjection,
+        remainingInlineBytes: remainingInlineBytes,
+      );
+      parts.add(projected.part);
+      remainingInlineBytes = projected.remainingInlineBytes;
+    }
+    return parts;
+  }
+
+  Future<({MessagePart part, int remainingInlineBytes})> _rehydratePart({
     required AttachmentStorageScope storageScope,
     required String partJson,
+    required MessageAttachmentProjection attachmentProjection,
+    required int remainingInlineBytes,
   }) async {
+    var remaining = remainingInlineBytes;
     final json = jsonDecodeMap(partJson);
     if (json["attachment"] case final Map<String, dynamic> attachment) {
-      json["attachment"] = await _rehydrateAttachment(
+      final projected = await _rehydrateAttachment(
         storageScope: storageScope,
         attachment: attachment,
+        attachmentProjection: attachmentProjection,
+        remainingInlineBytes: remaining,
       );
+      json["attachment"] = projected.attachment;
+      remaining = projected.remainingInlineBytes;
     }
     if (json["state"] case final Map<String, dynamic> state) {
       if (state["attachments"] case final List<dynamic> attachments) {
-        state["attachments"] = [
-          for (final attachment in attachments)
-            if (attachment is Map<String, dynamic>)
-              await _rehydrateAttachment(
-                storageScope: storageScope,
-                attachment: attachment,
-              )
-            else
-              attachment,
-        ];
+        final projectedAttachments = <dynamic>[];
+        for (final attachment in attachments) {
+          if (attachment is! Map<String, dynamic>) {
+            projectedAttachments.add(attachment);
+            continue;
+          }
+          final projected = await _rehydrateAttachment(
+            storageScope: storageScope,
+            attachment: attachment,
+            attachmentProjection: attachmentProjection,
+            remainingInlineBytes: remaining,
+          );
+          projectedAttachments.add(projected.attachment);
+          remaining = projected.remainingInlineBytes;
+        }
+        state["attachments"] = projectedAttachments;
       }
     }
-    return MessagePart.fromJson(json);
+    return (part: MessagePart.fromJson(json), remainingInlineBytes: remaining);
   }
 
-  Future<Map<String, dynamic>> _rehydrateAttachment({
+  Future<({Map<String, dynamic> attachment, int remainingInlineBytes})> _rehydrateAttachment({
     required AttachmentStorageScope storageScope,
     required Map<String, dynamic> attachment,
+    required MessageAttachmentProjection attachmentProjection,
+    required int remainingInlineBytes,
   }) async {
-    if (attachment["source"] != "stored_file") return attachment;
-    final digest = attachment["sha256"];
-    final bytes = digest is String ? await _attachmentSpillStorage.read(scope: storageScope, digest: digest) : null;
-    // A missing spill file degrades the slot instead of failing the read.
-    if (bytes == null) {
-      return {"source": "metadata", "mime": attachment["mime"], "filename": attachment["filename"]};
+    if (attachment["source"] == "inline_image" && attachmentProjection is InlineMessageAttachmentProjection) {
+      final base64Data = attachment["base64"];
+      if (base64Data is String) {
+        final byteLength = decodedBase64Length(base64Data: base64Data);
+        if (byteLength > remainingInlineBytes) {
+          return (
+            attachment: _metadataAttachment(attachment: attachment),
+            remainingInlineBytes: remainingInlineBytes,
+          );
+        }
+        return (
+          attachment: attachment,
+          remainingInlineBytes: remainingInlineBytes - byteLength,
+        );
+      }
+      return (attachment: attachment, remainingInlineBytes: remainingInlineBytes);
     }
-    return {
-      "source": "inline_image",
-      "mime": attachment["mime"],
-      "filename": attachment["filename"],
-      "base64": base64Encode(bytes),
-    };
+    if (attachment["source"] != "stored_file") {
+      return (attachment: attachment, remainingInlineBytes: remainingInlineBytes);
+    }
+    final digest = attachment["sha256"];
+    if (digest is! String || !AttachmentSpillStorage.isContentAddress(digest: digest)) {
+      return (
+        attachment: _metadataAttachment(attachment: attachment),
+        remainingInlineBytes: remainingInlineBytes,
+      );
+    }
+    final actualByteLength = await _attachmentSpillStorage.byteLength(
+      scope: storageScope,
+      digest: digest,
+    );
+    if (actualByteLength == null) {
+      return (
+        attachment: _metadataAttachment(attachment: attachment),
+        remainingInlineBytes: remainingInlineBytes,
+      );
+    }
+    if (attachmentProjection case StoredReferenceMessageAttachmentProjection(:final bridgeId)) {
+      final storedByteLength = attachment["byteLength"];
+      return (
+        attachment: {
+          "source": "stored_image",
+          "attachmentId": digest,
+          "bridgeId": bridgeId,
+          "mime": attachment["mime"],
+          "filename": attachment["filename"],
+          "byteLength": storedByteLength is int && storedByteLength >= 0 ? storedByteLength : actualByteLength,
+        },
+        remainingInlineBytes: remainingInlineBytes,
+      );
+    }
+    if (actualByteLength > remainingInlineBytes) {
+      return (
+        attachment: _metadataAttachment(attachment: attachment),
+        remainingInlineBytes: remainingInlineBytes,
+      );
+    }
+    final bytes = await _attachmentSpillStorage.read(scope: storageScope, digest: digest);
+    if (bytes == null || bytes.length > remainingInlineBytes) {
+      return (
+        attachment: _metadataAttachment(attachment: attachment),
+        remainingInlineBytes: remainingInlineBytes,
+      );
+    }
+    return (
+      attachment: {
+        "source": "inline_image",
+        "mime": attachment["mime"],
+        "filename": attachment["filename"],
+        "base64": base64Encode(bytes),
+      },
+      remainingInlineBytes: remainingInlineBytes - bytes.length,
+    );
   }
+
+  Map<String, dynamic> _metadataAttachment({required Map<String, dynamic> attachment}) => {
+    "source": "metadata",
+    "mime": attachment["mime"],
+    "filename": attachment["filename"],
+  };
 }

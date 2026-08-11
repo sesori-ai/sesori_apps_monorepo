@@ -476,6 +476,7 @@ class Orchestrator {
       ),
       sessionRepository: sessionRepository,
       attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+      bridgeIdProvider: _bridgeRegistrationService,
     );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
@@ -933,9 +934,7 @@ class OrchestratorSession {
       return Future.error(StateError("OrchestratorSession has already started"), StackTrace.current);
     }
 
-    _sessionAbortService.abortStartedSessions
-        .listen(_completionListener.markSessionAbortPending)
-        .addTo(_subscriptions);
+    _sessionAbortService.abortStartedSessions.listen(_completionListener.markSessionAbortPending).addTo(_subscriptions);
     _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
     _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
     _completionListener.start();
