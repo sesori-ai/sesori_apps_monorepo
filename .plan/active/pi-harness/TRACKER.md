@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `cb73e2bf`
-- **Series state:** Step 3/15 in progress
+- **Implementation base:** `origin/main` at `c3d21c78`
+- **Series state:** Step 3/15 ready for review
 - **Current step:** 3/15, JSONL RPC transport
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
-- **Next action:** implement and verify Step 3
+- **Next action:** open and monitor the Step 3 PR
 
 ## Locked Decisions
 
@@ -31,7 +31,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 |---|---|---|---:|---|
 | [x] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 (recorded overage) | Merged |
 | [x] | 2/15 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/15]` | 900-1,300 | Merged |
-| [ ] | 3/15 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/15]` | 1,200-1,500 | In progress |
+| [ ] | 3/15 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/15]` | 1,200-1,500 (recorded overage) | Ready for review |
 | [ ] | 4/15 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 4/15]` | 1,000-1,400 | Not started |
 | [ ] | 5/15 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 5/15]` | 1,100-1,500 | Not started |
 | [ ] | 6/15 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 6/15]` | 1,200-1,500 | Not started |
@@ -96,6 +96,19 @@ OpenCode default, or no-new-analytics decisions without the user.
   manifest remains the sole owner. No re-review required after applying the
   finding.
 - Diff: +338/-8 = 346 changed lines; generated lines: 0; tests run: 10.
+- No user-visible, database, or persisted-data change.
+- `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
+
+### Step 3/15
+
+- `dart pub get` from `bridge/`: pass.
+- `dart test` from `bridge/sesori_plugin_pi/`: pass, 55 tests.
+- `dart analyze --fatal-infos` from `bridge/sesori_plugin_pi/`: pass.
+- Architecture implementation review: approved with no findings.
+- Diff: +2,457/-28 = 2,485 changed lines; generated lines: 0; tests run: 55.
+- Recorded overage: the strict framer, complete sealed discriminator boundary,
+  process lifecycle, and their failure/backpressure tests are one coherent
+  transport seam; splitting it would publish an untyped or unverified client.
 - No user-visible, database, or persisted-data change.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
 
