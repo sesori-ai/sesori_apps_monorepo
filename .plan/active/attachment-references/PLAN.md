@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `attachment-references`
-- **Status:** Step 1/11 - plan ready for review
+- **Status:** Step 3/11 - bridge rendition endpoint ready for review
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `944e07e7`
+- **Implementation base:** `origin/main` at `f91fee47`
 - **Delivery:** one plan PR, nine sequential implementation PRs, and one
   plan-retirement PR
 - **Related future work:** prompt-upload decisions are recorded separately in

@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 2 PR open
-- **Current step:** 2/11
-- **Implementation base:** `origin/main` at `3803df12`
+- **Series state:** Step 3 ready for PR
+- **Current step:** 3/11
+- **Implementation base:** `origin/main` at `f91fee47`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812)
-- **Next action:** Monitor Step 2 review/CI and begin Step 3 locally
+- **Current PR:** Pending
+- **Next action:** Open Step 3 PR and begin Step 4 locally
 
 ## Plan Review
 
@@ -32,8 +32,8 @@
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
 | [x] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) merged |
-| [ ] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812) open |
-| [ ] | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Pending |
+| [x] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812) merged |
+| [ ] | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Ready for PR |
 | [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Pending |
 | [ ] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Pending |
 | [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | Pending |
@@ -78,8 +78,20 @@
   Shared full tests, focused bridge/client tests, and source analysis across
   shared, bridge, mobile, module_core, and desktop pass. Architecture
   implementation review approved the contract and compatibility boundaries.
-  Committed as `9753d350`, pushed, and opened as
-  [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812).
+  Committed as `9753d350`, pushed, opened as
+  [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812), and
+  merged as `f91fee47`.
+- Step 3: Added versioned atomic thumbnail storage, bounded off-isolate image
+  transformation, session-queued live/archive rendition loading, one global
+  decode lane, and the typed `POST /session/attachment` handler. `dart pub get`,
+  `dart analyze --fatal-infos`, 15 focused attachment tests, and all 2,547
+  bridge-app tests pass. Architecture implementation review approved the
+  storage/repository/service/handler ownership with no blocking findings; its
+  one non-blocking dead-field observation was applied. Before this tracker
+  update, the PR-base diff contained 932 additions and 16 deletions across 13
+  files, within the 900-1,400 target, with no generated source changes.
+  Implementation committed as `865e0334` and synchronized with `origin/main`
+  in `aa94152d`; PR pending.
 
 ## Findings And Plan Deltas
 
