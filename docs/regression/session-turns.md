@@ -50,7 +50,8 @@ queue, turn length, and client count.
 - Streaming stalls, duplicates parts, or the session never returns to idle.
 - Prompt defaults regress, or a defaults-write failure fails the send.
 - A send succeeds against an archived session, an aborted turn triggers a
-  completion notification, or queued sends reorder, vanish, or resend.
+  completion notification, or queued sends reorder, vanish, or resend while the
+  session-detail cubit remains alive.
 
 ## Known Limitations
 
