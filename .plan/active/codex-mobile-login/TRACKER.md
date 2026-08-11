@@ -5,7 +5,7 @@
 - **Plan slug:** `codex-mobile-login`
 - **Series state:** Step 1 merged; Step 2 ready for publication
 - **Current step:** 2/8
-- **Implementation base:** Step 1 merge commit `de244964`
+- **Implementation base:** `origin/main` at `ea1bc354` (includes Step 1)
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
 - **Current PR:** Pending
 - **Next action:** Publish Step 2 and begin Step 3 locally
