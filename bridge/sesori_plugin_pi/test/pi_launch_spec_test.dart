@@ -10,6 +10,7 @@ void main() {
         binaryPath: "pi",
         workingDirectory: "/tmp/project",
         launch: PiNewSession(sessionId: "sesori.session-1"),
+        environment: const {},
       );
 
       expect(spec.arguments, ["--mode", "rpc", "--approve", "--session-id", "sesori.session-1"]);
@@ -21,6 +22,7 @@ void main() {
         binaryPath: "pi",
         workingDirectory: "/tmp/project",
         launch: PiResumedSession(sessionPath: absolutePath),
+        environment: const {},
       );
 
       expect(spec.arguments, ["--mode", "rpc", "--approve", "--session", absolutePath]);
@@ -32,6 +34,7 @@ void main() {
         binaryPath: r"C:\managed-pi\pi.exe",
         workingDirectory: r"C:\project",
         launch: PiNewSession(sessionId: "session-1"),
+        environment: const {},
       );
 
       expect(spec.binaryPath, r"C:\managed-pi\pi.exe");

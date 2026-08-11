@@ -8,14 +8,14 @@ abstract class PiProcessHandle {
   Stream<List<int>> get stderr;
   IOSink get stdin;
   Future<int> get exitCode;
-  bool kill([ProcessSignal signal = ProcessSignal.sigterm]);
+  bool kill({ProcessSignal signal = ProcessSignal.sigterm});
 }
 
 /// Spawns one Pi process for a launch specification.
-typedef PiProcessFactory = Future<PiProcessHandle> Function(PiLaunchSpec spec);
+typedef PiProcessFactory = Future<PiProcessHandle> Function({required PiLaunchSpec spec});
 
 /// Spawns Pi while preserving the user's inherited environment.
-Future<PiProcessHandle> defaultPiProcessFactory(PiLaunchSpec spec) async {
+Future<PiProcessHandle> defaultPiProcessFactory({required PiLaunchSpec spec}) async {
   final process = await Process.start(
     spec.binaryPath,
     spec.arguments,
@@ -44,5 +44,5 @@ final class _RealPiProcess implements PiProcessHandle {
   Future<int> get exitCode => _process.exitCode;
 
   @override
-  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) => _process.kill(signal);
+  bool kill({ProcessSignal signal = ProcessSignal.sigterm}) => _process.kill(signal);
 }

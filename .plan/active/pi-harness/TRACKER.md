@@ -95,9 +95,9 @@ OpenCode default, or no-new-analytics decisions without the user.
   ownership on `PiLaunchSpec`; the resolver was removed so Step 11's runtime
   manifest remains the sole owner. No re-review required after applying the
   finding.
-- Diff: +364/-12 = 376 changed lines; generated lines: 0; tests run: 10.
+- Diff: +351/-8 = 359 changed lines; generated lines: 0; tests run: 10.
 - No user-visible, database, or persisted-data change.
-- `git diff --check`: pass.
+- `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
 
 ## Findings And Plan Deltas
 
