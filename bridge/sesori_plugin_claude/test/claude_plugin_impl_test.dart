@@ -316,6 +316,15 @@ void main() {
       final error = shared.Message.fromJson(errorEvent.info) as shared.MessageError;
       expect(error.errorName, "api_error");
       expect(error.errorMessage, "Claude Code could not complete the API request (HTTP 500).");
+      expect(
+        harness.approvals.consumeHandledPermissionDenials(
+          sessionId: testSessionId,
+          denials: const [
+            {"tool_use_id": "toolu-1"},
+          ],
+        ),
+        isFalse,
+      );
       await subscription.cancel();
     });
 

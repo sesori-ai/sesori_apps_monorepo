@@ -498,14 +498,12 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
 
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
     if (event case ClaudeSessionProcessMessage(:final message)) {
-      if (message is ClaudeResultMessage &&
-          !message.isError &&
-          message.subtype == ClaudeResultSubtype.success &&
-          _approvals.consumeHandledPermissionDenials(
-            sessionId: event.sessionId,
-            denials: message.permissionDenials,
-          )) {
-        return;
+      if (message is ClaudeResultMessage) {
+        final denialsWereHandled = _approvals.consumeHandledPermissionDenials(
+          sessionId: event.sessionId,
+          denials: message.permissionDenials,
+        );
+        if (!message.isError && message.subtype == ClaudeResultSubtype.success && denialsWereHandled) return;
       }
       if (message is ClaudeInitMessage && message.sessionId != event.sessionId) {
         Log.e("[claude] backend reported a different session id; stopping the session");
