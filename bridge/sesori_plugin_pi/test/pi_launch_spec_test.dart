@@ -55,14 +55,17 @@ void main() {
     });
 
     test("rejects HOME overrides", () {
+      const secret = "provider-secret";
       expect(
         () => PiLaunchSpec(
           binaryPath: "pi",
           workingDirectory: "/tmp/project",
           launch: PiNewSession(sessionId: "session-1"),
-          environment: const {"HOME": "/tmp/isolated"},
+          environment: const {"HOME": "/tmp/isolated", "ANTHROPIC_API_KEY": secret},
         ),
-        throwsArgumentError,
+        throwsA(
+          isA<ArgumentError>().having((error) => error.toString(), "message", isNot(contains(secret))),
+        ),
       );
     });
   });

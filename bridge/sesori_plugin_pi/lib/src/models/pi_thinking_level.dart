@@ -12,7 +12,7 @@ enum PiThinkingLevel {
 
   final String wireValue;
 
-  static PiThinkingLevel? tryParse(String? value) {
+  static PiThinkingLevel? tryParse({required String? value}) {
     if (value == null) return null;
     final normalized = value.trim();
     for (final level in values) {

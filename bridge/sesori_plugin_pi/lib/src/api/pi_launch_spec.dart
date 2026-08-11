@@ -41,7 +41,7 @@ class PiLaunchSpec {
     required Map<String, String> environment,
   }) : environment = Map.unmodifiable({...environment, "PI_SKIP_VERSION_CHECK": "1"}) {
     if (environment.containsKey("HOME")) {
-      throw ArgumentError.value(environment, "environment", "must not override HOME");
+      throw ArgumentError.value("HOME", "environment", "must not override this key");
     }
   }
 
