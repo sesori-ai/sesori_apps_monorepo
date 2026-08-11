@@ -213,7 +213,8 @@ CLI-minted (a UUID) for requests it sends us.
 **OPEN:** the image content-block shape has not been exercised live. The SDK
 declares the standard Anthropic
 `{"type":"image","source":{"type":"base64","media_type":…,"data":…}}`; verify
-before the attachment gate is widened in Step 15.
+during the Step 16 live run. The descriptor already advertises the capability
+through plugin discovery, so no client-side backend gate remains.
 
 ### Control request subtypes
 

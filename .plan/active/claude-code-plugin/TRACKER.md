@@ -4,13 +4,13 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `ba2f6f7b` (Step 14 started after Step 13 merged)
-- **Series state:** Steps 1-13/17 merged; Step 14/17 PR open
-- **Current step:** 14/17 — Claude Code harness registration in review
+  `85438e1d` (Step 15 started after Step 14 merged)
+- **Series state:** Steps 1-14/17 merged; Step 15/17 PR open
+- **Current step:** 15/17 — Claude Code client branding in review
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Monitor Step 14 PR #816, then wait for explicit direction
-  after merge before starting Step 15
+- **Next action:** Monitor Step 15 PR #817, then wait for explicit direction
+  after merge before starting Step 16
 
 ## Plan Review
 
@@ -58,8 +58,8 @@
 | [x] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | [PR #809](https://github.com/sesori-ai/sesori_apps_monorepo/pull/809) merged 2026-08-11 as `ca521672` |
 | [x] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | [PR #813](https://github.com/sesori-ai/sesori_apps_monorepo/pull/813) merged 2026-08-11 as `f0d705bc` |
 | [x] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | [PR #815](https://github.com/sesori-ai/sesori_apps_monorepo/pull/815) merged 2026-08-11 as `ba2f6f7b` |
-| [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) open against `main` |
-| [ ] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | Not started |
+| [x] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) merged 2026-08-11 as `85438e1d` |
+| [ ] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | [PR #817](https://github.com/sesori-ai/sesori_apps_monorepo/pull/817) open against `main` |
 | [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Not started |
 | [ ] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Not started |
 
@@ -444,6 +444,23 @@
   registry seam required no extra plumbing. Generated lines: 0. No database
   state change in this step.
 
+- Step 15/17 local implementation (2026-08-11): added light and dark Claude
+  brand-mark assets in the official coral colour, mapped the `claude` identity
+  to those assets and the display name "Claude Code", and covered the shared
+  logo mapping plus the session-row integration. The plan and protocol now
+  reflect the merged descriptor capability contract: prompt attachments require
+  no backend-specific client gate, and the image round trip remains a Step 16
+  live-verification item. This presentation-only change does not add an
+  analytics event.
+
+  `dart pub get`, all 181 `module_prego` tests, the 26 affected app session-tile
+  tests, `dart analyze` in `module_prego` and `app`, and `git diff $(git
+  merge-base origin/main HEAD) --check` pass. Generated lines: 0. No database or
+  persisted-data change. The final diff is 128 changed lines (84 additions and 44
+  deletions), below the 400-800 estimate because the vector mark and existing
+  mapping seam are compact. Architecture implementation review is not required
+  for localized brand assets, mapping cases, tests, and plan corrections.
+
 ## Findings And Plan Deltas
 
 - **2026-08-11 — Session identity mismatches fail closed:** architecture review
@@ -540,13 +557,13 @@
   Resumed launches therefore receive the requested model and the registry's
   filtered session rules through `--allowedTools`; E2E rows 18a and 18b remain
   as final product verification rather than open protocol questions.
-- **2026-08-04 — Prompt-attachment gate stays a client branch (user decision):**
+- **2026-08-04 — Prompt-attachment gate decision, subsequently superseded:**
   plan review wanted a `PluginMetadata` capability flag replacing
-  `harnessSupportsPromptAttachments`. The user chose to widen the existing dated
-  gate instead, keeping this series scoped. Noted for whoever does the capability
-  migration later: a plain `@Default(false)` is wrong, because a new app against
-  an older bridge would silently lose OpenCode attachments — the field needs to
-  be nullable so absence can mean "old bridge, apply the legacy rule".
+  `harnessSupportsPromptAttachments`. The user initially chose the existing dated
+  gate to keep this series scoped. Later repository work independently landed
+  the capability contract with compatibility handling before Step 15 began, so
+  Claude now advertises support through its descriptor and no backend-specific
+  client gate remains.
 - **2026-08-04 — One PR open at a time (user decision):** successors are built
   locally and their PRs open only after the current PR merges. PR #739 (step 2)
   was closed for this reason and reopens against `main` after #737 merges; its

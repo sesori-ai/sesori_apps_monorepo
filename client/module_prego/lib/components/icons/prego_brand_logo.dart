@@ -51,6 +51,8 @@ class PregoBrandLogo extends StatelessWidget {
         isDark ? "assets/svgs/brands/codex_dark.svg" : "assets/svgs/brands/codex_light.svg",
       final id when id == Harness.cursor.name =>
         isDark ? "assets/svgs/brands/cursor_dark.svg" : "assets/svgs/brands/cursor_light.svg",
+      final id when id == Harness.claude.name =>
+        isDark ? "assets/svgs/brands/claude_dark.svg" : "assets/svgs/brands/claude_light.svg",
       _ => null,
     };
   }
@@ -65,6 +67,7 @@ class PregoBrandLogo extends StatelessWidget {
     final id when id == Harness.opencode.name => "OpenCode",
     final id when id == Harness.codex.name => "Codex",
     final id when id == Harness.cursor.name => "Cursor",
+    final id when id == Harness.claude.name => "Claude Code",
     _ => pluginId,
   };
 }
