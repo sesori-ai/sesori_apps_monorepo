@@ -4,13 +4,13 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `f0d705bc` (Step 13 started after Step 12 merged)
-- **Series state:** Steps 1-12/17 merged; Step 13/17 PR open
-- **Current step:** 13/17 — descriptor and lifecycle in review
+  `ba2f6f7b` (Step 14 started after Step 13 merged)
+- **Series state:** Steps 1-13/17 merged; Step 14/17 ready for review
+- **Current step:** 14/17 — Claude Code harness registration verified
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Monitor Step 13 PR #815, then wait for explicit direction
-  after merge before starting Step 14
+- **Next action:** Open and monitor the Step 14 PR, then wait for explicit
+  direction after merge before starting Step 15
 
 ## Plan Review
 
@@ -57,8 +57,8 @@
 | [x] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | [PR #808](https://github.com/sesori-ai/sesori_apps_monorepo/pull/808) merged 2026-08-11 as `fcca943c` |
 | [x] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | [PR #809](https://github.com/sesori-ai/sesori_apps_monorepo/pull/809) merged 2026-08-11 as `ca521672` |
 | [x] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | [PR #813](https://github.com/sesori-ai/sesori_apps_monorepo/pull/813) merged 2026-08-11 as `f0d705bc` |
-| [ ] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | [PR #815](https://github.com/sesori-ai/sesori_apps_monorepo/pull/815) open against `main` |
-| [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | Not started |
+| [x] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | [PR #815](https://github.com/sesori-ai/sesori_apps_monorepo/pull/815) merged 2026-08-11 as `ba2f6f7b` |
+| [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | Implemented and verified on `claude-code-plugin-activation`; ready to open against `main` |
 | [ ] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | Not started |
 | [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Not started |
 | [ ] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Not started |
@@ -421,6 +421,26 @@
   diff against `main` returned `APPROVED` with no findings. It confirmed the
   descriptor composition, lifecycle ownership, host process seam, and package
   dependency direction preserve the bridge architecture.
+
+- Step 14/17 local implementation (2026-08-11): added `Harness.claude` as the
+  shared built-in identity, added the Claude package to the bridge app's
+  workspace dependencies, and registered `ClaudePluginDescriptor` at
+  `plugin_registry.dart`, the sole concrete-plugin composition point. Updated
+  the registry assertion to cover all four bundled harnesses while leaving the
+  OpenCode preferred default unchanged. Existing backend-neutral session
+  analytics already instrument authoritative outcomes, so this registration
+  adds no provider-specific analytics event.
+
+  `dart pub get`, full `make analyze`, every bridge module test suite (including
+  all 2,532 app tests), app and shared `dart analyze --fatal-infos`, and
+  `git diff --check` pass. The source-run `dart run app/bin/bridge.dart
+  --version` smoke reports `1.8.0`. Architecture implementation review of the
+  full Step 14 diff against `origin/main` returned `APPROVED` with no findings;
+  it confirmed the bridge dependency direction, designated registry seam, and
+  additive shared identity remain valid. The final diff is 42 changed lines (33
+  additions and 9 deletions), below the 250-500 estimate because the existing
+  registry seam required no extra plumbing. No generated files or database
+  state change in this step.
 
 ## Findings And Plan Deltas
 

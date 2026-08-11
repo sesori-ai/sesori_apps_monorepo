@@ -33,6 +33,8 @@ dependencies:
     path: ../sesori_plugin_acp
   cursor_plugin:
     path: ../sesori_plugin_cursor
+  claude_plugin:
+    path: ../sesori_plugin_claude
   meta: ^1.19.0
   # Pinned lock-step with drift_dev: 2.34.1+ requires analyzer ^13, but the
   # workspace is held on analyzer 10 by injectable_generator. drift_dev is
