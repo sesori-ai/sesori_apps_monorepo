@@ -433,13 +433,15 @@
 
   `dart pub get`, full `make analyze`, every bridge module test suite (including
   all 2,532 app tests), app and shared `dart analyze --fatal-infos`, and
-  `git diff --check` pass. The source-run `dart run app/bin/bridge.dart
-  --version` smoke reports `1.8.0`. Architecture implementation review of the
+  `git diff $(git merge-base origin/main HEAD) --check` pass. The source-run
+  `dart run app/bin/bridge.dart --version` smoke reports `1.8.0`. Architecture
+  implementation review of the
   full Step 14 diff against `origin/main` returned `APPROVED` with no findings;
   it confirmed the bridge dependency direction, designated registry seam, and
-  additive shared identity remain valid. The final diff is 42 changed lines (33
-  additions and 9 deletions), below the 250-500 estimate because the existing
-  registry seam required no extra plumbing. No generated files or database
+  additive shared identity remain valid. The final diff is 44 changed lines (35
+  additions and 9 deletions), measured with `git diff $(git merge-base
+  origin/main HEAD) --numstat`, below the 250-500 estimate because the existing
+  registry seam required no extra plumbing. Generated lines: 0. No database
   state change in this step.
 
 ## Findings And Plan Deltas
