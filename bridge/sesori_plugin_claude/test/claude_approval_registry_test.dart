@@ -243,6 +243,25 @@ void main() {
       expect(responses.every((response) => response.payload["behavior"] == "deny"), isTrue);
       expect(events.whereType<BridgeSsePermissionReplied>(), hasLength(1));
       expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+      expect(
+        registry.consumeHandledPermissionDenials(
+          sessionId: "session-1",
+          denials: const [
+            {"tool_use_id": "toolu-permission-request"},
+            {"tool_use_id": "toolu-question-request"},
+          ],
+        ),
+        isTrue,
+      );
+      expect(
+        registry.consumeHandledPermissionDenials(
+          sessionId: "session-1",
+          denials: const [
+            {"tool_use_id": "toolu-unprompted"},
+          ],
+        ),
+        isFalse,
+      );
 
       handle(sessionId: "session-1", message: _permission());
       handle(
@@ -322,6 +341,10 @@ ClaudeControlRequestMessage _request({
     ClaudeStreamMessage.parse({
           "type": "control_request",
           "request_id": requestId,
-          "request": {"subtype": "can_use_tool", ...request},
+          "request": {
+            "subtype": "can_use_tool",
+            "tool_use_id": "toolu-$requestId",
+            ...request,
+          },
         })
         as ClaudeControlRequestMessage;
