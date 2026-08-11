@@ -509,10 +509,10 @@ class ChatHistoryService {
   /// its duration, so a write enqueued while it runs commits after it rather
   /// than underneath it.
   ///
-  /// Reads of one session therefore serialize with each other too. That is
-  /// acceptable: a read is a bounded query against a local database, and it
-  /// buys a simple guarantee — whatever a read observed is what the caller
-  /// receives.
+  /// Reads of one session therefore serialize with each other too. History
+  /// reads are bounded local queries. Attachment rendition reads deliberately
+  /// hold the queue through decode and derived-file persistence so archive or
+  /// purge cannot invalidate their selected source underneath them.
   Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) {
     final pending = _writeQueues[sessionId] ?? Future<void>.value();
     final result = pending.then((_) => read());
