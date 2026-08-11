@@ -16,9 +16,9 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   points at the managed launcher. Direct execution from an npm payload is unsupported,
   its removal leaves the managed install, and full uninstall is manual.
 - Auto-update applies only to a managed install and is skipped for supervised runs, npm
-  payloads, CI, and the opt-out. Managed installs check at startup and poll periodically;
-  a poll only reports availability and the update activates at next start. Its track is
-  stable by default, internal also takes pre-releases, and a change applies after restart.
+  payloads, CI, and the opt-out. Startup and periodic cycles download and apply a newer
+  release in place; the running process stays on its old code until the next start. Its
+  track is stable by default, internal also takes pre-releases, and a change applies after restart.
 - Applying happens in place under a cross-process lock with a durable attempt record and
   log, and can roll back; startup reconciliation is local and network-free, reports the
   prior attempt, sweeps residue, and never fails startup.
@@ -33,7 +33,7 @@ reconciliation, periodic check, in-place apply, and explicit update command.
 | L1 Smoke | Not included. Distribution work is expensive and is not a per-run heartbeat. |
 | L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt. Headless bridge; no plugin. |
 | L3 Release | The release artifact set and checksum manifest for the tag are complete and basename-keyed, and a managed install on the release-target bridge host reports the expected version and starts. Packaged or external. |
-| L4 Extended | Interrupted or failed apply reconciled at next start, rollback, refused checksum mismatch, unavailable release service staying quiet, track switch, periodic check without applying, and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
+| L4 Extended | Interrupted or failed apply reconciled at next start, rollback, refused checksum mismatch, unavailable release service staying quiet, track switch, periodic cycle applying in place and reporting pending activation, and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
 | L5 Full | Both installers and the npm bootstrap on every supported platform and architecture, the npm fallback to the tagged release asset, an end-to-end upgrade from a prior release on both tracks, the update command including force, and the documented uninstall contract. Packaged or external. |
 
 ## Exploration Guidance

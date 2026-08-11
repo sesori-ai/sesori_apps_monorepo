@@ -18,7 +18,8 @@ that baseline, and the branch and worktree facts a session carries.
   skip reason (binary, too large, read error), never an empty change.
 - An unreachable base and a base with no common ancestor are distinct
   client-visible failures, not empty change sets; a git failure is a failure.
-  An archived session, or one whose worktree is gone, returns no diffs.
+  An archived session, one whose worktree is gone, or a non-git or commitless
+  session with no comparison baseline returns no diffs.
 - The base branch can be read and set; setting rejects empty input and applies
   to later dedicated baselines, and the stable project identifier resolves to
   the live directory before git runs.
@@ -34,7 +35,7 @@ that baseline, and the branch and worktree facts a session carries.
 | L2 Routine | Headless bridge, representative plugin: after a session edits files the diff lists them with before/after content and line counts; dedicated uses its base branch and in-place its creation-time commit. |
 | L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; the diff list, per-file view, and refresh on the file-change signal render. |
 | L4 Extended | Relay integration, every supporting production plugin: unreachable base and no-common-ancestor are distinct client-visible failures; archived sessions and removed worktrees return no diffs without erroring; a moved project still resolves git correctly; each plugin's file-change signal triggers a refresh reflecting the real change set. |
-| L5 Full | Headless bridge for large mixed changes, non-git or commitless projects, and invalid base branches; relay integration to prove diff payload encryption. Representative plugin. |
+| L5 Full | Headless bridge for large mixed changes, non-git or commitless sessions returning no diffs, and invalid base branches; relay integration to prove diff payload encryption. Representative plugin. |
 
 ## Exploration Guidance
 
@@ -57,7 +58,8 @@ and in-place sessions, and default versus explicit base branches.
 
 - Per-file content is bounded; oversized files are skipped, not truncated.
 - Diff rendering is phone-only; the desktop shell has no diff surface.
-- Diffs require a git repository; non-git projects have no coverage by design.
+- Non-git and commitless sessions have no comparison baseline and intentionally
+  return an empty diff rather than a source-control result.
 
 ## Sources
 

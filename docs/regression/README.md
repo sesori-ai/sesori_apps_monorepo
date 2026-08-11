@@ -16,10 +16,11 @@ fixed outcomes keep pass/fail stable without prescribing one brittle script.
 | L5 | Full | Run the complete documented matrix, including rare, destructive, packaged, compatibility, and external-system checks. |
 
 Levels are cumulative: Level 3 runs every applicable L1, L2, and L3 entry. An
-entry is inapplicable only when its feature or declared capability is absent;
-missing infrastructure makes it `Blocked`. A higher-level check through an
-equal or stronger boundary can satisfy the same lower-level invariant once. A
-feature can enter at any level. "Full" means the documented catalog, not every
+entry is inapplicable only when none of its checks concern behavior present in
+the build, including capability omission or compatibility behavior; missing
+infrastructure makes it `Blocked`. A higher-level check through an equal or
+stronger boundary can satisfy the same lower-level invariant once. A feature
+can enter at any level. "Full" means the documented catalog, not every
 theoretical input. Tables use two empty states:
 
 - **Not included:** this feature has no coverage at this level.

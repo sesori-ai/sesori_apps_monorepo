@@ -23,8 +23,8 @@ Apple and Google is external.
   failure both default to enabled. Preferences are per account and cleared on account switch.
 - A notification opened while unauthenticated defers until authentication, then routes to its session; viewing a
   session cancels its notifications.
-- Payloads carry only a short preview plus category, event type, and session and project identity. Code, prompts, and
-  full responses never enter a payload.
+- Payloads carry only a bounded short preview plus category, event type, and session and project identity. Full code,
+  prompts, questions, permission descriptions, and assistant responses never enter a payload.
 
 ## Regression Levels
 

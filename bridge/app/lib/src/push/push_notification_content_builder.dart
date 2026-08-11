@@ -30,13 +30,15 @@ class PushNotificationContentBuilder {
         category: NotificationCategory.aiInteraction,
         eventType: NotificationEventType.questionAsked,
         title: "Question requires input",
-        body: questions.isNotEmpty ? questions.first.question : "The assistant is waiting for your response.",
+        body: questions.isNotEmpty && questions.first.question.trim().isNotEmpty
+            ? _notificationPreview(questions.first.question)
+            : "The assistant is waiting for your response.",
       ),
-      SesoriPermissionAsked(:final tool, :final description) => (
+      SesoriPermissionAsked(:final description) => (
         category: NotificationCategory.aiInteraction,
         eventType: NotificationEventType.permissionAsked,
         title: "Permission requested",
-        body: description.isNotEmpty ? description : "The assistant requested permission to run $tool.",
+        body: description.trim().isNotEmpty ? _notificationPreview(description) : "The assistant requested permission.",
       ),
       SesoriInstallationUpdateAvailable(:final version) => (
         category: NotificationCategory.systemUpdate,
@@ -48,6 +50,11 @@ class PushNotificationContentBuilder {
       ),
       _ => null,
     };
+  }
+
+  String _notificationPreview(String text) {
+    // truncateTitle appends "...", keeping the final preview at 120 characters.
+    return truncateTitle(truncateToWords(text), maxChars: 117);
   }
 
   SendNotificationPayload buildNotificationPayload({

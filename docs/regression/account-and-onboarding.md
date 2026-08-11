@@ -29,8 +29,8 @@ participates.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Signed-in launch restores the local session and reaches Projects with no network work at splash; a bridge start reaches readiness. Client end to end plus headless bridge; no plugin. |
-| L2 Routine | One provider through sign-in and logout on the release-target client platform, plus the prompt decision for marker-present, already-registered, and absent accounts. Headless bridge owns the decision; no plugin. |
-| L3 Release | Every sign-in option on the release-target client platform, both empty-Projects states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. Relay integration; no plugin. |
+| L2 Routine | One provider through sign-in and logout on the release-target client platform, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. |
+| L3 Release | Every sign-in option on the release-target client platform, both empty-Projects states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. Client end to end plus relay integration; no plugin. |
 | L4 Extended | Background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, withheld push registration, delayed status check, second mobile platform. Client end to end where the app observes it, headless where the bridge owns it. |
 | L5 Full | Store builds: native Apple sign-in on a real device, email flow, legal and analytics-preference surfaces, marker rewrite after a fresh install, and the status-endpoint-unavailable path against an older auth deployment. Packaged or external; no plugin. |
 

@@ -65,6 +65,7 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 
 - `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered OpenCode, Codex,
   Cursor, and Claude Code descriptors; plugin routing handlers
-- `bridge/app/lib/src/services/plugin_lifecycle_service.dart`, `.../plugin_registry.dart`
+- `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
+  `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`
 - `client/module_core/.../plugin_management_service.dart` and the harness settings screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites

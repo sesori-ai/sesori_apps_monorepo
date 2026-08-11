@@ -60,6 +60,9 @@ branches that remain after the asserted cleanup behavior.
 - Archiving is intentionally irreversible; deletion additionally destroys the
   audit record. The read-only rule covers the named session only, not ancestors,
   descendants, or related sessions.
+- Exporting stale history may start the bound plugin for one final backfill, and
+  the completed archive sends a best-effort backend notification. A stopped
+  plugin being touched during archive is therefore expected behavior.
 - A history purge failing after a successful archive is left to the next startup
   reconciliation rather than failing the archive.
 - Attachment behavior here will change with unfinished lazy stored-image work.

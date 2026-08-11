@@ -34,7 +34,7 @@ guide, not a boundary on what you may do.
    work, assumptions, scope, or status.
 5. Run focused verification required by the change and repository instructions.
 6. Before retiring a durable plan, run and record the regression level and
-   matrix its final step names. If an older plan names no matrix, derive and
+   matrix specified by its final step. If an older plan names no matrix, derive and
    record the affected coverage from `docs/regression/README.md` first. Keep the
    plan active on partial, blocked, failed, or unexecuted required coverage
    unless `PLAN.md` records the user's explicit acceptance of that limitation.

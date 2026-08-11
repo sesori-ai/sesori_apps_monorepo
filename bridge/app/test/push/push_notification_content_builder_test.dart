@@ -25,6 +25,46 @@ void main() {
       expect(contentBuilder.extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
+    test("bounds question and permission preview content", () {
+      const questionEvent = SesoriSseEvent.questionAsked(
+        id: "q-1",
+        sessionID: "session-a",
+        displaySessionId: null,
+        questions: [
+          QuestionInfo(
+            question: "one two three four five six seven eight nine ten eleven twelve",
+            header: "Prompt",
+          ),
+        ],
+      );
+      final permissionEvent = SesoriSseEvent.permissionAsked(
+        requestID: "r-1",
+        sessionID: "session-a",
+        displaySessionId: null,
+        tool: "/private/project/destructive-script",
+        description: List.filled(200, "x").join(),
+      );
+      const emptyPermissionEvent = SesoriSseEvent.permissionAsked(
+        requestID: "r-2",
+        sessionID: "session-a",
+        displaySessionId: null,
+        tool: "/private/project/destructive-script",
+        description: "",
+      );
+
+      expect(
+        contentBuilder.extractNotificationData(questionEvent)?.body,
+        "one two three four five six seven eight nine ten...",
+      );
+      final permissionBody = contentBuilder.extractNotificationData(permissionEvent)?.body;
+      expect(permissionBody, hasLength(120));
+      expect(permissionBody, endsWith("..."));
+      expect(
+        contentBuilder.extractNotificationData(emptyPermissionEvent)?.body,
+        "The assistant requested permission.",
+      );
+    });
+
     test("maps installation.update-available to system_update", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 
