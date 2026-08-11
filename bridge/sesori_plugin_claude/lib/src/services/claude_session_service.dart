@@ -68,7 +68,6 @@ final class ClaudeSessionService {
     }
     final acceptance = Completer<void>();
     final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
-    final queuedBehindActiveTurn = state.pending > 0;
     _retryStatuses.remove(sessionId);
     state.pending++;
     state.idleGeneration++;
@@ -92,7 +91,6 @@ final class ClaudeSessionService {
         acceptance: acceptance,
       ),
     );
-    if (queuedBehindActiveTurn) acceptance.complete();
     return acceptance.future;
   }
 

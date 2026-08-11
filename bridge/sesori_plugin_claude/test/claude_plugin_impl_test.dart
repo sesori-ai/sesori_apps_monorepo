@@ -141,28 +141,6 @@ void main() {
       await subscription.cancel();
     });
 
-    test("accepts a queued command without waiting for the active turn result", () async {
-      await harness.createSession();
-      final process = harness.processes.single;
-      await waitForFrame(process, "user");
-
-      await harness.plugin
-          .sendCommand(
-            sessionId: testSessionId,
-            command: "review",
-            arguments: "src",
-            userVisibleArguments: "src",
-            variant: null,
-            agent: "Default",
-            model: (providerID: "anthropic", modelID: "default"),
-          )
-          .timeout(const Duration(seconds: 1));
-      expect(_userTexts(process), isNot(contains("/review src")));
-
-      process.emit(_result());
-      await _waitForUserText(process, "/review src");
-    });
-
     test("creates an empty session and reports command initialization failure", () async {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);

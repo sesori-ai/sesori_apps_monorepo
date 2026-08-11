@@ -99,10 +99,10 @@ void main() {
       await pump();
 
       final disposal = repository.dispose();
-      gate.complete();
 
       await expectLater(residency, throwsStateError);
-      await disposal;
+      await disposal.timeout(const Duration(seconds: 1));
+      gate.complete();
       expect(repository.isResident(sessionId: testSessionId), isFalse);
       expect(harness.processes.single.killed, isTrue);
     });

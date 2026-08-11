@@ -293,21 +293,9 @@ final class ClaudeSessionProcessRepository {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    for (final sessionId in {..._resident.keys, ..._connecting.keys}) {
-      _sessionGenerations[sessionId] = (_sessionGenerations[sessionId] ?? 0) + 1;
-    }
-    final connections = _connecting.values.toList(growable: false);
-    final sessionIds = _resident.keys.toList(growable: false);
+    final sessionIds = {..._resident.keys, ..._connecting.keys}.toList(growable: false);
     for (final sessionId in sessionIds) {
       await teardown(sessionId: sessionId);
-    }
-    for (final connection in connections) {
-      try {
-        await connection;
-      } on Object {
-        // A connection invalidated by disposal reports its own typed failure to
-        // the turn awaiting it. Disposal only waits for its child to be reaped.
-      }
     }
     await _events.close();
   }
