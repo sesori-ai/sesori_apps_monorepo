@@ -270,7 +270,7 @@ final class ClaudeSessionService {
     switch (event) {
       case final ClaudeSessionProcessMessage event:
         final request = event.controlRequest;
-        if (request != null) _approvals.handle(message: request);
+        if (request != null) _approvals.handle(sessionId: event.sessionId, message: request);
       case ClaudeSessionProcessExited():
         _approvals.cancelForSession(sessionId: event.sessionId);
     }

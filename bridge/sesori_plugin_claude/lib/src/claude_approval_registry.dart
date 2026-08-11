@@ -130,10 +130,10 @@ final class ClaudeApprovalRegistry {
   final Map<String, Set<String>> _allowedTools = {};
   int _sequence = 0;
 
-  bool handle({required ClaudeControlRequestMessage message}) {
-    final sessionId = _nonEmptyString(message.sessionId);
+  bool handle({required String sessionId, required ClaudeControlRequestMessage message}) {
+    final attributedSessionId = _nonEmptyString(sessionId);
     final requestId = _nonEmptyString(message.requestId);
-    if (message.subtype != "can_use_tool" || sessionId == null || requestId == null) return false;
+    if (message.subtype != "can_use_tool" || attributedSessionId == null || requestId == null) return false;
 
     final request = message.request;
     final tool = _nonEmptyString(request["tool_name"]) ?? "tool";
@@ -145,34 +145,41 @@ final class ClaudeApprovalRegistry {
         "AskUserQuestion" => _AskUserQuestion(
           id: id,
           requestId: requestId,
-          sessionId: sessionId,
+          sessionId: attributedSessionId,
           input: input,
           questions: questions,
         ),
         "ExitPlanMode" => _ExitPlanMode(
           id: id,
           requestId: requestId,
-          sessionId: sessionId,
+          sessionId: attributedSessionId,
           input: input,
           questions: questions,
         ),
         _ => _UnknownInteraction(
           id: id,
           requestId: requestId,
-          sessionId: sessionId,
+          sessionId: attributedSessionId,
           input: input,
           questions: questions,
         ),
       };
       _pending[id] = pending;
-      _emit(BridgeSseQuestionAsked(id: id, sessionID: sessionId, displaySessionId: sessionId, questions: questions));
+      _emit(
+        BridgeSseQuestionAsked(
+          id: id,
+          sessionID: attributedSessionId,
+          displaySessionId: attributedSessionId,
+          questions: questions,
+        ),
+      );
       return true;
     }
 
     final pending = _PendingPermission(
       id: id,
       requestId: requestId,
-      sessionId: sessionId,
+      sessionId: attributedSessionId,
       tool: tool,
       description: _description(request),
       input: input,
@@ -183,8 +190,8 @@ final class ClaudeApprovalRegistry {
     _emit(
       BridgeSsePermissionAsked(
         requestID: id,
-        sessionID: sessionId,
-        displaySessionId: sessionId,
+        sessionID: attributedSessionId,
+        displaySessionId: attributedSessionId,
         tool: pending.tool,
         description: pending.description,
         allowAlways: pending.allowAlways,
