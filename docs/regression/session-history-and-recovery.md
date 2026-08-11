@@ -31,7 +31,7 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
 | L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, and paging older messages on a transcript longer than one page. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
-| L4 Extended | Relay integration, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window, two clients on one session, a slow request beside unrelated traffic. |
+| L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
 
 ## Exploration Guidance

@@ -45,8 +45,9 @@ live, after paging back, or after a reopen, and vary the plugin.
 
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
-- A host path, source URI, raw payload, or raw parser error escapes into a log,
-  a client payload, or an error message.
+- A host path, source URI, or raw attachment payload crosses the plugin/client
+  boundary; a raw parser error reaches a client payload or user-facing error,
+  or local diagnostics discard useful parser error and stack context.
 - An over-budget or unsupported image breaks the message instead of degrading.
 - A remote image is fetched without the scheme, type, size, and signature checks.
 - The composer offers or sends attachments to an unsupporting backend, strands

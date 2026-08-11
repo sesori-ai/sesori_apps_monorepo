@@ -25,7 +25,7 @@ void main() {
       expect(contentBuilder.extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
-    test("bounds question and permission preview content", () {
+    test("uses content-safe copy for question and permission notifications", () {
       const questionEvent = SesoriSseEvent.questionAsked(
         id: "q-1",
         sessionID: "session-a",
@@ -54,11 +54,12 @@ void main() {
 
       expect(
         contentBuilder.extractNotificationData(questionEvent)?.body,
-        "one two three four five six seven eight nine ten...",
+        "The assistant is waiting for your response.",
       );
-      final permissionBody = contentBuilder.extractNotificationData(permissionEvent)?.body;
-      expect(permissionBody, hasLength(120));
-      expect(permissionBody, endsWith("..."));
+      expect(
+        contentBuilder.extractNotificationData(permissionEvent)?.body,
+        "The assistant requested permission.",
+      );
       expect(
         contentBuilder.extractNotificationData(emptyPermissionEvent)?.body,
         "The assistant requested permission.",
@@ -98,7 +99,7 @@ void main() {
       );
 
       expect(payload.title, equals("Question requires input"));
-      expect(payload.body, equals("Ship it?"));
+      expect(payload.body, equals("The assistant is waiting for your response."));
       expect(payload.collapseKey, equals("ai_interaction-session-a"));
       expect(payload.data?.sessionId, equals("session-a"));
       expect(payload.data?.category, equals(NotificationCategory.aiInteraction));
