@@ -63,7 +63,9 @@
   [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824).
 - Step 2: `dart test` passes all 348 Codex plugin tests. Focused runtime,
   setup, stdio transport, and typed account API tests pass, and
-  `dart analyze --fatal-infos` reports no issues. `git diff --check` passes.
+  `dart analyze --fatal-infos` reports no issues.
+  `git diff --check origin/main...HEAD` passes, and
+  `git diff --numstat origin/main...HEAD` reports 2,478 additions and 169 deletions.
   The required architecture implementation review could not run because the
   review sub-agent failed twice before reading code with an internal task-store
   schema error (`no such column: replacement_seq`). Committed as `3d71e4cf`,

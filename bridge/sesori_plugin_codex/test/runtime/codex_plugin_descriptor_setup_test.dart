@@ -205,6 +205,35 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
+    test("reports an outdated explicitly configured runtime as unavailable", () async {
+      const explicitConfig = PluginConfig(
+        values: {"port": null, "bin": "/custom/codex"},
+      );
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 9,
+            stdoutBytes: utf8.encode("codex 0.100.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: explicitConfig,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnavailable>());
+      expect(
+        descriptor.managementCapabilities(config: explicitConfig),
+        isNot(contains(PluginControlCapability.install)),
+      );
+      expect(processes.spawnedExecutables, ["/custom/codex"]);
+    });
+
     test("reports authentication required without starting a login flow", () async {
       final processes = _ProbeProcessService(
         processSequence: [

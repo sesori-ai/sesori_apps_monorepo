@@ -200,6 +200,43 @@ void main() {
       await appServerClient.dispose();
     });
 
+    test("ignores a stale child exit after reconnecting", () async {
+      final staleProcess = _FakeProcess(autoExitOnStdinClose: false);
+      final currentProcess = _FakeProcess(autoExitOnStdinClose: true);
+      final processes = _FakeHostProcessService(
+        staleProcess,
+        additionalProcesses: [currentProcess],
+      );
+      final appServerClient = client(processes);
+      final failedConnect = (await startConnect(appServerClient, staleProcess)).future;
+      staleProcess.send({
+        "id": staleProcess.frames.single["id"],
+        "error": {"code": -32600, "message": "Not initialized"},
+      });
+      await expectLater(failedConnect, throwsA(isA<CodexRpcException>()));
+
+      final currentConnect = (await startConnect(appServerClient, currentProcess)).future;
+      completeInitialize(currentProcess);
+      await currentConnect;
+      await currentProcess.waitForFrames(2);
+
+      staleProcess.completeExit(9);
+      await _eventLoop();
+      final request = appServerClient.request(method: "account/login/start");
+      await currentProcess
+          .waitForFrames(3)
+          .timeout(
+            const Duration(milliseconds: 100),
+          );
+      currentProcess.send({
+        "id": currentProcess.frames.last["id"],
+        "result": {"ok": true},
+      });
+
+      expect(await request, {"ok": true});
+      await appServerClient.dispose();
+    });
+
     test("escalates bounded cleanup from graceful to force", () async {
       final process = _FakeProcess(autoExitOnStdinClose: false);
       final processes = _FakeHostProcessService(
@@ -226,15 +263,18 @@ class _FakeHostProcessService implements HostProcessService {
   _FakeHostProcessService(
     this.process, {
     this.exitOnForceSignal = false,
-  });
+    List<_FakeProcess> additionalProcesses = const [],
+  }) : _spawnProcesses = [process, ...additionalProcesses];
 
   final _FakeProcess process;
+  final List<_FakeProcess> _spawnProcesses;
   final bool exitOnForceSignal;
   String? executable;
   List<String>? arguments;
   Map<String, String>? environment;
   final List<int> gracefulPids = <int>[];
   final List<int> forcePids = <int>[];
+  int _nextProcess = 0;
 
   @override
   Future<SpawnedProcess> spawn({
@@ -247,7 +287,7 @@ class _FakeHostProcessService implements HostProcessService {
     this.executable = executable;
     this.arguments = arguments;
     this.environment = environment;
-    return process;
+    return _spawnProcesses[_nextProcess++];
   }
 
   @override
@@ -262,7 +302,12 @@ class _FakeHostProcessService implements HostProcessService {
   @override
   Future<SignalResult> signalForce({required int pid}) async {
     forcePids.add(pid);
-    if (exitOnForceSignal) process.completeExit(-9);
+    if (exitOnForceSignal) {
+      final matchingProcess = _spawnProcesses.singleWhere(
+        (process) => process.pid == pid,
+      );
+      matchingProcess.completeExit(-9);
+    }
     return _signal(pid: pid, shutdownSignal: ShutdownSignal.force);
   }
 

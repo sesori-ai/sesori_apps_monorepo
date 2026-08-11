@@ -248,8 +248,8 @@ class CodexStdioAppServerClient implements CodexAppServerTransport {
   }
 
   void _handleExit({required int generation, required int code}) {
-    if (!_exited.isCompleted) _exited.complete(code);
     if (generation != _connectionGeneration) return;
+    if (!_exited.isCompleted) _exited.complete(code);
     _failPending(
       StateError("Codex App Server process exited before replying"),
       StackTrace.current,
