@@ -49,8 +49,9 @@ the bridge starts, how many clients are present, and whether restart is explicit
 
 - Readiness claimed before registration, auth send, listener setup, or read arming.
 - Plaintext session content crossing the relay, or a client served without key exchange.
-- Health responding while clients cannot reach the bridge, or one slow route freezing all
-  traffic.
+- Health keeps responding while clients cannot reach the bridge after relay
+  acceptance or client reachability was independently established, or one slow
+  route freezes all traffic.
 - Reconnect tight-looping, an exhausted iterator reused, or two bridges displacing each
   other without backoff.
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an

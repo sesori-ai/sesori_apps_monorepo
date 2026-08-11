@@ -22,7 +22,8 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   Transient auto-update outages stay quiet and retry on the next cycle.
 - Applying happens in place under a cross-process lock with a durable attempt record and
   log, and can roll back; startup reconciliation is local and network-free, reports the
-  prior attempt, sweeps residue, and never fails startup.
+  prior attempt, and never fails startup. Residue sweeping is best-effort: lock
+  contention skips it, deletion failure is observable, and a later launch retries.
 - The update command moves to the newest release on the track and exits, with force
   reinstalling the current version and able to return an internal build to stable.
   A transient or real manual failure returns immediately with reinstall guidance.
@@ -34,7 +35,7 @@ reconciliation, periodic check, in-place apply, and explicit update command.
 | L1 Smoke | Not included. Distribution work is expensive and is not a per-run heartbeat. |
 | L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt. Headless bridge; no plugin. |
 | L3 Release | The release artifact set and checksum manifest for the tag are complete and basename-keyed, and a managed install on the release-target bridge host reports the expected version and starts. Packaged or external. |
-| L4 Extended | Interrupted or failed apply reconciled at next start, rollback, refused checksum mismatch, unavailable release service staying quiet, track switch, periodic cycle applying in place and reporting pending activation, and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
+| L4 Extended | Interrupted or failed apply reconciled at a later start, including lock-contended and deletion-failed residue retained observably for another retry; rollback; refused checksum mismatch; unavailable release service staying quiet; track switch; periodic cycle applying in place and reporting pending activation; and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
 | L5 Full | Both installers and the npm bootstrap on every supported platform and architecture, the npm fallback to the tagged release asset, an end-to-end upgrade from a prior release on both tracks, the update command including force, and the documented uninstall contract. Packaged or external. |
 
 ## Exploration Guidance
@@ -50,8 +51,9 @@ after apply. Use a throwaway machine when mutating an install root.
   an artifact installed without verification.
 - Auto-update running for a supervised run, npm payload, CI, or opted-out process, or a
   managed install never checking at all.
-- An apply without the lock, a swap leaving a mixed-version install, residue surviving
-  reconciliation, or reconciliation doing network work or failing startup.
+- An apply without the lock, a swap leaving a mixed-version install, residue
+  becoming permanently untracked or an unsuccessful sweep going unreported, or
+  reconciliation doing network work or failing startup.
 - The npm package presenting itself as the long-lived runtime, its removal deleting the
   managed install, an auto-update transient reported as a hard failure, or a manual
   failure hidden instead of returned with guidance.

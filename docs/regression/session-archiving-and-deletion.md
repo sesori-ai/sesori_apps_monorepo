@@ -15,10 +15,12 @@ entirely along with its transcript and, optionally, its worktree and branch.
   unavailable the export may proceed from stored content only and must record
   that honestly, never claiming completeness it lacks. The archived session
   stays readable through the same history path, served from that record.
-- Deletion removes the session, its history, its spilled content, and its archive
-  record; it is destructive and not recoverable. Worktree and branch cleanup
-  happens only when requested; unsafe cleanup (unstaged changes, branch mismatch,
-  shared worktree) is refused with its issues and proceeds only on a forced retry.
+- Deletion removes the session record immediately and is destructive and not
+  recoverable. History, spilled content, and the archive record are purged
+  best-effort after row deletion; a logged failure leaves residue for startup
+  reconciliation. Worktree and branch cleanup happens only when requested;
+  unsafe cleanup (unstaged changes, branch mismatch, shared worktree) is refused
+  with its issues and proceeds only on a forced retry.
 - Cleanup safety rejection happens before mutation. Once cleanup starts, a later
   visible failure can leave an earlier requested step complete, such as a removed
   worktree with its branch still present; retry can finish the residue. The session
@@ -32,7 +34,7 @@ entirely along with its transcript and, optionally, its worktree and branch.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later mutation. |
-| L2 Routine | Headless bridge, representative: deletion removes the session, its history, and its archive record; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything. |
+| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree/branch cleanup, refusals presented to the user. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
@@ -51,8 +53,8 @@ branches that remain after the asserted cleanup behavior.
 - An archived session accepts a mutation, or becomes unarchived by any path.
 - An audit record is missing or unreadable, history is purged without a durable
   record, or a partial export is recorded as complete.
-- Deletion leaves history, spilled content, or an archive record behind, or
-  removes a worktree or branch that was not requested.
+- Deletion residue survives startup reconciliation without an observable failure
+  and later retry, or cleanup removes a worktree or branch that was not requested.
 - Unsafe cleanup proceeds without a forced retry, a refusal omits the blocking
   issues, partial cleanup is reported as success or deletes the session, a
   concurrent mutation interleaves, or a client presents archiving as reversible.
@@ -67,6 +69,8 @@ branches that remain after the asserted cleanup behavior.
   plugin being touched during archive is therefore expected behavior.
 - A history purge failing after a successful archive is left to the next startup
   reconciliation rather than failing the archive.
+- A history purge failing after session-row deletion is logged and leaves storage
+  residue for startup reconciliation rather than failing the deletion.
 - Attachment behavior here will change with unfinished lazy stored-image work.
 
 ## Sources
