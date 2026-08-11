@@ -88,6 +88,16 @@ void main() {
       );
     });
 
+    test("uses the Linux data fallback when XDG_DATA_HOME is relative", () {
+      expect(
+        resolveSesoriAttachmentsDirectory(
+          environment: const {"HOME": "/home/alex", "XDG_DATA_HOME": ".data"},
+          operatingSystem: PlatformOs.linux,
+        ),
+        "/home/alex/.local/share/sesori-attachments",
+      );
+    });
+
     test("uses Windows Local AppData", () {
       expect(
         resolveSesoriAttachmentsDirectory(

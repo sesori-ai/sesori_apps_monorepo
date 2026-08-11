@@ -50,7 +50,7 @@ String sesoriAttachmentsDirectory() => resolveSesoriAttachmentsDirectory(
 
 /// Resolves the shared attachment root for an explicit environment and OS.
 ///
-/// Linux intentionally honors `XDG_DATA_HOME` even though the older
+/// Linux intentionally honors an absolute `XDG_DATA_HOME` even though the older
 /// [sesoriDataDirectory] convention predates that support. Attachments are a
 /// new platform-native store rather than another account-bound data directory.
 String resolveSesoriAttachmentsDirectory({
@@ -60,6 +60,7 @@ String resolveSesoriAttachmentsDirectory({
   final pathContext = operatingSystem == PlatformOs.windows
       ? path.Context(style: path.Style.windows)
       : path.Context(style: path.Style.posix);
+  final xdgDataHome = _nonBlank(environment["XDG_DATA_HOME"]);
   return switch (operatingSystem) {
     PlatformOs.macos => pathContext.join(
       _requireUserHome(environment: environment),
@@ -68,12 +69,13 @@ String resolveSesoriAttachmentsDirectory({
       "Sesori Attachments",
     ),
     PlatformOs.linux => pathContext.join(
-      _nonBlank(environment["XDG_DATA_HOME"]) ??
-          pathContext.join(
-            _requireUserHome(environment: environment),
-            ".local",
-            "share",
-          ),
+      xdgDataHome != null && pathContext.isAbsolute(xdgDataHome)
+          ? xdgDataHome
+          : pathContext.join(
+              _requireUserHome(environment: environment),
+              ".local",
+              "share",
+            ),
       "sesori-attachments",
     ),
     PlatformOs.windows => pathContext.join(
