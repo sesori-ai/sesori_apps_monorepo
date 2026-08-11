@@ -13,9 +13,10 @@ defaults and queued client sends coherent.
   client request is held open for a whole agent run.
 - Sends to an archived session are refused in the serialized lane archiving
   uses, so a send cannot slip past a concurrent archive.
-- Work is admitted in arrival order and serialized only per session family and
-  per plugin. One slow session or plugin must not stall other sessions, other
-  plugins, the relay read loop, or catalog reads.
+- Work enters a short per-plugin admission lane in arrival order, then execution
+  is serialized only per session family. Different families can execute
+  concurrently on one plugin, and one slow session or plugin must not stall other
+  sessions, other plugins, the relay read loop, or catalog reads.
 - Streaming produces incremental message and part events and a terminal status
   transition back to idle; retry carries attempt, message, and timing, and
   finalized messages enter durable history matching a history read.

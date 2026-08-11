@@ -19,12 +19,13 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   payloads, CI, and the opt-out. Startup and periodic cycles download and apply a newer
   release in place; the running process stays on its old code until the next start. Its
   track is stable by default, internal also takes pre-releases, and a change applies after restart.
+  Transient auto-update outages stay quiet and retry on the next cycle.
 - Applying happens in place under a cross-process lock with a durable attempt record and
   log, and can roll back; startup reconciliation is local and network-free, reports the
   prior attempt, sweeps residue, and never fails startup.
 - The update command moves to the newest release on the track and exits, with force
   reinstalling the current version and able to return an internal build to stable.
-  Transient outages retry quietly; real failures give reinstall guidance.
+  A transient or real manual failure returns immediately with reinstall guidance.
 
 ## Regression Levels
 
@@ -52,7 +53,8 @@ after apply. Use a throwaway machine when mutating an install root.
 - An apply without the lock, a swap leaving a mixed-version install, residue surviving
   reconciliation, or reconciliation doing network work or failing startup.
 - The npm package presenting itself as the long-lived runtime, its removal deleting the
-  managed install, or a transient outage reported as hard failure.
+  managed install, an auto-update transient reported as a hard failure, or a manual
+  failure hidden instead of returned with guidance.
 
 ## Known Limitations
 

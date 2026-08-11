@@ -11,15 +11,16 @@ management API, when it reports its runtime as missing or too old.
   its configuration and platform; a binary override or a platform with no pinned asset
   removes the offer. The app offers it only for a missing or too-old runtime, never for
   ready, authentication-required, or unknown states.
-- Installation writes the pinned version into the harness's own managed state area; it
-  never installs system-wide, touches files elsewhere, or starts the backend. Artifacts
-  are checksum-verified, and no partial binary is adopted.
+- Artifact installation writes the pinned version into the harness's own managed state
+  area; placement never installs system-wide, touches files elsewhere, or starts the
+  backend. Artifacts are checksum-verified, and no partial binary is adopted.
 - The command is accepted immediately because an install can outlast a request budget;
   progress reports phases with a percentage, and the terminal outcome also lands in the
   management snapshot.
-- Success implies enable: the harness is persisted enabled, setup is re-inspected, and it
-  starts when ready. A still-blocked setup is reported honestly, and failure text sent to
-  the client is sanitized while paths and command output stay in the log.
+- Success then implies enable: the harness is persisted enabled, setup is re-inspected,
+  and the post-install enable phase starts it when ready. A still-blocked setup is
+  reported honestly, and failure text sent to the client is sanitized while paths and
+  command output stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
 

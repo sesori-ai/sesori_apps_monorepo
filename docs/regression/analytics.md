@@ -10,9 +10,10 @@ excluded, and the warehouse is external.
 ## Required Behavior
 
 - The contract is closed: only declared sealed variants and pinned enum parameters, never an arbitrary event name or
-  parameter map. No event may carry code, prompts, transcripts, tool, command, provider, model or agent names, paths,
-  repository, project, session, branch or worktree names, raw error text, OAuth identity, email, or raw or hashed
-  project, session, bridge, or device identifiers.
+  parameter map. No account-linked event may carry code, prompts, transcripts, coding-provider, model, agent, tool, or
+  command names, paths, repository, project, session, branch or worktree names, raw error text, OAuth identity, email,
+  or raw or hashed project, session, bridge, or device identifiers. The account-less login funnel's pinned
+  login-provider enum is the explicit provider-name exception.
 - Account-linked events require an enabled runtime capability (release build, supported platform, sink present, legacy
   identity cleared), authentication, and a server preference resolved to enabled for that generation; anything else
   suppresses them. They carry the validated server-derived key, never a raw account ID, and set no global SDK
