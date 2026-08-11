@@ -178,6 +178,9 @@ void main() {
 
       await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "codex")));
       expect(findBrandLogo("codex"), findsOneWidget);
+
+      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "claude")));
+      expect(findBrandLogo("claude"), findsOneWidget);
     });
 
     testWidgets("falls back to a plug for a harness this app doesn't know", (tester) async {

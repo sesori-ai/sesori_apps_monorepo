@@ -569,11 +569,11 @@ Three files, two assets, and the affected tests:
   (the directory is declared wholesale, so no pubspec edit).
 - `client/module_prego/lib/components/icons/prego_brand_logo.dart` — one case in
   `_assetFor` and one in `displayNameFor`.
-- `client/module_core/lib/src/foundation/models/composer/composer_attachment_support.dart`
-  — widen the dated temporary gate to include Claude, only in the step where
-  image forwarding is implemented and verified, keeping the dated comment.
-- Tests: `prego_brand_logo_test.dart`, `session_tile_states_test.dart`, and the
-  attachment-gate consumers, reusing `findBrandLogo(String pluginId)` from
+- No client attachment gate change remains: the merged plugin-discovery contract
+  now carries `supportsPromptAttachments`, and the Claude descriptor advertises
+  that capability. The client consumes it without backend-specific branching.
+- Tests: `prego_brand_logo_test.dart` and `session_tile_states_test.dart`,
+  reusing `findBrandLogo(String pluginId)` from
   `client/app/test/helpers/test_helpers.dart`.
 
 Forward-compatibility guardrail: introduce no new `MessagePartType` value. That
@@ -584,11 +584,12 @@ Claude part kind maps onto an existing type inside the plugin.
 
 This is additive work against an untouched harness slot, so it makes nothing
 obsolete. Two items are in scope as directly caused updates rather than cleanup:
-the README harness row moves from "Coming soon" to Beta in Step 16, and the
-temporary composer attachment gate — already carrying a dated comment — gains one
-more harness in Step 15 rather than being removed, because Codex and Cursor still
-do not accept prompt attachments. No obsolete calculation, model field, column,
-transport field, cache, flag, job, or test was found.
+the README harness row moves from "Coming soon" to Beta in Step 16. The planned
+temporary composer attachment-gate edit is obsolete because the merged
+plugin-discovery capability now carries support per descriptor; Step 15 removes
+that stale plan instruction instead of adding backend-specific client logic. No
+obsolete calculation, model field, column, transport field, cache, flag, job, or
+test was found.
 
 ## Delivery Rules
 
@@ -873,11 +874,13 @@ the unused-architecture problem avoided in Step 3.
 ### Step 15/17 — Add Claude Code Branding
 
 - Add the light and dark brand SVGs matching the existing brand assets'
-  conventions, add the logo and display-name cases, widen the composer attachment
-  gate, and update the affected client tests.
-- Verify: `flutter test` in `client/module_prego`, `client/module_core`, and
-  `client/app` for the touched tests. Asset-rendering tests may be flaky locally
-  in a worktree; trust CI for those.
+  conventions, add the logo and display-name cases, and update the affected
+  client tests. No composer gate edit remains because the client now consumes
+  the descriptor's prompt-attachment capability.
+- Verify: `flutter test` in `client/module_prego` and the touched
+  `client/app` tests. No `module_core` code changes remain after the capability
+  contract superseded its old attachment gate. Asset-rendering tests may be
+  flaky locally in a worktree; trust CI for those.
 
 ### Step 16/17 — Record Live Verification
 
