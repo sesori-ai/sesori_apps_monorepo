@@ -39,9 +39,14 @@ sealed class ClaudeSessionProcessEvent {
 }
 
 final class ClaudeSessionProcessMessage extends ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessMessage({required super.sessionId, required this.message});
+  const ClaudeSessionProcessMessage({
+    required super.sessionId,
+    required this.message,
+    required this.interrupted,
+  });
 
   final ClaudeStreamMessage message;
+  final bool interrupted;
 
   ClaudeControlRequestMessage? get controlRequest => switch (message) {
     final ClaudeControlRequestMessage request => request,
@@ -356,7 +361,13 @@ final class ClaudeSessionProcessRepository {
         current?.appliedModel = message.model;
       }
       if (!_events.isClosed) {
-        _events.add(ClaudeSessionProcessMessage(sessionId: sessionId, message: message));
+        _events.add(
+          ClaudeSessionProcessMessage(
+            sessionId: sessionId,
+            message: message,
+            interrupted: process.interrupted,
+          ),
+        );
       }
     });
     _resident[sessionId] = process;

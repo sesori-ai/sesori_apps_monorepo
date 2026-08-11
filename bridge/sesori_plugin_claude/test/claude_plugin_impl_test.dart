@@ -328,6 +328,32 @@ void main() {
       await subscription.cancel();
     });
 
+    test("suppresses the terminal result after an explicit interruption", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      await harness.plugin.abortSession(sessionId: testSessionId);
+      process.emit({
+        "type": "result",
+        "subtype": "error_during_execution",
+        "session_id": testSessionId,
+        "uuid": "interrupted-result",
+        "is_error": true,
+        "terminal_reason": "other",
+      });
+      await pump();
+
+      final errors = events
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => shared.Message.fromJson(event.info))
+          .whereType<shared.MessageError>();
+      expect(errors, isEmpty);
+      await subscription.cancel();
+    });
+
     test("persisted cleanup is idempotent for an absent transcript", () async {
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
