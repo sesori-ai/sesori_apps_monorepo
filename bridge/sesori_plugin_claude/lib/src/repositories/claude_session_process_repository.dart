@@ -234,7 +234,7 @@ final class ClaudeSessionProcessRepository {
       accepted: true,
       outcome: Future.any<ClaudeResultMessage?>([result, exit]).then((message) {
         if (process.interrupted) return const ClaudeTurnInterrupted();
-        if (message == null || message.isError || message.permissionDenials.isNotEmpty) {
+        if (message == null || message.isError) {
           return const ClaudeTurnFailed();
         }
         return const ClaudeTurnCompleted();

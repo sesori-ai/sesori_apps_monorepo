@@ -478,11 +478,11 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
   final String? stopReason;
   final ClaudeTerminalReason terminalReason;
 
-  /// Tools refused without the host being asked.
+  /// Tools refused during the turn.
   ///
-  /// A non-empty list on an otherwise successful turn is the signature of a
-  /// missing `--permission-prompt-tool stdio`, so it is surfaced rather than
-  /// dropped.
+  /// Rejections answered through `can_use_tool` are correlated by `tool_use_id`
+  /// before presentation. An unmatched entry on an otherwise successful turn
+  /// indicates that the host was not asked, so it remains a diagnostic error.
   final List<Map<String, Object?>> permissionDenials;
   final List<String> errors;
   final int? apiErrorStatus;

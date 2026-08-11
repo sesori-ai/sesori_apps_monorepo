@@ -422,7 +422,7 @@ String _retryMessage(ClaudeAssistantError error) => switch (error) {
 };
 
 ({String name, String message}) _resultError(ClaudeResultMessage result) {
-  if (result.permissionDenials.isNotEmpty) {
+  if (!result.isError && result.subtype == ClaudeResultSubtype.success && result.permissionDenials.isNotEmpty) {
     return (name: "permission_denied", message: "Claude Code denied a tool without requesting permission.");
   }
   if (result.apiErrorStatus == 401 || result.apiErrorStatus == 403) {

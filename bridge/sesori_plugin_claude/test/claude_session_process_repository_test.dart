@@ -56,6 +56,23 @@ void main() {
       expect(harness.specs.last.launch, isA<ClaudeNewSession>());
     });
 
+    test("classifies a successful result with permission denials as a completed transport turn", () async {
+      await _ensure(repository, createNew: true);
+      final turn = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "hello")],
+      );
+      await waitForFrame(harness.processes.single, "user");
+      harness.processes.single.emit({
+        ..._result(),
+        "permission_denials": [
+          {"tool_name": "Write", "tool_use_id": "toolu-1"},
+        ],
+      });
+
+      expect(await turn.outcome, isA<ClaudeTurnCompleted>());
+    });
+
     test("classifies an unexpected process exit as a failed turn", () async {
       await _ensure(repository, createNew: true);
       final exits = <ClaudeSessionProcessExited>[];

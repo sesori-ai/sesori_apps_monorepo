@@ -10,11 +10,17 @@ typedef ClaudeApprovalResponder =
     });
 
 sealed class _PendingApproval {
-  const _PendingApproval({required this.id, required this.requestId, required this.sessionId});
+  const _PendingApproval({
+    required this.id,
+    required this.requestId,
+    required this.sessionId,
+    required this.toolUseId,
+  });
 
   final String id;
   final String requestId;
   final String sessionId;
+  final String? toolUseId;
 }
 
 final class _PendingPermission extends _PendingApproval {
@@ -22,6 +28,7 @@ final class _PendingPermission extends _PendingApproval {
     required super.id,
     required super.requestId,
     required super.sessionId,
+    required super.toolUseId,
     required this.tool,
     required this.description,
     required this.input,
@@ -41,6 +48,7 @@ sealed class _PendingQuestion extends _PendingApproval {
     required super.id,
     required super.requestId,
     required super.sessionId,
+    required super.toolUseId,
     required this.input,
     required this.questions,
   });
@@ -56,6 +64,7 @@ final class _AskUserQuestion extends _PendingQuestion {
     required super.id,
     required super.requestId,
     required super.sessionId,
+    required super.toolUseId,
     required super.input,
     required super.questions,
   });
@@ -75,6 +84,7 @@ final class _ExitPlanMode extends _PendingQuestion {
     required super.id,
     required super.requestId,
     required super.sessionId,
+    required super.toolUseId,
     required super.input,
     required super.questions,
   });
@@ -88,6 +98,7 @@ final class _UnknownInteraction extends _PendingQuestion {
     required super.id,
     required super.requestId,
     required super.sessionId,
+    required super.toolUseId,
     required super.input,
     required super.questions,
   });
@@ -128,6 +139,7 @@ final class ClaudeApprovalRegistry {
   final ClaudeApprovalResponder _respond;
   final Map<String, _PendingApproval> _pending = {};
   final Map<String, Set<String>> _allowedTools = {};
+  final Map<String, Set<String>> _handledDenialToolIds = {};
   int _sequence = 0;
 
   bool handle({required String sessionId, required ClaudeControlRequestMessage message}) {
@@ -137,6 +149,7 @@ final class ClaudeApprovalRegistry {
 
     final request = message.request;
     final tool = _nonEmptyString(request["tool_name"]) ?? "tool";
+    final toolUseId = _nonEmptyString(request["tool_use_id"]);
     final input = _map(request["input"]);
     final id = "br-${++_sequence}";
     if (request["requires_user_interaction"] == true) {
@@ -146,6 +159,7 @@ final class ClaudeApprovalRegistry {
           id: id,
           requestId: requestId,
           sessionId: attributedSessionId,
+          toolUseId: toolUseId,
           input: input,
           questions: questions,
         ),
@@ -153,6 +167,7 @@ final class ClaudeApprovalRegistry {
           id: id,
           requestId: requestId,
           sessionId: attributedSessionId,
+          toolUseId: toolUseId,
           input: input,
           questions: questions,
         ),
@@ -160,6 +175,7 @@ final class ClaudeApprovalRegistry {
           id: id,
           requestId: requestId,
           sessionId: attributedSessionId,
+          toolUseId: toolUseId,
           input: input,
           questions: questions,
         ),
@@ -180,6 +196,7 @@ final class ClaudeApprovalRegistry {
       id: id,
       requestId: requestId,
       sessionId: attributedSessionId,
+      toolUseId: toolUseId,
       tool: tool,
       description: _description(request),
       input: input,
@@ -227,6 +244,20 @@ final class ClaudeApprovalRegistry {
   List<String> allowedToolsForSession({required String sessionId}) =>
       List.unmodifiable(_allowedTools[sessionId] ?? const <String>{});
 
+  bool consumeHandledPermissionDenials({
+    required String sessionId,
+    required List<Map<String, Object?>> denials,
+  }) {
+    if (denials.isEmpty) return false;
+    final handled = _handledDenialToolIds[sessionId];
+    if (handled == null) return false;
+    final toolUseIds = denials.map((denial) => _nonEmptyString(denial["tool_use_id"])).toList(growable: false);
+    final allHandled = toolUseIds.every((toolUseId) => toolUseId != null && handled.contains(toolUseId));
+    handled.removeAll(toolUseIds.whereType<String>());
+    if (handled.isEmpty) _handledDenialToolIds.remove(sessionId);
+    return allHandled;
+  }
+
   bool hasPendingInput({required String sessionId}) => _pending.values.any((entry) => entry.sessionId == sessionId);
 
   bool hasPermission({required String id}) => _pending[id] is _PendingPermission;
@@ -252,6 +283,7 @@ final class ClaudeApprovalRegistry {
       PluginPermissionReply.reject => <String, Object?>{"behavior": "deny", "message": "User denied permission."},
     };
     if (!_respond(sessionId: entry.sessionId, requestId: entry.requestId, payload: payload)) return false;
+    if (reply == PluginPermissionReply.reject) _recordHandledDenial(entry);
     if (reply == PluginPermissionReply.always && entry.allowAlways) {
       final allowedTools = _allowedTools.putIfAbsent(entry.sessionId, () => {});
       for (final suggestion in entry.suggestions) {
@@ -313,11 +345,13 @@ final class ClaudeApprovalRegistry {
     _pending.clear();
     _allowedTools.clear();
     entries.forEach(_cancel);
+    _handledDenialToolIds.clear();
   }
 
   void forgetSession({required String sessionId}) {
     cancelForSession(sessionId: sessionId);
     _allowedTools.remove(sessionId);
+    _handledDenialToolIds.remove(sessionId);
   }
 
   void _cancel(_PendingApproval entry) {
@@ -345,11 +379,20 @@ final class ClaudeApprovalRegistry {
     }
   }
 
-  bool _deny({required _PendingApproval entry, required String message}) => _respond(
-    sessionId: entry.sessionId,
-    requestId: entry.requestId,
-    payload: {"behavior": "deny", "message": message},
-  );
+  bool _deny({required _PendingApproval entry, required String message}) {
+    final responded = _respond(
+      sessionId: entry.sessionId,
+      requestId: entry.requestId,
+      payload: {"behavior": "deny", "message": message},
+    );
+    if (responded) _recordHandledDenial(entry);
+    return responded;
+  }
+
+  void _recordHandledDenial(_PendingApproval entry) {
+    final toolUseId = entry.toolUseId;
+    if (toolUseId != null) (_handledDenialToolIds[entry.sessionId] ??= {}).add(toolUseId);
+  }
 }
 
 Iterable<String> _allowedToolRules(Map<String, Object?> suggestion) sync* {
