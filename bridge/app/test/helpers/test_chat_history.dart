@@ -4,6 +4,7 @@ import "package:drift/native.dart";
 import "package:sesori_bridge/src/api/archived_session_storage.dart";
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
+import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
@@ -26,7 +27,10 @@ typedef TestChatHistory = ({
 ///
 /// [sessionRepository] is only needed by backfill; tests that never backfill
 /// can leave it null and get a repository that fails loudly if asked.
-TestChatHistory createTestChatHistory({SessionRepository? sessionRepository}) {
+TestChatHistory createTestChatHistory({
+  SessionRepository? sessionRepository,
+  AttachmentThumbnailBuilder attachmentThumbnailBuilder = const AttachmentThumbnailBuilder(),
+}) {
   final directory = Directory.systemTemp.createTempSync("sesori_chat_history_test");
   final database = ChatHistoryDatabase(NativeDatabase.memory());
   final spillStorage = AttachmentSpillStorage(
@@ -57,6 +61,7 @@ TestChatHistory createTestChatHistory({SessionRepository? sessionRepository}) {
     service: ChatHistoryService(
       chatHistoryRepository: repository,
       sessionRepository: sessionRepository ?? _UnusedSessionRepository(),
+      attachmentThumbnailBuilder: attachmentThumbnailBuilder,
     ),
     directory: directory,
   );

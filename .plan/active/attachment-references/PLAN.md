@@ -243,7 +243,7 @@ Generate the thumbnail lazily on the first request and persist it atomically.
 The concrete bridge owners are:
 
 - `AttachmentThumbnailBuilder` in
-  `bridge/app/lib/src/bridge/repositories/builders/attachment_thumbnail_builder.dart`
+  `bridge/app/lib/src/bridge/repositories/attachment_thumbnail_builder.dart`
   is a pure, zero-collaborator Layer-2 transformation over the pure-Dart image
   codec, beside the attachment projection/mapping policy it implements. It runs
   off the main isolate, reads metadata first, rejects dimensions/pixel counts
@@ -254,8 +254,8 @@ The concrete bridge owners are:
   thumbnail from the live and archived spill roots, project a stored message's
   attachment collection for capable/legacy delivery, and atomically persist a
   generated thumbnail through the existing Layer-1 storage APIs.
-- `ChatHistoryService` requires `AttachmentThumbnailBuilder` and the existing
-  `BridgeIdProvider`; its attachment-read method enters the existing
+- `ChatHistoryService` requires `AttachmentThumbnailBuilder`; its
+  attachment-read method enters the existing
   per-session queue before live/archive selection, and it owns one coarse
   generation lane inside that queue so a page of uncached previews cannot
   launch many full-image decodes concurrently. It does not touch
@@ -601,8 +601,8 @@ the documented defaults.
   write, archive-copy, hardening, and purge conventions.
 - Add live-then-archive original/thumbnail methods to
   `ChatHistoryRepository`; extend
-  `ChatHistoryService(repository, builder, bridgeIdProvider)` with session-queued
-  rendition selection and the single generation lane; and
+  `ChatHistoryService(repository, builder)` with session-queued rendition
+  selection and the single generation lane; and
   register `GetSessionAttachmentHandler(chatHistoryService)` for
   `POST /session/attachment`.
 - Cover original/thumbnail success, first-frame behavior, transparency,
@@ -618,6 +618,8 @@ retrieve one E2E-ready rendition from an existing spill file.
 
 - Thread delivery mode through handler, service, active page, and archived page
   reads.
+- Inject the existing `BridgeIdProvider` into `ChatHistoryService` when history
+  projection first needs to stamp required bridge identity.
 - Project internal `stored_file` to `stored_image` without reading originals for
   capable requests.
 - Preserve legacy inline collection budgets and metadata degradation.

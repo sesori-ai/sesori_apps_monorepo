@@ -1,12 +1,37 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/models/archived_session_file_dto.dart";
+import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/chat_history_repository.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
+
+sealed class SessionAttachmentResult {
+  const SessionAttachmentResult();
+}
+
+final class SessionAttachmentFound extends SessionAttachmentResult {
+  final Uint8List bytes;
+  final String mime;
+
+  const SessionAttachmentFound({required this.bytes, required this.mime});
+}
+
+final class SessionAttachmentMissing extends SessionAttachmentResult {
+  const SessionAttachmentMissing();
+}
+
+final class SessionAttachmentUnsupported extends SessionAttachmentResult {
+  const SessionAttachmentUnsupported();
+}
+
+final class SessionAttachmentTooLarge extends SessionAttachmentResult {
+  const SessionAttachmentTooLarge();
+}
 
 /// The single writer of the chat history store.
 ///
@@ -16,13 +41,19 @@ class ChatHistoryService {
   ChatHistoryService({
     required ChatHistoryRepository chatHistoryRepository,
     required SessionRepository sessionRepository,
+    required AttachmentThumbnailBuilder attachmentThumbnailBuilder,
   }) : _chatHistoryRepository = chatHistoryRepository,
-       _sessionRepository = sessionRepository;
+       _sessionRepository = sessionRepository,
+       _attachmentThumbnailBuilder = attachmentThumbnailBuilder;
 
   final ChatHistoryRepository _chatHistoryRepository;
   final SessionRepository _sessionRepository;
+  final AttachmentThumbnailBuilder _attachmentThumbnailBuilder;
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
+  Future<void> _thumbnailGenerationLane = Future.value();
+
+  static const _maxStoredImageBytes = 20 * 1024 * 1024;
 
   /// One page of the session's messages, served from the store whenever it is
   /// known to be current and falling back to the backend otherwise.
@@ -84,6 +115,85 @@ class ChatHistoryService {
         before: before,
       ),
     );
+  }
+
+  Future<SessionAttachmentResult> getSessionAttachment({
+    required String sessionId,
+    required String attachmentId,
+    required SessionAttachmentRendition rendition,
+  }) {
+    return _enqueueRead(
+      sessionId: sessionId,
+      read: () async {
+        if (rendition == SessionAttachmentRendition.thumbnail) {
+          final cached = await _chatHistoryRepository.readStoredAttachmentThumbnail(
+            sessionId: sessionId,
+            attachmentId: attachmentId,
+          );
+          if (cached != null) {
+            return SessionAttachmentFound(bytes: cached.bytes, mime: cached.format.mime);
+          }
+        }
+
+        final original = await _chatHistoryRepository.readStoredAttachment(
+          sessionId: sessionId,
+          attachmentId: attachmentId,
+        );
+        if (original == null) return const SessionAttachmentMissing();
+        if (original.bytes.length > _maxStoredImageBytes) {
+          return const SessionAttachmentTooLarge();
+        }
+
+        if (rendition == SessionAttachmentRendition.original) {
+          final mime = _attachmentThumbnailBuilder.detectSupportedMime(bytes: original.bytes);
+          return mime == null
+              ? const SessionAttachmentUnsupported()
+              : SessionAttachmentFound(bytes: original.bytes, mime: mime);
+        }
+
+        final built = await _buildThumbnail(bytes: original.bytes);
+        return switch (built) {
+          AttachmentThumbnailRendered(:final bytes, :final format) =>
+            await _chatHistoryRepository.writeStoredAttachmentThumbnail(
+                  sessionId: sessionId,
+                  attachmentId: attachmentId,
+                  location: original.location,
+                  format: format,
+                  bytes: bytes,
+                )
+                ? SessionAttachmentFound(bytes: bytes, mime: format.mime)
+                : const SessionAttachmentMissing(),
+          AttachmentThumbnailUnsupported() => const SessionAttachmentUnsupported(),
+          AttachmentThumbnailTooLarge() => const SessionAttachmentTooLarge(),
+          AttachmentThumbnailFailed(:final cause, :final stackTrace) => _logThumbnailFailure(
+            sessionId: sessionId,
+            attachmentId: attachmentId,
+            cause: cause,
+            stackTrace: stackTrace,
+          ),
+        };
+      },
+    );
+  }
+
+  Future<AttachmentThumbnailBuildResult> _buildThumbnail({required Uint8List bytes}) {
+    final result = _thumbnailGenerationLane.then((_) => _attachmentThumbnailBuilder.build(bytes: bytes));
+    _thumbnailGenerationLane = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
+  }
+
+  SessionAttachmentResult _logThumbnailFailure({
+    required String sessionId,
+    required String attachmentId,
+    required Object cause,
+    required StackTrace stackTrace,
+  }) {
+    Log.w(
+      "Failed to generate attachment thumbnail for session $sessionId, attachment $attachmentId",
+      cause,
+      stackTrace,
+    );
+    return const SessionAttachmentUnsupported();
   }
 
   /// Records backend activity observed outside the live event stream, so a
@@ -286,8 +396,7 @@ class ChatHistoryService {
 
   Future<Set<String>> getArchivedSessionIds() => _chatHistoryRepository.getArchivedSessionIds();
 
-  Future<bool> hasArchive({required String sessionId}) =>
-      _chatHistoryRepository.hasArchive(sessionId: sessionId);
+  Future<bool> hasArchive({required String sessionId}) => _chatHistoryRepository.hasArchive(sessionId: sessionId);
 
   /// Removes the session's stored transcript and attachment bytes.
   Future<void> purgeSessionHistory({required String sessionId, bool includeArchive = false}) {

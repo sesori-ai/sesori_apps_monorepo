@@ -40,6 +40,14 @@ typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
 /// capture never claims to be a complete transcript.
 typedef ChatHistorySyncState = ({int watermark, int backendActivityAt, int? syncedAt});
 
+enum StoredAttachmentLocation { live, archived }
+
+typedef StoredAttachmentBytes = ({Uint8List bytes, StoredAttachmentLocation location});
+typedef StoredAttachmentThumbnail = ({
+  Uint8List bytes,
+  AttachmentThumbnailFormat format,
+});
+
 /// Owns the stored representation of chat history: database rows, their JSON
 /// payloads, and the attachment spill files those payloads reference.
 class ChatHistoryRepository {
@@ -59,6 +67,50 @@ class ChatHistoryRepository {
   final AttachmentSpillStorage _attachmentSpillStorage;
   final ArchivedSessionStorage _archivedSessionStorage;
   final AttachmentSpillStorage _archivedAttachmentStorage;
+
+  Future<StoredAttachmentBytes?> readStoredAttachment({
+    required String sessionId,
+    required String attachmentId,
+  }) async {
+    if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
+    final live = await _attachmentSpillStorage.read(sessionId: sessionId, digest: attachmentId);
+    if (live != null) return (bytes: live, location: StoredAttachmentLocation.live);
+    final archived = await _archivedAttachmentStorage.read(sessionId: sessionId, digest: attachmentId);
+    return archived == null ? null : (bytes: archived, location: StoredAttachmentLocation.archived);
+  }
+
+  Future<StoredAttachmentThumbnail?> readStoredAttachmentThumbnail({
+    required String sessionId,
+    required String attachmentId,
+  }) async {
+    if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
+    final live = await _attachmentSpillStorage.readThumbnail(sessionId: sessionId, digest: attachmentId);
+    if (live != null) {
+      return (bytes: live.bytes, format: live.format);
+    }
+    final archived = await _archivedAttachmentStorage.readThumbnail(sessionId: sessionId, digest: attachmentId);
+    return archived == null ? null : (bytes: archived.bytes, format: archived.format);
+  }
+
+  Future<bool> writeStoredAttachmentThumbnail({
+    required String sessionId,
+    required String attachmentId,
+    required StoredAttachmentLocation location,
+    required AttachmentThumbnailFormat format,
+    required Uint8List bytes,
+  }) {
+    if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return Future.value(false);
+    final storage = switch (location) {
+      StoredAttachmentLocation.live => _attachmentSpillStorage,
+      StoredAttachmentLocation.archived => _archivedAttachmentStorage,
+    };
+    return storage.writeThumbnail(
+      sessionId: sessionId,
+      digest: attachmentId,
+      format: format,
+      bytes: bytes,
+    );
+  }
 
   Future<ChatHistorySyncState?> getSyncState({required String sessionId}) async {
     final row = await _chatHistoryDao.getSyncState(sessionId: sessionId);
@@ -367,9 +419,7 @@ class ChatHistoryRepository {
             for (final entry in ordered)
               if (entry.seq < before) entry,
           ];
-    final page = limit == null || eligible.length <= limit
-        ? eligible
-        : eligible.sublist(eligible.length - limit);
+    final page = limit == null || eligible.length <= limit ? eligible : eligible.sublist(eligible.length - limit);
     return (
       messages: [
         for (final entry in page)
@@ -391,8 +441,7 @@ class ChatHistoryRepository {
     );
   }
 
-  Future<bool> hasArchive({required String sessionId}) =>
-      _archivedSessionStorage.exists(sessionId: sessionId);
+  Future<bool> hasArchive({required String sessionId}) => _archivedSessionStorage.exists(sessionId: sessionId);
 
   Future<Set<String>> getArchivedSessionIds() => _archivedSessionStorage.listArchivedSessionIds();
 

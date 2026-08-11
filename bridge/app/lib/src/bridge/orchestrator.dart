@@ -69,6 +69,7 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
+import "repositories/attachment_thumbnail_builder.dart";
 import "repositories/chat_history_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
@@ -103,6 +104,7 @@ import "routing/get_current_project_handler.dart";
 import "routing/get_project_questions_handler.dart";
 import "routing/get_projects_handler.dart";
 import "routing/get_providers_handler.dart";
+import "routing/get_session_attachment_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
@@ -477,6 +479,7 @@ class Orchestrator {
         archivedAttachmentStorage: _archivedAttachmentStorage,
       ),
       sessionRepository: sessionRepository,
+      attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
     );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
@@ -589,6 +592,7 @@ class Orchestrator {
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
         ),
+        GetSessionAttachmentHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
           sessionRepository: sessionRepository,

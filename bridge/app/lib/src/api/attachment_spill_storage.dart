@@ -10,6 +10,21 @@ import "data_directory_hardening.dart";
 String attachmentSpillDirectoryPath({required String dataDirectory}) =>
     path.join(dataDirectory, "history", "attachments");
 
+enum AttachmentThumbnailFormat {
+  jpeg,
+  png;
+
+  String get extension => switch (this) {
+    AttachmentThumbnailFormat.jpeg => "jpg",
+    AttachmentThumbnailFormat.png => "png",
+  };
+
+  String get mime => switch (this) {
+    AttachmentThumbnailFormat.jpeg => "image/jpeg",
+    AttachmentThumbnailFormat.png => "image/png",
+  };
+}
+
 /// Raw file boundary for attachment bytes kept out of the database.
 ///
 /// Files are content-addressed by the sha256 of their decoded bytes under a
@@ -59,12 +74,56 @@ class AttachmentSpillStorage {
 
   /// The stored bytes, or null when the spill file is gone.
   Future<Uint8List?> read({required String sessionId, required String digest}) async {
-    if (!_isContentAddress(digest: digest)) {
+    if (!isContentAddress(digest: digest)) {
       throw ArgumentError.value(digest, "digest", "not a sha256 content address");
     }
     final file = File(_filePath(sessionId: sessionId, digest: digest));
     if (!file.existsSync()) return null;
     return file.readAsBytes();
+  }
+
+  Future<({Uint8List bytes, AttachmentThumbnailFormat format})?> readThumbnail({
+    required String sessionId,
+    required String digest,
+  }) async {
+    if (!isContentAddress(digest: digest)) {
+      throw ArgumentError.value(digest, "digest", "not a sha256 content address");
+    }
+    for (final format in AttachmentThumbnailFormat.values) {
+      final file = File(_thumbnailPath(sessionId: sessionId, digest: digest, format: format));
+      if (file.existsSync()) return (bytes: await file.readAsBytes(), format: format);
+    }
+    return null;
+  }
+
+  /// Atomically writes a derived rendition beside its source original.
+  ///
+  /// The session directory is deliberately not created here. A thumbnail for a
+  /// purged source must not recreate that source's retention root.
+  Future<bool> writeThumbnail({
+    required String sessionId,
+    required String digest,
+    required AttachmentThumbnailFormat format,
+    required Uint8List bytes,
+  }) async {
+    if (!isContentAddress(digest: digest)) {
+      throw ArgumentError.value(digest, "digest", "not a sha256 content address");
+    }
+    final file = File(_thumbnailPath(sessionId: sessionId, digest: digest, format: format));
+    if (file.existsSync()) return true;
+    if (!file.parent.existsSync()) return false;
+
+    final temporary = File("${file.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp");
+    try {
+      await temporary.writeAsBytes(bytes, flush: true);
+      await hardenPath(targetPath: temporary.path, mode: ownerOnlyFileMode);
+      await temporary.rename(file.path);
+    } on FileSystemException {
+      if (!file.existsSync()) rethrow;
+    } finally {
+      if (temporary.existsSync()) temporary.deleteSync();
+    }
+    return true;
   }
 
   static Future<bool> _holdsDigest({required File file, required String digest}) async {
@@ -78,7 +137,7 @@ class AttachmentSpillStorage {
 
   /// Guards the file boundary: only names this class generates may address a
   /// spill file, so a malformed reference can never escape the directory.
-  static bool _isContentAddress({required String digest}) {
+  static bool isContentAddress({required String digest}) {
     return digest.length == 64 && RegExp(r"^[0-9a-f]{64}$").hasMatch(digest);
   }
 
@@ -133,6 +192,12 @@ class AttachmentSpillStorage {
 
   String _filePath({required String sessionId, required String digest}) =>
       path.join(_sessionDirectoryPath(sessionId: sessionId), digest);
+
+  String _thumbnailPath({
+    required String sessionId,
+    required String digest,
+    required AttachmentThumbnailFormat format,
+  }) => path.join(_sessionDirectoryPath(sessionId: sessionId), "$digest.thumbnail-v1.${format.extension}");
 
   /// Session ids are bridge-generated (`ses_<hex>`), but they address a
   /// directory here, so encode rather than trust their shape.
