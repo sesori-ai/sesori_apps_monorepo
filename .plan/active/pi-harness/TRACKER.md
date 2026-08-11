@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `c3d21c78`
+- **Implementation base:** `origin/main` at `83c73a7b`
 - **Series state:** Step 3/15 in review
 - **Current step:** 3/15, JSONL RPC transport
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
@@ -106,7 +106,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 - `dart test` from `bridge/sesori_plugin_pi/`: pass, 59 tests.
 - `dart analyze --fatal-infos` from `bridge/sesori_plugin_pi/`: pass.
 - Architecture implementation review: approved with no findings.
-- Diff: +2,570/-17 = 2,587 changed lines; generated lines: 0; tests run: 59.
+- Diff: +2,602/-17 = 2,619 changed lines; generated lines: 0; tests run: 59.
 - Recorded overage: the strict framer, complete sealed discriminator boundary,
   process lifecycle, and their failure/backpressure tests are one coherent
   transport seam; splitting it would publish an untyped or unverified client.
