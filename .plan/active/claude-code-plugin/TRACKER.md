@@ -4,13 +4,13 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `fcca943c` (Step 11 started after Step 10 merged)
-- **Series state:** Steps 1-10/17 merged; Step 11/17 PR open
-- **Current step:** 11/17 — model and agent catalog in review
+  `ba2f6f7b` (Step 14 started after Step 13 merged)
+- **Series state:** Steps 1-13/17 merged; Step 14/17 PR open
+- **Current step:** 14/17 — Claude Code harness registration in review
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Wait for Step 11 PR #809 to merge, then wait for explicit
-  direction before starting Step 12
+- **Next action:** Monitor Step 14 PR #816, then wait for explicit direction
+  after merge before starting Step 15
 
 ## Plan Review
 
@@ -55,10 +55,10 @@
 | [x] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | [PR #803](https://github.com/sesori-ai/sesori_apps_monorepo/pull/803) merged 2026-08-10 as `944e07e7` |
 | [x] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | [PR #805](https://github.com/sesori-ai/sesori_apps_monorepo/pull/805) merged 2026-08-10 as `8280e691` |
 | [x] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | [PR #808](https://github.com/sesori-ai/sesori_apps_monorepo/pull/808) merged 2026-08-11 as `fcca943c` |
-| [ ] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | [PR #809](https://github.com/sesori-ai/sesori_apps_monorepo/pull/809) open against `main` |
-| [ ] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | Not started |
-| [ ] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | Not started |
-| [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | Not started |
+| [x] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | [PR #809](https://github.com/sesori-ai/sesori_apps_monorepo/pull/809) merged 2026-08-11 as `ca521672` |
+| [x] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | [PR #813](https://github.com/sesori-ai/sesori_apps_monorepo/pull/813) merged 2026-08-11 as `f0d705bc` |
+| [x] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | [PR #815](https://github.com/sesori-ai/sesori_apps_monorepo/pull/815) merged 2026-08-11 as `ba2f6f7b` |
+| [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) open against `main` |
 | [ ] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | Not started |
 | [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Not started |
 | [ ] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Not started |
@@ -358,7 +358,103 @@
   including generated Freezed/JSON output, within the 900-1,300 estimate and
   below the 1,500-line soft cap.
 
+- Step 12/17 (2026-08-11): added `ClaudePlugin` as the Layer-4 implementation
+  of `BridgeDerivedProjectsPluginApi` and `PersistedSessionCleanupApi` over the
+  Step 3-11 components. It owns the buffered event surface, fresh and refreshed
+  catalog discovery, created-session attribution, contract error translation,
+  transcript history and cleanup, prompt/command dispatch, interaction replies,
+  activity summaries, and idempotent disposal. Existing owners gained only the
+  state and operations needed at their boundaries: queue-safe process selection,
+  launch-only effort respawn, deletion fencing/status snapshots, pending-input
+  queries, and honest transcript-delete failures.
+
+  Focused contract tests cover pre-session catalog discovery and reuse,
+  buffered creation events, generated identity, fail-closed identity mismatch,
+  exact slash-command dispatch, launch-only effort respawn, not-found behavior,
+  active summaries, delete fencing, and idempotent persisted cleanup. A live
+  CLI 2.1.226 probe confirmed `/help` sent as ordinary stream-json user text
+  completes successfully. Review fixes added backend-acceptance receipts,
+  restart-safe removal of bridge-owned worktree context from visible history,
+  visible prompt/command synthesis, retry snapshots, and complete deletion
+  fencing. All 186 package tests, `dart analyze --fatal-infos`, and
+  `git diff --check` pass. The final diff is 1,468 changed lines across 17 files:
+  1,387 additions and 81 deletions, with no generated files changed. It remains
+  within the 1,200-1,500 estimate and below the 1,500-line soft cap.
+
+  Architecture implementation review rejected the original identity mismatch
+  policy because the plan said the reported id should replace the pre-bound id.
+  The user chose fail-closed on 2026-08-11: live probes show `--session-id` is
+  honored, while adopting a new id after creation would require atomic migration
+  across every session owner. `PLAN.md` now records teardown plus a session
+  error as the safe response. That explicit decision supersedes the review and
+  was not re-reviewed.
+
+- Step 13/17 local implementation (2026-08-11): added the exported, unregistered
+  `ClaudePluginDescriptor` with the bare `bin` option, bounded host-routed
+  `--version` and `auth status` probes, a `SemanticVersion` floor of 2.1.221,
+  and a generated PII-excluding auth DTO that retains only nullable `loggedIn`.
+  Setup inspection returns ready, runtime missing, authentication required,
+  unavailable, or unknown, with a non-empty action hint for every non-ready
+  state and no `PluginSetupNotInspected` path.
+
+  Added `ClaudeBridgePlugin` over `SteadyPluginLifecycle`, explicit composition
+  of the Step 3-12 collaborators, host-backed Windows-shell process spawning,
+  entry and post-construction abort checks with `shutdown(budget: null)`
+  rollback, bounded active-work interruption, and plugin disposal. Typed spawn
+  outcomes degrade recoverably on binary launch failure and restore ready on a
+  later successful spawn; ordinary per-session exits do not alter plugin
+  lifecycle status. The descriptor is exported but remains absent from app
+  registration for Step 14.
+
+  Focused descriptor/session lifecycle tests pass (18 tests), including exact
+  probe order, all five setup states, auth PII exclusion, timeout force-kill,
+  both abort boundaries, rollback evidence, host process arguments, bounded
+  interruption, and degraded/ready/session-exit transitions. The full owning
+  package suite passes 197 tests, `dart analyze --fatal-infos` reports no
+  issues, generated DTO code was produced with `build_runner`, and
+  `git diff --check` passes. Before this tracker update, the implementation was
+  1,063 changed lines (all additions), including 145 generated lines, within the
+  1,100-1,500 estimate once plan evidence is included and below the 1,500-line
+  soft cap.
+
+  Architecture implementation review of the full tracked and untracked Step 13
+  diff against `main` returned `APPROVED` with no findings. It confirmed the
+  descriptor composition, lifecycle ownership, host process seam, and package
+  dependency direction preserve the bridge architecture.
+
+- Step 14/17 local implementation (2026-08-11): added `Harness.claude` as the
+  shared built-in identity, added the Claude package to the bridge app's
+  workspace dependencies, and registered `ClaudePluginDescriptor` at
+  `plugin_registry.dart`, the sole concrete-plugin composition point. Updated
+  the registry assertion to cover all four bundled harnesses while leaving the
+  OpenCode preferred default unchanged. Existing backend-neutral session
+  analytics already instrument authoritative outcomes, so this registration
+  adds no provider-specific analytics event.
+
+  `dart pub get`, full `make analyze`, every bridge module test suite (including
+  all 2,532 app tests), app and shared `dart analyze --fatal-infos`, and
+  `git diff $(git merge-base origin/main HEAD) --check` pass. The source-run
+  `dart run app/bin/bridge.dart --version` smoke reports `1.8.0`. Architecture
+  implementation review of the
+  full Step 14 diff against `origin/main` returned `APPROVED` with no findings;
+  it confirmed the bridge dependency direction, designated registry seam, and
+  additive shared identity remain valid. The final diff is 44 changed lines (35
+  additions and 9 deletions), measured with `git diff $(git merge-base
+  origin/main HEAD) --numstat`, below the 250-500 estimate because the existing
+  registry seam required no extra plumbing. Generated lines: 0. No database
+  state change in this step.
+
 ## Findings And Plan Deltas
+
+- **2026-08-11 — Session identity mismatches fail closed:** architecture review
+  exposed that the plan's old "reported id wins" wording required broad atomic
+  rekeying after `createSession` had already returned. Because live verification
+  proves Claude honors the pre-bound `--session-id`, the user chose to stop and
+  surface an error if that invariant is ever violated rather than add migration
+  machinery for a state no supported flow produces.
+- **2026-08-11 — Slash text dispatch verified:** CLI 2.1.226 accepted `/help`
+  as an ordinary stream-json user text block and completed with a successful
+  result. `sendCommand` can use the normal serialized turn path.
 
 - **2026-08-04 — Most of `projects/` is not sessions:** the Step 2 capture came
   from one freshly created transcript, which made the tree look uniform. In a

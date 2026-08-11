@@ -41,6 +41,7 @@ void main() {
               (
                 id: "opencode",
                 displayName: "OpenCode",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -193,8 +194,9 @@ void main() {
   });
 
   group("OrchestratorSession SSE error recovery", () {
-    test("local options listener starts before an initial relay connect failure", () async {
+    test("local plugin listeners start before an initial relay connect failure", () async {
       final plugin = _ThrowingSummaryPlugin();
+      final connectGate = Completer<void>();
       final database = createTestDatabase();
       final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
       final httpClient = http.Client();
@@ -206,7 +208,7 @@ void main() {
           sseReplayWindow: Duration(minutes: 1),
           yolo: false,
         ),
-        client: _ThrowingConnectRelayClient(),
+        client: _ThrowingConnectRelayClient(connectGate: connectGate.future),
         legacyMissingPluginId: plugin.id,
         pluginLifecycleService: lifecycleService,
         pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
@@ -233,17 +235,22 @@ void main() {
 
       await expectLater(session.waitUntilStopped(), throwsA(isA<StateError>()));
       final localWireEventsDone = session.localWireEvents.drain<void>();
+      final localPluginEvent = session.localWireEvents.firstWhere((event) => event is SesoriVcsBranchUpdated);
       final startFuture = session.start();
       final stopped = session.waitUntilStopped();
       stopped.ignore();
       expect(identical(stopped, session.waitUntilStopped()), isTrue);
+
+      plugin.add(const BridgeSseVcsBranchUpdated());
+      expect(await localPluginEvent.timeout(const Duration(seconds: 2)), isA<SesoriVcsBranchUpdated>());
+      connectGate.complete();
 
       await expectLater(startFuture, throwsA(isA<Exception>()));
       await expectLater(stopped, throwsA(isA<Exception>()));
       await expectLater(localWireEventsDone, completes);
       await expectLater(session.start(), throwsA(isA<StateError>()));
 
-      expect(plugin.subscribeCount, equals(1));
+      expect(plugin.subscribeCount, equals(2));
 
       await lifecycleService.dispose();
       httpClient.close();
@@ -573,15 +580,19 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
 }
 
 class _ThrowingConnectRelayClient extends RelayClient {
-  _ThrowingConnectRelayClient()
-    : super(
+  _ThrowingConnectRelayClient({required Future<void> connectGate})
+    : _connectGate = connectGate,
+      super(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
+  final Future<void> _connectGate;
+
   @override
   Future<RelayConnection> connect() async {
+    await _connectGate;
     throw StateError("connect failed");
   }
 }

@@ -430,10 +430,10 @@ Consequence for Step 11: the picker sends `set_permission_mode`, and the
 `{name, description, argumentHint}`, and `system/init` carries a
 `slash_commands` list as well.
 
-**OPEN:** whether sending `/command args` as ordinary turn text actually
-dispatches the command in stream-json mode. Verify before Step 12 wires
-`sendCommand`; if it does not, `sendCommand` degrades to a
-`PluginOperationException`.
+**Verified against CLI 2.1.226.** Sending `/help` as an ordinary stream-json
+user text block after `initialize` produced `system/init`, an assistant reply,
+and a successful terminal `result`. `sendCommand` therefore dispatches
+`/command args` through the same serialized turn path as a prompt.
 
 ## 8. Authentication
 

@@ -27,6 +27,7 @@ typedef PluginCompositionView = ({
 typedef RegisteredPluginMetadata = ({
   String id,
   String displayName,
+  PluginActivationPolicy activationPolicy,
   PluginResidencyPolicy residencyPolicy,
   PluginSessionOptionsScope sessionOptionsScope,
   Set<PluginControlCapability> managementCapabilities,
@@ -35,6 +36,7 @@ typedef RegisteredPluginMetadata = ({
 
 typedef PluginStartupPolicy = ({
   List<String> eligiblePluginIds,
+  List<String> eagerPluginIds,
   String? defaultPluginId,
 });
 
@@ -159,6 +161,13 @@ class PluginLifecycleService {
     _applyAccess();
     _rebuildMetadata();
     final defaultPluginId = _selectableDefaultPluginId();
+    final eagerPluginIds = List<String>.unmodifiable([
+      for (final plugin in registeredPlugins)
+        if (eligiblePluginIds.contains(plugin.id) &&
+            setupReadyPluginIds.contains(plugin.id) &&
+            plugin.activationPolicy == PluginActivationPolicy.eager)
+          plugin.id,
+    ]);
     _metadataSubject = BehaviorSubject<List<PluginMetadata>>.seeded(_orderedMetadata());
     _readyPluginIdsSubject = BehaviorSubject<List<String>>.seeded(
       _buildReadyPluginIds(_lifecycleRepository.snapshot),
@@ -169,6 +178,7 @@ class PluginLifecycleService {
     _runtimeSubscription = _lifecycleRepository.snapshots.listen(_applyRuntimeSnapshots);
     return (
       eligiblePluginIds: eligiblePluginIds,
+      eagerPluginIds: eagerPluginIds,
       defaultPluginId: defaultPluginId,
     );
   }

@@ -1127,6 +1127,10 @@ class SessionRepository {
     return existing;
   }
 
+  Future<Set<String>> getStoredSessionIdsForPlugin({required String pluginId}) {
+    return _sessionDao.getSessionIdsForPlugin(pluginId: pluginId);
+  }
+
   /// The subset of [sessionIds] the catalog reports as archived.
   ///
   /// Distinguishes "the archive completed" from "an export ran but the archive

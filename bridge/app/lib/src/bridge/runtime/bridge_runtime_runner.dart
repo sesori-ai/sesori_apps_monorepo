@@ -654,6 +654,7 @@ class BridgeRuntimeRunner {
                 (
                   id: descriptor.id,
                   displayName: descriptor.displayName,
+                  activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
                   residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
                   sessionOptionsScope: descriptor.sessionOptionsScope,
                   managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
@@ -887,6 +888,13 @@ class BridgeRuntimeRunner {
       final sessionStart = activeRuntime.session.start();
       sessionStart.ignore();
       sessionRun = activeRuntime.session.waitUntilStopped();
+      // Abort eager startup promptly, but defer the full coordinator until all
+      // startup resources have registered their teardown actions below.
+      activeRuntime.session.shutdownRequested.then((_) {
+        startAbortController.abort();
+        activePluginRuntime.beginShutdown();
+      }).ignore();
+      await activePluginRuntime.startEager(pluginIds: startupPolicy.eagerPluginIds);
       await startDebugServerIfRequested(
         debugPort: options.debugPort,
         runtime: activeRuntime,
@@ -922,16 +930,9 @@ class BridgeRuntimeRunner {
         onboardingPreparation = null;
       }
 
-      // Start the ordered shutdown the moment the session begins shutting down
-      // (any trigger: signal, supervised logout/restart, control-channel loss),
-      // so the coordinator's signal phase interrupts in-flight agent work and
-      // its backstop bounds the session teardown itself — a teardown blocked
-      // on agent-coupled requests must not hang the process with no deadline.
-      // Registered after startup wiring so every phase action and disposable
-      // above is in place (no agent-coupled work can exist before startup
-      // completes anyway). The runner's finally joins the same (memoized)
-      // shutdown future and applies the exit-code policy there, so this
-      // early-start copy only marks its error as handled.
+      // Start the ordered shutdown once every startup resource has registered
+      // its teardown. If shutdown was already requested, Future.then schedules
+      // this immediately and joins the same memoized shutdown used in finally.
       activeRuntime.session.shutdownRequested.then((_) => shutdownCoordinator.shutdown()).ignore();
 
       final startResult = await sessionStart;

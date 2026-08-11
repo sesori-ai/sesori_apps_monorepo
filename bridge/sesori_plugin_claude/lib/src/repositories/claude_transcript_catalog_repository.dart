@@ -102,18 +102,12 @@ class ClaudeTranscriptCatalogRepository {
     return path == null ? null : _readSessionRecord(path);
   }
 
-  /// Deletes a session's transcript. Returns false when it was not found or the
-  /// delete failed; the caller decides whether that is an error.
+  /// Deletes a session's transcript. Returns false only when it was not found.
   bool deleteSession({required String sessionId}) {
     final path = findTranscriptPath(sessionId: sessionId);
     if (path == null) return false;
-    try {
-      _transcriptApi.deleteTranscript(transcriptPath: path);
-      return true;
-    } on Object catch (error, stackTrace) {
-      Log.w("[claude] failed to delete transcript for session $sessionId", error, stackTrace);
-      return false;
-    }
+    _transcriptApi.deleteTranscript(transcriptPath: path);
+    return true;
   }
 
   List<String> _listTranscriptPaths() => _transcriptApi.listTranscriptPaths();

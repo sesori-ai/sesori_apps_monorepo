@@ -466,7 +466,7 @@ binary level, and `markReady` on the next success.
 | `getSessions(projectId)` | catalog scan filtered by normalized directory |
 | `getCommands` | slash commands from `system/init`; `PluginCommandSource.command` |
 | `getSessionOptions` | aggregate agents, providers, and commands; `refresh` re-probes |
-| `createSession` | pre-generate the session UUID, spawn with `--session-id`, dispatch the first prompt through the turn queue; **the id reported on `system/init` is authoritative** and is cross-checked against the pre-generated UUID (see Session Identity below) |
+| `createSession` | pre-generate the session UUID, spawn with `--session-id`, dispatch the first prompt through the turn queue, and fail closed if `system/init` violates that pre-bound identity (see Session Identity below) |
 | `renameSession` | optimistic only; the mobile database is authoritative (Cursor precedent) |
 | `deleteSession` | kill the resident process, cancel approvals, delete the transcript, forget caches |
 | `archiveSession` / `deleteWorkspace` | no-ops under the best-effort contract |
@@ -499,12 +499,17 @@ inside reported the same `sessionId`. Multi-turn residency on one process is
 verified the same way — two turns ran on a single process that stayed alive
 between them and exited cleanly only when stdin closed.
 
-The contract is nonetheless defensive rather than trusting: the `session_id`
-reported on `system/init` is the source of truth, cross-checked against the
-pre-generated UUID. A mismatch is logged and the reported id wins, because it is
-the one the transcript is named after. Note that `init` is emitted when a turn
-starts, not when the process spawns, so the check happens on the first turn —
-which is exactly when `createSession` dispatches its first prompt.
+The contract is nonetheless defensive rather than trusting: `system/init`
+cross-checks its `session_id` against the pre-generated UUID. A mismatch fails
+closed by tearing down the process and surfacing a session error. Adopting a
+different id after `createSession` has returned would require migrating process
+residency, queued turns, approvals, event-dispatcher state, and persisted client
+identity atomically; partial migration would silently split one session across
+those owners. Live verification shows Claude honors `--session-id`, so broad
+rekey machinery for a state no supported flow produces is less safe than
+stopping. Note that `init` is emitted when a turn starts, not when the process
+spawns, so the check happens on the first turn — exactly when `createSession`
+dispatches its first prompt.
 
 ### Respawn state durability
 

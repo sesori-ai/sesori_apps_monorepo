@@ -295,6 +295,10 @@ class ChatHistoryRepository {
     return _chatHistoryDao.clearSyncedAt(sessionId: sessionId);
   }
 
+  Future<void> clearSyncedAtForSessions({required List<String> sessionIds}) {
+    return _chatHistoryDao.clearSyncedAtForSessions(sessionIds: sessionIds);
+  }
+
   Future<Set<String>> getStoredSessionIds() => _chatHistoryDao.getStoredSessionIds();
 
   /// Writes the session's audit file and copies its attachment bytes beside

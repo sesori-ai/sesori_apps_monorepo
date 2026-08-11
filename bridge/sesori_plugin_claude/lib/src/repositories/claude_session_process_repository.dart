@@ -25,6 +25,13 @@ final class ClaudeTurnInterrupted extends ClaudeTurnOutcome {
   const ClaudeTurnInterrupted();
 }
 
+final class ClaudeTurnDispatch {
+  const ClaudeTurnDispatch({required this.accepted, required this.outcome});
+
+  final bool accepted;
+  final Future<ClaudeTurnOutcome> outcome;
+}
+
 sealed class ClaudeSessionProcessEvent {
   const ClaudeSessionProcessEvent({required this.sessionId});
 
@@ -95,6 +102,7 @@ final class ClaudeSessionProcessRepository {
   final Map<String, String> _environment;
   final Map<String, _ResidentProcess> _resident = {};
   final Map<String, Future<void>> _connecting = {};
+  final Map<String, ClaudeStreamClient> _connectingClients = {};
   final Map<String, int> _sessionGenerations = {};
   final Set<String> _startedSessions = {};
   final StreamController<ClaudeSessionProcessEvent> _events = StreamController.broadcast();
@@ -140,7 +148,19 @@ final class ClaudeSessionProcessRepository {
     required List<String> allowedTools,
   }) async {
     if (_disposed) throw StateError("Claude process repository is disposed");
-    if (_resident.containsKey(sessionId)) return;
+    final resident = _resident[sessionId];
+    if (resident != null) {
+      if (resident.appliedEffort != effort) {
+        await teardown(sessionId: sessionId);
+      } else {
+        await _applySelection(
+          process: resident,
+          model: model,
+          permissionMode: permissionMode,
+        );
+        return;
+      }
+    }
     final existing = _connecting[sessionId];
     if (existing != null) {
       await existing;
@@ -166,16 +186,40 @@ final class ClaudeSessionProcessRepository {
     }
   }
 
-  Future<ClaudeTurnOutcome> sendTurn({
+  Future<void> _applySelection({
+    required _ResidentProcess process,
+    required String? model,
+    required ClaudePermissionMode? permissionMode,
+  }) async {
+    if (process.appliedModel != model) {
+      await process.client.sendControlRequest(
+        subtype: "set_model",
+        params: {"model": model == "default" ? null : model},
+      );
+      process.appliedModel = model;
+    }
+    if (process.appliedPermissionMode != permissionMode) {
+      await process.client.sendControlRequest(
+        subtype: "set_permission_mode",
+        params: {"mode": permissionMode?.controlValue ?? ClaudePermissionMode.auto.controlValue},
+      );
+      process.appliedPermissionMode = permissionMode;
+    }
+  }
+
+  ClaudeTurnDispatch sendTurn({
     required String sessionId,
     required List<PluginPromptPart> parts,
-  }) async {
+  }) {
     final process = _resident[sessionId];
     if (process == null) throw StateError("Claude session is not resident: $sessionId");
     final content = _promptContent(parts);
     if (content.isEmpty) {
       Log.w("[claude] turn contains no supported prompt parts");
-      return const ClaudeTurnFailed();
+      return ClaudeTurnDispatch(
+        accepted: false,
+        outcome: Future.value(const ClaudeTurnFailed()),
+      );
     }
 
     process.interrupted = false;
@@ -186,12 +230,16 @@ final class ClaudeSessionProcessRepository {
     final exit = process.client.processExit.then<ClaudeResultMessage?>((_) => null);
     process.client.sendUserMessage(content: content);
     _startedSessions.add(sessionId);
-    final message = await Future.any<ClaudeResultMessage?>([result, exit]);
-    if (process.interrupted) return const ClaudeTurnInterrupted();
-    if (message == null || message.isError || message.permissionDenials.isNotEmpty) {
-      return const ClaudeTurnFailed();
-    }
-    return const ClaudeTurnCompleted();
+    return ClaudeTurnDispatch(
+      accepted: true,
+      outcome: Future.any<ClaudeResultMessage?>([result, exit]).then((message) {
+        if (process.interrupted) return const ClaudeTurnInterrupted();
+        if (message == null || message.isError || message.permissionDenials.isNotEmpty) {
+          return const ClaudeTurnFailed();
+        }
+        return const ClaudeTurnCompleted();
+      }),
+    );
   }
 
   Future<Map<String, Object?>> sendControlRequest({
@@ -219,35 +267,35 @@ final class ClaudeSessionProcessRepository {
 
   Future<void> teardown({required String sessionId}) async {
     _sessionGenerations[sessionId] = (_sessionGenerations[sessionId] ?? 0) + 1;
+    final connection = _connecting[sessionId];
+    final connectingClient = _connectingClients[sessionId];
     final process = _resident.remove(sessionId);
-    if (process == null) return;
-    try {
-      await process.cancelMessages();
-    } on Object catch (error, stack) {
-      Log.w("[claude] failed to cancel process message subscription", error, stack);
-    } finally {
-      await process.client.dispose();
+    if (process != null) {
+      try {
+        await process.cancelMessages();
+      } on Object catch (error, stack) {
+        Log.w("[claude] failed to cancel process message subscription", error, stack);
+      } finally {
+        await process.client.dispose();
+      }
+    }
+    if (connectingClient != null) await connectingClient.dispose();
+    if (connection != null) {
+      try {
+        await connection;
+      } on Object {
+        // This teardown invalidated the connection generation. The connecting
+        // caller receives the cancellation; teardown only waits for child reap.
+      }
     }
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    for (final sessionId in {..._resident.keys, ..._connecting.keys}) {
-      _sessionGenerations[sessionId] = (_sessionGenerations[sessionId] ?? 0) + 1;
-    }
-    final connections = _connecting.values.toList(growable: false);
-    final sessionIds = _resident.keys.toList(growable: false);
+    final sessionIds = {..._resident.keys, ..._connecting.keys}.toList(growable: false);
     for (final sessionId in sessionIds) {
       await teardown(sessionId: sessionId);
-    }
-    for (final connection in connections) {
-      try {
-        await connection;
-      } on Object {
-        // A connection invalidated by disposal reports its own typed failure to
-        // the turn awaiting it. Disposal only waits for its child to be reaped.
-      }
     }
     await _events.close();
   }
@@ -282,7 +330,14 @@ final class ClaudeSessionProcessRepository {
       ),
       processFactory: _processFactory,
     );
-    await client.connect();
+    _connectingClients[sessionId] = client;
+    try {
+      await client.connect();
+    } finally {
+      if (identical(_connectingClients[sessionId], client)) {
+        _connectingClients.remove(sessionId);
+      }
+    }
     if (_disposed || (_sessionGenerations[sessionId] ?? 0) != generation) {
       await client.dispose();
       throw StateError("Claude session residency was cancelled");

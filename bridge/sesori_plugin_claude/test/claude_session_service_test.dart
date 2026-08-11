@@ -51,6 +51,22 @@ void main() {
       expect(_userFrames(process), hasLength(1));
     });
 
+    test("interruptActiveWork aborts and waits for active sessions within its budget", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      final interruption = harness.service.interruptActiveWork(
+        budget: const Duration(seconds: 1),
+      );
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emit(_result());
+
+      expect(await interruption, {testSessionId});
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
+    });
+
     test("routes control asks and clears them when the process exits", () async {
       harness.enqueue("first");
       final process = await harness.firstProcess;
@@ -154,6 +170,28 @@ void main() {
       await first;
       expect(completed, isTrue);
     });
+
+    test("delete waits for an in-flight idle teardown", () async {
+      await harness.dispose();
+      harness = _ServiceHarness(stdinCloseCompletes: false);
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+      harness.clock.elapse();
+      await _waitForStdinClose(process);
+
+      final deletion = harness.service.deleteSession(sessionId: testSessionId);
+      var completed = false;
+      unawaited(deletion.then((_) => completed = true));
+      await pump();
+      expect(completed, isFalse);
+
+      process.completeStdinClose();
+      await deletion;
+      expect(completed, isTrue);
+    });
   });
 }
 
@@ -202,14 +240,18 @@ final class _ServiceHarness {
   }
 
   void enqueue(String text, {String? model}) {
-    service.enqueueTurn(
-      sessionId: testSessionId,
-      directory: "/tmp/project",
-      createNew: true,
-      parts: [PluginPromptPart.text(text: text)],
-      model: model,
-      effort: null,
-      permissionMode: null,
+    unawaited(
+      service
+          .enqueueTurn(
+            sessionId: testSessionId,
+            directory: "/tmp/project",
+            createNew: true,
+            parts: [PluginPromptPart.text(text: text)],
+            model: model,
+            effort: null,
+            permissionMode: null,
+          )
+          .catchError((Object _) {}),
     );
   }
 

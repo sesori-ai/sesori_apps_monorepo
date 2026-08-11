@@ -155,7 +155,7 @@ class ClaudeStreamClient {
     try {
       _handshake = await sendControlRequest(subtype: "initialize");
     } on Object catch (error, stack) {
-      Log.e("[$_logTag] initialize handshake failed", error, stack);
+      if (!_disposed) Log.e("[$_logTag] initialize handshake failed", error, stack);
       await _teardownConnection(
         gracefulTimeout: const Duration(seconds: 5),
         pendingError: StateError("ClaudeStreamClient handshake failed"),

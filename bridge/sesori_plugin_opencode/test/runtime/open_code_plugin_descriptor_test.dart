@@ -54,6 +54,21 @@ void main() {
       );
     });
 
+    test("eagerly attaches only in no-auto-start mode", () {
+      expect(
+        descriptor.activationPolicy(
+          config: const PluginConfig(values: {"no-auto-start": true}),
+        ),
+        PluginActivationPolicy.eager,
+      );
+      expect(
+        descriptor.activationPolicy(
+          config: const PluginConfig(values: {"no-auto-start": false}),
+        ),
+        PluginActivationPolicy.onDemand,
+      );
+    });
+
     test("allows only setup refresh in --no-auto-start mode", () {
       expect(
         descriptor.managementCapabilities(

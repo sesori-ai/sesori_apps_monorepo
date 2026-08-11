@@ -24,6 +24,7 @@ void main() {
         (
           id: "zeta",
           displayName: "Zeta",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -32,6 +33,7 @@ void main() {
         (
           id: "beta",
           displayName: "Beta",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
@@ -40,6 +42,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -60,6 +63,7 @@ void main() {
 
     expect(policy.eligiblePluginIds, ["alpha", "zeta"]);
     expect(policy.defaultPluginId, "alpha");
+    expect(policy.eagerPluginIds, isEmpty);
     expect(service.compositionView.eligiblePluginIds, ["alpha", "zeta"]);
     expect(service.compositionView.orderedPluginIds, ["alpha", "beta", "zeta"]);
     final sessionOptionsScopeById = service.compositionView.sessionOptionsScopeById;
@@ -76,6 +80,65 @@ void main() {
     expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "zeta").state, PluginRuntimeState.blocked);
   });
 
+  test("eager plugins activate only when eligible and setup-ready", () {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["wombat", "xenon", "yeti", "zebra"]);
+    addTearDown(runtime.dispose);
+    final service = _service(
+      runtime: runtime,
+      plugins: const [
+        (
+          id: "zebra",
+          displayName: "Zebra",
+          activationPolicy: PluginActivationPolicy.eager,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "yeti",
+          displayName: "Yeti",
+          activationPolicy: PluginActivationPolicy.eager,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "xenon",
+          displayName: "Xenon",
+          activationPolicy: PluginActivationPolicy.eager,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "wombat",
+          displayName: "Wombat",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+    );
+    addTearDown(service.dispose);
+
+    final policy = service.initialize(
+      disabledPluginIds: const {"yeti"},
+      setupById: const {
+        "zebra": PluginSetupReady(),
+        "yeti": PluginSetupReady(),
+        "xenon": PluginSetupRuntimeMissing(actionHint: "Install Xenon."),
+        "wombat": PluginSetupReady(),
+      },
+    );
+
+    expect(policy.eagerPluginIds, ["zebra"]);
+  });
+
   test("prefers OpenCode as the default before falling back to alphabetical setup readiness", () async {
     final opencode = _FakePluginApi(id: "opencode");
     final alpha = _FakePluginApi(id: "alpha");
@@ -87,6 +150,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -95,6 +159,7 @@ void main() {
         (
           id: "opencode",
           displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -130,6 +195,7 @@ void main() {
         (
           id: "opencode",
           displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -138,6 +204,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -167,6 +234,7 @@ void main() {
         (
           id: "opencode",
           displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -175,6 +243,7 @@ void main() {
         (
           id: "cursor",
           displayName: "Cursor",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
@@ -237,6 +306,7 @@ void main() {
               (
                 id: "opencode",
                 displayName: "OpenCode",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.resident,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -245,6 +315,7 @@ void main() {
               (
                 id: "alpha",
                 displayName: "Alpha",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -253,6 +324,7 @@ void main() {
               (
                 id: "beta",
                 displayName: "Beta",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: defaultManagementCapabilities,
@@ -385,6 +457,7 @@ void main() {
             (
               id: "external",
               displayName: "External",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: {PluginControlCapability.setupRefresh},
@@ -393,6 +466,7 @@ void main() {
             (
               id: "managed",
               displayName: "Managed",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -422,6 +496,7 @@ void main() {
             (
               id: "alpha",
               displayName: "Alpha",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -485,6 +560,7 @@ void main() {
             (
               id: "alpha",
               displayName: "Alpha",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -493,6 +569,7 @@ void main() {
             (
               id: "beta",
               displayName: "Beta",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: defaultManagementCapabilities,
@@ -612,6 +689,7 @@ void main() {
               (
                 id: "managed",
                 displayName: "Managed",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: {PluginControlCapability.idleTimeout},
@@ -620,6 +698,7 @@ void main() {
               (
                 id: "external",
                 displayName: "External",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: {PluginControlCapability.setupRefresh},
@@ -736,6 +815,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -990,6 +1070,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1045,6 +1126,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1102,6 +1184,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1146,6 +1229,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1640,6 +1724,7 @@ void main() {
         (
           id: "beta",
           displayName: "Beta",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
@@ -1648,6 +1733,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -1699,6 +1785,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -1729,6 +1816,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1762,6 +1850,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1812,6 +1901,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1857,6 +1947,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1928,6 +2019,7 @@ PluginLifecycleService _singleIdleService({
         (
           id: "one",
           displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: residencyPolicy,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: managementCapabilities,
@@ -1957,6 +2049,7 @@ PluginLifecycleService _commandService({
       (
         id: "one",
         displayName: "One",
+        activationPolicy: PluginActivationPolicy.onDemand,
         residencyPolicy: PluginResidencyPolicy.transient,
         sessionOptionsScope: PluginSessionOptionsScope.project,
         managementCapabilities: managementCapabilities,

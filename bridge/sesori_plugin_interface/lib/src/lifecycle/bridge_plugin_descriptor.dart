@@ -3,6 +3,7 @@ import "package:meta/meta.dart";
 import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
 import "bridge_plugin.dart";
+import "plugin_activation_policy.dart";
 import "plugin_config.dart";
 import "plugin_control_capability.dart";
 import "plugin_option.dart";
@@ -66,6 +67,15 @@ abstract class BridgePluginDescriptor {
   /// default applies the bridge's configured timeout.
   PluginResidencyPolicy residencyPolicy({required PluginConfig config}) {
     return PluginResidencyPolicy.transient;
+  }
+
+  /// Declares whether this adapter starts on demand or with the bridge.
+  ///
+  /// Eager activation is for a backend whose lifecycle is independent from
+  /// the bridge and can therefore produce events before any client request.
+  /// The default keeps ordinary managed plugins demand-driven.
+  PluginActivationPolicy activationPolicy({required PluginConfig config}) {
+    return PluginActivationPolicy.onDemand;
   }
 
   /// Declares the management operations Sesori may perform under [config].

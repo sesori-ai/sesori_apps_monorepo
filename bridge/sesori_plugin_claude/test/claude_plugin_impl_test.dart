@@ -1,0 +1,461 @@
+import "dart:async";
+import "dart:io";
+
+import "package:claude_plugin/claude_plugin.dart";
+import "package:claude_plugin/claude_testing.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:test/test.dart";
+
+import "support/claude_stream_client_test_factory.dart";
+
+void main() {
+  group("ClaudePlugin", () {
+    late _PluginHarness harness;
+
+    setUp(() {
+      harness = _PluginHarness();
+    });
+
+    tearDown(() => harness.close());
+
+    test("discovers and caches a complete catalog before any user session", () async {
+      final options = await harness.plugin.getSessionOptions(
+        projectId: "/tmp/project",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+
+      final observed = options as PluginSessionOptionsDiscoveryObserved;
+      expect(observed.options.agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(observed.options.providers.providers.single.models, hasLength(2));
+      expect(observed.options.commands.single.name, "review");
+      expect(harness.processes, hasLength(1));
+
+      await harness.plugin.getCommands(projectId: null);
+      expect(harness.processes, hasLength(1));
+
+      await harness.plugin.getSessionOptions(
+        projectId: "/tmp/project",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      expect(_controlSubtypes(harness.processes.single), contains("list_models"));
+    });
+
+    test("creates under the generated id and buffers creation before listening", () async {
+      final session = await harness.createSession();
+      expect(session.id, testSessionId);
+      expect(session.directory, "/tmp/project");
+
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await pump();
+      expect(events.first, isA<BridgeSseSessionCreated>());
+      expect(events.whereType<BridgeSseSessionStatus>().single.sessionID, testSessionId);
+
+      final process = harness.processes.single;
+      final user = await waitForFrame(process, "user");
+      expect(user["session_id"], testSessionId);
+      expect((user["message"]! as Map)["content"], [
+        {"type": "text", "text": "hello"},
+      ]);
+
+      final statuses = await harness.plugin.getSessionStatuses();
+      expect(statuses[testSessionId], isA<PluginSessionStatusBusy>());
+      final summary = harness.plugin.getActiveSessionsSummary().single;
+      expect(summary.id, "/tmp/project");
+      expect(summary.activeSessions.single.id, testSessionId);
+      expect(summary.activeSessions.single.mainAgentRunning, isTrue);
+      await subscription.cancel();
+    });
+
+    test("shows only userVisibleText while sending full execution context", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.createSession(
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [
+          PluginPromptPart.text(text: _worktreeContext),
+          PluginPromptPart.text(text: "visible prompt"),
+        ],
+        userVisibleText: "visible prompt",
+        variant: null,
+        agent: "Default",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      await pump();
+
+      final visibleParts = events.whereType<BridgeSseMessagePartUpdated>().where(
+        (event) => event.part.type == PluginMessagePartType.text,
+      );
+      expect(visibleParts.single.part.text, "visible prompt");
+      final executionText = _userTexts(harness.processes.single).join("\n");
+      expect(executionText, contains("private-branch"));
+      await subscription.cancel();
+    });
+
+    test("fails closed when init violates the pre-bound session identity", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      process.emit(sampleInit(sessionId: otherTestSessionId));
+      for (var attempt = 0; attempt < 50 && !process.killed; attempt++) {
+        await pump();
+      }
+
+      expect(process.killed, isTrue);
+      expect(events.whereType<BridgeSseSessionError>().single.sessionID, testSessionId);
+      expect(await harness.plugin.getSessionStatuses(), isEmpty);
+      await subscription.cancel();
+    });
+
+    test("dispatches a slash command as an accepted queued turn", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendCommand(
+        sessionId: testSessionId,
+        command: "review",
+        arguments: "${_worktreeContext.trimRight()}\n\nsrc",
+        userVisibleArguments: "src",
+        variant: null,
+        agent: "Plan",
+        model: (providerID: "anthropic", modelID: "small"),
+      );
+      final permission = await _waitForControl(first, "set_permission_mode");
+      expect(_request(permission)["mode"], "plan");
+      await _waitForUserText(first, "/review ${_worktreeContext.trimRight()}\n\nsrc");
+      await pump();
+      final visible = events.whereType<BridgeSseMessagePartUpdated>().where(
+        (event) => event.part.text == "/review src",
+      );
+      expect(visible, hasLength(1));
+      await subscription.cancel();
+    });
+
+    test("creates an empty session and reports command initialization failure", () async {
+      await harness.close();
+      harness = _PluginHarness(failInitialize: true);
+      final session = await harness.plugin.createSession(
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: "Default",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+
+      await expectLater(
+        harness.plugin.sendCommand(
+          sessionId: session.id,
+          command: "review",
+          arguments: "src",
+          userVisibleArguments: "src",
+          variant: null,
+          agent: "Default",
+          model: (providerID: "anthropic", modelID: "default"),
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.operation, "operation", "sendCommand")
+              .having((error) => error.cause, "cause", isNotNull),
+        ),
+      );
+    });
+
+    test("respawns between turns when launch-only effort changes", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+
+      await harness.plugin.sendPrompt(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "deeper")],
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "Default",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      for (var attempt = 0; attempt < 50 && harness.processes.length < 2; attempt++) {
+        await pump();
+      }
+
+      expect(harness.processes, hasLength(2));
+      expect(harness.specs.last.launch, isA<ClaudeResumedSession>());
+      expect(harness.specs.last.effort, ClaudeEffortLevel.high);
+      await waitForFrame(harness.processes.last, "user");
+    });
+
+    test("throws not found instead of creating a process for an unknown session", () async {
+      await expectLater(
+        harness.plugin.sendPrompt(
+          sessionId: otherTestSessionId,
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "not found", isTrue)),
+      );
+      await expectLater(
+        harness.plugin.getSessionMessages(otherTestSessionId),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "not found", isTrue)),
+      );
+      expect(harness.processes, isEmpty);
+    });
+
+    test("delete fences the turn, reaps the process, and forgets the session", () async {
+      final session = await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      await harness.plugin.deleteSession(session.id);
+
+      expect(process.killed, isTrue);
+      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessionStatuses(), isEmpty);
+      await expectLater(
+        harness.plugin.deleteSession(session.id),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "not found", isTrue)),
+      );
+    });
+
+    test("finishes in-memory deletion when transcript cleanup fails", () async {
+      await harness.close();
+      harness = _PluginHarness(failTranscriptDelete: true);
+      final session = await harness.createSession();
+
+      await expectLater(
+        harness.plugin.deleteSession(session.id),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.operation, "operation", "deleteSession")
+              .having((error) => error.cause, "cause", isA<StateError>()),
+        ),
+      );
+
+      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessionStatuses(), isEmpty);
+    });
+
+    test("preserves API retry status for snapshots and activity", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      process.emit({
+        "type": "system",
+        "subtype": "api_retry",
+        "session_id": testSessionId,
+        "uuid": "retry-1",
+        "attempt": 2,
+        "max_retries": 5,
+        "retry_delay_ms": 1000,
+        "error_status": 429,
+        "error": "rate_limit",
+      });
+      await pump();
+
+      final retry = (await harness.plugin.getSessionStatuses())[testSessionId]! as PluginSessionStatusRetry;
+      expect(retry.attempt, 2);
+      expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
+      expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
+      expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+      await subscription.cancel();
+    });
+
+    test("persisted cleanup is idempotent for an absent transcript", () async {
+      await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
+      await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
+    });
+  });
+}
+
+final class _PluginHarness {
+  _PluginHarness({this.failInitialize = false, bool failTranscriptDelete = false}) {
+    temporary = Directory.systemTemp.createTempSync("claude-plugin-test-");
+    final eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
+    processRepository = ClaudeSessionProcessRepository(
+      processFactory: (spec) async {
+        final process = FakeClaudeProcess();
+        specs.add(spec);
+        processes.add(process);
+        unawaited(_answerControls(process, failInitialize: failInitialize));
+        return process;
+      },
+      binaryPath: "claude",
+      environment: const {},
+    );
+    approvals = ClaudeApprovalRegistry(
+      emit: eventBuffer.add,
+      respond: processRepository.answerControlRequest,
+    );
+    sessionService = ClaudeSessionService(
+      processes: processRepository,
+      approvals: approvals,
+      clock: const _NeverIdleClock(),
+      idleTimeout: const Duration(minutes: 5),
+    );
+    const content = ClaudeContentMapper();
+    final transcripts = ClaudeTranscriptCatalogRepository(
+      transcriptApi: failTranscriptDelete
+          ? _ThrowingDeleteTranscriptApi()
+          : ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temporary.path}),
+    );
+    plugin = ClaudePlugin(
+      processes: processRepository,
+      transcripts: transcripts,
+      sessions: sessionService,
+      catalogService: ClaudeCatalogService(
+        catalog: const ClaudeBackendCatalogRepository(),
+        processes: processRepository,
+      ),
+      approvals: approvals,
+      eventDispatcher: ClaudeEventDispatcher(content: content, tools: ClaudeToolTracker()),
+      history: const ClaudeHistoryMapper(content: content),
+      eventBuffer: eventBuffer,
+      clock: const _NeverIdleClock(),
+      generateSessionId: _nextId,
+      launchDirectory: "/tmp/project",
+    );
+  }
+
+  late final Directory temporary;
+  late final ClaudeSessionProcessRepository processRepository;
+  late final ClaudeApprovalRegistry approvals;
+  late final ClaudeSessionService sessionService;
+  late final ClaudePlugin plugin;
+  final List<ClaudeLaunchSpec> specs = [];
+  final List<FakeClaudeProcess> processes = [];
+  final bool failInitialize;
+  var _idIndex = 0;
+
+  String _nextId() => [otherTestSessionId, testSessionId][_idIndex++];
+
+  Future<PluginSession> createSession() => plugin.createSession(
+    directory: "/tmp/project",
+    parentSessionId: null,
+    parts: const [PluginPromptPart.text(text: "hello")],
+    userVisibleText: "hello",
+    variant: null,
+    agent: "Default",
+    model: (providerID: "anthropic", modelID: "default"),
+  );
+
+  Future<void> close() async {
+    await plugin.dispose();
+    for (final process in processes) {
+      await process.close();
+    }
+    temporary.deleteSync(recursive: true);
+  }
+}
+
+final class _NeverIdleClock extends ServerClock {
+  const _NeverIdleClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 8, 11, 12);
+
+  @override
+  Future<void> delay({required Duration duration}) => Completer<void>().future;
+}
+
+Future<void> _answerControls(FakeClaudeProcess process, {required bool failInitialize}) async {
+  final answered = <String>{};
+  while (!process.killed) {
+    for (final frame in process.written) {
+      if (frame["type"] != "control_request") continue;
+      final requestId = frame["request_id"]! as String;
+      if (!answered.add(requestId)) continue;
+      final subtype = _request(frame)["subtype"];
+      if (subtype == "initialize" && failInitialize) {
+        process.emit({
+          "type": "control_response",
+          "response": {"subtype": "error", "request_id": requestId, "error": "probe failure"},
+        });
+        continue;
+      }
+      process.emitControlResponse(
+        requestId: requestId,
+        payload: subtype == "initialize" || subtype == "list_models" ? sampleHandshake : const {},
+      );
+    }
+    await pump();
+  }
+}
+
+Future<Map<String, Object?>> _waitForControl(FakeClaudeProcess process, String subtype) async {
+  for (var attempt = 0; attempt < 50; attempt++) {
+    for (final frame in process.written) {
+      if (frame["type"] == "control_request" && _request(frame)["subtype"] == subtype) return frame;
+    }
+    await pump();
+  }
+  throw StateError("no '$subtype' control request written");
+}
+
+Future<void> _waitForUserText(FakeClaudeProcess process, String text) async {
+  for (var attempt = 0; attempt < 50; attempt++) {
+    if (_userTexts(process).contains(text)) return;
+    await pump();
+  }
+  throw StateError("no user turn containing '$text' written");
+}
+
+Map<String, Object?> _request(Map<String, Object?> frame) => (frame["request"]! as Map).cast<String, Object?>();
+
+Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
+    .where((frame) => frame["type"] == "control_request")
+    .map((frame) => _request(frame)["subtype"] as String?);
+
+List<String> _userTexts(FakeClaudeProcess process) => [
+  for (final frame in process.written)
+    if (frame["type"] == "user")
+      for (final block in ((frame["message"]! as Map)["content"]! as List))
+        if (block is Map && block["type"] == "text") block["text"]! as String,
+];
+
+Map<String, Object?> _result() => {
+  "type": "result",
+  "subtype": "success",
+  "session_id": testSessionId,
+  "is_error": false,
+};
+
+final class _ThrowingDeleteTranscriptApi extends ClaudeTranscriptApi {
+  _ThrowingDeleteTranscriptApi() : super(environment: const {});
+
+  bool deleteAttempted = false;
+
+  @override
+  List<String> listTranscriptPaths() => deleteAttempted ? const [] : ["/tmp/$testSessionId.jsonl"];
+
+  @override
+  void deleteTranscript({required String transcriptPath}) {
+    deleteAttempted = true;
+    throw StateError("delete failed");
+  }
+}
+
+const _worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: private-branch
+- Worktree path: /private/worktree
+- Based on: main
+
+IMPORTANT: Do NOT create new worktrees.
+
+---
+""";

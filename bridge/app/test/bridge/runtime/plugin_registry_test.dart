@@ -5,7 +5,7 @@ void main() {
   test("registry contains every bundled plugin exactly once", () {
     final ids = knownPlugins.map((plugin) => plugin.id).toList();
 
-    expect(ids, containsAll(["opencode", "codex", "cursor"]));
+    expect(ids, containsAll(["opencode", "codex", "cursor", "claude"]));
     expect(ids.toSet(), hasLength(ids.length));
   });
 
