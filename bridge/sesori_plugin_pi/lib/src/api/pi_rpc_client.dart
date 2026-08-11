@@ -162,7 +162,7 @@ class PiRpcClient {
   final Map<String, ({PiRpcCommand command, Completer<PiSuccessResponseFrame> completer})> _pending = {};
   final List<PiRpcFrame> _startupFrames = [];
   final List<String> _stderrTail = [];
-  Completer<int> _exited = Completer<int>();
+  final Completer<int> _exited = Completer<int>();
 
   late final StreamController<PiRpcFrame> _frames = StreamController<PiRpcFrame>.broadcast(
     onListen: _flushStartupFrames,
@@ -215,8 +215,6 @@ class PiRpcClient {
       throw StateError(_disposed ? "PiRpcClient disposed during start" : "PiRpcClient reset during start");
     }
 
-    final exited = Completer<int>();
-    _exited = exited;
     _process = process;
 
     // A broken pipe surfaces asynchronously on `stdin.done` rather than from
@@ -259,7 +257,7 @@ class PiRpcClient {
     unawaited(
       process.exitCode.then((code) {
         _exitCode = code;
-        if (!exited.isCompleted) exited.complete(code);
+        if (!_exited.isCompleted) _exited.complete(code);
         if (generation != _generation) return;
         if (!_disposed) Log.w("[pi] process exited with code $code");
         _failPending(

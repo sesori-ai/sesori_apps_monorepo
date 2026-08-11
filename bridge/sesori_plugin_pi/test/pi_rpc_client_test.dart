@@ -270,6 +270,22 @@ void main() {
   });
 
   group("process failure", () {
+    test("keeps a process-exit listener attached before startup", () async {
+      final process = FakePiProcess();
+      addTearDown(process.close);
+      final client = PiRpcClient(
+        launchSpec: testLaunchSpec(),
+        processFactory: ({required spec}) async => process,
+      );
+      addTearDown(client.dispose);
+      final exit = client.processExit;
+
+      await client.start();
+      process.exit(code: 7);
+
+      expect(await exit.timeout(const Duration(milliseconds: 50)), 7);
+    });
+
     test("fails in-flight requests when the process exits", () async {
       final started = await startTestClient();
       addTearDown(started.client.dispose);
