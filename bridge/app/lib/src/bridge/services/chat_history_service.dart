@@ -137,6 +137,11 @@ class ChatHistoryService {
           if (cached != null) {
             return SessionAttachmentFound(bytes: cached.bytes, mime: cached.format.mime);
           }
+          return _generateThumbnail(
+            sessionId: sessionId,
+            attachmentId: attachmentId,
+            location: location,
+          );
         }
 
         final original = await _chatHistoryRepository.readStoredAttachment(
@@ -149,40 +154,51 @@ class ChatHistoryService {
           return const SessionAttachmentTooLarge();
         }
 
-        if (rendition == SessionAttachmentRendition.original) {
-          final mime = _attachmentThumbnailBuilder.detectSupportedMime(bytes: original.bytes);
-          return mime == null
-              ? const SessionAttachmentUnsupported()
-              : SessionAttachmentFound(bytes: original.bytes, mime: mime);
-        }
-
-        final built = await _buildThumbnail(bytes: original.bytes);
-        return switch (built) {
-          AttachmentThumbnailRendered(:final bytes, :final format) =>
-            await _chatHistoryRepository.writeStoredAttachmentThumbnail(
-                  sessionId: sessionId,
-                  attachmentId: attachmentId,
-                  location: original.location,
-                  format: format,
-                  bytes: bytes,
-                )
-                ? SessionAttachmentFound(bytes: bytes, mime: format.mime)
-                : const SessionAttachmentMissing(),
-          AttachmentThumbnailUnsupported() => const SessionAttachmentUnsupported(),
-          AttachmentThumbnailTooLarge() => const SessionAttachmentTooLarge(),
-          AttachmentThumbnailFailed(:final cause, :final stackTrace) => _logThumbnailFailure(
-            sessionId: sessionId,
-            attachmentId: attachmentId,
-            cause: cause,
-            stackTrace: stackTrace,
-          ),
-        };
+        final mime = _attachmentThumbnailBuilder.detectSupportedMime(bytes: original.bytes);
+        return mime == null
+            ? const SessionAttachmentUnsupported()
+            : SessionAttachmentFound(bytes: original.bytes, mime: mime);
       },
     );
   }
 
-  Future<AttachmentThumbnailBuildResult> _buildThumbnail({required Uint8List bytes}) {
-    final result = _thumbnailGenerationLane.then((_) => _attachmentThumbnailBuilder.build(bytes: bytes));
+  Future<SessionAttachmentResult> _generateThumbnail({
+    required String sessionId,
+    required String attachmentId,
+    required StoredAttachmentLocation location,
+  }) {
+    final result = _thumbnailGenerationLane.then((_) async {
+      final original = await _chatHistoryRepository.readStoredAttachment(
+        sessionId: sessionId,
+        attachmentId: attachmentId,
+        location: location,
+      );
+      if (original == null) return const SessionAttachmentMissing();
+      if (original.bytes.length > _maxStoredImageBytes) {
+        return const SessionAttachmentTooLarge();
+      }
+      final built = await _attachmentThumbnailBuilder.build(bytes: original.bytes);
+      return switch (built) {
+        AttachmentThumbnailRendered(:final bytes, :final format) =>
+          await _chatHistoryRepository.writeStoredAttachmentThumbnail(
+                sessionId: sessionId,
+                attachmentId: attachmentId,
+                location: original.location,
+                format: format,
+                bytes: bytes,
+              )
+              ? SessionAttachmentFound(bytes: bytes, mime: format.mime)
+              : const SessionAttachmentMissing(),
+        AttachmentThumbnailUnsupported() => const SessionAttachmentUnsupported(),
+        AttachmentThumbnailTooLarge() => const SessionAttachmentTooLarge(),
+        AttachmentThumbnailFailed(:final cause, :final stackTrace) => _logThumbnailFailure(
+          sessionId: sessionId,
+          attachmentId: attachmentId,
+          cause: cause,
+          stackTrace: stackTrace,
+        ),
+      };
+    });
     _thumbnailGenerationLane = result.then<void>((_) {}, onError: (Object _) {});
     return result;
   }

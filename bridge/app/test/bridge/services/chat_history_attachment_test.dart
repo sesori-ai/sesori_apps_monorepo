@@ -3,7 +3,9 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:image/image.dart" as image;
+import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
 import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
+import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
@@ -160,6 +162,30 @@ void main() {
 
     expect(builder.maxActive, 1);
   });
+
+  test("serializes original reads for thumbnail generation across sessions", () async {
+    final repository = _TrackingChatHistoryRepository();
+    final service = ChatHistoryService(
+      chatHistoryRepository: repository,
+      sessionRepository: _PresentSessionRepository(),
+      attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+    );
+
+    await Future.wait([
+      service.getSessionAttachment(
+        sessionId: "session-1",
+        attachmentId: "1" * 64,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      service.getSessionAttachment(
+        sessionId: "session-2",
+        attachmentId: "2" * 64,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ]);
+
+    expect(repository.maxActiveReads, 1);
+  });
 }
 
 Uint8List _pngBytes() {
@@ -198,6 +224,64 @@ class _TrackingThumbnailBuilder extends AttachmentThumbnailBuilder {
 class _MissingSessionRepository implements SessionRepository {
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+class _PresentSessionRepository implements SessionRepository {
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
+    id: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "opencode",
+    projectId: "project-1",
+    parentSessionId: null,
+    directory: "/tmp/project-1",
+    worktreePath: null,
+    branchName: null,
+    isDedicated: false,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+  );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+class _TrackingChatHistoryRepository implements ChatHistoryRepository {
+  int _activeReads = 0;
+  int maxActiveReads = 0;
+
+  @override
+  Future<StoredAttachmentThumbnail?> readStoredAttachmentThumbnail({
+    required String sessionId,
+    required String attachmentId,
+    required StoredAttachmentLocation location,
+  }) async => null;
+
+  @override
+  Future<StoredAttachmentBytes?> readStoredAttachment({
+    required String sessionId,
+    required String attachmentId,
+    required StoredAttachmentLocation location,
+  }) async {
+    _activeReads++;
+    if (_activeReads > maxActiveReads) maxActiveReads = _activeReads;
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    _activeReads--;
+    return (bytes: _pngBytes(), location: location);
+  }
+
+  @override
+  Future<bool> writeStoredAttachmentThumbnail({
+    required String sessionId,
+    required String attachmentId,
+    required StoredAttachmentLocation location,
+    required AttachmentThumbnailFormat format,
+    required Uint8List bytes,
+  }) async => true;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
