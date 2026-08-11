@@ -1,8 +1,10 @@
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:image/image.dart" as image;
 import "package:sesori_bridge/src/bridge/routing/get_session_attachment_handler.dart";
+import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -105,6 +107,30 @@ void main() {
       expect(response.status, 200);
       expect(response.body, isNot(contains(base64Encode(bytes))));
     });
+
+    test("handleInternal keeps filesystem paths out of failure responses", () async {
+      final handler = GetSessionAttachmentHandler(chatHistoryService: _FileFailingChatHistoryService());
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/attachment",
+          body: jsonEncode(
+            const SessionAttachmentRequest(
+              sessionId: "session-1",
+              attachmentId: "attachment-1",
+              rendition: SessionAttachmentRendition.original,
+            ).toJson(),
+          ),
+        ),
+        pathParams: const {},
+        queryParams: const {},
+        fragment: null,
+      );
+
+      expect(response.status, 500);
+      expect(response.body, isNot(contains("/Users/alex/private/attachments")));
+    });
   });
 }
 
@@ -129,4 +155,18 @@ Uint8List _pngBytes() {
   final source = image.Image(width: 16, height: 8, numChannels: 3);
   image.fill(source, color: image.ColorRgb8(30, 80, 140));
   return image.encodePng(source);
+}
+
+class _FileFailingChatHistoryService implements ChatHistoryService {
+  @override
+  Future<SessionAttachmentResult> getSessionAttachment({
+    required String sessionId,
+    required String attachmentId,
+    required SessionAttachmentRendition rendition,
+  }) {
+    throw const FileSystemException("permission denied", "/Users/alex/private/attachments/image.png");
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }

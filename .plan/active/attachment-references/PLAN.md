@@ -266,11 +266,11 @@ The concrete bridge owners are:
 
 The single service lane addresses an ordinary reachable flow with meaningful
 memory impact; no per-session or per-digest lock registry is needed. A rejected
-thumbnail does not delete or invalidate the original. Fetch tries the live
-spill root, then the archived spill root. Source selection, original read, and
-the final derived write remain inside the existing session queue. The thumbnail
-is persisted beside its source original, so archive and purge cannot interleave
-or cause generation to recreate a purged live root.
+thumbnail does not delete or invalidate the original. Fetch selects the live or
+archived spill root from the durable session state. Source selection, original
+read, and the final derived write remain inside the existing session queue. The
+thumbnail is persisted beside its source original, so archive and purge cannot
+interleave or cause generation to recreate a purged live root.
 
 ### 3. History and archive projection
 
@@ -599,7 +599,7 @@ the documented defaults.
   off-main-isolate decoding.
 - Extend spill storage for versioned derived thumbnails using existing atomic
   write, archive-copy, hardening, and purge conventions.
-- Add live-then-archive original/thumbnail methods to
+- Add session-selected live/archive original/thumbnail methods to
   `ChatHistoryRepository`; extend
   `ChatHistoryService(repository, builder)` with session-queued rendition
   selection and the single generation lane; and

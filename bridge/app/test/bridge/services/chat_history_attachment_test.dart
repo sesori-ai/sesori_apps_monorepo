@@ -4,6 +4,8 @@ import "dart:typed_data";
 
 import "package:image/image.dart" as image;
 import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -50,16 +52,14 @@ void main() {
     expect(await history.spillStorage.readThumbnail(sessionId: "session-1", digest: digest), isNotNull);
   });
 
-  test("writes a thumbnail beside an archived source without recreating live storage", () async {
-    final history = createTestChatHistory();
+  test("an archived session writes its thumbnail beside the archived source", () async {
+    final history = createTestChatHistory(storedSessionArchivedAt: 1);
     const sessionId = "session-1";
     final digest = await history.spillStorage.write(sessionId: sessionId, bytes: _pngBytes());
     await history.spillStorage.copySession(
       sessionId: sessionId,
       destinationDirectoryPath: history.archivedSpillStorage.sessionDirectoryPath(sessionId: sessionId),
     );
-    await history.spillStorage.deleteSession(sessionId: sessionId);
-
     final result = await history.service.getSessionAttachment(
       sessionId: sessionId,
       attachmentId: digest,
@@ -68,7 +68,20 @@ void main() {
 
     expect(result, isA<SessionAttachmentFound>());
     expect(await history.archivedSpillStorage.readThumbnail(sessionId: sessionId, digest: digest), isNotNull);
-    expect(Directory(history.spillStorage.sessionDirectoryPath(sessionId: sessionId)).existsSync(), isFalse);
+    expect(await history.spillStorage.readThumbnail(sessionId: sessionId, digest: digest), isNull);
+  });
+
+  test("rejects an orphan spill after its session row is deleted", () async {
+    final history = createTestChatHistory(sessionRepository: _MissingSessionRepository());
+    final digest = await history.spillStorage.write(sessionId: "session-1", bytes: _pngBytes());
+
+    final result = await history.service.getSessionAttachment(
+      sessionId: "session-1",
+      attachmentId: digest,
+      rendition: SessionAttachmentRendition.original,
+    );
+
+    expect(result, isA<SessionAttachmentMissing>());
   });
 
   test("a purge queued behind generation removes the complete live root", () async {
@@ -180,4 +193,12 @@ class _TrackingThumbnailBuilder extends AttachmentThumbnailBuilder {
       _active--;
     }
   }
+}
+
+class _MissingSessionRepository implements SessionRepository {
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }

@@ -125,10 +125,14 @@ class ChatHistoryService {
     return _enqueueRead(
       sessionId: sessionId,
       read: () async {
+        final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
+        if (session == null) return const SessionAttachmentMissing();
+        final location = session.archivedAt == null ? StoredAttachmentLocation.live : StoredAttachmentLocation.archived;
         if (rendition == SessionAttachmentRendition.thumbnail) {
           final cached = await _chatHistoryRepository.readStoredAttachmentThumbnail(
             sessionId: sessionId,
             attachmentId: attachmentId,
+            location: location,
           );
           if (cached != null) {
             return SessionAttachmentFound(bytes: cached.bytes, mime: cached.format.mime);
@@ -138,6 +142,7 @@ class ChatHistoryService {
         final original = await _chatHistoryRepository.readStoredAttachment(
           sessionId: sessionId,
           attachmentId: attachmentId,
+          location: location,
         );
         if (original == null) return const SessionAttachmentMissing();
         if (original.bytes.length > _maxStoredImageBytes) {

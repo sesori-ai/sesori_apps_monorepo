@@ -71,25 +71,29 @@ class ChatHistoryRepository {
   Future<StoredAttachmentBytes?> readStoredAttachment({
     required String sessionId,
     required String attachmentId,
+    required StoredAttachmentLocation location,
   }) async {
     if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
-    final live = await _attachmentSpillStorage.read(sessionId: sessionId, digest: attachmentId);
-    if (live != null) return (bytes: live, location: StoredAttachmentLocation.live);
-    final archived = await _archivedAttachmentStorage.read(sessionId: sessionId, digest: attachmentId);
-    return archived == null ? null : (bytes: archived, location: StoredAttachmentLocation.archived);
+    final storage = switch (location) {
+      StoredAttachmentLocation.live => _attachmentSpillStorage,
+      StoredAttachmentLocation.archived => _archivedAttachmentStorage,
+    };
+    final bytes = await storage.read(sessionId: sessionId, digest: attachmentId);
+    return bytes == null ? null : (bytes: bytes, location: location);
   }
 
   Future<StoredAttachmentThumbnail?> readStoredAttachmentThumbnail({
     required String sessionId,
     required String attachmentId,
+    required StoredAttachmentLocation location,
   }) async {
     if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
-    final live = await _attachmentSpillStorage.readThumbnail(sessionId: sessionId, digest: attachmentId);
-    if (live != null) {
-      return (bytes: live.bytes, format: live.format);
-    }
-    final archived = await _archivedAttachmentStorage.readThumbnail(sessionId: sessionId, digest: attachmentId);
-    return archived == null ? null : (bytes: archived.bytes, format: archived.format);
+    final storage = switch (location) {
+      StoredAttachmentLocation.live => _attachmentSpillStorage,
+      StoredAttachmentLocation.archived => _archivedAttachmentStorage,
+    };
+    final thumbnail = await storage.readThumbnail(sessionId: sessionId, digest: attachmentId);
+    return thumbnail == null ? null : (bytes: thumbnail.bytes, format: thumbnail.format);
   }
 
   Future<bool> writeStoredAttachmentThumbnail({

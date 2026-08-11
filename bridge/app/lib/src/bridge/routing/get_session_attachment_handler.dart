@@ -1,5 +1,7 @@
 import "dart:convert";
+import "dart:io";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../services/chat_history_service.dart";
@@ -31,11 +33,17 @@ class GetSessionAttachmentHandler extends BodyRequestHandler<SessionAttachmentRe
       throw buildErrorResponse(request, 400, "empty attachment id");
     }
 
-    final result = await _chatHistoryService.getSessionAttachment(
-      sessionId: body.sessionId,
-      attachmentId: body.attachmentId,
-      rendition: body.rendition,
-    );
+    final SessionAttachmentResult result;
+    try {
+      result = await _chatHistoryService.getSessionAttachment(
+        sessionId: body.sessionId,
+        attachmentId: body.attachmentId,
+        rendition: body.rendition,
+      );
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("Failed to read session attachment rendition", error, stackTrace);
+      throw buildErrorResponse(request, 500, "attachment rendition unavailable");
+    }
     return switch (result) {
       SessionAttachmentFound(:final bytes, :final mime) => SessionAttachmentResponse(
         mime: mime,

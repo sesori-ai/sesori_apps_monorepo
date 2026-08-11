@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
 import "package:test/test.dart";
@@ -30,6 +31,7 @@ typedef TestChatHistory = ({
 TestChatHistory createTestChatHistory({
   SessionRepository? sessionRepository,
   AttachmentThumbnailBuilder attachmentThumbnailBuilder = const AttachmentThumbnailBuilder(),
+  int? storedSessionArchivedAt,
 }) {
   final directory = Directory.systemTemp.createTempSync("sesori_chat_history_test");
   final database = ChatHistoryDatabase(NativeDatabase.memory());
@@ -60,7 +62,7 @@ TestChatHistory createTestChatHistory({
     repository: repository,
     service: ChatHistoryService(
       chatHistoryRepository: repository,
-      sessionRepository: sessionRepository ?? _UnusedSessionRepository(),
+      sessionRepository: sessionRepository ?? _UnusedSessionRepository(archivedAt: storedSessionArchivedAt),
       attachmentThumbnailBuilder: attachmentThumbnailBuilder,
     ),
     directory: directory,
@@ -70,6 +72,26 @@ TestChatHistory createTestChatHistory({
 /// Fails on any call: a test that reaches the plugin path should have supplied
 /// its own repository instead of silently backfilling from nothing.
 class _UnusedSessionRepository implements SessionRepository {
+  _UnusedSessionRepository({required this.archivedAt});
+
+  final int? archivedAt;
+
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
+    id: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "opencode",
+    projectId: "project-1",
+    parentSessionId: null,
+    directory: "/tmp/project-1",
+    worktreePath: null,
+    branchName: null,
+    isDedicated: false,
+    archivedAt: archivedAt,
+    baseBranch: null,
+    baseCommit: null,
+  );
+
   @override
   dynamic noSuchMethod(Invocation invocation) {
     throw UnsupportedError(

@@ -90,6 +90,7 @@
   one non-blocking dead-field observation was applied. Before this tracker
   update, the PR-base diff contained 932 additions and 16 deletions across 13
   files, within the 900-1,400 target, with no generated source changes.
+  `git diff --check origin/main...HEAD` passes.
   Implementation committed as `865e0334`, synchronized with `origin/main` in
   `aa94152d`, and opened as
   [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818).
