@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "models/codex_account_dto.dart";
 import "models/codex_collaboration_mode_dto.dart";
 import "models/codex_model_dto.dart";
 import "models/codex_skill_dto.dart";
@@ -11,9 +12,46 @@ import "models/codex_turn_input_dto.dart";
 
 /// Layer-1 typed boundary for migrated Codex app-server operations.
 class CodexAppServerApi {
-  CodexAppServerApi({required CodexAppServerClient client}) : _client = client;
+  CodexAppServerApi({required CodexAppServerTransport client}) : _client = client;
 
-  final CodexAppServerClient _client;
+  final CodexAppServerTransport _client;
+
+  Stream<CodexAccountLoginCompletedNotificationDto> get accountLoginCompletions => _client.notifications
+      .where((notification) => notification.method == "account/login/completed")
+      .map(
+        (notification) => CodexAccountLoginCompletedNotificationDto.fromJson(
+          notification.params,
+        ),
+      );
+
+  Future<CodexDeviceLoginStartResponseDto> startDeviceLogin() async {
+    const params = CodexDeviceLoginStartParamsDto(
+      type: CodexAccountLoginType.chatgptDeviceCode,
+    );
+    final result = await _client.request(
+      method: "account/login/start",
+      params: params.toJson(),
+    );
+    return _decodeAccountResponse(
+      result: result,
+      operation: "account/login/start",
+      decode: CodexDeviceLoginStartResponseDto.fromJson,
+    );
+  }
+
+  Future<CodexAccountLoginCancelResponseDto> cancelLogin({
+    required String loginId,
+  }) async {
+    final result = await _client.request(
+      method: "account/login/cancel",
+      params: CodexAccountLoginCancelParamsDto(loginId: loginId).toJson(),
+    );
+    return _decodeAccountResponse(
+      result: result,
+      operation: "account/login/cancel",
+      decode: CodexAccountLoginCancelResponseDto.fromJson,
+    );
+  }
 
   Future<CodexThreadEnvelopeDto> startThread({
     required String cwd,
@@ -144,5 +182,19 @@ class CodexAppServerApi {
       );
     }
     return CodexThreadEnvelopeDto.fromJson(result.cast<String, dynamic>());
+  }
+
+  T _decodeAccountResponse<T>({
+    required Object? result,
+    required String operation,
+    required T Function(Map<String, dynamic>) decode,
+  }) {
+    if (result is! Map) {
+      throw StateError(
+        "expected a Codex account response object from $operation, got "
+        "${result.runtimeType}",
+      );
+    }
+    return decode(result.cast<String, dynamic>());
   }
 }

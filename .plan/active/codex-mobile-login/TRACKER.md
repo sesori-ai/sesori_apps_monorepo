@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 1 PR open
-- **Current step:** 1/8
-- **Implementation base:** `origin/main` at `3708d348`
+- **Series state:** Step 1 merged; Step 2 ready for publication
+- **Current step:** 2/8
+- **Implementation base:** Step 1 merge commit `de244964`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Next action:** Monitor Step 1 review/CI and begin Step 2 locally
+- **Current PR:** Pending
+- **Next action:** Publish Step 2 and begin Step 3 locally
 
 ## Plan Review
 
@@ -26,8 +26,8 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) open |
-| [ ] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | Pending |
+| [x] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) merged |
+| [ ] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | Ready for publication |
 | [ ] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | Pending |
 | [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Pending |
 | [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Pending |
@@ -61,6 +61,12 @@
   suites were run because this step changes documentation only. Committed as
   `e4213ff2`, pushed, and opened as
   [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824).
+- Step 2: `dart test` passes all 348 Codex plugin tests. Focused runtime,
+  setup, stdio transport, and typed account API tests pass, and
+  `dart analyze --fatal-infos` reports no issues. `git diff --check` passes.
+  The required architecture implementation review could not run because the
+  review sub-agent failed twice before reading code with an internal task-store
+  schema error (`no such column: replacement_seq`).
 
 ## Findings And Plan Deltas
 
@@ -77,6 +83,17 @@
   only.
 - **2026-08-11 - Architecture review:** Added explicit Codex Client/API/
   Repository/Service layers and changed terminal progress to sealed variants.
-- **2026-08-11 - Cleanup:** Reuse one Codex runtime resolver and replace
+- **2026-08-11 - Cleanup:** Reuse one Codex runtime selection service and replace
   local-terminal-only setup guidance; retain login-status inspection and
   compatibility behavior.
+- **2026-08-11 - Step 2 started:** Created local branch
+  `codex-mobile-login-primitives` from the Step 1 branch. Confirmed the runtime
+  selection service must preserve explicit/PATH/desktop/managed precedence and
+  setup failure classifications; the new stdio client will be a second
+  transport behind the typed Codex App Server API rather than changing the
+  normal WebSocket runtime.
+- **2026-08-11 - Step 2 implementation:** Added one shared executable selection
+  decision for setup/startup/authentication, a secret-safe stdio JSONL App
+  Server transport with bounded child cleanup, and typed account start/cancel/
+  completion API models. Existing WebSocket generation behavior remains
+  unchanged and no bridge or client capability is exposed yet.
