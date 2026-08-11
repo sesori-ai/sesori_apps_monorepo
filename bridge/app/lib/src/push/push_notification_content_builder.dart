@@ -14,15 +14,6 @@ class PushNotificationContentBuilder {
     return "${normalized.substring(0, safeCutoff).trimRight()}...";
   }
 
-  String truncateToWords(String text, {int maxWords = 10}) {
-    final words = text.trim().split(RegExp(r"\s+")).where((word) => word.isNotEmpty).toList();
-    if (words.length <= maxWords) {
-      return words.join(" ");
-    }
-
-    return "${words.take(maxWords).join(" ")}...";
-  }
-
   ({NotificationCategory category, NotificationEventType eventType, String title, String body})?
   extractNotificationData(SesoriSseEvent event) {
     return switch (event) {

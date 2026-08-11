@@ -31,7 +31,7 @@ entirely along with its transcript and, optionally, its worktree and branch.
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later mutation. |
 | L2 Routine | Headless bridge, representative: deletion removes the session, its history, and its archive record; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from list and detail, read-only detail and archived listing, delete with and without worktree/branch cleanup, refusals presented to the user. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree/branch cleanup, refusals presented to the user. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
 

@@ -10,8 +10,9 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
 ## Required Behavior
 
 - Only root sessions carry branch/PR state; sessions sharing a directory share it.
-  Detached HEAD, a missing or non-Git directory, or resolution failure yields no
-  branch and no PR; a named branch with a non-GitHub remote still shows.
+  Detached HEAD or a definitively missing or non-Git directory yields no branch
+  and no PR; a transient resolution failure preserves the prior branch and PR.
+  A named branch with a non-GitHub remote still shows without a PR.
 - Selection matches canonical lowercase owner/repo plus the exact case-sensitive
   head branch, rejects fork heads, ignores author, and prefers newest open (drafts
   included), else newest merged/closed, by creation time then PR number.
@@ -34,7 +35,7 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
 |---|---|
 | L1 Smoke | Headless bridge, no plugin: a session in a GitHub repository with a matching open PR returns its branch and one PR; a missing or unauthenticated gh still serves sessions and branches. |
 | L2 Routine | Automated and headless bridge over fake gh/Git: open-before-terminal ordering, fork-head rejection, coworker PR acceptance, branch switch clearing a stale PR, detached/non-Git/non-GitHub outcomes, root-versus-child scope. |
-| L3 Release | Client end to end on the release-target client platform: branch and PR rendered on list and detail, presence-driven refresh without manual pull, bounded explicit refresh, cadence read and changed from settings including out-of-range rejection. |
+| L3 Release | Client end to end on the release-target client platform: branch and PR rendered in the session list, presence-driven refresh without manual pull, bounded explicit refresh, cadence read and changed from settings including out-of-range rejection. |
 | L4 Extended | Relay integration with multiple clients: presence union across two devices and projects, release on background/disconnect, relay loss clearing claims, identity switch failing closed, transient GitHub failure retained versus invalidated, old bridge/client degrading. |
 | L5 Full | Real authenticated GitHub account: batched targets beyond the per-command bound, pagination past newer fork heads, terminal fallback on a real merged PR, and a recheck that installed gh still returns the required fields. |
 
@@ -51,7 +52,8 @@ alternate whether list or detail holds the claim.
   visible; a child session shows a PR; a fork head or newer fork-head candidate
   beats an eligible same-repository PR.
 - Branch updates but the stale PR remains, the branch clears merely because GitHub
-  is unreachable, or the change bumps unseen state or sends a push notification.
+  or local resolution is transiently unavailable, or the change bumps unseen
+  state or sends a push notification.
 - Refresh cycles overlap, run with no viewer, stop after an interval change, make a
   newly viewed project wait a full interval, leak branch names, repo slugs, PR
   titles, URLs, or paths into routine logs, or discard useful failure diagnostics.

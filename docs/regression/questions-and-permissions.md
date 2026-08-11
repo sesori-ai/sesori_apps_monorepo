@@ -17,7 +17,10 @@ reaches the backend so the turn continues.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression.
 - Child or sub-agent requests surface under their display root.
-- Listing pending state never starts a stopped backend.
+- Per-session pending lists are empty while a plugin is stopped or terminally
+  failed and never start it. A project-wide question list reports unavailable
+  when no plugin is active; after restart, pending state is read from the newly
+  active backend.
 - An archived session refuses replies with the archived read-only rejection.
 
 ## Regression Levels
@@ -27,7 +30,7 @@ reaches the backend so the turn continues.
 | L1 Smoke | Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
 | L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: both request kinds per plugin, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. |
-| L4 Extended | Relay integration, every supporting production plugin: pending state after plugin restart, stop, or terminal failure; competing replies to one request; two logical clients observing one request and its retirement; reconnect inside the replay window; listing while the backend is stopped. |
+| L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older client omitting the rejection owner and an older bridge not declaring "always". Every supporting production plugin where applicable. |
 
 ## Exploration Guidance

@@ -60,14 +60,8 @@ class CompletionPushListener {
     _completionNotifier.completions
         .listen((rootSessionId) {
           final sessionTitle = _tracker.getSessionTitle(rootSessionId);
-          final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
           final title = _contentBuilder.truncateTitle(
             (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
-          );
-          final body = _contentBuilder.truncateToWords(
-            (latestAssistantText == null || latestAssistantText.trim().isEmpty)
-                ? "Task completed"
-                : latestAssistantText,
           );
           final projectId = _tracker.getSessionProjectId(sessionId: rootSessionId);
 
@@ -75,7 +69,7 @@ class CompletionPushListener {
           _dispatcher.dispatchCompletion(
             rootSessionId: rootSessionId,
             title: title,
-            body: body,
+            body: "Task completed",
             projectId: projectId,
           );
         })

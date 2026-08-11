@@ -31,7 +31,7 @@ Apple and Google is external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
-| L2 Routine | Automated and headless bridge, representative plugin, fake push client: event-to-payload mapping, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. |
+| L2 Routine | Automated and headless bridge, representative plugin, fake push client: event-to-payload mapping with generic interaction and completion bodies, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. |
 | L3 Release | Client end to end on the release-target client platform with a fake messaging source: registration, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. |
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |

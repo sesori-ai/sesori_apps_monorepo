@@ -19,8 +19,9 @@ content the transcript renders live and after reload.
   decoded-byte budgets. Over-budget, unsupported, or malformed candidates degrade
   to bounded metadata instead of failing the message; later ones are dropped
   rather than partially rendered.
-- A remote image auto-loads only over HTTPS with declared type, size, timeout,
-  and content-signature checks; anything else needs an explicit user action.
+- A remote attachment image auto-loads only over HTTPS with declared type, size,
+  timeout, and content-signature checks; anything else needs an explicit user
+  action.
 - Live streaming and history replay converge: same image, same message and part
   identity, same position relative to text and tool output. The viewer offers
   copy, share, and save on the original, and an unknown shape degrades safely.
@@ -32,7 +33,7 @@ content the transcript renders live and after reload.
 | L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, and unknown-variant behavior holds in its owning suites. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin, generated and tool-output images displayed, text/image/text order preserved live and after reload, viewer copy/share/save. |
-| L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
+| L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
 ## Exploration Guidance
@@ -50,7 +51,8 @@ live, after paging back, or after a reopen, and vary the plugin.
   boundary; a raw parser error reaches a client payload or user-facing error,
   or local diagnostics discard useful parser error and stack context.
 - An over-budget or unsupported image breaks the message instead of degrading.
-- A remote image is fetched without the scheme, type, size, and signature checks.
+- A remote attachment image is fetched without the scheme, type, size, and
+  signature checks.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 
@@ -60,6 +62,9 @@ live, after paging back, or after a reopen, and vary the plugin.
   unsupporting backend hides staging rather than failing at send time.
 - Switching between two attachment-capable backends in the same project keeps
   staged images because they are backend-neutral inline payloads.
+- Markdown inline image URLs use the platform network image loader for HTTP and
+  HTTPS and do not pass through the guarded attachment loader; they are not
+  covered by the remote-attachment guarantee.
 - Cursor path-only generated images are read locally inside its plugin and
   delivered as bounded attachments; the host path still never crosses the wire.
 - Lazy stored-image delivery (thumbnail-first, on-demand originals, larger

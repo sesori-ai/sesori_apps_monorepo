@@ -20,8 +20,8 @@ signal that a tool changed files.
   updates for one completed call emit none.
 - Sub-agent, subtask, and agent parts identify their agent and stay attributed
   to the correct session, including work done by a child. Tool state survives a
-  reload with the same identity, status, and output; unknown part types are
-  skipped and unknown status renders as the fallback.
+  reload with the same identity, status, and output; unknown status renders as
+  the fallback.
 
 ## Regression Levels
 
@@ -31,7 +31,7 @@ signal that a tool changed files.
 | L2 Routine | Live plugin, representative: a file-editing tool produces a tool part with name, terminal status, and bounded output. |
 | L3 Release | Client end to end (phone), every supporting production plugin: title, status, output bound, and errors normalize consistently; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards, errors, and subtask/agent parts render. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity, status, and output intact; a failing tool surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. |
-| L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown part types and status from a newer peer degrade gracefully. |
+| L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
 ## Exploration Guidance
 
@@ -57,6 +57,9 @@ multi-byte, and empty output; compare live with a later reload.
 - Rendering needs the client; the phone is the only transcript surface.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
+- An older client does not tolerate an unknown `MessagePartType` from a newer
+  bridge: history decoding fails and the corresponding SSE event is dropped as
+  malformed. Unknown tool status remains forward-compatible.
 
 ## Sources
 
