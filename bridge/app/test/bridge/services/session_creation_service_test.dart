@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
-import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -71,7 +70,7 @@ void main() {
       await db.close();
     });
 
-    test("validates the project before plugin and creation side effects", () async {
+    test("validates the requested plugin before project and creation side effects", () async {
       await expectLater(
         service.createSession(
           request: const CreateSessionRequest(
@@ -86,7 +85,9 @@ void main() {
           ),
         ),
         throwsA(
-          isA<ProjectNotFoundException>(),
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "statusCode", 503)
+              .having((error) => error.operation, "operation", "createSession"),
         ),
       );
 

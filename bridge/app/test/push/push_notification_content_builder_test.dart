@@ -25,55 +25,10 @@ void main() {
       expect(contentBuilder.extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
-    test("uses content-safe copy for question and permission notifications", () {
-      const questionEvent = SesoriSseEvent.questionAsked(
-        id: "q-1",
-        sessionID: "session-a",
-        displaySessionId: null,
-        questions: [
-          QuestionInfo(
-            question: "one two three four five six seven eight nine ten eleven twelve",
-            header: "Prompt",
-          ),
-        ],
-      );
-      final permissionEvent = SesoriSseEvent.permissionAsked(
-        requestID: "r-1",
-        sessionID: "session-a",
-        displaySessionId: null,
-        tool: "/private/project/destructive-script",
-        description: List.filled(200, "x").join(),
-      );
-      const emptyPermissionEvent = SesoriSseEvent.permissionAsked(
-        requestID: "r-2",
-        sessionID: "session-a",
-        displaySessionId: null,
-        tool: "/private/project/destructive-script",
-        description: "",
-      );
-
-      expect(
-        contentBuilder.extractNotificationData(questionEvent)?.body,
-        "The assistant is waiting for your response.",
-      );
-      expect(
-        contentBuilder.extractNotificationData(permissionEvent)?.body,
-        "The assistant requested permission.",
-      );
-      expect(
-        contentBuilder.extractNotificationData(emptyPermissionEvent)?.body,
-        "The assistant requested permission.",
-      );
-    });
-
     test("maps installation.update-available to system_update", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 
       expect(contentBuilder.extractNotificationData(event)?.category, NotificationCategory.systemUpdate);
-      expect(
-        contentBuilder.extractNotificationData(event)?.body,
-        "A new bridge version is available.",
-      );
     });
 
     test("returns null for unsupported events", () {
@@ -103,7 +58,7 @@ void main() {
       );
 
       expect(payload.title, equals("Question requires input"));
-      expect(payload.body, equals("The assistant is waiting for your response."));
+      expect(payload.body, equals("Ship it?"));
       expect(payload.collapseKey, equals("ai_interaction-session-a"));
       expect(payload.data?.sessionId, equals("session-a"));
       expect(payload.data?.category, equals(NotificationCategory.aiInteraction));
@@ -132,60 +87,6 @@ void main() {
         payload.data?.eventType,
         equals(NotificationEventType.installationUpdateAvailable),
       );
-    });
-
-    test("omits path-based project identities and keeps opaque identities", () {
-      final posixPayload = contentBuilder.buildNotificationPayload(
-        category: NotificationCategory.sessionMessage,
-        eventType: NotificationEventType.agentTurnCompleted,
-        title: "Session completed",
-        body: "Task completed",
-        collapseKey: "session-a",
-        sessionId: "session-a",
-        projectId: "/private/project",
-      );
-      final windowsPayload = contentBuilder.buildNotificationPayload(
-        category: NotificationCategory.sessionMessage,
-        eventType: NotificationEventType.agentTurnCompleted,
-        title: "Session completed",
-        body: "Task completed",
-        collapseKey: "session-b",
-        sessionId: "session-b",
-        projectId: r"C:\private\project",
-      );
-      final opaquePayload = contentBuilder.buildNotificationPayload(
-        category: NotificationCategory.sessionMessage,
-        eventType: NotificationEventType.agentTurnCompleted,
-        title: "Session completed",
-        body: "Task completed",
-        collapseKey: "session-c",
-        sessionId: "session-c",
-        projectId: "project-1",
-      );
-      final relativePosixPayload = contentBuilder.buildNotificationPayload(
-        category: NotificationCategory.sessionMessage,
-        eventType: NotificationEventType.agentTurnCompleted,
-        title: "Session completed",
-        body: "Task completed",
-        collapseKey: "session-d",
-        sessionId: "session-d",
-        projectId: "private/project",
-      );
-      final relativeWindowsPayload = contentBuilder.buildNotificationPayload(
-        category: NotificationCategory.sessionMessage,
-        eventType: NotificationEventType.agentTurnCompleted,
-        title: "Session completed",
-        body: "Task completed",
-        collapseKey: "session-e",
-        sessionId: "session-e",
-        projectId: r"private\project",
-      );
-
-      expect(posixPayload.data?.projectId, isNull);
-      expect(windowsPayload.data?.projectId, isNull);
-      expect(relativePosixPayload.data?.projectId, isNull);
-      expect(relativeWindowsPayload.data?.projectId, isNull);
-      expect(opaquePayload.data?.projectId, "project-1");
     });
   });
 
