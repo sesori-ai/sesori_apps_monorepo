@@ -893,10 +893,10 @@ the unused-architecture problem avoided in Step 3.
 
 - Record the final merged PR and verification evidence in the tracker, then move
   the plan tree from `.plan/active/` to `.plan/completed/` in the same commit.
-- Remove the `mobile-mcp` entry from `.mcp.json`. It exists only for the Step 16
-  simulator run, and every ordinary Claude Code session in this repository starts
-  the servers listed there; leaving it registered would impose that cost
-  permanently for a one-off verification.
+- Retain the `mobile-mcp` entry in `.mcp.json` and update its package from 1.0.0
+  to 1.0.2 so maintained simulator tooling remains available after retirement.
+  Ordinary repository sessions keep paying its startup cost by explicit final
+  human-review direction.
 - Confirm all seventeen PRs merged in order and run `git diff --check`. No suites
   and no implementation review.
 

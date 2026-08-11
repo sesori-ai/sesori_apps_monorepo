@@ -522,9 +522,9 @@
 
 - Step 17/17 plan retirement (2026-08-12): confirmed Steps 1-16 merged in
   order through PR #828, archived all four plan artifacts under `.plan/completed/`,
-  and removed the temporary `mobile-mcp` server from `.mcp.json`.
+  and retained `mobile-mcp` while updating it from 1.0.0 to 1.0.2.
   `git diff --cached --check` and `jq empty .mcp.json` passed. The rename-aware
-  final diff is 45 changed lines (25 additions and 20 deletions), with 0
+  final diff is 51 changed lines (30 additions and 21 deletions), with 0
   generated lines; no implementation suites or architecture review apply.
 
 ## Findings And Plan Deltas
