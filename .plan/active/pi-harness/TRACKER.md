@@ -153,14 +153,17 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   the plan. A third pass found fail-open selection, replaying cleanup, unspecified
   libc-probe ownership, a cancellation/close race, and guidance after activation;
   all were corrected. The OMP-over-ACP boundary, separate packages, direct
-  runtime, dependencies, compatibility, and fixed ordering remain unchanged;
-  Steps 18-19 now make minimum safety guidance atomic with registration.
+  runtime, dependencies, compatibility, and fixed ordering remain unchanged.
+  A fourth pass aligned resident-session concurrency, configured-model default,
+  the connection-scoped selection repository, empty-session recovery, layered
+  libc resolution, and repeated-toast identity. Steps 18-19 still make minimum
+  safety guidance atomic with registration.
 - Recorded overage: the revised architecture, exact 21-step tracker, and new
   researched OMP protocol record are one implementation contract after a
   mid-series requirement change; separating the evidence would leave the plan
   non-self-contained.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
-- Diff: +1,290/-378 = 1,668 changed lines; generated lines: 0; tests run: 0.
+- Diff: +1,327/-378 = 1,705 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
 
 ## Findings And Plan Deltas

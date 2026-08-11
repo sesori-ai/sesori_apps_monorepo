@@ -297,9 +297,16 @@ Model values are built as `${provider}/${id}`. Model IDs can themselves contain
 slashes, so the OMP mapper splits only the first slash and retains the exact
 combined value for `session/set_config_option` writes.
 
+The initial model option's `currentValue` is captured before catalog sweeps,
+retained as the project `defaultModelID`, and orders its provider first. Sweep
+responses collect thinking variants but never replace that configured default.
+
 The phone's requested model, mode, and thinking level are fail-closed. If any
 config write is rejected or only partially applied, Sesori fails the accepted
 turn before `session/prompt`; it never silently runs OMP with different settings.
+For an empty durable session, preselection failure keeps the returned session
+bound, records the pending exact selection, and retries it fail-closed before
+the first prompt instead of leaving an unbound OMP-history orphan.
 
 Thinking options depend on the selected model. The isolated project probe
 selects each model and captures the returned thinking options rather than
@@ -436,7 +443,9 @@ The probe did not use real credentials or send a provider request.
   `session/load` replay through Sesori's ACP mapper.
 - Verify model/provider/thinking sweeps with API-key, OAuth, and custom-provider
   configurations without logging account or credential data; reject one write
-  and confirm no prompt is dispatched with a partial selection.
+  and confirm no prompt is dispatched with a partial selection. Verify the
+  pre-sweep configured model remains the phone default and an empty-session
+  failure stays bound for a successful first-turn retry.
 - Verify `always-ask`/`write` permissions and select/confirm/input/editor/plan
   forms end to end, including routing forms from two queued sessions to the
   originating conversation; verify default `yolo` emits no permission cards.

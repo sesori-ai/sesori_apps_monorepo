@@ -63,8 +63,9 @@ conflating their identities, storage, protocols, or release trains.
 6. Imported Pi sessions retain resolvable `parentSession` relationships. OMP
    parent/child lineage is explicitly unavailable because ACP `session/list`
    does not expose it; no private-file scan is added solely to infer that field.
-7. Multiple sessions run concurrently. Pi owns one lazy RPC process per active
-   session; OMP uses one lazy ACP process that natively hosts multiple sessions.
+7. Multiple sessions remain resident concurrently. Pi owns one lazy RPC process
+   per active session; OMP uses one lazy ACP process that hosts multiple sessions
+   while serializing OMP prompt turns process-wide for exact form correlation.
 8. Model/provider discovery is project-scoped. Pi probes a non-persisted RPC
    session; OMP probes ACP config options in an isolated temporary session root.
    Both expose exact per-model thinking levels without hardcoded provider rules.
@@ -341,11 +342,12 @@ bridge/sesori_plugin_omp/
   lib/src/omp_plugin_impl.dart
   lib/src/api/{omp_acp_api,omp_linux_libc_probe_api}.dart
   lib/src/models/{omp_catalog_models,omp_linux_libc}.dart
-  lib/src/repositories/{omp_catalog_repository,omp_session_options_repository}.dart
-  lib/src/repositories/omp_session_cleanup_repository.dart
+  lib/src/repositories/{omp_catalog_repository,omp_session_cleanup_repository}.dart
+  lib/src/repositories/omp_runtime_asset_repository.dart
   lib/src/trackers/omp_catalog_tracker.dart
   lib/src/services/{omp_catalog_service,omp_session_options_service}.dart
   lib/src/services/omp_session_cleanup_service.dart
+  lib/src/services/omp_runtime_asset_service.dart
   lib/src/runtime/{omp_runtime_manifest,omp_plugin_descriptor,omp_bridge_plugin}.dart
   test/
 ```
@@ -406,7 +408,14 @@ adds only protocol behavior demonstrated by OMP and valid for any ACP v1 agent:
   the local state retryable;
 - add an opt-in pre-dispatch turn-selection failure policy. The default remains
   Cursor's best-effort behavior, while OMP may fail the turn before
-  `session/prompt`; and
+  `session/prompt`. For durable empty-session creation, a failed preselection
+  returns the created session with an explicit options warning and retries the
+  selection fail-closed before its first prompt rather than orphaning an unbound
+  backend session;
+- replace the raw-client `applyTurnSelection` hook parameter with a
+  connection-scoped `AcpSessionConfigRepository` created inside `AcpPlugin`.
+  Subclasses receive that repository, not `AcpStdioClient`, and delegate through
+  their service; and
 - add a narrow overridable post-dispatch failure mapper. The base still emits
   the generic session error; OMP may add privacy-safe local `/login` guidance
   for the demonstrated `No model selected` response without forwarding the
@@ -456,7 +465,10 @@ config selection, snapshot capture, and close operations. It maps:
 
 - `configOptions` category/id `model` values of
   `<provider>/<model-id>` into providers and models by splitting only the first
-  slash, while retaining the exact combined value for ACP writes;
+  slash, while retaining the exact combined value for ACP writes. The probe
+  captures the initial model `currentValue` before any sweep, orders that
+  provider first, and publishes the exact model as `defaultModelID`; later
+  sweep responses cannot replace the captured default;
 - mode options into primary `PluginAgent` values, with OMP's current/default
   mode first;
 - each selected model's returned `thinking` options into exact
@@ -472,20 +484,23 @@ A no-model result is a project-scoped failed discovery with local `/login`
 guidance and never replaces the last good snapshot. Catalog sessions therefore
 never enter the user's normal OMP history.
 
-`OmpSessionOptionsRepository` owns exact `session/set_config_option` writes and
-maps the returned OMP config state. `OmpSessionOptionsService` consumes that
-repository plus the catalog service/tracker. It is the project-scoped owner of
+`AcpSessionConfigRepository` owns exact `session/set_config_option` writes and
+maps the returned standard ACP config state below the hook. OMP's
+`applyTurnSelection` override receives this repository instead of a raw client
+and delegates immediately to `OmpSessionOptionsService`. The service consumes
+that connection-scoped repository plus the catalog service/tracker and is the
+project-scoped owner of
 `getSessionOptions`, `getAgents`, `getProviders`, `getCommands`, and
 turn-selection lookup/application. Commands come from `OmpCatalogTracker`'s
 coherent per-project snapshot; OMP never serves the process-global,
 last-update-wins `AcpCommandTracker` snapshot. The superclass still receives
 its required process-scoped `AcpSessionOptionsService` for generic ACP state.
-`OmpPlugin.applyTurnSelection` delegates to the OMP service, preserving full
-exact OMP wire values below the consumer layer. Every requested model, mode,
-and thinking write must succeed; the repository retains the cause and throws on
-rejection or partial application. OMP opts into the base's fail-closed selection
-policy, settles the accepted turn as failed, and never dispatches a prompt with
-settings different from the phone selection.
+Every requested model, mode, and thinking write must succeed; the repository
+retains the cause and throws on rejection or partial application. OMP opts into
+the base's fail-closed selection policy, settles the accepted turn as failed,
+and never dispatches a prompt with settings different from the phone selection.
+An empty session whose preselection fails remains bound to the phone with a
+pending exact selection; its first prompt retries that selection fail-closed.
 
 ### OMP permissions, dialogs, and cleanup
 
@@ -802,12 +817,13 @@ The exact pin is refreshed in Step 9 only after the same ACP probe passes.
 - Assets: macOS arm64/x64, Linux glibc arm64/x64, Linux musl arm64/x64, and
   Windows x64; Windows arm64 is unsupported until upstream publishes it.
 - `OmpLinuxLibcProbeApi` is the lower-layer host boundary. It owns the Alpine
-  marker read and `ldd` invocation through required injected process execution,
-  parses them into the closed `OmpLinuxLibc.glibc`/`musl` enum, and is faked as a
-  concrete class in tests. The descriptor receives the API from its composer,
-  probes once on Linux, and passes the typed result to the otherwise-pure
-  `OmpRuntimeManifest` asset resolver. `PlatformTarget` is not widened for one
-  publisher.
+  marker read and `ldd` invocation through required injected process execution
+  and returns raw bounded evidence. `OmpRuntimeAssetRepository` maps that
+  evidence into the closed `OmpLinuxLibc.glibc`/`musl` enum and resolves the pure
+  manifest asset. `OmpRuntimeAssetService` coordinates the platform decision;
+  the descriptor consumes only that service, all three collaborators are
+  required composer injections, and tests fake their concrete classes.
+  `PlatformTarget` is not widened for one publisher.
 
 OMP assets are raw executables rather than archives. Step 8 extends the shared
 runtime asset model with an honest direct-binary variant that carries no archive
@@ -864,7 +880,7 @@ Sesori profile. ACP mode does not run OMP's interactive version-check path.
 | `launchDirectory`, `primeSessionDirectory` | inherited ACP derived-project attribution |
 | `getCommands` | ACP `available_commands_update` project snapshot |
 | `getSessionOptions` | isolated OMP ACP project probe with reuse/refresh |
-| `createSession` | ACP `session/new`, then optional queued first turn |
+| `createSession` | ACP new; empty preselection failure binds and retries before first turn |
 | `renameSession` | bridge-local title override; OMP `/rename` remains an advertised command |
 | `deleteSession` | abort, await bounded prompt settlement, ACP close, then local cleanup |
 | `deletePersistedSession` | isolated list/resume plus OMP `/session delete` and close |
@@ -898,9 +914,10 @@ both additive changes wire-safe. There is no merged state where either backend
 is selectable without its mandatory guidance.
 
 `SseToastCubit` lives in `module_core/lib/src/cubits/` and maps existing toast
-events into closed presentation variants; the relay-connected mobile shell
-renders them through its root messenger. Step 19 adds Pi/OMP assets, branding,
-and the remaining full install/profile/handoff documentation. Existing
+events into sealed idle/show variants with a monotonic sequence on every show,
+so equal repeated guidance remains a new effect. The relay-connected mobile
+shell renders them through its root messenger. Step 19 adds Pi/OMP assets,
+branding, and the remaining full install/profile/handoff documentation. Existing
 attachment capability drives composer behavior; no Pi or OMP checks enter
 shared client state.
 
@@ -1023,12 +1040,16 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   requests omit session identity; keep the default per-session behavior.
 - Add opt-in fail-closed turn selection before prompt dispatch and bounded
   per-session cancellation settlement before close; preserve Cursor defaults.
+- Replace the raw-client selection hook parameter with ACP's connection-scoped
+  config repository; update internal Cursor consumers in lockstep without
+  changing behavior. Preserve durable empty sessions on preselection failure
+  and retry their pending exact selection before the first turn.
 - Keep Cursor behavior stable and URL elicitation/terminal auth unadvertised.
 - Cover enum/string/boolean and multi-property forms, typed answer conversion,
   unsupported schemas, late/rejected replies, abort/delete/exit/disposal,
   close-supported/unsupported agents, cancellation/close races and timeout,
-  process-wide ordering, selection failure policy, and sensitive prefill/error
-  non-logging.
+  process-wide ordering, selection failure policy, empty-session preselection
+  recovery without an orphan, and sensitive prefill/error non-logging.
 
 ### Step 6/21: Add the OMP ACP plugin core
 
@@ -1047,13 +1068,15 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 ### Step 7/21: Expose OMP options and persisted cleanup
 
 - Add OMP-owned ACP API, catalog repository/service/tracker, session-options
-  repository/service, and cleanup repository/service over bounded isolated ACP
-  leases, including a `--session-dir` scratch process for catalog discovery.
+  service over ACP's config repository, and cleanup repository/service over
+  bounded isolated ACP leases, including a `--session-dir` scratch process for
+  catalog discovery.
 - Map project modes, commands, provider/model IDs, and each model's exact
   thinking options; let the plugin delegate selection application to the
   options service, which writes through `session/set_config_option`. Serve
   commands from the catalog tracker's per-project snapshot, never ACP's
-  process-global command tracker.
+  process-global command tracker. Capture the initial model before sweeps and
+  publish it as the exact project default.
 - Add OMP persisted cleanup through bounded ACP list/resume, `/session delete`,
   close, and disposal after normal live-session close. Keep workflow and
   cursor-exhausted not-found policy in the cleanup service, use OMP's global-ID
@@ -1081,7 +1104,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   `omp/<version>` parser, glibc/musl choice, explicit-bin/PATH/managed
   precedence, descriptor, setup, install, lifecycle, and abort rollback.
 - Add `OmpLinuxLibcProbeApi` with required process execution, typed
-  `OmpLinuxLibc`, descriptor-owned invocation, and pure manifest consumption.
+  `OmpLinuxLibc`, runtime asset repository/service ownership, descriptor-to-
+  service invocation, and pure manifest consumption.
 - Preserve OMP environment/config/approval policy and extend
   `update-backend-runtimes` with OMP release, checksum, raw-binary, and ACP
   checks.
@@ -1185,8 +1209,9 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Add `Harness.pi` and `Harness.omp`, both app dependencies, registry descriptors,
   and every intentional exact known-plugin fixture only after that guidance.
 - Preserve merged Claude entries and OpenCode as preferred default.
-- Verify shared identity, registry/lifecycle/catalog, both plugin suites, toast
-  rendering, mandatory guidance, app fatal analysis, and architecture review.
+- Verify shared identity, registry/lifecycle/catalog, both plugin suites,
+  monotonic repeated/empty toast effects, mandatory guidance, app fatal
+  analysis, and architecture review.
 
 ### Step 19/21: Add Pi and OMP branding and guidance
 
@@ -1196,7 +1221,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   covering `--pi-bin`, `--omp-bin`, unsupported ACP features, profile behavior,
   and terminal-session handoff.
 - Make backend headline copy scalable and test guidance, notifications,
-  duplicate/empty toasts, asset rendering, links, and touched client analysis.
+  asset rendering, links, and touched client analysis.
 
 ### Step 20/21: Verify both integrations end to end
 
