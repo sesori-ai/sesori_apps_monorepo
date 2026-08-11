@@ -56,7 +56,7 @@
 ## Verification Log
 
 - Step 1: `git diff --check origin/main...HEAD` passes, and
-  `git diff --numstat origin/main...HEAD` reports 736 additions and 0 deletions
+  `git diff --numstat origin/main...HEAD` reports 739 additions and 0 deletions
   across the two plan documents, within the 450-850 target. No Dart/Flutter
   suites were run because this step changes documentation only. Committed as
   `e4213ff2`, pushed, and opened as
