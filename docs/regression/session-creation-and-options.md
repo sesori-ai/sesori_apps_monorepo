@@ -18,8 +18,9 @@ variant, and worktree mode, and creating the session with its first input.
 - Failure with a valid cache still serves it; failure without one is an explicit
   error, never an empty option set. Automatic refresh never starts a stopped
   backend and no-ops for a superseded generation.
-- Creation checks plugin routability before resolving the project handle and
-  refuses either invalid input before metadata, git, or session persistence.
+- Creation resolves and validates the project handle before checking plugin
+  routability, so an unknown project causes no plugin, metadata, git, or session
+  persistence effect.
 - Dedicated mode creates a branch and worktree from the resolved base branch,
   rejects unsafe names, falls back to the project directory when the repository
   is absent, commitless, or creation fails, and records worktree, branch, base
@@ -57,8 +58,6 @@ collision-prone, or non-git projects.
 
 - Client end-to-end coverage is phone-only; the desktop shell cannot create.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
-- The routability check can demand-start a stopped plugin before an unknown
-  project is rejected.
 - Only plugins registered in the build under test count.
 
 ## Sources
