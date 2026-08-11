@@ -456,7 +456,7 @@
   `dart pub get`, all 181 `module_prego` tests, the 26 affected app session-tile
   tests, `dart analyze` in `module_prego` and `app`, and `git diff $(git
   merge-base origin/main HEAD) --check` pass. Generated lines: 0. No database or
-  persisted-data change. The final diff is 102 changed lines (70 additions and 32
+  persisted-data change. The final diff is 128 changed lines (84 additions and 44
   deletions), below the 400-800 estimate because the vector mark and existing
   mapping seam are compact. Architecture implementation review is not required
   for localized brand assets, mapping cases, tests, and plan corrections.
@@ -557,13 +557,13 @@
   Resumed launches therefore receive the requested model and the registry's
   filtered session rules through `--allowedTools`; E2E rows 18a and 18b remain
   as final product verification rather than open protocol questions.
-- **2026-08-04 — Prompt-attachment gate stays a client branch (user decision):**
+- **2026-08-04 — Prompt-attachment gate decision, subsequently superseded:**
   plan review wanted a `PluginMetadata` capability flag replacing
-  `harnessSupportsPromptAttachments`. The user chose to widen the existing dated
-  gate instead, keeping this series scoped. Noted for whoever does the capability
-  migration later: a plain `@Default(false)` is wrong, because a new app against
-  an older bridge would silently lose OpenCode attachments — the field needs to
-  be nullable so absence can mean "old bridge, apply the legacy rule".
+  `harnessSupportsPromptAttachments`. The user initially chose the existing dated
+  gate to keep this series scoped. Later repository work independently landed
+  the capability contract with compatibility handling before Step 15 began, so
+  Claude now advertises support through its descriptor and no backend-specific
+  client gate remains.
 - **2026-08-04 — One PR open at a time (user decision):** successors are built
   locally and their PRs open only after the current PR merges. PR #739 (step 2)
   was closed for this reason and reopens against `main` after #737 merges; its

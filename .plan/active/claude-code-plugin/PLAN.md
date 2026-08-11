@@ -167,9 +167,9 @@ macOS keychain lookup.
 - New `MessagePartType` values, relay changes, database migrations, and product
   analytics. This harness adds no new authoritative user action beyond the ones
   the existing harnesses already instrument.
-- New shared wire types, including a prompt-attachment capability flag on
-  `PluginMetadata`. Plan review argued for one; the user decided on 2026-08-04 to
-  widen the existing dated gate instead. See Plan Review Record.
+- Additional shared wire types. A prompt-attachment capability on
+  `PluginMetadata` merged after the original plan decision and now supplies the
+  backend-neutral path this plugin uses. See Plan Review Record.
 
 Reasoning-effort variants were previously excluded pending evidence. Step 2
 found `supportsEffort` and `supportedEffortLevels` declared per model in the
@@ -1006,9 +1006,11 @@ disable OpenCode attachments for a new app against an older bridge, so the field
 would have to be nullable with a dated legacy fallback, since absence genuinely
 means "old bridge, apply the legacy rule" rather than "not supported".
 
-Step 15 therefore widens the gate and keeps its dated comment. Do not reopen this
-without new evidence; the capability migration remains available as its own
-future PR.
+Subsequent repository work introduced the capability contract across shared
+types, descriptors, and client compatibility handling before Step 15 began. That
+merged architecture supersedes the planned gate edit without reopening the
+original scope decision: Step 15 consumes the existing capability path and adds
+no backend-specific client branch.
 
 The corrected plan was not re-reviewed merely to obtain an approval verdict, per
 the repository's plan-review process.
