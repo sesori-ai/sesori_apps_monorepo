@@ -182,6 +182,7 @@ void main() {
         expect(harness.tracker.getLatestAssistantText("root"), isNull);
         expect(harness.tracker.getLatestAssistantText("child"), isNull);
         expect(harness.dispatcher.dispatchedRootSessionIds, equals(["root"]));
+        expect(harness.dispatcher.completionTitles, equals(["Session completed"]));
         expect(harness.dispatcher.completionBodies, equals(["Task completed"]));
       });
     });

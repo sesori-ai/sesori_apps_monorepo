@@ -1,3 +1,4 @@
+import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
 
 class PushNotificationContentBuilder {
@@ -54,7 +55,7 @@ class PushNotificationContentBuilder {
       category: category,
       sessionId: sessionId,
       eventType: eventType,
-      projectId: projectId,
+      projectId: _providerSafeProjectId(projectId: projectId),
     );
 
     return SendNotificationPayload(
@@ -64,6 +65,13 @@ class PushNotificationContentBuilder {
       collapseKey: collapseKey,
       data: data,
     );
+  }
+
+  String? _providerSafeProjectId({required String? projectId}) {
+    if (projectId == null || p.posix.isAbsolute(projectId) || p.windows.isAbsolute(projectId)) {
+      return null;
+    }
+    return projectId;
   }
 
   /// The session that actually raised a permission/question prompt (the owner),

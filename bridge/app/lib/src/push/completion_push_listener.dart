@@ -59,10 +59,7 @@ class CompletionPushListener {
 
     _completionNotifier.completions
         .listen((rootSessionId) {
-          final sessionTitle = _tracker.getSessionTitle(rootSessionId);
-          final title = _contentBuilder.truncateTitle(
-            (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
-          );
+          final title = _contentBuilder.truncateTitle("Session completed");
           final projectId = _tracker.getSessionProjectId(sessionId: rootSessionId);
 
           _tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: rootSessionId);

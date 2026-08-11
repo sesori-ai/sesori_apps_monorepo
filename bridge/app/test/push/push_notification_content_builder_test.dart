@@ -129,6 +129,40 @@ void main() {
         equals(NotificationEventType.installationUpdateAvailable),
       );
     });
+
+    test("omits path-based project identities and keeps opaque identities", () {
+      final posixPayload = contentBuilder.buildNotificationPayload(
+        category: NotificationCategory.sessionMessage,
+        eventType: NotificationEventType.agentTurnCompleted,
+        title: "Session completed",
+        body: "Task completed",
+        collapseKey: "session-a",
+        sessionId: "session-a",
+        projectId: "/private/project",
+      );
+      final windowsPayload = contentBuilder.buildNotificationPayload(
+        category: NotificationCategory.sessionMessage,
+        eventType: NotificationEventType.agentTurnCompleted,
+        title: "Session completed",
+        body: "Task completed",
+        collapseKey: "session-b",
+        sessionId: "session-b",
+        projectId: r"C:\private\project",
+      );
+      final opaquePayload = contentBuilder.buildNotificationPayload(
+        category: NotificationCategory.sessionMessage,
+        eventType: NotificationEventType.agentTurnCompleted,
+        title: "Session completed",
+        body: "Task completed",
+        collapseKey: "session-c",
+        sessionId: "session-c",
+        projectId: "project-1",
+      );
+
+      expect(posixPayload.data?.projectId, isNull);
+      expect(windowsPayload.data?.projectId, isNull);
+      expect(opaquePayload.data?.projectId, "project-1");
+    });
   });
 
   group("extractSessionId", () {

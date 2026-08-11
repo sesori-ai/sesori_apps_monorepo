@@ -19,9 +19,9 @@ that baseline, and the branch and worktree facts a session carries.
   status with per-file counts. A file that cannot be shown returns an explicit
   skip reason (binary, too large, read error), never an empty change.
 - An unreachable base and a base with no common ancestor are distinct
-  client-visible failures, not empty change sets; a git failure is a failure.
-  An archived session, one whose worktree is gone, or a non-git or commitless
-  session with no comparison baseline returns no diffs.
+  client-visible failures, not empty change sets; a git failure during later diff
+  computation is a failure. An archived session, one whose worktree is gone, or
+  one with no comparison baseline returns no diffs.
 - The base branch can be read and set; setting rejects empty input and applies
   to later dedicated baselines, and the stable project identifier resolves to
   the live directory before git runs.
@@ -61,6 +61,8 @@ and in-place sessions, and default versus explicit base branches.
 - Diff rendering is phone-only; the desktop shell has no diff surface.
 - Non-git and commitless sessions have no comparison baseline and intentionally
   return an empty diff rather than a source-control result.
+- A creation-time HEAD-capture failure is currently persisted as no baseline and
+  later returns an empty diff, indistinguishable from a commitless session.
 
 ## Sources
 
