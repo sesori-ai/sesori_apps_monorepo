@@ -339,11 +339,13 @@ bridge/sesori_plugin_omp/
   lib/src/omp_binary.dart
   lib/src/omp_event_mapper.dart
   lib/src/omp_plugin_impl.dart
-  lib/src/api/omp_catalog_probe_api.dart
+  lib/src/api/omp_acp_api.dart
   lib/src/models/omp_catalog_models.dart
-  lib/src/repositories/{omp_catalog_repository,omp_session_cleanup_repository}.dart
+  lib/src/repositories/{omp_catalog_repository,omp_session_options_repository}.dart
+  lib/src/repositories/omp_session_cleanup_repository.dart
   lib/src/trackers/omp_catalog_tracker.dart
   lib/src/services/{omp_catalog_service,omp_session_options_service}.dart
+  lib/src/services/omp_session_cleanup_service.dart
   lib/src/runtime/{omp_runtime_manifest,omp_plugin_descriptor,omp_bridge_plugin}.dart
   test/
 ```
@@ -467,12 +469,14 @@ never enter the user's normal OMP history.
 
 `OmpSessionOptionsRepository` owns exact `session/set_config_option` writes and
 maps the returned OMP config state. `OmpSessionOptionsService` consumes that
-repository, the catalog service/tracker, and the ACP command tracker. It is the
-project-scoped owner of `getSessionOptions`, `getAgents`, `getProviders`,
-`getCommands`, and turn-selection lookup/application. The superclass still
-receives its required process-scoped `AcpSessionOptionsService` for generic ACP
-state. `OmpPlugin.applyTurnSelection` delegates to the OMP service, preserving
-full exact OMP wire values below the consumer layer.
+repository plus the catalog service/tracker. It is the project-scoped owner of
+`getSessionOptions`, `getAgents`, `getProviders`, `getCommands`, and
+turn-selection lookup/application. Commands come from `OmpCatalogTracker`'s
+coherent per-project snapshot; OMP never serves the process-global,
+last-update-wins `AcpCommandTracker` snapshot. The superclass still receives
+its required process-scoped `AcpSessionOptionsService` for generic ACP state.
+`OmpPlugin.applyTurnSelection` delegates to the OMP service, preserving full
+exact OMP wire values below the consumer layer.
 
 ### OMP permissions, dialogs, and cleanup
 
@@ -492,8 +496,11 @@ the row, and removes it from live state. `OmpSessionCleanupRepository` consumes
 `OmpAcpApi` and exposes the exact mapped list, load, delete-command, and close
 operations. `OmpSessionCleanupService` coordinates the bounded isolated lease,
 finds the tombstoned ID through `session/list`, loads it in its returned cwd,
-sends OMP's advertised `/session delete`, closes the session, settles the lease,
-and owns not-found idempotency. `OmpPlugin` implements
+sends OMP's advertised `/session delete`, closes the session, and settles the
+lease. It classifies not-found only after cursor exhaustion. If the standard
+page bound is reached with a cursor remaining, it uses OMP's source-verified
+global-ID `session/load` fallback with an isolated scratch cwd; a failed fallback
+is retryable rather than idempotent success. `OmpPlugin` implements
 `PersistedSessionCleanupApi` by delegation only. This delegates JSONL writer
 shutdown and artifact cleanup to OMP rather than reimplementing OMP's
 profile/XDG/session layout in Dart. As with Pi, concurrently operating the same
@@ -1022,14 +1029,18 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   leases, including a `--session-dir` scratch process for catalog discovery.
 - Map project modes, commands, provider/model IDs, and each model's exact
   thinking options; let the plugin delegate selection application to the
-  options service, which writes through `session/set_config_option`.
+  options service, which writes through `session/set_config_option`. Serve
+  commands from the catalog tracker's per-project snapshot, never ACP's
+  process-global command tracker.
 - Add OMP persisted cleanup through bounded ACP list/load, `/session delete`,
   close, and disposal after normal live-session close. Keep workflow and
-  not-found policy in the cleanup service and title rename explicitly
+  cursor-exhausted not-found policy in the cleanup service, use OMP's global-ID
+  load fallback after a truncated scan, and keep title rename explicitly
   bridge-local.
 - Cover no-model/login guidance, custom providers and slash-containing model
-  IDs, per-model thinking changes, command bootstrap timing, coherent refresh,
-  scratch cleanup, tombstoned deletion, failures, and no payload/path leakage.
+  IDs, per-model thinking changes, distinct project command snapshots, command
+  bootstrap timing, coherent refresh, scratch cleanup, truncated and exhausted
+  tombstoned deletion, failures, and no payload/path leakage.
 
 ### Step 8/21: Install direct binary runtime assets
 

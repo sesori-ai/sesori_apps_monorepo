@@ -223,6 +223,13 @@ legacy/moved buckets. The caller still supplies the best known real cwd.
 - Persisted cleanup uses ACP list/load, `/session delete`, and close rather than
   directly mutating OMP JSONL or shared blob storage.
 
+OMP sorts `session/list` newest-first. Cleanup therefore declares not-found only
+after exhausting `nextCursor`. If Sesori reaches its page bound first, OMP's
+source-verified `session/load` behavior supplies the fallback: it searches the
+requested cwd and then all stored sessions by globally unique ID. Cleanup loads
+the ID with an isolated scratch cwd, deletes it through OMP, and treats fallback
+failure as retryable rather than silently leaving old artifacts behind.
+
 Not-found deletion is idempotent. The normal terminal handoff applies: exit a
 terminal OMP session before operating on that same session from Sesori.
 

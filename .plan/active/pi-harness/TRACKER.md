@@ -147,15 +147,17 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   without re-review. PR review then found one sessionless-form correlation gap,
   three layer-ownership gaps, and a duplicated stale tracker header; all were
   corrected with OMP-only process-wide prompt serialization, explicit
-  API/repository/service delegation, and the PR state. The OMP-over-ACP
-  boundary, separate packages, direct runtime, dependencies, compatibility, and
-  sequencing remain unchanged.
+  API/repository/service delegation, and the PR state. A second PR pass found a
+  stale package map, process-global commands in a project-scoped service, and a
+  false not-found result after capped cleanup pagination; all were corrected in
+  the plan. The OMP-over-ACP boundary, separate packages, direct runtime,
+  dependencies, compatibility, and sequencing remain unchanged.
 - Recorded overage: the revised architecture, exact 21-step tracker, and new
   researched OMP protocol record are one implementation contract after a
   mid-series requirement change; separating the evidence would leave the plan
   non-self-contained.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
-- Diff: +1,233/-377 = 1,610 changed lines; generated lines: 0; tests run: 0.
+- Diff: +1,253/-377 = 1,630 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
 
 ## Findings And Plan Deltas
