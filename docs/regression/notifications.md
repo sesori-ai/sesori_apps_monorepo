@@ -21,8 +21,9 @@ Apple and Google is external.
   registration if logout fails, and never re-registers while logout is in flight.
 - Foreground rendering needs the category enabled plus title and body; an unknown category and a preference read
   failure both default to enabled. Preferences are per account and cleared on account switch.
-- A notification opened while unauthenticated defers until authentication, then routes to its session; viewing a
-  session cancels its notifications.
+- A notification carrying an opaque project identity and opened while
+  unauthenticated defers until authentication, then routes to its session;
+  viewing a session cancels its notifications.
 - Payloads carry only fixed generic copy plus category, event type, session identity,
   and an opaque project identity when available. A project identity containing a
   POSIX or Windows path separator is omitted. Full code, prompts, questions,
@@ -35,8 +36,8 @@ Apple and Google is external.
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
 | L2 Routine | Automated and headless bridge, representative plugin, fake push client: event-to-payload mapping with generic interaction, completion, and update title/body; absolute and relative path-like project identity omission; collapse identity; project attribution; completion debounce; pending-interaction blocking; abort suppression; per-category rate limits; maintenance step isolation. |
-| L3 Release | Client end to end on the release-target client platform with a fake messaging source: registration, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. |
-| L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
+| L3 Release | Client end to end on the release-target client platform with a fake messaging source: registration, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral for an opaque project identity, cancellation on open. |
+| L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, completion from another production plugin, account switch and logout isolation, a child prompt with an opaque project identity opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
 
 ## Exploration Guidance
