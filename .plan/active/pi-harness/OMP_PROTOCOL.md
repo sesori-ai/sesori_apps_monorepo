@@ -259,8 +259,11 @@ Turn execution:
 ```
 
 The response's `stopReason` completes the turn. OMP queues a prompt behind an
-in-flight cancellation/cleanup internally, while Sesori also serializes turns
-per session. Independent sessions can run concurrently in one ACP process.
+in-flight cancellation/cleanup internally. ACP's server-initiated permission
+and `elicitation/create` requests do not identify their originating session, so
+Sesori enables an OMP-specific process-wide prompt lane. Independent sessions
+remain resident in one ACP process, but only one OMP prompt is dispatched at a
+time; the generic ACP default and Cursor retain per-session concurrency.
 
 Abort is a `session/cancel` notification. Sesori also resolves pending ACP
 permissions/forms so OMP is not left awaiting a client response.
@@ -325,7 +328,9 @@ When the client advertises form elicitation, OMP maps reachable extension UI:
 
 Accepted form replies return typed scalar values by property key. Decline,
 cancel, abort, process exit, and plugin disposal clear the corresponding phone
-card. Unsupported schemas are declined with bounded diagnostics.
+card. The process-wide OMP prompt lane makes the sole active turn the reliable
+owner of each sessionless form request. Unsupported schemas are declined with
+bounded diagnostics.
 
 OMP's extension `notify` currently writes a local debug notification and sends
 no ACP client notification. Custom components, themes, terminal input, and other
@@ -416,7 +421,8 @@ The probe did not use real credentials or send a provider request.
 - Verify model/provider/thinking sweeps with API-key, OAuth, and custom-provider
   configurations without logging account or credential data.
 - Verify `always-ask`/`write` permissions and select/confirm/input/editor/plan
-  forms end to end; verify default `yolo` emits no permission cards.
+  forms end to end, including routing forms from two queued sessions to the
+  originating conversation; verify default `yolo` emits no permission cards.
 - Verify loaded-session `/session delete` removes OMP-managed artifacts and is
   idempotent after restart cleanup.
 - Verify glibc and musl selection on available Linux hosts, Windows x64 install,

@@ -9,8 +9,8 @@
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
-- **Step 4 PR:** pending
-- **Next action:** validate and open Step 4
+- **Step 4 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/829
+- **Next action:** address Step 4 review feedback and monitor it to merge
 
 ## Locked Decisions
 
@@ -144,15 +144,18 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Selected separate Pi RPC and OMP-over-ACP packages; rejected a Pi-family base
   and duplicate OMP RPC implementation.
 - Architecture plan review rejected four documentation gaps; all were applied
-  without re-review. The OMP-over-ACP boundary, separate packages, scratch
-  catalog, deletion flow, direct runtime, dependencies, compatibility, and
-  sequencing received no findings.
+  without re-review. PR review then found one sessionless-form correlation gap,
+  three layer-ownership gaps, and a duplicated stale tracker header; all were
+  corrected with OMP-only process-wide prompt serialization, explicit
+  API/repository/service delegation, and the PR state. The OMP-over-ACP
+  boundary, separate packages, direct runtime, dependencies, compatibility, and
+  sequencing remain unchanged.
 - Recorded overage: the revised architecture, exact 21-step tracker, and new
   researched OMP protocol record are one implementation contract after a
   mid-series requirement change; separating the evidence would leave the plan
   non-self-contained.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
-- Diff: +1,210/-377 = 1,587 changed lines; generated lines: 0; tests run: 0.
+- Diff: +1,233/-377 = 1,610 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
 
 ## Findings And Plan Deltas

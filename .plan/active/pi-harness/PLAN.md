@@ -424,8 +424,11 @@ The generic ACP implementation already matches OMP's verified boundary:
 - `session/prompt` completion owns busy/idle settlement; text, thought, image,
   tool, plan, title, command, and usage updates use existing ACP mapping;
 - `session/cancel` aborts a turn and resolves pending permissions/forms; and
-- one ACP process may host independent concurrent sessions while the base keeps
-  one serialized turn lane per session.
+- one ACP process may host independent resident sessions, but ACP's
+  server-initiated permission/form requests carry no session ID. Step 5 adds an
+  opt-in process-wide prompt lane to the ACP base, and OMP enables it so only
+  one OMP prompt can own those requests at a time. Cursor and the default ACP
+  behavior retain their existing per-session lanes.
 
 OMP ACP does not return parent metadata. `getChildSessions` therefore remains
 empty for OMP, while imported Pi lineage remains fully supported. Standard ACP
@@ -436,14 +439,13 @@ OMP JSONL rewrite.
 
 ### OMP catalogs and selection
 
-`OmpCatalogProbeApi` owns a bounded throwaway `omp acp` client launched in the
-requested project cwd with `--session-dir` pointing to a plugin-state scratch
-directory. The probe creates one ACP session, captures its result and bootstrap
-notifications, sweeps model selections, closes the session, disposes the
-process, and removes only that scratch directory. It never creates catalog
-sessions in the user's normal OMP history.
+`OmpAcpApi` owns only the external-tool mechanics for bounded isolated `omp acp`
+leases: launch in the requested cwd, initialize, expose primitive ACP requests,
+close/dispose, and remove an explicitly supplied plugin-state scratch directory.
+It does not choose catalog selections or persisted-cleanup policy.
 
-`OmpCatalogRepository` maps:
+`OmpCatalogRepository` consumes that API and exposes mapped session creation,
+config selection, snapshot capture, and close operations. It maps:
 
 - `configOptions` category/id `model` values of
   `<provider>/<model-id>` into providers and models by splitting only the first
@@ -455,19 +457,22 @@ sessions in the user's normal OMP history.
 - `available_commands_update` into existing command values.
 
 `OmpCatalogTracker` owns the last coherent snapshot per normalized project.
-`OmpCatalogService` coordinates the repository and tracker: reuse returns the
-tracked snapshot or probes when absent, while refresh always probes. A no-model
-result is a project-scoped failed discovery with local `/login` guidance and
-never replaces the last good snapshot.
+`OmpCatalogService` coordinates the repository and tracker. A probe opens one
+scratch lease, creates one ACP session, captures bootstrap notifications,
+sweeps model selections, closes the session, and settles the lease. Reuse
+returns the tracked snapshot or probes when absent, while refresh always probes.
+A no-model result is a project-scoped failed discovery with local `/login`
+guidance and never replaces the last good snapshot. Catalog sessions therefore
+never enter the user's normal OMP history.
 
-`OmpSessionOptionsService` consumes the catalog service/tracker plus the ACP
-command tracker and is the project-scoped owner of `getSessionOptions`,
-`getAgents`, `getProviders`, and `getCommands`; the superclass still receives
-its required process-scoped `AcpSessionOptionsService` for generic ACP state.
-`OmpPlugin.applyTurnSelection` reads the OMP tracker and sets model, mode, and
-thinking immediately before the queued turn through
-`session/set_config_option`, preserving full exact OMP wire values inside the
-OMP package.
+`OmpSessionOptionsRepository` owns exact `session/set_config_option` writes and
+maps the returned OMP config state. `OmpSessionOptionsService` consumes that
+repository, the catalog service/tracker, and the ACP command tracker. It is the
+project-scoped owner of `getSessionOptions`, `getAgents`, `getProviders`,
+`getCommands`, and turn-selection lookup/application. The superclass still
+receives its required process-scoped `AcpSessionOptionsService` for generic ACP
+state. `OmpPlugin.applyTurnSelection` delegates to the OMP service, preserving
+full exact OMP wire values below the consumer layer.
 
 ### OMP permissions, dialogs, and cleanup
 
@@ -483,14 +488,16 @@ Unsupported custom components, terminal input, theme, and decorations remain
 upstream no-ops.
 
 Normal bridge deletion first invokes standard ACP `session/close`, tombstones
-the row, and removes it from live state. `OmpSessionCleanupRepository`, used by
-`PersistedSessionCleanupApi`, then opens a bounded isolated ACP lease, finds the
-exact tombstoned ID through `session/list`, loads it in its returned cwd, sends
-OMP's advertised `/session delete`, closes the session, and disposes the lease.
-Not-found is idempotent. This delegates JSONL writer shutdown and artifact
-cleanup to OMP rather than reimplementing OMP's profile/XDG/session layout in
-Dart. As with Pi, concurrently operating the same session from a terminal and
-Sesori is an explicitly unsupported handoff.
+the row, and removes it from live state. `OmpSessionCleanupRepository` consumes
+`OmpAcpApi` and exposes the exact mapped list, load, delete-command, and close
+operations. `OmpSessionCleanupService` coordinates the bounded isolated lease,
+finds the tombstoned ID through `session/list`, loads it in its returned cwd,
+sends OMP's advertised `/session delete`, closes the session, settles the lease,
+and owns not-found idempotency. `OmpPlugin` implements
+`PersistedSessionCleanupApi` by delegation only. This delegates JSONL writer
+shutdown and artifact cleanup to OMP rather than reimplementing OMP's
+profile/XDG/session layout in Dart. As with Pi, concurrently operating the same
+session from a terminal and Sesori is an explicitly unsupported handoff.
 
 ### Pi session catalog
 
@@ -986,10 +993,13 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   capability/request/reply handling, supported scalar schemas, bounded editor
   default presentation, session-close capability, and OMP's narrow sanitized
   turn-failure presentation hook.
+- Add an opt-in process-wide prompt lane for agents whose server-initiated
+  requests omit session identity; keep the default per-session behavior.
 - Keep Cursor behavior stable and URL elicitation/terminal auth unadvertised.
 - Cover enum/string/boolean and multi-property forms, typed answer conversion,
   unsupported schemas, late/rejected replies, abort/delete/exit/disposal,
-  close-supported/unsupported agents, and sensitive prefill/error non-logging.
+  close-supported/unsupported agents, process-wide ordering/cancellation, and
+  sensitive prefill/error non-logging.
 
 ### Step 6/21: Add the OMP ACP plugin core
 
@@ -1001,18 +1011,22 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Add app-invisible workspace, Makefile, CI, and dependency-update inventory.
 - Cover `omp acp` arguments, environment preservation, handshake/auth, global
   and cwd session lists, new/load/resume, history/live/tool/image mapping,
-  configured permissions/forms, cancellation, reconnect, and disposal with the
-  ACP fake plus redacted upstream fixtures.
+  configured permissions/forms, two-session form routing through OMP's opted-in
+  process-wide lane, cancellation, reconnect, and disposal with the ACP fake
+  plus redacted upstream fixtures.
 
 ### Step 7/21: Expose OMP options and persisted cleanup
 
-- Add OMP-owned catalog API/repository/service/tracker over an isolated
-  `--session-dir` scratch ACP process.
+- Add OMP-owned ACP API, catalog repository/service/tracker, session-options
+  repository/service, and cleanup repository/service over bounded isolated ACP
+  leases, including a `--session-dir` scratch process for catalog discovery.
 - Map project modes, commands, provider/model IDs, and each model's exact
-  thinking options; apply selections through `session/set_config_option`.
+  thinking options; let the plugin delegate selection application to the
+  options service, which writes through `session/set_config_option`.
 - Add OMP persisted cleanup through bounded ACP list/load, `/session delete`,
-  close, and disposal after normal live-session close. Keep not-found
-  idempotent and title rename explicitly bridge-local.
+  close, and disposal after normal live-session close. Keep workflow and
+  not-found policy in the cleanup service and title rename explicitly
+  bridge-local.
 - Cover no-model/login guidance, custom providers and slash-containing model
   IDs, per-model thinking changes, command bootstrap timing, coherent refresh,
   scratch cleanup, tombstoned deletion, failures, and no payload/path leakage.
