@@ -103,3 +103,6 @@ OpenCode default, or no-new-analytics decisions without the user.
 
 - Reviews corrected architecture/lifecycle and added rendered toasts, visible
   compaction, bounded scans, history fallback, project questions, and sequencing.
+- 2026-08-11 pinned-source verification found that generated unions for every
+  transport variant would add thousands of unused lines. By user decision,
+  Step 3 uses hand-written sealed transport variants and generated leaf DTOs.

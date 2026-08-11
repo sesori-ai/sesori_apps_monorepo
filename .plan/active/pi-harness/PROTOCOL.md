@@ -262,6 +262,7 @@ Empty names are rejected.
 
 Top-level event types include agent/turn/message start-update-end, tool/bash
 execution, queue updates, compaction/retry/summarization lifecycle,
+`entry_appended`, `session_info_changed`, `thinking_level_changed`,
 `extension_error`, `extension_ui_request`, and final `agent_settled`.
 
 Typical order is `agent_start` -> `turn_start` -> user/assistant message frames
@@ -406,7 +407,7 @@ api, provider, model, usage, stopReason, errorMessage?, timestamp
 Terminal stop reasons:
 
 ```text
-stop, length, toolUse, error, aborted
+pending, stop, length, toolUse, error, aborted, deferred
 ```
 
 Tool result:
@@ -498,8 +499,9 @@ set_editor_text
 ```
 
 Dialog promises live only in an in-process map. They cannot be re-enumerated or
-answered after process replacement. Timeouts auto-resolve inside Pi; the plugin
-mirrors the timeout to remove the phone card.
+answered after process replacement. Select, confirm, and input timeouts
+auto-resolve inside Pi; editor has no upstream timeout. The plugin owns editor
+expiry and mirrors the other timeouts to remove the phone card.
 
 Pi RPC declares `ctx.mode == "rpc"` and `ctx.hasUI == true`, but terminal-only
 custom components, headers/footers, theme changes, raw input, and editor
