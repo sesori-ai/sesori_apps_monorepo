@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `attachment-references`
-- **Status:** Step 3/11 - bridge rendition endpoint ready for review
+- **Status:** Step 3/11 - bridge rendition endpoint in review
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at `f91fee47`
