@@ -14,37 +14,26 @@ class PushNotificationContentBuilder {
     return "${normalized.substring(0, safeCutoff).trimRight()}...";
   }
 
-  String truncateToWords(String text, {int maxWords = 10}) {
-    final words = text.trim().split(RegExp(r"\s+")).where((word) => word.isNotEmpty).toList();
-    if (words.length <= maxWords) {
-      return words.join(" ");
-    }
-
-    return "${words.take(maxWords).join(" ")}...";
-  }
-
   ({NotificationCategory category, NotificationEventType eventType, String title, String body})?
   extractNotificationData(SesoriSseEvent event) {
     return switch (event) {
-      SesoriQuestionAsked(:final questions) => (
+      SesoriQuestionAsked() => (
         category: NotificationCategory.aiInteraction,
         eventType: NotificationEventType.questionAsked,
         title: "Question requires input",
-        body: questions.isNotEmpty ? questions.first.question : "The assistant is waiting for your response.",
+        body: "The assistant is waiting for your response.",
       ),
-      SesoriPermissionAsked(:final tool, :final description) => (
+      SesoriPermissionAsked() => (
         category: NotificationCategory.aiInteraction,
         eventType: NotificationEventType.permissionAsked,
         title: "Permission requested",
-        body: description.isNotEmpty ? description : "The assistant requested permission to run $tool.",
+        body: "The assistant requested permission.",
       ),
-      SesoriInstallationUpdateAvailable(:final version) => (
+      SesoriInstallationUpdateAvailable() => (
         category: NotificationCategory.systemUpdate,
         eventType: NotificationEventType.installationUpdateAvailable,
         title: "Bridge update available",
-        body: (version != null && version.isNotEmpty)
-            ? "Version $version is available."
-            : "A new bridge version is available.",
+        body: "A new bridge version is available.",
       ),
       _ => null,
     };
@@ -63,7 +52,7 @@ class PushNotificationContentBuilder {
       category: category,
       sessionId: sessionId,
       eventType: eventType,
-      projectId: projectId,
+      projectId: _providerSafeProjectId(projectId: projectId),
     );
 
     return SendNotificationPayload(
@@ -73,6 +62,13 @@ class PushNotificationContentBuilder {
       collapseKey: collapseKey,
       data: data,
     );
+  }
+
+  String? _providerSafeProjectId({required String? projectId}) {
+    if (projectId == null || projectId.contains("/") || projectId.contains(r"\")) {
+      return null;
+    }
+    return projectId;
   }
 
   /// The session that actually raised a permission/question prompt (the owner),

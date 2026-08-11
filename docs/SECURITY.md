@@ -41,7 +41,14 @@ Sesori retains the minimum account-level data needed to make the service work wh
 
 ## Push notifications
 
-If you enable push notifications, our backend builds a notification payload that may contain a short preview of the event (for example, a question summary or the latest assistant message). That payload is sent to Apple or Google push services, so it leaves the end-to-end encrypted channel between your phone and the Bridge. The full code, prompts, and responses stay on your machine; only the preview needed for the notification travels through the push provider.
+If you enable push notifications, the Bridge builds a payload with fixed generic
+notification text and the routing metadata needed for delivery: category, event
+type, session identity, and an opaque project identity when available. Our backend
+forwards that payload to Apple or Google push services, so it leaves the
+end-to-end encrypted channel between your phone and the Bridge. Code, prompts,
+responses, questions, permission descriptions, session titles, and local paths
+stay on your machine; absolute and relative path-like project identities are
+omitted, and only opaque project IDs are sent.
 
 ## Account deletion
 
