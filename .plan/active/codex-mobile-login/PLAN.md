@@ -178,7 +178,7 @@ unsupported authentication method to every descriptor.
 ### 2. Codex runtime resolution
 
 Extract the current repeated resolution decision into one plugin-local
-`CodexRuntimeResolver`. Setup inspection, `ensureRuntime`, and authentication
+`CodexRuntimeSelectionService`. Setup inspection, `ensureRuntime`, and authentication
 must all preserve this order:
 
 ```text
@@ -188,7 +188,7 @@ Codex desktop-app CLI >= 0.139.0
 exact installed managed runtime
 ```
 
-The resolver uses existing `RuntimeVersionValidator`,
+The service uses existing `RuntimeVersionValidator`,
 `HostProcessCommandExecutor`, `CodexRuntimeManifest`, and home-directory
 resolution. It does not install, download, sweep, or read credentials.
 
@@ -495,7 +495,7 @@ route becomes obsolete.
 | Step | Exact PR title | Estimate | Boundary |
 |---|---|---:|---|
 | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | Active plan and tracker only. |
-| 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | Shared Codex runtime resolver, stdio JSONL client, typed account API, protocol tests; no bridge/client capability. |
+| 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | Shared Codex runtime selection service, stdio JSONL client, typed account API, protocol tests; no bridge/client capability. |
 | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | Optional plugin contract plus Codex authentication repository/service/descriptor delegation and process lifecycle tests; no remote route. |
 | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Shared capability, operation state, sealed challenge/progress, compatibility defaults, generated code, contract tests. |
 | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Runtime/repository/service ownership, start-or-join and cancel routes, Orchestrator SSE mapping, reinspection/activation/disposal tests. |
@@ -516,7 +516,7 @@ behavior change.
 
 ### Step 2/8 - Codex authentication primitives
 
-- Extract `CodexRuntimeResolver` and preserve explicit/PATH/desktop/managed
+- Extract `CodexRuntimeSelectionService` and preserve explicit/PATH/desktop/managed
   precedence in setup and startup.
 - Add the stdio JSONL client over `HostProcessService` with request correlation,
   notification delivery, stderr draining, child-exit handling, initialization,
