@@ -199,7 +199,7 @@ instead of silently forcing either approval or denial behavior.
 - OMP ACP session enumeration/load/resume, live/replay mapping, modes, commands,
   provider/model/thinking selection, configured permissions, and isolated
   catalog probing.
-- OMP persisted deletion through OMP's own loaded-session `/session delete`
+- OMP persisted deletion through OMP's own resumed-session `/session delete`
   flow after standard ACP close, so OMP owns writer and artifact cleanup.
 - Direct-binary managed-runtime provisioning, OMP glibc/musl selection, OMP
   identity/branding/guidance, and runtime update-skill support.
@@ -339,8 +339,8 @@ bridge/sesori_plugin_omp/
   lib/src/omp_binary.dart
   lib/src/omp_event_mapper.dart
   lib/src/omp_plugin_impl.dart
-  lib/src/api/omp_acp_api.dart
-  lib/src/models/omp_catalog_models.dart
+  lib/src/api/{omp_acp_api,omp_linux_libc_probe_api}.dart
+  lib/src/models/{omp_catalog_models,omp_linux_libc}.dart
   lib/src/repositories/{omp_catalog_repository,omp_session_options_repository}.dart
   lib/src/repositories/omp_session_cleanup_repository.dart
   lib/src/trackers/omp_catalog_tracker.dart
@@ -400,8 +400,13 @@ adds only protocol behavior demonstrated by OMP and valid for any ACP v1 agent:
 - degrade unsupported schemas by declining with a bounded local diagnostic;
 - present editor defaults as a bounded labelled full-replacement prefill because
   the shared question contract has no editable-prefill field;
-- parse `sessionCapabilities.close` and close a resident ACP session during
-  delete before dropping local state; and
+- parse `sessionCapabilities.close`; deletion cancels an active target, awaits
+  that session's queued/in-flight turn settlement within a bounded deadline,
+  closes it, and only then drops local state. Timeout fails deletion and keeps
+  the local state retryable;
+- add an opt-in pre-dispatch turn-selection failure policy. The default remains
+  Cursor's best-effort behavior, while OMP may fail the turn before
+  `session/prompt`; and
 - add a narrow overridable post-dispatch failure mapper. The base still emits
   the generic session error; OMP may add privacy-safe local `/login` guidance
   for the demonstrated `No model selected` response without forwarding the
@@ -476,7 +481,11 @@ coherent per-project snapshot; OMP never serves the process-global,
 last-update-wins `AcpCommandTracker` snapshot. The superclass still receives
 its required process-scoped `AcpSessionOptionsService` for generic ACP state.
 `OmpPlugin.applyTurnSelection` delegates to the OMP service, preserving full
-exact OMP wire values below the consumer layer.
+exact OMP wire values below the consumer layer. Every requested model, mode,
+and thinking write must succeed; the repository retains the cause and throws on
+rejection or partial application. OMP opts into the base's fail-closed selection
+policy, settles the accepted turn as failed, and never dispatches a prompt with
+settings different from the phone selection.
 
 ### OMP permissions, dialogs, and cleanup
 
@@ -491,16 +500,18 @@ debug notification because upstream ACP emits no client notification for it.
 Unsupported custom components, terminal input, theme, and decorations remain
 upstream no-ops.
 
-Normal bridge deletion first invokes standard ACP `session/close`, tombstones
-the row, and removes it from live state. `OmpSessionCleanupRepository` consumes
-`OmpAcpApi` and exposes the exact mapped list, load, delete-command, and close
+Normal bridge deletion cancels and waits for active prompt settlement, invokes
+standard ACP `session/close`, tombstones the row, and removes it from live state.
+`OmpSessionCleanupRepository` consumes `OmpAcpApi` and exposes the exact mapped
+list, resume, delete-command, and close
 operations. `OmpSessionCleanupService` coordinates the bounded isolated lease,
-finds the tombstoned ID through `session/list`, loads it in its returned cwd,
+finds the tombstoned ID through `session/list`, resumes it without replay in its
+returned cwd,
 sends OMP's advertised `/session delete`, closes the session, and settles the
 lease. It classifies not-found only after cursor exhaustion. If the standard
 page bound is reached with a cursor remaining, it uses OMP's source-verified
-global-ID `session/load` fallback with an isolated scratch cwd; a failed fallback
-is retryable rather than idempotent success. `OmpPlugin` implements
+global-ID `session/resume` fallback with an isolated scratch cwd; a failed
+fallback is retryable rather than idempotent success. `OmpPlugin` implements
 `PersistedSessionCleanupApi` by delegation only. This delegates JSONL writer
 shutdown and artifact cleanup to OMP rather than reimplementing OMP's
 profile/XDG/session layout in Dart. As with Pi, concurrently operating the same
@@ -764,7 +775,7 @@ Project-scoped auth failures never escape as
 `PluginAuthenticationRequiredException`, which bridge core interprets as
 plugin-global auth loss. Catalog discovery returns
 `PluginSessionOptionsDiscoveryResult.failed` plus an existing bounded guidance
-toast rendered by Step 19; admitted turns emit existing `session.error` plus
+toast rendered by Step 18; admitted turns emit existing `session.error` plus
 that toast. Other synchronous calls use ordinary cause-preserving operation
 failures. No new wire event is required.
 
@@ -790,9 +801,13 @@ The exact pin is refreshed in Step 9 only after the same ACP probe passes.
   `https://github.com/can1357/oh-my-pi/releases/download/v<version>/<asset>`.
 - Assets: macOS arm64/x64, Linux glibc arm64/x64, Linux musl arm64/x64, and
   Windows x64; Windows arm64 is unsupported until upstream publishes it.
-- Linux libc is selected through one OMP-owned host probe before choosing the
-  manifest asset. It follows upstream's ordinary Alpine/`ldd` distinction and
-  is injected in tests; `PlatformTarget` is not widened for one publisher.
+- `OmpLinuxLibcProbeApi` is the lower-layer host boundary. It owns the Alpine
+  marker read and `ldd` invocation through required injected process execution,
+  parses them into the closed `OmpLinuxLibc.glibc`/`musl` enum, and is faked as a
+  concrete class in tests. The descriptor receives the API from its composer,
+  probes once on Linux, and passes the typed result to the otherwise-pure
+  `OmpRuntimeManifest` asset resolver. `PlatformTarget` is not widened for one
+  publisher.
 
 OMP assets are raw executables rather than archives. Step 8 extends the shared
 runtime asset model with an honest direct-binary variant that carries no archive
@@ -851,13 +866,13 @@ Sesori profile. ACP mode does not run OMP's interactive version-check path.
 | `getSessionOptions` | isolated OMP ACP project probe with reuse/refresh |
 | `createSession` | ACP `session/new`, then optional queued first turn |
 | `renameSession` | bridge-local title override; OMP `/rename` remains an advertised command |
-| `deleteSession` | abort if active, ACP `session/close`, then local state cleanup |
-| `deletePersistedSession` | isolated list/load plus OMP `/session delete` and close |
+| `deleteSession` | abort, await bounded prompt settlement, ACP close, then local cleanup |
+| `deletePersistedSession` | isolated list/resume plus OMP `/session delete` and close |
 | `archiveSession`, `deleteWorkspace` | no-op under best-effort contracts |
 | `getChildSessions` | empty; ACP list exposes no parent metadata |
 | `getSessionStatuses` | inherited ACP per-session turn state |
 | `getSessionMessages` | short-lived ACP `session/load` replay |
-| `sendPrompt`, `sendCommand` | inherited ACP turn lane plus OMP selection application |
+| `sendPrompt`, `sendCommand` | OMP turn lane; selection failure stops before prompt dispatch |
 | `abortSession` | ACP cancel plus pending permission/form cancellation |
 | `getAgents`, `getProviders` | OMP mode/config-option project snapshot |
 | questions | standard ACP form elicitations |
@@ -873,17 +888,21 @@ and dependency-update inventory. Step 6 does the same for OMP. The app does not
 depend on or register either new backend until Step 18, after both descriptors
 are complete.
 
-Step 18 adds `Harness.pi` and `Harness.omp`, both app dependencies, and the two
-concrete registrations in `plugin_registry.dart`, then updates exact-set
+Step 18 first adds the minimum safety presentation required for activation:
+backend-neutral toast rendering plus user-facing local `/login`, Pi
+always-`--approve` project-code trust, and inherited OMP approval-policy
+guidance. It then adds `Harness.pi` and `Harness.omp`, both app dependencies, and
+the two concrete registrations in `plugin_registry.dart`, followed by exact-set
 fixtures. OpenCode remains the preferred default; string plugin identity keeps
-both additive changes wire-safe.
+both additive changes wire-safe. There is no merged state where either backend
+is selectable without its mandatory guidance.
 
-Step 19 adds Pi/OMP assets, branding, and docs plus backend-neutral toast
-presentation. `SseToastCubit` lives in `module_core/lib/src/cubits/` and maps
-existing toast events into closed presentation variants;
-the relay-connected mobile shell renders them through its root messenger.
-Existing attachment capability drives composer behavior; no Pi or OMP checks
-enter shared client state.
+`SseToastCubit` lives in `module_core/lib/src/cubits/` and maps existing toast
+events into closed presentation variants; the relay-connected mobile shell
+renders them through its root messenger. Step 19 adds Pi/OMP assets, branding,
+and the remaining full install/profile/handoff documentation. Existing
+attachment capability drives composer behavior; no Pi or OMP checks enter
+shared client state.
 
 ## Analytics Assessment
 
@@ -1002,11 +1021,14 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   turn-failure presentation hook.
 - Add an opt-in process-wide prompt lane for agents whose server-initiated
   requests omit session identity; keep the default per-session behavior.
+- Add opt-in fail-closed turn selection before prompt dispatch and bounded
+  per-session cancellation settlement before close; preserve Cursor defaults.
 - Keep Cursor behavior stable and URL elicitation/terminal auth unadvertised.
 - Cover enum/string/boolean and multi-property forms, typed answer conversion,
   unsupported schemas, late/rejected replies, abort/delete/exit/disposal,
-  close-supported/unsupported agents, process-wide ordering/cancellation, and
-  sensitive prefill/error non-logging.
+  close-supported/unsupported agents, cancellation/close races and timeout,
+  process-wide ordering, selection failure policy, and sensitive prefill/error
+  non-logging.
 
 ### Step 6/21: Add the OMP ACP plugin core
 
@@ -1019,8 +1041,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Cover `omp acp` arguments, environment preservation, handshake/auth, global
   and cwd session lists, new/load/resume, history/live/tool/image mapping,
   configured permissions/forms, two-session form routing through OMP's opted-in
-  process-wide lane, cancellation, reconnect, and disposal with the ACP fake
-  plus redacted upstream fixtures.
+  process-wide lane, fail-closed selection, cancellation settlement, reconnect,
+  and disposal with the ACP fake plus redacted upstream fixtures.
 
 ### Step 7/21: Expose OMP options and persisted cleanup
 
@@ -1032,10 +1054,10 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
   options service, which writes through `session/set_config_option`. Serve
   commands from the catalog tracker's per-project snapshot, never ACP's
   process-global command tracker.
-- Add OMP persisted cleanup through bounded ACP list/load, `/session delete`,
+- Add OMP persisted cleanup through bounded ACP list/resume, `/session delete`,
   close, and disposal after normal live-session close. Keep workflow and
   cursor-exhausted not-found policy in the cleanup service, use OMP's global-ID
-  load fallback after a truncated scan, and keep title rename explicitly
+  resume fallback after a truncated scan, and keep title rename explicitly
   bridge-local.
 - Cover no-model/login guidance, custom providers and slash-containing model
   IDs, per-model thinking changes, distinct project command snapshots, command
@@ -1058,6 +1080,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 - Add `OmpRuntimeManifest` for the seven official `v17.2.13` assets, semantic
   `omp/<version>` parser, glibc/musl choice, explicit-bin/PATH/managed
   precedence, descriptor, setup, install, lifecycle, and abort rollback.
+- Add `OmpLinuxLibcProbeApi` with required process execution, typed
+  `OmpLinuxLibc`, descriptor-owned invocation, and pure manifest consumption.
 - Preserve OMP environment/config/approval policy and extend
   `update-backend-runtimes` with OMP release, checksum, raw-binary, and ACP
   checks.
@@ -1156,23 +1180,21 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 ### Step 18/21: Register Pi and OMP
 
-- Add `Harness.pi` and `Harness.omp`, both app dependencies, registry
-  descriptors, and every intentional exact known-plugin fixture.
+- Before activation, add backend-neutral `SseToastCubit` rendering plus minimum
+  local-login, Pi project-code trust, and OMP approval-policy guidance.
+- Add `Harness.pi` and `Harness.omp`, both app dependencies, registry descriptors,
+  and every intentional exact known-plugin fixture only after that guidance.
 - Preserve merged Claude entries and OpenCode as preferred default.
-- Verify shared identity, registry/lifecycle/catalog, both plugin suites, app
-  fatal analysis, and architecture implementation review.
+- Verify shared identity, registry/lifecycle/catalog, both plugin suites, toast
+  rendering, mandatory guidance, app fatal analysis, and architecture review.
 
 ### Step 19/21: Add Pi and OMP branding and guidance
 
 - Add official light/dark assets and display-name cases for both backends with
   widget/unit coverage.
-- Add backend-neutral `SseToastCubit` under `module_core/lib/src/cubits/` with
-  sealed idle/show state, monotonic sequence, and closed
-  info/success/warning/error variants; render it at the mobile app root without
-  backend-specific client branches.
-- Document both managed installs, local `/login`, `--pi-bin`, `--omp-bin`, Pi
-  project trust, OMP approval-policy inheritance, unsupported ACP features,
-  profile behavior, and terminal-session handoff.
+- Expand the activation-safe guidance into full managed-install documentation
+  covering `--pi-bin`, `--omp-bin`, unsupported ACP features, profile behavior,
+  and terminal-session handoff.
 - Make backend headline copy scalable and test guidance, notifications,
   duplicate/empty toasts, asset rendering, links, and touched client analysis.
 

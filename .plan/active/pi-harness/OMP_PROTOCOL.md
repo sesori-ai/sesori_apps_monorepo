@@ -220,15 +220,20 @@ legacy/moved buckets. The caller still supplies the best known real cwd.
 - OMP advertises `/session delete`. It routes through the active
   `SessionManager`, closes the writer, deletes the session and associated
   artifacts, and tells the caller to load another session.
-- Persisted cleanup uses ACP list/load, `/session delete`, and close rather than
+- Persisted cleanup uses ACP list/resume, `/session delete`, and close rather than
   directly mutating OMP JSONL or shared blob storage.
 
 OMP sorts `session/list` newest-first. Cleanup therefore declares not-found only
 after exhausting `nextCursor`. If Sesori reaches its page bound first, OMP's
-source-verified `session/load` behavior supplies the fallback: it searches the
-requested cwd and then all stored sessions by globally unique ID. Cleanup loads
-the ID with an isolated scratch cwd, deletes it through OMP, and treats fallback
+source-verified `session/resume` behavior supplies the fallback: it searches the
+requested cwd and then all stored sessions by globally unique ID. Cleanup
+resumes without transcript replay, using the listed real cwd or an isolated
+scratch cwd for the global fallback, deletes through OMP, and treats fallback
 failure as retryable rather than silently leaving old artifacts behind.
+
+Deleting a live session sends cancel, resolves pending forms/permissions, and
+waits within a bounded deadline for that session's prompt chain to settle before
+close. A timeout preserves local state and fails the deletion for retry.
 
 Not-found deletion is idempotent. The normal terminal handoff applies: exit a
 terminal OMP session before operating on that same session from Sesori.
@@ -291,6 +296,10 @@ id thinking, category thought_level: off, auto, and model-specific levels
 Model values are built as `${provider}/${id}`. Model IDs can themselves contain
 slashes, so the OMP mapper splits only the first slash and retains the exact
 combined value for `session/set_config_option` writes.
+
+The phone's requested model, mode, and thinking level are fail-closed. If any
+config write is rejected or only partially applied, Sesori fails the accepted
+turn before `session/prompt`; it never silently runs OMP with different settings.
 
 Thinking options depend on the selected model. The isolated project probe
 selects each model and captures the returned thinking options rather than
@@ -426,14 +435,16 @@ The probe did not use real credentials or send a provider request.
 - Run authenticated text/image/reasoning/tool turns and compare live versus
   `session/load` replay through Sesori's ACP mapper.
 - Verify model/provider/thinking sweeps with API-key, OAuth, and custom-provider
-  configurations without logging account or credential data.
+  configurations without logging account or credential data; reject one write
+  and confirm no prompt is dispatched with a partial selection.
 - Verify `always-ask`/`write` permissions and select/confirm/input/editor/plan
   forms end to end, including routing forms from two queued sessions to the
   originating conversation; verify default `yolo` emits no permission cards.
-- Verify loaded-session `/session delete` removes OMP-managed artifacts and is
-  idempotent after restart cleanup.
-- Verify glibc and musl selection on available Linux hosts, Windows x64 install,
-  and explicit unsupported status on Windows arm64.
+- Verify resumed-session `/session delete` replays no transcript, removes
+  OMP-managed artifacts, waits for active cancellation, exercises the global-ID
+  fallback, and is idempotent after exhausted restart cleanup.
+- Verify Alpine-marker and `ldd` glibc/musl selection on available Linux hosts,
+  Windows x64 install, and explicit unsupported status on Windows arm64.
 - Verify profiles, XDG roots, custom session directories, moved/deleted cwd,
   process respawn, and terminal-to-Sesori handoff.
 - Recheck unsupported parent lineage, local-only Sesori rename, OMP notify, URL

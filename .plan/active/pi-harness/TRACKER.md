@@ -55,8 +55,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Not started |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 | Not started |
 | [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Blocked on package-directory runtime support |
-| [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 350-650 | Not started |
-| [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 800-1,200 | Not started |
+| [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
+| [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 | Not started |
 | [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Not started |
 | [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Not started |
 
@@ -73,8 +73,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Generated outputs are regenerated, never hand-edited.
 - Production Steps 2-3 and 5-19 run focused/full owning-package tests, fatal
   analysis, diff checks, and architecture implementation review.
-- Step 19 validates touched client/package assets and tests. Step 20 validates
-  both live product paths. Steps 1, 4, and 21 are documentation-only.
+- Steps 18-19 validate touched client/packages and assets. Step 20 validates both
+  live product paths. Steps 1, 4, and 21 are documentation-only.
 - Every PR body uses real multiline Markdown via `--body-file` and includes all
   required review sections.
 - Start PR monitoring after every PR is opened.
@@ -150,14 +150,17 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   API/repository/service delegation, and the PR state. A second PR pass found a
   stale package map, process-global commands in a project-scoped service, and a
   false not-found result after capped cleanup pagination; all were corrected in
-  the plan. The OMP-over-ACP boundary, separate packages, direct runtime,
-  dependencies, compatibility, and sequencing remain unchanged.
+  the plan. A third pass found fail-open selection, replaying cleanup, unspecified
+  libc-probe ownership, a cancellation/close race, and guidance after activation;
+  all were corrected. The OMP-over-ACP boundary, separate packages, direct
+  runtime, dependencies, compatibility, and fixed ordering remain unchanged;
+  Steps 18-19 now make minimum safety guidance atomic with registration.
 - Recorded overage: the revised architecture, exact 21-step tracker, and new
   researched OMP protocol record are one implementation contract after a
   mid-series requirement change; separating the evidence would leave the plan
   non-self-contained.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
-- Diff: +1,253/-377 = 1,630 changed lines; generated lines: 0; tests run: 0.
+- Diff: +1,290/-378 = 1,668 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
 
 ## Findings And Plan Deltas
