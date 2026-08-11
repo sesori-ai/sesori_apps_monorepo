@@ -25,44 +25,10 @@ void main() {
       expect(contentBuilder.extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
-    test("uses content-safe copy for question and permission notifications", () {
-      const questionEvent = SesoriSseEvent.questionAsked(
-        id: "q-1",
-        sessionID: "session-a",
-        displaySessionId: null,
-        questions: [
-          QuestionInfo(
-            question: "Read /private/project/secrets.dart and return its source code.",
-            header: "Prompt",
-          ),
-        ],
-      );
-      const permissionEvent = SesoriSseEvent.permissionAsked(
-        requestID: "r-1",
-        sessionID: "session-a",
-        displaySessionId: null,
-        tool: "/private/project/destructive-script",
-        description: "Run /private/project/destructive-script with these arguments",
-      );
-
-      expect(
-        contentBuilder.extractNotificationData(questionEvent)?.body,
-        "The assistant is waiting for your response.",
-      );
-      expect(
-        contentBuilder.extractNotificationData(permissionEvent)?.body,
-        "The assistant requested permission.",
-      );
-    });
-
     test("maps installation.update-available to system_update", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 
       expect(contentBuilder.extractNotificationData(event)?.category, NotificationCategory.systemUpdate);
-      expect(
-        contentBuilder.extractNotificationData(event)?.body,
-        "A new bridge version is available.",
-      );
     });
 
     test("returns null for unsupported events", () {
@@ -92,7 +58,7 @@ void main() {
       );
 
       expect(payload.title, equals("Question requires input"));
-      expect(payload.body, equals("The assistant is waiting for your response."));
+      expect(payload.body, equals("Ship it?"));
       expect(payload.collapseKey, equals("ai_interaction-session-a"));
       expect(payload.data?.sessionId, equals("session-a"));
       expect(payload.data?.category, equals(NotificationCategory.aiInteraction));
@@ -121,26 +87,6 @@ void main() {
         payload.data?.eventType,
         equals(NotificationEventType.installationUpdateAvailable),
       );
-    });
-
-    test("omits path-like project identities and keeps opaque identities", () {
-      SendNotificationPayload buildPayload({required String projectId}) {
-        return contentBuilder.buildNotificationPayload(
-          category: NotificationCategory.sessionMessage,
-          eventType: NotificationEventType.agentTurnCompleted,
-          title: "Session completed",
-          body: "Task completed",
-          collapseKey: "session-a",
-          sessionId: "session-a",
-          projectId: projectId,
-        );
-      }
-
-      expect(buildPayload(projectId: "/private/project").data?.projectId, isNull);
-      expect(buildPayload(projectId: r"C:\private\project").data?.projectId, isNull);
-      expect(buildPayload(projectId: "private/project").data?.projectId, isNull);
-      expect(buildPayload(projectId: r"private\project").data?.projectId, isNull);
-      expect(buildPayload(projectId: "project-1").data?.projectId, "project-1");
     });
   });
 

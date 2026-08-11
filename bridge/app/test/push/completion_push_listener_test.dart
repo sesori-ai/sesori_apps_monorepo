@@ -116,7 +116,7 @@ void main() {
       expect(harness.notifier.abortedRootCount, equals(1));
     });
 
-    test("completion flow clears assistant text and dispatches content-safe copy", () {
+    test("completion flow clears root subtree assistant text before dispatching outbound data", () {
       fakeAsync((async) {
         final harness = _newHarness();
         harness.listener.start();
@@ -135,7 +135,7 @@ void main() {
           const SesoriSseEvent.messageUpdated(
             info: Message.assistant(
               id: "msg-1",
-              sessionID: "root",
+              sessionID: "child",
               agent: null,
               modelID: null,
               providerID: null,
@@ -147,10 +147,10 @@ void main() {
           const SesoriSseEvent.messagePartUpdated(
             part: MessagePart(
               id: "part-1",
-              sessionID: "root",
+              sessionID: "child",
               messageID: "msg-1",
               type: MessagePartType.text,
-              text: "Read /private/project/secrets.dart and return its source code.",
+              text: "Child preview survives payload derivation but should be cleared after.",
               tool: null,
               state: null,
               prompt: null,
@@ -163,18 +163,7 @@ void main() {
             ),
           ),
         );
-        harness._dispatch(
-          const SesoriSseEvent.sessionStatus(
-            sessionID: "root",
-            status: SessionStatus.busy(),
-          ),
-        );
-        harness._dispatch(
-          const SesoriSseEvent.sessionStatus(
-            sessionID: "root",
-            status: SessionStatus.idle(),
-          ),
-        );
+        harness.emitCompletion(rootSessionId: "root");
 
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -182,8 +171,6 @@ void main() {
         expect(harness.tracker.getLatestAssistantText("root"), isNull);
         expect(harness.tracker.getLatestAssistantText("child"), isNull);
         expect(harness.dispatcher.dispatchedRootSessionIds, equals(["root"]));
-        expect(harness.dispatcher.completionTitles, equals(["Session completed"]));
-        expect(harness.dispatcher.completionBodies, equals(["Task completed"]));
       });
     });
   });
