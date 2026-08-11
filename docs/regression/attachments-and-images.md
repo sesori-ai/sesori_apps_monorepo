@@ -10,10 +10,11 @@ content the transcript renders live and after reload.
 
 - The composer offers image staging only for a backend declaring prompt
   attachment support. Staged images are memory-only, are cleared when the target
-  backend changes or the submission completes, never persist in a draft, and
-  travel inline within the staged-attachment size bound so the request fits the
-  relay's message limit. The owning plugin normalizes backend-produced images
-  into a client-safe attachment; host paths never cross that boundary.
+  stops supporting attachments, the session changes, or the submission completes,
+  never persist in a draft, and travel inline within the staged-attachment size
+  bound so the request fits the relay's message limit. The owning plugin normalizes
+  backend-produced images into a client-safe attachment; host paths never cross
+  that boundary.
 - Only bounded raster types are displayable, under per-collection count and
   decoded-byte budgets. Over-budget, unsupported, or malformed candidates degrade
   to bounded metadata instead of failing the message; later ones are dropped
@@ -50,13 +51,15 @@ live, after paging back, or after a reopen, and vary the plugin.
   or local diagnostics discard useful parser error and stack context.
 - An over-budget or unsupported image breaks the message instead of degrading.
 - A remote image is fetched without the scheme, type, size, and signature checks.
-- The composer offers or sends attachments to an unsupporting backend, strands
-  staged images after a switch, or the viewer acts on the wrong image.
+- The composer offers or sends attachments to an unsupporting backend, retains
+  staged images after switching to one, or the viewer acts on the wrong image.
 
 ## Known Limitations
 
 - Prompt attachment support is read from declared capabilities, so an
   unsupporting backend hides staging rather than failing at send time.
+- Switching between two attachment-capable backends in the same project keeps
+  staged images because they are backend-neutral inline payloads.
 - Cursor path-only generated images are read locally inside its plugin and
   delivered as bounded attachments; the host path still never crosses the wire.
 - Lazy stored-image delivery (thumbnail-first, on-demand originals, larger

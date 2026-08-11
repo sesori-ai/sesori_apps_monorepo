@@ -12,7 +12,9 @@ that baseline, and the branch and worktree facts a session carries.
   only plugin contribution is the file-change signal that prompts a refresh.
 - A dedicated-worktree session compares against the merge base with its recorded
   base branch; an in-place session compares against the exact HEAD commit
-  captured at creation, even if local changes already existed.
+  captured at creation. Because that baseline is a commit rather than a working-tree
+  snapshot, the in-place diff includes tracked and untracked changes that already
+  existed when the session started.
 - Untracked files count as additions; additions, deletions, and renames report a
   status with per-file counts. A file that cannot be shown returns an explicit
   skip reason (binary, too large, read error), never an empty change.
@@ -45,8 +47,7 @@ and in-place sessions, and default versus explicit base branches.
 
 ## Failure Signals
 
-- The diff omits real changes, includes pre-session changes for an in-place
-  session, or compares against the wrong base.
+- The diff omits working-tree changes or compares against the wrong base.
 - A skipped file appears as an empty change instead of a skip reason, an
   unreachable base or missing ancestor flattens into an empty diff or opaque
   error, or an archived or missing worktree errors instead of returning nothing.

@@ -19,8 +19,9 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
   work and never falls back to a previous branch's PR.
 - Every PR-bearing read is gated on a fresh gh identity check; unknown, failed, or
   switched login returns session and branch without PR metadata instead of another
-  account's cache. No token is stored, no GitHub login reaches clients, and logs
-  carry no branch, repo slug, PR title, URL, or path.
+  account's cache. No token is stored and no GitHub login reaches clients. Routine
+  logs carry no branch, repo slug, PR title, URL, or path; recovered failures retain
+  the original error, stack, and diagnostically useful local context.
 - Presence is connection-scoped and unioned across devices; one timer serves the
   active set and none runs while it is empty. The interval defaults to 30s, is
   validated 15-3600s, changes live, and needs a restart for manual config edits;
@@ -52,8 +53,8 @@ alternate whether list or detail holds the claim.
 - Branch updates but the stale PR remains, the branch clears merely because GitHub
   is unreachable, or the change bumps unseen state or sends a push notification.
 - Refresh cycles overlap, run with no viewer, stop after an interval change, make a
-  newly viewed project wait a full interval, or leak branch names, repo slugs, PR
-  titles, URLs, or paths into normal-level logs.
+  newly viewed project wait a full interval, leak branch names, repo slugs, PR
+  titles, URLs, or paths into routine logs, or discard useful failure diagnostics.
 
 ## Known Limitations
 

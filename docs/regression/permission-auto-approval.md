@@ -20,8 +20,8 @@ user present. It is a bridge policy, not a client feature.
 - Questions are never auto-answered.
 - Disabling restores user-answered behavior for later requests without changing
   already-approved ones.
-- A client that predates the setting still works and shows the capability as
-  unsupported rather than pretending to control it.
+- A current client paired with a bridge that predates the setting still works and
+  shows the capability as unsupported rather than pretending to control it.
 
 ## Regression Levels
 

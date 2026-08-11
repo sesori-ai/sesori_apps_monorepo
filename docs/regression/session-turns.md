@@ -23,9 +23,9 @@ defaults and queued client sends coherent.
 - Prompt defaults update after a successful send and are published so other
   surfaces converge; a defaults-write failure must not fail the send. Abort
   stops the turn with an observable outcome and no completion notification.
-- Queued client sends preserve order, survive a transient disconnection, can be
-  cancelled individually, and are never dropped. A turn started on one client is
-  visible to every other client of that bridge.
+- While the session-detail cubit remains alive, queued client sends preserve order,
+  survive a transient disconnection, can be cancelled individually, and are never
+  dropped. A turn started on one client is visible to every other client of that bridge.
 
 ## Regression Levels
 
@@ -34,7 +34,7 @@ defaults and queued client sends coherent.
 | L1 Smoke | Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
 | L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; abort stops a turn and reports its outcome; finalized messages are immediately readable from history. |
 | L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, queued sends, and abort render. |
-| L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; queued sends survive in order; a second client observes the same turn. |
+| L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; queued sends survive in order while detail remains alive; a second client observes the same turn. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
 ## Exploration Guidance
@@ -58,6 +58,8 @@ queue, turn length, and client count.
   client end-to-end coverage is phone-only.
 - Session-detail refresh behavior is under active investigation, so refresh
   churn is recorded as evidence rather than judged pass or fail.
+- The prompt queue is in memory and owned by session detail; leaving that surface
+  disposes queued submissions rather than restoring them on reopen.
 
 ## Sources
 
