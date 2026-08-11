@@ -604,7 +604,9 @@ void main() {
   });
 
   testWidgets("the default input choices grow for accessibility text", (tester) async {
-    _useTallSurface(tester);
+    tester.view.physicalSize = const Size(402, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     tester.platformDispatcher.textScaleFactorTestValue = 2.0;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
