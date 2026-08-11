@@ -1,5 +1,4 @@
 import "dart:convert";
-import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
@@ -40,7 +39,7 @@ class GetSessionAttachmentHandler extends BodyRequestHandler<SessionAttachmentRe
         attachmentId: body.attachmentId,
         rendition: body.rendition,
       );
-    } on FileSystemException catch (error, stackTrace) {
+    } on Object catch (error, stackTrace) {
       Log.w("Failed to read session attachment rendition", error, stackTrace);
       throw buildErrorResponse(request, 500, "attachment rendition unavailable");
     }

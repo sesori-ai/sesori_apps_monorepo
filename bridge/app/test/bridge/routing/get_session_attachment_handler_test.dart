@@ -108,7 +108,7 @@ void main() {
       expect(response.body, isNot(contains(base64Encode(bytes))));
     });
 
-    test("handleInternal keeps filesystem paths out of failure responses", () async {
+    test("handleInternal keeps storage paths out of failure responses", () async {
       final handler = GetSessionAttachmentHandler(chatHistoryService: _FileFailingChatHistoryService());
 
       final response = await handler.handleInternal(
@@ -164,7 +164,11 @@ class _FileFailingChatHistoryService implements ChatHistoryService {
     required String attachmentId,
     required SessionAttachmentRendition rendition,
   }) {
-    throw const FileSystemException("permission denied", "/Users/alex/private/attachments/image.png");
+    throw const ProcessException(
+      "chmod",
+      ["/Users/alex/private/attachments/image.png"],
+      "permission denied",
+    );
   }
 
   @override

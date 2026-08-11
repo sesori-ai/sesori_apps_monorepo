@@ -74,10 +74,7 @@ class ChatHistoryRepository {
     required StoredAttachmentLocation location,
   }) async {
     if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
-    final storage = switch (location) {
-      StoredAttachmentLocation.live => _attachmentSpillStorage,
-      StoredAttachmentLocation.archived => _archivedAttachmentStorage,
-    };
+    final storage = _spillStorageFor(location: location);
     final bytes = await storage.read(sessionId: sessionId, digest: attachmentId);
     return bytes == null ? null : (bytes: bytes, location: location);
   }
@@ -88,10 +85,7 @@ class ChatHistoryRepository {
     required StoredAttachmentLocation location,
   }) async {
     if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
-    final storage = switch (location) {
-      StoredAttachmentLocation.live => _attachmentSpillStorage,
-      StoredAttachmentLocation.archived => _archivedAttachmentStorage,
-    };
+    final storage = _spillStorageFor(location: location);
     final thumbnail = await storage.readThumbnail(sessionId: sessionId, digest: attachmentId);
     return thumbnail == null ? null : (bytes: thumbnail.bytes, format: thumbnail.format);
   }
@@ -104,10 +98,7 @@ class ChatHistoryRepository {
     required Uint8List bytes,
   }) {
     if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return Future.value(false);
-    final storage = switch (location) {
-      StoredAttachmentLocation.live => _attachmentSpillStorage,
-      StoredAttachmentLocation.archived => _archivedAttachmentStorage,
-    };
+    final storage = _spillStorageFor(location: location);
     return storage.writeThumbnail(
       sessionId: sessionId,
       digest: attachmentId,
@@ -115,6 +106,11 @@ class ChatHistoryRepository {
       bytes: bytes,
     );
   }
+
+  AttachmentSpillStorage _spillStorageFor({required StoredAttachmentLocation location}) => switch (location) {
+    StoredAttachmentLocation.live => _attachmentSpillStorage,
+    StoredAttachmentLocation.archived => _archivedAttachmentStorage,
+  };
 
   Future<ChatHistorySyncState?> getSyncState({required String sessionId}) async {
     final row = await _chatHistoryDao.getSyncState(sessionId: sessionId);
