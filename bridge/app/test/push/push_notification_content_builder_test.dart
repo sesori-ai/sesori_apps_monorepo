@@ -70,6 +70,10 @@ void main() {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 
       expect(contentBuilder.extractNotificationData(event)?.category, NotificationCategory.systemUpdate);
+      expect(
+        contentBuilder.extractNotificationData(event)?.body,
+        "A new bridge version is available.",
+      );
     });
 
     test("returns null for unsupported events", () {
@@ -158,9 +162,29 @@ void main() {
         sessionId: "session-c",
         projectId: "project-1",
       );
+      final relativePosixPayload = contentBuilder.buildNotificationPayload(
+        category: NotificationCategory.sessionMessage,
+        eventType: NotificationEventType.agentTurnCompleted,
+        title: "Session completed",
+        body: "Task completed",
+        collapseKey: "session-d",
+        sessionId: "session-d",
+        projectId: "private/project",
+      );
+      final relativeWindowsPayload = contentBuilder.buildNotificationPayload(
+        category: NotificationCategory.sessionMessage,
+        eventType: NotificationEventType.agentTurnCompleted,
+        title: "Session completed",
+        body: "Task completed",
+        collapseKey: "session-e",
+        sessionId: "session-e",
+        projectId: r"private\project",
+      );
 
       expect(posixPayload.data?.projectId, isNull);
       expect(windowsPayload.data?.projectId, isNull);
+      expect(relativePosixPayload.data?.projectId, isNull);
+      expect(relativeWindowsPayload.data?.projectId, isNull);
       expect(opaquePayload.data?.projectId, "project-1");
     });
   });

@@ -19,9 +19,11 @@ entirely along with its transcript and, optionally, its worktree and branch.
   record; it is destructive and not recoverable. Worktree and branch cleanup
   happens only when requested; unsafe cleanup (unstaged changes, branch mismatch,
   shared worktree) is refused with its issues and proceeds only on a forced retry.
-- A failed cleanup never half-deletes: the rejection is reported or the operation
-  fails visibly, orphaned storage is reclaimed by a later reconciliation, and
-  both flows serialize against concurrent mutations of the same session family.
+- Cleanup safety rejection happens before mutation. Once cleanup starts, a later
+  visible failure can leave an earlier requested step complete, such as a removed
+  worktree with its branch still present; retry can finish the residue. The session
+  is deleted only after cleanup succeeds, and both flows serialize against
+  concurrent mutations of the same session family.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions.
 
@@ -52,8 +54,8 @@ branches that remain after the asserted cleanup behavior.
 - Deletion leaves history, spilled content, or an archive record behind, or
   removes a worktree or branch that was not requested.
 - Unsafe cleanup proceeds without a forced retry, a refusal omits the blocking
-  issues, a concurrent mutation interleaves, or a client presents archiving as
-  reversible.
+  issues, partial cleanup is reported as success or deletes the session, a
+  concurrent mutation interleaves, or a client presents archiving as reversible.
 
 ## Known Limitations
 

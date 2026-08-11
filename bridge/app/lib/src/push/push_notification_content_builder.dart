@@ -1,4 +1,3 @@
-import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
 
 class PushNotificationContentBuilder {
@@ -30,13 +29,11 @@ class PushNotificationContentBuilder {
         title: "Permission requested",
         body: "The assistant requested permission.",
       ),
-      SesoriInstallationUpdateAvailable(:final version) => (
+      SesoriInstallationUpdateAvailable() => (
         category: NotificationCategory.systemUpdate,
         eventType: NotificationEventType.installationUpdateAvailable,
         title: "Bridge update available",
-        body: (version != null && version.isNotEmpty)
-            ? "Version $version is available."
-            : "A new bridge version is available.",
+        body: "A new bridge version is available.",
       ),
       _ => null,
     };
@@ -68,7 +65,7 @@ class PushNotificationContentBuilder {
   }
 
   String? _providerSafeProjectId({required String? projectId}) {
-    if (projectId == null || p.posix.isAbsolute(projectId) || p.windows.isAbsolute(projectId)) {
+    if (projectId == null || projectId.contains("/") || projectId.contains(r"\")) {
       return null;
     }
     return projectId;

@@ -24,16 +24,17 @@ Apple and Google is external.
 - A notification opened while unauthenticated defers until authentication, then routes to its session; viewing a
   session cancels its notifications.
 - Payloads carry only fixed generic copy plus category, event type, session identity,
-  and an opaque project identity when available. A project identity backed by a
-  local path is omitted. Full code, prompts, questions, permission descriptions,
-  assistant responses, session titles, and paths never enter a payload.
+  and an opaque project identity when available. A project identity containing a
+  POSIX or Windows path separator is omitted. Full code, prompts, questions,
+  permission descriptions, assistant responses, session titles, versions, and
+  paths never enter a payload.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
-| L2 Routine | Automated and headless bridge, representative plugin, fake push client: event-to-payload mapping with generic interaction and completion title/body, path-based project identity omission, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. |
+| L2 Routine | Automated and headless bridge, representative plugin, fake push client: event-to-payload mapping with generic interaction, completion, and update title/body; absolute and relative path-like project identity omission; collapse identity; project attribution; completion debounce; pending-interaction blocking; abort suppression; per-category rate limits; maintenance step isolation. |
 | L3 Release | Client end to end on the release-target client platform with a fake messaging source: registration, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. |
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
@@ -59,7 +60,7 @@ app state, per-category preferences, auth transitions around the tap, and opaque
 - Provider delivery is external and best effort; a missing notification may be throttling or OS policy. Never record
   unobserved delivery as pass or claim a delivery rate. Generic title and body copy intentionally leave the encrypted
   channel.
-- A path-backed project notification omits `projectId`; it still informs the user
+- A path-like project notification omits `projectId`; it still informs the user
   but cannot deep-link to that session from provider metadata alone.
 - Fakes cannot prove background or terminated-app handling, OS permission behavior, or collapse rendering.
 

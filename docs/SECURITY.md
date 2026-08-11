@@ -47,7 +47,8 @@ type, session identity, and an opaque project identity when available. Our backe
 forwards that payload to Apple or Google push services, so it leaves the
 end-to-end encrypted channel between your phone and the Bridge. Code, prompts,
 responses, questions, permission descriptions, session titles, and local paths
-stay on your machine; path-backed project identities are omitted.
+stay on your machine; absolute and relative path-like project identities are
+omitted, and only opaque project IDs are sent.
 
 ## Account deletion
 
