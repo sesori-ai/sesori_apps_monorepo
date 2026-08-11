@@ -20,6 +20,7 @@ export "src/api/models/claude_transcript_record_dto.dart";
 export "src/claude_approval_registry.dart";
 export "src/claude_event_dispatcher.dart";
 export "src/claude_history_mapper.dart";
+export "src/claude_plugin_impl.dart";
 export "src/models/claude_agent_selection.dart";
 export "src/models/claude_effort_level.dart";
 export "src/models/claude_permission_mode.dart";

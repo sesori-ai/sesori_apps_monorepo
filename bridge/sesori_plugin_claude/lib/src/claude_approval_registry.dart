@@ -220,6 +220,12 @@ final class ClaudeApprovalRegistry {
   List<String> allowedToolsForSession({required String sessionId}) =>
       List.unmodifiable(_allowedTools[sessionId] ?? const <String>{});
 
+  bool hasPendingInput({required String sessionId}) => _pending.values.any((entry) => entry.sessionId == sessionId);
+
+  bool hasPermission({required String id}) => _pending[id] is _PendingPermission;
+
+  bool hasQuestion({required String id}) => _pending[id] is _PendingQuestion;
+
   bool replyPermission({required String id, required PluginPermissionReply reply}) {
     final entry = _pending[id];
     if (entry is! _PendingPermission) return false;

@@ -140,7 +140,20 @@ final class ClaudeSessionProcessRepository {
     required List<String> allowedTools,
   }) async {
     if (_disposed) throw StateError("Claude process repository is disposed");
-    if (_resident.containsKey(sessionId)) return;
+    final resident = _resident[sessionId];
+    if (resident != null) {
+      if (resident.appliedEffort != effort) {
+        await teardown(sessionId: sessionId);
+      } else {
+        await _applySelection(
+          sessionId: sessionId,
+          process: resident,
+          model: model,
+          permissionMode: permissionMode,
+        );
+        return;
+      }
+    }
     final existing = _connecting[sessionId];
     if (existing != null) {
       await existing;
@@ -163,6 +176,28 @@ final class ClaudeSessionProcessRepository {
       await connection;
     } finally {
       if (identical(_connecting[sessionId], connection)) unawaited(_connecting.remove(sessionId));
+    }
+  }
+
+  Future<void> _applySelection({
+    required String sessionId,
+    required _ResidentProcess process,
+    required String? model,
+    required ClaudePermissionMode? permissionMode,
+  }) async {
+    if (process.appliedModel != model) {
+      await process.client.sendControlRequest(
+        subtype: "set_model",
+        params: {"model": model == "default" ? null : model},
+      );
+      process.appliedModel = model;
+    }
+    if (process.appliedPermissionMode != permissionMode) {
+      await process.client.sendControlRequest(
+        subtype: "set_permission_mode",
+        params: {"mode": permissionMode?.controlValue ?? ClaudePermissionMode.auto.controlValue},
+      );
+      process.appliedPermissionMode = permissionMode;
     }
   }
 

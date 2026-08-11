@@ -45,6 +45,11 @@ final class ClaudeSessionService {
   Stream<PluginWorkState> get workState => _workState.stream;
   PluginWorkState get currentWorkState => _workState.current;
 
+  Map<String, PluginSessionStatus> get sessionStatuses => Map.unmodifiable({
+    for (final entry in _turns.entries)
+      entry.key: entry.value.pending > 0 ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle(),
+  });
+
   void enqueueTurn({
     required String sessionId,
     required String directory,
@@ -134,6 +139,18 @@ final class ClaudeSessionService {
     } on Object catch (error, stack) {
       Log.w("[claude] interrupt failed for $sessionId", error, stack);
     }
+  }
+
+  Future<void> deleteSession({required String sessionId}) async {
+    final state = _turns.remove(sessionId);
+    if (state != null) {
+      state.generation++;
+      state.idleGeneration++;
+    }
+    _approvals.forgetSession(sessionId: sessionId);
+    await _processes.teardown(sessionId: sessionId);
+    _processes.forgetSession(sessionId: sessionId);
+    _syncWorkState();
   }
 
   Future<void> dispose() => _disposeFuture ??= _dispose();
