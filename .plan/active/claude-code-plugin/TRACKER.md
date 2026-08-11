@@ -4,13 +4,15 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `85438e1d` (Step 15 started after Step 14 merged)
-- **Series state:** Steps 1-14/17 merged; Step 15/17 PR open
-- **Current step:** 15/17 — Claude Code client branding in review
+  `c3d21c78` (focused fix started after Step 15 merged)
+- **Series state:** Steps 1-15/17 merged; Step 16/17 blocked by a live launch
+  failure; focused fix in progress
+- **Current step:** focused fix — preserve host environment without violating the
+  Claude launch override invariant
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Monitor Step 15 PR #817, then wait for explicit direction
-  after merge before starting Step 16
+- **Next action:** Verify and merge the focused launch-environment fix, then
+  resume Step 16 live verification
 
 ## Plan Review
 
@@ -59,7 +61,7 @@
 | [x] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | [PR #813](https://github.com/sesori-ai/sesori_apps_monorepo/pull/813) merged 2026-08-11 as `f0d705bc` |
 | [x] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | [PR #815](https://github.com/sesori-ai/sesori_apps_monorepo/pull/815) merged 2026-08-11 as `ba2f6f7b` |
 | [x] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) merged 2026-08-11 as `85438e1d` |
-| [ ] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | [PR #817](https://github.com/sesori-ai/sesori_apps_monorepo/pull/817) open against `main` |
+| [x] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | [PR #817](https://github.com/sesori-ai/sesori_apps_monorepo/pull/817) merged 2026-08-11 as `c3d21c78` |
 | [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Not started |
 | [ ] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Not started |
 
@@ -460,6 +462,24 @@
   deletions), below the 400-800 estimate because the vector mark and existing
   mapping seam are compact. Architecture implementation review is not required
   for localized brand assets, mapping cases, tests, and plan corrections.
+
+- Step 16 live-gate fix (2026-08-11): the first simulator pass found Claude
+  setup ready while `POST /session/options` returned
+  `refreshFailedUnavailable`, blocking every real session before creation. The
+  descriptor passed the full host environment into `ClaudeLaunchSpec`; its
+  `HOME` key correctly violated the spec's explicit-override invariant before a
+  child could spawn. `HostClaudeProcessFactory` already inherits and forwards
+  the host environment, so the repository now receives no duplicate launch
+  overrides. The descriptor regression host includes `HOME`, proving the
+  production composition preserves it through the host process seam without
+  putting it in the launch spec.
+
+  All 10 focused descriptor tests, all 197 Claude package tests,
+  `dart analyze --fatal-infos`, and `git diff --check` pass. A source bridge
+  against the isolated E2E data directory then reported Claude setup ready and
+  returned HTTP 200 with real agents, providers, models, and commands from the
+  exact `/session/options` request that previously returned 502. Step 16 remains
+  paused until this focused fix merges. No database or persisted-data change.
 
 ## Findings And Plan Deltas
 
