@@ -38,10 +38,10 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [x] | 1/21 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/21]` | 1,400-1,500 (recorded overage) | Merged; title denominator update pending |
-| [x] | 2/21 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/21]` | 900-1,300 | Merged; title denominator update pending |
-| [x] | 3/21 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/21]` | 1,200-1,500 (recorded overage) | Merged; title denominator update pending |
-| [ ] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | In progress |
+| [x] | 1/21 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/21]` | 1,400-1,500 (recorded overage) | Merged as PR #811; title normalized |
+| [x] | 2/21 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/21]` | 900-1,300 | Merged as PR #819; title normalized |
+| [x] | 3/21 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/21]` | 1,200-1,500 (recorded overage) | Merged as PR #820; title normalized |
+| [ ] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Open as PR #829 |
 | [ ] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 | Not started |
 | [ ] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Not started |
 | [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 | Not started |
@@ -66,8 +66,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Merge in numeric order and merge current `origin/main` before opening each
   step so concurrent Claude/runtime work is preserved.
 - Steps 1-3 remain the already-merged Pi foundation. Step 4 changes the fixed
-  total because the user added OMP after those merges; merged PR titles are
-  normalized to `/21` when the Step 4 PR opens.
+  total because the user added OMP after those merges; their PR titles were
+  normalized to `/21` when the Step 4 PR opened.
 - Count additions plus deletions from the merge base, including generated code
   and tests; split coherently or record an unavoidable overage.
 - Generated outputs are regenerated, never hand-edited.
@@ -151,6 +151,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   researched OMP protocol record are one implementation contract after a
   mid-series requirement change; separating the evidence would leave the plan
   non-self-contained.
+- `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
+- Diff: +1,210/-377 = 1,587 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
 
 ## Findings And Plan Deltas
