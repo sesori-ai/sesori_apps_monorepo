@@ -4,10 +4,11 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** `origin/main` at `9714f382`
-- **Series state:** Step 2/15 ready to raise
+- **Series state:** Step 2/15 in review
 - **Current step:** 2/15, protocol package scaffold
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
-- **Next action:** raise and monitor Step 2
+- **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
+- **Next action:** monitor Step 2 and address review feedback
 
 ## Locked Decisions
 
@@ -29,7 +30,7 @@ OpenCode default, or no-new-analytics decisions without the user.
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
 | [x] | 1/15 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/15]` | 1,400-1,500 (recorded overage) | Merged |
-| [ ] | 2/15 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/15]` | 900-1,300 | Ready to raise |
+| [ ] | 2/15 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/15]` | 900-1,300 | In review |
 | [ ] | 3/15 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/15]` | 1,200-1,500 | Not started |
 | [ ] | 4/15 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 4/15]` | 1,000-1,400 | Not started |
 | [ ] | 5/15 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 5/15]` | 1,100-1,500 | Not started |
@@ -94,7 +95,7 @@ OpenCode default, or no-new-analytics decisions without the user.
   ownership on `PiLaunchSpec`; the resolver was removed so Step 11's runtime
   manifest remains the sole owner. No re-review required after applying the
   finding.
-- Diff: +359/-8 = 367 changed lines; generated lines: 0; tests run: 10.
+- Diff: +364/-12 = 376 changed lines; generated lines: 0; tests run: 10.
 - No user-visible, database, or persisted-data change.
 - `git diff --check`: pass.
 
