@@ -211,9 +211,9 @@ void main() {
       await expectLater(
         pending,
         throwsA(
-          isA<PiRpcException>()
+          isA<PiRpcCommandFailureException>()
               .having((error) => error.error, "error", "Unknown entry")
-              .having((error) => error.command, "command", "get_entries")
+              .having((error) => error.command, "command", PiRpcCommand.getEntries)
               .having((error) => error.toString(), "presentation", isNot(contains("Unknown entry"))),
         ),
       );
@@ -281,7 +281,7 @@ void main() {
       );
       final expectation = expectLater(
         pending,
-        throwsA(isA<PiRpcException>().having((error) => error.error, "error", contains("exited with code 3"))),
+        throwsA(isA<PiRpcProcessExitException>().having((error) => error.exitCode, "exitCode", 3)),
       );
       await pump();
       started.process.exit(code: 3);
@@ -304,7 +304,7 @@ void main() {
           arguments: const {},
           timeout: const Duration(seconds: 5),
         ),
-        throwsA(isA<PiRpcException>()),
+        throwsA(isA<PiRpcProcessExitException>()),
       );
     });
 
@@ -320,8 +320,8 @@ void main() {
           timeout: const Duration(seconds: 5),
         ),
         throwsA(
-          isA<PiRpcException>()
-              .having((error) => error.error, "error", contains("failed to write"))
+          isA<PiRpcWriteException>()
+              .having((error) => error.command, "command", PiRpcCommand.getState)
               .having((error) => error.cause, "cause", isA<SocketException>()),
         ),
       );
@@ -336,7 +336,7 @@ void main() {
         arguments: const {},
         timeout: const Duration(seconds: 5),
       );
-      final expectation = expectLater(pending, throwsA(isA<PiRpcException>()));
+      final expectation = expectLater(pending, throwsA(isA<PiRpcDisposedException>()));
       await pump();
       await started.client.dispose();
 
@@ -418,12 +418,13 @@ void main() {
       started.process.emitStderrRaw(
         bytes: utf8.encode('{"token":["array-secret","second-secret"]}\n'),
       );
+      started.process.emitStderrRaw(bytes: utf8.encode('{"x-api-key":"prefixed-secret"}\n'));
       started.process.emitStderrRaw(bytes: utf8.encode("${"z" * 900}\n"));
       await pump(10);
 
       final tail = started.client.stderrDiagnostics;
       expect(tail, hasLength(20));
-      expect(tail.first, "warning 18");
+      expect(tail.first, "warning 19");
       expect(tail.join("\n"), isNot(contains("sk-live-secret")));
       expect(tail.join("\n"), isNot(contains("quoted-secret")));
       expect(tail.join("\n"), isNot(contains("header-secret")));
@@ -432,6 +433,7 @@ void main() {
       expect(tail.join("\n"), isNot(contains("refresh-secret")));
       expect(tail.join("\n"), isNot(contains("array-secret")));
       expect(tail.join("\n"), isNot(contains("second-secret")));
+      expect(tail.join("\n"), isNot(contains("prefixed-secret")));
       expect(tail, contains('{"api_key":"***","note":"x"}'));
       expect(tail, contains('{"authorization":"***"}'));
       expect(tail, contains("Authorization: Bearer ***"));
@@ -439,6 +441,7 @@ void main() {
       expect(tail, contains('{"password": ***}'));
       expect(tail, contains('{"refreshToken":"***"}'));
       expect(tail, contains('{"token":***'));
+      expect(tail, contains('{"x-api-key":"***"}'));
       expect(tail.last.length, 500);
       expect(started.client.isRunning, isTrue);
     });

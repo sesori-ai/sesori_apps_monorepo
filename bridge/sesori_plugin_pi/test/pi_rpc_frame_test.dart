@@ -111,14 +111,31 @@ void main() {
       expect((thinking as PiThinkingLevelChangedEvent).level, PiThinkingLevel.xhigh);
     });
 
-    test("types the closed summarization source", () {
-      final event = parseEvent(
+    test("models summarization source and reason as valid variants", () {
+      final branchSummary = parseEvent(
         piEventFixture(type: "summarization_retry_attempt_start", fields: {"source": "branchSummary"}),
+      );
+      final compaction = parseEvent(
+        piEventFixture(
+          type: "summarization_retry_attempt_start",
+          fields: {"source": "compaction", "reason": "overflow"},
+        ),
+      );
+      final unknown = parseEvent(
+        piEventFixture(type: "summarization_retry_attempt_start", fields: {"source": "future"}),
       );
 
       expect(
-        (event as PiSummarizationRetryAttemptStartEvent).source,
-        PiSummarizationSource.branchSummary,
+        (branchSummary as PiSummarizationRetryAttemptStartEvent).source,
+        isA<PiBranchSummarySource>(),
+      );
+      expect(
+        ((compaction as PiSummarizationRetryAttemptStartEvent).source as PiCompactionSummarizationSource).reason,
+        PiCompactionReason.overflow,
+      );
+      expect(
+        (unknown as PiSummarizationRetryAttemptStartEvent).source,
+        isA<PiUnknownSummarizationSource>(),
       );
     });
 

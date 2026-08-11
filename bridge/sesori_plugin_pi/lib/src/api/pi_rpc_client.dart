@@ -10,24 +10,69 @@ import "models/pi_rpc_frame.dart";
 import "pi_launch_spec.dart";
 import "pi_process_factory.dart";
 
-/// A Pi RPC command that failed, or that could not be delivered at all.
-///
-/// [error] is Pi's own untyped prose. It is kept for local diagnosis; mapping
-/// it to a user-facing failure belongs to the repository layer.
-class PiRpcException implements Exception {
-  PiRpcException({required this.command, required this.error, required this.cause});
+/// A typed Pi RPC transport failure.
+sealed class PiRpcException implements Exception {
+  const PiRpcException();
+}
 
-  /// The command that failed, or a `<...>` marker when the failure happened
-  /// before Pi could answer.
-  final String command;
+/// Pi rejected a command with untyped prose.
+final class PiRpcCommandFailureException extends PiRpcException {
+  const PiRpcCommandFailureException({required this.command, required this.error});
 
+  final PiRpcCommand command;
   final String error;
 
-  /// The local transport failure translated by this exception, when one exists.
-  final Object? cause;
+  @override
+  String toString() => "PiRpcCommandFailureException(command: ${command.wireValue})";
+}
+
+/// A command could not be written to Pi's stdin.
+final class PiRpcWriteException extends PiRpcException {
+  const PiRpcWriteException({required this.command, required this.cause});
+
+  final PiRpcCommand command;
+  final Object cause;
 
   @override
-  String toString() => "PiRpcException(command: $command)";
+  String toString() => "PiRpcWriteException(command: ${command.wireValue})";
+}
+
+/// Pi's stdout stream failed before the process exited.
+final class PiRpcStdoutException extends PiRpcException {
+  const PiRpcStdoutException({required this.cause});
+
+  final Object cause;
+
+  @override
+  String toString() => "PiRpcStdoutException";
+}
+
+/// The Pi process exited.
+final class PiRpcProcessExitException extends PiRpcException {
+  const PiRpcProcessExitException({required this.exitCode});
+
+  final int exitCode;
+
+  @override
+  String toString() => "PiRpcProcessExitException(exitCode: $exitCode)";
+}
+
+/// A command was sent before a Pi process was started.
+final class PiRpcNotRunningException extends PiRpcException {
+  const PiRpcNotRunningException({required this.command});
+
+  final PiRpcCommand command;
+
+  @override
+  String toString() => "PiRpcNotRunningException(command: ${command.wireValue})";
+}
+
+/// The transport was disposed while work was pending.
+final class PiRpcDisposedException extends PiRpcException {
+  const PiRpcDisposedException();
+
+  @override
+  String toString() => "PiRpcDisposedException";
 }
 
 /// What Sesori answers a blocking Pi extension dialog with.
@@ -112,6 +157,7 @@ class PiRpcClient {
   int _generation = 0;
   bool _attached = false;
   bool _droppedStartupFrames = false;
+  int? _exitCode;
 
   final Map<String, ({PiRpcCommand command, Completer<PiSuccessResponseFrame> completer})> _pending = {};
   final List<PiRpcFrame> _startupFrames = [];
@@ -190,7 +236,7 @@ class PiRpcClient {
             if (generation != _generation) return;
             Log.w("[pi] stdout stream failed", error, stack);
             _failPending(
-              PiRpcException(command: "<stdout>", error: "pi stdout stream failed", cause: error),
+              PiRpcStdoutException(cause: error),
               stack,
             );
           },
@@ -212,11 +258,12 @@ class PiRpcClient {
 
     unawaited(
       process.exitCode.then((code) {
+        _exitCode = code;
         if (!exited.isCompleted) exited.complete(code);
         if (generation != _generation) return;
         if (!_disposed) Log.w("[pi] process exited with code $code");
         _failPending(
-          PiRpcException(command: "<process>", error: "pi process exited with code $code", cause: null),
+          PiRpcProcessExitException(exitCode: code),
           StackTrace.current,
         );
       }),
@@ -240,14 +287,13 @@ class PiRpcClient {
   }) async {
     final type = command.wireValue;
     final process = _process;
-    if (process == null) {
-      throw PiRpcException(command: type, error: "pi process is not running", cause: null);
-    }
+    if (_disposed) throw const PiRpcDisposedException();
+    if (process == null) throw PiRpcNotRunningException(command: command);
     // The exit handler deliberately leaves `_process` set, so without this a
     // command issued after the process died would write to a dead pipe and then
     // block for the whole timeout awaiting a reply that can never come.
     if (_exited.isCompleted) {
-      throw PiRpcException(command: type, error: "pi process has exited", cause: null);
+      throw PiRpcProcessExitException(exitCode: _exitCode ?? -1);
     }
 
     final requestId = "sesori-${_nextRequestId++}";
@@ -258,7 +304,7 @@ class PiRpcClient {
     if (writeError != null) {
       // The frame never left the bridge, so no reply is coming.
       _pending.remove(requestId);
-      throw PiRpcException(command: type, error: "failed to write the $type command", cause: writeError);
+      throw PiRpcWriteException(command: command, cause: writeError);
     }
 
     try {
@@ -289,7 +335,7 @@ class PiRpcClient {
     _disposed = true;
     await _teardown(
       gracefulTimeout: gracefulTimeout,
-      pendingError: PiRpcException(command: "<teardown>", error: "pi transport was disposed", cause: null),
+      pendingError: const PiRpcDisposedException(),
     );
     await _starting;
     try {
@@ -346,11 +392,7 @@ class PiRpcClient {
         completer.completer.complete(frame);
       case PiFailureResponseFrame(:final error):
         completer.completer.completeError(
-          PiRpcException(
-            command: completer.command.wireValue,
-            error: error ?? "the command failed",
-            cause: null,
-          ),
+          PiRpcCommandFailureException(command: completer.command, error: error ?? "the command failed"),
           StackTrace.current,
         );
     }
@@ -397,15 +439,15 @@ class PiRpcClient {
   /// logged. A string scrub rather than a JSON re-encode, so partial and
   /// non-JSON output is redacted too.
   static final RegExp _secretJsonValue = RegExp(
-    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*(?:"|$)',
+    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|(?:x[_-])?api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*(?:"|$)',
     caseSensitive: false,
   );
   static final RegExp _secretStructuredJsonValue = RegExp(
-    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)(?:\[|\{).*$',
+    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|(?:x[_-])?api[_-]?key|secret|password|bearer)"\s*:\s*)(?:\[|\{).*$',
     caseSensitive: false,
   );
   static final RegExp _secretUnquotedJsonValue = RegExp(
-    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)[^\s",;{}]+',
+    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|(?:x[_-])?api[_-]?key|secret|password|bearer)"\s*:\s*)[^\s",;{}]+',
     caseSensitive: false,
   );
   static final RegExp _authorizationBearer = RegExp(
@@ -413,7 +455,7 @@ class PiRpcClient {
     caseSensitive: false,
   );
   static final RegExp _secretScalarValue = RegExp(
-    r'((?:refresh[_-]?token|access[_-]?token|token|api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
+    r'((?:refresh[_-]?token|access[_-]?token|token|(?:x[_-])?api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
     caseSensitive: false,
   );
 

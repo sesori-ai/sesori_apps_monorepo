@@ -1,16 +1,32 @@
+import "pi_compaction_reason.dart";
+
 /// The operation whose summary Pi is retrying.
-enum PiSummarizationSource {
-  branchSummary("branchSummary"),
-  compaction("compaction");
+sealed class PiSummarizationSource {
+  const PiSummarizationSource();
 
-  const PiSummarizationSource(this.wireValue);
-
-  final String wireValue;
-
-  static PiSummarizationSource? tryParse({required String? value}) {
-    for (final source in values) {
-      if (source.wireValue == value) return source;
+  static PiSummarizationSource parse({required String? source, required Object? reason}) {
+    if (source == "branchSummary" && reason == null) return const PiBranchSummarySource();
+    final compactionReason = PiCompactionReason.tryParse(value: reason);
+    if (source == "compaction" && compactionReason != null) {
+      return PiCompactionSummarizationSource(reason: compactionReason);
     }
-    return null;
+    return PiUnknownSummarizationSource(source: source, reason: reason);
   }
+}
+
+final class PiBranchSummarySource extends PiSummarizationSource {
+  const PiBranchSummarySource();
+}
+
+final class PiCompactionSummarizationSource extends PiSummarizationSource {
+  const PiCompactionSummarizationSource({required this.reason});
+
+  final PiCompactionReason reason;
+}
+
+final class PiUnknownSummarizationSource extends PiSummarizationSource {
+  const PiUnknownSummarizationSource({required this.source, required this.reason});
+
+  final String? source;
+  final Object? reason;
 }

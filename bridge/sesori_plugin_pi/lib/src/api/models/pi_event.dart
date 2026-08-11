@@ -101,8 +101,10 @@ sealed class PiEvent {
         raw: json,
       ),
       "summarization_retry_attempt_start" => PiSummarizationRetryAttemptStartEvent(
-        source: PiSummarizationSource.tryParse(value: stringOrNull(json["source"])),
-        reason: PiCompactionReason.tryParse(value: json["reason"]),
+        source: PiSummarizationSource.parse(
+          source: stringOrNull(json["source"]),
+          reason: json["reason"],
+        ),
         raw: json,
       ),
       "summarization_retry_finished" => PiSummarizationRetryFinishedEvent(raw: json),
@@ -313,14 +315,11 @@ final class PiSummarizationRetryScheduledEvent extends PiEvent {
   final String? errorMessage;
 }
 
-/// A summarization retry began. [reason] is present only for the `compaction`
-/// source; branch summaries carry none.
+/// A summarization retry began.
 final class PiSummarizationRetryAttemptStartEvent extends PiEvent {
-  const PiSummarizationRetryAttemptStartEvent({required this.source, required this.reason, required super.raw});
+  const PiSummarizationRetryAttemptStartEvent({required this.source, required super.raw});
 
-  final PiSummarizationSource? source;
-
-  final PiCompactionReason? reason;
+  final PiSummarizationSource source;
 }
 
 final class PiSummarizationRetryFinishedEvent extends PiEvent {
