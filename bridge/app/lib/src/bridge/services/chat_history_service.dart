@@ -4,6 +4,7 @@ import "dart:typed_data";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/attachment_spill_storage.dart";
 import "../../api/models/archived_session_file_dto.dart";
 import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/chat_history_repository.dart";
@@ -82,9 +83,12 @@ class ChatHistoryService {
         // interrupted archive can leave a file for a session that is still
         // live — serving that would hide newer messages still in the store.
         final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
-        if (stored?.archivedAt != null) {
+        if (stored == null) return null;
+        final storageScope = _storageScopeFor(session: stored);
+        if (stored.archivedAt != null) {
           final archived = await _chatHistoryRepository.getArchivedSessionMessages(
             sessionId: sessionId,
+            storageScope: storageScope,
             limit: limit,
             before: before,
           );
@@ -97,6 +101,7 @@ class ChatHistoryService {
         }
         return _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
+          storageScope: storageScope,
           limit: limit,
           before: before,
         );
@@ -105,12 +110,14 @@ class ChatHistoryService {
     if (decided != null) return decided;
 
     await backfillSession(sessionId: sessionId);
+    final storageScope = await _requireStorageScope(sessionId: sessionId);
     // The backfill is itself queued, so this read lands after it and after
     // any capture that raced its fetch.
     return _enqueueRead(
       sessionId: sessionId,
       read: () => _chatHistoryRepository.getSessionMessages(
         sessionId: sessionId,
+        storageScope: storageScope,
         limit: limit,
         before: before,
       ),
@@ -127,63 +134,59 @@ class ChatHistoryService {
       read: () async {
         final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
         if (session == null) return const SessionAttachmentMissing();
-        final location = session.archivedAt == null ? StoredAttachmentLocation.live : StoredAttachmentLocation.archived;
+        final storageScope = _storageScopeFor(session: session);
         if (rendition == SessionAttachmentRendition.thumbnail) {
           final cached = await _chatHistoryRepository.readStoredAttachmentThumbnail(
-            sessionId: sessionId,
+            storageScope: storageScope,
             attachmentId: attachmentId,
-            location: location,
           );
           if (cached != null) {
             return SessionAttachmentFound(bytes: cached.bytes, mime: cached.format.mime);
           }
           return _generateThumbnail(
             sessionId: sessionId,
+            storageScope: storageScope,
             attachmentId: attachmentId,
-            location: location,
           );
         }
 
         final original = await _chatHistoryRepository.readStoredAttachment(
-          sessionId: sessionId,
+          storageScope: storageScope,
           attachmentId: attachmentId,
-          location: location,
         );
         if (original == null) return const SessionAttachmentMissing();
-        if (original.bytes.length > _maxStoredImageBytes) {
+        if (original.length > _maxStoredImageBytes) {
           return const SessionAttachmentTooLarge();
         }
 
-        final mime = _attachmentThumbnailBuilder.detectSupportedMime(bytes: original.bytes);
+        final mime = _attachmentThumbnailBuilder.detectSupportedMime(bytes: original);
         return mime == null
             ? const SessionAttachmentUnsupported()
-            : SessionAttachmentFound(bytes: original.bytes, mime: mime);
+            : SessionAttachmentFound(bytes: original, mime: mime);
       },
     );
   }
 
   Future<SessionAttachmentResult> _generateThumbnail({
     required String sessionId,
+    required AttachmentStorageScope storageScope,
     required String attachmentId,
-    required StoredAttachmentLocation location,
   }) {
     final result = _thumbnailGenerationLane.then((_) async {
       final original = await _chatHistoryRepository.readStoredAttachment(
-        sessionId: sessionId,
+        storageScope: storageScope,
         attachmentId: attachmentId,
-        location: location,
       );
       if (original == null) return const SessionAttachmentMissing();
-      if (original.bytes.length > _maxStoredImageBytes) {
+      if (original.length > _maxStoredImageBytes) {
         return const SessionAttachmentTooLarge();
       }
-      final built = await _attachmentThumbnailBuilder.build(bytes: original.bytes);
+      final built = await _attachmentThumbnailBuilder.build(bytes: original);
       return switch (built) {
         AttachmentThumbnailRendered(:final bytes, :final format) =>
           await _chatHistoryRepository.writeStoredAttachmentThumbnail(
-                sessionId: sessionId,
+                storageScope: storageScope,
                 attachmentId: attachmentId,
-                location: original.location,
                 format: format,
                 bytes: bytes,
               )
@@ -280,11 +283,15 @@ class ChatHistoryService {
     return _capture(
       sessionId: sessionId,
       description: "part ${part.id}",
-      write: (observedAt) => _chatHistoryRepository.upsertPart(
-        sessionId: sessionId,
-        part: part,
-        updatedAt: observedAt,
-      ),
+      write: (observedAt) async {
+        final storageScope = await _requireStorageScope(sessionId: sessionId);
+        await _chatHistoryRepository.upsertPart(
+          sessionId: sessionId,
+          storageScope: storageScope,
+          part: part,
+          updatedAt: observedAt,
+        );
+      },
     );
   }
 
@@ -346,9 +353,11 @@ class ChatHistoryService {
         // between the read and the write.
         final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
         final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
+        final storageScope = await _requireStorageScope(sessionId: sessionId);
         final messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
         await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
+          storageScope: storageScope,
           messages: messages,
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
@@ -432,9 +441,12 @@ class ChatHistoryService {
     required String sessionId,
     int? limit,
     int? before,
-  }) {
+  }) async {
+    final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (session == null) return null;
     return _chatHistoryRepository.getArchivedSessionMessages(
       sessionId: sessionId,
+      storageScope: _storageScopeFor(session: session),
       limit: limit,
       before: before,
     );
@@ -444,13 +456,13 @@ class ChatHistoryService {
 
   Future<bool> hasArchive({required String sessionId}) => _chatHistoryRepository.hasArchive(sessionId: sessionId);
 
-  /// Removes the session's stored transcript and attachment bytes.
+  /// Removes the session's data-directory-local stored transcript.
   Future<void> purgeSessionHistory({required String sessionId, bool includeArchive = false}) {
     return purgeSessionsHistory(sessionIds: [sessionId], includeArchive: includeArchive);
   }
 
-  /// Removes stored history, spill files, and any archive file for a whole
-  /// session family in one pass.
+  /// Removes stored history and any archive file for a whole session family in
+  /// one pass. Shared attachment bytes retain their manual lifetime.
   ///
   /// The batch is serialized behind every listed session's write queue, so no
   /// concurrent capture can re-create rows the purge is removing.
@@ -469,6 +481,19 @@ class ChatHistoryService {
   }
 
   Future<Set<String>> getStoredSessionIds() => _chatHistoryRepository.getStoredSessionIds();
+
+  Future<AttachmentStorageScope> _requireStorageScope({required String sessionId}) async {
+    final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (session == null) {
+      throw StateError("Cannot resolve attachment storage for unknown session $sessionId");
+    }
+    return _storageScopeFor(session: session);
+  }
+
+  AttachmentStorageScope _storageScopeFor({required StoredSession session}) => AttachmentStorageScope(
+    pluginId: session.pluginId,
+    backendSessionId: session.backendSessionId,
+  );
 
   /// Applies one captured event and advances the session's freshness marks.
   ///

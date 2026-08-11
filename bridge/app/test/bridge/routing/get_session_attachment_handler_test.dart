@@ -24,7 +24,10 @@ void main() {
     test("returns an encoded original with its decoded byte length", () async {
       final history = createTestChatHistory();
       final bytes = _pngBytes();
-      final digest = await history.spillStorage.write(sessionId: "session-1", bytes: bytes);
+      final digest = await history.spillStorage.write(
+        scope: testAttachmentStorageScope(sessionId: "session-1"),
+        bytes: bytes,
+      );
       final handler = GetSessionAttachmentHandler(chatHistoryService: history.service);
 
       final response = await handler.handle(
@@ -47,7 +50,7 @@ void main() {
     test("maps invalid and unavailable requests to bounded status codes", () async {
       final history = createTestChatHistory();
       final corrupt = await history.spillStorage.write(
-        sessionId: "session-1",
+        scope: testAttachmentStorageScope(sessionId: "session-1"),
         bytes: Uint8List.fromList([1, 2, 3]),
       );
       final handler = GetSessionAttachmentHandler(chatHistoryService: history.service);
@@ -84,7 +87,10 @@ void main() {
     test("handleInternal parses the typed request body", () async {
       final history = createTestChatHistory();
       final bytes = _pngBytes();
-      final digest = await history.spillStorage.write(sessionId: "session-1", bytes: bytes);
+      final digest = await history.spillStorage.write(
+        scope: testAttachmentStorageScope(sessionId: "session-1"),
+        bytes: bytes,
+      );
       final handler = GetSessionAttachmentHandler(chatHistoryService: history.service);
 
       final response = await handler.handleInternal(

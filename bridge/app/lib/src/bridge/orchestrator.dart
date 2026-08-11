@@ -186,7 +186,6 @@ class Orchestrator {
   final ChatHistoryDatabase _chatHistoryDatabase;
   final AttachmentSpillStorage _attachmentSpillStorage;
   final ArchivedSessionStorage _archivedSessionStorage;
-  final AttachmentSpillStorage _archivedAttachmentStorage;
   final http.Client _httpClient;
   final ProcessRunner _processRunner;
   final AccessTokenProvider _accessTokenProvider;
@@ -210,7 +209,6 @@ class Orchestrator {
     required ChatHistoryDatabase chatHistoryDatabase,
     required AttachmentSpillStorage attachmentSpillStorage,
     required ArchivedSessionStorage archivedSessionStorage,
-    required AttachmentSpillStorage archivedAttachmentStorage,
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required AccessTokenProvider accessTokenProvider,
@@ -233,7 +231,6 @@ class Orchestrator {
        _chatHistoryDatabase = chatHistoryDatabase,
        _attachmentSpillStorage = attachmentSpillStorage,
        _archivedSessionStorage = archivedSessionStorage,
-       _archivedAttachmentStorage = archivedAttachmentStorage,
        _httpClient = httpClient,
        _processRunner = processRunner,
        _accessTokenProvider = accessTokenProvider,
@@ -476,7 +473,6 @@ class Orchestrator {
         chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
         attachmentSpillStorage: _attachmentSpillStorage,
         archivedSessionStorage: _archivedSessionStorage,
-        archivedAttachmentStorage: _archivedAttachmentStorage,
       ),
       sessionRepository: sessionRepository,
       attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),

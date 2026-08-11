@@ -53,4 +53,51 @@ void main() {
       expect(sesoriDataDirectory(), equals(sesoriDataDirectory()));
     });
   });
+
+  group("resolveSesoriAttachmentsDirectory", () {
+    test("uses macOS Application Support", () {
+      expect(
+        resolveSesoriAttachmentsDirectory(
+          environment: const {"HOME": "/Users/alex"},
+          operatingSystem: PlatformOs.macos,
+        ),
+        "/Users/alex/Library/Application Support/Sesori Attachments",
+      );
+    });
+
+    test("honors Linux XDG_DATA_HOME", () {
+      expect(
+        resolveSesoriAttachmentsDirectory(
+          environment: const {
+            "HOME": "/home/alex",
+            "XDG_DATA_HOME": "/srv/alex-data",
+          },
+          operatingSystem: PlatformOs.linux,
+        ),
+        "/srv/alex-data/sesori-attachments",
+      );
+    });
+
+    test("uses the Linux data fallback when XDG_DATA_HOME is blank", () {
+      expect(
+        resolveSesoriAttachmentsDirectory(
+          environment: const {"HOME": "/home/alex", "XDG_DATA_HOME": " "},
+          operatingSystem: PlatformOs.linux,
+        ),
+        "/home/alex/.local/share/sesori-attachments",
+      );
+    });
+
+    test("uses Windows Local AppData", () {
+      expect(
+        resolveSesoriAttachmentsDirectory(
+          environment: const {
+            "LOCALAPPDATA": r"C:\Users\Alex\AppData\Local",
+          },
+          operatingSystem: PlatformOs.windows,
+        ),
+        r"C:\Users\Alex\AppData\Local\Sesori Attachments",
+      );
+    });
+  });
 }

@@ -8,7 +8,8 @@
 - **Implementation base:** `origin/main` at `f91fee47`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** [#818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818)
-- **Next action:** Monitor Step 3 review/CI and begin Step 4 locally
+- **Next action:** Revise Step 3 to use shared backend-session-scoped attachment
+  storage, re-review, verify, and update PR #818; then restore Step 4 locally
 
 ## Plan Review
 
@@ -33,7 +34,7 @@
 |---|---|---|---:|---|
 | [x] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) merged |
 | [x] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812) merged |
-| [ ] | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) open |
+| [ ] | 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) open |
 | [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Pending |
 | [ ] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Pending |
 | [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | Pending |
@@ -52,7 +53,10 @@
 - One bounded JSON/base64 image is transferred per request; no chunks, ranges,
   resume, or determinate progress.
 - Bridge thumbnails are fixed square first-frame renditions and are persisted
-  under the existing session spill lifecycle.
+  with originals in the OS user's shared attachment root.
+- Shared attachment directories are keyed by plugin/backend session identity,
+  independent of account and `--data-dir`; archive/history/session deletion
+  retains them for other bridge databases, and cleanup is manual.
 - The app persists thumbnails only; full originals remain temporary.
 - Chat uses center-cropped square grids with metadata overlays and stable retry
   states.
@@ -81,20 +85,23 @@
   Committed as `9753d350`, pushed, opened as
   [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812), and
   merged as `f91fee47`.
-- Step 3: Added versioned atomic thumbnail storage, bounded off-isolate image
-  transformation, session-queued live/archive rendition loading, one global
-  decode lane, and the typed `POST /session/attachment` handler. `dart pub get`,
-  `dart analyze --fatal-infos`, 15 focused attachment tests, and all 2,547
-  bridge-app tests pass. Architecture implementation review approved the
-  storage/repository/service/handler ownership with no blocking findings; its
-  one non-blocking dead-field observation was applied. Before this tracker
-  update, the PR-base diff contained 932 additions and 16 deletions across 13
-  files, within the 900-1,400 target, with no generated source changes.
-  `git diff --check origin/main...HEAD` passes.
-  Implementation committed as `865e0334`, synchronized with `origin/main` in
-  `aa94152d`, and opened as
+- Step 3: Added bounded off-isolate thumbnail generation, one global decode
+  lane, and the typed `POST /session/attachment` handler, then revised storage
+  to one platform-native owner-only root keyed by durable plugin/backend session
+  identity. Independent bridge databases reuse content-addressed bytes; archive,
+  history purge, and session deletion retain shared files for manual cleanup.
+  The obsolete live/archive spill split and its DI/copy/purge paths are removed.
+  `dart analyze --fatal-infos` passes in the bridge app and foundation package;
+  all 2,553 bridge-app tests and all 70 foundation tests pass. Focused coverage
+  includes platform roots, separate-store reuse, scope isolation/traversal,
+  archive access, retained bytes after purge, manual-deletion degradation,
+  thumbnail bounds, and the typed route. Architecture implementation review
+  approved the revised dependency, privacy, concurrency, and lifecycle seams
+  with no blockers. The considerable shared-persistence revision raised Step 3
+  from moderate/900-1,400 to complex/1,800-2,300 changed lines.
+  Implementation began in `865e0334`, synchronized with `origin/main` in
+  `aa94152d`, and is open as
   [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818).
-  Review hardening added three focused tests; all 2,550 bridge-app tests pass.
 
 ## Findings And Plan Deltas
 
@@ -130,3 +137,19 @@
   identity/account scope explicit, made cache cleanup mobile-activated and
   disposable, and required source-free diagnostics. Declined suggestions that
   added machinery only to already-safe or self-healing failure paths.
+- **2026-08-11 - Shared bridge attachment storage:** Import identity tracing
+  confirmed that each new database allocates a fresh random local session id for
+  the same `(pluginId, backendSessionId)`, so moving the old local-id layout alone
+  would duplicate bytes. The user selected a platform-native root shared across
+  accounts/data directories, durable backend-session disk scope, and manual-only
+  file lifetime. Step 3 now owns this revision before its PR returns to review;
+  Step 4 remains preserved locally.
+- **2026-08-11 - No internal-layout migration:** The user explicitly rejected
+  backward-compatibility work for the barely exercised development/internal
+  spill layout. The shared root replaces it without migration, fallback reads,
+  dual writes, or sync-state repair; old files are ignored.
+- **2026-08-11 - Shared-root architecture review:** The considerable plan
+  revision's only blocking finding requested old-layout migration. The user's
+  explicit no-internal-compatibility decision superseded that finding, so it was
+  not re-reviewed or implemented. The subsequent architecture implementation
+  review approved the clean replacement with no blockers.

@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_messages_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -17,7 +18,7 @@ void main() {
       plugin = FakeBridgePlugin();
       handler = GetSessionMessagesHandler(
         chatHistoryService: createTestChatHistory(
-          sessionRepository: FakeSessionRepository(plugin: plugin),
+          sessionRepository: _MessageSessionRepository(plugin: plugin),
         ).service,
       );
     });
@@ -150,4 +151,24 @@ void main() {
       expect(response.body, contains("PluginApiException"));
     });
   });
+}
+
+class _MessageSessionRepository extends FakeSessionRepository {
+  _MessageSessionRepository({required super.plugin});
+
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
+    id: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "fake",
+    projectId: "project-1",
+    parentSessionId: null,
+    directory: "/tmp/project-1",
+    worktreePath: null,
+    branchName: null,
+    isDedicated: false,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+  );
 }

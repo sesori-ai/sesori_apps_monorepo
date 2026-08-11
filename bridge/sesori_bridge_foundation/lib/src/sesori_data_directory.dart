@@ -1,5 +1,9 @@
 import "dart:io" show Platform;
 
+import "package:path/path.dart" as path;
+
+import "platform_target.dart";
+
 /// Resolves the current user's home directory from platform environment values.
 ///
 /// Prefers `USERPROFILE` on Windows and `HOME` elsewhere, then falls back to
@@ -34,3 +38,52 @@ String sesoriDataDirectory() {
   }
   return "$homeDir/.local/share/sesori";
 }
+
+/// Resolves the persistent attachment root shared by every bridge data directory
+/// for the current OS user.
+String sesoriAttachmentsDirectory() => resolveSesoriAttachmentsDirectory(
+  environment: Platform.environment,
+  operatingSystem: PlatformOs.fromOperatingSystem(
+    operatingSystem: Platform.operatingSystem,
+  ),
+);
+
+/// Resolves the shared attachment root for an explicit environment and OS.
+///
+/// Linux intentionally honors `XDG_DATA_HOME` even though the older
+/// [sesoriDataDirectory] convention predates that support. Attachments are a
+/// new platform-native store rather than another account-bound data directory.
+String resolveSesoriAttachmentsDirectory({
+  required Map<String, String> environment,
+  required PlatformOs operatingSystem,
+}) {
+  final pathContext = operatingSystem == PlatformOs.windows
+      ? path.Context(style: path.Style.windows)
+      : path.Context(style: path.Style.posix);
+  return switch (operatingSystem) {
+    PlatformOs.macos => pathContext.join(
+      _requireUserHome(environment: environment),
+      "Library",
+      "Application Support",
+      "Sesori Attachments",
+    ),
+    PlatformOs.linux => pathContext.join(
+      _nonBlank(environment["XDG_DATA_HOME"]) ??
+          pathContext.join(
+            _requireUserHome(environment: environment),
+            ".local",
+            "share",
+          ),
+      "sesori-attachments",
+    ),
+    PlatformOs.windows => pathContext.join(
+      _nonBlank(environment["LOCALAPPDATA"]) ?? (throw StateError("LOCALAPPDATA environment variable not set")),
+      "Sesori Attachments",
+    ),
+  };
+}
+
+String _requireUserHome({required Map<String, String> environment}) =>
+    resolveUserHomeDirectory(environment: environment) ?? (throw StateError("HOME environment variable not set"));
+
+String? _nonBlank(String? value) => value == null || value.trim().isEmpty ? null : value;

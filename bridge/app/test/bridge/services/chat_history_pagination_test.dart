@@ -42,9 +42,12 @@ void main() {
 
       expect(second.messages.map((message) => message.info.id), const ["m5", "m6", "m7"]);
       expect(
-        second.messages.map((message) => message.info.id).toSet().intersection(
-          first.messages.map((message) => message.info.id).toSet(),
-        ),
+        second.messages
+            .map((message) => message.info.id)
+            .toSet()
+            .intersection(
+              first.messages.map((message) => message.info.id).toSet(),
+            ),
         isEmpty,
       );
     });
@@ -89,7 +92,11 @@ void main() {
     test("an empty page never claims there is more", () async {
       // A page that returned nothing cannot point a cursor at anything older,
       // so it must terminate rather than invite another request.
-      final page = await history.repository.getSessionMessages(sessionId: "ses_a", limit: 0);
+      final page = await history.repository.getSessionMessages(
+        sessionId: "ses_a",
+        storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+        limit: 0,
+      );
 
       expect(page.messages, isEmpty);
       expect(page.nextCursor, isNull);
@@ -97,7 +104,11 @@ void main() {
 
     test("a session with no stored messages pages cleanly", () async {
       // ses_b was never backfilled, so the store holds nothing for it.
-      final page = await history.repository.getSessionMessages(sessionId: "ses_b", limit: 5);
+      final page = await history.repository.getSessionMessages(
+        sessionId: "ses_b",
+        storageScope: testAttachmentStorageScope(sessionId: "ses_b"),
+        limit: 5,
+      );
 
       expect(page.messages, isEmpty);
       expect(page.nextCursor, isNull);
@@ -162,9 +173,21 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => transcript;
 
-  /// Not archived: these suites exercise the live-store path.
   @override
-  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
+    id: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "opencode",
+    projectId: "project-1",
+    parentSessionId: null,
+    directory: "/tmp/project-1",
+    worktreePath: null,
+    branchName: null,
+    isDedicated: false,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

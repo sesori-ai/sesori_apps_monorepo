@@ -20,7 +20,10 @@ void main() {
 
     setUp(() async {
       repository = _FakeSessionRepository(
-        transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
+        transcript: [
+          _messageWithParts(id: "m1"),
+          _messageWithParts(id: "m2"),
+        ],
       )..archived = true;
       history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
@@ -48,7 +51,13 @@ void main() {
       await export();
       await history.service.purgeSessionHistory(sessionId: "ses_a");
 
-      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
+      expect(
+        (await history.repository.getSessionMessages(
+          sessionId: "ses_a",
+          storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+        )).messages,
+        isEmpty,
+      );
       final served = await history.service.getSessionMessages(sessionId: "ses_a");
       expect(
         served.messages.map((message) => message.info.id),
@@ -58,7 +67,7 @@ void main() {
       expect(repository.fetchCount, 1, reason: "an archived read must not consult the backend");
     });
 
-    test("attachments round-trip through the archived spill directory", () async {
+    test("archived attachments round-trip through the shared scope", () async {
       final bytes = Uint8List.fromList(List<int>.generate(32, (index) => index));
       await history.service.capturePart(
         sessionId: "ses_a",
@@ -123,10 +132,9 @@ void main() {
 
       expect(await history.service.getArchivedSessionMessages(sessionId: "ses_a"), isNull);
 
-      final quarantined = Directory(history.directory.path)
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((file) => file.path.contains(".corrupt-"));
+      final quarantined = Directory(
+        history.directory.path,
+      ).listSync(recursive: true).whereType<File>().where((file) => file.path.contains(".corrupt-"));
       expect(quarantined, hasLength(1), reason: "the only copy of the transcript is preserved for inspection");
     });
 
@@ -154,7 +162,10 @@ void main() {
       // messages the store has and the file does not.
       repository.archived = false;
       await export();
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m3"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m3"),
+      );
 
       final served = await history.service.getSessionMessages(sessionId: "ses_a");
 
@@ -177,7 +188,10 @@ void main() {
       ).reconcile();
 
       expect(
-        (await history.repository.getSessionMessages(sessionId: "ses_a")).messages,
+        (await history.repository.getSessionMessages(
+          sessionId: "ses_a",
+          storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+        )).messages,
         hasLength(2),
         reason: "a pre-flip export failure must not cost the only copy of the transcript",
       );
@@ -353,7 +367,13 @@ void main() {
     test("reconcile finishes a purge interrupted between the flip and the purge", () async {
       await export();
       // The crash window: the audit file is durable but the live rows survive.
-      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, hasLength(2));
+      expect(
+        (await history.repository.getSessionMessages(
+          sessionId: "ses_a",
+          storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+        )).messages,
+        hasLength(2),
+      );
       repository.existingSessionIds = {"ses_a"};
       repository.archivedSessionIds = {"ses_a"};
 
@@ -362,7 +382,13 @@ void main() {
         chatHistoryService: history.service,
       ).reconcile();
 
-      expect((await history.repository.getSessionMessages(sessionId: "ses_a")).messages, isEmpty);
+      expect(
+        (await history.repository.getSessionMessages(
+          sessionId: "ses_a",
+          storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+        )).messages,
+        isEmpty,
+      );
       expect(
         await history.archivedStorage.read(sessionId: "ses_a"),
         isNotNull,
@@ -448,8 +474,10 @@ MessagePart _part({
   attachment: attachment,
 );
 
-MessageWithParts _messageWithParts({required String id}) =>
-    MessageWithParts(info: _message(id: id), parts: [_part(id: "$id-p1", messageId: id)]);
+MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
+  info: _message(id: id),
+  parts: [_part(id: "$id-p1", messageId: id)],
+);
 
 class _FakeSessionRepository implements SessionRepository {
   _FakeSessionRepository({required this.transcript});

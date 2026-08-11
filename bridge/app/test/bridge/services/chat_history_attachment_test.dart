@@ -18,7 +18,10 @@ void main() {
   test("serves stored originals with detected MIME", () async {
     final history = createTestChatHistory();
     final bytes = _pngBytes();
-    final digest = await history.spillStorage.write(sessionId: "session-1", bytes: bytes);
+    final digest = await history.spillStorage.write(
+      scope: testAttachmentStorageScope(sessionId: "session-1"),
+      bytes: bytes,
+    );
 
     final result = await history.service.getSessionAttachment(
       sessionId: "session-1",
@@ -35,7 +38,8 @@ void main() {
   test("generates one thumbnail and reuses its stored rendition", () async {
     final builder = _CountingThumbnailBuilder();
     final history = createTestChatHistory(attachmentThumbnailBuilder: builder);
-    final digest = await history.spillStorage.write(sessionId: "session-1", bytes: _pngBytes());
+    final scope = testAttachmentStorageScope(sessionId: "session-1");
+    final digest = await history.spillStorage.write(scope: scope, bytes: _pngBytes());
 
     final first = await history.service.getSessionAttachment(
       sessionId: "session-1",
@@ -51,17 +55,14 @@ void main() {
     expect(first, isA<SessionAttachmentFound>());
     expect(second, isA<SessionAttachmentFound>());
     expect(builder.calls, 1);
-    expect(await history.spillStorage.readThumbnail(sessionId: "session-1", digest: digest), isNotNull);
+    expect(await history.spillStorage.readThumbnail(scope: scope, digest: digest), isNotNull);
   });
 
-  test("an archived session writes its thumbnail beside the archived source", () async {
+  test("an archived session uses the shared attachment scope", () async {
     final history = createTestChatHistory(storedSessionArchivedAt: 1);
     const sessionId = "session-1";
-    final digest = await history.spillStorage.write(sessionId: sessionId, bytes: _pngBytes());
-    await history.spillStorage.copySession(
-      sessionId: sessionId,
-      destinationDirectoryPath: history.archivedSpillStorage.sessionDirectoryPath(sessionId: sessionId),
-    );
+    final scope = testAttachmentStorageScope(sessionId: sessionId);
+    final digest = await history.spillStorage.write(scope: scope, bytes: _pngBytes());
     final result = await history.service.getSessionAttachment(
       sessionId: sessionId,
       attachmentId: digest,
@@ -69,13 +70,15 @@ void main() {
     );
 
     expect(result, isA<SessionAttachmentFound>());
-    expect(await history.archivedSpillStorage.readThumbnail(sessionId: sessionId, digest: digest), isNotNull);
-    expect(await history.spillStorage.readThumbnail(sessionId: sessionId, digest: digest), isNull);
+    expect(await history.spillStorage.readThumbnail(scope: scope, digest: digest), isNotNull);
   });
 
   test("rejects an orphan spill after its session row is deleted", () async {
     final history = createTestChatHistory(sessionRepository: _MissingSessionRepository());
-    final digest = await history.spillStorage.write(sessionId: "session-1", bytes: _pngBytes());
+    final digest = await history.spillStorage.write(
+      scope: testAttachmentStorageScope(sessionId: "session-1"),
+      bytes: _pngBytes(),
+    );
 
     final result = await history.service.getSessionAttachment(
       sessionId: "session-1",
@@ -86,10 +89,11 @@ void main() {
     expect(result, isA<SessionAttachmentMissing>());
   });
 
-  test("a purge queued behind generation removes the complete live root", () async {
+  test("a purge queued behind generation retains the shared attachment scope", () async {
     final history = createTestChatHistory();
     const sessionId = "session-1";
-    final digest = await history.spillStorage.write(sessionId: sessionId, bytes: _pngBytes());
+    final scope = testAttachmentStorageScope(sessionId: sessionId);
+    final digest = await history.spillStorage.write(scope: scope, bytes: _pngBytes());
 
     final rendition = history.service.getSessionAttachment(
       sessionId: sessionId,
@@ -100,7 +104,8 @@ void main() {
     expect(await rendition, isA<SessionAttachmentFound>());
     await purge;
 
-    expect(Directory(history.spillStorage.sessionDirectoryPath(sessionId: sessionId)).existsSync(), isFalse);
+    expect(Directory(history.spillStorage.scopeDirectoryPath(scope: scope)).existsSync(), isTrue);
+    expect(await history.spillStorage.readThumbnail(scope: scope, digest: digest), isNotNull);
   });
 
   test("rejects missing, malformed, unsupported, and oversized originals", () async {
@@ -115,7 +120,7 @@ void main() {
     );
 
     final corrupt = await history.spillStorage.write(
-      sessionId: "session-1",
+      scope: testAttachmentStorageScope(sessionId: "session-1"),
       bytes: Uint8List.fromList([1, 2, 3]),
     );
     expect(
@@ -128,7 +133,7 @@ void main() {
     );
 
     final oversized = await history.spillStorage.write(
-      sessionId: "session-1",
+      scope: testAttachmentStorageScope(sessionId: "session-1"),
       bytes: Uint8List(20 * 1024 * 1024 + 1),
     );
     expect(
@@ -144,8 +149,14 @@ void main() {
   test("serializes thumbnail decodes across sessions", () async {
     final builder = _TrackingThumbnailBuilder();
     final history = createTestChatHistory(attachmentThumbnailBuilder: builder);
-    final first = await history.spillStorage.write(sessionId: "session-1", bytes: _pngBytes());
-    final second = await history.spillStorage.write(sessionId: "session-2", bytes: _pngBytes());
+    final first = await history.spillStorage.write(
+      scope: testAttachmentStorageScope(sessionId: "session-1"),
+      bytes: _pngBytes(),
+    );
+    final second = await history.spillStorage.write(
+      scope: testAttachmentStorageScope(sessionId: "session-2"),
+      bytes: _pngBytes(),
+    );
 
     await Future.wait([
       history.service.getSessionAttachment(
@@ -256,29 +267,26 @@ class _TrackingChatHistoryRepository implements ChatHistoryRepository {
 
   @override
   Future<StoredAttachmentThumbnail?> readStoredAttachmentThumbnail({
-    required String sessionId,
+    required AttachmentStorageScope storageScope,
     required String attachmentId,
-    required StoredAttachmentLocation location,
   }) async => null;
 
   @override
-  Future<StoredAttachmentBytes?> readStoredAttachment({
-    required String sessionId,
+  Future<Uint8List?> readStoredAttachment({
+    required AttachmentStorageScope storageScope,
     required String attachmentId,
-    required StoredAttachmentLocation location,
   }) async {
     _activeReads++;
     if (_activeReads > maxActiveReads) maxActiveReads = _activeReads;
     await Future<void>.delayed(const Duration(milliseconds: 20));
     _activeReads--;
-    return (bytes: _pngBytes(), location: location);
+    return _pngBytes();
   }
 
   @override
   Future<bool> writeStoredAttachmentThumbnail({
-    required String sessionId,
+    required AttachmentStorageScope storageScope,
     required String attachmentId,
-    required StoredAttachmentLocation location,
     required AttachmentThumbnailFormat format,
     required Uint8List bytes,
   }) async => true;
