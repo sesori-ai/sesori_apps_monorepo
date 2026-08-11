@@ -31,5 +31,7 @@ export "src/repositories/mappers/claude_content_mapper.dart";
 export "src/repositories/models/claude_session_record.dart";
 export "src/repositories/models/claude_transcript_record.dart";
 export "src/repositories/trackers/claude_tool_tracker.dart";
+export "src/runtime/claude_bridge_plugin.dart";
+export "src/runtime/claude_plugin_descriptor.dart";
 export "src/services/claude_catalog_service.dart";
 export "src/services/claude_session_service.dart";

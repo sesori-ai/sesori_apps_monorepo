@@ -51,6 +51,22 @@ void main() {
       expect(_userFrames(process), hasLength(1));
     });
 
+    test("interruptActiveWork aborts and waits for active sessions within its budget", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      final interruption = harness.service.interruptActiveWork(
+        budget: const Duration(seconds: 1),
+      );
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emit(_result());
+
+      expect(await interruption, {testSessionId});
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
+    });
+
     test("routes control asks and clears them when the process exits", () async {
       harness.enqueue("first");
       final process = await harness.firstProcess;

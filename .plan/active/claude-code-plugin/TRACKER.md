@@ -4,13 +4,13 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `035fae84` (Step 12 started after Step 11 merged)
-- **Series state:** Steps 1-11/17 merged; Step 12/17 PR open
-- **Current step:** 12/17 — full plugin API surface in review
+  `f0d705bc` (Step 13 started after Step 12 merged)
+- **Series state:** Steps 1-12/17 merged; Step 13/17 ready for review
+- **Current step:** 13/17 — descriptor and lifecycle implemented and verified
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Wait for Step 12 PR #813 to merge, then wait for explicit
-  direction before starting Step 13
+- **Next action:** Open and monitor the Step 13 PR, then wait for explicit
+  direction after merge before starting Step 14
 
 ## Plan Review
 
@@ -56,8 +56,8 @@
 | [x] | 9/17 | `claude-code-plugin-approvals` | `🚧 [claude-code-plugin] feat(claude): add permission and question registry [step 9/17]` | 1,100-1,500 | [PR #805](https://github.com/sesori-ai/sesori_apps_monorepo/pull/805) merged 2026-08-10 as `8280e691` |
 | [x] | 10/17 | `claude-code-plugin-session-service` | `🚧 [claude-code-plugin] feat(claude): add session residency and turn queue [step 10/17]` | 1,200-1,500 | [PR #808](https://github.com/sesori-ai/sesori_apps_monorepo/pull/808) merged 2026-08-11 as `fcca943c` |
 | [x] | 11/17 | `claude-code-plugin-catalog-service` | `⚙️ [claude-code-plugin] feat(claude): add model and agent catalog [step 11/17]` | 900-1,300 | [PR #809](https://github.com/sesori-ai/sesori_apps_monorepo/pull/809) merged 2026-08-11 as `ca521672` |
-| [ ] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | [PR #813](https://github.com/sesori-ai/sesori_apps_monorepo/pull/813) open against `main` |
-| [ ] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | Not started |
+| [x] | 12/17 | `claude-code-plugin-plugin-impl` | `🚧 [claude-code-plugin] feat(claude): implement the plugin API surface [step 12/17]` | 1,200-1,500 | [PR #813](https://github.com/sesori-ai/sesori_apps_monorepo/pull/813) merged 2026-08-11 as `f0d705bc` |
+| [ ] | 13/17 | `claude-code-plugin-descriptor` | `⚙️ [claude-code-plugin] feat(claude): add descriptor and lifecycle [step 13/17]` | 1,100-1,500 | Implemented and verified on `claude-code-plugin-descriptor`; ready to open against `main` |
 | [ ] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | Not started |
 | [ ] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | Not started |
 | [ ] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | Not started |
@@ -388,6 +388,38 @@
   across every session owner. `PLAN.md` now records teardown plus a session
   error as the safe response. That explicit decision supersedes the review and
   was not re-reviewed.
+
+- Step 13/17 local implementation (2026-08-11): added the exported, unregistered
+  `ClaudePluginDescriptor` with the bare `bin` option, bounded host-routed
+  `--version` and `auth status` probes, a `SemanticVersion` floor of 2.1.221,
+  and a generated PII-excluding auth DTO that retains only nullable `loggedIn`.
+  Setup inspection returns ready, runtime missing, authentication required,
+  unavailable, or unknown, with a non-empty action hint for every non-ready
+  state and no `PluginSetupNotInspected` path.
+
+  Added `ClaudeBridgePlugin` over `SteadyPluginLifecycle`, explicit composition
+  of the Step 3-12 collaborators, host-backed Windows-shell process spawning,
+  entry and post-construction abort checks with `shutdown(budget: null)`
+  rollback, bounded active-work interruption, and plugin disposal. Typed spawn
+  outcomes degrade recoverably on binary launch failure and restore ready on a
+  later successful spawn; ordinary per-session exits do not alter plugin
+  lifecycle status. The descriptor is exported but remains absent from app
+  registration for Step 14.
+
+  Focused descriptor/session lifecycle tests pass (18 tests), including exact
+  probe order, all five setup states, auth PII exclusion, timeout force-kill,
+  both abort boundaries, rollback evidence, host process arguments, bounded
+  interruption, and degraded/ready/session-exit transitions. The full owning
+  package suite passes 197 tests, `dart analyze --fatal-infos` reports no
+  issues, generated DTO code was produced with `build_runner`, and
+  `git diff --check` passes. Before this tracker update, the implementation was
+  1,063 changed lines (all additions), within the 1,100-1,500 estimate once plan
+  evidence is included and below the 1,500-line soft cap.
+
+  Architecture implementation review of the full tracked and untracked Step 13
+  diff against `main` returned `APPROVED` with no findings. It confirmed the
+  descriptor composition, lifecycle ownership, host process seam, and package
+  dependency direction preserve the bridge architecture.
 
 ## Findings And Plan Deltas
 
