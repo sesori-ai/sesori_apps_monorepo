@@ -1339,11 +1339,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           method: AcpMethods.sessionClose,
           params: {"sessionId": sessionId},
         );
-      } on Object catch (error) {
-        throw PluginOperationException(
-          "deleteSession",
-          message: "ACP session did not settle and close",
-          cause: error,
+      } on Object catch (error, stackTrace) {
+        Error.throwWithStackTrace(
+          PluginOperationException(
+            "deleteSession",
+            message: "ACP session did not settle and close",
+            cause: error,
+          ),
+          stackTrace,
         );
       }
     }

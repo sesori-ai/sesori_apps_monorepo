@@ -16,14 +16,16 @@ final class AcpSupportedElicitationForm extends AcpElicitationForm {
   final List<PluginQuestionInfo> questions;
   final List<AcpElicitationField> _fields;
 
-  Map<String, Object?> buildContent({required List<List<String>> answers}) {
+  Map<String, Object?> buildResponse({required List<List<String>> answers}) {
     final content = <String, Object?>{};
     for (var index = 0; index < _fields.length; index++) {
       final selected = index < answers.length ? answers[index] : const <String>[];
-      final value = _fields[index].encode(selected: selected);
-      if (value != null) content[_fields[index].key] = value;
+      final field = _fields[index];
+      final value = field.encode(selected: selected);
+      if (value == null && field.required) return const {"action": "decline"};
+      if (value != null) content[field.key] = value;
     }
-    return content;
+    return {"action": "accept", "content": content};
   }
 }
 
@@ -35,15 +37,16 @@ final class AcpUnsupportedElicitationForm extends AcpElicitationForm {
 }
 
 sealed class AcpElicitationField {
-  const AcpElicitationField({required this.key});
+  const AcpElicitationField({required this.key, required this.required});
 
   final String key;
+  final bool required;
 
   Object? encode({required List<String> selected});
 }
 
 final class _StringField extends AcpElicitationField {
-  const _StringField({required super.key, required this.suggestedText});
+  const _StringField({required super.key, required super.required, required this.suggestedText});
 
   final String? suggestedText;
 
@@ -57,7 +60,7 @@ final class _StringField extends AcpElicitationField {
 }
 
 final class _BooleanField extends AcpElicitationField {
-  const _BooleanField({required super.key});
+  const _BooleanField({required super.key, required super.required});
 
   @override
   Object? encode({required List<String> selected}) {
@@ -71,7 +74,7 @@ final class _BooleanField extends AcpElicitationField {
 }
 
 final class _EnumField extends AcpElicitationField {
-  const _EnumField({required super.key, required this.valuesByLabel});
+  const _EnumField({required super.key, required super.required, required this.valuesByLabel});
 
   final Map<String, String> valuesByLabel;
 
@@ -100,6 +103,14 @@ class AcpElicitationMapper {
     if (properties == null || properties.isEmpty) {
       return const AcpUnsupportedElicitationForm(reason: "form has no properties");
     }
+    final rawRequired = schema["required"];
+    if (rawRequired != null &&
+        (rawRequired is! List ||
+            rawRequired.whereType<String>().length != rawRequired.length ||
+            rawRequired.whereType<String>().any((key) => !properties.containsKey(key)))) {
+      return const AcpUnsupportedElicitationForm(reason: "invalid required properties");
+    }
+    final requiredKeys = rawRequired is List ? rawRequired.whereType<String>().toSet() : const <String>{};
 
     final requestMessage = _bounded(_string(params["message"]) ?? "Input requested");
     final schemaTitle = _bounded(_string(schema["title"]) ?? requestMessage);
@@ -115,6 +126,7 @@ class AcpElicitationMapper {
         property: property,
         requestMessage: requestMessage,
         schemaTitle: schemaTitle,
+        required: requiredKeys.contains(entry.key),
       );
       if (mapped == null) {
         return AcpUnsupportedElicitationForm(
@@ -132,6 +144,7 @@ class AcpElicitationMapper {
     required Map<String, dynamic> property,
     required String requestMessage,
     required String schemaTitle,
+    required bool required,
   }) {
     final title = _bounded(_string(property["title"]) ?? schemaTitle);
     final questionText = _bounded(
@@ -150,7 +163,7 @@ class AcpElicitationMapper {
             multiple: false,
             custom: false,
           ),
-          field: _BooleanField(key: key),
+          field: _BooleanField(key: key, required: required),
         );
       case "string":
         final choices = _enumChoices(property);
@@ -170,6 +183,7 @@ class AcpElicitationMapper {
             ),
             field: _EnumField(
               key: key,
+              required: required,
               valuesByLabel: {for (final choice in choices) choice.label: choice.value},
             ),
           );
@@ -189,7 +203,7 @@ class AcpElicitationMapper {
             multiple: false,
             custom: true,
           ),
-          field: _StringField(key: key, suggestedText: suggested),
+          field: _StringField(key: key, required: required, suggestedText: suggested),
         );
       default:
         return null;
@@ -205,9 +219,9 @@ class AcpElicitationMapper {
       final usedLabels = <String>{};
       for (final raw in rawOneOf) {
         final item = _map(raw);
-        final value = _string(item?["const"]);
+        final value = _enumValue(item?["const"]);
         if (item == null || value == null) return null;
-        final baseLabel = _string(item["title"]) ?? value;
+        final baseLabel = _bounded(_string(item["title"]) ?? _enumDisplayValue(value));
         final label = _uniqueLabel(base: baseLabel, used: usedLabels);
         choices.add((
           label: label,
@@ -225,7 +239,7 @@ class AcpElicitationMapper {
     return [
       for (final value in values)
         (
-          label: _uniqueLabel(base: value, used: usedLabels),
+          label: _uniqueLabel(base: _bounded(_enumDisplayValue(value)), used: usedLabels),
           value: value,
           description: "",
         ),
@@ -245,6 +259,10 @@ class AcpElicitationMapper {
   static Map<String, dynamic>? _map(Object? value) => value is Map ? value.cast<String, dynamic>() : null;
 
   static String? _string(Object? value) => value is String && value.isNotEmpty ? value : null;
+
+  static String? _enumValue(Object? value) => value is String ? value : null;
+
+  static String _enumDisplayValue(String value) => value.isEmpty ? "Empty string" : value;
 
   static String _token(Object? value) => value is String ? value : value.runtimeType.toString();
 

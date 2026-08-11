@@ -19,9 +19,10 @@ reaches the backend so the turn continues.
   backend's original property keys. Reject returns `decline`; abort, process
   exit, and disposal return `cancel`; unsupported schemas are declined without
   exposing prompt/default content in diagnostics.
-- A sessionless backend request is attributed only when the plugin can identify
-  one active originating turn. A backend requiring exact form correlation must
-  serialize its prompts rather than displaying the request on another session.
+- A sessionless backend request is attributed to the most recently dispatched
+  active turn, falling back to the last dispatched turn at its settlement
+  boundary. A backend requiring exact form correlation must serialize prompts
+  process-wide so another session cannot become the attribution target.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression.
 - Child or sub-agent requests surface under their display root.

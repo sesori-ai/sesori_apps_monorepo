@@ -38,6 +38,7 @@ void main() {
       String? sessionId = "session-1",
       Object? mode = "form",
       required Map<String, Object?> properties,
+      List<String> requiredKeys = const [],
     }) => AcpServerRequest(
       id: id,
       method: AcpMethods.elicitationCreate,
@@ -49,6 +50,7 @@ void main() {
           "type": "object",
           "title": "Extension options",
           "properties": properties,
+          if (requiredKeys.isNotEmpty) "required": requiredKeys,
         },
       },
     );
@@ -155,6 +157,52 @@ void main() {
       });
     });
 
+    test("declines the form when a required property is unanswered", () async {
+      requests.add(
+        form(
+          properties: {
+            "requiredName": {"type": "string"},
+            "optionalNote": {"type": "string"},
+          },
+          requiredKeys: const ["requiredName"],
+        ),
+      );
+      await pump();
+      final asked = emitted.single as BridgeSseQuestionAsked;
+
+      registry.replyQuestion(asked.id, [
+        const [],
+        ["optional"],
+      ]);
+
+      expect(responses.single.$2, const {"action": "decline"});
+    });
+
+    test("maps an empty-string enum value through a non-empty label", () async {
+      requests.add(
+        form(
+          properties: {
+            "value": {
+              "type": "string",
+              "enum": [""],
+            },
+          },
+        ),
+      );
+      await pump();
+      final asked = emitted.single as BridgeSseQuestionAsked;
+      final label = asked.questions.single.options.single.label;
+      expect(label, isNotEmpty);
+
+      registry.replyQuestion(asked.id, [
+        [label],
+      ]);
+      expect(responses.single.$2, {
+        "action": "accept",
+        "content": {"value": ""},
+      });
+    });
+
     test("declines unsupported modes and property schemas without pending state", () async {
       requests.add(
         form(
@@ -195,6 +243,29 @@ void main() {
       await pump();
 
       expect(responses.single.$2, const {"action": "cancel"});
+      expect(emitted, isEmpty);
+    });
+
+    test("cancels a form with a non-string session id", () async {
+      requests.add(
+        const AcpServerRequest(
+          id: 42,
+          method: AcpMethods.elicitationCreate,
+          params: {
+            "sessionId": 7,
+            "mode": "form",
+            "requestedSchema": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+              },
+            },
+          },
+        ),
+      );
+      await pump();
+
+      expect(responses.single, (42, const {"action": "cancel"}));
       expect(emitted, isEmpty);
     });
 

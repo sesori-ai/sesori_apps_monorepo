@@ -132,7 +132,8 @@ class AcpApprovalRegistry {
   /// Returns "" only when neither is available — the caller must treat that as
   /// unresolved (a request stamped with "" is dropped by the mobile client).
   String resolveSessionId(Map<String, dynamic> params) {
-    final explicit = (params["sessionId"] as String?)?.trim();
+    final rawSessionId = params["sessionId"];
+    final explicit = rawSessionId is String ? rawSessionId.trim() : null;
     if (explicit != null && explicit.isNotEmpty) return explicit;
     return _activeSessionResolver?.call() ?? "";
   }
@@ -435,10 +436,7 @@ class AcpApprovalRegistry {
           acpId: request.id,
           sessionId: sessionId,
           questions: questions,
-          replyBuilder: (answers) => {
-            "action": "accept",
-            "content": form.buildContent(answers: answers),
-          },
+          replyBuilder: (answers) => form.buildResponse(answers: answers),
           resolutionBuilder: (resolution) => {
             "action": switch (resolution) {
               AcpQuestionResolution.declined => "decline",
