@@ -189,7 +189,9 @@ final class ClaudePluginDescriptor extends BridgePluginDescriptor {
     final processes = ClaudeSessionProcessRepository(
       processFactory: processFactory.spawn,
       binaryPath: binaryPath,
-      environment: host.environment,
+      // The host factory already inherits this environment. Launch specs carry
+      // only explicit overrides so they never shadow HOME and break keychain auth.
+      environment: const {},
     );
     final eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
     final approvals = ClaudeApprovalRegistry(

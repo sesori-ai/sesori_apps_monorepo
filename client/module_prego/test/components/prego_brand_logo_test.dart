@@ -34,6 +34,11 @@ void main() {
       lightAsset: "assets/svgs/brands/cursor_light.svg",
       darkAsset: "assets/svgs/brands/cursor_dark.svg",
     ),
+    (
+      pluginId: Harness.claude.name,
+      lightAsset: "assets/svgs/brands/claude_light.svg",
+      darkAsset: "assets/svgs/brands/claude_dark.svg",
+    ),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled artwork", (tester) async {
       await tester.pumpWidget(_harness(logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null)));
@@ -65,6 +70,7 @@ void main() {
     expect(PregoBrandLogo.displayNameFor(Harness.opencode.name), "OpenCode");
     expect(PregoBrandLogo.displayNameFor(Harness.codex.name), "Codex");
     expect(PregoBrandLogo.displayNameFor(Harness.cursor.name), "Cursor");
+    expect(PregoBrandLogo.displayNameFor(Harness.claude.name), "Claude Code");
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
   });
 

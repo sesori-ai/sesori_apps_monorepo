@@ -54,13 +54,12 @@ binary the user already has installed and logged in.
    under the project matching their working directory.
 9. No Claude *backend payload* concept — tool name, model id, permission mode,
    transcript path, wire shape — escapes the plugin package into shared, bridge,
-   or client code. Three identity and presentation items are deliberate,
-   enumerated exceptions: `Harness.claude` in `sesori_shared`, the brand asset
-   and display name in `module_prego`, and the harness id in the dated composer
-   attachment gate. Every existing harness carries the same three.
+   or client code. Two identity and presentation items are deliberate,
+   enumerated exceptions: `Harness.claude` in `sesori_shared`, plus the brand
+   asset and display name in `module_prego`. Prompt-attachment support travels
+   through the backend-neutral descriptor capability shared by every plugin.
 10. No new `MessagePartType` value and no breaking wire change; the client
-    remains data-driven from `GET /plugin` apart from the brand asset and the
-    attachment gate.
+    remains data-driven from `GET /plugin` apart from the brand asset.
 11. Every implementation PR is independently buildable and targets no more than
     1,500 changed lines as a soft cap, counting additions plus deletions,
     generated output, and tests against that PR's base.
@@ -97,9 +96,9 @@ Three shipped plugins cover the two shapes this work needs:
 
 ### The client already renders an unknown harness gracefully
 
-Sessions, messages, tools, permissions, questions, models, and agents are all
-data-driven from `GET /plugin`. The only client work is the brand asset, its two
-lookup cases, and widening the temporary composer attachment gate.
+Sessions, messages, tools, permissions, questions, models, agents, and prompt
+attachment support are all data-driven from `GET /plugin`. The only client work
+is the brand asset and its two lookup cases.
 
 ### Local runtime evidence
 
@@ -168,9 +167,9 @@ macOS keychain lookup.
 - New `MessagePartType` values, relay changes, database migrations, and product
   analytics. This harness adds no new authoritative user action beyond the ones
   the existing harnesses already instrument.
-- New shared wire types, including a prompt-attachment capability flag on
-  `PluginMetadata`. Plan review argued for one; the user decided on 2026-08-04 to
-  widen the existing dated gate instead. See Plan Review Record.
+- Additional shared wire types. A prompt-attachment capability on
+  `PluginMetadata` merged after the original plan decision and now supplies the
+  backend-neutral path this plugin uses. See Plan Review Record.
 
 Reasoning-effort variants were previously excluded pending evidence. Step 2
 found `supportsEffort` and `supportedEffortLevels` declared per model in the
@@ -569,11 +568,11 @@ Three files, two assets, and the affected tests:
   (the directory is declared wholesale, so no pubspec edit).
 - `client/module_prego/lib/components/icons/prego_brand_logo.dart` — one case in
   `_assetFor` and one in `displayNameFor`.
-- `client/module_core/lib/src/foundation/models/composer/composer_attachment_support.dart`
-  — widen the dated temporary gate to include Claude, only in the step where
-  image forwarding is implemented and verified, keeping the dated comment.
-- Tests: `prego_brand_logo_test.dart`, `session_tile_states_test.dart`, and the
-  attachment-gate consumers, reusing `findBrandLogo(String pluginId)` from
+- No client attachment gate change remains: the merged plugin-discovery contract
+  now carries `supportsPromptAttachments`, and the Claude descriptor advertises
+  that capability. The client consumes it without backend-specific branching.
+- Tests: `prego_brand_logo_test.dart` and `session_tile_states_test.dart`,
+  reusing `findBrandLogo(String pluginId)` from
   `client/app/test/helpers/test_helpers.dart`.
 
 Forward-compatibility guardrail: introduce no new `MessagePartType` value. That
@@ -584,11 +583,12 @@ Claude part kind maps onto an existing type inside the plugin.
 
 This is additive work against an untouched harness slot, so it makes nothing
 obsolete. Two items are in scope as directly caused updates rather than cleanup:
-the README harness row moves from "Coming soon" to Beta in Step 16, and the
-temporary composer attachment gate — already carrying a dated comment — gains one
-more harness in Step 15 rather than being removed, because Codex and Cursor still
-do not accept prompt attachments. No obsolete calculation, model field, column,
-transport field, cache, flag, job, or test was found.
+the README harness row moves from "Coming soon" to Beta in Step 16. The planned
+temporary composer attachment-gate edit is obsolete because the merged
+plugin-discovery capability now carries support per descriptor; Step 15 removes
+that stale plan instruction instead of adding backend-specific client logic. No
+obsolete calculation, model field, column, transport field, cache, flag, job, or
+test was found.
 
 ## Delivery Rules
 
@@ -873,11 +873,13 @@ the unused-architecture problem avoided in Step 3.
 ### Step 15/17 — Add Claude Code Branding
 
 - Add the light and dark brand SVGs matching the existing brand assets'
-  conventions, add the logo and display-name cases, widen the composer attachment
-  gate, and update the affected client tests.
-- Verify: `flutter test` in `client/module_prego`, `client/module_core`, and
-  `client/app` for the touched tests. Asset-rendering tests may be flaky locally
-  in a worktree; trust CI for those.
+  conventions, add the logo and display-name cases, and update the affected
+  client tests. No composer gate edit remains because the client now consumes
+  the descriptor's prompt-attachment capability.
+- Verify: `flutter test` in `client/module_prego` and the touched
+  `client/app` tests. No `module_core` code changes remain after the capability
+  contract superseded its old attachment gate. Asset-rendering tests may be
+  flaky locally in a worktree; trust CI for those.
 
 ### Step 16/17 — Record Live Verification
 
@@ -1004,9 +1006,11 @@ disable OpenCode attachments for a new app against an older bridge, so the field
 would have to be nullable with a dated legacy fallback, since absence genuinely
 means "old bridge, apply the legacy rule" rather than "not supported".
 
-Step 15 therefore widens the gate and keeps its dated comment. Do not reopen this
-without new evidence; the capability migration remains available as its own
-future PR.
+Subsequent repository work introduced the capability contract across shared
+types, descriptors, and client compatibility handling before Step 15 began. That
+merged architecture supersedes the planned gate edit without reopening the
+original scope decision: Step 15 consumes the existing capability path and adds
+no backend-specific client branch.
 
 The corrected plan was not re-reviewed merely to obtain an approval verdict, per
 the repository's plan-review process.

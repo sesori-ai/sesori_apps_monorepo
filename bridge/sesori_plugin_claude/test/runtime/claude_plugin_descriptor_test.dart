@@ -237,6 +237,7 @@ void main() {
       expect(plugin.currentStatus, const PluginReady());
       expect(processes.runInShellValues, [Platform.isWindows, Platform.isWindows]);
       expect(processes.workingDirectories.every((directory) => directory != null), isTrue);
+      expect(processes.environments, everyElement(containsPair("HOME", "/Users/test")));
 
       liveProcess.completeExit(1);
       await _pump();
@@ -270,7 +271,10 @@ final class _PluginHost implements PluginHost {
   PluginConfig get config => const PluginConfig(values: {ClaudePluginDescriptor.binOption: "claude"});
 
   @override
-  Map<String, String> get environment => const {"CLAUDE_CONFIG_DIR": "/tmp/claude-descriptor-test"};
+  Map<String, String> get environment => const {
+    "CLAUDE_CONFIG_DIR": "/tmp/claude-descriptor-test",
+    "HOME": "/Users/test",
+  };
 
   @override
   ServerClock get clock => const ServerClock();
