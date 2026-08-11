@@ -10,8 +10,8 @@
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
 - **Step 4 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/829
-- **Step 5 PR:** pending
-- **Next action:** implement and verify Step 5
+- **Step 5 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/832
+- **Next action:** monitor Step 5 review and CI to merge
 
 ## Locked Decisions
 
@@ -43,7 +43,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 2/21 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/21]` | 900-1,300 | Merged as PR #819; title normalized |
 | [x] | 3/21 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/21]` | 1,200-1,500 (recorded overage) | Merged as PR #820; title normalized |
 | [x] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Merged as PR #829 |
-| [ ] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 | In progress |
+| [ ] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 | Open as PR #832 |
 | [ ] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Not started |
 | [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 | Not started |
 | [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Blocked on runtime dependency |
