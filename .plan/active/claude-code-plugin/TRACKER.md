@@ -473,10 +473,12 @@
   production composition preserves it through the host process seam without
   putting it in the launch spec.
 
-  All 10 focused descriptor tests, all 197 Claude package tests,
-  `dart analyze --fatal-infos`, and `git diff --check` pass. A source bridge
-  against the isolated E2E data directory then reported Claude setup ready and
-  returned HTTP 200 with real agents, providers, models, and commands from the
+  All 10 focused descriptor tests, all 197 Claude package tests, `dart analyze
+  --fatal-infos`, and `git diff $(git merge-base origin/main HEAD) --check`
+  pass. The final diff is 44 changed lines (36 additions and 8 deletions),
+  measured with the matching `--numstat` command; generated lines: 0.
+  A source bridge against the isolated E2E data directory then reported Claude
+  setup ready and returned HTTP 200 with real agents, providers, models, and commands from the
   exact `/session/options` request that previously returned 502. Step 16 remains
   paused until [PR #821](https://github.com/sesori-ai/sesori_apps_monorepo/pull/821)
   merges. No database or persisted-data change.
