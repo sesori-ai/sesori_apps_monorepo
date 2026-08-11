@@ -404,7 +404,7 @@ content: [text|thinking|toolCall]
 api, provider, model, usage, stopReason, errorMessage?, timestamp
 ```
 
-Terminal stop reasons:
+Stop-reason values:
 
 ```text
 pending, stop, length, toolUse, error, aborted, deferred

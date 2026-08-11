@@ -383,7 +383,11 @@ class PiRpcClient {
   /// logged. A string scrub rather than a JSON re-encode, so partial and
   /// non-JSON output is redacted too.
   static final RegExp _secretJsonValue = RegExp(
-    r'("(?:token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*"',
+    r'("(?:access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*(?:"|$)',
+    caseSensitive: false,
+  );
+  static final RegExp _secretUnquotedJsonValue = RegExp(
+    r'("(?:access[_-]?token|token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)[^\s",;{}]+',
     caseSensitive: false,
   );
   static final RegExp _authorizationBearer = RegExp(
@@ -391,12 +395,13 @@ class PiRpcClient {
     caseSensitive: false,
   );
   static final RegExp _secretScalarValue = RegExp(
-    r'((?:token|api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
+    r'((?:access[_-]?token|token|api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
     caseSensitive: false,
   );
 
   String _redact(String value) => value
       .replaceAllMapped(_secretJsonValue, (match) => '${match.group(1)}"***"')
+      .replaceAllMapped(_secretUnquotedJsonValue, (match) => "${match.group(1)}***")
       .replaceAllMapped(_authorizationBearer, (match) => "${match.group(1)}***")
       .replaceAllMapped(_secretScalarValue, (match) => "${match.group(1)}***");
 

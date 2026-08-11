@@ -242,6 +242,8 @@ Transport envelopes and the response, event, extension-dialog, and assistant-
 delta discriminator variants are hand-written sealed types with explicit
 unknown fallbacks. Closed leaf payloads use generated DTOs and land with their
 first consumer so codegen does not create unconsumed multi-thousand-line PRs.
+Step 3 consumes no closed leaf payload, so its generated DTO count is zero;
+Step 4 adds codegen with the first closed session metadata leaves.
 This matches the existing Claude transport boundary while keeping every known
 Pi top-level variant typed.
 
@@ -646,7 +648,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 - Add hand-written sealed discriminator/unknown routing for every known
   response, event, extension dialog, and assistant delta; generate only closed
-  leaf DTOs consumed in this step.
+  leaf DTOs consumed in this step. No closed leaf is consumed in this step, so
+  codegen begins with Step 4's session metadata DTOs.
 - Add `PiRpcClient` with strict LF framing, request IDs, asynchronous prompt
   acknowledgement, continuous stdout draining, bounded stderr diagnostics,
   pending failure on exit, and graceful/forced teardown.
