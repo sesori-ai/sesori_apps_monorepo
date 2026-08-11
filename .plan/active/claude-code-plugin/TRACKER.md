@@ -6,13 +6,12 @@
 - **Implementation base:** `origin/main` at
   `c3d21c78` (focused fix started after Step 15 merged)
 - **Series state:** Steps 1-15/17 merged; Step 16/17 blocked by a live launch
-  failure; focused fix in progress
-- **Current step:** focused fix — preserve host environment without violating the
-  Claude launch override invariant
+  failure; focused fix PR #821 open
+- **Current step:** focused launch-environment fix in review
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Verify and merge the focused launch-environment fix, then
-  resume Step 16 live verification
+- **Next action:** Monitor focused fix PR #821, then resume Step 16 live
+  verification after it merges
 
 ## Plan Review
 
@@ -479,7 +478,8 @@
   against the isolated E2E data directory then reported Claude setup ready and
   returned HTTP 200 with real agents, providers, models, and commands from the
   exact `/session/options` request that previously returned 502. Step 16 remains
-  paused until this focused fix merges. No database or persisted-data change.
+  paused until [PR #821](https://github.com/sesori-ai/sesori_apps_monorepo/pull/821)
+  merges. No database or persisted-data change.
 
 ## Findings And Plan Deltas
 
