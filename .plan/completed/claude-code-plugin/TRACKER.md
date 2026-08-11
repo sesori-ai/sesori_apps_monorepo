@@ -4,12 +4,12 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at `82351fc2`
-- **Series state:** Steps 1-16/17 and all four Step 16 live-gate fixes merged;
-  Step 17/17 prepared as the final series PR
-- **Current step:** Step 17/17 complete in the final retirement PR
+- **Series state:** All 17 steps complete; final retirement delivered by
+  [PR #831](https://github.com/sesori-ai/sesori_apps_monorepo/pull/831)
+- **Current step:** Step 17/17 final retirement PR #831
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
   merged 2026-08-04 as `6d641532`
-- **Next action:** Merge the final documentation-only retirement PR
+- **Next action:** None after PR #831 merges
 
 ## Plan Review
 
@@ -60,7 +60,7 @@
 | [x] | 14/17 | `claude-code-plugin-activation` | `⚙️ [claude-code-plugin] feat(claude): register the Claude Code harness [step 14/17]` | 250-500 | [PR #816](https://github.com/sesori-ai/sesori_apps_monorepo/pull/816) merged 2026-08-11 as `85438e1d` |
 | [x] | 15/17 | `claude-code-plugin-client-polish` | `🌿 [claude-code-plugin] feat(client): add Claude Code branding [step 15/17]` | 400-800 | [PR #817](https://github.com/sesori-ai/sesori_apps_monorepo/pull/817) merged 2026-08-11 as `c3d21c78` |
 | [x] | 16/17 | `claude-code-plugin-e2e` | `🌿 [claude-code-plugin] docs: record Claude Code live verification [step 16/17]` | 200-500 | [PR #828](https://github.com/sesori-ai/sesori_apps_monorepo/pull/828) merged 2026-08-11 as `82351fc2`; see the verification log for the measured diff |
-| [x] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Retirement prepared as the final series PR |
+| [x] | 17/17 | `claude-code-plugin-retire` | `🌱 [claude-code-plugin] docs: retire Claude Code plugin plan [step 17/17]` | 50-200 | Final retirement delivered by [PR #831](https://github.com/sesori-ai/sesori_apps_monorepo/pull/831) |
 
 ## Exact PR Titles
 
