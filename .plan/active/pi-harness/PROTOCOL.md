@@ -1,5 +1,9 @@
 # Pi RPC And Runtime Protocol: Ground Truth
 
+This file covers `earendil-works/pi` only. Oh My Pi is a divergent backend with
+its own ACP-based integration record in `OMP_PROTOCOL.md`; do not apply OMP
+protocol, storage, launch, or runtime facts to this package.
+
 ## Status And Sources
 
 - **State:** researched from official docs/source and a live standalone binary.
@@ -15,7 +19,7 @@
 
 Official docs and source disagree in a few places. This document records source
 behavior where they differ. Step 2 rechecks the selected implementation pin,
-and Step 14 records live authenticated traces with all content redacted.
+and Step 20 records live authenticated traces with all content redacted.
 
 ## 1. Identity And Version
 
@@ -571,7 +575,7 @@ choices.
 
 ## 12. Verification Still Required During Implementation
 
-- Refresh all source facts against the exact managed pin selected in Step 11.
+- Refresh all source facts against the exact managed pin selected in Step 17.
 - Capture redacted authenticated event ordering and model readiness for API-key,
   OAuth, and extension-defined providers.
 - Verify cross-platform custom roots and all six assets, including one live host
