@@ -157,6 +157,18 @@ void main() {
       expect(end.isError, isFalse);
     });
 
+    test("degrades non-finite numeric fields instead of throwing", () {
+      final event = parseEvent(
+        piEventFixture(
+          type: "auto_retry_start",
+          fields: {"attempt": double.infinity, "maxAttempts": double.nan},
+        ),
+      );
+
+      expect((event as PiAutoRetryStartEvent).attempt, isNull);
+      expect(event.maxAttempts, isNull);
+    });
+
     test("keeps queue depth without modelling the queued prompt text", () {
       final event = parseEvent(
         piEventFixture(

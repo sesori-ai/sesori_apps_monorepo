@@ -1,3 +1,5 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "../../models/pi_assistant_stop_reason.dart";
 import "pi_frame_fields.dart";
 
@@ -37,18 +39,29 @@ sealed class PiAssistantDelta {
         raw: json,
       ),
       "done" => PiAssistantDoneDelta(
-        reason: PiAssistantStopReason.tryParse(value: stringOrNull(json["reason"])),
+        reason: _stopReason(stringOrNull(json["reason"])),
         message: mapOrEmpty(json["message"]),
         raw: json,
       ),
       "error" => PiAssistantErrorDelta(
-        reason: PiAssistantStopReason.tryParse(value: stringOrNull(json["reason"])),
+        reason: _stopReason(stringOrNull(json["reason"])),
         error: mapOrEmpty(json["error"]),
         raw: json,
       ),
-      _ => PiUnknownDelta(type: stringOrNull(json["type"]), raw: json),
+      _ => _unknownDelta(json),
     };
   }
+}
+
+PiAssistantStopReason? _stopReason(String? value) {
+  final reason = PiAssistantStopReason.tryParse(value: value);
+  if (value != null && reason == null) Log.w("[pi] received an unknown assistant stop reason");
+  return reason;
+}
+
+PiAssistantDelta _unknownDelta(Map<String, Object?> json) {
+  Log.w("[pi] received an unknown assistant delta type");
+  return PiUnknownDelta(type: stringOrNull(json["type"]), raw: json);
 }
 
 /// The stream opened. Carries nothing once `partial` is stripped.

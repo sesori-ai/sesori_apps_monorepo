@@ -47,6 +47,16 @@ final class PiRpcStdoutException extends PiRpcException {
   String toString() => "PiRpcStdoutException";
 }
 
+/// Pi's stdin failed asynchronously after accepting a write.
+final class PiRpcStdinException extends PiRpcException {
+  const PiRpcStdinException({required this.cause});
+
+  final Object cause;
+
+  @override
+  String toString() => "PiRpcStdinException";
+}
+
 /// The Pi process exited.
 final class PiRpcProcessExitException extends PiRpcException {
   const PiRpcProcessExitException({required this.exitCode});
@@ -152,6 +162,7 @@ class PiRpcClient {
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
   Future<void>? _starting;
+  Future<void>? _disposing;
   bool _disposed = false;
   int _nextRequestId = 1;
   int _generation = 0;
@@ -217,10 +228,22 @@ class PiRpcClient {
 
     _process = process;
 
-    // A broken pipe surfaces asynchronously on `stdin.done` rather than from
-    // `add`, so an unexpected exit would otherwise raise an unhandled async
-    // error. The exit itself is reported below.
-    unawaited(process.stdin.done.catchError((Object _) {}));
+    unawaited(
+      process.stdin.done.catchError((Object error, StackTrace stack) {
+        if (generation != _generation) return;
+        Log.w("[pi] stdin stream failed", error, stack);
+        _failPending(PiRpcStdinException(cause: error), stack);
+        try {
+          if (!process.kill(signal: io.ProcessSignal.sigkill)) {
+            Log.w("[pi] could not terminate Pi after stdin failed");
+          }
+        } on Object catch (killError, killStack) {
+          Log.w("[pi] failed to terminate Pi after stdin failed", killError, killStack);
+        }
+      }),
+    );
+
+    final stdoutDone = Completer<void>();
 
     _stdoutSubscription = process.stdout
         // One malformed byte must not tear down the unconditional stdout drain.
@@ -231,12 +254,16 @@ class PiRpcClient {
             if (generation == _generation) _handleRecord(record);
           },
           onError: (Object error, StackTrace stack) {
+            if (!stdoutDone.isCompleted) stdoutDone.complete();
             if (generation != _generation) return;
             Log.w("[pi] stdout stream failed", error, stack);
             _failPending(
               PiRpcStdoutException(cause: error),
               stack,
             );
+          },
+          onDone: () {
+            if (!stdoutDone.isCompleted) stdoutDone.complete();
           },
           cancelOnError: false,
         );
@@ -255,11 +282,11 @@ class PiRpcClient {
         );
 
     unawaited(
-      process.exitCode.then((code) {
+      process.exitCode.then((code) async {
+        await stdoutDone.future;
         _exitCode = code;
         if (!_exited.isCompleted) _exited.complete(code);
         if (generation != _generation) return;
-        if (!_disposed) Log.w("[pi] process exited with code $code");
         _failPending(
           PiRpcProcessExitException(exitCode: code),
           StackTrace.current,
@@ -328,7 +355,10 @@ class PiRpcClient {
   }
 
   /// Terminates the process, fails in-flight requests, and closes the stream.
-  Future<void> dispose({Duration gracefulTimeout = const Duration(seconds: 5)}) async {
+  Future<void> dispose({Duration gracefulTimeout = const Duration(seconds: 5)}) =>
+      _disposing ??= _dispose(gracefulTimeout: gracefulTimeout);
+
+  Future<void> _dispose({required Duration gracefulTimeout}) async {
     if (_disposed) return;
     _disposed = true;
     await _teardown(
@@ -426,43 +456,64 @@ class PiRpcClient {
   void _recordStderr(String line) {
     final trimmed = line.trim();
     if (trimmed.isEmpty) return;
-    final bounded = trimmed.length > _stderrLineLimit ? trimmed.substring(0, _stderrLineLimit) : trimmed;
-    final redacted = _redact(bounded);
+    final redacted = _redact(trimmed);
     _stderrTail.add(redacted);
     if (_stderrTail.length > _stderrTailLimit) _stderrTail.removeAt(0);
     Log.d("[pi][stderr] $redacted");
   }
 
-  /// Masks credential-shaped values before a diagnostic string is retained or
-  /// logged. A string scrub rather than a JSON re-encode, so partial and
-  /// non-JSON output is redacted too.
-  static final RegExp _secretJsonValue = RegExp(
-    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|(?:x[_-])?api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*(?:"|$)',
-    caseSensitive: false,
-  );
-  static final RegExp _secretStructuredJsonValue = RegExp(
-    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|(?:x[_-])?api[_-]?key|secret|password|bearer)"\s*:\s*)(?:\[|\{).*$',
-    caseSensitive: false,
-  );
-  static final RegExp _secretUnquotedJsonValue = RegExp(
-    r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|(?:x[_-])?api[_-]?key|secret|password|bearer)"\s*:\s*)[^\s",;{}]+',
-    caseSensitive: false,
-  );
+  /// Redacts bounded diagnostics without enumerating every provider-specific
+  /// spelling or destroying unrelated fields in valid JSON.
   static final RegExp _authorizationHeader = RegExp(
     r'(\bauthorization\s*:\s*[a-z][a-z0-9_-]*\s+).*$',
     caseSensitive: false,
   );
-  static final RegExp _secretScalarValue = RegExp(
-    r'((?:refresh[_-]?token|access[_-]?token|token|(?:x[_-])?api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
+  static final RegExp _diagnosticKey = RegExp(
+    r'"?([a-z][a-z0-9_-]*)"?\s*[:=]\s*',
     caseSensitive: false,
   );
+  static final RegExp _nonAlphanumeric = RegExp("[^a-z0-9]");
 
-  String _redact(String value) => value
-      .replaceAllMapped(_secretJsonValue, (match) => '${match.group(1)}"***"')
-      .replaceAllMapped(_secretStructuredJsonValue, (match) => "${match.group(1)}***")
-      .replaceAllMapped(_secretUnquotedJsonValue, (match) => "${match.group(1)}***")
-      .replaceAllMapped(_authorizationHeader, (match) => "${match.group(1)}***")
-      .replaceAllMapped(_secretScalarValue, (match) => "${match.group(1)}***");
+  String _redact(String value) {
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is Map || decoded is List) return jsonEncode(_redactJson(decoded));
+    } on FormatException {
+      // Partial and non-JSON diagnostics use the bounded fallback below.
+    }
+
+    final authorization = _authorizationHeader.firstMatch(value);
+    if (authorization != null) {
+      return "${value.substring(0, authorization.start)}${authorization.group(1)}***";
+    }
+    for (final match in _diagnosticKey.allMatches(value)) {
+      if (!_isCredentialKey(match.group(1)!)) continue;
+      final quoted = match.end < value.length && value.codeUnitAt(match.end) == 0x22;
+      return "${value.substring(0, match.end)}${quoted ? '"***"' : '***'}";
+    }
+    return value;
+  }
+
+  Object? _redactJson(Object? value, {String? key}) {
+    if (key != null && _isCredentialKey(key)) return "***";
+    if (value is Map) {
+      return <String, Object?>{
+        for (final entry in value.entries) entry.key.toString(): _redactJson(entry.value, key: entry.key.toString()),
+      };
+    }
+    if (value is List) return [for (final entry in value) _redactJson(entry)];
+    return value;
+  }
+
+  bool _isCredentialKey(String key) {
+    final normalized = key.toLowerCase().replaceAll(_nonAlphanumeric, "");
+    return normalized == "authorization" ||
+        normalized.endsWith("token") ||
+        normalized.endsWith("apikey") ||
+        normalized.endsWith("secret") ||
+        normalized.endsWith("password") ||
+        normalized.contains("credential");
+  }
 
   void _failPending(Object error, StackTrace stack) {
     final inflight = _pending.values.map((request) => request.completer).toList();
@@ -481,6 +532,7 @@ class PiRpcClient {
 
     _failPending(pendingError, StackTrace.current);
 
+    var stopped = process == null;
     if (process != null) {
       try {
         // Closing stdin is Pi's own shutdown signal, so it is tried before
@@ -489,21 +541,10 @@ class PiRpcClient {
       } on Object catch (error, stack) {
         Log.w("[pi] closing stdin during teardown failed", error, stack);
       }
-      try {
-        if (io.Platform.isWindows) {
-          process.kill(signal: io.ProcessSignal.sigkill);
-        } else {
-          process.kill(signal: io.ProcessSignal.sigterm);
-          try {
-            await process.exitCode.timeout(gracefulTimeout);
-          } on TimeoutException {
-            process.kill(signal: io.ProcessSignal.sigkill);
-          }
-        }
-      } on Object catch (error, stack) {
-        Log.w("[pi] failed to stop the process during teardown", error, stack);
-      }
+      stopped = await _stopProcess(process: process, timeout: gracefulTimeout);
     }
+
+    if (!stopped) return;
 
     Future<void>? stdoutCancellation;
     try {
@@ -531,6 +572,40 @@ class PiRpcClient {
       await stderrCancellation;
     } on Object catch (error, stack) {
       Log.w("[pi] failed to cancel the stderr subscription", error, stack);
+    }
+  }
+
+  Future<bool> _stopProcess({required PiProcessHandle process, required Duration timeout}) async {
+    final initialSignal = io.Platform.isWindows ? io.ProcessSignal.sigkill : io.ProcessSignal.sigterm;
+    if (!_sendSignal(process: process, signal: initialSignal)) return false;
+    if (await _exitsWithin(process: process, timeout: timeout)) return true;
+    if (initialSignal == io.ProcessSignal.sigkill) {
+      Log.w("[pi] Pi did not exit after forced termination");
+      return false;
+    }
+    if (!_sendSignal(process: process, signal: io.ProcessSignal.sigkill)) return false;
+    if (await _exitsWithin(process: process, timeout: timeout)) return true;
+    Log.w("[pi] Pi did not exit after SIGKILL");
+    return false;
+  }
+
+  bool _sendSignal({required PiProcessHandle process, required io.ProcessSignal signal}) {
+    try {
+      final sent = process.kill(signal: signal);
+      if (!sent) Log.w("[pi] process rejected ${signal.toString()} during teardown");
+      return sent;
+    } on Object catch (error, stack) {
+      Log.w("[pi] failed to signal the process during teardown", error, stack);
+      return false;
+    }
+  }
+
+  Future<bool> _exitsWithin({required PiProcessHandle process, required Duration timeout}) async {
+    try {
+      await process.exitCode.timeout(timeout);
+      return true;
+    } on TimeoutException {
+      return false;
     }
   }
 }

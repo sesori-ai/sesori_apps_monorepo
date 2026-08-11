@@ -1,3 +1,5 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "../../models/pi_compaction_reason.dart";
 import "../../models/pi_summarization_source.dart";
 import "../../models/pi_thinking_level.dart";
@@ -62,11 +64,11 @@ sealed class PiEvent {
         raw: json,
       ),
       "compaction_start" => PiCompactionStartEvent(
-        reason: PiCompactionReason.tryParse(value: json["reason"]),
+        reason: _compactionReason(json["reason"]),
         raw: json,
       ),
       "compaction_end" => PiCompactionEndEvent(
-        reason: PiCompactionReason.tryParse(value: json["reason"]),
+        reason: _compactionReason(json["reason"]),
         aborted: boolOrFalse(json["aborted"]),
         willRetry: boolOrFalse(json["willRetry"]),
         errorMessage: stringOrNull(json["errorMessage"]),
@@ -77,7 +79,7 @@ sealed class PiEvent {
       // explicit name", so null models it honestly.
       "session_info_changed" => PiSessionInfoChangedEvent(name: stringOrNull(json["name"]), raw: json),
       "thinking_level_changed" => PiThinkingLevelChangedEvent(
-        level: PiThinkingLevel.tryParse(value: stringOrNull(json["level"])),
+        level: _thinkingLevel(stringOrNull(json["level"])),
         raw: json,
       ),
       "auto_retry_start" => PiAutoRetryStartEvent(
@@ -100,13 +102,7 @@ sealed class PiEvent {
         errorMessage: stringOrNull(json["errorMessage"]),
         raw: json,
       ),
-      "summarization_retry_attempt_start" => PiSummarizationRetryAttemptStartEvent(
-        source: PiSummarizationSource.parse(
-          source: stringOrNull(json["source"]),
-          reason: json["reason"],
-        ),
-        raw: json,
-      ),
+      "summarization_retry_attempt_start" => _summarizationRetryAttempt(json),
       "summarization_retry_finished" => PiSummarizationRetryFinishedEvent(raw: json),
       "extension_error" => PiExtensionErrorEvent(
         extensionPath: stringOrNull(json["extensionPath"]),
@@ -114,9 +110,37 @@ sealed class PiEvent {
         error: stringOrNull(json["error"]),
         raw: json,
       ),
-      _ => PiUnknownEvent(type: type, raw: json),
+      _ => _unknownEvent(type: type, json: json),
     };
   }
+}
+
+PiCompactionReason? _compactionReason(Object? value) {
+  final reason = PiCompactionReason.tryParse(value: value);
+  if (value != null && reason == null) Log.w("[pi] received an unknown compaction reason");
+  return reason;
+}
+
+PiThinkingLevel? _thinkingLevel(String? value) {
+  final level = PiThinkingLevel.tryParse(value: value);
+  if (value != null && level == null) Log.w("[pi] received an unknown thinking level");
+  return level;
+}
+
+PiEvent _summarizationRetryAttempt(Map<String, Object?> json) {
+  final source = PiSummarizationSource.parse(
+    source: stringOrNull(json["source"]),
+    reason: json["reason"],
+  );
+  if (source is PiUnknownSummarizationSource) {
+    Log.w("[pi] received an unknown summarization retry source");
+  }
+  return PiSummarizationRetryAttemptStartEvent(source: source, raw: json);
+}
+
+PiEvent _unknownEvent({required String type, required Map<String, Object?> json}) {
+  Log.w("[pi] received an unknown event type");
+  return PiUnknownEvent(type: type, raw: json);
 }
 
 /// A low-level agent run started.

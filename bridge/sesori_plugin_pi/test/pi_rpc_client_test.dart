@@ -306,6 +306,45 @@ void main() {
       expect(started.client.isRunning, isFalse);
     });
 
+    test("handles a buffered final response before failing requests on exit", () async {
+      final started = await startTestClient();
+      addTearDown(started.client.dispose);
+      final pending = started.client.send(
+        command: PiRpcCommand.getState,
+        arguments: const {},
+        timeout: const Duration(seconds: 5),
+      );
+      final command = await waitForCommand(process: started.process, type: "get_state");
+
+      started.process.emitResponse(
+        id: command["id"]! as String,
+        command: "get_state",
+        data: {"sessionId": "s1"},
+      );
+      started.process.exit(code: 0);
+
+      expect((await pending).data["sessionId"], "s1");
+    });
+
+    test("surfaces an asynchronous stdin failure and reaps the process", () async {
+      final started = await startTestClient();
+      addTearDown(started.client.dispose);
+      final pending = started.client.send(
+        command: PiRpcCommand.getState,
+        arguments: const {},
+        timeout: const Duration(seconds: 5),
+      );
+      await waitForCommand(process: started.process, type: "get_state");
+
+      started.process.failStdin(error: const SocketException("broken pipe"));
+
+      await expectLater(
+        pending,
+        throwsA(isA<PiRpcStdinException>().having((error) => error.cause, "cause", isA<SocketException>())),
+      );
+      expect(started.process.killed, isTrue);
+    });
+
     test("fails fast once the process has exited", () async {
       final started = await startTestClient();
       addTearDown(started.client.dispose);
@@ -436,12 +475,18 @@ void main() {
         bytes: utf8.encode('{"token":["array-secret","second-secret"]}\n'),
       );
       started.process.emitStderrRaw(bytes: utf8.encode('{"x-api-key":"prefixed-secret"}\n'));
+      started.process.emitStderrRaw(
+        bytes: utf8.encode(
+          '{"headers":{"sessionToken":"session-secret","safe":"kept"},'
+          '"client_secret":"client-secret","model":"pi"}\n',
+        ),
+      );
       started.process.emitStderrRaw(bytes: utf8.encode("${"z" * 900}\n"));
       await pump(10);
 
       final tail = started.client.stderrDiagnostics;
       expect(tail, hasLength(20));
-      expect(tail.first, "warning 20");
+      expect(tail.first, "warning 21");
       expect(tail.join("\n"), isNot(contains("sk-live-secret")));
       expect(tail.join("\n"), isNot(contains("quoted-secret")));
       expect(tail.join("\n"), isNot(contains("header-secret")));
@@ -452,15 +497,24 @@ void main() {
       expect(tail.join("\n"), isNot(contains("array-secret")));
       expect(tail.join("\n"), isNot(contains("second-secret")));
       expect(tail.join("\n"), isNot(contains("prefixed-secret")));
+      expect(tail.join("\n"), isNot(contains("session-secret")));
+      expect(tail.join("\n"), isNot(contains("client-secret")));
       expect(tail, contains('{"api_key":"***","note":"x"}'));
       expect(tail, contains('{"authorization":"***"}'));
       expect(tail, contains("Authorization: Bearer ***"));
       expect(tail, contains("Authorization: Basic ***"));
       expect(tail, contains('{"access_token":"***"'));
-      expect(tail, contains('{"password": ***}'));
+      expect(tail, contains('{"password": ***'));
       expect(tail, contains('{"refreshToken":"***"}'));
-      expect(tail, contains('{"token":***'));
+      expect(tail, contains('{"token":"***"}'));
       expect(tail, contains('{"x-api-key":"***"}'));
+      expect(
+        tail,
+        contains(
+          '{"headers":{"sessionToken":"***","safe":"kept"},'
+          '"client_secret":"***","model":"pi"}',
+        ),
+      );
       expect(tail.last.length, 500);
       expect(started.client.isRunning, isTrue);
     });
@@ -507,6 +561,22 @@ void main() {
       await started.client.dispose();
 
       await expectLater(started.client.start(), throwsStateError);
+    });
+
+    test("makes concurrent dispose callers await the same teardown", () async {
+      final process = FakePiProcess(stdinCloseCompletes: false);
+      final started = await startTestClient(process: process);
+
+      final first = started.client.dispose(gracefulTimeout: const Duration(seconds: 1));
+      final second = started.client.dispose(gracefulTimeout: const Duration(seconds: 1));
+      var secondCompleted = false;
+      unawaited(second.then((_) => secondCompleted = true));
+      await pump();
+      expect(secondCompleted, isFalse);
+
+      process.completeStdinClose();
+      await Future.wait([first, second]);
+      expect(process.killed, isTrue);
     });
 
     test("ignores frames from a process torn down earlier", () async {

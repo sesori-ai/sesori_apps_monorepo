@@ -9,7 +9,7 @@ String? stringOrNull(Object? value) => value is String ? value : null;
 
 bool boolOrFalse(Object? value) => value is bool && value;
 
-int? intOrNull(Object? value) => value is num ? value.toInt() : null;
+int? intOrNull(Object? value) => value is num && value.isFinite ? value.toInt() : null;
 
 Map<String, Object?> mapOrEmpty(Object? value) =>
     value is Map ? value.cast<String, Object?>() : const <String, Object?>{};

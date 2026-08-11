@@ -41,7 +41,7 @@ class FakePiProcess implements PiProcessHandle {
   @override
   bool kill({required ProcessSignal signal}) {
     killed = true;
-    if (!_exit.isCompleted) _exit.complete(-15);
+    exit(code: -15);
     return true;
   }
 
@@ -49,6 +49,8 @@ class FakePiProcess implements PiProcessHandle {
   List<Map<String, Object?>> get written => _stdin.frames;
 
   bool get stdinClosed => _stdin.closed;
+
+  void failStdin({required Object error}) => _stdin.failDone(error: error);
 
   /// Completes a stdin close that was configured to stall.
   void completeStdinClose() => _stdin.completeClose();
@@ -85,6 +87,8 @@ class FakePiProcess implements PiProcessHandle {
   /// Completes the process with [code], simulating an exit.
   void exit({required int code}) {
     if (!_exit.isCompleted) _exit.complete(code);
+    if (!_stdout.isClosed) unawaited(_stdout.close());
+    if (!_stderr.isClosed) unawaited(_stderr.close());
   }
 
   Future<void> close() async {
@@ -92,8 +96,8 @@ class FakePiProcess implements PiProcessHandle {
     // its stream has been listened to, so drain any never-tapped stream first.
     if (!_stdoutTapped) _stdout.stream.listen(null);
     if (!_stderrTapped) _stderr.stream.listen(null);
-    await _stdout.close();
-    await _stderr.close();
+    if (!_stdout.isClosed) await _stdout.close();
+    if (!_stderr.isClosed) await _stderr.close();
   }
 }
 
@@ -106,6 +110,7 @@ class CapturingIOSink implements IOSink {
       _writesFail = writesFail;
 
   final Completer<void>? _closeCompleter;
+  final Completer<void> _doneCompleter = Completer<void>();
   final bool _writesFail;
   final List<int> _buffer = [];
   final List<Map<String, Object?>> frames = [];
@@ -142,7 +147,10 @@ class CapturingIOSink implements IOSink {
   @override
   Future<void> close() {
     closed = true;
-    return _closeCompleter?.future ?? Future<void>.value();
+    final closing = _closeCompleter?.future ?? Future<void>.value();
+    return closing.whenComplete(() {
+      if (!_doneCompleter.isCompleted) _doneCompleter.complete();
+    });
   }
 
   void completeClose() {
@@ -150,8 +158,12 @@ class CapturingIOSink implements IOSink {
     if (completer != null && !completer.isCompleted) completer.complete();
   }
 
+  void failDone({required Object error}) {
+    if (!_doneCompleter.isCompleted) _doneCompleter.completeError(error, StackTrace.current);
+  }
+
   @override
-  Future<void> get done => Future<void>.value();
+  Future<void> get done => _doneCompleter.future;
 
   @override
   Future<void> flush() async {}

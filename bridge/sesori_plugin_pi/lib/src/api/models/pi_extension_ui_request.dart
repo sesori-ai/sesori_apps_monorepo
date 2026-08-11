@@ -1,3 +1,5 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "../../models/pi_notification_type.dart";
 import "pi_frame_fields.dart";
 
@@ -51,7 +53,7 @@ sealed class PiExtensionUiRequest {
       "notify" => PiNotifyRequest(
         id: id,
         message: stringOrNull(json["message"]),
-        notifyType: PiNotificationType.tryParse(value: stringOrNull(json["notifyType"])),
+        notifyType: _notificationType(stringOrNull(json["notifyType"])),
         raw: json,
       ),
       "setStatus" => PiSetStatusRequest(
@@ -69,9 +71,20 @@ sealed class PiExtensionUiRequest {
       ),
       "setTitle" => PiSetTitleRequest(id: id, title: title, raw: json),
       "set_editor_text" => PiSetEditorTextRequest(id: id, text: stringOrNull(json["text"]), raw: json),
-      _ => PiUnknownExtensionUiRequest(id: id, method: stringOrNull(json["method"]), raw: json),
+      _ => _unknownExtensionUiRequest(id: id, json: json),
     };
   }
+}
+
+PiNotificationType? _notificationType(String? value) {
+  final type = PiNotificationType.tryParse(value: value);
+  if (value != null && type == null) Log.w("[pi] received an unknown notification type");
+  return type;
+}
+
+PiExtensionUiRequest _unknownExtensionUiRequest({required String id, required Map<String, Object?> json}) {
+  Log.w("[pi] received an unknown extension UI method");
+  return PiUnknownExtensionUiRequest(id: id, method: stringOrNull(json["method"]), raw: json);
 }
 
 /// A request that blocks an extension until an `extension_ui_response` arrives.

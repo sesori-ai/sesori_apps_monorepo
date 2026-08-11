@@ -1,3 +1,5 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "../../models/pi_rpc_command.dart";
 import "pi_event.dart";
 import "pi_extension_ui_request.dart";
@@ -25,11 +27,27 @@ sealed class PiRpcFrame {
       case "response":
         // `command` is Pi's own echo of what failed and is the only clue on a
         // parse failure, which carries no request ID at all.
-        final command = stringOrNull(json["command"]);
+        final rawCommand = stringOrNull(json["command"]);
+        final command = PiRpcCommand.tryParse(value: rawCommand);
+        if (rawCommand != null && rawCommand != "parse" && command == null) {
+          Log.w("[pi] received a response for an unknown command type");
+        }
         final id = stringOrNull(json["id"]);
         return boolOrFalse(json["success"])
-            ? PiSuccessResponseFrame(id: id, rawCommand: command, data: mapOrEmpty(json["data"]), raw: json)
-            : PiFailureResponseFrame(id: id, rawCommand: command, error: stringOrNull(json["error"]), raw: json);
+            ? PiSuccessResponseFrame(
+                id: id,
+                command: command,
+                rawCommand: rawCommand,
+                data: mapOrEmpty(json["data"]),
+                raw: json,
+              )
+            : PiFailureResponseFrame(
+                id: id,
+                command: command,
+                rawCommand: rawCommand,
+                error: stringOrNull(json["error"]),
+                raw: json,
+              );
       case "extension_ui_request":
         final request = PiExtensionUiRequest.parse(json: json);
         return request == null
@@ -48,7 +66,7 @@ sealed class PiRpcFrame {
 
 /// A response correlated to one command by [id].
 sealed class PiResponseFrame extends PiRpcFrame {
-  const PiResponseFrame({required this.id, required this.rawCommand, required super.raw});
+  const PiResponseFrame({required this.id, required this.command, required this.rawCommand, required super.raw});
 
   /// The request ID this answers, or null when Pi could not read one — which
   /// happens for its `parse` failures.
@@ -56,7 +74,7 @@ sealed class PiResponseFrame extends PiRpcFrame {
 
   /// The command Pi believes it answered when it belongs to the integration's
   /// closed command set.
-  PiRpcCommand? get command => PiRpcCommand.tryParse(value: rawCommand);
+  final PiRpcCommand? command;
 
   /// Pi's untyped command echo. This also preserves `parse` and future commands.
   final String? rawCommand;
@@ -67,6 +85,7 @@ sealed class PiResponseFrame extends PiRpcFrame {
 final class PiSuccessResponseFrame extends PiResponseFrame {
   const PiSuccessResponseFrame({
     required super.id,
+    required super.command,
     required super.rawCommand,
     required this.data,
     required super.raw,
@@ -81,6 +100,7 @@ final class PiSuccessResponseFrame extends PiResponseFrame {
 final class PiFailureResponseFrame extends PiResponseFrame {
   const PiFailureResponseFrame({
     required super.id,
+    required super.command,
     required super.rawCommand,
     required this.error,
     required super.raw,
