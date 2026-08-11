@@ -111,6 +111,17 @@ void main() {
       expect((thinking as PiThinkingLevelChangedEvent).level, PiThinkingLevel.xhigh);
     });
 
+    test("types the closed summarization source", () {
+      final event = parseEvent(
+        piEventFixture(type: "summarization_retry_attempt_start", fields: {"source": "branchSummary"}),
+      );
+
+      expect(
+        (event as PiSummarizationRetryAttemptStartEvent).source,
+        PiSummarizationSource.branchSummary,
+      );
+    });
+
     test("reports a cleared session name as null rather than an empty string", () {
       final cleared = parseEvent(piEventFixture(type: "session_info_changed", fields: const {}));
       final named = parseEvent(piEventFixture(type: "session_info_changed", fields: {"name": "Rename"}));
@@ -258,6 +269,18 @@ void main() {
       expect((confirm as PiConfirmDialogRequest).message, "Proceed");
       expect((input as PiInputDialogRequest).placeholder, "value");
       expect((editor as PiEditorDialogRequest).prefill, "text");
+    });
+
+    test("types the closed notification type", () {
+      final request = parseUiRequest({
+        "type": "extension_ui_request",
+        "id": "n1",
+        "method": "notify",
+        "message": "Warning",
+        "notifyType": "warning",
+      });
+
+      expect((request as PiNotifyRequest).notifyType, PiNotificationType.warning);
     });
 
     test("routes each fire-and-forget decoration", () {

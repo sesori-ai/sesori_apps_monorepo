@@ -1,5 +1,7 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
+import "dart:math";
 
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/pi_testing.dart";
@@ -65,6 +67,22 @@ void main() {
 
       final event = (seen.single as PiEventFrame).event as PiSessionInfoChangedEvent;
       expect(event.name, "café ☕");
+    });
+
+    test("reassembles a large record split across many chunks", () async {
+      final started = await startTestClient();
+      addTearDown(started.client.dispose);
+      final seen = <PiRpcFrame>[];
+      started.client.frames.listen(seen.add);
+      final name = "x" * 100000;
+      final bytes = utf8.encode('${jsonEncode({"type": "session_info_changed", "name": name})}\n');
+
+      for (var offset = 0; offset < bytes.length; offset += 97) {
+        started.process.emitRaw(bytes: bytes.sublist(offset, min(offset + 97, bytes.length)));
+      }
+      await pump(20);
+
+      expect(((seen.single as PiEventFrame).event as PiSessionInfoChangedEvent).name, name);
     });
 
     test("tolerates CRLF separators without corrupting the record", () async {
@@ -301,7 +319,11 @@ void main() {
           arguments: const {},
           timeout: const Duration(seconds: 5),
         ),
-        throwsA(isA<PiRpcException>().having((error) => error.error, "error", contains("failed to write"))),
+        throwsA(
+          isA<PiRpcException>()
+              .having((error) => error.error, "error", contains("failed to write"))
+              .having((error) => error.cause, "cause", isA<SocketException>()),
+        ),
       );
       expect(started.client.sendExtensionUiResponse(id: "d1", reply: const PiExtensionUiCancelledReply()), isFalse);
     });
@@ -384,14 +406,22 @@ void main() {
         started.process.emitStderrRaw(bytes: utf8.encode("warning $i\n"));
       }
       started.process.emitStderrRaw(bytes: utf8.encode('{"api_key":"sk-live-secret","note":"x"}\n'));
+      started.process.emitStderrRaw(
+        bytes: utf8.encode('{"authorization":"Bearer quoted-secret"}\n'),
+      );
+      started.process.emitStderrRaw(bytes: utf8.encode("Authorization: Bearer header-secret\n"));
       started.process.emitStderrRaw(bytes: utf8.encode("${"z" * 900}\n"));
       await pump(10);
 
       final tail = started.client.stderrDiagnostics;
       expect(tail, hasLength(20));
-      expect(tail.first, "warning 12");
+      expect(tail.first, "warning 14");
       expect(tail.join("\n"), isNot(contains("sk-live-secret")));
-      expect(tail[tail.length - 2], contains('"api_key":***'));
+      expect(tail.join("\n"), isNot(contains("quoted-secret")));
+      expect(tail.join("\n"), isNot(contains("header-secret")));
+      expect(tail, contains('{"api_key":"***","note":"x"}'));
+      expect(tail, contains('{"authorization":"***"}'));
+      expect(tail, contains("Authorization: Bearer ***"));
       expect(tail.last.length, 500);
       expect(started.client.isRunning, isTrue);
     });

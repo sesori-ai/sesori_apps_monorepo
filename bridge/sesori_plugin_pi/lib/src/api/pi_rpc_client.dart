@@ -15,13 +15,16 @@ import "pi_process_factory.dart";
 /// [error] is Pi's own untyped prose. It is kept for local diagnosis; mapping
 /// it to a user-facing failure belongs to the repository layer.
 class PiRpcException implements Exception {
-  PiRpcException({required this.command, required this.error});
+  PiRpcException({required this.command, required this.error, required this.cause});
 
   /// The command that failed, or a `<...>` marker when the failure happened
   /// before Pi could answer.
   final String command;
 
   final String error;
+
+  /// The local transport failure translated by this exception, when one exists.
+  final Object? cause;
 
   @override
   String toString() => "PiRpcException(command: $command)";
@@ -174,7 +177,7 @@ class PiRpcClient {
             if (generation != _generation) return;
             Log.w("[pi] stdout stream failed", error, stack);
             _failPending(
-              PiRpcException(command: "<stdout>", error: "pi stdout stream failed"),
+              PiRpcException(command: "<stdout>", error: "pi stdout stream failed", cause: error),
               stack,
             );
           },
@@ -200,7 +203,7 @@ class PiRpcClient {
         if (generation != _generation) return;
         if (!_disposed) Log.w("[pi] process exited with code $code");
         _failPending(
-          PiRpcException(command: "<process>", error: "pi process exited with code $code"),
+          PiRpcException(command: "<process>", error: "pi process exited with code $code", cause: null),
           StackTrace.current,
         );
       }),
@@ -224,20 +227,25 @@ class PiRpcClient {
   }) async {
     final type = command.wireValue;
     final process = _process;
-    if (process == null) throw PiRpcException(command: type, error: "pi process is not running");
+    if (process == null) {
+      throw PiRpcException(command: type, error: "pi process is not running", cause: null);
+    }
     // The exit handler deliberately leaves `_process` set, so without this a
     // command issued after the process died would write to a dead pipe and then
     // block for the whole timeout awaiting a reply that can never come.
-    if (_exited.isCompleted) throw PiRpcException(command: type, error: "pi process has exited");
+    if (_exited.isCompleted) {
+      throw PiRpcException(command: type, error: "pi process has exited", cause: null);
+    }
 
     final requestId = "sesori-${_nextRequestId++}";
     final completer = Completer<PiSuccessResponseFrame>();
     _pending[requestId] = (command: command, completer: completer);
 
-    if (!_write(process: process, frame: {...arguments, "id": requestId, "type": type})) {
+    final writeError = _writeError(process: process, frame: {...arguments, "id": requestId, "type": type});
+    if (writeError != null) {
       // The frame never left the bridge, so no reply is coming.
       _pending.remove(requestId);
-      throw PiRpcException(command: type, error: "failed to write the $type command");
+      throw PiRpcException(command: type, error: "failed to write the $type command", cause: writeError);
     }
 
     try {
@@ -255,10 +263,11 @@ class PiRpcClient {
   bool sendExtensionUiResponse({required String id, required PiExtensionUiReply reply}) {
     final process = _process;
     if (process == null || _exited.isCompleted) return false;
-    return _write(
-      process: process,
-      frame: {...reply.fields, "type": "extension_ui_response", "id": id},
-    );
+    return _writeError(
+          process: process,
+          frame: {...reply.fields, "type": "extension_ui_response", "id": id},
+        ) ==
+        null;
   }
 
   /// Terminates the process, fails in-flight requests, and closes the stream.
@@ -267,7 +276,7 @@ class PiRpcClient {
     _disposed = true;
     await _teardown(
       gracefulTimeout: gracefulTimeout,
-      pendingError: PiRpcException(command: "<teardown>", error: "pi transport was disposed"),
+      pendingError: PiRpcException(command: "<teardown>", error: "pi transport was disposed", cause: null),
     );
     try {
       await _frames.close();
@@ -276,14 +285,14 @@ class PiRpcClient {
     }
   }
 
-  bool _write({required PiProcessHandle process, required Map<String, Object?> frame}) {
+  Object? _writeError({required PiProcessHandle process, required Map<String, Object?> frame}) {
     try {
       process.stdin.add(utf8.encode("${jsonEncode(frame)}\n"));
-      return true;
+      return null;
     } on Object catch (error, stack) {
       // A broken pipe lands here when the write races the process's exit.
       Log.w("[pi] failed to write a ${frame["type"]} frame", error, stack);
-      return false;
+      return error;
     }
   }
 
@@ -323,7 +332,11 @@ class PiRpcClient {
         completer.completer.complete(frame);
       case PiFailureResponseFrame(:final error):
         completer.completer.completeError(
-          PiRpcException(command: completer.command.wireValue, error: error ?? "the command failed"),
+          PiRpcException(
+            command: completer.command.wireValue,
+            error: error ?? "the command failed",
+            cause: null,
+          ),
           StackTrace.current,
         );
     }
@@ -369,12 +382,23 @@ class PiRpcClient {
   /// Masks credential-shaped values before a diagnostic string is retained or
   /// logged. A string scrub rather than a JSON re-encode, so partial and
   /// non-JSON output is redacted too.
-  static final RegExp _secretValue = RegExp(
-    r'((?:token|authorization|api[_-]?key|secret|password|bearer)"?\s*[:=]\s*)("?)[^\s",}]+\2',
+  static final RegExp _secretJsonValue = RegExp(
+    r'("(?:token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*"',
+    caseSensitive: false,
+  );
+  static final RegExp _authorizationBearer = RegExp(
+    r'(\bauthorization\s*:\s*bearer\s+)[^\s,;]+',
+    caseSensitive: false,
+  );
+  static final RegExp _secretScalarValue = RegExp(
+    r'((?:token|api[_-]?key|secret|password|bearer)\s*[:=]\s*)[^\s,;]+',
     caseSensitive: false,
   );
 
-  String _redact(String value) => value.replaceAllMapped(_secretValue, (match) => "${match.group(1)}***");
+  String _redact(String value) => value
+      .replaceAllMapped(_secretJsonValue, (match) => '${match.group(1)}"***"')
+      .replaceAllMapped(_authorizationBearer, (match) => "${match.group(1)}***")
+      .replaceAllMapped(_secretScalarValue, (match) => "${match.group(1)}***");
 
   void _failPending(Object error, StackTrace stack) {
     final inflight = _pending.values.map((request) => request.completer).toList();
@@ -457,24 +481,25 @@ class PiRpcClient {
 /// A new transformer is built per stream because the carry-over buffer for a
 /// record split across chunks is per-stream state.
 StreamTransformer<String, String> _lfRecords() {
-  var pending = "";
+  final pending = <String>[];
   return StreamTransformer<String, String>.fromHandlers(
     handleData: (chunk, sink) {
-      pending = "$pending$chunk";
       var start = 0;
-      for (var index = pending.indexOf("\n"); index >= 0; index = pending.indexOf("\n", start)) {
-        sink.add(_withoutTrailingCarriageReturn(pending.substring(start, index)));
+      for (var index = chunk.indexOf("\n"); index >= 0; index = chunk.indexOf("\n", start)) {
+        pending.add(chunk.substring(start, index));
+        sink.add(_withoutTrailingCarriageReturn(pending.join()));
+        pending.clear();
         start = index + 1;
       }
-      pending = pending.substring(start);
+      if (start < chunk.length) pending.add(chunk.substring(start));
     },
     handleDone: (sink) {
       // Pi terminates every record with LF, so a leftover tail is a truncated
       // frame from a process that died mid-write. Emitting it lets the decoder
       // report and discard it instead of losing it silently.
       if (pending.isNotEmpty) {
-        sink.add(_withoutTrailingCarriageReturn(pending));
-        pending = "";
+        sink.add(_withoutTrailingCarriageReturn(pending.join()));
+        pending.clear();
       }
       sink.close();
     },

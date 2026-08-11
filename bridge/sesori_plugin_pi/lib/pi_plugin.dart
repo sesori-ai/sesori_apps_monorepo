@@ -13,5 +13,7 @@ export "src/api/pi_process_factory.dart";
 export "src/api/pi_rpc_client.dart";
 export "src/models/pi_assistant_stop_reason.dart";
 export "src/models/pi_compaction_reason.dart";
+export "src/models/pi_notification_type.dart";
 export "src/models/pi_rpc_command.dart";
+export "src/models/pi_summarization_source.dart";
 export "src/models/pi_thinking_level.dart";

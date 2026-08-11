@@ -1,4 +1,5 @@
 import "../../models/pi_compaction_reason.dart";
+import "../../models/pi_summarization_source.dart";
 import "../../models/pi_thinking_level.dart";
 import "pi_assistant_delta.dart";
 import "pi_frame_fields.dart";
@@ -100,7 +101,7 @@ sealed class PiEvent {
         raw: json,
       ),
       "summarization_retry_attempt_start" => PiSummarizationRetryAttemptStartEvent(
-        source: stringOrNull(json["source"]),
+        source: PiSummarizationSource.tryParse(value: stringOrNull(json["source"])),
         reason: PiCompactionReason.tryParse(value: json["reason"]),
         raw: json,
       ),
@@ -317,8 +318,7 @@ final class PiSummarizationRetryScheduledEvent extends PiEvent {
 final class PiSummarizationRetryAttemptStartEvent extends PiEvent {
   const PiSummarizationRetryAttemptStartEvent({required this.source, required this.reason, required super.raw});
 
-  /// `branchSummary` or `compaction`.
-  final String? source;
+  final PiSummarizationSource? source;
 
   final PiCompactionReason? reason;
 }

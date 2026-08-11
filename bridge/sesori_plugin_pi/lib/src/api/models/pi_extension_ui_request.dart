@@ -1,3 +1,4 @@
+import "../../models/pi_notification_type.dart";
 import "pi_frame_fields.dart";
 
 /// One `extension_ui_request` frame from Pi v0.84.1.
@@ -50,7 +51,7 @@ sealed class PiExtensionUiRequest {
       "notify" => PiNotifyRequest(
         id: id,
         message: stringOrNull(json["message"]),
-        notifyType: stringOrNull(json["notifyType"]),
+        notifyType: PiNotificationType.tryParse(value: stringOrNull(json["notifyType"])),
         raw: json,
       ),
       "setStatus" => PiSetStatusRequest(
@@ -143,8 +144,7 @@ final class PiNotifyRequest extends PiExtensionDecorationRequest {
 
   final String? message;
 
-  /// `info`, `warning`, or `error`.
-  final String? notifyType;
+  final PiNotificationType? notifyType;
 }
 
 final class PiSetStatusRequest extends PiExtensionDecorationRequest {
