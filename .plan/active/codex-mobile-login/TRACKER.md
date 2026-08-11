@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 1 plan ready for PR
+- **Series state:** Step 1 PR open
 - **Current step:** 1/8
 - **Implementation base:** `origin/main` at `3708d348`
-- **Plan PR:** Pending
-- **Current PR:** Pending
-- **Next action:** Commit, push, and open the Step 1 plan PR
+- **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
+- **Current PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
+- **Next action:** Monitor Step 1 review/CI and begin Step 2 locally
 
 ## Plan Review
 
@@ -26,7 +26,7 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | Ready for PR |
+| [ ] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) open |
 | [ ] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | Pending |
 | [ ] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | Pending |
 | [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Pending |
@@ -57,7 +57,8 @@
 
 - Step 1: `git diff --check` passes. The two plan documents add 736 lines,
   within the 450-850 target. No Dart/Flutter suites were run because this step
-  changes documentation only.
+  changes documentation only. Committed as `e4213ff2`, pushed, and opened as
+  [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824).
 
 ## Findings And Plan Deltas
 
