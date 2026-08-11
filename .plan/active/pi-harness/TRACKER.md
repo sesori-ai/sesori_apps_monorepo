@@ -103,10 +103,10 @@ OpenCode default, or no-new-analytics decisions without the user.
 ### Step 3/15
 
 - `dart pub get` from `bridge/`: pass.
-- `dart test` from `bridge/sesori_plugin_pi/`: pass, 59 tests.
+- `dart test` from `bridge/sesori_plugin_pi/`: pass, 60 tests.
 - `dart analyze --fatal-infos` from `bridge/sesori_plugin_pi/`: pass.
 - Architecture implementation review: approved with no findings.
-- Diff: +2,679/-17 = 2,696 changed lines; generated lines: 0; tests run: 59.
+- Diff: +2,713/-17 = 2,730 changed lines; generated lines: 0; tests run: 60.
 - Recorded overage: the strict framer, complete sealed discriminator boundary,
   process lifecycle, and their failure/backpressure tests are one coherent
   transport seam; splitting it would publish an untyped or unverified client.

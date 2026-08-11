@@ -227,7 +227,7 @@ class PiRpcClient {
     _stdoutSubscription = process.stdout
         // One malformed byte must not tear down the unconditional stdout drain.
         .transform(const Utf8Decoder(allowMalformed: true))
-        .transform(_lfRecords())
+        .transform(_lfRecords(maxRecordLength: null))
         .listen(
           (record) {
             if (generation == _generation) _handleRecord(record);
@@ -247,7 +247,7 @@ class PiRpcClient {
         // A crashing child can emit non-UTF-8 bytes, and a strict decoder would
         // take down the diagnostic stream exactly when it matters most.
         .transform(const Utf8Decoder(allowMalformed: true))
-        .transform(_lfRecords())
+        .transform(_lfRecords(maxRecordLength: _stderrLineLimit))
         .listen(
           (line) {
             if (generation == _generation) _recordStderr(line);
@@ -450,8 +450,8 @@ class PiRpcClient {
     r'("(?:refresh[_-]?token|access[_-]?token|token|authorization|(?:x[_-])?api[_-]?key|secret|password|bearer)"\s*:\s*)[^\s",;{}]+',
     caseSensitive: false,
   );
-  static final RegExp _authorizationBearer = RegExp(
-    r'(\bauthorization\s*:\s*bearer\s+)[^\s,;]+',
+  static final RegExp _authorizationHeader = RegExp(
+    r'(\bauthorization\s*:\s*[a-z][a-z0-9_-]*\s+).*$',
     caseSensitive: false,
   );
   static final RegExp _secretScalarValue = RegExp(
@@ -463,7 +463,7 @@ class PiRpcClient {
       .replaceAllMapped(_secretJsonValue, (match) => '${match.group(1)}"***"')
       .replaceAllMapped(_secretStructuredJsonValue, (match) => "${match.group(1)}***")
       .replaceAllMapped(_secretUnquotedJsonValue, (match) => "${match.group(1)}***")
-      .replaceAllMapped(_authorizationBearer, (match) => "${match.group(1)}***")
+      .replaceAllMapped(_authorizationHeader, (match) => "${match.group(1)}***")
       .replaceAllMapped(_secretScalarValue, (match) => "${match.group(1)}***");
 
   void _failPending(Object error, StackTrace stack) {
@@ -546,18 +546,34 @@ class PiRpcClient {
 ///
 /// A new transformer is built per stream because the carry-over buffer for a
 /// record split across chunks is per-stream state.
-StreamTransformer<String, String> _lfRecords() {
+StreamTransformer<String, String> _lfRecords({required int? maxRecordLength}) {
   final pending = <String>[];
+  var pendingLength = 0;
+
+  void retain(String fragment) {
+    final limit = maxRecordLength;
+    if (limit == null) {
+      pending.add(fragment);
+      return;
+    }
+    final remaining = limit - pendingLength;
+    if (remaining <= 0) return;
+    final retained = fragment.length <= remaining ? fragment : fragment.substring(0, remaining);
+    pending.add(retained);
+    pendingLength += retained.length;
+  }
+
   return StreamTransformer<String, String>.fromHandlers(
     handleData: (chunk, sink) {
       var start = 0;
       for (var index = chunk.indexOf("\n"); index >= 0; index = chunk.indexOf("\n", start)) {
-        pending.add(chunk.substring(start, index));
+        retain(chunk.substring(start, index));
         sink.add(_withoutTrailingCarriageReturn(pending.join()));
         pending.clear();
+        pendingLength = 0;
         start = index + 1;
       }
-      if (start < chunk.length) pending.add(chunk.substring(start));
+      if (start < chunk.length) retain(chunk.substring(start));
     },
     handleDone: (sink) {
       // Pi terminates every record with LF, so a leftover tail is a truncated
@@ -566,6 +582,7 @@ StreamTransformer<String, String> _lfRecords() {
       if (pending.isNotEmpty) {
         sink.add(_withoutTrailingCarriageReturn(pending.join()));
         pending.clear();
+        pendingLength = 0;
       }
       sink.close();
     },
