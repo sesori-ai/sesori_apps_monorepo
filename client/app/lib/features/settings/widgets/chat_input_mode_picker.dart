@@ -67,9 +67,10 @@ class _ChatInputModeOption extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: SizedBox(
-            height: _optionHeight,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: _optionHeight),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   height: _previewHeight,
@@ -284,6 +285,7 @@ class _TextPreview extends StatelessWidget {
         ),
         Text(
           context.loc.settingsDefaultInputTextPreview,
+          textScaler: TextScaler.noScaling,
           style: prego.textTheme.textMd.regular.copyWith(
             color: isSelected ? prego.colors.textSecondary : prego.colors.textTertiary,
           ),

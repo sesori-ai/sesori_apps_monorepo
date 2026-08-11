@@ -562,7 +562,7 @@ void main() {
     await tester.tap(find.text("Default input"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Choose how you default talk to Sesori:"), findsOneWidget);
+    expect(find.text("Choose how you talk to Sesori by default:"), findsOneWidget);
     await tester.tap(find.text("Text"));
     await tester.pumpAndSettle();
 
@@ -601,6 +601,20 @@ void main() {
     );
 
     handle.dispose();
+  });
+
+  testWidgets("the default input choices grow for accessibility text", (tester) async {
+    _useTallSurface(tester);
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Default input"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Voice"), findsOneWidget);
+    expect(find.text("Text"), findsOneWidget);
   });
 
   testWidgets("the theme tiles announce as one mutually exclusive choice", (tester) async {

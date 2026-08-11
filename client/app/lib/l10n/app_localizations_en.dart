@@ -562,7 +562,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDefaultInputTitle => 'Default input';
 
   @override
-  String get settingsDefaultInputDescription => 'Choose how you default talk to Sesori:';
+  String get settingsDefaultInputDescription => 'Choose how you talk to Sesori by default:';
 
   @override
   String get settingsDefaultInputVoice => 'Voice';
