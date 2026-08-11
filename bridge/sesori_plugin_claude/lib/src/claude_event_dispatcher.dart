@@ -32,6 +32,20 @@ final class ClaudeEventDispatcher {
     _tools.forgetSession(sessionId: sessionId);
   }
 
+  PluginSessionStatus? retryStatus({
+    required ClaudeApiRetryMessage message,
+    required DateTime now,
+  }) {
+    final attempt = message.attempt;
+    final delay = message.retryDelayMs;
+    if (attempt == null || delay == null) return null;
+    return PluginSessionStatus.retry(
+      attempt: attempt,
+      message: _retryMessage(message.error),
+      next: now.millisecondsSinceEpoch + delay,
+    );
+  }
+
   List<BridgeSseEvent> map({required ClaudeStreamMessage message}) {
     if (message.sessionId case final sessionId? when sessionId.isNotEmpty) {
       if (message

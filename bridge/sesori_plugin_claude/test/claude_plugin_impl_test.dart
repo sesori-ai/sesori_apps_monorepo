@@ -67,6 +67,33 @@ void main() {
       await subscription.cancel();
     });
 
+    test("shows only userVisibleText while sending full execution context", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.createSession(
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [
+          PluginPromptPart.text(text: _worktreeContext),
+          PluginPromptPart.text(text: "visible prompt"),
+        ],
+        userVisibleText: "visible prompt",
+        variant: null,
+        agent: "Default",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      await pump();
+
+      final visibleParts = events.whereType<BridgeSseMessagePartUpdated>().where(
+        (event) => event.part.type == PluginMessagePartType.text,
+      );
+      expect(visibleParts.single.part.text, "visible prompt");
+      final executionText = _userTexts(harness.processes.single).join("\n");
+      expect(executionText, contains("private-branch"));
+      await subscription.cancel();
+    });
+
     test("fails closed when init violates the pre-bound session identity", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
@@ -91,11 +118,13 @@ void main() {
       await waitForFrame(first, "user");
       first.emit(_result());
       await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
         sessionId: testSessionId,
         command: "review",
-        arguments: "src",
+        arguments: "${_worktreeContext.trimRight()}\n\nsrc",
         userVisibleArguments: "src",
         variant: null,
         agent: "Plan",
@@ -103,7 +132,44 @@ void main() {
       );
       final permission = await _waitForControl(first, "set_permission_mode");
       expect(_request(permission)["mode"], "plan");
-      await _waitForUserText(first, "/review src");
+      await _waitForUserText(first, "/review ${_worktreeContext.trimRight()}\n\nsrc");
+      await pump();
+      final visible = events.whereType<BridgeSseMessagePartUpdated>().where(
+        (event) => event.part.text == "/review src",
+      );
+      expect(visible, hasLength(1));
+      await subscription.cancel();
+    });
+
+    test("creates an empty session and reports command initialization failure", () async {
+      await harness.close();
+      harness = _PluginHarness(failInitialize: true);
+      final session = await harness.plugin.createSession(
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: "Default",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+
+      await expectLater(
+        harness.plugin.sendCommand(
+          sessionId: session.id,
+          command: "review",
+          arguments: "src",
+          userVisibleArguments: "src",
+          variant: null,
+          agent: "Default",
+          model: (providerID: "anthropic", modelID: "default"),
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.operation, "operation", "sendCommand")
+              .having((error) => error.cause, "cause", isNotNull),
+        ),
+      );
     });
 
     test("respawns between turns when launch-only effort changes", () async {
@@ -164,6 +230,46 @@ void main() {
       );
     });
 
+    test("finishes in-memory deletion when transcript cleanup fails", () async {
+      await harness.close();
+      harness = _PluginHarness(failTranscriptDelete: true);
+      final session = await harness.createSession();
+
+      await expectLater(
+        harness.plugin.deleteSession(session.id),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.operation, "operation", "deleteSession")
+              .having((error) => error.cause, "cause", isA<StateError>()),
+        ),
+      );
+
+      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessionStatuses(), isEmpty);
+    });
+
+    test("preserves API retry status for snapshots and activity", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      process.emit({
+        "type": "system",
+        "subtype": "api_retry",
+        "session_id": testSessionId,
+        "uuid": "retry-1",
+        "attempt": 2,
+        "max_retries": 5,
+        "retry_delay_ms": 1000,
+        "error_status": 429,
+        "error": "rate_limit",
+      });
+      await pump();
+
+      final retry = (await harness.plugin.getSessionStatuses())[testSessionId]! as PluginSessionStatusRetry;
+      expect(retry.attempt, 2);
+      expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
+      expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+    });
+
     test("persisted cleanup is idempotent for an absent transcript", () async {
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
@@ -172,7 +278,7 @@ void main() {
 }
 
 final class _PluginHarness {
-  _PluginHarness() {
+  _PluginHarness({this.failInitialize = false, bool failTranscriptDelete = false}) {
     temporary = Directory.systemTemp.createTempSync("claude-plugin-test-");
     final eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
     processRepository = ClaudeSessionProcessRepository(
@@ -180,7 +286,7 @@ final class _PluginHarness {
         final process = FakeClaudeProcess();
         specs.add(spec);
         processes.add(process);
-        unawaited(_answerControls(process));
+        unawaited(_answerControls(process, failInitialize: failInitialize));
         return process;
       },
       binaryPath: "claude",
@@ -198,7 +304,9 @@ final class _PluginHarness {
     );
     const content = ClaudeContentMapper();
     final transcripts = ClaudeTranscriptCatalogRepository(
-      transcriptApi: ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temporary.path}),
+      transcriptApi: failTranscriptDelete
+          ? _ThrowingDeleteTranscriptApi()
+          : ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temporary.path}),
     );
     plugin = ClaudePlugin(
       processes: processRepository,
@@ -225,6 +333,7 @@ final class _PluginHarness {
   late final ClaudePlugin plugin;
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
+  final bool failInitialize;
   var _idIndex = 0;
 
   String _nextId() => [otherTestSessionId, testSessionId][_idIndex++];
@@ -258,7 +367,7 @@ final class _NeverIdleClock extends ServerClock {
   Future<void> delay({required Duration duration}) => Completer<void>().future;
 }
 
-Future<void> _answerControls(FakeClaudeProcess process) async {
+Future<void> _answerControls(FakeClaudeProcess process, {required bool failInitialize}) async {
   final answered = <String>{};
   while (!process.killed) {
     for (final frame in process.written) {
@@ -266,6 +375,13 @@ Future<void> _answerControls(FakeClaudeProcess process) async {
       final requestId = frame["request_id"]! as String;
       if (!answered.add(requestId)) continue;
       final subtype = _request(frame)["subtype"];
+      if (subtype == "initialize" && failInitialize) {
+        process.emit({
+          "type": "control_response",
+          "response": {"subtype": "error", "request_id": requestId, "error": "probe failure"},
+        });
+        continue;
+      }
       process.emitControlResponse(
         requestId: requestId,
         payload: subtype == "initialize" || subtype == "list_models" ? sampleHandshake : const {},
@@ -312,3 +428,30 @@ Map<String, Object?> _result() => {
   "session_id": testSessionId,
   "is_error": false,
 };
+
+final class _ThrowingDeleteTranscriptApi extends ClaudeTranscriptApi {
+  _ThrowingDeleteTranscriptApi() : super(environment: const {});
+
+  bool deleteAttempted = false;
+
+  @override
+  List<String> listTranscriptPaths() => deleteAttempted ? const [] : ["/tmp/$testSessionId.jsonl"];
+
+  @override
+  void deleteTranscript({required String transcriptPath}) {
+    deleteAttempted = true;
+    throw StateError("delete failed");
+  }
+}
+
+const _worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: private-branch
+- Worktree path: /private/worktree
+- Based on: main
+
+IMPORTANT: Do NOT create new worktrees.
+
+---
+""";

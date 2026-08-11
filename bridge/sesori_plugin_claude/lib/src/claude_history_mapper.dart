@@ -59,7 +59,7 @@ final class ClaudeHistoryMapper {
           }
 
           final parts = _content.mapParts(
-            content: record.content,
+            content: _visibleUserContent(record.content),
             sessionId: sessionId,
             messageId: record.id,
           );
@@ -164,3 +164,30 @@ final class _AssistantHistoryMessage extends _ClaudeHistoryEntry {
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);
+
+Object? _visibleUserContent(Object? content) {
+  if (content is! List) return content;
+  final visible = <Object?>[];
+  for (final block in content) {
+    if (block is Map && block["type"] == "text" && block["text"] is String) {
+      final text = _stripBridgeContext(block["text"]! as String);
+      if (text != null && text.isNotEmpty) visible.add({...block.cast<String, Object?>(), "text": text});
+    } else {
+      visible.add(block);
+    }
+  }
+  return visible;
+}
+
+String? _stripBridgeContext(String text) {
+  const marker = "[SYSTEM CONTEXT \u2014 IMPORTANT]";
+  final markerIndex = text.indexOf(marker);
+  if (markerIndex < 0) return text;
+  final envelopeEnd = text.indexOf("\n---", markerIndex);
+  if (envelopeEnd < 0) return text;
+  final trailing = text.substring(envelopeEnd + "\n---".length).trim();
+  if (markerIndex == 0) return trailing.isEmpty ? null : trailing;
+  final prefix = text.substring(0, markerIndex).trimRight();
+  if (!prefix.startsWith("/")) return text;
+  return trailing.isEmpty ? prefix : "$prefix $trailing";
+}

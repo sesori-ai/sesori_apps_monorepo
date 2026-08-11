@@ -373,9 +373,13 @@
   exact slash-command dispatch, launch-only effort respawn, not-found behavior,
   active summaries, delete fencing, and idempotent persisted cleanup. A live
   CLI 2.1.226 probe confirmed `/help` sent as ordinary stream-json user text
-  completes successfully. All 180 package tests, `dart analyze --fatal-infos`,
-  and `git diff --check` pass. The measured diff is 922 changed lines across 10
-  files, below the 1,200-1,500 estimate and the 1,500-line soft cap.
+  completes successfully. Review fixes added backend-acceptance receipts,
+  restart-safe removal of bridge-owned worktree context from visible history,
+  visible prompt/command synthesis, retry snapshots, and complete deletion
+  fencing. All 186 package tests, `dart analyze --fatal-infos`, and
+  `git diff --check` pass. The final diff is 1,418 changed lines across 16 files:
+  1,357 additions and 61 deletions, with no generated files changed. It remains
+  within the 1,200-1,500 estimate and below the 1,500-line soft cap.
 
   Architecture implementation review rejected the original identity mismatch
   policy because the plan said the reported id should replace the pre-bound id.

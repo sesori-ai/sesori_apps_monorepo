@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -44,8 +45,8 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
        _generateSessionId = generateSessionId,
        _catalogSessionId = generateSessionId(),
        _launchDirectory = normalizeProjectDirectory(directory: launchDirectory) {
-    _sessionEvents = _sessions.events.listen(_eventBuffer.add);
-    _processEvents = _processes.events.listen(_handleProcessEvent);
+    _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
+    _processes.events.listen(_handleProcessEvent).addTo(_subscriptions);
   }
 
   static const String pluginId = "claude";
@@ -63,11 +64,12 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   final String _catalogSessionId;
   final String _launchDirectory;
   final Map<String, PluginSession> _createdSessions = {};
-  late final StreamSubscription<BridgeSseEvent> _sessionEvents;
-  late final StreamSubscription<ClaudeSessionProcessEvent> _processEvents;
+  final Set<String> _unstartedSessions = {};
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   ClaudeBackendCatalog? _catalog;
   Future<void>? _disposeFuture;
   bool _disposed = false;
+  int _messageSequence = 0;
 
   @override
   String get id => pluginId;
@@ -125,10 +127,9 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    _requireTurn(parts: parts, operation: "createSession");
-    _validateModel(model);
-    _effort(variant);
-    _permissionMode(agent);
+    _validateModel(model, operation: "createSession");
+    _effort(variant, operation: "createSession");
+    _permissionMode(agent, operation: "createSession");
     final sessionId = _generateSessionId();
     final normalized = normalizeProjectDirectory(directory: directory);
     final now = _clock.now().millisecondsSinceEpoch;
@@ -141,16 +142,32 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
       time: PluginSessionTime(created: now, updated: now, archived: null),
     );
     _createdSessions[sessionId] = session;
+    _unstartedSessions.add(sessionId);
     _eventBuffer.add(BridgeSseSessionCreated(info: session.toJson()));
-    _enqueue(
-      sessionId: sessionId,
-      directory: normalized,
-      createNew: true,
-      parts: parts,
-      variant: variant,
-      agent: agent,
-      model: model,
-    );
+    if (parts.isNotEmpty) {
+      try {
+        await _enqueue(
+          sessionId: sessionId,
+          directory: normalized,
+          createNew: true,
+          parts: parts,
+          variant: variant,
+          agent: agent,
+          model: model,
+          operation: "createSession",
+        );
+        _unstartedSessions.remove(sessionId);
+      } on Object {
+        await _sessions.deleteSession(sessionId: sessionId);
+        _createdSessions.remove(sessionId);
+        _unstartedSessions.remove(sessionId);
+        _eventDispatcher.forgetSession(sessionId: sessionId);
+        _eventBuffer.add(BridgeSseSessionDeleted(info: session.toJson()));
+        _eventBuffer.add(const BridgeSseProjectUpdated());
+        rethrow;
+      }
+    }
+    _emitVisibleUserMessage(sessionId: sessionId, text: userVisibleText);
     return session;
   }
 
@@ -173,11 +190,19 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
         _sessions.sessionStatuses.containsKey(sessionId);
     if (!known) throw const PluginOperationException.notFound("deleteSession", message: "session not found");
     await _sessions.deleteSession(sessionId: sessionId);
-    _transcripts.deleteSession(sessionId: sessionId);
-    _createdSessions.remove(sessionId);
-    _eventDispatcher.forgetSession(sessionId: sessionId);
-    if (existing != null) _eventBuffer.add(BridgeSseSessionDeleted(info: existing.toJson()));
-    _eventBuffer.add(const BridgeSseProjectUpdated());
+    try {
+      try {
+        _transcripts.deleteSession(sessionId: sessionId);
+      } on Object catch (error) {
+        throw PluginOperationException("deleteSession", message: "Claude transcript deletion failed", cause: error);
+      }
+    } finally {
+      _createdSessions.remove(sessionId);
+      _unstartedSessions.remove(sessionId);
+      _eventDispatcher.forgetSession(sessionId: sessionId);
+      if (existing != null) _eventBuffer.add(BridgeSseSessionDeleted(info: existing.toJson()));
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
   }
 
   @override
@@ -223,15 +248,17 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     _requireTurn(parts: parts, operation: "sendPrompt");
     final directory = _directoryForSession(sessionId);
     if (directory == null) throw const PluginOperationException.notFound("sendPrompt", message: "session not found");
-    _enqueue(
+    await _enqueue(
       sessionId: sessionId,
       directory: directory,
-      createNew: false,
+      createNew: _unstartedSessions.contains(sessionId),
       parts: parts,
       variant: variant,
       agent: agent,
       model: model,
+      operation: "sendPrompt",
     );
+    _unstartedSessions.remove(sessionId);
   }
 
   @override
@@ -243,13 +270,26 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) => sendPrompt(
-    sessionId: sessionId,
-    parts: [PluginPromptPart.text(text: arguments.isEmpty ? "/$command" : "/$command $arguments")],
-    variant: variant,
-    agent: agent,
-    model: model,
-  );
+  }) async {
+    final directory = _directoryForSession(sessionId);
+    if (directory == null) throw const PluginOperationException.notFound("sendCommand", message: "session not found");
+    await _enqueue(
+      sessionId: sessionId,
+      directory: directory,
+      createNew: _unstartedSessions.contains(sessionId),
+      parts: [PluginPromptPart.text(text: arguments.isEmpty ? "/$command" : "/$command $arguments")],
+      variant: variant,
+      agent: agent,
+      model: model,
+      operation: "sendCommand",
+    );
+    _unstartedSessions.remove(sessionId);
+    final visible = userVisibleArguments?.trim();
+    _emitVisibleUserMessage(
+      sessionId: sessionId,
+      text: visible == null || visible.isEmpty ? "/$command" : "/$command $visible",
+    );
+  }
 
   @override
   Future<void> abortSession({required String sessionId}) => _sessions.abort(sessionId: sessionId);
@@ -352,10 +392,10 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
 
   Future<void> _dispose() async {
     _disposed = true;
-    await _sessionEvents.cancel();
-    await _processEvents.cancel();
+    await _subscriptions.cancel();
     await _sessions.dispose();
     _createdSessions.clear();
+    _unstartedSessions.clear();
     _eventDispatcher.forgetSession(sessionId: _catalogSessionId);
     await _eventBuffer.close();
   }
@@ -378,7 +418,7 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     );
   }
 
-  void _enqueue({
+  Future<void> _enqueue({
     required String sessionId,
     required String directory,
     required bool createNew,
@@ -386,43 +426,50 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) {
-    _validateModel(model);
-    final effort = _effort(variant);
-    final permissionMode = _permissionMode(agent);
+    required String operation,
+  }) async {
+    _validateModel(model, operation: operation);
+    final effort = _effort(variant, operation: operation);
+    final permissionMode = _permissionMode(agent, operation: operation);
     _eventDispatcher.beginTurn(sessionId: sessionId);
-    _sessions.enqueueTurn(
-      sessionId: sessionId,
-      directory: directory,
-      createNew: createNew,
-      parts: parts,
-      model: model?.modelID,
-      effort: effort,
-      permissionMode: permissionMode,
-    );
-  }
-
-  void _validateModel(({String providerID, String modelID})? model) {
-    if (model == null) return;
-    if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
-      throw const PluginOperationException("sendPrompt", statusCode: 400, message: "unsupported model");
+    try {
+      await _sessions.enqueueTurn(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: createNew,
+        parts: parts,
+        model: model?.modelID,
+        effort: effort,
+        permissionMode: permissionMode,
+      );
+    } on PluginOperationException {
+      rethrow;
+    } on Object catch (error) {
+      throw PluginOperationException(operation, message: "Claude did not accept the turn", cause: error);
     }
   }
 
-  ClaudeEffortLevel? _effort(PluginSessionVariant? variant) {
+  void _validateModel(({String providerID, String modelID})? model, {required String operation}) {
+    if (model == null) return;
+    if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
+      throw PluginOperationException(operation, statusCode: 400, message: "unsupported model");
+    }
+  }
+
+  ClaudeEffortLevel? _effort(PluginSessionVariant? variant, {required String operation}) {
     if (variant == null) return null;
     final effort = ClaudeEffortLevel.tryParse(variant.id);
     if (effort == null) {
-      throw const PluginOperationException("sendPrompt", statusCode: 400, message: "unsupported Claude effort");
+      throw PluginOperationException(operation, statusCode: 400, message: "unsupported Claude effort");
     }
     return effort;
   }
 
-  ClaudePermissionMode? _permissionMode(String? agent) {
+  ClaudePermissionMode? _permissionMode(String? agent, {required String operation}) {
     if (agent == null) return null;
     final selection = ClaudeAgentSelection.tryParse(agent);
     if (selection == null) {
-      throw const PluginOperationException("sendPrompt", statusCode: 400, message: "unsupported Claude agent");
+      throw PluginOperationException(operation, statusCode: 400, message: "unsupported Claude agent");
     }
     return selection.permissionMode;
   }
@@ -457,8 +504,49 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
         _eventBuffer.add(BridgeSseSessionError(sessionID: event.sessionId));
         return;
       }
+      if (message is ClaudeApiRetryMessage) {
+        final status = _eventDispatcher.retryStatus(message: message, now: _clock.now());
+        if (status != null) _sessions.recordRetryStatus(sessionId: event.sessionId, status: status);
+      }
       _eventDispatcher.map(message: message).forEach(_eventBuffer.add);
     }
+  }
+
+  void _emitVisibleUserMessage({required String sessionId, required String? text}) {
+    final visible = text?.trim();
+    if (visible == null || visible.isEmpty) return;
+    final messageId = "sesori-user-${++_messageSequence}";
+    final now = _clock.now().millisecondsSinceEpoch;
+    _eventBuffer.add(
+      BridgeSseMessageUpdated(
+        info: PluginMessage.user(
+          id: messageId,
+          sessionID: sessionId,
+          agent: null,
+          time: PluginMessageTime(created: now, completed: now),
+        ).toJson(),
+      ),
+    );
+    _eventBuffer.add(
+      BridgeSseMessagePartUpdated(
+        part: PluginMessagePart(
+          id: "$messageId-text",
+          sessionID: sessionId,
+          messageID: messageId,
+          type: PluginMessagePartType.text,
+          text: visible,
+          tool: null,
+          state: null,
+          prompt: null,
+          description: null,
+          agent: null,
+          agentName: null,
+          attempt: null,
+          retryError: null,
+          attachment: null,
+        ),
+      ),
+    );
   }
 }
 

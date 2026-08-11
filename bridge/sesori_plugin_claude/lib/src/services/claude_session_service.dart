@@ -34,9 +34,11 @@ final class ClaudeSessionService {
   final ServerClock _clock;
   final Duration _idleTimeout;
   final Map<String, _SessionTurnState> _turns = {};
+  final Map<String, PluginSessionStatus> _retryStatuses = {};
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
   final Set<Future<void>> _inFlightTeardowns = {};
+  final Map<String, Future<void>> _teardownsBySession = {};
   late final StreamSubscription<ClaudeSessionProcessEvent> _processEvents;
   Future<void>? _disposeFuture;
   bool _disposed = false;
@@ -47,10 +49,12 @@ final class ClaudeSessionService {
 
   Map<String, PluginSessionStatus> get sessionStatuses => Map.unmodifiable({
     for (final entry in _turns.entries)
-      entry.key: entry.value.pending > 0 ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle(),
+      entry.key:
+          _retryStatuses[entry.key] ??
+          (entry.value.pending > 0 ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle()),
   });
 
-  void enqueueTurn({
+  Future<void> enqueueTurn({
     required String sessionId,
     required String directory,
     required bool createNew,
@@ -59,8 +63,12 @@ final class ClaudeSessionService {
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
   }) {
-    if (_disposed || parts.isEmpty) return;
+    if (_disposed || parts.isEmpty) {
+      return Future.error(StateError("Claude session cannot accept the turn"));
+    }
+    final acceptance = Completer<void>();
     final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    _retryStatuses.remove(sessionId);
     state.pending++;
     state.idleGeneration++;
     if (state.pending == 1) {
@@ -80,8 +88,10 @@ final class ClaudeSessionService {
         permissionMode: permissionMode,
         state: state,
         generation: generation,
+        acceptance: acceptance,
       ),
     );
+    return acceptance.future;
   }
 
   Future<void> _runTurn({
@@ -94,8 +104,12 @@ final class ClaudeSessionService {
     required ClaudePermissionMode? permissionMode,
     required _SessionTurnState state,
     required int generation,
+    required Completer<void> acceptance,
   }) async {
-    if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) return _finish(sessionId, state, null);
+    if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
+      if (!acceptance.isCompleted) acceptance.completeError(StateError("Claude turn was cancelled before acceptance"));
+      return _finish(sessionId, state, null);
+    }
     try {
       await _processes.ensureResident(
         sessionId: sessionId,
@@ -107,14 +121,23 @@ final class ClaudeSessionService {
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
+        if (!acceptance.isCompleted) {
+          acceptance.completeError(StateError("Claude turn was cancelled before acceptance"));
+        }
         return _finish(sessionId, state, null);
       }
-      final outcome = await _processes.sendTurn(sessionId: sessionId, parts: parts);
+      final dispatch = _processes.sendTurn(sessionId: sessionId, parts: parts);
+      if (!dispatch.accepted) {
+        throw StateError("Claude rejected the turn before dispatch");
+      }
+      acceptance.complete();
+      final outcome = await dispatch.outcome;
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
         return _finish(sessionId, state, null);
       }
       _finish(sessionId, state, outcome);
     } on Object catch (error, stack) {
+      if (!acceptance.isCompleted) acceptance.completeError(error, stack);
       if (_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
         Log.w("[claude] queued turn failed for $sessionId", error, stack);
         _finish(sessionId, state, const ClaudeTurnFailed());
@@ -147,7 +170,10 @@ final class ClaudeSessionService {
       state.generation++;
       state.idleGeneration++;
     }
+    _retryStatuses.remove(sessionId);
     _approvals.forgetSession(sessionId: sessionId);
+    final existingTeardown = _teardownsBySession[sessionId];
+    if (existingTeardown != null) await existingTeardown;
     await _processes.teardown(sessionId: sessionId);
     _processes.forgetSession(sessionId: sessionId);
     _syncWorkState();
@@ -173,6 +199,7 @@ final class ClaudeSessionService {
       !_disposed && identical(_turns[sessionId], state) && state.generation == generation;
 
   void _finish(String sessionId, _SessionTurnState state, ClaudeTurnOutcome? outcome) {
+    _retryStatuses.remove(sessionId);
     if (state.pending > 0) state.pending--;
     if (!identical(_turns[sessionId], state)) return;
     if (outcome is ClaudeTurnFailed) _emit(BridgeSseSessionError(sessionID: sessionId));
@@ -196,10 +223,14 @@ final class ClaudeSessionService {
       }
       final teardown = _processes.teardown(sessionId: sessionId);
       _inFlightTeardowns.add(teardown);
+      _teardownsBySession[sessionId] = teardown;
       try {
         await teardown;
       } finally {
         _inFlightTeardowns.remove(teardown);
+        if (identical(_teardownsBySession[sessionId], teardown)) {
+          unawaited(_teardownsBySession.remove(sessionId));
+        }
         if (identical(_turns[sessionId], state) && state.pending == 0 && state.idleGeneration == generation) {
           _turns.remove(sessionId);
         }
@@ -212,6 +243,10 @@ final class ClaudeSessionService {
 
   void _emit(BridgeSseEvent event) {
     if (!_events.isClosed) _events.add(event);
+  }
+
+  void recordRetryStatus({required String sessionId, required PluginSessionStatus status}) {
+    if (_turns.containsKey(sessionId)) _retryStatuses[sessionId] = status;
   }
 
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
