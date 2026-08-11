@@ -24,7 +24,7 @@ class _GatedSelectionPlugin extends AcpPlugin {
 
   @override
   Future<void> applyTurnSelection({
-    required AcpStdioClient client,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,

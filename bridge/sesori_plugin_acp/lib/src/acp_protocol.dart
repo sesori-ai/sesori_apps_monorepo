@@ -22,9 +22,11 @@ abstract final class AcpMethods {
   static const String sessionResume = "session/resume";
   static const String sessionPrompt = "session/prompt";
   static const String sessionCancel = "session/cancel";
+  static const String sessionClose = "session/close";
   static const String sessionUpdate = "session/update";
   static const String sessionRequestPermission = "session/request_permission";
   static const String sessionSetConfigOption = "session/set_config_option";
+  static const String elicitationCreate = "elicitation/create";
 }
 
 /// An auth method advertised by the agent in the `initialize` result.
@@ -48,6 +50,7 @@ class AcpAgentCapabilities {
     required this.loadSession,
     required this.listSessions,
     required this.resumeSession,
+    required this.closeSession,
     required this.raw,
   });
 
@@ -62,6 +65,9 @@ class AcpAgentCapabilities {
   /// strictly richer.
   final bool resumeSession;
 
+  /// Whether `session/close` is supported.
+  final bool closeSession;
+
   /// Full raw capabilities object for harness-specific probing.
   final Map<String, dynamic> raw;
 
@@ -73,10 +79,12 @@ class AcpAgentCapabilities {
     // non-false value signals support.
     final list = session?["list"];
     final resume = session?["resume"];
+    final close = session?["close"];
     return AcpAgentCapabilities(
       loadSession: json["loadSession"] == true,
       listSessions: list != null && list != false,
       resumeSession: resume != null && resume != false,
+      closeSession: close != null && close != false,
       raw: json,
     );
   }
@@ -138,11 +146,13 @@ class AcpTimestampMsConverter implements JsonConverter<int?, Object?> {
 sealed class AcpSessionInfo with _$AcpSessionInfo {
   const factory AcpSessionInfo({
     @Default("") String sessionId,
+
     /// The session's working directory. Required by the spec, but kept
     /// nullable — a missing value falls back to the directory the caller
     /// scanned.
     required String? cwd,
     required String? title,
+
     /// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
     @AcpTimestampMsConverter() @JsonKey(name: "updatedAt") required int? updatedAtMs,
   }) = _AcpSessionInfo;
@@ -175,6 +185,7 @@ List<AcpSessionInfo> _sessionInfosFromJson(Object? raw) {
 sealed class AcpSessionListResult with _$AcpSessionListResult {
   const factory AcpSessionListResult({
     @JsonKey(fromJson: _sessionInfosFromJson) @Default(<AcpSessionInfo>[]) List<AcpSessionInfo> sessions,
+
     /// Opaque continuation token — a non-empty value means more pages exist.
     required String? nextCursor,
   }) = _AcpSessionListResult;
@@ -246,10 +257,14 @@ class AcpPromptResult {
 ///
 /// [meta] carries non-standard capability hints under `_meta` (e.g. Cursor's
 /// `parameterizedModelPicker`).
-Map<String, dynamic> buildClientCapabilities({Map<String, dynamic>? meta}) {
+Map<String, dynamic> buildClientCapabilities({
+  required bool formElicitation,
+  Map<String, dynamic>? meta,
+}) {
   return <String, dynamic>{
     "fs": {"readTextFile": false, "writeTextFile": false},
     "terminal": false,
+    if (formElicitation) "elicitation": {"form": <String, dynamic>{}},
     "_meta": ?meta,
   };
 }
@@ -258,12 +273,16 @@ Map<String, dynamic> buildClientCapabilities({Map<String, dynamic>? meta}) {
 Map<String, dynamic> buildInitializeParams({
   required String clientName,
   required String clientVersion,
+  required bool formElicitation,
   String? clientTitle,
   Map<String, dynamic>? capabilityMeta,
 }) {
   return <String, dynamic>{
     "protocolVersion": acpProtocolVersion,
-    "clientCapabilities": buildClientCapabilities(meta: capabilityMeta),
+    "clientCapabilities": buildClientCapabilities(
+      formElicitation: formElicitation,
+      meta: capabilityMeta,
+    ),
     "clientInfo": {
       "name": clientName,
       "title": clientTitle,
@@ -273,13 +292,9 @@ Map<String, dynamic> buildInitializeParams({
 }
 
 /// Builds a single text [ContentBlock] for a prompt.
-Map<String, dynamic> textContentBlock(String text) =>
-    <String, dynamic>{"type": "text", "text": text};
+Map<String, dynamic> textContentBlock(String text) => <String, dynamic>{"type": "text", "text": text};
 
 List<Map<String, dynamic>> _mapList(Object? raw) {
   if (raw is! List) return const [];
-  return raw
-      .whereType<Map<dynamic, dynamic>>()
-      .map((m) => m.cast<String, dynamic>())
-      .toList(growable: false);
+  return raw.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList(growable: false);
 }

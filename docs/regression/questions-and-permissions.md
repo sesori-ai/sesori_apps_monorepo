@@ -14,6 +14,14 @@ reaches the backend so the turn continues.
   are allowed.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
+- A plugin advertising ACP form elicitation maps supported string, string-enum,
+  and boolean properties to questions and returns typed content under the
+  backend's original property keys. Reject returns `decline`; abort, process
+  exit, and disposal return `cancel`; unsupported schemas are declined without
+  exposing prompt/default content in diagnostics.
+- A sessionless backend request is attributed only when the plugin can identify
+  one active originating turn. A backend requiring exact form correlation must
+  serialize its prompts rather than displaying the request on another session.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression.
 - Child or sub-agent requests surface under their display root.
@@ -28,7 +36,7 @@ reaches the backend so the turn continues.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. |
+| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: both request kinds per plugin, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older client omitting the rejection owner and an older bridge not declaring "always". Every supporting production plugin where applicable. |
@@ -47,6 +55,8 @@ different combination than the previous recorded run.
   backend actually offered.
 - An answer does not reach the backend, arrives with a different scope than the
   user chose, or leaves the turn blocked.
+- An ACP form answer changes scalar type, uses a display label instead of the
+  backend value, reaches the wrong session, or remains pending after abort.
 - A resolved request stays visible, keeps suppressing notifications, or returns
   after reconnect.
 - Reading pending state starts an intentionally stopped backend.

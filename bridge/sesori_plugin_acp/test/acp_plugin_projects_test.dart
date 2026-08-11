@@ -844,6 +844,7 @@ void main() {
           sessionId: session.id,
           questions: const [question],
           replyBuilder: (answers) => null,
+          resolutionBuilder: null,
         );
       }
 
