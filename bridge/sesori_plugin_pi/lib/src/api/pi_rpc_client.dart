@@ -159,8 +159,6 @@ class PiRpcClient {
   final PiProcessFactory _processFactory;
 
   PiProcessHandle? _process;
-  StreamSubscription<String>? _stdoutSubscription;
-  StreamSubscription<String>? _stderrSubscription;
   Future<void>? _starting;
   Future<void>? _disposing;
   bool _disposed = false;
@@ -218,11 +216,7 @@ class PiRpcClient {
     final process = await _processFactory(spec: _launchSpec);
     if (_disposed || generation != _generation) {
       // Teardown ran while the spawn was in flight and saw no process to reap.
-      try {
-        process.kill(signal: io.ProcessSignal.sigkill);
-      } on Object catch (error, stack) {
-        Log.w("[pi] failed to reap a process spawned during teardown", error, stack);
-      }
+      await _reapLateProcess(process);
       throw StateError(_disposed ? "PiRpcClient disposed during start" : "PiRpcClient reset during start");
     }
 
@@ -245,7 +239,7 @@ class PiRpcClient {
 
     final stdoutDone = Completer<void>();
 
-    _stdoutSubscription = process.stdout
+    process.stdout
         // One malformed byte must not tear down the unconditional stdout drain.
         .transform(const Utf8Decoder(allowMalformed: true))
         .transform(_lfRecords(maxRecordLength: null))
@@ -268,7 +262,7 @@ class PiRpcClient {
           cancelOnError: false,
         );
 
-    _stderrSubscription = process.stderr
+    process.stderr
         // A crashing child can emit non-UTF-8 bytes, and a strict decoder would
         // take down the diagnostic stream exactly when it matters most.
         .transform(const Utf8Decoder(allowMalformed: true))
@@ -544,34 +538,22 @@ class PiRpcClient {
       stopped = await _stopProcess(process: process, timeout: gracefulTimeout);
     }
 
-    if (!stopped) return;
+    // A confirmed process exit closes both pipes. Let their listeners receive
+    // onDone so buffered stdout is handled before processExit settles.
+    if (!stopped) Log.w("[pi] retaining pipe drains for a process that did not terminate");
+  }
 
-    Future<void>? stdoutCancellation;
+  Future<void> _reapLateProcess(PiProcessHandle process) async {
     try {
-      stdoutCancellation = _stdoutSubscription?.cancel();
+      if (!process.kill(signal: io.ProcessSignal.sigkill)) {
+        Log.w("[pi] late process rejected forced termination");
+        return;
+      }
+      await process.exitCode.timeout(const Duration(seconds: 5));
+    } on TimeoutException {
+      Log.w("[pi] late process did not exit after forced termination");
     } on Object catch (error, stack) {
-      Log.w("[pi] failed to cancel the stdout subscription", error, stack);
-    }
-    _stdoutSubscription = null;
-
-    Future<void>? stderrCancellation;
-    try {
-      stderrCancellation = _stderrSubscription?.cancel();
-    } on Object catch (error, stack) {
-      Log.w("[pi] failed to cancel the stderr subscription", error, stack);
-    }
-    _stderrSubscription = null;
-
-    // Isolate each step so one failure does not skip the rest.
-    try {
-      await stdoutCancellation;
-    } on Object catch (error, stack) {
-      Log.w("[pi] failed to cancel the stdout subscription", error, stack);
-    }
-    try {
-      await stderrCancellation;
-    } on Object catch (error, stack) {
-      Log.w("[pi] failed to cancel the stderr subscription", error, stack);
+      Log.w("[pi] failed to reap a process spawned during teardown", error, stack);
     }
   }
 
