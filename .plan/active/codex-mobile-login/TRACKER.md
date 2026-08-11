@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 1 merged; Step 2 ready for publication
+- **Series state:** Step 1 merged; Step 2 PR open
 - **Current step:** 2/8
 - **Implementation base:** `origin/main` at `ea1bc354` (includes Step 1)
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** Pending
-- **Next action:** Publish Step 2 and begin Step 3 locally
+- **Current PR:** [#827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827)
+- **Next action:** Monitor Step 2 review/CI and begin Step 3 locally
 
 ## Plan Review
 
@@ -27,7 +27,7 @@
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) merged |
-| [ ] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | Ready for publication |
+| [ ] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827) open |
 | [ ] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | Pending |
 | [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Pending |
 | [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Pending |
@@ -66,7 +66,9 @@
   `dart analyze --fatal-infos` reports no issues. `git diff --check` passes.
   The required architecture implementation review could not run because the
   review sub-agent failed twice before reading code with an internal task-store
-  schema error (`no such column: replacement_seq`).
+  schema error (`no such column: replacement_seq`). Committed as `3d71e4cf`,
+  rebased onto `origin/main`, pushed, and opened as
+  [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827).
 
 ## Findings And Plan Deltas
 
