@@ -9,14 +9,14 @@ void main() {
         ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
       );
       for (final level in PiThinkingLevel.values) {
-        expect(PiThinkingLevel.tryParse(level.wireValue), level);
+        expect(PiThinkingLevel.tryParse(value: level.wireValue), level);
       }
     });
 
     test("fails soft for absent and unknown levels", () {
-      expect(PiThinkingLevel.tryParse(null), isNull);
-      expect(PiThinkingLevel.tryParse("future"), isNull);
-      expect(PiThinkingLevel.tryParse(" high "), PiThinkingLevel.high);
+      expect(PiThinkingLevel.tryParse(value: null), isNull);
+      expect(PiThinkingLevel.tryParse(value: "future"), isNull);
+      expect(PiThinkingLevel.tryParse(value: " high "), PiThinkingLevel.high);
     });
   });
 }
