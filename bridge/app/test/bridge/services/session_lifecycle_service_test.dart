@@ -283,7 +283,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchForce, isTrue);
+      expect(worktreeService.lastDeleteBranchForce, isFalse);
     });
 
     test("failed branch deletion throws instead of reporting success", () async {

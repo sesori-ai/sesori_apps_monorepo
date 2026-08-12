@@ -287,7 +287,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchForce, isTrue);
+      expect(worktreeService.lastDeleteBranchForce, isFalse);
       expect(plugin.lastDeleteSessionId, equals("s4"));
       expect(await db.sessionDao.getSession(sessionId: "s4"), isNull);
       expect(operationLog, equals(["checkSafety", "removeWorktree", "deleteBranch", "pluginDelete"]));

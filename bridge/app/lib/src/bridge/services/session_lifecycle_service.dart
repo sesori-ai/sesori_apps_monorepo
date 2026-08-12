@@ -137,7 +137,7 @@ class SessionLifecycleService {
       final deleted = await _worktreeService.deleteBranch(
         projectId: projectId,
         branchName: branchName,
-        force: deleteWorktree || force,
+        force: force,
       );
       if (!deleted &&
           await _worktreeService.branchExists(
