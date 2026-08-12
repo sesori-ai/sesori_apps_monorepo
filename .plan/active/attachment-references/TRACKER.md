@@ -112,7 +112,8 @@
   Architecture implementation review approved the delivery, DI, scope, and
   compatibility seams with no blockers. After synchronization with
   `origin/main` at `ec290e14`, the final diff has 727 additions and 61 deletions
-  across 11 files (788 changed lines), within the 700-1,150 target.
+  across 11 files (788 changed lines), within the 700-1,150 target;
+  `git diff --check origin/main...HEAD` passes.
   Implementation was committed as `a693d3c5` and synchronized in `5f37e20e`.
 
 ## Findings And Plan Deltas
