@@ -215,7 +215,6 @@ void main() {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
           UnstagedChanges(),
-          BranchMismatch(expected: "session-003", actual: "main"),
         ],
       );
 
@@ -237,7 +236,6 @@ void main() {
         equals(
           const [
             CleanupIssue.unstagedChanges(),
-            CleanupIssue.branchMismatch(expected: "session-003", actual: "main"),
           ],
         ),
       );
@@ -245,7 +243,7 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
     });
 
-    test("dirty worktree with force skips safety check and succeeds", () async {
+    test("dirty worktree with force checks its branch and succeeds", () async {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [UnstagedChanges()],
       );
@@ -262,9 +260,27 @@ void main() {
       );
 
       expect(result, isA<CleanupSuccess>());
-      expect(worktreeService.checkCallCount, equals(0));
+      expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
+    });
+
+    test("deletes the active branch after removing a worktree", () async {
+      worktreeService.safetyResult = WorktreeSafe(activeBranch: "task-branch");
+
+      final result = await _cleanup(
+        service: service,
+        sessionRepository: sessionRepository,
+        sessionId: "s-active-branch",
+        worktreePath: "/repo/.worktrees/session-active-branch",
+        branchName: "session-active-branch",
+        deleteWorktree: true,
+        deleteBranch: true,
+        force: false,
+      );
+
+      expect(result, isA<CleanupSuccess>());
+      expect(worktreeService.lastDeletedBranch, equals("task-branch"));
     });
 
     test("delete worktree and branch runs both operations", () async {
@@ -674,6 +690,7 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
   bool? lastDeleteBranchForce;
+  String? lastDeletedBranch;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -691,7 +708,6 @@ class _FakeWorktreeService extends WorktreeService {
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async {
     checkCallCount++;
     return safetyResult;
@@ -717,6 +733,7 @@ class _FakeWorktreeService extends WorktreeService {
     required bool force,
   }) async {
     deleteBranchCallCount++;
+    lastDeletedBranch = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
   }

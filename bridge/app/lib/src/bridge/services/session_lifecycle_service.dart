@@ -105,19 +105,22 @@ class SessionLifecycleService {
       }
     }
 
-    if (deleteWorktree && !force) {
-      final safety = await _worktreeService.checkWorktreeSafety(
+    WorktreeSafetyResult? safety;
+    if (deleteWorktree) {
+      safety = await _worktreeService.checkWorktreeSafety(
         worktreePath: worktreePath,
-        expectedBranch: branchName,
       );
-      if (safety case WorktreeUnsafe(:final issues)) {
-        return CleanupRejected(
-          rejection: SessionCleanupRejection(
-            issues: _mapSafetyIssues(issues: issues),
-          ),
-        );
+      if (!force) {
+        if (safety case WorktreeUnsafe(:final issues)) {
+          return CleanupRejected(
+            rejection: SessionCleanupRejection(
+              issues: _mapSafetyIssues(issues: issues),
+            ),
+          );
+        }
       }
     }
+    final branchToDelete = safety?.activeBranch ?? branchName;
 
     if (deleteWorktree) {
       final removed = await _worktreeService.removeWorktree(
@@ -137,13 +140,13 @@ class SessionLifecycleService {
     if (deleteBranch) {
       final deleted = await _worktreeService.deleteBranch(
         projectId: projectId,
-        branchName: branchName,
+        branchName: branchToDelete,
         force: deleteWorktree || force,
       );
       if (!deleted &&
           await _worktreeService.branchExists(
             projectId: projectId,
-            branchName: branchName,
+            branchName: branchToDelete,
           )) {
         throw SessionCleanupFailedException(
           sessionId: sessionId,
@@ -320,10 +323,6 @@ class SessionLifecycleService {
         .map(
           (issue) => switch (issue) {
             UnstagedChanges() => const CleanupIssue.unstagedChanges(),
-            BranchMismatch(:final expected, :final actual) => CleanupIssue.branchMismatch(
-              expected: expected,
-              actual: actual,
-            ),
           },
         )
         .toList();

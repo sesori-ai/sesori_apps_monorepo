@@ -1,21 +1,25 @@
-sealed class WorktreeSafetyResult {}
+sealed class WorktreeSafetyResult {
+  String? get activeBranch;
+}
 
-class WorktreeSafe extends WorktreeSafetyResult {}
+class WorktreeSafe extends WorktreeSafetyResult {
+  @override
+  final String? activeBranch;
+
+  WorktreeSafe({this.activeBranch});
+}
 
 class WorktreeUnsafe extends WorktreeSafetyResult {
   final List<SafetyIssue> issues;
-  WorktreeUnsafe({required this.issues});
+  @override
+  final String? activeBranch;
+
+  WorktreeUnsafe({required this.issues, this.activeBranch});
 }
 
 sealed class SafetyIssue {}
 
 class UnstagedChanges extends SafetyIssue {}
-
-class BranchMismatch extends SafetyIssue {
-  final String expected;
-  final String actual;
-  BranchMismatch({required this.expected, required this.actual});
-}
 
 sealed class WorktreeResult {}
 

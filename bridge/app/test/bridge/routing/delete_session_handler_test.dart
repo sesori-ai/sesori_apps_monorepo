@@ -180,7 +180,6 @@ void main() {
       expect(response, isA<SuccessEmptyResponse>());
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.lastCheckWorktreePath, equals("/repo/.worktrees/session-002"));
-      expect(worktreeService.lastCheckExpectedBranch, equals("session-002"));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveProjectId, equals("/repo"));
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-002"));
@@ -305,7 +304,6 @@ void main() {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
           UnstagedChanges(),
-          BranchMismatch(expected: "session-005", actual: "main"),
         ],
       );
 
@@ -357,12 +355,12 @@ void main() {
       );
 
       expect(response, isA<SuccessEmptyResponse>());
-      expect(worktreeService.checkCallCount, equals(0));
+      expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
       expect(plugin.lastDeleteSessionId, equals("s6"));
       expect(await db.sessionDao.getSession(sessionId: "s6"), isNull);
-      expect(operationLog, equals(["removeWorktree", "pluginDelete"]));
+      expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete"]));
     });
 
     test("7) null worktreePath: skips git ops", () async {
@@ -560,7 +558,6 @@ class _FakeWorktreeService extends WorktreeService {
   int deleteBranchCallCount = 0;
 
   String? lastCheckWorktreePath;
-  String? lastCheckExpectedBranch;
   String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
@@ -584,12 +581,10 @@ class _FakeWorktreeService extends WorktreeService {
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async {
     checkCallCount++;
     operationLog.add("checkSafety");
     lastCheckWorktreePath = worktreePath;
-    lastCheckExpectedBranch = expectedBranch;
     return safetyResult;
   }
 
