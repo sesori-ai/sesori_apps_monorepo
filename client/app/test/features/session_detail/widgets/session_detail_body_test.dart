@@ -287,6 +287,8 @@ void main() {
         text: "Cold-start prompt",
         inputMode: ComposerInputMode.typed,
         attachments: [],
+        agent: "coder",
+        agentModel: null,
       ),
     );
     when(() => cubit.state).thenReturn(state);
@@ -337,6 +339,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("No messages yet"), findsOneWidget);
+  });
+
+  testWidgets("an empty message envelope keeps the first-prompt composer hint", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      messages: const [
+        MessageWithParts(
+          info: Message.user(
+            id: "empty-user",
+            sessionID: "session-1",
+            agent: null,
+            time: null,
+          ),
+          parts: [],
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: ChatInputMode.textFirst));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Ask anything..."), findsOneWidget);
+    expect(find.text("Follow up..."), findsNothing);
   });
 
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
@@ -2429,6 +2455,8 @@ void main() {
           attachments: [
             ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null),
           ],
+          agent: "coder",
+          agentModel: null,
         ),
       ],
     );
@@ -2447,6 +2475,8 @@ void main() {
         text: "Cold-start prompt",
         inputMode: ComposerInputMode.typed,
         attachments: [],
+        agent: "coder",
+        agentModel: null,
       ),
     );
     when(() => cubit.state).thenReturn(state);

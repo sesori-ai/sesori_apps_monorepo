@@ -228,7 +228,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                         // something, so the composer should rest as a follow-up
                         // field even before the first message lands in the list.
                         hasMessages:
-                            state.messages.isNotEmpty ||
+                            state.hasRenderableMessages ||
                             state.sendingSubmission != null ||
                             state.queuedMessages.isNotEmpty,
                         attachmentsSupported: state.supportsPromptAttachments,

@@ -30,13 +30,16 @@ defaults and queued client sends coherent.
   recovery output from the interrupted backend process.
 - While the session-detail cubit remains alive, queued client sends preserve order,
   survive a transient disconnection, can be cancelled individually, and are never
-  dropped. A submitted prompt remains visible while the bridge is accepting it,
-  including during a cold backend startup, and a failed acceptance returns it to
-  the head of the queue. A turn started on one client is visible to every other
-  client of that bridge.
+  dropped. Each queued send retains the agent, model, and variant selected when
+  it was submitted. A submitted prompt remains visible while the bridge is
+  accepting it, including during a cold backend startup, and a failed acceptance
+  returns it to the head of the queue. A turn started on one client is visible to
+  every other client of that bridge.
 - Live message envelopes render in transcript timestamp order even when events
-  arrive out of order. Finalized parts that arrive before their envelope are
-  retained and reconciled without showing an empty user bubble.
+  arrive out of order; when a user prompt and assistant response share a
+  timestamp, the prompt remains first. Finalized parts that arrive before their
+  envelope are retained and reconciled without showing an empty user bubble or
+  switching the composer to follow-up wording.
 
 ## Regression Levels
 

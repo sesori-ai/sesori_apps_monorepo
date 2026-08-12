@@ -1170,7 +1170,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       final existing = messages[index].info;
       final existingCreated = existing.time?.created;
       if (existingCreated == null) continue;
-      if (existingCreated > created || (existingCreated == created && existing.id.compareTo(message.id) > 0)) {
+      if (existingCreated > created ||
+          (existingCreated == created && message is MessageUser && existing is MessageAssistant)) {
         return index;
       }
     }
@@ -1439,9 +1440,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
+    final selectedAgent = current is SessionDetailLoaded ? current.selectedAgent : null;
+    final selectedAgentModel = current is SessionDetailLoaded ? current.selectedAgentModel : null;
     final submission = normalizedCommand == null
-        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
-        : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
+        ? QueuedSessionSubmission.text(
+            text: trimmed,
+            inputMode: inputMode,
+            attachments: attachments,
+            agent: selectedAgent,
+            agentModel: selectedAgentModel,
+          )
+        : QueuedSessionSubmission.command(
+            text: trimmed,
+            command: normalizedCommand,
+            agent: selectedAgent,
+            agentModel: selectedAgentModel,
+          );
     _promptQueue.enqueue(submission);
     _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
     if (_isConnected && current is SessionDetailLoaded) await _drainQueuedMessages();
@@ -1496,9 +1510,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         sessionId: _sessionId,
         text: submission.text,
         attachments: submission.attachments,
-        agent: current.selectedAgent,
-        model: _agentModelToPromptModel(current.selectedAgentModel),
-        variant: switch (current.selectedAgentModel?.variant) {
+        agent: submission.agent,
+        model: _agentModelToPromptModel(submission.agentModel),
+        variant: switch (submission.agentModel?.variant) {
           null => null,
           final variant => SessionVariant(id: variant),
         },

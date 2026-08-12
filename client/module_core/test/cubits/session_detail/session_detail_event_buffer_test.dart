@@ -1415,6 +1415,68 @@ void main() {
       );
     });
 
+    test("keeps a same-time user envelope before its assistant response", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      const assistant = MessageWithParts(
+        info: Message.assistant(
+          id: "a-assistant",
+          sessionID: _sessionId,
+          agent: "build",
+          modelID: "gpt-4",
+          providerID: "openai",
+          time: MessageTime(created: 100, completed: null),
+        ),
+        parts: <MessagePart>[],
+      );
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[assistant],
+            olderMessagesCursor: null,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "z-user",
+            sessionID: _sessionId,
+            agent: "build",
+            time: MessageTime(created: 100, completed: null),
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id),
+        ["z-user", "a-assistant"],
+      );
+    });
+
     test("does not buffer irrelevant global events (PTY, file watcher, etc.)", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final completer = Completer<SessionDetailLoadResult>();

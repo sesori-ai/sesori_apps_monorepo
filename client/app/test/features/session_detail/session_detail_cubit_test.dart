@@ -2143,6 +2143,99 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
+    test("a queued prompt keeps the agent and model selected when it was submitted", () async {
+      final firstSendStarted = Completer<void>();
+      final allowFirstSendToComplete = Completer<void>();
+
+      when(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          Agents(
+            agents: [
+              testAgentInfo(),
+              testAgentInfo().copyWith(
+                name: "reviewer",
+                model: const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: "fast"),
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.sendMessage(
+          attachments: const [],
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        if (invocation.namedArguments[#text] == "first") {
+          firstSendStarted.complete();
+          await allowFirstSendToComplete.future;
+        }
+        return ApiResponse<void>.success(null);
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      unawaited(
+        cubit.sendMessage(
+          attachments: const [],
+          text: "first",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+        ),
+      );
+      await firstSendStarted.future;
+      await cubit.sendMessage(
+        attachments: const [],
+        text: "second",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
+      cubit.selectAgent("reviewer");
+
+      allowFirstSendToComplete.complete();
+      await _awaitQueuedMessages(cubit, isEmpty);
+
+      verify(
+        () => mockSessionService.sendMessage(
+          attachments: const [],
+          sessionId: sessionId,
+          text: "second",
+          agent: "coder",
+          providerID: "anthropic",
+          modelID: "claude-3-5-sonnet",
+          variant: null,
+          command: null,
+        ),
+      ).called(1);
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "multiple queued messages drain sequentially on reconnection",
       build: () => SessionDetailCubit(
