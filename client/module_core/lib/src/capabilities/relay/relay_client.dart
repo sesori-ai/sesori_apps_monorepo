@@ -390,7 +390,7 @@ class RelayClient {
     try {
       await _sendEncryptedMessage(request);
 
-      return completer.future.timeout(
+      return await completer.future.timeout(
         _requestTimeout,
         onTimeout: () {
           _pendingRequests.remove(request.id);

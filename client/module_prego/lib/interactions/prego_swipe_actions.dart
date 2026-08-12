@@ -427,7 +427,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
       _controller.value = value;
       return;
     }
-    unawaited(_controller.animateTo(value, duration: _settleDuration, curve: Curves.easeOutCubic));
+    _controller.animateTo(value, duration: _settleDuration, curve: Curves.easeOutCubic);
   }
 
   /// Thaws the frozen strips once the close settle lands, so the very next
