@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Steps 1-6 merged; Step 7 ready to publish
+- **Series state:** Steps 1-6 merged; Step 7 PR open
 - **Current step:** 7/8
 - **Implementation base:** Step 6 merge commit `b799ea48`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** Pending Step 7 publication
-- **Next action:** Publish Step 7; complete live smoke with explicit user interaction
+- **Current PR:** [#841](https://github.com/sesori-ai/sesori_apps_monorepo/pull/841)
+- **Next action:** Monitor Step 7; complete live smoke with explicit user interaction
 
 ## Plan Review
 
@@ -32,7 +32,7 @@
 | [x] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) merged |
 | [x] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) merged |
 | [x] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | [PR #837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837) merged |
-| [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Ready to publish; live smoke pending user interaction |
+| [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | [PR #841](https://github.com/sesori-ai/sesori_apps_monorepo/pull/841) open; live smoke pending user interaction |
 | [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | Pending |
 
 ## Locked Decisions
