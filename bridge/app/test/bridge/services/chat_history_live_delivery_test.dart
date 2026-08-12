@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
+import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
@@ -113,6 +114,30 @@ void main() {
         jsonEncode(shapes.storedReferencePart.toJson()),
         isNot(contains(base64Encode(bytes))),
         reason: "a reference shape never carries the original bytes",
+      );
+    });
+
+    test("retains a larger original while keeping the legacy live shape bounded", () async {
+      final history = createTestChatHistory();
+      final bytes = Uint8List(maxInlineMessageAttachmentBytes + 1);
+
+      final captured = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "large",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(bytes),
+            filename: "large.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
+
+      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(
+        captured.storedReferencePart.attachment,
+        isA<MessageAttachmentStoredImage>().having((image) => image.byteLength, "byteLength", bytes.length),
       );
     });
 
@@ -267,6 +292,106 @@ void main() {
       expect(second.storedReferencePart.attachment, isA<MessageAttachmentStoredImage>());
     });
 
+    test("retention budgeting spans separately delivered image parts of one message", () async {
+      final history = createTestChatHistory();
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      for (var index = 0; index < 2; index++) {
+        await history.database
+            .into(history.database.historyPartsTable)
+            .insert(
+              HistoryPartsTableCompanion.insert(
+                sessionId: "ses_a",
+                messageId: "m1",
+                partId: "stored-$index",
+                orderIndex: index,
+                partJson: jsonEncode(
+                  _part(
+                      id: "stored-$index",
+                      attachment: const MessageAttachment.metadata(mime: "image/png", filename: null),
+                    ).toJson()
+                    ..["attachment"] = {
+                      "source": "stored_file",
+                      "mime": "image/png",
+                      "sha256": "${index + 1}" * 64,
+                      "byteLength": 20 * 1024 * 1024,
+                    },
+                ),
+                updatedAt: 1,
+              ),
+            );
+      }
+
+      final captured = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "overflow",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List(11 * 1024 * 1024)),
+            filename: "overflow.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
+
+      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(captured.storedReferencePart.attachment, isA<MessageAttachmentMetadata>());
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: ["m1"]);
+      expect(rows.last.partJson, isNot(contains("stored_file")));
+    });
+
+    test("updating an earlier image accounts for later stored siblings", () async {
+      final history = createTestChatHistory();
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      for (var index = 0; index < 3; index++) {
+        await history.database
+            .into(history.database.historyPartsTable)
+            .insert(
+              HistoryPartsTableCompanion.insert(
+                sessionId: "ses_a",
+                messageId: "m1",
+                partId: "stored-$index",
+                orderIndex: index,
+                partJson: jsonEncode(
+                  _part(
+                      id: "stored-$index",
+                      attachment: const MessageAttachment.metadata(mime: "image/png", filename: null),
+                    ).toJson()
+                    ..["attachment"] = {
+                      "source": "stored_file",
+                      "mime": "image/png",
+                      "sha256": "${index + 1}" * 64,
+                      "byteLength": 20 * 1024 * 1024,
+                    },
+                ),
+                updatedAt: 1,
+              ),
+            );
+      }
+
+      final captured = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "stored-0",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List(20 * 1024 * 1024)),
+            filename: "updated.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
+
+      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(captured.storedReferencePart.attachment, isA<MessageAttachmentMetadata>());
+    });
+
     test("a failed write returns unavailable and drops the synced marker", () async {
       final history = createTestChatHistory(sessionRepository: _BackfillingSessionRepository());
       // A synced session makes the cleared marker observable rather than
@@ -303,6 +428,35 @@ void main() {
         (await history.database.chatHistoryDao.getParts(sessionId: "ses_a")).map((row) => row.partId),
         isNot(contains("p1")),
       );
+    });
+
+    test("a failed large-image write returns a bounded metadata fallback", () async {
+      final history = createTestChatHistory();
+      final service = ChatHistoryService(
+        chatHistoryRepository: _FailingWriteRepository(
+          chatHistoryDao: history.database.chatHistoryDao,
+          attachmentSpillStorage: history.spillStorage,
+          archivedSessionStorage: history.archivedStorage,
+        ),
+        sessionRepository: _BackfillingSessionRepository(),
+        attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+        bridgeIdProvider: const _BridgeIdProvider("br_test1234"),
+      );
+
+      final captured = await service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "large",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List(maxInlineMessageAttachmentBytes + 1)),
+            filename: "large.png",
+          ),
+        ),
+      ) as CapturedPartUnavailable;
+
+      expect(captured.inlineFallbackPart.attachment, isA<MessageAttachmentMetadata>());
     });
   });
 }

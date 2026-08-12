@@ -10,6 +10,7 @@ import "package:opencode_plugin/src/models/openapi/file_source.g.dart";
 import "package:opencode_plugin/src/models/openapi/tool_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/tool_state_completed.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";
 
 FilePart _filePart({
@@ -270,7 +271,7 @@ void main() {
     );
   });
 
-  test("bounds total inline bytes in completed tool attachments", () {
+  test("retains tool image bytes beyond the legacy inline-wire budget", () {
     final threeMegabyteImage = base64Encode(Uint8List(3 * 1024 * 1024));
     final part = mapper.mapPart(
       ToolPart(
@@ -305,9 +306,50 @@ void main() {
     );
 
     expect(part.state?.attachments.first, isA<PluginMessageAttachmentInlineImage>());
-    expect(
-      part.state?.attachments.last,
-      equals(const PluginMessageAttachment.metadata(mime: "image/png", filename: "second.png")),
+    expect(part.state?.attachments.last, isA<PluginMessageAttachmentInlineImage>());
+  });
+
+  test("enforces transcript image per-image and aggregate retention limits", () {
+    final seventeenMiB = base64Encode(Uint8List(17 * 1024 * 1024));
+    final aggregateDataUrl = "data:image/png;base64,$seventeenMiB";
+    final aggregate = mapper.mapPart(
+      ToolPart(
+        id: "part-tool",
+        sessionID: "session-1",
+        messageID: "message-1",
+        callID: "call-1",
+        tool: "browser",
+        state: ToolStateCompleted(
+          input: const {},
+          output: "done",
+          title: "Screenshots",
+          metadata: const {},
+          time: const ToolStateCompletedTime(start: 0, end: 1, compacted: null),
+          attachments: [
+            for (var index = 0; index < 3; index++)
+              _filePart(
+                url: aggregateDataUrl,
+                mime: "image/png",
+                filename: "image-$index.png",
+                source: null,
+              ),
+          ],
+        ),
+        metadata: null,
+      ),
     );
+    final oversized = mapper.mapPart(
+      _filePart(
+        url: "data:image/png;base64,${base64Encode(Uint8List(maxTranscriptImageBytes + 1))}",
+        mime: "image/png",
+        filename: "oversized.png",
+        source: null,
+      ),
+    );
+
+    expect(aggregate.state!.attachments[0], isA<PluginMessageAttachmentInlineImage>());
+    expect(aggregate.state!.attachments[1], isA<PluginMessageAttachmentInlineImage>());
+    expect(aggregate.state!.attachments[2], isA<PluginMessageAttachmentMetadata>());
+    expect(oversized.attachment, isA<PluginMessageAttachmentMetadata>());
   });
 }

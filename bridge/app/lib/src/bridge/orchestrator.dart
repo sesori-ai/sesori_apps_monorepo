@@ -1524,11 +1524,11 @@ class OrchestratorSession._({
         inlineEvent: _mapper.buildMessagePartEvent(part: inlinePart),
         storedReferenceEvent: _mapper.buildMessagePartEvent(part: storedReferencePart),
       ),
-      // The write did not land, so no identifier is addressable. Every
-      // subscriber receives the mapped inline shape it would have received
-      // before references existed.
-      CapturedPartUnavailable() => SseEventDelivery.uniform(
-        event: _mapper.buildMessagePartEvent(part: sharedPart),
+      // The write did not land, so no identifier is addressable. Metadata keeps
+      // every subscriber within the released aggregate wire budget without
+      // relying on unavailable stored sibling state.
+      CapturedPartUnavailable(:final inlineFallbackPart) => SseEventDelivery.uniform(
+        event: _mapper.buildMessagePartEvent(part: inlineFallbackPart),
       ),
     };
   }

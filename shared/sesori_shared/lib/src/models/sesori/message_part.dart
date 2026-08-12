@@ -12,9 +12,26 @@ part "message_part.g.dart";
 /// transport, so keeping this bounded protects both relay frames and clients.
 const maxInlineMessageAttachmentBytes = 5 * 1024 * 1024;
 
+/// Maximum decoded size retained for one backend-produced transcript image.
+const maxTranscriptImageBytes = 20 * 1024 * 1024;
+
+/// Maximum decoded image bytes retained for one logical transcript collection.
+const maxTranscriptImageCollectionBytes = 50 * 1024 * 1024;
+
+/// Maximum backend-produced image candidates retained in one collection.
+const maxTranscriptImageCandidates = 4;
+
 /// Whether [base64Length] can decode within [maxInlineMessageAttachmentBytes].
 bool isInlineMessageAttachmentWithinSizeLimit({required int base64Length}) {
   return conservativeDecodedBase64Length(base64Length: base64Length) <= maxInlineMessageAttachmentBytes;
+}
+
+/// Whether an unnormalized base64 payload can decode within the transcript
+/// image limit. Callers still verify exact decoded size after normalization.
+bool isTranscriptImageBase64LengthWithinSizeLimit({required int base64Length}) {
+  if (base64Length < 0) return false;
+  const maxEncodedLength = ((maxTranscriptImageBytes + 2) ~/ 3) * 4;
+  return base64Length <= maxEncodedLength;
 }
 
 /// Conservative decoded size for a base64 payload when padding is unknown.

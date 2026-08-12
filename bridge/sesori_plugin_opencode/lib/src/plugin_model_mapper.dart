@@ -15,11 +15,11 @@ import "question_info_mapper.dart";
 
 class const PluginModelMapper({
   required final MessagePartMapper _messagePartMapper,
-  required final int _maxInlineAttachmentBytes,
+  required final int _maxTranscriptAttachmentBytes,
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper(),
   final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper(),
 }) {
-  this : assert(_maxInlineAttachmentBytes >= 0);
+  this : assert(_maxTranscriptAttachmentBytes >= 0);
 
   PluginSession mapSession(Session session, {required String projectID}) {
     final time = session.time;
@@ -129,7 +129,7 @@ class const PluginModelMapper({
       info: pluginInfo,
       parts: _messagePartMapper.applyAttachmentBudget(
         parts: parts,
-        maxInlineAttachmentBytes: _maxInlineAttachmentBytes,
+        maxAttachmentBytes: _maxTranscriptAttachmentBytes,
       ),
     );
   }

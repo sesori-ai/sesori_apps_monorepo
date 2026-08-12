@@ -11,7 +11,7 @@ void main() {
   test("bounds total inline attachment bytes per message", () {
     const mapper = PluginModelMapper(
       messagePartMapper: MessagePartMapper(),
-      maxInlineAttachmentBytes: 5,
+      maxTranscriptAttachmentBytes: 5,
     );
     final mapped = mapper.mapMessageWithParts(
       SessionMessagesResponseItem(

@@ -6,7 +6,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
-    show isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
+    show isTranscriptImageBase64LengthWithinSizeLimit, maxTranscriptImageBytes;
 
 /// Reads Cursor `cursor/generate_image` host paths from the local filesystem
 /// and maps the bytes into the same bounded inline-image content blocks used
@@ -31,17 +31,17 @@ final class const CursorGeneratedImageReader() {
     try {
       // Bounded read from a single opened descriptor: a file that grows after
       // any size check (cursor-agent may still be writing it) can never pull
-      // more than the inline budget + 1 byte into memory.
+      // more than the transcript retention limit + 1 byte into memory.
       final raf = File(normalizedPath).openSync();
       final Uint8List bytes;
       try {
-        bytes = raf.readSync(maxInlineMessageAttachmentBytes + 1);
+        bytes = raf.readSync(maxTranscriptImageBytes + 1);
       } finally {
         raf.closeSync();
       }
 
       final mime = _mimeFromBytes(bytes: bytes);
-      if (bytes.length > maxInlineMessageAttachmentBytes) {
+      if (bytes.length > maxTranscriptImageBytes) {
         return [
           AcpContentMapper.metadataImageBlock(
             mime: mime ?? _mimeHintFromBasename(basename: basename),
@@ -64,9 +64,7 @@ final class const CursorGeneratedImageReader() {
       }
 
       final base64 = base64Encode(bytes);
-      // The transport bound applies to the encoded payload, not the raw bytes
-      // (same policy as the standard ACP image path).
-      if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64.length)) {
+      if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: base64.length)) {
         return [
           AcpContentMapper.metadataImageBlock(
             mime: mime,

@@ -795,30 +795,24 @@ void main() {
       }
     });
 
-    test("clean worktree + correct branch: returns WorktreeSafe", () async {
+    test("clean worktree: returns WorktreeSafe", () async {
       // git status --porcelain → empty (clean)
       processRunner.enqueue(result: _ok(stdout: ""));
-      // git rev-parse --abbrev-ref HEAD → "session-001"
-      processRunner.enqueue(result: _ok(stdout: "session-001\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
-        expectedBranch: "session-001",
       );
 
       expect(result, isA<WorktreeSafe>());
-      expect(processRunner.invocations, hasLength(2));
+      expect(processRunner.invocations, hasLength(1));
     });
 
     test("dirty worktree: returns WorktreeUnsafe with UnstagedChanges", () async {
       // git status --porcelain → non-empty (dirty)
       processRunner.enqueue(result: _ok(stdout: "M file.txt\n"));
-      // git rev-parse --abbrev-ref HEAD → "session-001"
-      processRunner.enqueue(result: _ok(stdout: "session-001\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
-        expectedBranch: "session-001",
       );
 
       expect(result, isA<WorktreeUnsafe>());
@@ -827,43 +821,29 @@ void main() {
       expect(unsafe.issues.first, isA<UnstagedChanges>());
     });
 
-    test("wrong branch: returns WorktreeUnsafe with BranchMismatch", () async {
+    test("different branch remains safe", () async {
       // git status --porcelain → empty (clean)
       processRunner.enqueue(result: _ok(stdout: ""));
-      // git rev-parse --abbrev-ref HEAD → "main" (wrong branch)
-      processRunner.enqueue(result: _ok(stdout: "main\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
-        expectedBranch: "session-001",
+      );
+
+      expect(result, isA<WorktreeSafe>());
+    });
+
+    test("dirty worktree on a different branch returns UnstagedChanges", () async {
+      // git status --porcelain → non-empty (dirty)
+      processRunner.enqueue(result: _ok(stdout: "M file.txt\nA new.dart\n"));
+
+      final result = await service.checkWorktreeSafety(
+        worktreePath: tempDir.path,
       );
 
       expect(result, isA<WorktreeUnsafe>());
       final unsafe = result as WorktreeUnsafe;
       expect(unsafe.issues, hasLength(1));
-      final issue = unsafe.issues.first;
-      expect(issue, isA<BranchMismatch>());
-      final mismatch = issue as BranchMismatch;
-      expect(mismatch.expected, equals("session-001"));
-      expect(mismatch.actual, equals("main"));
-    });
-
-    test("dirty + wrong branch: returns WorktreeUnsafe with both issues", () async {
-      // git status --porcelain → non-empty (dirty)
-      processRunner.enqueue(result: _ok(stdout: "M file.txt\nA new.dart\n"));
-      // git rev-parse --abbrev-ref HEAD → "main" (wrong branch)
-      processRunner.enqueue(result: _ok(stdout: "main\n"));
-
-      final result = await service.checkWorktreeSafety(
-        worktreePath: tempDir.path,
-        expectedBranch: "session-001",
-      );
-
-      expect(result, isA<WorktreeUnsafe>());
-      final unsafe = result as WorktreeUnsafe;
-      expect(unsafe.issues, hasLength(2));
       expect(unsafe.issues.whereType<UnstagedChanges>(), hasLength(1));
-      expect(unsafe.issues.whereType<BranchMismatch>(), hasLength(1));
     });
 
     test("non-existent path: returns WorktreeSafe (already cleaned up), no git commands called", () async {
@@ -871,7 +851,6 @@ void main() {
 
       final result = await service.checkWorktreeSafety(
         worktreePath: nonExistentPath,
-        expectedBranch: "session-001",
       );
 
       expect(result, isA<WorktreeSafe>());

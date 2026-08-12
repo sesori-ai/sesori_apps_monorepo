@@ -180,7 +180,6 @@ void main() {
       expect(response, isA<SuccessEmptyResponse>());
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.lastCheckWorktreePath, equals("/repo/.worktrees/session-002"));
-      expect(worktreeService.lastCheckExpectedBranch, equals("session-002"));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveProjectId, equals("/repo"));
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-002"));
@@ -288,7 +287,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchForce, isTrue);
+      expect(worktreeService.lastDeleteBranchForce, isFalse);
       expect(plugin.lastDeleteSessionId, equals("s4"));
       expect(await db.sessionDao.getSession(sessionId: "s4"), isNull);
       expect(operationLog, equals(["checkSafety", "removeWorktree", "deleteBranch", "pluginDelete"]));
@@ -305,7 +304,6 @@ void main() {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
           UnstagedChanges(),
-          BranchMismatch(expected: "session-005", actual: "main"),
         ],
       );
 
@@ -560,7 +558,6 @@ class _FakeWorktreeService({required AppDatabase database, required final List<S
   int deleteBranchCallCount = 0;
 
   String? lastCheckWorktreePath;
-  String? lastCheckExpectedBranch;
   String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
@@ -584,12 +581,10 @@ class _FakeWorktreeService({required AppDatabase database, required final List<S
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async {
     checkCallCount++;
     operationLog.add("checkSafety");
     lastCheckWorktreePath = worktreePath;
-    lastCheckExpectedBranch = expectedBranch;
     return safetyResult;
   }
 

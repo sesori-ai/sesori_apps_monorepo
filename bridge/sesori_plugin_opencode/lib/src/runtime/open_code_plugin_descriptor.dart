@@ -304,7 +304,7 @@ class const OpenCodePluginDescriptor({
         manifest: manifest,
         versionValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
+          manifest: manifest,
           probeTimeout: _versionProbeTimeout,
         ),
         installService: RuntimeInstallService(
@@ -348,7 +348,7 @@ class const OpenCodePluginDescriptor({
     );
     final versionValidator = RuntimeVersionValidator(
       commandExecutor: executor,
-      runtimeId: manifest.runtimeId,
+      manifest: manifest,
       probeTimeout: _versionProbeTimeout,
     );
 
@@ -359,6 +359,16 @@ class const OpenCodePluginDescriptor({
         environment: environment,
       );
       return managedVersion != null && managedVersion.compareTo(manifest.bundledVersion) == 0;
+    }
+
+    /// What to tell the user when no usable runtime was found and Sesori can
+    /// install one: a superseded managed install needs updating, anything else
+    /// needs a first install.
+    String missingRuntimeHint() {
+      const inventory = ManagedRuntimeInventory(manifest: manifest);
+      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+          ? "This bridge needs a newer OpenCode. Install it from Sesori to update the managed runtime."
+          : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
 
     CommandResult? result;
@@ -376,7 +386,7 @@ class const OpenCodePluginDescriptor({
         return PluginSetupRuntimeMissing(
           actionHint: hasExplicitBin
               ? "Fix the configured OpenCode binary path, then restart the bridge."
-              : "Install OpenCode locally, then retry setup detection.",
+              : missingRuntimeHint(),
         );
       }
     } on TimeoutException {
@@ -399,9 +409,7 @@ class const OpenCodePluginDescriptor({
       if (result!.exitCode != 0) {
         if (!await managedRuntimeIsReady()) {
           if (!hasExplicitBin) {
-            return const PluginSetupRuntimeMissing(
-              actionHint: "Install OpenCode locally, then retry setup detection.",
-            );
+            return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
           }
           return const PluginSetupUnknown(
             actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
@@ -418,9 +426,7 @@ class const OpenCodePluginDescriptor({
         } else if (version.compareTo(manifest.minPathVersion) < 0) {
           if (!await managedRuntimeIsReady()) {
             if (!hasExplicitBin) {
-              return const PluginSetupRuntimeMissing(
-                actionHint: "Update OpenCode locally, then retry setup detection.",
-              );
+              return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
             }
             return const PluginSetupUnavailable(
               actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
@@ -472,7 +478,7 @@ class const OpenCodePluginDescriptor({
       manifest: manifest,
       versionValidator: RuntimeVersionValidator(
         commandExecutor: commandExecutor,
-        runtimeId: manifest.runtimeId,
+        manifest: manifest,
         probeTimeout: _versionProbeTimeout,
       ),
       // OpenCode has no desktop app bundling a CLI.

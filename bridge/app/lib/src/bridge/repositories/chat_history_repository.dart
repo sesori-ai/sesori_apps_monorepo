@@ -174,16 +174,85 @@ class ChatHistoryRepository({
     final orderIndex =
         existingOrder ??
         (await _chatHistoryDao.getMaxPartOrderIndex(sessionId: sessionId, messageId: part.messageID) ?? -1) + 1;
+    final boundedPart = _hasInlineImage(part: part)
+        ? await _boundPartForTranscriptRetention(sessionId: sessionId, part: part, orderIndex: orderIndex)
+        : part;
     await _chatHistoryDao.upsertPart(
       row: HistoryPartsTableData(
         sessionId: sessionId,
-        messageId: part.messageID,
-        partId: part.id,
+        messageId: boundedPart.messageID,
+        partId: boundedPart.id,
         orderIndex: orderIndex,
-        partJson: await _encodePart(storageScope: storageScope, part: part),
+        partJson: await _encodePart(storageScope: storageScope, part: boundedPart),
         updatedAt: updatedAt,
       ),
     );
+  }
+
+  Future<MessagePart> _boundPartForTranscriptRetention({
+    required String sessionId,
+    required MessagePart part,
+    required int orderIndex,
+  }) async {
+    final rows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: [part.messageID]);
+    var remainingBytes = maxTranscriptImageCollectionBytes;
+    for (final row in rows) {
+      if (row.orderIndex == orderIndex) continue;
+      remainingBytes -= _storedImageBytes(partJson: row.partJson);
+    }
+
+    MessageAttachment bound({required MessageAttachment attachment}) {
+      if (attachment case MessageAttachmentInlineImage(:final mime, :final base64, :final filename)) {
+        final decodedBytes = decodedBase64Length(base64Data: base64);
+        if (decodedBytes > remainingBytes) {
+          return MessageAttachment.metadata(mime: mime, filename: filename);
+        }
+        remainingBytes -= decodedBytes;
+      }
+      return attachment;
+    }
+
+    final state = part.state;
+    return part.copyWith(
+      attachment: part.attachment == null ? null : bound(attachment: part.attachment!),
+      state: state == null
+          ? null
+          : state.copyWith(
+              attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+            ),
+    );
+  }
+
+  bool _hasInlineImage({required MessagePart part}) =>
+      part.attachment is MessageAttachmentInlineImage ||
+      (part.state?.attachments.any((attachment) => attachment is MessageAttachmentInlineImage) ?? false);
+
+  int _storedImageBytes({required String partJson}) {
+    final json = jsonDecodeMap(partJson);
+    var total = 0;
+
+    void add(Map<String, dynamic> attachment) {
+      if (attachment["source"] != "stored_file") return;
+      final byteLength = attachment["byteLength"];
+      if (byteLength is int && byteLength > 0) total += byteLength;
+    }
+
+    final Object? attachmentValue = json["attachment"];
+    if (attachmentValue case final Map<dynamic, dynamic> attachment) {
+      add(Map<String, dynamic>.from(attachment));
+    }
+    final Object? stateValue = json["state"];
+    if (stateValue case final Map<dynamic, dynamic> state) {
+      final typedState = Map<String, dynamic>.from(state);
+      final Object? attachmentsValue = typedState["attachments"];
+      if (attachmentsValue case final List<dynamic> attachments) {
+        for (final attachment in attachments) {
+          final Object? attachmentValue = attachment;
+          if (attachmentValue is Map<dynamic, dynamic>) add(Map<String, dynamic>.from(attachmentValue));
+        }
+      }
+    }
+    return total;
   }
 
   /// One stored part projected for delivery, or null when the row is gone.

@@ -3,6 +3,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
+import "user_message_card.dart";
 
 sealed class const QueuedMessageBubblePresentation() {
   const factory sending() = SendingMessageBubblePresentation;
@@ -23,102 +24,131 @@ class const QueuedMessageBubble({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final isSending = presentation is SendingMessageBubblePresentation;
-
-    return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        crossAxisAlignment: .start,
-        children: [
-          const Spacer(),
-          Flexible(
-            flex: 3,
-            child: Container(
-              decoration: BoxDecoration(
-                color: prego.colors.bgSuccessSecondary.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.3),
-                  style: BorderStyle.solid,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: .end,
-                children: [
-                  Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 14, 6),
-                    child: Column(
-                      crossAxisAlignment: .end,
-                      children: [
-                        Row(
-                          mainAxisSize: .min,
-                          children: [
-                            if (isSending)
-                              SizedBox.square(
-                                dimension: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.7),
-                                ),
-                              )
-                            else
-                              Icon(
-                                submission.isCommand ? Icons.terminal : Icons.schedule,
-                                size: 14,
-                                color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.7),
-                              ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isSending
-                                  ? loc.sessionDetailSendingMessage
-                                  : submission.isCommand
-                                  ? loc.sessionDetailQueuedCommand
-                                  : loc.sessionDetailQueuedMessage,
-                              style: prego.textTheme.textXs.medium.copyWith(
-                                color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.7),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          submission.displayText ??
-                              loc.sessionDetailQueuedAttachmentCount(submission.attachments.length),
-                          style: prego.textTheme.textSm.regular.copyWith(
-                            color: prego.colors.fgSuccessPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (presentation case PendingMessageBubblePresentation(:final onCancel))
-                    Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 6),
-                      child: Row(
-                        mainAxisSize: .min,
-                        children: [
-                          TextButton.icon(
-                            onPressed: onCancel,
-                            icon: const Icon(Icons.close, size: 14),
-                            label: Text(loc.sessionDetailCancelQueued),
-                            style: TextButton.styleFrom(
-                              foregroundColor: prego.colors.borderPrimary,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              minimumSize: .zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              textStyle: prego.textTheme.textXs.medium,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+    final reducedMotion = context.isReducedMotion;
+    final duration = reducedMotion ? Duration.zero : const Duration(milliseconds: 240);
+    final isPending = presentation is PendingMessageBubblePresentation;
+    final status = KeyedSubtree(
+      key: ValueKey(presentation.runtimeType),
+      child: switch (presentation) {
+        SendingMessageBubblePresentation() => _status(
+          prego: prego,
+          icon: ExcludeSemantics(
+            child: SizedBox.square(
+              dimension: 14,
+              child: CircularProgressIndicator(
+                value: reducedMotion ? 0.75 : null,
+                strokeWidth: 1.5,
+                strokeCap: StrokeCap.round,
+                color: prego.colors.textTertiary,
               ),
             ),
           ),
-        ],
-      ),
+          label: loc.sessionDetailSendingMessage,
+        ),
+        PendingMessageBubblePresentation(:final onCancel) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _status(
+              prego: prego,
+              icon: Icon(
+                submission.isCommand ? TablerRegular.terminal : TablerRegular.clock,
+                size: 14,
+                color: prego.colors.textTertiary,
+              ),
+              label: submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+            ),
+            const SizedBox(width: PregoSpacing.xs),
+            TextButton.icon(
+              onPressed: onCancel,
+              icon: const Icon(TablerRegular.x, size: 14),
+              label: Text(loc.sessionDetailCancelQueued),
+              style: TextButton.styleFrom(
+                foregroundColor: prego.colors.textTertiary,
+                minimumSize: const Size(44, 44),
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: PregoSpacing.md,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: prego.textTheme.textXs.medium,
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ],
+        ),
+      },
+    );
+
+    return Column(
+      crossAxisAlignment: .end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        UserMessageBubble(
+          markdown: submission.displayText ?? loc.sessionDetailQueuedAttachmentCount(submission.attachments.length),
+          attachments: const [],
+          outlined: isPending,
+          transitionDuration: duration,
+        ),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(
+            end: PregoSpacing.x2l,
+            bottom: PregoSpacing.xs,
+          ),
+          child: reducedMotion
+              ? status
+              : AnimatedSize(
+                  duration: duration,
+                  curve: Curves.easeInOutCubic,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: AnimatedSwitcher(
+                    duration: duration,
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SizeTransition(
+                        axis: Axis.horizontal,
+                        alignment: AlignmentDirectional.centerEnd,
+                        sizeFactor: animation,
+                        child: child,
+                      ),
+                    ),
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      alignment: AlignmentDirectional.centerEnd,
+                      children: [
+                        for (final child in previousChildren)
+                          IgnorePointer(
+                            child: ExcludeFocus(
+                              child: ExcludeSemantics(child: child),
+                            ),
+                          ),
+                        ?currentChild,
+                      ],
+                    ),
+                    child: status,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _status({
+    required PregoDesignSystem prego,
+    required Widget icon,
+    required String label,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        icon,
+        const SizedBox(width: PregoSpacing.xs),
+        Text(
+          label,
+          style: prego.textTheme.textXs.medium.copyWith(
+            color: prego.colors.textTertiary,
+          ),
+        ),
+      ],
     );
   }
 }

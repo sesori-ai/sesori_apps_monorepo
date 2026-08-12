@@ -8,6 +8,7 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
+import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
@@ -18,8 +19,11 @@ import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
 import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
+import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
+import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
+import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -299,6 +303,94 @@ void main() {
 
     expect(find.text("No messages yet"), findsNothing);
     expect(find.text("Cold-start prompt"), findsOneWidget);
+  });
+
+  testWidgets("settled user text renders Markdown inside the shared brand bubble", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      messages: const [
+        MessageWithParts(
+          info: Message.user(
+            id: "markdown-user",
+            sessionID: "session-1",
+            agent: null,
+            time: null,
+          ),
+          parts: [
+            MessagePart(
+              id: "markdown-user-text",
+              sessionID: "session-1",
+              messageID: "markdown-user",
+              type: MessagePartType.text,
+              text: "Please **review** `main.dart`",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+              attachment: null,
+            ),
+          ],
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.descendant(of: find.byType(UserMessageBubble), matching: find.byType(MarkdownBody)), findsOneWidget);
+    expect(find.textContaining("**review**"), findsNothing);
+    expect(find.textContaining("`main.dart`"), findsNothing);
+  });
+
+  testWidgets("remote user Markdown images require an explicit open action", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      messages: const [
+        MessageWithParts(
+          info: Message.user(
+            id: "remote-image-user",
+            sessionID: "session-1",
+            agent: null,
+            time: null,
+          ),
+          parts: [
+            MessagePart(
+              id: "remote-image-user-text",
+              sessionID: "session-1",
+              messageID: "remote-image-user",
+              type: MessagePartType.text,
+              text: "![diagram](https://example.com/diagram.png)",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+              attachment: null,
+            ),
+          ],
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MarkdownMessageImage), findsNothing);
+    expect(find.widgetWithText(TextButton, "diagram"), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
   });
 
   testWidgets("an unknown attachment does not create an empty user bubble", (tester) async {
@@ -1993,12 +2085,10 @@ void main() {
 
     final textField = tester.widget<TextField>(find.byType(TextField));
     final editableTextState = tester.state<EditableTextState>(find.byType(EditableText));
-    final toolbar =
-        textField.contextMenuBuilder!(
-              tester.element(find.byType(TextField)),
-              editableTextState,
-            )
-            as AdaptiveTextSelectionToolbar;
+    final toolbar = textField.contextMenuBuilder!(
+      tester.element(find.byType(TextField)),
+      editableTextState,
+    ) as AdaptiveTextSelectionToolbar;
     final pasteItem = toolbar.buttonItems!.singleWhere((item) => item.type == ContextMenuButtonType.paste);
 
     pasteItem.onPressed!();
@@ -2106,12 +2196,10 @@ void main() {
 
     final textField = tester.widget<TextField>(find.byType(TextField));
     final editableTextState = tester.state<EditableTextState>(find.byType(EditableText));
-    final toolbar =
-        textField.contextMenuBuilder!(
-              tester.element(find.byType(TextField)),
-              editableTextState,
-            )
-            as AdaptiveTextSelectionToolbar;
+    final toolbar = textField.contextMenuBuilder!(
+      tester.element(find.byType(TextField)),
+      editableTextState,
+    ) as AdaptiveTextSelectionToolbar;
     final pasteItem = toolbar.buttonItems!.singleWhere((item) => item.type == ContextMenuButtonType.paste);
 
     pasteItem.onPressed!();
@@ -2467,6 +2555,146 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("1 image"), findsOneWidget);
+  });
+
+  testWidgets("a queued submission uses the shared outlined Markdown bubble and status rail", (tester) async {
+    const submission = QueuedSessionSubmission.text(
+      text: "Please **review** `main.dart`",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      queuedMessages: const [submission],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final bubble = tester.widget<UserMessageBubble>(
+      find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(UserMessageBubble)),
+    );
+    expect(bubble.outlined, isTrue);
+    expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(MarkdownBody)), findsOneWidget);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.text("Cancel"), findsOneWidget);
+    expect(tester.getSize(find.widgetWithText(TextButton, "Cancel")).height, 44);
+
+    await tester.tap(find.text("Cancel"));
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
+  });
+
+  testWidgets("the same queued bubble element animates into sending", (tester) async {
+    const submission = QueuedSessionSubmission.text(
+      text: "Cold-start prompt",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    const followingSubmission = QueuedSessionSubmission.text(
+      text: "Next prompt",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      queuedMessages: const [submission, followingSubmission],
+    );
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(states.close);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final submissionFinder = find.byKey(const ObjectKey(submission));
+    final before = tester.element(submissionFinder);
+    final submissionCancel = find.descendant(
+      of: submissionFinder,
+      matching: find.widgetWithText(TextButton, "Cancel"),
+    );
+    final cancelFocus = Focus.of(
+      tester.element(find.descendant(of: submissionCancel, matching: find.text("Cancel"))),
+    );
+    expect(
+      tester
+          .widget<UserMessageBubble>(
+            find.descendant(of: submissionFinder, matching: find.byType(UserMessageBubble)),
+          )
+          .outlined,
+      isTrue,
+    );
+    cancelFocus.requestFocus();
+    await tester.pump();
+    expect(cancelFocus.hasFocus, isTrue);
+
+    state = state.copyWith(queuedMessages: const [followingSubmission], sendingSubmission: submission);
+    states.add(state);
+    await tester.idle();
+    await tester.pump();
+
+    expect(identical(tester.element(submissionFinder), before), isTrue);
+    expect(
+      tester
+          .widget<UserMessageBubble>(
+            find.descendant(of: submissionFinder, matching: find.byType(UserMessageBubble)),
+          )
+          .outlined,
+      isFalse,
+    );
+    expect(cancelFocus.hasFocus, isFalse);
+    expect(find.text("Sending"), findsOneWidget);
+    expect(find.text("Cancel"), findsNWidgets(2));
+
+    final fadingCancel = find.descendant(of: submissionFinder, matching: find.text("Cancel"));
+    await tester.tap(fadingCancel, warnIfMissed: false);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    verifyNever(() => cubit.cancelQueuedMessage(any()));
+
+    await tester.pump(const Duration(milliseconds: 241));
+    await tester.pump();
+    expect(fadingCancel, findsNothing);
+    expect(find.text("Cancel"), findsOneWidget);
+  });
+
+  testWidgets("reduced motion swaps queued feedback immediately", (tester) async {
+    tester.binding.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+      disableAnimations: true,
+    );
+    addTearDown(tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue);
+
+    const submission = QueuedSessionSubmission.text(
+      text: "Cold-start prompt",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      queuedMessages: const [submission],
+    );
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(states.close);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(queuedMessages: const [], sendingSubmission: submission);
+    states.add(state);
+    await tester.idle();
+    await tester.pump();
+
+    expect(find.text("Cancel"), findsNothing);
+    expect(find.text("Sending"), findsOneWidget);
+    expect(tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value, 0.75);
   });
 
   testWidgets("an in-flight submission stays visible without a cancel action", (tester) async {

@@ -167,11 +167,9 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
 
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async {
     return await _worktreeRepository.checkWorktreeSafety(
       worktreePath: worktreePath,
-      expectedBranch: expectedBranch,
     );
   }
 

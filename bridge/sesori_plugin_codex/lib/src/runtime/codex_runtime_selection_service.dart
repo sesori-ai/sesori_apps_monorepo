@@ -24,8 +24,8 @@ sealed class const CodexRuntimeSelection();
 final class const CodexRuntimeSelected({
     required final String binaryPath,
     required final CodexRuntimeSource source,
-    required final SemanticVersion version,
-    required final SemanticVersion? rejectedPathVersion,
+    required final RuntimeVersion version,
+    required final RuntimeVersion? rejectedPathVersion,
   }) extends CodexRuntimeSelection;
 
 final class const CodexRuntimeNotSelected({
@@ -35,7 +35,7 @@ final class const CodexRuntimeNotSelected({
 
 sealed class const _VersionProbe();
 
-final class const _VersionProbeSucceeded({required final SemanticVersion version}) extends _VersionProbe;
+final class const _VersionProbeSucceeded({required final RuntimeVersion version}) extends _VersionProbe;
 
 final class const _VersionProbeFailed({required final CodexRuntimeSelectionFailure failure}) extends _VersionProbe;
 
@@ -59,7 +59,7 @@ class CodexRuntimeSelectionService({
            runInShell: io.Platform.isWindows,
            maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
          ),
-         runtimeId: const CodexRuntimeManifest().runtimeId,
+         manifest: const CodexRuntimeManifest(),
          probeTimeout: _versionProbeTimeout,
        );
 

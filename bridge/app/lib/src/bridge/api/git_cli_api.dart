@@ -20,7 +20,6 @@ final class const GitCurrentBranchNotRepository() extends GitCurrentBranchResult
 class GitWorktreeSafetySnapshot({
   required final bool worktreeExists,
   required final bool hasUnstagedChanges,
-  required final String actualBranch,
 });
 
 class GitCliApi({
@@ -430,7 +429,7 @@ class GitCliApi({
 
   Future<GitWorktreeSafetySnapshot> inspectWorktreeSafety({required String worktreePath}) async {
     if (!Directory(worktreePath).existsSync()) {
-      return GitWorktreeSafetySnapshot(worktreeExists: false, hasUnstagedChanges: false, actualBranch: "");
+      return GitWorktreeSafetySnapshot(worktreeExists: false, hasUnstagedChanges: false);
     }
 
     final statusResult = await _processRunner.run(
@@ -440,16 +439,9 @@ class GitCliApi({
     );
     final hasUnstagedChanges = statusResult.stdout.toString().trim().isNotEmpty;
 
-    final headResult = await _processRunner.run(
-      "git",
-      ["rev-parse", "--abbrev-ref", "HEAD"],
-      workingDirectory: worktreePath,
-    );
-
     return GitWorktreeSafetySnapshot(
       worktreeExists: true,
       hasUnstagedChanges: hasUnstagedChanges,
-      actualBranch: headResult.stdout.toString().trim(),
     );
   }
 

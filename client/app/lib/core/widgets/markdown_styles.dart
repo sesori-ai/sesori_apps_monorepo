@@ -15,8 +15,17 @@ import "code_block.dart";
 void handleMarkdownLinkTap(String text, String? href, String title) {
   if (href == null) return;
   final uri = Uri.tryParse(href);
-  if (uri == null) return;
+  if (uri == null || !_isAllowedMarkdownUri(uri)) return;
   unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp).then<void>((_) {}));
+}
+
+bool _isAllowedMarkdownUri(Uri uri) {
+  final scheme = uri.scheme.toLowerCase();
+  return switch (scheme) {
+    "http" || "https" => uri.host.isNotEmpty && uri.userInfo.isEmpty,
+    "mailto" => uri.path.isNotEmpty,
+    _ => false,
+  };
 }
 
 // ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override
@@ -34,6 +43,38 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
       fontSize: 13,
       color: prego.colors.textPrimary,
     ).monospace,
+  );
+}
+
+/// Session Markdown styled for the brand surface of an outgoing user bubble.
+MarkdownStyleSheet buildUserMessageMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final foreground = prego.colors.textBrandPrimary;
+  final body = prego.textTheme.textSm.regular.copyWith(color: foreground);
+  final base = buildSessionMarkdownStyleSheet(
+    prego: prego,
+    paragraphStyle: body,
+  );
+
+  return base.copyWith(
+    a: body.copyWith(
+      decoration: TextDecoration.underline,
+      decorationColor: foreground,
+    ),
+    code: base.code?.copyWith(color: foreground),
+    h1: prego.textTheme.textXl.bold.copyWith(color: foreground),
+    h2: prego.textTheme.textLg.bold.copyWith(color: foreground),
+    h3: prego.textTheme.textMd.bold.copyWith(color: foreground),
+    h4: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    h5: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    h6: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    em: body.copyWith(fontStyle: FontStyle.italic),
+    strong: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    del: body.copyWith(decoration: TextDecoration.lineThrough),
+    blockquote: body,
+    checkbox: body,
+    listBullet: body,
+    tableHead: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    tableBody: body,
   );
 }
 

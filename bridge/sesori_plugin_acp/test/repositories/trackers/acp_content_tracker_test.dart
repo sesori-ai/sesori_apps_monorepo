@@ -3,7 +3,7 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/src/repositories/trackers/acp_content_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCollectionBytes;
 import "package:test/test.dart";
 
 void main() {
@@ -61,7 +61,7 @@ void main() {
       final tracker = AcpContentTracker();
       final mutations = tracker.append(
         blocks: [
-          _inline(decodedBytes: maxInlineMessageAttachmentBytes),
+          _inline(decodedBytes: maxTranscriptImageCollectionBytes),
           _inline(decodedBytes: 1),
           _metadata(),
           _inline(decodedBytes: 0),
@@ -82,7 +82,7 @@ void main() {
         "text-1",
       ]);
       expect(tracker.snapshot.imageCandidateCount, 5);
-      expect(tracker.snapshot.decodedImageBytes, maxInlineMessageAttachmentBytes);
+      expect(tracker.snapshot.decodedImageBytes, maxTranscriptImageCollectionBytes);
     });
 
     test("deduplicates privacy-safe warnings per message tracker", () {

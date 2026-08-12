@@ -18,9 +18,27 @@ void main() {
       },
     );
 
-    test("tracks the installer target separately from the compatibility floor", () {
+    test("pins the compatibility floor and the managed runtime build", () {
       expect(CursorPluginDescriptor.minVersion, "2026.07.16");
-      expect(CursorPluginDescriptor.targetVersion, "2026.07.23-e383d2b");
+      // The managed runtime is the pinned build the manifest installs; the
+      // floor above only gates a pre-installed CLI.
+      expect(const CursorRuntimeManifest().bundledVersion.raw, "2026.08.11-e8db854");
+    });
+
+    test("advertises install without an explicit binary override", () {
+      expect(
+        const CursorPluginDescriptor().managementCapabilities(config: config),
+        contains(PluginControlCapability.install),
+      );
+    });
+
+    test("does not advertise install with an explicit binary override", () {
+      expect(
+        const CursorPluginDescriptor().managementCapabilities(
+          config: const PluginConfig(values: {"bin": "/custom/cursor-agent", "api-endpoint": null}),
+        ),
+        isNot(contains(PluginControlCapability.install)),
+      );
     });
 
     test("declares plugin-scoped session options", () {
@@ -36,7 +54,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
+            stdoutBytes: utf8.encode("2026.07.23-e383d2b\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -67,7 +85,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 10,
-            stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
+            stdoutBytes: utf8.encode("2026.07.23-e383d2b\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -125,13 +143,19 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
-    test("reports an outdated runtime without retaining version probe text", () async {
+    test("an outdated PATH CLI is installable and never leaks version probe text", () async {
+      // Without an explicit --cursor-bin a managed install fixes a too-old
+      // CLI, so this reports runtimeMissing (installable) and probes the
+      // managed path as a fallback before giving up.
       final processes = _ProbeProcessService(
-        process: _ProbeProcess(
-          pid: 12,
-          stdoutBytes: utf8.encode("2025.01.01 account-secret-output\n"),
-          exitCode: Future<int>.value(0),
-        ),
+        spawnOutcomes: [
+          _ProbeProcess(
+            pid: 12,
+            stdoutBytes: utf8.encode("2025.01.01 account-secret-output\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          const ProcessException("managed-cursor-agent", ["--version"], "missing", 2),
+        ],
       );
 
       final result = await const CursorPluginDescriptor().inspectSetup(
@@ -141,11 +165,32 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupUnavailable>());
+      expect(result, isA<PluginSetupRuntimeMissing>());
       expect(result.actionHint, isNot(contains("account-secret-output")));
       expect(processes.spawnedArguments, [
         const ["--version"],
+        const ["--version"],
       ]);
+    });
+
+    test("an outdated explicitly configured CLI stays unavailable", () async {
+      final processes = _ProbeProcessService(
+        process: _ProbeProcess(
+          pid: 12,
+          stdoutBytes: utf8.encode("2025.01.01\n"),
+          exitCode: Future<int>.value(0),
+        ),
+      );
+
+      final result = await const CursorPluginDescriptor().inspectSetup(
+        config: const PluginConfig(values: {"bin": "/custom/cursor-agent", "api-endpoint": null}),
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnavailable>());
+      expect(result.actionHint, contains("Update it and restart the bridge"));
     });
 
     test("reports unknown for an exit-zero unrecognized version", () async {
@@ -196,7 +241,9 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      expect(processes.forceSignals, equals(<int>[15]));
+      // Both the PATH probe and the managed-runtime fallback probe hang and
+      // are force-killed.
+      expect(processes.forceSignals, equals(<int>[15, 15]));
     });
 
     test("reports authentication required without starting a login flow", () async {
@@ -356,6 +403,9 @@ class _StartPluginHost({@override required final HostProcessService processes}) 
   Map<String, String> get environment => const {"HOME": "/tmp"};
 
   @override
+  String? get provisionedRuntimePath => null;
+
+  @override
   ServerClock get clock => const ServerClock();
 
   @override
@@ -372,7 +422,11 @@ class _ProbeProcessService({
   final Object? spawnError,
   final _ProbeProcess? process,
   final List<_ProbeProcess>? _processSequence,
+  final List<Object>? _spawnOutcomes,
 }) implements HostProcessService {
+  /// Per-spawn outcomes, each either a [_ProbeProcess] to return or an error
+  /// to throw — for probes that fall back from PATH to the managed runtime.
+  int _nextOutcome = 0;
   int _nextProcess = 0;
   final List<String> spawnedExecutables = <String>[];
   final List<List<String>> spawnedArguments = <List<String>>[];
@@ -388,6 +442,12 @@ class _ProbeProcessService({
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List<String>.from(arguments));
+    final outcomes = _spawnOutcomes;
+    if (outcomes != null) {
+      final outcome = outcomes[_nextOutcome++];
+      if (outcome is SpawnedProcess) return outcome;
+      throw outcome;
+    }
     final error = spawnError;
     if (error != null) {
       throw error;

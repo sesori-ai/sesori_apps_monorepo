@@ -9,6 +9,7 @@ import "package:test/test.dart";
 class _FakeDownloadClient({final DownloadException? exception}) implements BinaryDownloadClient {
   static const int _byteCount = 4;
   static const List<int> _bytes = [1, 2, 3, 4];
+
   @override
   Stream<DownloadProgress> download({required String url, required String destinationPath}) async* {
     final ex = exception;
@@ -28,7 +29,8 @@ class _FakeChecksumValidator({required final bool valid}) implements ChecksumVal
   Future<String> computeSha256({required String filePath}) async => "deadbeef";
 }
 
-class _FakeArchiveExtractor({required final bool success}) implements ArchiveExtractor {
+class _FakeArchiveExtractor({required final bool success, required final bool packageDirectory})
+    implements ArchiveExtractor {
   @override
   Future<ArchiveExtractionResult> extract({
     required String archivePath,
@@ -38,8 +40,14 @@ class _FakeArchiveExtractor({required final bool success}) implements ArchiveExt
     if (!success) {
       return const ArchiveExtractionResult.failure(reason: "powershell Expand-Archive exited with code 1: boom");
     }
-    Directory(stagingPath).createSync(recursive: true);
-    File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");
+    if (packageDirectory) {
+      final package = Directory(p.join(stagingPath, "dist-package"))..createSync(recursive: true);
+      File(p.join(package.path, "cursor-agent")).writeAsStringSync("BINARY");
+      File(p.join(package.path, "node-runtime")).writeAsStringSync("SIBLING");
+    } else {
+      Directory(stagingPath).createSync(recursive: true);
+      File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");
+    }
     return const ArchiveExtractionResult.success();
   }
 }
@@ -67,6 +75,15 @@ const _asset = RuntimeAsset(
   format: ArchiveFormat.zip,
   sha256: "abc123",
   archiveBinaryName: "opencode",
+  layout: RuntimeAssetLayout.singleBinary,
+);
+
+const _packageAsset = RuntimeAsset(
+  assetName: "cursor-test.tar.gz",
+  format: ArchiveFormat.tarGz,
+  sha256: "def456",
+  archiveBinaryName: "cursor-agent",
+  layout: RuntimeAssetLayout.packageDirectory,
 );
 
 void main() {
@@ -86,12 +103,13 @@ void main() {
     DownloadException? downloadError,
     bool checksumValid = true,
     bool extractSuccess = true,
+    bool packageDirectory = false,
     _FakeCommandExecutor? cmd,
   }) {
     return RuntimeInstallService(
       downloadClient: _FakeDownloadClient(exception: downloadError),
       checksumValidator: _FakeChecksumValidator(valid: checksumValid),
-      archiveExtractor: _FakeArchiveExtractor(success: extractSuccess),
+      archiveExtractor: _FakeArchiveExtractor(success: extractSuccess, packageDirectory: packageDirectory),
       commandExecutor: cmd ?? _FakeCommandExecutor(),
       runtimeId: "opencode",
     );
@@ -132,6 +150,31 @@ void main() {
       isFalse,
     );
     expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
+  });
+
+  test("places a package directory with the entry binary and its siblings", () async {
+    final staleFile = File(p.join(versionDir(), "stale"))
+      ..createSync(recursive: true)
+      ..writeAsStringSync("OLD");
+
+    await build(packageDirectory: true)
+        .install(
+          managedDir: managedDir.path,
+          versionDir: versionDir(),
+          binaryFileName: "cursor-agent",
+          downloadUrl: "https://example.test/cursor-test.tar.gz",
+          asset: _packageAsset,
+          startAborted: StartAbortSignal.never,
+        )
+        .drain<void>();
+
+    expect(File(p.join(versionDir(), "cursor-agent")).readAsStringSync(), "BINARY");
+    expect(File(p.join(versionDir(), "node-runtime")).readAsStringSync(), "SIBLING");
+    expect(staleFile.existsSync(), isFalse);
+    expect(
+      File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(),
+      "def456",
+    );
   });
 
   test("isInstalled is false before, true after, and rejects a hash mismatch", () async {

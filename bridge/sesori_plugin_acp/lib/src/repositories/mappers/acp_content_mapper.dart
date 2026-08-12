@@ -2,12 +2,16 @@ import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
-    show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
+    show
+        decodedBase64Length,
+        isTranscriptImageBase64LengthWithinSizeLimit,
+        maxTranscriptImageBytes,
+        maxTranscriptImageCandidates;
 
 import "../../api/models/acp_content_block_dto.dart";
 import "../../api/models/acp_tool_content_dto.dart";
 
-const int acpToolImageCandidateLimit = 4;
+const int acpToolImageCandidateLimit = maxTranscriptImageCandidates;
 
 sealed class const AcpMappedContentBlock();
 
@@ -416,7 +420,7 @@ final class const AcpContentMapper() {
         reason: AcpImageDegradationReason.invalid,
       );
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: data.length)) {
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: data.length)) {
       return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
@@ -432,7 +436,7 @@ final class const AcpContentMapper() {
         reason: AcpImageDegradationReason.invalid,
       );
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: normalized.length)) {
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: normalized.length)) {
       return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
@@ -441,7 +445,7 @@ final class const AcpContentMapper() {
     }
 
     final decodedBytes = decodedBase64Length(base64Data: normalized);
-    if (decodedBytes > maxInlineMessageAttachmentBytes) {
+    if (decodedBytes > maxTranscriptImageBytes) {
       return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,

@@ -302,7 +302,6 @@ void main() {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
           UnstagedChanges(),
-          BranchMismatch(expected: "session-001", actual: "main"),
         ],
       );
 
@@ -781,7 +780,6 @@ void main() {
 
       expect(result.hasWorktree, isFalse);
     });
-
   });
 }
 
@@ -866,7 +864,6 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
   int deleteBranchCallCount = 0;
 
   String? lastCheckWorktreePath;
-  String? lastCheckExpectedBranch;
   String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
@@ -890,11 +887,9 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async {
     checkCallCount++;
     lastCheckWorktreePath = worktreePath;
-    lastCheckExpectedBranch = expectedBranch;
     return safetyResult;
   }
 

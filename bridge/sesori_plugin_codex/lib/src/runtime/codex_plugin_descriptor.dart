@@ -236,7 +236,7 @@ class const CodexPluginDescriptor({
         manifest: manifest,
         versionValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
+          manifest: manifest,
           probeTimeout: _versionProbeTimeout,
         ),
         installService: RuntimeInstallService(
@@ -265,6 +265,15 @@ class const CodexPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
   }) async {
+    const manifest = CodexRuntimeManifest();
+    const inventory = ManagedRuntimeInventory(manifest: manifest);
+
+    String missingRuntimeHint() {
+      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+          ? "This bridge needs a newer Codex. Install it from Sesori to update the managed runtime."
+          : "Install Codex from Sesori, or install it locally and retry setup detection.";
+    }
+
     final selection =
         await CodexRuntimeSelectionService(
           processes: processes,
@@ -282,7 +291,7 @@ class const CodexPluginDescriptor({
         CodexRuntimeSelectionFailure.executableMissing => PluginSetupRuntimeMissing(
           actionHint: hasExplicitBinary
               ? "Fix the configured Codex binary path, then restart the bridge."
-              : "Install Codex locally, then retry setup detection.",
+              : missingRuntimeHint(),
         ),
         CodexRuntimeSelectionFailure.probeTimedOut => const PluginSetupUnknown(
           actionHint: "Codex did not answer its setup check. Verify the local installation and retry.",
@@ -301,8 +310,8 @@ class const CodexPluginDescriptor({
               ? const PluginSetupUnavailable(
                   actionHint: "The configured Codex binary is too old. Update it and restart the bridge.",
                 )
-              : const PluginSetupRuntimeMissing(
-                  actionHint: "Update Codex locally, then retry setup detection.",
+              : PluginSetupRuntimeMissing(
+                  actionHint: missingRuntimeHint(),
                 ),
       };
     }

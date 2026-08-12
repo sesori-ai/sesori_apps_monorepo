@@ -2,7 +2,12 @@ import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
-    show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
+    show
+        decodedBase64Length,
+        isTranscriptImageBase64LengthWithinSizeLimit,
+        maxTranscriptImageBytes,
+        maxTranscriptImageCandidates,
+        maxTranscriptImageCollectionBytes;
 
 import "../../api/models/claude_content_block_dto.dart";
 
@@ -115,9 +120,11 @@ final class const ClaudeContentMapper() {
           yield _mapToolResult(toolUseId: toolUseId, content: content, isError: isError ?? false, state: state);
         }
       case ClaudeImageContentBlockDto(:final source):
-        yield ClaudeMappedImageContentBlock(
-          attachment: _mapImage(source: source, state: state),
-        );
+        yield state.takeCandidate()
+            ? ClaudeMappedImageContentBlock(
+                attachment: _mapImage(source: source, state: state),
+              )
+            : const ClaudeMappedUnsupportedContentBlock();
       case ClaudeRedactedThinkingContentBlockDto():
         yield const ClaudeMappedUnsupportedContentBlock();
       case ClaudeUnknownContentBlockDto():
@@ -165,7 +172,7 @@ final class const ClaudeContentMapper() {
     if (source?.type != "base64" || !_supportedImageMimes.contains(mime) || data == null || data.isEmpty) {
       return PluginMessageAttachment.metadata(mime: mime, filename: null);
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: data.length)) {
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: data.length)) {
       return PluginMessageAttachment.metadata(mime: mime, filename: null);
     }
 
@@ -175,14 +182,17 @@ final class const ClaudeContentMapper() {
     } on FormatException {
       return PluginMessageAttachment.metadata(mime: mime, filename: null);
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: normalized.length)) {
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: normalized.length)) {
       return PluginMessageAttachment.metadata(mime: mime, filename: null);
     }
     final decodedBytes = decodedBase64Length(base64Data: normalized);
-    if (decodedBytes > state.remainingInlineBytes) {
+    if (decodedBytes > maxTranscriptImageBytes) {
       return PluginMessageAttachment.metadata(mime: mime, filename: null);
     }
-    state.remainingInlineBytes -= decodedBytes;
+    if (decodedBytes > state.remainingImageBytes) {
+      return PluginMessageAttachment.metadata(mime: mime, filename: null);
+    }
+    state.remainingImageBytes -= decodedBytes;
     return PluginMessageAttachment.inlineImage(mime: mime, base64: normalized, filename: null);
   }
 
@@ -290,5 +300,11 @@ final class const ClaudeContentMapper() {
 }
 
 final class _ClaudeContentMappingState() {
-  int remainingInlineBytes = maxInlineMessageAttachmentBytes;
+  int remainingImageBytes = maxTranscriptImageCollectionBytes;
+  int _imageCandidates = 0;
+
+  bool takeCandidate() {
+    _imageCandidates++;
+    return _imageCandidates <= maxTranscriptImageCandidates;
+  }
 }

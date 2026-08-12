@@ -36,8 +36,9 @@ final class const CapturedPartShapes({
   required final MessagePart storedReferencePart,
 }) extends CapturedPartDelivery;
 
-/// The write did not land, so no reference may be advertised for it.
-final class const CapturedPartUnavailable() extends CapturedPartDelivery;
+/// The write did not land, so no reference may be advertised for it. The
+/// fallback is bounded to the released inline-wire budget.
+final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
 /// The single writer of the chat history store.
 ///
@@ -52,8 +53,6 @@ class ChatHistoryService({
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
   Future<void> _thumbnailGenerationLane = Future.value();
-
-  static const _maxStoredImageBytes = 20 * 1024 * 1024;
 
   /// One page of the session's messages, served from the store whenever it is
   /// known to be current and falling back to the backend otherwise.
@@ -169,7 +168,7 @@ class ChatHistoryService({
           attachmentId: attachmentId,
         );
         if (original == null) return const SessionAttachmentMissing();
-        if (original.length > _maxStoredImageBytes) {
+        if (original.length > maxTranscriptImageBytes) {
           return const SessionAttachmentTooLarge();
         }
 
@@ -192,7 +191,7 @@ class ChatHistoryService({
         attachmentId: attachmentId,
       );
       if (original == null) return const SessionAttachmentMissing();
-      if (original.length > _maxStoredImageBytes) {
+      if (original.length > maxTranscriptImageBytes) {
         return const SessionAttachmentTooLarge();
       }
       final built = await _attachmentThumbnailBuilder.build(bytes: original);
@@ -343,9 +342,9 @@ class ChatHistoryService({
       sessionId: sessionId,
       read: () async {
         try {
-          if (!shouldCapture()) return const CapturedPartUnavailable();
+          if (!shouldCapture()) return CapturedPartUnavailable(inlineFallbackPart: _metadataFallbackPart(part: part));
           final storageScope = await _requireStorageScope(sessionId: sessionId);
-          if (!shouldCapture()) return const CapturedPartUnavailable();
+          if (!shouldCapture()) return CapturedPartUnavailable(inlineFallbackPart: _metadataFallbackPart(part: part));
           await _chatHistoryRepository.upsertPart(
             sessionId: sessionId,
             storageScope: storageScope,
@@ -370,18 +369,18 @@ class ChatHistoryService({
             delivery: MessageAttachmentDelivery.storedReference,
           );
           if (inlinePart == null || storedReferencePart == null) {
-            return const CapturedPartUnavailable();
+            return CapturedPartUnavailable(inlineFallbackPart: _metadataFallbackPart(part: part));
           }
           return CapturedPartShapes(inlinePart: inlinePart, storedReferencePart: storedReferencePart);
         } on Object catch (error, stackTrace) {
           Log.w(
             "Failed to capture part ${part.id} of message ${part.messageID} for session $sessionId; "
-            "dropping the synced marker so the next read re-backfills and delivering the inline shape",
+            "dropping the synced marker so the next read re-backfills and delivering bounded metadata",
             error,
             stackTrace,
           );
           await _clearSyncedAtQuietly(sessionId: sessionId);
-          return const CapturedPartUnavailable();
+          return CapturedPartUnavailable(inlineFallbackPart: _metadataFallbackPart(part: part));
         }
       },
     );
@@ -399,6 +398,25 @@ class ChatHistoryService({
       messageId: part.messageID,
       partId: part.id,
       attachmentProjection: _attachmentProjectionFor(delivery: delivery),
+    );
+  }
+
+  MessagePart _metadataFallbackPart({required MessagePart part}) {
+    MessageAttachment bound({required MessageAttachment attachment}) {
+      if (attachment case MessageAttachmentInlineImage(:final mime, :final filename)) {
+        return MessageAttachment.metadata(mime: mime, filename: filename);
+      }
+      return attachment;
+    }
+
+    final state = part.state;
+    return part.copyWith(
+      attachment: part.attachment == null ? null : bound(attachment: part.attachment!),
+      state: state == null
+          ? null
+          : state.copyWith(
+              attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+            ),
     );
   }
 

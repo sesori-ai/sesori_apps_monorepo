@@ -2,7 +2,12 @@ import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
-    show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
+    show
+        decodedBase64Length,
+        isTranscriptImageBase64LengthWithinSizeLimit,
+        maxTranscriptImageBytes,
+        maxTranscriptImageCandidates,
+        maxTranscriptImageCollectionBytes;
 
 sealed class const CodexImageAttachmentCandidate() {
   const factory base64({
@@ -25,7 +30,6 @@ final class const CodexBase64ImageAttachmentCandidate({
 final class const CodexImageUrlAttachmentCandidate({required final String imageUrl}) extends CodexImageAttachmentCandidate;
 
 final class const CodexImageAttachmentMapper() {
-  static const int _maxAttachmentCount = 4;
   static const int _maxDataUrlHeaderCharacters = 256;
   static const int _maxUrlCharactersForFilename = 4096;
   static const int _maxMimeCharacters = 255;
@@ -43,11 +47,11 @@ final class const CodexImageAttachmentMapper() {
   }) {
     final attachments = <PluginMessageAttachment>[];
     final warned = <_ImageDegradationReason>{};
-    var remainingBytes = maxInlineMessageAttachmentBytes;
+    var remainingBytes = maxTranscriptImageCollectionBytes;
     var candidateIndex = 0;
 
     for (final candidate in candidates) {
-      if (candidateIndex >= _maxAttachmentCount) {
+      if (candidateIndex >= maxTranscriptImageCandidates) {
         _warnOnce(
           reason: _ImageDegradationReason.countOverflow,
           warned: warned,
@@ -78,11 +82,11 @@ final class const CodexImageAttachmentMapper() {
   }) {
     final bounded = <PluginMessageAttachment>[];
     final warned = <_ImageDegradationReason>{};
-    var remainingBytes = maxInlineMessageAttachmentBytes;
+    var remainingBytes = maxTranscriptImageCollectionBytes;
 
     for (final attachment in attachments) {
       if (bounded.contains(attachment)) continue;
-      if (bounded.length >= _maxAttachmentCount) {
+      if (bounded.length >= maxTranscriptImageCandidates) {
         _warnOnce(
           reason: _ImageDegradationReason.countOverflow,
           warned: warned,
@@ -98,7 +102,16 @@ final class const CodexImageAttachmentMapper() {
           :final filename,
         ):
           final decodedBytes = decodedBase64Length(base64Data: base64);
-          if (decodedBytes > remainingBytes) {
+          if (decodedBytes > maxTranscriptImageBytes) {
+            mapped = PluginMessageAttachment.metadata(
+              mime: mime,
+              filename: filename,
+            );
+            _warnOnce(
+              reason: _ImageDegradationReason.oversized,
+              warned: warned,
+            );
+          } else if (decodedBytes > remainingBytes) {
             mapped = PluginMessageAttachment.metadata(
               mime: mime,
               filename: filename,
@@ -186,7 +199,7 @@ final class const CodexImageAttachmentMapper() {
         reason: _ImageDegradationReason.invalid,
       );
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: encodedLength)) {
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: encodedLength)) {
       return _metadata(
         mime: mime,
         filename: null,
@@ -222,7 +235,7 @@ final class const CodexImageAttachmentMapper() {
         reason: _ImageDegradationReason.invalid,
       );
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: encoded.length)) {
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: encoded.length)) {
       return _metadata(
         mime: normalizedMime,
         filename: filename,
@@ -238,7 +251,7 @@ final class const CodexImageAttachmentMapper() {
         reason: _ImageDegradationReason.invalid,
       );
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: normalized.length)) {
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: normalized.length)) {
       return _metadata(
         mime: normalizedMime,
         filename: filename,
@@ -247,6 +260,13 @@ final class const CodexImageAttachmentMapper() {
     }
 
     final decodedBytes = decodedBase64Length(base64Data: normalized);
+    if (decodedBytes > maxTranscriptImageBytes) {
+      return _metadata(
+        mime: normalizedMime,
+        filename: filename,
+        reason: _ImageDegradationReason.oversized,
+      );
+    }
     if (decodedBytes > remainingBytes) {
       return _metadata(
         mime: normalizedMime,
@@ -314,9 +334,9 @@ final class const CodexImageAttachmentMapper() {
         _ImageDegradationReason.invalid => "[codex] invalid image attachment; forwarding metadata only",
         _ImageDegradationReason.unsupported => "[codex] unsupported image attachment; forwarding metadata only",
         _ImageDegradationReason.oversized =>
-          "[codex] image attachment exceeds the transport limit; forwarding metadata only",
+          "[codex] image attachment exceeds the retention limit; forwarding metadata only",
         _ImageDegradationReason.aggregateOverflow =>
-          "[codex] image attachments exceed the aggregate transport limit; forwarding metadata only",
+          "[codex] image attachments exceed the aggregate retention limit; forwarding metadata only",
         _ImageDegradationReason.countOverflow =>
           "[codex] image attachment collection exceeds the count limit; dropping excess candidates",
       },

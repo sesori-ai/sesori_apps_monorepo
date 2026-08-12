@@ -8,8 +8,6 @@ sealed class SafetyIssue();
 
 class UnstagedChanges() extends SafetyIssue;
 
-class BranchMismatch({required final String expected, required final String actual}) extends SafetyIssue;
-
 sealed class WorktreeResult();
 
 class WorktreeSuccess({

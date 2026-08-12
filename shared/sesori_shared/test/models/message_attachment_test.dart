@@ -91,6 +91,17 @@ void main() {
       );
     });
 
+    test("transcript retention limits remain independent from inline delivery", () {
+      const exactLimitLength = ((maxTranscriptImageBytes + 2) ~/ 3) * 4;
+
+      expect(maxTranscriptImageBytes, 20 * 1024 * 1024);
+      expect(maxTranscriptImageCollectionBytes, 50 * 1024 * 1024);
+      expect(maxTranscriptImageCandidates, 4);
+      expect(maxTranscriptImageBytes, greaterThan(maxInlineMessageAttachmentBytes));
+      expect(isTranscriptImageBase64LengthWithinSizeLimit(base64Length: exactLimitLength), isTrue);
+      expect(isTranscriptImageBase64LengthWithinSizeLimit(base64Length: exactLimitLength + 1), isFalse);
+    });
+
     test("inline attachments round-trip through the wire shape", () {
       const attachment = MessageAttachment.inlineImage(
         mime: "image/png",

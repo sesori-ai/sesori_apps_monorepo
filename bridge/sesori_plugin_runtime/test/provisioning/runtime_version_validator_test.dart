@@ -26,10 +26,45 @@ class _FakeCommandExecutor({final CommandResult? result, final Object? error}) i
   }
 }
 
+class const _SemverManifest() extends RuntimeManifest {
+  @override
+  String get runtimeId => "opencode";
+
+  @override
+  String get displayName => "OpenCode";
+
+  @override
+  String get installDocsUrl => "https://opencode.ai/docs#install";
+
+  @override
+  String get pathExecutableName => "opencode";
+
+  @override
+  String get binaryFileName => "opencode";
+
+  @override
+  RuntimeVersion get minPathVersion => SemanticRuntimeVersion.parse(value: "1.0.0");
+
+  @override
+  RuntimeVersion get bundledVersion => SemanticRuntimeVersion.parse(value: "1.17.9");
+
+  @override
+  RuntimeVersion? parseVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
+
+  @override
+  RuntimeAsset? assetFor({required PlatformTarget target}) => null;
+
+  @override
+  String downloadUrlFor({required RuntimeAsset asset}) => "https://example.test/${asset.assetName}";
+}
+
 void main() {
   group("RuntimeVersionValidator.detectVersion", () {
-    Future<SemanticVersion?> detect(_FakeCommandExecutor executor) {
-      return RuntimeVersionValidator(commandExecutor: executor, runtimeId: "opencode").detectVersion(
+    Future<RuntimeVersion?> detect(_FakeCommandExecutor executor) {
+      return RuntimeVersionValidator(
+        commandExecutor: executor,
+        manifest: const _SemverManifest(),
+      ).detectVersion(
         executable: "opencode",
         environment: const {"PATH": "/usr/bin"},
       );
@@ -115,13 +150,13 @@ void main() {
       expect(stderrLines.join("\n"), isNot(contains(secretOutput)));
     });
 
-    test("exposes the shared version-output parser", () {
+    test("parses version output through the manifest's own scheme", () {
       final validator = RuntimeVersionValidator(
         commandExecutor: _FakeCommandExecutor(),
-        runtimeId: "codex",
+        manifest: const _SemverManifest(),
       );
 
-      expect(validator.parseVersionOutput(output: "codex-cli v0.144.5")?.toString(), "0.144.5");
+      expect(validator.parseVersionOutput(output: "codex-cli v0.144.5")?.raw, "0.144.5");
     });
   });
 }
