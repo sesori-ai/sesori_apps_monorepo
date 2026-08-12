@@ -240,7 +240,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - No user-visible, database, client/bridge wire-contract, or client-UI change;
   OMP persisted artifacts are removed only for already tombstoned sessions.
 - `git diff --check`: pass.
-- Diff: +2,231/-27 = 2,258 changed lines; generated lines: 0; tests run: 394.
+- Diff: +2,233/-27 = 2,260 changed lines; generated lines: 0; tests run: 394.
 - Recorded overage: the planned catalog/options and persisted-cleanup layers,
   isolated ACP lifecycle, and focused tests form one coherent Step 7 boundary;
   splitting would publish an incomplete plugin contract.
