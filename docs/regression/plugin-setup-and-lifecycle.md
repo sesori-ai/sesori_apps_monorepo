@@ -27,6 +27,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Interactive authentication is optional per descriptor. A capable harness owns its
   backend process and credentials, exposes only a safe challenge and sanitized terminal
   state, cancels cooperatively, and settles process cleanup before the operation ends.
+- Shared management metadata advertises authentication independently and reports idle,
+  in-progress, or fail-closed unknown state. Device-code challenges remain request-scoped;
+  only sealed completed, failed, or cancelled progress enters the global SSE stream.
 
 ## Regression Levels
 
@@ -53,6 +56,9 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
   snapshot tokens that miss real changes.
 - A control offered for an undeclared capability, a supported control missing, a busy
   harness accepting a safe command, or idle suspension on a resident or busy harness.
+- A missing authentication state from an older bridge decoding as anything but idle, a
+  future state or conflict reason failing open, challenge data entering snapshots/SSE, or
+  a failed progress payload without its required sanitized message.
 - One failing harness taking down the rest of the bridge, or an empty picker
   instead of the explicit no-harness state when none is usable.
 

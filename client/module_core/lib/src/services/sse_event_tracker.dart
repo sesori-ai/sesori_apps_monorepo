@@ -106,6 +106,7 @@ class SseEventTracker with Disposable {
             SesoriCatalogImportProgress() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
+            SesoriPluginAuthenticationProgress() ||
             SesoriCommandCatalogUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||

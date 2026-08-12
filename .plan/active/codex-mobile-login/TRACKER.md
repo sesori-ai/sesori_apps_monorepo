@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 3 PR open; Step 4 in local development
-- **Current step:** 4/8 locally, blocked from publication on Step 3 merge
-- **Implementation base:** Step 2 merge commit `67310433`
+- **Series state:** Step 3 merged; Step 4 in local development
+- **Current step:** 4/8 locally
+- **Implementation base:** Step 3 merge commit `3af28a81`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** [#833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833)
-- **Next action:** Monitor Step 3 review/CI and implement Step 4 locally
+- **Current PR:** None; Step 4 is being verified locally
+- **Next action:** Verify and publish Step 4
 
 ## Plan Review
 
@@ -28,7 +28,7 @@
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) merged |
 | [x] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827) merged |
-| [ ] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) open |
+| [x] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) merged |
 | [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Local development |
 | [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Pending |
 | [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | Pending |
@@ -80,6 +80,14 @@
   with the internal task-store schema error `no such column: replacement_seq`.
   Committed as `36ec1eca`, pushed, and opened as
   [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833).
+- Step 4: Full `sesori_shared` tests pass (389 tests), focused client SSE
+  classification tests pass, and fatal-info analysis reports no issues in
+  `sesori_shared`, bridge app, client core, desktop core, mobile app, or desktop
+  app. The required architecture implementation review could not run because
+  the review sub-agent failed before reading code with the internal task-store
+  schema error `no such column: replacement_seq`. `git diff --check
+  origin/main` passes, and `git diff --numstat origin/main` reports 905
+  additions and 25 deletions.
 
 ## Findings And Plan Deltas
 
@@ -121,3 +129,9 @@
 - **2026-08-12 - Step 4 started:** Created local branch
   `codex-mobile-login-shared-contracts` from the Step 3 PR branch. It remains
   local until Step 3 merges.
+- **2026-08-12 - Step 3 merged:** Rebased Step 4 onto merge commit `3af28a81`
+  after PR #833 merged with cancellation-precedence review fixes.
+- **2026-08-12 - Step 4 implementation:** Added backend-neutral authentication
+  capability/state metadata, typed device-code challenge, sealed terminal
+  progress, typed conflicts, and one global progress SSE event. Challenge data
+  remains request-scoped and absent from management snapshots and SSE.

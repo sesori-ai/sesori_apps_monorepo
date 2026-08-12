@@ -12,6 +12,35 @@ void main() {
     expect(SesoriSseEvent.fromJson(json), event);
   });
 
+  test('plugin authentication progress round-trips terminal variants', () {
+    const events = <SesoriSseEvent>[
+      SesoriSseEvent.pluginAuthenticationProgress(
+        pluginId: 'codex',
+        progress: PluginAuthenticationProgress.completed(),
+      ),
+      SesoriSseEvent.pluginAuthenticationProgress(
+        pluginId: 'codex',
+        progress: PluginAuthenticationProgress.failed(
+          message: 'Sanitized failure',
+        ),
+      ),
+      SesoriSseEvent.pluginAuthenticationProgress(
+        pluginId: 'codex',
+        progress: PluginAuthenticationProgress.cancelled(),
+      ),
+    ];
+
+    for (final event in events) {
+      expect(SesoriSseEvent.fromJson(event.toJson()), event);
+    }
+    expect(events.first.toJson(), {
+      'type': 'plugin.authentication.progress',
+      'pluginId': 'codex',
+      'progress': {'type': 'completed'},
+    });
+    expect(events.first, isNot(isA<SesoriSessionEvent>()));
+  });
+
   group('plugin install progress', () {
     test('round-trips a downloading phase with percent', () {
       const event = SesoriSseEvent.pluginInstallProgress(

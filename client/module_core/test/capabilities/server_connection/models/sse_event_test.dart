@@ -37,4 +37,16 @@ void main() {
     expect(event.sessionId, isNull);
     expect(event.data, isNot(isA<SesoriSessionEvent>()));
   });
+
+  test("pluginAuthenticationProgress is a global plugin event", () {
+    final event = SseEvent(
+      data: const SesoriSseEvent.pluginAuthenticationProgress(
+        pluginId: "codex",
+        progress: PluginAuthenticationProgress.completed(),
+      ),
+    );
+
+    expect(event.sessionId, isNull);
+    expect(event.data, isNot(isA<SesoriSessionEvent>()));
+  });
 }
