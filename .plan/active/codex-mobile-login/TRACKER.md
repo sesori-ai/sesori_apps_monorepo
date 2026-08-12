@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 3 merged; Step 4 in local development
-- **Current step:** 4/8 locally
+- **Series state:** Step 4 PR open
+- **Current step:** 4/8 in review
 - **Implementation base:** Step 3 merge commit `3af28a81`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** None; Step 4 is being verified locally
-- **Next action:** Verify and publish Step 4
+- **Current PR:** [#834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834)
+- **Next action:** Monitor Step 4 review/CI and implement Step 5 locally
 
 ## Plan Review
 
@@ -29,7 +29,7 @@
 | [x] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) merged |
 | [x] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827) merged |
 | [x] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) merged |
-| [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Local development |
+| [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) open |
 | [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Pending |
 | [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | Pending |
 | [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Pending |
@@ -87,7 +87,8 @@
   the review sub-agent failed before reading code with the internal task-store
   schema error `no such column: replacement_seq`. `git diff --check
   origin/main` passes, and `git diff --numstat origin/main` reports 905
-  additions and 25 deletions.
+  additions and 25 deletions. Committed as `0b418a3a`, pushed, and opened as
+  [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834).
 
 ## Findings And Plan Deltas
 
