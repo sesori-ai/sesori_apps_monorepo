@@ -57,6 +57,28 @@ void main() {
       expect(asked.tool, "execute");
       expect(asked.description, "Run rm");
       expect(asked.requestID, isNotEmpty);
+      expect(asked.allowAlways, isTrue);
+    });
+
+    test("permission without allow_always hides Always live and pending", () async {
+      requests.add(
+        const AcpServerRequest(
+          id: 8,
+          method: "session/request_permission",
+          params: {
+            "sessionId": "s1",
+            "toolCall": {"toolCallId": "tc-2", "title": "Run ls", "kind": "execute"},
+            "options": [
+              {"optionId": "opt-allow-once", "name": "Allow", "kind": "allow_once"},
+              {"optionId": "opt-reject", "name": "Reject", "kind": "reject_once"},
+            ],
+          },
+        ),
+      );
+      await pump();
+
+      expect((emitted.single as BridgeSsePermissionAsked).allowAlways, isFalse);
+      expect(registry.pendingPermissionsForSession("s1").single.allowAlways, isFalse);
     });
 
     test("permission with no resolvable session is auto-cancelled, not enqueued", () async {
@@ -64,16 +86,18 @@ void main() {
       // request stamped with "" is dropped by the mobile client, so it must be
       // auto-cancelled here instead of enqueued (which would deadlock the turn
       // on a reply that can never arrive).
-      requests.add(const AcpServerRequest(
-        id: 9,
-        method: "session/request_permission",
-        params: {
-          "toolCall": {"toolCallId": "tc-9", "title": "Run rm", "kind": "execute"},
-          "options": [
-            {"optionId": "opt-allow-once", "name": "Allow", "kind": "allow_once"},
-          ],
-        },
-      ));
+      requests.add(
+        const AcpServerRequest(
+          id: 9,
+          method: "session/request_permission",
+          params: {
+            "toolCall": {"toolCallId": "tc-9", "title": "Run rm", "kind": "execute"},
+            "options": [
+              {"optionId": "opt-allow-once", "name": "Allow", "kind": "allow_once"},
+            ],
+          },
+        ),
+      );
       await pump();
       // Responded immediately with a cancelled outcome…
       final (id, result) = responds.single;
@@ -116,17 +140,19 @@ void main() {
     });
 
     test("missing matching option falls back to cancelled", () async {
-      requests.add(const AcpServerRequest(
-        id: 9,
-        method: "session/request_permission",
-        params: {
-          "sessionId": "s1",
-          "toolCall": {"kind": "execute"},
-          "options": [
-            {"optionId": "opt-allow-once", "kind": "allow_once"},
-          ],
-        },
-      ));
+      requests.add(
+        const AcpServerRequest(
+          id: 9,
+          method: "session/request_permission",
+          params: {
+            "sessionId": "s1",
+            "toolCall": {"kind": "execute"},
+            "options": [
+              {"optionId": "opt-allow-once", "kind": "allow_once"},
+            ],
+          },
+        ),
+      );
       await pump();
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
       registry.replyPermission(id, PluginPermissionReply.reject);
@@ -137,18 +163,20 @@ void main() {
     test("reply 'once' does NOT escalate to allow_always when allow_once is absent", () async {
       // The agent only offers a session-persistent option. A user who chose a
       // one-time approval must not be silently upgraded to it — cancel instead.
-      requests.add(const AcpServerRequest(
-        id: 21,
-        method: "session/request_permission",
-        params: {
-          "sessionId": "s1",
-          "toolCall": {"kind": "execute"},
-          "options": [
-            {"optionId": "opt-allow-always", "kind": "allow_always"},
-            {"optionId": "opt-reject", "kind": "reject_once"},
-          ],
-        },
-      ));
+      requests.add(
+        const AcpServerRequest(
+          id: 21,
+          method: "session/request_permission",
+          params: {
+            "sessionId": "s1",
+            "toolCall": {"kind": "execute"},
+            "options": [
+              {"optionId": "opt-allow-always", "kind": "allow_always"},
+              {"optionId": "opt-reject", "kind": "reject_once"},
+            ],
+          },
+        ),
+      );
       await pump();
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
       registry.replyPermission(id, PluginPermissionReply.once);
@@ -167,6 +195,7 @@ void main() {
           PluginQuestionInfo(question: "Pick", header: "H", options: [], multiple: false, custom: false),
         ],
         replyBuilder: (answers) => null,
+        resolutionBuilder: null,
       );
       responds.clear();
       errors.clear();
@@ -196,6 +225,7 @@ void main() {
           PluginQuestionInfo(question: "q", header: "h", options: [], multiple: false, custom: false),
         ],
         replyBuilder: (answers) => null,
+        resolutionBuilder: null,
       );
       responds.clear();
       errors.clear();
@@ -215,17 +245,23 @@ void main() {
     });
 
     test("a permission with non-string tool metadata still surfaces (no throw)", () async {
-      requests.add(const AcpServerRequest(
-        id: 31,
-        method: "session/request_permission",
-        params: {
-          "sessionId": "s1",
-          "toolCall": {"kind": 123, "title": {"x": 1}, "toolCallId": 7},
-          "options": [
-            {"optionId": "opt", "kind": "allow_once"},
-          ],
-        },
-      ));
+      requests.add(
+        const AcpServerRequest(
+          id: 31,
+          method: "session/request_permission",
+          params: {
+            "sessionId": "s1",
+            "toolCall": {
+              "kind": 123,
+              "title": {"x": 1},
+              "toolCallId": 7,
+            },
+            "options": [
+              {"optionId": "opt", "kind": "allow_once"},
+            ],
+          },
+        ),
+      );
       await pump();
       final asked = emitted.single as BridgeSsePermissionAsked;
       expect(asked.tool, "tool");
@@ -253,10 +289,16 @@ void main() {
           ),
         ],
         replyBuilder: (answers) => {"selected": answers.first.first},
+        resolutionBuilder: null,
       );
 
       expect(registry.pendingForSession("s1"), hasLength(1));
-      expect(registry.replyQuestion("q-1", [["yes"]]), isTrue);
+      expect(
+        registry.replyQuestion("q-1", [
+          ["yes"],
+        ]),
+        isTrue,
+      );
       final (_, result) = responds.single;
       expect((result! as Map)["selected"], "yes");
       expect(emitted.whereType<BridgeSseQuestionReplied>(), hasLength(1));

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'messages.dart';
@@ -9,6 +9,7 @@ part of 'messages.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 RelayMessage _$RelayMessageFromJson(
@@ -116,7 +117,7 @@ $RelayMessageCopyWith(RelayMessage _, $Res Function(RelayMessage) __);
 @JsonSerializable()
 
 class RelayRequest implements RelayMessage {
-  const RelayRequest({required this.id, required this.method, required this.path, required final  Map<String, String> headers, required this.body, final  String? $type}): _headers = headers,$type = $type ?? 'request';
+  const RelayRequest({required this.id, required this.method, required this.path, required  Map<String, String> headers, required this.body,  String? $type}): _headers = headers,$type = $type ?? 'request';
   factory RelayRequest.fromJson(Map<String, dynamic> json) => _$RelayRequestFromJson(json);
 
  final  String id;
@@ -203,7 +204,7 @@ as String?,
 @JsonSerializable()
 
 class RelayResponse implements RelayMessage {
-  const RelayResponse({required this.id, required this.status, required final  Map<String, String> headers, required this.body, final  String? $type}): _headers = headers,$type = $type ?? 'response';
+  const RelayResponse({required this.id, required this.status, required  Map<String, String> headers, required this.body,  String? $type}): _headers = headers,$type = $type ?? 'response';
   factory RelayResponse.fromJson(Map<String, dynamic> json) => _$RelayResponseFromJson(json);
 
  final  String id;
@@ -288,7 +289,7 @@ as String?,
 @JsonSerializable()
 
 class RelaySseEvent implements RelayMessage {
-  const RelaySseEvent({required this.data, final  String? $type}): $type = $type ?? 'sse_event';
+  const RelaySseEvent({required this.data,  String? $type}): $type = $type ?? 'sse_event';
   factory RelaySseEvent.fromJson(Map<String, dynamic> json) => _$RelaySseEventFromJson(json);
 
  final  String data;
@@ -361,10 +362,11 @@ as String,
 @JsonSerializable()
 
 class RelaySseSubscribe implements RelayMessage {
-  const RelaySseSubscribe({required this.path, final  String? $type}): $type = $type ?? 'sse_subscribe';
+  const RelaySseSubscribe({required this.path, this.attachmentDelivery = MessageAttachmentDelivery.inline,  String? $type}): $type = $type ?? 'sse_subscribe';
   factory RelaySseSubscribe.fromJson(Map<String, dynamic> json) => _$RelaySseSubscribeFromJson(json);
 
  final  String path;
+@JsonKey() final  MessageAttachmentDelivery attachmentDelivery;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -383,16 +385,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseSubscribe&&(identical(other.path, path) || other.path == path));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseSubscribe&&(identical(other.path, path) || other.path == path)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path);
+int get hashCode => Object.hash(runtimeType,path,attachmentDelivery);
 
 @override
 String toString() {
-  return 'RelayMessage.sseSubscribe(path: $path)';
+  return 'RelayMessage.sseSubscribe(path: $path, attachmentDelivery: $attachmentDelivery)';
 }
 
 
@@ -403,7 +405,7 @@ abstract mixin class $RelaySseSubscribeCopyWith<$Res> implements $RelayMessageCo
   factory $RelaySseSubscribeCopyWith(RelaySseSubscribe value, $Res Function(RelaySseSubscribe) _then) = _$RelaySseSubscribeCopyWithImpl;
 @useResult
 $Res call({
- String path
+ String path, MessageAttachmentDelivery attachmentDelivery
 });
 
 
@@ -420,10 +422,11 @@ class _$RelaySseSubscribeCopyWithImpl<$Res>
 
 /// Create a copy of RelayMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? path = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? path = null,Object? attachmentDelivery = null,}) {
   return _then(RelaySseSubscribe(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String,
+as String,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,
   ));
 }
 
@@ -434,7 +437,7 @@ as String,
 @JsonSerializable()
 
 class RelaySseUnsubscribe implements RelayMessage {
-  const RelaySseUnsubscribe({final  String? $type}): $type = $type ?? 'sse_unsubscribe';
+  const RelaySseUnsubscribe({ String? $type}): $type = $type ?? 'sse_unsubscribe';
   factory RelaySseUnsubscribe.fromJson(Map<String, dynamic> json) => _$RelaySseUnsubscribeFromJson(json);
 
 
@@ -473,7 +476,7 @@ String toString() {
 @JsonSerializable()
 
 class RelaySessionView implements RelayMessage {
-  const RelaySessionView({required this.sessionId, final  String? $type}): $type = $type ?? 'session_view';
+  const RelaySessionView({required this.sessionId,  String? $type}): $type = $type ?? 'session_view';
   factory RelaySessionView.fromJson(Map<String, dynamic> json) => _$RelaySessionViewFromJson(json);
 
  final  String? sessionId;
@@ -546,7 +549,7 @@ as String?,
 @JsonSerializable()
 
 class RelayProjectView implements RelayMessage {
-  const RelayProjectView({required this.projectId, final  String? $type}): $type = $type ?? 'project_view';
+  const RelayProjectView({required this.projectId,  String? $type}): $type = $type ?? 'project_view';
   factory RelayProjectView.fromJson(Map<String, dynamic> json) => _$RelayProjectViewFromJson(json);
 
  final  String? projectId;
@@ -619,7 +622,7 @@ as String?,
 @JsonSerializable()
 
 class RelayKeyExchange implements RelayMessage {
-  const RelayKeyExchange({required this.publicKey, final  String? $type}): $type = $type ?? 'key_exchange';
+  const RelayKeyExchange({required this.publicKey,  String? $type}): $type = $type ?? 'key_exchange';
   factory RelayKeyExchange.fromJson(Map<String, dynamic> json) => _$RelayKeyExchangeFromJson(json);
 
  final  String publicKey;
@@ -692,7 +695,7 @@ as String,
 @JsonSerializable()
 
 class RelayReady implements RelayMessage {
-  const RelayReady({required this.publicKey, required this.roomKey, final  String? $type}): $type = $type ?? 'ready';
+  const RelayReady({required this.publicKey, required this.roomKey,  String? $type}): $type = $type ?? 'ready';
   factory RelayReady.fromJson(Map<String, dynamic> json) => _$RelayReadyFromJson(json);
 
  final  String publicKey;
@@ -767,7 +770,7 @@ as String,
 @JsonSerializable()
 
 class RelayResume implements RelayMessage {
-  const RelayResume({final  String? $type}): $type = $type ?? 'resume';
+  const RelayResume({ String? $type}): $type = $type ?? 'resume';
   factory RelayResume.fromJson(Map<String, dynamic> json) => _$RelayResumeFromJson(json);
 
 
@@ -806,7 +809,7 @@ String toString() {
 @JsonSerializable()
 
 class RelayResumeAck implements RelayMessage {
-  const RelayResumeAck({final  String? $type}): $type = $type ?? 'resume_ack';
+  const RelayResumeAck({ String? $type}): $type = $type ?? 'resume_ack';
   factory RelayResumeAck.fromJson(Map<String, dynamic> json) => _$RelayResumeAckFromJson(json);
 
 
@@ -845,7 +848,7 @@ String toString() {
 @JsonSerializable()
 
 class RelayRekeyRequired implements RelayMessage {
-  const RelayRekeyRequired({final  String? $type}): $type = $type ?? 'rekey_required';
+  const RelayRekeyRequired({ String? $type}): $type = $type ?? 'rekey_required';
   factory RelayRekeyRequired.fromJson(Map<String, dynamic> json) => _$RelayRekeyRequiredFromJson(json);
 
 
@@ -884,7 +887,7 @@ String toString() {
 @JsonSerializable()
 
 class AuthRelayMessage implements RelayMessage {
-  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) required this.bridgeId, final  String? $type}): $type = $type ?? 'auth';
+  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) required this.bridgeId,  String? $type}): $type = $type ?? 'auth';
   factory AuthRelayMessage.fromJson(Map<String, dynamic> json) => _$AuthRelayMessageFromJson(json);
 
  final  String token;

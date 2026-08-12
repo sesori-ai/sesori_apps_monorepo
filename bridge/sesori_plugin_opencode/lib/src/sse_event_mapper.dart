@@ -123,6 +123,7 @@ class SseEventMapper {
         displaySessionId: displaySessionId,
         tool: permission,
         description: patterns.join(", "),
+        allowAlways: true,
       ),
       SsePermissionReplied(:final requestID, :final sessionID, :final reply) => BridgeSsePermissionReplied(
         requestID: requestID,

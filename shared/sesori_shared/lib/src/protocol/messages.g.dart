@@ -50,11 +50,27 @@ Map<String, dynamic> _$RelaySseEventToJson(RelaySseEvent instance) =>
 
 RelaySseSubscribe _$RelaySseSubscribeFromJson(Map json) => RelaySseSubscribe(
   path: json['path'] as String,
+  attachmentDelivery:
+      $enumDecodeNullable(
+        _$MessageAttachmentDeliveryEnumMap,
+        json['attachmentDelivery'],
+      ) ??
+      MessageAttachmentDelivery.inline,
   $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$RelaySseSubscribeToJson(RelaySseSubscribe instance) =>
-    <String, dynamic>{'path': instance.path, 'type': instance.$type};
+    <String, dynamic>{
+      'path': instance.path,
+      'attachmentDelivery':
+          _$MessageAttachmentDeliveryEnumMap[instance.attachmentDelivery]!,
+      'type': instance.$type,
+    };
+
+const _$MessageAttachmentDeliveryEnumMap = {
+  MessageAttachmentDelivery.inline: 'inline',
+  MessageAttachmentDelivery.storedReference: 'storedReference',
+};
 
 RelaySseUnsubscribe _$RelaySseUnsubscribeFromJson(Map json) =>
     RelaySseUnsubscribe($type: json['type'] as String?);

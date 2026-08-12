@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'session_status_response.dart';
@@ -9,6 +9,7 @@ part of 'session_status_response.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 AuthSessionStatusResponse _$AuthSessionStatusResponseFromJson(
@@ -84,7 +85,7 @@ $AuthSessionStatusResponseCopyWith(AuthSessionStatusResponse _, $Res Function(Au
 @JsonSerializable()
 
 class AuthSessionStatusResponsePending implements AuthSessionStatusResponse {
-  const AuthSessionStatusResponsePending({final  String? $type}): $type = $type ?? 'pending';
+  const AuthSessionStatusResponsePending({ String? $type}): $type = $type ?? 'pending';
   factory AuthSessionStatusResponsePending.fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponsePendingFromJson(json);
 
 
@@ -123,7 +124,7 @@ String toString() {
 @JsonSerializable()
 
 class AuthSessionStatusResponseComplete implements AuthSessionStatusResponse {
-  const AuthSessionStatusResponseComplete({required this.accessToken, required this.refreshToken, required this.user, final  String? $type}): $type = $type ?? 'complete';
+  const AuthSessionStatusResponseComplete({required this.accessToken, required this.refreshToken, required this.user,  String? $type}): $type = $type ?? 'complete';
   factory AuthSessionStatusResponseComplete.fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponseCompleteFromJson(json);
 
  final  String accessToken;
@@ -209,7 +210,7 @@ $AuthUserCopyWith<$Res> get user {
 @JsonSerializable()
 
 class AuthSessionStatusResponseDenied implements AuthSessionStatusResponse {
-  const AuthSessionStatusResponseDenied({final  String? $type}): $type = $type ?? 'denied';
+  const AuthSessionStatusResponseDenied({ String? $type}): $type = $type ?? 'denied';
   factory AuthSessionStatusResponseDenied.fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponseDeniedFromJson(json);
 
 
@@ -248,7 +249,7 @@ String toString() {
 @JsonSerializable()
 
 class AuthSessionStatusResponseExpired implements AuthSessionStatusResponse {
-  const AuthSessionStatusResponseExpired({final  String? $type}): $type = $type ?? 'expired';
+  const AuthSessionStatusResponseExpired({ String? $type}): $type = $type ?? 'expired';
   factory AuthSessionStatusResponseExpired.fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponseExpiredFromJson(json);
 
 
@@ -287,7 +288,7 @@ String toString() {
 @JsonSerializable()
 
 class AuthSessionStatusResponseError implements AuthSessionStatusResponse {
-  const AuthSessionStatusResponseError({required this.message, final  String? $type}): $type = $type ?? 'error';
+  const AuthSessionStatusResponseError({required this.message,  String? $type}): $type = $type ?? 'error';
   factory AuthSessionStatusResponseError.fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponseErrorFromJson(json);
 
  final  String message;

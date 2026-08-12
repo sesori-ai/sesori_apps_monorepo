@@ -46,6 +46,7 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      chatHistory = createTestChatHistory();
       sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       sessionMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: sessionRepository,
@@ -60,8 +61,8 @@ void main() {
         ),
         sessionOperationDispatcher: sessionOperationDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+        chatHistoryService: chatHistory.service,
       );
-      chatHistory = createTestChatHistory();
       handler = DeleteSessionHandler(
         sessionDeletionService: SessionDeletionService(
           sessionLifecycleService: sessionLifecycleService,

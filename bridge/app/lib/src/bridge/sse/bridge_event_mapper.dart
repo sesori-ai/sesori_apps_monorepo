@@ -30,6 +30,24 @@ class BridgeEventMapper {
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionsUpdated(:final projectID) => SesoriSseEvent.sessionsUpdated(projectID: projectID),
         BridgeSseSessionOptionsChanged() => null,
+        BridgeSseSessionPromptDefaultsChanged(
+          :final sessionID,
+          :final agent,
+          model: final pluginModel,
+        ) => SesoriSseEvent.sessionPromptDefaultsChanged(
+          sessionID: sessionID,
+          promptDefaults: SessionPromptDefaults(
+            agent: agent,
+            model: switch (pluginModel) {
+              PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
+                providerID: providerID,
+                modelID: modelID,
+                variant: variant,
+              ),
+              null => null,
+            },
+          ),
+        ),
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
@@ -55,11 +73,9 @@ class BridgeEventMapper {
           sessionID: sessionID,
           messageID: messageID,
         ),
-        BridgeSseMessagePartUpdated(:final part) => () {
-          if (!part.type.isVisible) return null;
-          final truncated = _truncateToolOutput(part);
-          return SesoriSseEvent.messagePartUpdated(part: truncated.toShared(sessionId: truncated.sessionID));
-        }(),
+        // Finalized parts are stored before delivery, so the Orchestrator maps
+        // them through [mapMessagePart] and [buildMessagePartEvent].
+        BridgeSseMessagePartUpdated() => null,
         BridgeSseMessagePartDelta(
           :final sessionID,
           :final messageID,
@@ -94,6 +110,7 @@ class BridgeEventMapper {
           :final displaySessionId,
           :final tool,
           :final description,
+          :final allowAlways,
         ) =>
           SesoriSseEvent.permissionAsked(
             requestID: requestID,
@@ -101,6 +118,7 @@ class BridgeEventMapper {
             displaySessionId: displaySessionId,
             tool: tool,
             description: description,
+            allowAlways: allowAlways,
           ),
         BridgeSsePermissionReplied(:final requestID, :final sessionID, :final displaySessionId, :final reply) =>
           SesoriSseEvent.permissionReplied(
@@ -178,6 +196,21 @@ class BridgeEventMapper {
       );
       return null;
     }
+  }
+
+  /// Maps one finalized plugin part into its shared form.
+  ///
+  /// Exposed because the Orchestrator both stores and delivers that part, and
+  /// the stored transcript must not disagree with the event a phone renders.
+  MessagePart mapMessagePart({required PluginMessagePart part}) {
+    final truncated = _truncateToolOutput(part);
+    return truncated.toShared(sessionId: truncated.sessionID);
+  }
+
+  bool isMessagePartVisible({required PluginMessagePart part}) => part.type.isVisible;
+
+  SesoriSseEvent buildMessagePartEvent({required MessagePart part}) {
+    return SesoriSseEvent.messagePartUpdated(part: part);
   }
 
   /// Builds a projects summary event from already-remapped summary data

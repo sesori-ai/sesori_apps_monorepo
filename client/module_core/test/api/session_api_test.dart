@@ -6,6 +6,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -43,7 +44,7 @@ void main() {
       final response = await api.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        forceRefresh: false,
+        mode: SessionOptionsRequestMode.dynamic,
       );
 
       expect((response as SuccessResponse<SessionOptionsResponse>).data, options);
@@ -70,7 +71,7 @@ void main() {
       await api.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        forceRefresh: true,
+        mode: SessionOptionsRequestMode.forceRefresh,
       );
 
       verify(
@@ -79,6 +80,32 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
           queryParameters: const {"refresh": "true"},
+        ),
+      ).called(1);
+    });
+
+    test("loadSessionOptions sends refresh=false for cache-only loading", () async {
+      when(
+        () => client.post<SessionOptionsResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+          queryParameters: any(named: "queryParameters"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(options));
+
+      await api.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: SessionOptionsRequestMode.cacheOnly,
+      );
+
+      verify(
+        () => client.post<SessionOptionsResponse>(
+          "/session/options",
+          fromJson: any(named: "fromJson"),
+          body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
+          queryParameters: const {"refresh": "false"},
         ),
       ).called(1);
     });
@@ -105,7 +132,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(session));
 
-      await api.createSessionWithMessage(attachments: const [],
+      await api.createSessionWithMessage(
+        attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
         text: "hello",
@@ -137,7 +165,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await api.sendMessage(attachments: const [],
+      await api.sendMessage(
+        attachments: const [],
         sessionId: "session-1",
         text: "hello",
         agent: "build",

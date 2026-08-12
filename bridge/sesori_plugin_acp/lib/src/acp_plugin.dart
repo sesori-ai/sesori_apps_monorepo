@@ -14,6 +14,7 @@ import "acp_protocol.dart";
 import "acp_session_loader.dart";
 import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
+import "repositories/acp_session_config_repository.dart";
 import "repositories/mappers/acp_content_mapper.dart";
 
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
@@ -23,9 +24,9 @@ import "repositories/mappers/acp_content_mapper.dart";
 /// so the bridge derives the project list from [listAllSessions] and owns all
 /// project/session persistence itself; the plugin stores nothing on disk.
 ///
-/// Concrete so a vanilla ACP harness needs only an [id] + [agentDisplayName]
-/// (the "config row" case). Harnesses with quirks (e.g. Cursor's model
-/// selection and `cursor/*` extensions) subclass and override the hooks:
+/// Backend adapters subclass this and must declare their protocol policies.
+/// Harnesses with quirks (e.g. Cursor's model selection and `cursor/*`
+/// extensions) also override the relevant behavior hooks:
 /// [buildApprovalRegistry], [applyTurnSelection], [authMethodId],
 /// [initializeCapabilityMeta], [commandForDispatch], [getAgents],
 /// [getProviders].
@@ -33,7 +34,7 @@ import "repositories/mappers/acp_content_mapper.dart";
 /// Unlike the codex plugin (which connects to a process listening on a ws
 /// port), this owns the agent subprocess: it spawns lazily on first use and
 /// reaps it on [dispose].
-class AcpPlugin extends BridgeDerivedProjectsPluginApi {
+abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpPlugin({
     required this.id,
     required this.agentDisplayName,
@@ -123,6 +124,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// decisions live on this class — the state object only holds fields.
   final Map<String, _SessionTurnState> _turnStates = {};
 
+  /// Shared tail used only by agents that cannot correlate sessionless server
+  /// requests while multiple prompts are in flight.
+  Future<void> _processTurnTail = Future<void>.value();
+
+  /// Exact selection retained when an already-created empty session cannot be
+  /// configured yet. Its first prompt retries before dispatch.
+  final Map<String, _TurnSelection> _pendingSelections = {};
+
   /// Sessions with a `session/prompt` currently in flight, in dispatch order.
   /// Per-session serialization guarantees a session appears at most once.
   final List<String> _inFlightTurnSessions = [];
@@ -174,18 +183,30 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// enumeration; reset on respawn since a replacement process may comply.
   bool _bareSessionListUnsupported = false;
 
-  // --- Overridable hooks ---
+  // --- Required backend policies and overridable hooks ---
 
-  String get clientName => "sesori-bridge";
-  String get clientVersion => "0.0.0";
+  String get clientName;
+  String get clientVersion;
 
   /// Auth method id to call if the agent reports it requires auth. `null`
   /// uses the first advertised method.
-  String? get authMethodId => null;
+  String? get authMethodId;
 
   /// Non-standard capability hints sent under `clientCapabilities._meta`
   /// (e.g. Cursor's `parameterizedModelPicker`).
-  Map<String, dynamic>? get initializeCapabilityMeta => null;
+  Map<String, dynamic>? get initializeCapabilityMeta;
+
+  /// Whether this agent should be told the client supports standard ACP forms.
+  bool get supportsFormElicitation;
+
+  /// Whether prompts across all sessions share one dispatch lane.
+  bool get serializesPromptsProcessWide;
+
+  /// Whether a turn must stop when its requested selection cannot be applied.
+  bool get failsTurnOnSelectionError;
+
+  /// Maximum time deletion waits for a cancelled target turn before close.
+  Duration get sessionCloseSettlementTimeout;
 
   /// Maps the user-selected slash command to the command name sent to the ACP
   /// agent. The original name remains authoritative for client-facing events.
@@ -228,12 +249,19 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// effect. Base does nothing (the agent's defaults are used). Cursor overrides
   /// to drive its model / mode / effort `session/set_config_option` calls.
   Future<void> applyTurnSelection({
-    required AcpStdioClient client,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {}
+
+  /// Additional privacy-safe events for a prompt failure. The generic session
+  /// error is always emitted separately.
+  Iterable<BridgeSseEvent> mapPromptFailure({
+    required String sessionId,
+    required Object error,
+  }) => const [];
 
   /// Invoked when the agent subprocess is torn down for a respawn (see
   /// [resetConnectionAfterExit]). The replacement process starts with none of
@@ -248,6 +276,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpStdioClient? get client => _client;
   AcpInitializeResult? get initializeResult => _initResult;
   void emitEvent(BridgeSseEvent event) => _eventBuffer.add(event);
+
+  /// Returns the normalized directory already attributed to [sessionId].
+  /// Unknown sessions use the plugin's launch directory.
+  String directoryForSession({required String sessionId}) => _sessionDirectories[sessionId] ?? launchDirectory;
 
   /// The single handler for agent-originated notifications: replay suppression,
   /// then mapping through [eventMapper] into the event buffer. Also the forward
@@ -337,6 +369,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       params: buildInitializeParams(
         clientName: clientName,
         clientVersion: clientVersion,
+        formElicitation: supportsFormElicitation,
         capabilityMeta: initializeCapabilityMeta,
       ),
     );
@@ -750,13 +783,38 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (parts.isEmpty) {
       // No first turn to carry the selection: apply it now so the session's
       // model/mode are in place for whichever turn comes first later.
-      await applyTurnSelection(
-        client: client,
-        sessionId: session.sessionId,
-        model: model,
-        variant: variant,
-        agent: agent,
-      );
+      try {
+        await _runOnProcessLane(
+          () async => applyTurnSelection(
+            configRepository: AcpSessionConfigRepository(
+              client: await _connectedClient(),
+            ),
+            sessionId: session.sessionId,
+            model: model,
+            variant: variant,
+            agent: agent,
+          ),
+        );
+      } on Object catch (error, stack) {
+        if (!failsTurnOnSelectionError) rethrow;
+        _pendingSelections[session.sessionId] = _TurnSelection(
+          model: model,
+          variant: variant,
+          agent: agent,
+        );
+        Log.w(
+          "[$id] initial selection for ${session.sessionId} failed; retrying before first turn",
+          error,
+          stack,
+        );
+        _eventBuffer.add(
+          const BridgeSseTuiToastShow(
+            title: "Session options not applied",
+            message: "The selected options will be retried before the first turn.",
+            variant: "warning",
+          ),
+        );
+      }
     } else {
       // A fresh session has an empty chain, so this dispatches immediately;
       // the selection is applied inside the turn like every other prompt.
@@ -769,6 +827,16 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       );
     }
     return created;
+  }
+
+  Future<T> _runOnProcessLane<T>(Future<T> Function() operation) {
+    if (!serializesPromptsProcessWide) return operation();
+    final result = _processTurnTail.then((_) => operation());
+    _processTurnTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+    return result;
   }
 
   @override
@@ -835,8 +903,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   /// The directory a session should be loaded/operated in — its own canonical
   /// directory when known, else the launch directory.
-  String _directoryForSession(String sessionId) => _sessionDirectories[sessionId] ?? launchDirectory;
-
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {
     if (sessionId.isEmpty || directory.trim().isEmpty) return;
@@ -900,7 +966,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         method: AcpMethods.sessionLoad,
         params: {
           "sessionId": sessionId,
-          "cwd": _directoryForSession(sessionId),
+          "cwd": directoryForSession(sessionId: sessionId),
           "mcpServers": const <Object?>[],
         },
         timeout: const Duration(minutes: 2),
@@ -948,7 +1014,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         method: AcpMethods.sessionResume,
         params: {
           "sessionId": sessionId,
-          "cwd": _directoryForSession(sessionId),
+          "cwd": directoryForSession(sessionId: sessionId),
           "mcpServers": const <Object?>[],
         },
         timeout: const Duration(minutes: 2),
@@ -1005,17 +1071,16 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final expectedGeneration = state.generation;
     // Each link isolates its own failure (_runTurn never throws), so one
     // failed turn cannot poison the chain for the turns queued behind it.
-    state.tail = state.tail.then(
-      (_) => _runTurn(
-        sessionId: sessionId,
-        state: state,
-        expectedGeneration: expectedGeneration,
-        blocks: blocks,
-        model: model,
-        variant: variant,
-        agent: agent,
-      ),
+    Future<void> operation() => _runTurn(
+      sessionId: sessionId,
+      state: state,
+      expectedGeneration: expectedGeneration,
+      blocks: blocks,
+      model: model,
+      variant: variant,
+      agent: agent,
     );
+    state.tail = serializesPromptsProcessWide ? _runOnProcessLane(operation) : state.tail.then((_) => operation());
   }
 
   /// Runs one serialized turn: resolves the live client, makes the session
@@ -1046,6 +1111,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
       return;
     }
+    state.activeSettlement = Completer<void>();
     final AcpStdioClient client;
     try {
       client = await _connectedClient();
@@ -1076,18 +1142,30 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
       return;
     }
+    final pendingSelection = _pendingSelections[sessionId];
+    final selectedModel = model ?? pendingSelection?.model;
+    final selectedVariant = variant ?? pendingSelection?.variant;
+    final selectedAgent = agent ?? pendingSelection?.agent;
     try {
       await applyTurnSelection(
-        client: client,
+        configRepository: AcpSessionConfigRepository(client: client),
         sessionId: sessionId,
-        model: model,
-        variant: variant,
-        agent: agent,
+        model: selectedModel,
+        variant: selectedVariant,
+        agent: selectedAgent,
       );
+      _pendingSelections.remove(sessionId);
     } on Object catch (error, stack) {
-      // Selection is best-effort (the Cursor override is already fail-soft):
-      // the turn proceeds on the agent's current settings.
-      Log.w("[$id] applyTurnSelection for $sessionId failed; prompting with current settings", error, stack);
+      if (failsTurnOnSelectionError) {
+        Log.w("[$id] applyTurnSelection for $sessionId failed; dropping turn", error, stack);
+        _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+        return;
+      }
+      Log.w(
+        "[$id] applyTurnSelection for $sessionId failed; prompting with current settings",
+        error,
+        stack,
+      );
     }
     if (state.generation != expectedGeneration) {
       _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
@@ -1118,6 +1196,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // session error, not a silent idle.
       Log.w("[$id] session/prompt for $sessionId failed after dispatch", error, stack);
       _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+      mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }
   }
 
@@ -1131,6 +1210,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required bool refused,
   }) {
     _inFlightTurnSessions.remove(sessionId);
+    final settlement = state.activeSettlement;
+    state.activeSettlement = null;
+    if (settlement != null && !settlement.isCompleted) settlement.complete();
     if (state.pending > 0) state.pending--;
     // A session deleted mid-turn already dropped this state object from
     // [_turnStates]; its detached accounting above must still settle, but it
@@ -1140,6 +1222,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       _syncWorkState();
       return;
     }
+    eventMapper.finalizeTurn(sessionId: sessionId).forEach(_eventBuffer.add);
     if (state.pending == 0) {
       _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
       _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
@@ -1229,7 +1312,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }) async {
     // ACP has no standard rename; honour the contract optimistically so any
     // local UI cache stays consistent. The mobile DB is authoritative.
-    final directory = _directoryForSession(sessionId);
+    final directory = directoryForSession(sessionId: sessionId);
     return PluginSession(
       id: sessionId,
       projectID: directory,
@@ -1242,13 +1325,35 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<void> deleteSession(String sessionId) async {
-    if ((_turnStates[sessionId]?.pending ?? 0) > 0) {
+    final state = _turnStates[sessionId];
+    if ((state?.pending ?? 0) > 0) {
       await abortSession(sessionId: sessionId);
     }
     _approvalRegistry?.cancelForSession(sessionId);
-    // The state object is dropped here; a still-settling cancelled turn holds
-    // its own reference, so its accounting completes harmlessly off-map.
+    final canClose = _initResult?.agentCapabilities.closeSession ?? false;
+    if (canClose && _residentSessions.contains(sessionId)) {
+      try {
+        await state?.activeSettlement?.future.timeout(
+          sessionCloseSettlementTimeout,
+        );
+        final client = await _connectedClient();
+        await client.request(
+          method: AcpMethods.sessionClose,
+          params: {"sessionId": sessionId},
+        );
+      } on Object catch (error, stackTrace) {
+        Error.throwWithStackTrace(
+          PluginOperationException(
+            "deleteSession",
+            message: "ACP session did not settle and close",
+            cause: error,
+          ),
+          stackTrace,
+        );
+      }
+    }
     _turnStates.remove(sessionId);
+    _pendingSelections.remove(sessionId);
     _inFlightTurnSessions.remove(sessionId);
     if (_lastTurnSessionId == sessionId) _lastTurnSessionId = null;
     _sessionStatuses.remove(sessionId);
@@ -1358,7 +1463,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           method: AcpMethods.sessionLoad,
           params: {
             "sessionId": sessionId,
-            "cwd": _directoryForSession(sessionId),
+            "cwd": directoryForSession(sessionId: sessionId),
             "mcpServers": const <Object?>[],
           },
           timeout: const Duration(minutes: 2),
@@ -1494,7 +1599,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // this plugin's worktree sessions itself via its stored attribution rows.
     final target = normalizeProjectDirectory(directory: projectId);
     final sessionIds = _sessionStatuses.keys
-        .where((sessionId) => _directoryForSession(sessionId) == target)
+        .where((sessionId) => directoryForSession(sessionId: sessionId) == target)
         .toList(growable: false);
     return registry.pendingForProject(sessionIds);
   }
@@ -1548,7 +1653,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       final running = (_turnStates[sessionId]?.pending ?? 0) > 0;
       final awaiting = registry?.hasPendingInput(sessionId) ?? false;
       if (!running && !awaiting) continue;
-      (byProject[_directoryForSession(sessionId)] ??= []).add(
+      (byProject[directoryForSession(sessionId: sessionId)] ??= []).add(
         PluginActiveSession(
           id: sessionId,
           mainAgentRunning: running,
@@ -1630,10 +1735,27 @@ class _SessionTurnState {
   /// Completion of the session's most recently queued turn.
   Future<void> tail = Future<void>.value();
 
+  /// Settlement of this session's currently executing connect/load/selection/
+  /// prompt operation. Queued turns blocked on another session's process lane
+  /// do not participate in deletion's close deadline.
+  Completer<void>? activeSettlement;
+
   /// Turns enqueued but not yet finished (including the running one).
   int pending = 0;
 
   /// Bumped by abort/delete; a queued turn dispatches only if the generation
   /// it captured at enqueue time is still current.
   int generation = 0;
+}
+
+class _TurnSelection {
+  const _TurnSelection({
+    required this.model,
+    required this.variant,
+    required this.agent,
+  });
+
+  final ({String providerID, String modelID})? model;
+  final PluginSessionVariant? variant;
+  final String? agent;
 }

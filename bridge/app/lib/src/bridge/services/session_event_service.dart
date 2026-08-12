@@ -440,6 +440,30 @@ class SessionEventService {
 
     final translatedSession = _eventMapper.sessionInfo(event: translated);
     return switch (translated) {
+      BridgeSseSessionPromptDefaultsChanged(
+        :final sessionID,
+        :final agent,
+        model: final pluginModel,
+      ) => () async {
+        final model = switch (pluginModel) {
+          PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
+            providerID: providerID,
+            modelID: modelID,
+            variant: variant,
+          ),
+          null => null,
+        };
+        try {
+          await _sessionRepository.updatePromptDefaults(sessionId: sessionID, agent: agent, agentModel: model);
+        } on Object catch (error, stackTrace) {
+          Log.w("Failed to persist backend-originated prompt defaults for session $sessionID", error, stackTrace);
+        }
+        return BridgeSseSessionPromptDefaultsChanged(
+          sessionID: sessionID,
+          agent: agent,
+          model: pluginModel,
+        );
+      }(),
       BridgeSseSessionCreated() => switch (translatedSession) {
         final session? => switch (await _catalogSession(session: session)) {
           final catalogSession? => BridgeSseSessionCreated(info: catalogSession.toJson()),

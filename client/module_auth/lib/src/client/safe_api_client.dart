@@ -20,57 +20,57 @@ enum HttpMethod {
 abstract class SafeApiClient {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> get<T>(
-    final Uri url, {
+    Uri url, {
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
-    final ContentType? contentType,
-    final bool logBody,
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
+    ContentType? contentType,
+    bool logBody,
   });
 
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> post<T>(
-    final Uri url, {
+    Uri url, {
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
-    required final Object? body,
-    final ContentType? contentType,
-    final bool logBody,
+    required Object? body,
+    ContentType? contentType,
+    bool logBody,
   });
 
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> put<T>({
-    required final Uri url,
+    required Uri url,
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
-    required final T Function(dynamic json) fromJson,
-    required final Map<String, String>? headers,
+    required T Function(dynamic json) fromJson,
+    required Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
-    required final Object? body,
-    required final ContentType? contentType,
-    required final bool logBody,
+    required Object? body,
+    required ContentType? contentType,
+    required bool logBody,
   });
 
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> patch<T>(
-    final Uri url, {
+    Uri url, {
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
-    required final Object? body,
-    final ContentType? contentType,
-    final bool logBody,
+    required Object? body,
+    ContentType? contentType,
+    bool logBody,
   });
 
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> delete<T>(
-    final Uri url, {
+    Uri url, {
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
-    final ContentType? contentType,
-    final bool logBody,
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
+    ContentType? contentType,
+    bool logBody,
   });
 }

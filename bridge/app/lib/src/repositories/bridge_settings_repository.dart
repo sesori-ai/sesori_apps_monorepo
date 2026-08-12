@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
-import 'package:sesori_shared/sesori_shared.dart' show jsonDecodeMap;
+import 'package:sesori_shared/sesori_shared.dart'
+    show BridgeSettingsResponse, PullRequestRefreshSettingsResponse, YoloSettingsResponse, jsonDecodeMap;
 
 import '../api/bridge_settings_api.dart';
 import '../updater/foundation/release_track.dart';
@@ -35,6 +36,16 @@ class BridgeSettingsRepository {
   Future<BridgeSettings> readCommittedSettings() async {
     await _mutationTail;
     return currentSettings;
+  }
+
+  Future<BridgeSettingsResponse> readCommittedResponse() async {
+    final settings = await readCommittedSettings();
+    return BridgeSettingsResponse(
+      pullRequestRefresh: PullRequestRefreshSettingsResponse(
+        intervalSeconds: settings.pullRequestRefreshIntervalSeconds,
+      ),
+      yolo: YoloSettingsResponse(enabled: settings.yolo),
+    );
   }
 
   Future<void> ensureConfigExists() async {

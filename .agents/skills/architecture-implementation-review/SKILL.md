@@ -1,6 +1,6 @@
 ---
 name: architecture-implementation-review
-description: Reviews architecture-bearing production changes, not general implementation correctness. Must be invoked as a sub-agent: the main agent should ask a sub-agent to perform the review using this skill, rather than loading the skill directly in the main agent context. Prefers Git scopes such as a branch, commit range, recent commits, or PR, but also accepts file-based scopes. Avoids legacy-cleanup scope creep; callers seek user guidance after two rejected passes.
+description: Reviews architecture-bearing production changes, not general implementation correctness. Must be invoked as a sub-agent: the main agent should ask a sub-agent to perform the review using this skill, rather than loading the skill directly in the main agent context. Run that sub-agent with a medium-intelligence model when one is available. Prefers Git scopes such as a branch, commit range, recent commits, or PR, but also accepts file-based scopes. Avoids legacy-cleanup scope creep; callers seek user guidance after two rejected passes.
 ---
 
 # Architecture Implementation Review

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'pending_permission.dart';
@@ -9,6 +9,7 @@ part of 'pending_permission.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$PendingPermissionResponseCopyWithImpl<$Res>
 /// Create a copy of PendingPermissionResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
-  return _then(_self.copyWith(
+  return _then(PendingPermissionResponse(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<PendingPermission>,
   ));
@@ -80,7 +81,7 @@ as List<PendingPermission>,
 @JsonSerializable()
 
 class _PendingPermissionResponse implements PendingPermissionResponse {
-  const _PendingPermissionResponse({required final  List<PendingPermission> data}): _data = data;
+  const _PendingPermissionResponse({required  List<PendingPermission> data}): _data = data;
   factory _PendingPermissionResponse.fromJson(Map<String, dynamic> json) => _$PendingPermissionResponseFromJson(json);
 
  final  List<PendingPermission> _data;
@@ -158,7 +159,7 @@ mixin _$PendingPermission {
  String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
- String? get displaySessionId; String get tool; String get description;
+ String? get displaySessionId; String get tool; String get description; bool get allowAlways;
 /// Create a copy of PendingPermission
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -171,16 +172,16 @@ $PendingPermissionCopyWith<PendingPermission> get copyWith => _$PendingPermissio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description);
+int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description,allowAlways);
 
 @override
 String toString() {
-  return 'PendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description)';
+  return 'PendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
 }
 
 
@@ -191,7 +192,7 @@ abstract mixin class $PendingPermissionCopyWith<$Res>  {
   factory $PendingPermissionCopyWith(PendingPermission value, $Res Function(PendingPermission) _then) = _$PendingPermissionCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, String tool, String description
+ String id, String sessionID, String? displaySessionId, String tool, String description, bool allowAlways
 });
 
 
@@ -208,14 +209,15 @@ class _$PendingPermissionCopyWithImpl<$Res>
 
 /// Create a copy of PendingPermission
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,}) {
-  return _then(_self.copyWith(
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? allowAlways = null,}) {
+  return _then(PendingPermission(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
 as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,
+as String,allowAlways: null == allowAlways ? _self.allowAlways : allowAlways // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -227,7 +229,7 @@ as String,
 @JsonSerializable()
 
 class _PendingPermission implements PendingPermission {
-  const _PendingPermission({required this.id, required this.sessionID, required this.displaySessionId, required this.tool, required this.description});
+  const _PendingPermission({required this.id, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, this.allowAlways = true});
   factory _PendingPermission.fromJson(Map<String, dynamic> json) => _$PendingPermissionFromJson(json);
 
 @override final  String id;
@@ -238,6 +240,7 @@ class _PendingPermission implements PendingPermission {
 @override final  String? displaySessionId;
 @override final  String tool;
 @override final  String description;
+@override@JsonKey() final  bool allowAlways;
 
 /// Create a copy of PendingPermission
 /// with the given fields replaced by the non-null parameter values.
@@ -252,16 +255,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description);
+int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description,allowAlways);
 
 @override
 String toString() {
-  return 'PendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description)';
+  return 'PendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
 }
 
 
@@ -272,7 +275,7 @@ abstract mixin class _$PendingPermissionCopyWith<$Res> implements $PendingPermis
   factory _$PendingPermissionCopyWith(_PendingPermission value, $Res Function(_PendingPermission) _then) = __$PendingPermissionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, String tool, String description
+ String id, String sessionID, String? displaySessionId, String tool, String description, bool allowAlways
 });
 
 
@@ -289,14 +292,15 @@ class __$PendingPermissionCopyWithImpl<$Res>
 
 /// Create a copy of PendingPermission
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? allowAlways = null,}) {
   return _then(_PendingPermission(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
 as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,
+as String,allowAlways: null == allowAlways ? _self.allowAlways : allowAlways // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

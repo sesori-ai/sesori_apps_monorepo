@@ -34,6 +34,7 @@ void main() {
                 (
                   id: "ready",
                   displayName: "Ready",
+                  activationPolicy: PluginActivationPolicy.onDemand,
                   residencyPolicy: PluginResidencyPolicy.transient,
                   sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,
@@ -42,6 +43,7 @@ void main() {
                 (
                   id: "blocked",
                   displayName: "Blocked",
+                  activationPolicy: PluginActivationPolicy.onDemand,
                   residencyPolicy: PluginResidencyPolicy.transient,
                   sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,

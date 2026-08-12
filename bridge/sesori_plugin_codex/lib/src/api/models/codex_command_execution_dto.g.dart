@@ -19,8 +19,8 @@ _CodexCommandExecutionParamsDto _$CodexCommandExecutionParamsDtoFromJson(
 Map<String, dynamic> _$CodexCommandExecutionParamsDtoToJson(
   _CodexCommandExecutionParamsDto instance,
 ) => <String, dynamic>{
-  'threadId': instance.threadId,
-  'turnId': instance.turnId,
+  'threadId': ?instance.threadId,
+  'turnId': ?instance.turnId,
   'item': instance.item.toJson(),
 };
 
@@ -45,11 +45,11 @@ Map<String, dynamic> _$CodexCommandExecutionItemDtoToJson(
   _CodexCommandExecutionItemDto instance,
 ) => <String, dynamic>{
   'type': _$CodexCommandExecutionItemTypeEnumMap[instance.type]!,
-  'id': instance.id,
-  'command': instance.command,
-  'aggregatedOutput': instance.aggregatedOutput,
+  'id': ?instance.id,
+  'command': ?instance.command,
+  'aggregatedOutput': ?instance.aggregatedOutput,
   'status': _$CodexCommandExecutionStatusEnumMap[instance.status]!,
-  'exitCode': instance.exitCode,
+  'exitCode': ?instance.exitCode,
 };
 
 const _$CodexCommandExecutionItemTypeEnumMap = {

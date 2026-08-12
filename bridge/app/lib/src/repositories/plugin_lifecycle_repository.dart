@@ -65,6 +65,9 @@ class PluginLifecycleRepository {
   Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) =>
       _runtime.installRuntime(pluginId: pluginId);
 
+  PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) =>
+      _runtime.authenticate(pluginId: pluginId);
+
   Future<PluginRuntimeCommandResult> stop({
     required String pluginId,
     required PluginStopIntent intent,

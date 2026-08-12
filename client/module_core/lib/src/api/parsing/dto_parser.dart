@@ -31,10 +31,10 @@ class JsonDtoParser {
   JsonDtoParser();
 
   Future<ApiResponse<T>> parseDto<T>(
-    final Uri uri, {
-    required final ParseJsonTask<T> parseJsonTask,
-    required final int statusCode,
-    required final String? jsonData,
+    Uri uri, {
+    required ParseJsonTask<T> parseJsonTask,
+    required int statusCode,
+    required String? jsonData,
   }) async {
     ApiError getApiError() => ApiError.nonSuccessCode(
       errorCode: statusCode,

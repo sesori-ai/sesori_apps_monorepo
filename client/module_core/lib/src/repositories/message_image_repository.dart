@@ -74,7 +74,7 @@ class MessageImageRepository {
     MessageAttachmentRemoteUrl(:final mime) =>
       _supportedRasterMimes.contains(_normalizedMime(mime: mime)) &&
           attachment.safeRemoteUri?.scheme.toLowerCase() == "https",
-    MessageAttachmentMetadata() || MessageAttachmentUnknown() => false,
+    MessageAttachmentStoredImage() || MessageAttachmentMetadata() || MessageAttachmentUnknown() => false,
   };
 
   Future<MessageImageLoadResult> load({required MessageAttachment attachment}) async {
@@ -91,6 +91,7 @@ class MessageImageRepository {
         filename: filename,
       ),
       MessageAttachmentMetadata() ||
+      MessageAttachmentStoredImage() ||
       MessageAttachmentUnknown() => Future<MessageImageLoadResult>.value(const MessageImageLoadUnsupported()),
     };
   }

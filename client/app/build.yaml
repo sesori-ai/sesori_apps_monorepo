@@ -9,6 +9,7 @@ targets:
           # The default value for each is listed.
           any_map: true
           explicit_to_json: true
+          include_if_null: false
       freezed:
         options:
           format: false

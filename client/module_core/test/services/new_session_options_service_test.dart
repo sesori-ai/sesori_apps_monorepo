@@ -1,5 +1,6 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
 import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
@@ -11,6 +12,8 @@ import "package:test/test.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
+  setUpAll(registerAllFallbackValues);
+
   group("NewSessionOptionsService", () {
     late MockSessionRepository repository;
     late NewSessionOptionsService service;
@@ -38,7 +41,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          forceRefresh: any(named: "forceRefresh"),
+          mode: any(named: "mode"),
         ),
       );
       verifyNever(
@@ -53,6 +56,7 @@ void main() {
       final catalog = SessionOptionsCatalog(
         agents: [_agent(name: "build")],
         providers: _providers().items,
+        providersConnectedOnly: false,
         commands: [_command(name: "review")],
       );
       when(
@@ -82,16 +86,102 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          forceRefresh: any(named: "forceRefresh"),
+          mode: any(named: "mode"),
         ),
       );
+    });
+
+    test("partial legacy refresh preserves the available catalog", () async {
+      final error = ApiError.generic();
+      final catalog = SessionOptionsCatalog(
+        agents: const [],
+        providers: _providers().items,
+        providersConnectedOnly: false,
+        commands: [_command(name: "review")],
+      );
+      when(
+        () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => LegacySessionOptionsRepositoryPartial(
+          catalog: catalog,
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error)],
+        ),
+      );
+
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.legacy,
+        mode: NewSessionOptionsLoadMode.forcedRefresh,
+        restoredSelection: null,
+        previousOptions: null,
+      );
+
+      expect(
+        result,
+        isA<NewSessionOptionsLoaded>()
+            .having((value) => value.source, "source", NewSessionOptionsSource.legacy)
+            .having((value) => value.options.providers, "providers", catalog.providers)
+            .having((value) => value.options.commands.single.name, "command", "review"),
+      );
+    });
+
+    test("partial legacy refresh retains prior data only for failed sources", () async {
+      final previousProviders = _providers().items;
+      final previous = NewSessionOptionsData(
+        agents: [_agent(name: "old-agent")],
+        providers: previousProviders,
+        commands: [_command(name: "old-command")],
+        selectedAgent: "old-agent",
+        selectedAgentModel: const AgentModel(providerID: "provider-a", modelID: "model-a", variant: null),
+        stagedCommand: null,
+        availableVariants: const [],
+      );
+      final catalog = SessionOptionsCatalog(
+        agents: [_agent(name: "new-agent")],
+        providers: const [],
+        providersConnectedOnly: false,
+        commands: [_command(name: "new-command")],
+      );
+      when(
+        () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => LegacySessionOptionsRepositoryPartial(
+          catalog: catalog,
+          errors: [
+            LegacySessionOptionError(
+              source: LegacySessionOptionSource.providers,
+              error: ApiError.generic(),
+            ),
+          ],
+        ),
+      );
+
+      final result =
+          await service.load(
+                projectId: "project-1",
+                pluginId: "plugin-1",
+                source: NewSessionOptionsSource.legacy,
+                mode: NewSessionOptionsLoadMode.forcedRefresh,
+                restoredSelection: null,
+                previousOptions: previous,
+              )
+              as NewSessionOptionsLoaded;
+
+      expect(result.options.agents.single.name, "new-agent");
+      expect(result.options.providers, previousProviders);
+      expect(result.options.commands.single.name, "new-command");
     });
 
     test("legacy repository failure remains a legacy load failure", () async {
       final error = ApiError.generic();
       when(
         () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
-      ).thenAnswer((_) async => LegacySessionOptionsRepositoryFailure(error: error));
+      ).thenAnswer(
+        (_) async => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error)],
+        ),
+      );
 
       final result = await service.load(
         projectId: "project-1",
@@ -112,7 +202,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          forceRefresh: any(named: "forceRefresh"),
+          mode: any(named: "mode"),
         ),
       );
     });
@@ -120,7 +210,11 @@ void main() {
     test("aggregate failure never falls back to the legacy repository", () async {
       final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null);
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: false),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
       ).thenAnswer((_) async => SessionOptionsRepositoryProjectNotFound(error: error));
 
       final result = await service.load(
@@ -155,10 +249,15 @@ void main() {
           _agent(name: "review"),
         ],
         providers: _providers().items,
+        providersConnectedOnly: false,
         commands: [_command(name: "review")],
       );
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: false),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog));
 
       final result =
@@ -193,10 +292,15 @@ void main() {
           ),
         ],
         providers: _providers().items,
+        providersConnectedOnly: false,
         commands: const [],
       );
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: false),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog));
 
       final result =
@@ -234,10 +338,15 @@ void main() {
       final catalog = SessionOptionsCatalog(
         agents: [_agent(name: "build")],
         providers: _providers().items,
+        providersConnectedOnly: false,
         commands: [refreshedCommand],
       );
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: false),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog));
 
       final result =
@@ -261,7 +370,11 @@ void main() {
 
     test("maps cache and refresh outcomes without retaining invalid options", () async {
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: false),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
       ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
       final unavailable = await service.load(
         projectId: "project-1",
@@ -277,7 +390,7 @@ void main() {
         () => repository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-1",
-          forceRefresh: false,
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedUnavailable());
       final dynamicFailure = await service.load(
@@ -300,7 +413,11 @@ void main() {
         availableVariants: [],
       );
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: true),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
       ).thenAnswer((_) async => SessionOptionsRepositoryFailure(error: ApiError.generic()));
       final transientFailure = await service.load(
         projectId: "project-1",
@@ -318,7 +435,11 @@ void main() {
       );
 
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: true),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
       ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedRetained());
       final retained = await service.load(
         projectId: "project-1",
@@ -338,7 +459,11 @@ void main() {
       );
 
       when(
-        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", forceRefresh: true),
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
       ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedUnavailable());
       final cleared = await service.load(
         projectId: "project-1",

@@ -566,6 +566,7 @@ class _RegistrationHarness {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
+      archivedSessionStorage: testChatHistory.archivedStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),

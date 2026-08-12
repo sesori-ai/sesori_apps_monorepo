@@ -63,6 +63,45 @@ void main() {
     expect(events.single, isA<ProvisionFailed>());
   });
 
+  test("authenticate forwards safe events and aborts on shutdown", () async {
+    final authenticationGate = Completer<void>();
+    final descriptor = _AuthenticationDescriptor(
+      authenticate: (aborted) async* {
+        yield PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        );
+        await authenticationGate.future;
+        if (aborted.isAborted) throw const PluginStartAbortedException();
+        yield const PluginAuthenticationCompleted();
+      },
+    );
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: descriptor,
+    );
+    addTearDown(runtime.dispose);
+    final events = <PluginAuthenticationEvent>[];
+    final operation = runtime.authenticate(pluginId: "one");
+    final done = operation.events.listen(events.add).asFuture<void>();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(events.single, isA<PluginAuthenticationDeviceCodeChallenge>());
+    runtime.beginShutdown();
+    authenticationGate.complete();
+    await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+  });
+
+  test("authenticate rejects descriptors without the optional capability", () {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+
+    expect(
+      () => runtime.authenticate(pluginId: "one"),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test("disable invalidates an in-flight setup inspection", () async {
     final inspectionGate = Completer<PluginSetupStatus>();
     final runtime = _runtime(
@@ -803,6 +842,7 @@ void main() {
             displaySessionId: "busy",
             tool: "shell",
             description: "must remain fenced",
+            allowAlways: true,
           ),
         )
         ..add(
@@ -1737,6 +1777,23 @@ class _FakeDescriptor extends BridgePluginDescriptor {
 
   @override
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("fake factory owns construction");
+}
+
+class _AuthenticationDescriptor extends _FakeDescriptor implements InteractivePluginAuthenticationDescriptor {
+  const _AuthenticationDescriptor({
+    required Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) authenticate,
+  }) : _authenticate = authenticate;
+
+  final Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) _authenticate;
+
+  @override
+  Stream<PluginAuthenticationEvent> authenticate({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal aborted,
+  }) => _authenticate(aborted);
 }
 
 class _FakePlugin implements BridgePlugin {

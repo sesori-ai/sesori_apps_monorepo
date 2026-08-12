@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'session_detail_state.dart';
@@ -9,6 +9,7 @@ part of 'session_detail_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -78,7 +79,7 @@ String toString() {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required final  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.pluginId, required this.supportsPromptAttachments, required this.agent, required this.assistantAgentModel, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required final  List<QueuedSessionSubmission> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, required this.isRefreshing, final  List<SessionVariant> availableVariants = const [], required this.retryErrorMessage}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const SessionDetailLoaded({required  List<MessageWithParts> messages, required this.olderMessagesCursor, this.isLoadingOlderMessages = false, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.pluginId, required this.supportsPromptAttachments, required this.agent, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required  List<QueuedSessionSubmission> queuedMessages, required this.sendingSubmission, required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, required this.isRefreshing,  List<SessionVariant> availableVariants = const [], required this.retryErrorMessage}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<MessageWithParts> _messages;
@@ -88,6 +89,14 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_messages);
 }
 
+/// Cursor for the page of messages before [messages], or null when the
+/// start of the transcript is loaded — so the UI shows no load-older
+/// affordance. Also null against a bridge that predates pagination, which
+/// always sends the whole transcript.
+ final  int? olderMessagesCursor;
+/// Whether a load-older request is in flight, so the action is not
+/// re-issued while it runs.
+@JsonKey() final  bool isLoadingOlderMessages;
  final  Map<String, String> _streamingText;
  Map<String, String> get streamingText {
   if (_streamingText is EqualUnmodifiableMapView) return _streamingText;
@@ -110,18 +119,12 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_pendingPermissions);
 }
 
-// Session title — updated reactively via SSE `session.updated` events.
  final  String? sessionTitle;
-// The harness running this session, or null when it could not be resolved.
  final  String? pluginId;
-// Null when the plugin metadata lookup could not resolve the capability.
  final  bool? supportsPromptAttachments;
-// Agent/model from the latest assistant message.
  final  String? agent;
  final  AgentModel? assistantAgentModel;
-// Background tasks (child sessions).
  final  List<Session> _children;
-// Background tasks (child sessions).
  List<Session> get children {
   if (_children is EqualUnmodifiableListView) return _children;
   // ignore: implicit_dynamic_type
@@ -135,22 +138,17 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableMapView(_childStatuses);
 }
 
-// Whether this session is a root (main) session. `true` = root,
-// `false` = child, `null` = unknown (metadata lookup failed).
  final  bool? isRootSession;
  final  bool isArchived;
-// Queued messages (waiting to be sent when connection is restored).
  final  List<QueuedSessionSubmission> _queuedMessages;
-// Queued messages (waiting to be sent when connection is restored).
  List<QueuedSessionSubmission> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_queuedMessages);
 }
 
-// Available agents and providers for selection.
+ final  QueuedSessionSubmission? sendingSubmission;
  final  List<AgentInfo> _availableAgents;
-// Available agents and providers for selection.
  List<AgentInfo> get availableAgents {
   if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
   // ignore: implicit_dynamic_type
@@ -171,7 +169,6 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_availableCommands);
 }
 
-// Currently selected agent and model (pre-populated from defaults, never null once loaded).
  final  String selectedAgent;
  final  AgentModel? selectedAgentModel;
  final  CommandInfo? stagedCommand;
@@ -183,7 +180,6 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
-// Transient retry error message from the AI provider (e.g. "Provider is overloaded").
  final  String? retryErrorMessage;
 
 /// Create a copy of SessionDetailState
@@ -196,16 +192,16 @@ $SessionDetailLoadedCopyWith<SessionDetailLoaded> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&const DeepCollectionEquality().equals(other._messages, _messages)&&const DeepCollectionEquality().equals(other._streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other._pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other._pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.assistantAgentModel, assistantAgentModel) || other.assistantAgentModel == assistantAgentModel)&&const DeepCollectionEquality().equals(other._children, _children)&&const DeepCollectionEquality().equals(other._childStatuses, _childStatuses)&&(identical(other.isRootSession, isRootSession) || other.isRootSession == isRootSession)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&const DeepCollectionEquality().equals(other._queuedMessages, _queuedMessages)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants)&&(identical(other.retryErrorMessage, retryErrorMessage) || other.retryErrorMessage == retryErrorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.olderMessagesCursor, olderMessagesCursor) || other.olderMessagesCursor == olderMessagesCursor)&&(identical(other.isLoadingOlderMessages, isLoadingOlderMessages) || other.isLoadingOlderMessages == isLoadingOlderMessages)&&const DeepCollectionEquality().equals(other._streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other._pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other._pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.assistantAgentModel, assistantAgentModel) || other.assistantAgentModel == assistantAgentModel)&&const DeepCollectionEquality().equals(other._children, _children)&&const DeepCollectionEquality().equals(other._childStatuses, _childStatuses)&&(identical(other.isRootSession, isRootSession) || other.isRootSession == isRootSession)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&const DeepCollectionEquality().equals(other._queuedMessages, _queuedMessages)&&(identical(other.sendingSubmission, sendingSubmission) || other.sendingSubmission == sendingSubmission)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants)&&(identical(other.retryErrorMessage, retryErrorMessage) || other.retryErrorMessage == retryErrorMessage));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,const DeepCollectionEquality().hash(_messages),const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,pluginId,supportsPromptAttachments,agent,assistantAgentModel,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),isRootSession,isArchived,const DeepCollectionEquality().hash(_queuedMessages),const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,isRefreshing,const DeepCollectionEquality().hash(_availableVariants),retryErrorMessage]);
+int get hashCode => Object.hashAll([runtimeType,const DeepCollectionEquality().hash(_messages),olderMessagesCursor,isLoadingOlderMessages,const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,pluginId,supportsPromptAttachments,agent,assistantAgentModel,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),isRootSession,isArchived,const DeepCollectionEquality().hash(_queuedMessages),sendingSubmission,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,isRefreshing,const DeepCollectionEquality().hash(_availableVariants),retryErrorMessage]);
 
 @override
 String toString() {
-  return 'SessionDetailState.loaded(messages: $messages, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, pluginId: $pluginId, supportsPromptAttachments: $supportsPromptAttachments, agent: $agent, assistantAgentModel: $assistantAgentModel, children: $children, childStatuses: $childStatuses, isRootSession: $isRootSession, isArchived: $isArchived, queuedMessages: $queuedMessages, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, isRefreshing: $isRefreshing, availableVariants: $availableVariants, retryErrorMessage: $retryErrorMessage)';
+  return 'SessionDetailState.loaded(messages: $messages, olderMessagesCursor: $olderMessagesCursor, isLoadingOlderMessages: $isLoadingOlderMessages, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, pluginId: $pluginId, supportsPromptAttachments: $supportsPromptAttachments, agent: $agent, assistantAgentModel: $assistantAgentModel, children: $children, childStatuses: $childStatuses, isRootSession: $isRootSession, isArchived: $isArchived, queuedMessages: $queuedMessages, sendingSubmission: $sendingSubmission, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, isRefreshing: $isRefreshing, availableVariants: $availableVariants, retryErrorMessage: $retryErrorMessage)';
 }
 
 
@@ -216,7 +212,7 @@ abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<MessageWithParts> messages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, String? pluginId, bool? supportsPromptAttachments, String? agent, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, List<QueuedSessionSubmission> queuedMessages, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants, String? retryErrorMessage
+ List<MessageWithParts> messages, int? olderMessagesCursor, bool isLoadingOlderMessages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, String? pluginId, bool? supportsPromptAttachments, String? agent, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, List<QueuedSessionSubmission> queuedMessages, QueuedSessionSubmission? sendingSubmission, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants, String? retryErrorMessage
 });
 
 
@@ -233,10 +229,12 @@ class _$SessionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? agent = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,Object? retryErrorMessage = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? olderMessagesCursor = freezed,Object? isLoadingOlderMessages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? agent = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? sendingSubmission = freezed,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,Object? retryErrorMessage = freezed,}) {
   return _then(SessionDetailLoaded(
 messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
-as List<MessageWithParts>,streamingText: null == streamingText ? _self._streamingText : streamingText // ignore: cast_nullable_to_non_nullable
+as List<MessageWithParts>,olderMessagesCursor: freezed == olderMessagesCursor ? _self.olderMessagesCursor : olderMessagesCursor // ignore: cast_nullable_to_non_nullable
+as int?,isLoadingOlderMessages: null == isLoadingOlderMessages ? _self.isLoadingOlderMessages : isLoadingOlderMessages // ignore: cast_nullable_to_non_nullable
+as bool,streamingText: null == streamingText ? _self._streamingText : streamingText // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,sessionStatus: null == sessionStatus ? _self.sessionStatus : sessionStatus // ignore: cast_nullable_to_non_nullable
 as SessionStatus,pendingQuestions: null == pendingQuestions ? _self._pendingQuestions : pendingQuestions // ignore: cast_nullable_to_non_nullable
 as List<SesoriQuestionAsked>,pendingPermissions: null == pendingPermissions ? _self._pendingPermissions : pendingPermissions // ignore: cast_nullable_to_non_nullable
@@ -250,7 +248,8 @@ as List<Session>,childStatuses: null == childStatuses ? _self._childStatuses : c
 as Map<String, SessionStatus>,isRootSession: freezed == isRootSession ? _self.isRootSession : isRootSession // ignore: cast_nullable_to_non_nullable
 as bool?,isArchived: null == isArchived ? _self.isArchived : isArchived // ignore: cast_nullable_to_non_nullable
 as bool,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,sendingSubmission: freezed == sendingSubmission ? _self.sendingSubmission : sendingSubmission // ignore: cast_nullable_to_non_nullable
+as QueuedSessionSubmission?,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
 as List<CommandInfo>,selectedAgent: null == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable

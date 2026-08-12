@@ -409,6 +409,60 @@ abstract class AppLocalizations {
   /// **'Bridge'**
   String get settingsSectionBridge;
 
+  /// No description provided for @settingsYoloTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'YOLO mode'**
+  String get settingsYoloTitle;
+
+  /// No description provided for @settingsYoloWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically approves all permission requests. Use with caution.'**
+  String get settingsYoloWarning;
+
+  /// No description provided for @settingsYoloLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the bridge setting…'**
+  String get settingsYoloLoading;
+
+  /// No description provided for @settingsYoloDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to configure this setting.'**
+  String get settingsYoloDisconnected;
+
+  /// No description provided for @settingsYoloUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to configure this setting.'**
+  String get settingsYoloUnsupported;
+
+  /// No description provided for @settingsYoloLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the bridge setting. Check your connection and try again.'**
+  String get settingsYoloLoadFailed;
+
+  /// No description provided for @settingsYoloUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsYoloUncertain;
+
+  /// No description provided for @settingsYoloUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsYoloUpdateFailed;
+
+  /// No description provided for @settingsYoloRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry YOLO setting'**
+  String get settingsYoloRetry;
+
   /// No description provided for @settingsPullRequestRefreshTitle.
   ///
   /// In en, this message translates to:
@@ -757,6 +811,144 @@ abstract class AppLocalizations {
   /// **'Check your connection and try again.'**
   String get harnessManagementRequestFailed;
 
+  /// No description provided for @harnessAuthenticationLogIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get harnessAuthenticationLogIn;
+
+  /// No description provided for @harnessAuthenticationContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue login'**
+  String get harnessAuthenticationContinue;
+
+  /// No description provided for @harnessAuthenticationDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorize this harness from your phone.'**
+  String get harnessAuthenticationDescription;
+
+  /// No description provided for @harnessAuthenticationSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to harness'**
+  String get harnessAuthenticationSheetTitle;
+
+  /// No description provided for @harnessAuthenticationSecurityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you started this login. Sesori will open the harness provider\'s secure website; verify the address before entering the code.'**
+  String get harnessAuthenticationSecurityDescription;
+
+  /// No description provided for @harnessAuthenticationSecuritySemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Security notice. Only continue if you started this login. Verify the website address before entering the code.'**
+  String get harnessAuthenticationSecuritySemantics;
+
+  /// No description provided for @harnessAuthenticationCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time code'**
+  String get harnessAuthenticationCodeLabel;
+
+  /// No description provided for @harnessAuthenticationCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy one-time code'**
+  String get harnessAuthenticationCopyCode;
+
+  /// No description provided for @harnessAuthenticationCodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied'**
+  String get harnessAuthenticationCodeCopied;
+
+  /// No description provided for @harnessAuthenticationWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for authorization on the bridge…'**
+  String get harnessAuthenticationWaiting;
+
+  /// No description provided for @harnessAuthenticationOpenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open secure website'**
+  String get harnessAuthenticationOpenBrowser;
+
+  /// No description provided for @harnessAuthenticationCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel login'**
+  String get harnessAuthenticationCancel;
+
+  /// No description provided for @harnessAuthenticationCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling…'**
+  String get harnessAuthenticationCancelling;
+
+  /// No description provided for @harnessAuthenticationCancellingUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation was sent, but the response was lost. Waiting for the bridge to confirm…'**
+  String get harnessAuthenticationCancellingUncertain;
+
+  /// No description provided for @harnessAuthenticationFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness login failed'**
+  String get harnessAuthenticationFailedTitle;
+
+  /// No description provided for @harnessAuthenticationDismissError.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss login error'**
+  String get harnessAuthenticationDismissError;
+
+  /// No description provided for @harnessAuthenticationNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is no longer registered on this bridge.'**
+  String get harnessAuthenticationNotFound;
+
+  /// No description provided for @harnessAuthenticationUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to log in from this device.'**
+  String get harnessAuthenticationUnsupported;
+
+  /// No description provided for @harnessAuthenticationConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is busy with another management action. Refresh before trying again.'**
+  String get harnessAuthenticationConflict;
+
+  /// No description provided for @harnessAuthenticationUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection changed before the result could be confirmed. Refresh before trying again.'**
+  String get harnessAuthenticationUncertain;
+
+  /// No description provided for @harnessAuthenticationInvalidChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
+  String get harnessAuthenticationInvalidChallenge;
+
+  /// No description provided for @harnessAuthenticationBrowserFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The secure website could not be opened. Copy the code and try again.'**
+  String get harnessAuthenticationBrowserFailed;
+
+  /// No description provided for @harnessAuthenticationRequestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get harnessAuthenticationRequestFailed;
+
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:
@@ -1057,23 +1249,29 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
-  /// Settings section choosing which input the session composer leads with
+  /// Settings entry and page title for choosing the default session composer input
   ///
   /// In en, this message translates to:
-  /// **'Chat input'**
-  String get settingsSectionChatInput;
+  /// **'Default input'**
+  String get settingsDefaultInputTitle;
 
-  /// Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation
+  /// Default input option that leads with voice dictation
   ///
   /// In en, this message translates to:
-  /// **'Voice first'**
-  String get settingsChatInputVoiceFirst;
+  /// **'Voice'**
+  String get settingsDefaultInputVoice;
 
-  /// Chat input option: the composer rests as a tap-to-type field with the microphone alongside
+  /// Default input option that leads with typed text
   ///
   /// In en, this message translates to:
-  /// **'Text first'**
-  String get settingsChatInputTextFirst;
+  /// **'Text'**
+  String get settingsDefaultInputText;
+
+  /// Placeholder shown in the typed-input preview
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Sesori'**
+  String get settingsDefaultInputTextPreview;
 
   /// No description provided for @settingsSectionSupport.
   ///
@@ -1752,6 +1950,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Queued command'**
   String get sessionDetailQueuedCommand;
+
+  /// No description provided for @sessionDetailSendingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get sessionDetailSendingMessage;
 
   /// No description provided for @sessionDetailCancelQueued.
   ///
@@ -2562,6 +2766,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Harness settings'**
   String get newSessionHarnessSettings;
+
+  /// No description provided for @newSessionNoHarnessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No coding harness installed'**
+  String get newSessionNoHarnessTitle;
+
+  /// No description provided for @newSessionNoHarnessDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The connected bridge has no coding harness it can run. Install one from Harness settings.'**
+  String get newSessionNoHarnessDescription;
+
+  /// No description provided for @newSessionHarnessesRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for harnesses'**
+  String get newSessionHarnessesRefresh;
 
   /// No description provided for @newSessionOptionsLoadingSemantics.
   ///

@@ -42,6 +42,7 @@ AgentInfo _testAgent({required String name, required String description, require
 SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
   agents: [_testAgent(name: "coder", description: "A coding assistant", variant: "xhigh")],
   providers: testProviderListResponse().items,
+  providersConnectedOnly: testProviderListResponse().connectedOnly,
   commands: const [],
 );
 
@@ -248,7 +249,7 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
-        forceRefresh: any(named: "forceRefresh"),
+        mode: any(named: "mode"),
       ),
     ).thenAnswer((invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
@@ -268,6 +269,7 @@ void main() {
             catalog: SessionOptionsCatalog(
               agents: agentData.agents,
               providers: providerData.items,
+              providersConnectedOnly: providerData.connectedOnly,
               commands: commandData.items,
             ),
           ),
@@ -299,12 +301,19 @@ void main() {
             catalog: SessionOptionsCatalog(
               agents: agentData.agents,
               providers: providerData.items,
+              providersConnectedOnly: providerData.connectedOnly,
               commands: commandData.items,
             ),
           ),
-        (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(error: error),
-        (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(error: error),
-        (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(error: error),
+        (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error)],
+        ),
+        (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.providers, error: error)],
+        ),
+        (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(
+          errors: [LegacySessionOptionError(source: LegacySessionOptionSource.commands, error: error)],
+        ),
       };
     });
     when(
@@ -439,7 +448,7 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
-        forceRefresh: any(named: "forceRefresh"),
+        mode: any(named: "mode"),
       ),
     );
 
@@ -467,11 +476,12 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        forceRefresh: false,
+        mode: SessionOptionsRequestMode.dynamic,
       ),
     ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -494,7 +504,8 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
         text: "use backend defaults",
@@ -513,7 +524,7 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        forceRefresh: false,
+        mode: SessionOptionsRequestMode.dynamic,
       ),
     ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedUnavailable());
 
@@ -530,11 +541,11 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        forceRefresh: any(named: "forceRefresh"),
+        mode: any(named: "mode"),
       ),
     ).thenAnswer((invocation) async {
-      final forceRefresh = invocation.namedArguments[#forceRefresh]! as bool;
-      return forceRefresh
+      final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
+      return mode == SessionOptionsRequestMode.forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedRetained()
           : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
     });
@@ -557,11 +568,11 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        forceRefresh: any(named: "forceRefresh"),
+        mode: any(named: "mode"),
       ),
     ).thenAnswer((invocation) async {
-      final forceRefresh = invocation.namedArguments[#forceRefresh]! as bool;
-      return forceRefresh
+      final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
+      return mode == SessionOptionsRequestMode.forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedUnavailable()
           : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
     });
@@ -954,7 +965,8 @@ void main() {
 
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
     verifyNever(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1150,7 +1162,8 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.pump();
     verifyNever(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1162,6 +1175,120 @@ void main() {
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
     );
+  });
+
+  testWidgets("names the missing harness and hides unavailable controls", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    // A machine with no coding tool installed reports no harness at all. The
+    // page has to name that rather than render blank or unusable controls.
+    expect(find.text(loc.newSessionNoHarnessTitle), findsOneWidget);
+    expect(find.text(loc.newSessionNoHarnessDescription), findsOneWidget);
+    expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
+    expect(find.byKey(const Key("new_session_options_refresh")), findsNothing);
+    expect(find.byType(PromptInput), findsNothing);
+  });
+
+  testWidgets("restores the chooser and composer when reconnect finds a harness", (tester) async {
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) async {
+      discoveryCalls++;
+      return ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: discoveryCalls == 1
+              ? const []
+              : const [
+                  PluginMetadata(
+                    id: "plugin-1",
+                    displayName: "Plugin One",
+                    isDefault: true,
+                    state: PluginLifecycleState.ready,
+                    actionHint: null,
+                  ),
+                ],
+        ),
+      );
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(discoveryCalls, 1);
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+
+    connectionStatus
+      ..add(const ConnectionStatus.disconnected())
+      ..add(
+        const ConnectionStatus.connected(
+          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          health: HealthResponse(
+            healthy: true,
+            version: "test",
+            filesystemAccessDegraded: null,
+          ),
+        ),
+      );
+    await tester.pumpAndSettle();
+
+    expect(discoveryCalls, 2);
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
+    expect(find.byType(NewSessionPluginChooser), findsOneWidget);
+    expect(find.byType(PromptInput), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+          )
+          .ignoring,
+      isFalse,
+    );
+  });
+
+  testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionHarnessesRefresh);
+    expect(tester.widget<PregoButtonsSolid>(refresh).onPressed, isNotNull);
+    // The bridge never confirmed an empty harness list, so the error banner is
+    // the honest explanation and discovery remains retryable.
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
+  });
+
+  testWidgets("opens harness settings from the empty harness notice", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("new_session_no_harness_settings")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("harnesses-settings"), findsOneWidget);
   });
 
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
@@ -1291,7 +1418,8 @@ void main() {
   testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1322,7 +1450,8 @@ void main() {
   testWidgets("blocks submit UI while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1353,7 +1482,8 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
 
     verify(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1370,7 +1500,8 @@ void main() {
   testWidgets("shows snackbar and allows navigation when aborting while sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1413,7 +1544,8 @@ void main() {
   testWidgets("does not hijack navigation when creation completes after the user navigated away", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1461,7 +1593,8 @@ void main() {
   testWidgets("still navigates to session detail after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1498,7 +1631,8 @@ void main() {
   testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1533,7 +1667,8 @@ void main() {
   testWidgets("removes the loading overlay and keeps retry UI usable after an error", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(attachments: const [],
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),

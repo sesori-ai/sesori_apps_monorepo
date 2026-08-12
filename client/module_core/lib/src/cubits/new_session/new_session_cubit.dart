@@ -277,6 +277,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   Future<void> refreshOptions() async {
+    // With no harness known there is nothing to load options for. The user's
+    // way forward is to install one on that machine, so the same action goes
+    // back to discovery instead — that is where a newly installed harness (or
+    // one a failed discovery never got to see) shows up.
+    if (needsHarnessDiscovery) {
+      await _discoverPlugins();
+      return;
+    }
+
     final current = state;
     final data = current.agentModelData;
     final plugin = data?.plugin;
@@ -346,6 +355,16 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+    // The bridge answers these with an opaque error code rather than an
+    // exception, so without this the screen renders a failure no log explains.
+    if (result case NewSessionOptionsLoadFailureUnavailable() ||
+        NewSessionOptionsRefreshFailureUnavailable() ||
+        NewSessionOptionsFailureUnavailable()) {
+      logw(
+        "New session: options unavailable for plugin $pluginId "
+        "(source: ${source.name}, mode: ${mode.name}, result: ${result.runtimeType.toString()})",
+      );
+    }
     final options = switch (result) {
       NewSessionOptionsLoaded(:final options, :final source) => NewSessionOptionsAvailableState(
         options: options,
@@ -391,7 +410,25 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
 
-  bool get canRefreshOptions => (state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer;
+  /// Whether the screen has no harness to work with — the bridge answered with
+  /// none, or discovery failed before it could answer. Either way the only load
+  /// worth repeating is discovery itself, not options for a harness that does
+  /// not exist. Held back while discovery is in flight, which the screen is
+  /// already reporting on its own.
+  bool get needsHarnessDiscovery {
+    if (state is NewSessionSending || state is NewSessionCreated) return false;
+    final data = state.agentModelData;
+    return data != null && data.plugins.isEmpty && !data.isPluginDiscoveryInFlight;
+  }
+
+  /// Whether the bridge itself answered that it runs no harness. Only then may
+  /// the screen state that as fact — after a failed discovery the error is the
+  /// honest explanation, and retrying is still the way forward.
+  bool get hasNoHarnesses =>
+      needsHarnessDiscovery && (state.agentModelData?.backendScope.isVerified ?? false);
+
+  bool get canRefreshOptions =>
+      needsHarnessDiscovery || ((state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer);
 
   bool get canCreateSession => (state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer;
 

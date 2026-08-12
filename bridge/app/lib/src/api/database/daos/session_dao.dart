@@ -261,6 +261,14 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return {for (final row in rows) row.backendSessionId: row};
   }
 
+  Future<Set<String>> getSessionIdsForPlugin({required String pluginId}) async {
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.sessionId])
+      ..where(sessionTable.pluginId.equals(pluginId));
+    final rows = await query.get();
+    return {for (final row in rows) row.read(sessionTable.sessionId)!};
+  }
+
   Future<Set<String>> getAllSessionIds() async {
     final query = selectOnly(sessionTable)..addColumns([sessionTable.sessionId]);
     final rows = await query.get();

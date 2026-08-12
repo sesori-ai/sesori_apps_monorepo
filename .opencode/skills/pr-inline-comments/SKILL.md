@@ -1,11 +1,24 @@
 ---
 name: pr-inline-comments
-description: Fetch inline (code) review comments on a GitHub pull request, grouped into threads, with optional filtering by datetime. Use when the user asks to read or address PR comments, code review feedback, reviewer notes, or wants to see only recent review activity on a PR. Resolves natural-language time windows like "last 30 minutes", "since yesterday 5 PM", or "since commit abc123" into ISO 8601 before invoking the script. Requires gh and jq.
+description: Fetch inline (code) review comments on a GitHub pull request, grouped into threads, with optional filtering by datetime. Use when the user asks to read or address PR comments, code review feedback, reviewer notes, or wants to see only recent review activity on a PR. Resolves natural-language time windows like "last 30 minutes", "since yesterday 5 PM", or "since commit abc123" into ISO 8601 before invoking the script. Should be invoked as a sub-agent so the large JSON result stays out of the main agent context, run with a low-intelligence model when one is available, since the work is mechanical. Requires gh and jq.
 ---
 
 # pr-inline-comments
 
 Returns inline code review comments on a PR, grouped into threads, optionally filtered by datetime and/or resolution status. Issue-level PR comments (those not anchored to a line of code) are not included.
+
+## Role
+
+Fetch the comments and nothing else. Do not add commentary, and do not speculate about what the comments mean or how to act on them — that judgment belongs to the caller. Return what the script produces: the JSON output verbatim, or a one-line summary plus the JSON when the caller explicitly asks for a summary.
+
+Steps:
+
+1. Parse the request for the PR number, an optional time window, and whether to filter to unresolved.
+2. Resolve any natural-language datetime to ISO 8601 as described below.
+3. Run the script.
+4. Return the result.
+
+This skill only reads. It never edits or writes files.
 
 Backed by the GitHub GraphQL API, which exposes review threads natively (with `isResolved` and `isOutdated`). The REST `/pulls/{n}/comments` endpoint does not expose resolution status.
 

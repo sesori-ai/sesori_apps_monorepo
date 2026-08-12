@@ -42,7 +42,9 @@ enum PluginRuntimeState {
 
 enum PluginManagementWorkState { idle, busy, unknown }
 
-enum PluginManagementCapability { lifecycle, setupRefresh, idleTimeout, install, unknown }
+enum PluginManagementCapability { lifecycle, setupRefresh, idleTimeout, install, authentication, unknown }
+
+enum PluginAuthenticationState { idle, inProgress, unknown }
 
 enum PluginStopMode { safe, force }
 
@@ -52,12 +54,22 @@ enum PluginInstallPhase { downloading, verifying, extracting, finalizing, comple
 
 enum PluginLifecycleConflictReason { inFlight, busy, workStateUnknown, transitioning, notEnabled, unsupported, unknown }
 
+enum PluginAuthenticationConflictReason { inFlight, setupNotRequired, unsupported, unknown }
+
+enum PluginAuthenticationChallengeType { deviceCode }
+
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginManagementMetadata with _$PluginManagementMetadata {
   const factory PluginManagementMetadata({
     required PluginSetupMetadata setup,
     @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required PluginRuntimeState runtimeState,
     @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required PluginManagementWorkState workState,
+    // COMPATIBILITY 2026-08-12 (v1.9.0): Older bridge payloads omit
+    // authenticationState, which honestly means no authentication operation
+    // was active. Remove @Default after the minimum supported bridge sends it.
+    @JsonKey(unknownEnumValue: PluginAuthenticationState.unknown)
+    @Default(PluginAuthenticationState.idle)
+    PluginAuthenticationState authenticationState,
     required int idleTimeoutMins,
     required bool hasIdleTimeoutOverride,
     @JsonKey(unknownEnumValue: PluginManagementCapability.unknown)
@@ -66,6 +78,50 @@ sealed class PluginManagementMetadata with _$PluginManagementMetadata {
   }) = _PluginManagementMetadata;
 
   factory PluginManagementMetadata.fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
+}
+
+@Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
+sealed class PluginAuthenticationChallengeResponse with _$PluginAuthenticationChallengeResponse {
+  @FreezedUnionValue("deviceCode")
+  const factory PluginAuthenticationChallengeResponse.deviceCode({
+    @Default(PluginAuthenticationChallengeType.deviceCode) PluginAuthenticationChallengeType type,
+    required String verificationUrl,
+    required String userCode,
+  }) = PluginAuthenticationDeviceCodeChallengeResponse;
+
+  factory PluginAuthenticationChallengeResponse.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    if (json["type"] != "deviceCode") {
+      throw const FormatException("Unsupported plugin authentication challenge type");
+    }
+    return _$PluginAuthenticationChallengeResponseFromJson(json);
+  }
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: true,
+  copyWith: false,
+)
+sealed class PluginAuthenticationProgress with _$PluginAuthenticationProgress {
+  @FreezedUnionValue("completed")
+  const factory PluginAuthenticationProgress.completed() = PluginAuthenticationCompletedProgress;
+
+  @FreezedUnionValue("failed")
+  const factory PluginAuthenticationProgress.failed({
+    required String message,
+  }) = PluginAuthenticationFailedProgress;
+
+  @FreezedUnionValue("cancelled")
+  const factory PluginAuthenticationProgress.cancelled() = PluginAuthenticationCancelledProgress;
+
+  const factory PluginAuthenticationProgress.unknown() = PluginAuthenticationUnknownProgress;
+
+  factory PluginAuthenticationProgress.fromJson(Map<String, dynamic> json) =>
+      _$PluginAuthenticationProgressFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
@@ -154,4 +210,17 @@ sealed class PluginLifecycleConflict with _$PluginLifecycleConflict {
   }) = _PluginLifecycleConflict;
 
   factory PluginLifecycleConflict.fromJson(Map<String, dynamic> json) => _$PluginLifecycleConflictFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class PluginAuthenticationConflict with _$PluginAuthenticationConflict {
+  const factory PluginAuthenticationConflict({
+    required String pluginId,
+    @JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown)
+    required List<PluginAuthenticationConflictReason> reasons,
+    required PluginManagementMetadata current,
+  }) = _PluginAuthenticationConflict;
+
+  factory PluginAuthenticationConflict.fromJson(Map<String, dynamic> json) =>
+      _$PluginAuthenticationConflictFromJson(json);
 }

@@ -63,11 +63,11 @@ class HttpApiClient implements SafeApiClient {
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> get<T>(
-    final Uri url, {
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
-    final ContentType? contentType,
-    final bool logBody = false,
+    Uri url, {
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
+    ContentType? contentType,
+    bool logBody = false,
   }) {
     return _execute(
       method: HttpMethod.get,
@@ -81,12 +81,12 @@ class HttpApiClient implements SafeApiClient {
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> post<T>(
-    final Uri url, {
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
-    required final Object? body,
-    final ContentType? contentType,
-    final bool logBody = false,
+    Uri url, {
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
+    required Object? body,
+    ContentType? contentType,
+    bool logBody = false,
   }) {
     return _execute(
       method: HttpMethod.post,
@@ -101,12 +101,12 @@ class HttpApiClient implements SafeApiClient {
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> put<T>({
-    required final Uri url,
-    required final T Function(dynamic json) fromJson,
-    required final Map<String, String>? headers,
-    required final Object? body,
-    required final ContentType? contentType,
-    required final bool logBody,
+    required Uri url,
+    required T Function(dynamic json) fromJson,
+    required Map<String, String>? headers,
+    required Object? body,
+    required ContentType? contentType,
+    required bool logBody,
   }) {
     return _execute(
       method: HttpMethod.put,
@@ -121,12 +121,12 @@ class HttpApiClient implements SafeApiClient {
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> patch<T>(
-    final Uri url, {
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
-    required final Object? body,
-    final ContentType? contentType,
-    final bool logBody = false,
+    Uri url, {
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
+    required Object? body,
+    ContentType? contentType,
+    bool logBody = false,
   }) {
     return _execute(
       method: HttpMethod.patch,
@@ -141,11 +141,11 @@ class HttpApiClient implements SafeApiClient {
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> delete<T>(
-    final Uri url, {
-    required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
-    final ContentType? contentType,
-    final bool logBody = false,
+    Uri url, {
+    required T Function(dynamic json) fromJson,
+    Map<String, String>? headers,
+    ContentType? contentType,
+    bool logBody = false,
   }) {
     return _execute(
       method: HttpMethod.delete,
@@ -159,13 +159,13 @@ class HttpApiClient implements SafeApiClient {
   /// Sends a multipart POST request. All [http.Client] usage stays in this layer.
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> postMultipart<T>(
-    final Uri url, {
+    Uri url, {
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
-    required final T Function(dynamic json) fromJson,
-    required final List<http.MultipartFile> files,
-    final Map<String, String>? headers,
-    final Map<String, String>? fields,
-    final Duration? timeout,
+    required T Function(dynamic json) fromJson,
+    required List<http.MultipartFile> files,
+    Map<String, String>? headers,
+    Map<String, String>? fields,
+    Duration? timeout,
   }) async {
     final request = http.MultipartRequest("POST", url)
       ..headers.addAll(headers ?? {})

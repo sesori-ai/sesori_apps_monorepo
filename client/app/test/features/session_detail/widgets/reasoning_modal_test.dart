@@ -28,6 +28,7 @@ SessionDetailState _loadedState({
 }) {
   return SessionDetailState.loaded(
     messages: messages,
+    olderMessagesCursor: null,
     streamingText: streamingText,
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],
@@ -42,6 +43,7 @@ SessionDetailState _loadedState({
     isRootSession: true,
     isArchived: false,
     queuedMessages: const [],
+    sendingSubmission: null,
     availableAgents: const [],
     availableProviders: const [],
     availableCommands: const [],
@@ -370,9 +372,7 @@ void main() {
     // And the sheet's own outer scroll view is exactly full: if the sheet
     // still padded the home indicator below the body, it would gain 34px of
     // scroll range and could slide the body up to expose a blank strip.
-    final outerScrollable = find
-        .descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable))
-        .first;
+    final outerScrollable = find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first;
     expect(tester.state<ScrollableState>(outerScrollable).position.maxScrollExtent, 0);
   });
 

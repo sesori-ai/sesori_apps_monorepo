@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'control_message.dart';
@@ -9,6 +9,7 @@ part of 'control_message.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 ControlMessage _$ControlMessageFromJson(
@@ -104,7 +105,7 @@ $ControlMessageCopyWith(ControlMessage _, $Res Function(ControlMessage) __);
 @JsonSerializable()
 
 class ControlTokenRequest implements ControlMessage {
-  const ControlTokenRequest({required this.id, this.forceRefresh = false, final  String? $type}): $type = $type ?? 'token_request';
+  const ControlTokenRequest({required this.id, this.forceRefresh = false,  String? $type}): $type = $type ?? 'token_request';
   factory ControlTokenRequest.fromJson(Map<String, dynamic> json) => _$ControlTokenRequestFromJson(json);
 
  final  String id;
@@ -179,7 +180,7 @@ as bool,
 @JsonSerializable()
 
 class ControlTokenResponse implements ControlMessage {
-  const ControlTokenResponse({required this.id, required this.accessToken, final  String? $type}): $type = $type ?? 'token_response';
+  const ControlTokenResponse({required this.id, required this.accessToken,  String? $type}): $type = $type ?? 'token_response';
   factory ControlTokenResponse.fromJson(Map<String, dynamic> json) => _$ControlTokenResponseFromJson(json);
 
  final  String id;
@@ -254,7 +255,7 @@ as String?,
 @JsonSerializable()
 
 class ControlTokenUpdate implements ControlMessage {
-  const ControlTokenUpdate({required this.accessToken, final  String? $type}): $type = $type ?? 'token_update';
+  const ControlTokenUpdate({required this.accessToken,  String? $type}): $type = $type ?? 'token_update';
   factory ControlTokenUpdate.fromJson(Map<String, dynamic> json) => _$ControlTokenUpdateFromJson(json);
 
  final  String accessToken;
@@ -327,7 +328,7 @@ as String,
 @JsonSerializable()
 
 class ControlStatus implements ControlMessage {
-  const ControlStatus({@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required this.relay, @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) required this.plugin, this.activeSessionCount = 0, final  String? $type}): $type = $type ?? 'status';
+  const ControlStatus({@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required this.relay, @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) required this.plugin, this.activeSessionCount = 0,  String? $type}): $type = $type ?? 'status';
   factory ControlStatus.fromJson(Map<String, dynamic> json) => _$ControlStatusFromJson(json);
 
 @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) final  ControlRelayConnectionState relay;
@@ -404,7 +405,7 @@ as int,
 @JsonSerializable()
 
 class ControlPromptRequest implements ControlMessage {
-  const ControlPromptRequest({required this.id, @JsonKey(unknownEnumValue: ControlPromptKind.unknown) required this.kind, required this.message, final  String? $type}): $type = $type ?? 'prompt_request';
+  const ControlPromptRequest({required this.id, @JsonKey(unknownEnumValue: ControlPromptKind.unknown) required this.kind, required this.message,  String? $type}): $type = $type ?? 'prompt_request';
   factory ControlPromptRequest.fromJson(Map<String, dynamic> json) => _$ControlPromptRequestFromJson(json);
 
  final  String id;
@@ -481,7 +482,7 @@ as String?,
 @JsonSerializable()
 
 class ControlPromptResponse implements ControlMessage {
-  const ControlPromptResponse({required this.id, required this.accepted, final  String? $type}): $type = $type ?? 'prompt_response';
+  const ControlPromptResponse({required this.id, required this.accepted,  String? $type}): $type = $type ?? 'prompt_response';
   factory ControlPromptResponse.fromJson(Map<String, dynamic> json) => _$ControlPromptResponseFromJson(json);
 
  final  String id;
@@ -556,7 +557,7 @@ as bool,
 @JsonSerializable()
 
 class ControlRestart implements ControlMessage {
-  const ControlRestart({final  String? $type}): $type = $type ?? 'restart';
+  const ControlRestart({ String? $type}): $type = $type ?? 'restart';
   factory ControlRestart.fromJson(Map<String, dynamic> json) => _$ControlRestartFromJson(json);
 
 
@@ -595,7 +596,7 @@ String toString() {
 @JsonSerializable()
 
 class ControlUnregisterAndExit implements ControlMessage {
-  const ControlUnregisterAndExit({final  String? $type}): $type = $type ?? 'unregister_and_exit';
+  const ControlUnregisterAndExit({ String? $type}): $type = $type ?? 'unregister_and_exit';
   factory ControlUnregisterAndExit.fromJson(Map<String, dynamic> json) => _$ControlUnregisterAndExitFromJson(json);
 
 
@@ -634,7 +635,7 @@ String toString() {
 @JsonSerializable()
 
 class ControlRegistered implements ControlMessage {
-  const ControlRegistered({required this.bridgeId, final  String? $type}): $type = $type ?? 'registered';
+  const ControlRegistered({required this.bridgeId,  String? $type}): $type = $type ?? 'registered';
   factory ControlRegistered.fromJson(Map<String, dynamic> json) => _$ControlRegisteredFromJson(json);
 
  final  String bridgeId;
@@ -707,7 +708,7 @@ as String,
 @JsonSerializable()
 
 class ControlProvisionProgressMessage implements ControlMessage {
-  const ControlProvisionProgressMessage({required this.progress, final  String? $type}): $type = $type ?? 'provision_progress';
+  const ControlProvisionProgressMessage({required this.progress,  String? $type}): $type = $type ?? 'provision_progress';
   factory ControlProvisionProgressMessage.fromJson(Map<String, dynamic> json) => _$ControlProvisionProgressMessageFromJson(json);
 
  final  ControlProvisionProgress progress;

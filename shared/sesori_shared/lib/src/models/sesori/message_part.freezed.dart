@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'message_part.dart';
@@ -9,6 +9,7 @@ part of 'message_part.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$MessagePartCopyWithImpl<$Res>
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(MessagePart(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
@@ -244,6 +245,10 @@ MessageAttachment _$MessageAttachmentFromJson(
           return MessageAttachmentRemoteUrl.fromJson(
             json
           );
+                case 'stored_image':
+          return MessageAttachmentStoredImage.fromJson(
+            json
+          );
                 case 'metadata':
           return MessageAttachmentMetadata.fromJson(
             json
@@ -290,7 +295,7 @@ $MessageAttachmentCopyWith(MessageAttachment _, $Res Function(MessageAttachment)
 @JsonSerializable()
 
 class MessageAttachmentInlineImage implements MessageAttachment {
-  const MessageAttachmentInlineImage({required this.mime, required this.base64, required this.filename, final  String? $type}): $type = $type ?? 'inline_image';
+  const MessageAttachmentInlineImage({required this.mime, required this.base64, required this.filename,  String? $type}): $type = $type ?? 'inline_image';
   factory MessageAttachmentInlineImage.fromJson(Map<String, dynamic> json) => _$MessageAttachmentInlineImageFromJson(json);
 
  final  String mime;
@@ -363,7 +368,7 @@ as String?,
 @JsonSerializable()
 
 class MessageAttachmentRemoteUrl implements MessageAttachment {
-  const MessageAttachmentRemoteUrl({required this.mime, required this.url, required this.filename, final  String? $type}): $type = $type ?? 'remote_url';
+  const MessageAttachmentRemoteUrl({required this.mime, required this.url, required this.filename,  String? $type}): $type = $type ?? 'remote_url';
   factory MessageAttachmentRemoteUrl.fromJson(Map<String, dynamic> json) => _$MessageAttachmentRemoteUrlFromJson(json);
 
  final  String mime;
@@ -435,8 +440,85 @@ as String?,
 /// @nodoc
 @JsonSerializable()
 
+class MessageAttachmentStoredImage implements MessageAttachment {
+  const MessageAttachmentStoredImage({required this.attachmentId, required this.bridgeId, required this.mime, required this.filename, required this.byteLength,  String? $type}): $type = $type ?? 'stored_image';
+  factory MessageAttachmentStoredImage.fromJson(Map<String, dynamic> json) => _$MessageAttachmentStoredImageFromJson(json);
+
+ final  String attachmentId;
+ final  String bridgeId;
+ final  String mime;
+ final  String? filename;
+ final  int byteLength;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageAttachmentStoredImageCopyWith<MessageAttachmentStoredImage> get copyWith => _$MessageAttachmentStoredImageCopyWithImpl<MessageAttachmentStoredImage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageAttachmentStoredImageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentStoredImage&&(identical(other.attachmentId, attachmentId) || other.attachmentId == attachmentId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.byteLength, byteLength) || other.byteLength == byteLength));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,attachmentId,bridgeId,mime,filename,byteLength);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageAttachmentStoredImageCopyWith<$Res> implements $MessageAttachmentCopyWith<$Res> {
+  factory $MessageAttachmentStoredImageCopyWith(MessageAttachmentStoredImage value, $Res Function(MessageAttachmentStoredImage) _then) = _$MessageAttachmentStoredImageCopyWithImpl;
+@useResult
+$Res call({
+ String attachmentId, String bridgeId, String mime, String? filename, int byteLength
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageAttachmentStoredImageCopyWithImpl<$Res>
+    implements $MessageAttachmentStoredImageCopyWith<$Res> {
+  _$MessageAttachmentStoredImageCopyWithImpl(this._self, this._then);
+
+  final MessageAttachmentStoredImage _self;
+  final $Res Function(MessageAttachmentStoredImage) _then;
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? attachmentId = null,Object? bridgeId = null,Object? mime = null,Object? filename = freezed,Object? byteLength = null,}) {
+  return _then(MessageAttachmentStoredImage(
+attachmentId: null == attachmentId ? _self.attachmentId : attachmentId // ignore: cast_nullable_to_non_nullable
+as String,bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,byteLength: null == byteLength ? _self.byteLength : byteLength // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
 class MessageAttachmentMetadata implements MessageAttachment {
-  const MessageAttachmentMetadata({required this.mime, required this.filename, final  String? $type}): $type = $type ?? 'metadata';
+  const MessageAttachmentMetadata({required this.mime, required this.filename,  String? $type}): $type = $type ?? 'metadata';
   factory MessageAttachmentMetadata.fromJson(Map<String, dynamic> json) => _$MessageAttachmentMetadataFromJson(json);
 
  final  String mime;
@@ -507,7 +589,7 @@ as String?,
 @JsonSerializable()
 
 class MessageAttachmentUnknown implements MessageAttachment {
-  const MessageAttachmentUnknown({final  String? $type}): $type = $type ?? 'unknown';
+  const MessageAttachmentUnknown({ String? $type}): $type = $type ?? 'unknown';
   factory MessageAttachmentUnknown.fromJson(Map<String, dynamic> json) => _$MessageAttachmentUnknownFromJson(json);
 
 
@@ -542,8 +624,7 @@ int get hashCode => runtimeType.hashCode;
 /// @nodoc
 mixin _$ToolState {
 
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;// COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
-@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments;
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments;
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -594,7 +675,7 @@ class _$ToolStateCopyWithImpl<$Res>
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
-  return _then(_self.copyWith(
+  return _then(ToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
@@ -612,16 +693,14 @@ as List<MessageAttachment>,
 @JsonSerializable()
 
 class _ToolState implements ToolState {
-  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error, @JsonKey(fromJson: _messageAttachmentsFromJson) final  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
+  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error, @JsonKey(fromJson: _messageAttachmentsFromJson)  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
   factory _ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 
 @override@JsonKey(unknownEnumValue: ToolStatus.unknown) final  ToolStatus status;
 @override final  String? title;
 @override final  String? output;
 @override final  String? error;
-// COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
  final  List<MessageAttachment> _attachments;
-// COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
 @override@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments {
   if (_attachments is EqualUnmodifiableListView) return _attachments;
   // ignore: implicit_dynamic_type

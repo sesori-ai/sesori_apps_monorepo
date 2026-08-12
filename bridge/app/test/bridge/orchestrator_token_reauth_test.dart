@@ -352,6 +352,7 @@ class _ReauthHarness {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
+      archivedSessionStorage: testChatHistory.archivedStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: authority,

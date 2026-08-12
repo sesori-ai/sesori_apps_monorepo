@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/session_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
+import "../foundation/models/session_options/session_options_request_mode.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
@@ -122,40 +123,61 @@ class SessionRepository {
       _api.listProviders(projectId: projectId, pluginId: pluginId),
       _api.listCommands(projectId: projectId, pluginId: pluginId),
     ).wait;
-    return switch ((agents, providers, commands)) {
-      (
-        SuccessResponse(data: final agentData),
-        SuccessResponse(data: final providerData),
-        SuccessResponse(data: final commandData),
-      ) =>
-        LegacySessionOptionsRepositoryAvailable(
-          catalog: SessionOptionsCatalog(
-            agents: agentData.agents,
-            providers: providerData.items,
-            commands: commandData.items,
-          ),
-        ),
-      (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(error: error),
-      (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(error: error),
-      (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(error: error),
-    };
+    final catalog = SessionOptionsCatalog(
+      agents: switch (agents) {
+        SuccessResponse(:final data) => data.agents,
+        ErrorResponse() => const <AgentInfo>[],
+      },
+      providers: switch (providers) {
+        SuccessResponse(:final data) => data.items,
+        ErrorResponse() => const <ProviderInfo>[],
+      },
+      providersConnectedOnly: switch (providers) {
+        SuccessResponse(:final data) => data.connectedOnly,
+        ErrorResponse() => false,
+      },
+      commands: switch (commands) {
+        SuccessResponse(:final data) => data.items,
+        ErrorResponse() => const <CommandInfo>[],
+      },
+    );
+    final errors = <LegacySessionOptionError>[
+      if (agents case ErrorResponse(:final error))
+        LegacySessionOptionError(source: LegacySessionOptionSource.agents, error: error),
+      if (providers case ErrorResponse(:final error))
+        LegacySessionOptionError(source: LegacySessionOptionSource.providers, error: error),
+      if (commands case ErrorResponse(:final error))
+        LegacySessionOptionError(source: LegacySessionOptionSource.commands, error: error),
+    ];
+    if (errors.isEmpty) return LegacySessionOptionsRepositoryAvailable(catalog: catalog);
+    final anyAvailable = agents is SuccessResponse || providers is SuccessResponse || commands is SuccessResponse;
+    return anyAvailable
+        ? LegacySessionOptionsRepositoryPartial(catalog: catalog, errors: errors)
+        : LegacySessionOptionsRepositoryFailure(errors: errors);
   }
 
   Future<SessionOptionsRepositoryResult> loadSessionOptions({
     required String projectId,
     required String pluginId,
-    required bool forceRefresh,
+    required SessionOptionsRequestMode mode,
   }) async {
     final response = await _api.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      forceRefresh: forceRefresh,
+      mode: mode,
     );
+    return _mapSessionOptionsResponse(response: response);
+  }
+
+  SessionOptionsRepositoryResult _mapSessionOptionsResponse({
+    required ApiResponse<SessionOptionsResponse> response,
+  }) {
     return switch (response) {
       SuccessResponse(:final data) => SessionOptionsRepositoryAvailable(
         catalog: SessionOptionsCatalog(
           agents: data.agents.agents,
           providers: data.providers.items,
+          providersConnectedOnly: data.providers.connectedOnly,
           commands: data.commands.items,
         ),
       ),
@@ -164,20 +186,24 @@ class SessionRepository {
   }
 
   SessionOptionsRepositoryResult _mapSessionOptionsError({required ApiError error}) {
-    if (error case NonSuccessCodeError(:final rawErrorString)) {
-      try {
-        if (rawErrorString == null) return SessionOptionsRepositoryFailure(error: error);
-        final response = SessionOptionsErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
-        return switch (response.code) {
-          SessionOptionsErrorCode.cacheUnavailable => const SessionOptionsRepositoryCacheUnavailable(),
-          SessionOptionsErrorCode.projectNotFound => SessionOptionsRepositoryProjectNotFound(error: error),
-          SessionOptionsErrorCode.refreshFailedRetained => const SessionOptionsRepositoryRefreshFailedRetained(),
-          SessionOptionsErrorCode.refreshFailedUnavailable => const SessionOptionsRepositoryRefreshFailedUnavailable(),
-          SessionOptionsErrorCode.unknown => SessionOptionsRepositoryFailure(error: error),
-        };
-      } on Object {
-        // The original transport error remains the explicit observable failure.
+    if (error case NonSuccessCodeError(:final errorCode, :final rawErrorString)) {
+      if (rawErrorString != null) {
+        try {
+          final response = SessionOptionsErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+          return switch (response.code) {
+            SessionOptionsErrorCode.cacheUnavailable => const SessionOptionsRepositoryCacheUnavailable(),
+            SessionOptionsErrorCode.projectNotFound => SessionOptionsRepositoryProjectNotFound(error: error),
+            SessionOptionsErrorCode.refreshFailedRetained => const SessionOptionsRepositoryRefreshFailedRetained(),
+            SessionOptionsErrorCode.refreshFailedUnavailable =>
+              const SessionOptionsRepositoryRefreshFailedUnavailable(),
+            SessionOptionsErrorCode.unknown => SessionOptionsRepositoryFailure(error: error),
+          };
+        } on Object {
+          // Route absence is classified below; other transport failures retain
+          // the original error as their explicit observable outcome.
+        }
       }
+      if (errorCode == 404) return const SessionOptionsRepositoryUnsupported();
     }
     return SessionOptionsRepositoryFailure(error: error);
   }

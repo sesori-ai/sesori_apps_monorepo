@@ -255,6 +255,7 @@ PendingTranslationEvent _pendingTranslation({
       displaySessionId: "root",
       tool: "bash",
       description: "continue",
+      allowAlways: true,
     ),
     backendSessionId: backendSessionId,
     projectionUpdatedAt: 2,

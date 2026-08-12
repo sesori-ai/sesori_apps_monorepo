@@ -8,6 +8,7 @@ import "../platform/local_notification_client.dart";
 import "../platform/notification_open_request.dart";
 import "../platform/push_messaging_source.dart";
 import "../platform/route_dispatcher.dart";
+import "../platform/route_source.dart";
 import "app_routes.dart";
 
 @lazySingleton
@@ -16,6 +17,7 @@ class NotificationOpenDispatcher {
   final PushMessagingSource _pushMessagingSource;
   final LocalNotificationClient _localNotificationClient;
   final RouteDispatcher _routeDispatcher;
+  final RouteSource _routeSource;
 
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<NotificationOpenRequest>? _pushOpenSubscription;
@@ -29,10 +31,12 @@ class NotificationOpenDispatcher {
     required PushMessagingSource pushMessagingSource,
     required LocalNotificationClient localNotificationClient,
     required RouteDispatcher routeDispatcher,
+    required RouteSource routeSource,
   }) : _authSession = authSession,
        _pushMessagingSource = pushMessagingSource,
        _localNotificationClient = localNotificationClient,
-       _routeDispatcher = routeDispatcher;
+       _routeDispatcher = routeDispatcher,
+       _routeSource = routeSource;
 
   Future<void> start() async {
     if (_disposed) {
@@ -109,6 +113,25 @@ class NotificationOpenDispatcher {
   }
 
   void _dispatch(NotificationOpenRequest request) {
+    final sessionDetail = AppRouteSessionDetail(
+      projectId: request.projectId,
+      projectName: null,
+      sessionId: request.sessionId,
+      sessionTitle: request.sessionTitle,
+      readOnly: false,
+    );
+
+    // Replacing the stack tears down the live session detail screen and builds
+    // a new one, whose cubit starts from `loading` and refetches the whole
+    // session before any prompt can be shown. When that screen is already the
+    // one on top, the notification asks for something the user is looking at:
+    // the mounted screen surfaces the prompt through its own event stream, so
+    // navigating again only costs a reload.
+    final location = _routeSource.currentLocation;
+    if (location != null && sessionDetail.showsEditableLocation(location: Uri.parse(location))) {
+      return;
+    }
+
     _routeDispatcher.replaceStack(
       stack: RouteStack(
         paths: [
@@ -118,13 +141,7 @@ class NotificationOpenDispatcher {
             projectName: null,
             supportsDedicatedWorktrees: null,
           ),
-          AppRoute.sessionDetail(
-            projectId: request.projectId,
-            projectName: null,
-            sessionId: request.sessionId,
-            sessionTitle: request.sessionTitle,
-            readOnly: false,
-          ),
+          sessionDetail,
         ].map((route) => route.buildPath()).toList(growable: false),
       ),
     );

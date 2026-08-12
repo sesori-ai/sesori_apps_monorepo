@@ -15,6 +15,9 @@ class SseConnection {
   bool _active = false;
   int _generation = 0;
   http.Client? _currentClient;
+  final Completer<void> _firstConnected = Completer<void>();
+
+  Future<void> get firstConnected => _firstConnected.future;
 
   SseConnection({
     required String targetUrl,
@@ -30,11 +33,16 @@ class SseConnection {
        _onConnected = onConnected,
        _onDisconnected = onDisconnected;
 
-  void start() {
+  void start({required bool recoverOnFirstConnect}) {
     if (_active) return;
     _active = true;
     _generation++;
-    unawaited(_streamLoop(_generation));
+    unawaited(
+      _streamLoop(
+        _generation,
+        recoverOnFirstConnect: recoverOnFirstConnect,
+      ),
+    );
   }
 
   void stop() {
@@ -43,10 +51,12 @@ class SseConnection {
     _generation++;
     _currentClient?.close();
     _currentClient = null;
+    if (!_firstConnected.isCompleted) _firstConnected.complete();
   }
 
-  Future<void> _streamLoop(int generation) async {
+  Future<void> _streamLoop(int generation, {required bool recoverOnFirstConnect}) async {
     var isFirstConnect = true;
+    var shouldRecoverOnFirstConnect = recoverOnFirstConnect;
     var reconnectDelay = const Duration(seconds: 1);
 
     while (_active && _generation == generation) {
@@ -75,17 +85,19 @@ class SseConnection {
         // The transport is live: signal connected on the first connect and on
         // every reconnect (the lifecycle status follows the live stream).
         _onConnected?.call();
+        if (!_firstConnected.isCompleted) _firstConnected.complete();
 
-        if (!isFirstConnect && _onReconnect != null) {
+        if ((!isFirstConnect || shouldRecoverOnFirstConnect) && _onReconnect != null) {
           final reconnectSw = Stopwatch()..start();
-          Log.v("[sse-conn] reconnect: running onReconnect cold-start");
+          Log.v("[sse-conn] connection recovery: running cold-start");
           await _onReconnect();
           if (!_active || _generation != generation) {
-            Log.v("[sse-conn] reconnect: shutdown requested during onReconnect, dropping");
+            Log.v("[sse-conn] connection recovery: shutdown requested during cold-start, dropping");
             return;
           }
-          Log.v("[sse-conn] reconnect: onReconnect cold-start finished in ${reconnectSw.elapsedMilliseconds}ms");
+          Log.v("[sse-conn] connection recovery: cold-start finished in ${reconnectSw.elapsedMilliseconds}ms");
         }
+        shouldRecoverOnFirstConnect = false;
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
         await _readStream(response, generation);

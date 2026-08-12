@@ -21,6 +21,13 @@ _PluginManagementMetadata _$PluginManagementMetadataFromJson(Map json) =>
         json['workState'],
         unknownValue: PluginManagementWorkState.unknown,
       ),
+      authenticationState:
+          $enumDecodeNullable(
+            _$PluginAuthenticationStateEnumMap,
+            json['authenticationState'],
+            unknownValue: PluginAuthenticationState.unknown,
+          ) ??
+          PluginAuthenticationState.idle,
       idleTimeoutMins: (json['idleTimeoutMins'] as num).toInt(),
       hasIdleTimeoutOverride: json['hasIdleTimeoutOverride'] as bool,
       managementCapabilities: (json['managementCapabilities'] as List<dynamic>)
@@ -41,6 +48,8 @@ Map<String, dynamic> _$PluginManagementMetadataToJson(
   'setup': instance.setup.toJson(),
   'runtimeState': _$PluginRuntimeStateEnumMap[instance.runtimeState]!,
   'workState': _$PluginManagementWorkStateEnumMap[instance.workState]!,
+  'authenticationState':
+      _$PluginAuthenticationStateEnumMap[instance.authenticationState]!,
   'idleTimeoutMins': instance.idleTimeoutMins,
   'hasIdleTimeoutOverride': instance.hasIdleTimeoutOverride,
   'managementCapabilities': instance.managementCapabilities
@@ -67,13 +76,80 @@ const _$PluginManagementWorkStateEnumMap = {
   PluginManagementWorkState.unknown: 'unknown',
 };
 
+const _$PluginAuthenticationStateEnumMap = {
+  PluginAuthenticationState.idle: 'idle',
+  PluginAuthenticationState.inProgress: 'inProgress',
+  PluginAuthenticationState.unknown: 'unknown',
+};
+
 const _$PluginManagementCapabilityEnumMap = {
   PluginManagementCapability.lifecycle: 'lifecycle',
   PluginManagementCapability.setupRefresh: 'setupRefresh',
   PluginManagementCapability.idleTimeout: 'idleTimeout',
   PluginManagementCapability.install: 'install',
+  PluginManagementCapability.authentication: 'authentication',
   PluginManagementCapability.unknown: 'unknown',
 };
+
+PluginAuthenticationDeviceCodeChallengeResponse
+_$PluginAuthenticationDeviceCodeChallengeResponseFromJson(Map json) =>
+    PluginAuthenticationDeviceCodeChallengeResponse(
+      type:
+          $enumDecodeNullable(
+            _$PluginAuthenticationChallengeTypeEnumMap,
+            json['type'],
+          ) ??
+          PluginAuthenticationChallengeType.deviceCode,
+      verificationUrl: json['verificationUrl'] as String,
+      userCode: json['userCode'] as String,
+    );
+
+Map<String, dynamic> _$PluginAuthenticationDeviceCodeChallengeResponseToJson(
+  PluginAuthenticationDeviceCodeChallengeResponse instance,
+) => <String, dynamic>{
+  'type': _$PluginAuthenticationChallengeTypeEnumMap[instance.type]!,
+  'verificationUrl': instance.verificationUrl,
+  'userCode': instance.userCode,
+};
+
+const _$PluginAuthenticationChallengeTypeEnumMap = {
+  PluginAuthenticationChallengeType.deviceCode: 'deviceCode',
+};
+
+PluginAuthenticationCompletedProgress
+_$PluginAuthenticationCompletedProgressFromJson(Map json) =>
+    PluginAuthenticationCompletedProgress($type: json['type'] as String?);
+
+Map<String, dynamic> _$PluginAuthenticationCompletedProgressToJson(
+  PluginAuthenticationCompletedProgress instance,
+) => <String, dynamic>{'type': instance.$type};
+
+PluginAuthenticationFailedProgress _$PluginAuthenticationFailedProgressFromJson(
+  Map json,
+) => PluginAuthenticationFailedProgress(
+  message: json['message'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PluginAuthenticationFailedProgressToJson(
+  PluginAuthenticationFailedProgress instance,
+) => <String, dynamic>{'message': instance.message, 'type': instance.$type};
+
+PluginAuthenticationCancelledProgress
+_$PluginAuthenticationCancelledProgressFromJson(Map json) =>
+    PluginAuthenticationCancelledProgress($type: json['type'] as String?);
+
+Map<String, dynamic> _$PluginAuthenticationCancelledProgressToJson(
+  PluginAuthenticationCancelledProgress instance,
+) => <String, dynamic>{'type': instance.$type};
+
+PluginAuthenticationUnknownProgress
+_$PluginAuthenticationUnknownProgressFromJson(Map json) =>
+    PluginAuthenticationUnknownProgress($type: json['type'] as String?);
+
+Map<String, dynamic> _$PluginAuthenticationUnknownProgressToJson(
+  PluginAuthenticationUnknownProgress instance,
+) => <String, dynamic>{'type': instance.$type};
 
 _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
     _PluginManagementResponse(
@@ -232,4 +308,39 @@ const _$PluginLifecycleConflictReasonEnumMap = {
   PluginLifecycleConflictReason.notEnabled: 'notEnabled',
   PluginLifecycleConflictReason.unsupported: 'unsupported',
   PluginLifecycleConflictReason.unknown: 'unknown',
+};
+
+_PluginAuthenticationConflict _$PluginAuthenticationConflictFromJson(
+  Map json,
+) => _PluginAuthenticationConflict(
+  pluginId: json['pluginId'] as String,
+  reasons: (json['reasons'] as List<dynamic>)
+      .map(
+        (e) => $enumDecode(
+          _$PluginAuthenticationConflictReasonEnumMap,
+          e,
+          unknownValue: PluginAuthenticationConflictReason.unknown,
+        ),
+      )
+      .toList(),
+  current: PluginManagementMetadata.fromJson(
+    Map<String, dynamic>.from(json['current'] as Map),
+  ),
+);
+
+Map<String, dynamic> _$PluginAuthenticationConflictToJson(
+  _PluginAuthenticationConflict instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'reasons': instance.reasons
+      .map((e) => _$PluginAuthenticationConflictReasonEnumMap[e]!)
+      .toList(),
+  'current': instance.current.toJson(),
+};
+
+const _$PluginAuthenticationConflictReasonEnumMap = {
+  PluginAuthenticationConflictReason.inFlight: 'inFlight',
+  PluginAuthenticationConflictReason.setupNotRequired: 'setupNotRequired',
+  PluginAuthenticationConflictReason.unsupported: 'unsupported',
+  PluginAuthenticationConflictReason.unknown: 'unknown',
 };

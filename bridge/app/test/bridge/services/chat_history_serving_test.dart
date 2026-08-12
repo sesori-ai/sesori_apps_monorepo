@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -10,7 +11,10 @@ void main() {
   group("serving session messages", () {
     test("first read backfills from the plugin and matches it exactly", () async {
       final repository = _FakeSessionRepository(
-        transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
+        transcript: [
+          _messageWithParts(id: "m1"),
+          _messageWithParts(id: "m2"),
+        ],
       );
       final history = createTestChatHistory(sessionRepository: repository);
 
@@ -58,7 +62,10 @@ void main() {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
 
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "live"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "live"),
+      );
       await history.service.getSessionMessages(sessionId: "ses_a");
 
       expect(
@@ -70,7 +77,10 @@ void main() {
 
     test("a read reflects captures that raced the backfill fetch", () async {
       final repository = _FakeSessionRepository(
-        transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
+        transcript: [
+          _messageWithParts(id: "m1"),
+          _messageWithParts(id: "m2"),
+        ],
       );
       final history = createTestChatHistory(sessionRepository: repository);
       // Several captures land while the fetch is in flight, so they queue
@@ -79,10 +89,19 @@ void main() {
       repository.onFetch = () {
         for (var index = 0; index < 25; index++) {
           unawaited(
-            history.service.captureMessage(sessionId: "ses_a", message: _message(id: "filler-$index")),
+            history.service.captureMessage(
+              sessionId: "ses_a",
+              message: _message(id: "filler-$index"),
+            ),
           );
         }
-        unawaited(history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2"));
+        unawaited(
+          history.service.captureMessageRemoved(
+            sessionId: "ses_a",
+            messageId: "m2",
+            shouldCapture: () => true,
+          ),
+        );
       };
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
@@ -185,8 +204,10 @@ MessagePart _part({required String id, required String messageId}) => MessagePar
   attachment: null,
 );
 
-MessageWithParts _messageWithParts({required String id}) =>
-    MessageWithParts(info: _message(id: id), parts: [_part(id: "$id-p1", messageId: id)]);
+MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
+  info: _message(id: id),
+  parts: [_part(id: "$id-p1", messageId: id)],
+);
 
 class _FakeSessionRepository implements SessionRepository {
   _FakeSessionRepository({required this.transcript, this.error});
@@ -207,6 +228,22 @@ class _FakeSessionRepository implements SessionRepository {
     if (failure != null) throw failure;
     return transcript;
   }
+
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
+    id: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "opencode",
+    projectId: "project-1",
+    parentSessionId: null,
+    directory: "/tmp/project-1",
+    worktreePath: null,
+    branchName: null,
+    isDedicated: false,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

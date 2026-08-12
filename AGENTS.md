@@ -71,6 +71,8 @@ eagerly "just in case."
   an honest backfill and a non-null column. Keep the field nullable when absence
   is genuinely meaningful or no valid backfill exists.
 - Never hand-edit generated files. Change their source and run the generator.
+- Add or update the relevant `docs/regression/` feature document when adding a
+  feature or materially changing existing feature behavior.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
 - Every PR title starts with one implementation-complexity emoji: `🌱` trivial,
@@ -97,10 +99,16 @@ eagerly "just in case."
   explicitly instead of silently breaking an existing flow.
 - Compatibility baselines include only public production releases. Internal,
   prerelease, development, and otherwise unpublished builds do not create a
-  compatibility obligation. When a route or wire shape has appeared only in
-  those builds, replace it cleanly and remove the obsolete code, models, tests,
-  and handlers; do not add fallbacks, shims, dual routes, or retained contracts
-  solely for unpublished peers.
+  compatibility obligation. Breaking changes between internal releases are
+  explicitly allowed and should normally replace the old implementation
+  cleanly. Never infer a migration or compatibility requirement merely because
+  code existed on `main`, carried an internal tag, or was exercised by an
+  internal build. When state, storage, a route, or a wire shape appeared only in
+  those builds, remove the obsolete code, models, tests, and handlers; do not
+  add migrations, fallbacks, shims, dual reads/writes/routes, or retained
+  contracts solely for unpublished peers. Preserve compatibility only when the
+  behavior actually reached a public production release or the user explicitly
+  requires it.
 - Dart/Flutter modules and plugin interfaces/packages have no external
   consumers outside this repository and update together. Do not add
   compatibility shims, optional parameters, or legacy API paths for those

@@ -36,6 +36,75 @@ class PluginRepository {
     return _mapMutation(future: _api.updateIdleTimeout(request: request));
   }
 
+  Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
+    return switch (await _api.startAuthentication(pluginId: pluginId)) {
+      SuccessResponse(:final data) => PluginAuthenticationStartResult.challenge(challenge: data),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginAuthenticationStartResult.notFound(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
+        _mapAuthenticationConflict(body: body),
+      ErrorResponse(
+        error: JsonParsingError() ||
+            EmptyResponseError() ||
+            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()),
+      ) =>
+        const PluginAuthenticationStartResult.uncertain(),
+      ErrorResponse(:final error) => PluginAuthenticationStartResult.failure(error: error),
+    };
+  }
+
+  Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {
+    return switch (await _api.cancelAuthentication(pluginId: pluginId)) {
+      SuccessResponse() => const PluginAuthenticationCancelResult.success(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginAuthenticationCancelResult.notFound(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
+        _mapAuthenticationCancelConflict(body: body),
+      ErrorResponse(
+        error: JsonParsingError() ||
+            EmptyResponseError() ||
+            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()),
+      ) =>
+        const PluginAuthenticationCancelResult.uncertain(),
+      ErrorResponse(:final error) => PluginAuthenticationCancelResult.failure(error: error),
+    };
+  }
+
+  PluginAuthenticationStartResult _mapAuthenticationConflict({required String? body}) {
+    final conflict = _parseAuthenticationConflict(body: body);
+    return switch (conflict) {
+      _AuthenticationConflictParsed(:final conflict) =>
+        conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
+            ? const PluginAuthenticationStartResult.unsupported()
+            : PluginAuthenticationStartResult.conflict(conflict: conflict),
+      _AuthenticationConflictParseFailure(:final error) => PluginAuthenticationStartResult.failure(error: error),
+    };
+  }
+
+  PluginAuthenticationCancelResult _mapAuthenticationCancelConflict({required String? body}) {
+    final conflict = _parseAuthenticationConflict(body: body);
+    return switch (conflict) {
+      _AuthenticationConflictParsed(:final conflict) =>
+        conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
+            ? const PluginAuthenticationCancelResult.unsupported()
+            : PluginAuthenticationCancelResult.conflict(conflict: conflict),
+      _AuthenticationConflictParseFailure(:final error) => PluginAuthenticationCancelResult.failure(error: error),
+    };
+  }
+
+  _AuthenticationConflictParseResult _parseAuthenticationConflict({required String? body}) {
+    if (body == null) {
+      return _AuthenticationConflictParseFailure(
+        error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: null),
+      );
+    }
+    try {
+      return _AuthenticationConflictParsed(
+        conflict: PluginAuthenticationConflict.fromJson(jsonDecodeMap(body)),
+      );
+    } on Object {
+      return _AuthenticationConflictParseFailure(error: ApiError.jsonParsing(body));
+    }
+  }
+
   Future<PluginManagementMutationResult> _mapMutation({
     required Future<ApiResponse<PluginManagementResponse>> future,
   }) async {
@@ -116,4 +185,18 @@ class PluginRepository {
       ErrorResponse(:final error) => ApiResponse.error(error),
     };
   }
+}
+
+sealed class _AuthenticationConflictParseResult {
+  const _AuthenticationConflictParseResult();
+}
+
+final class _AuthenticationConflictParsed extends _AuthenticationConflictParseResult {
+  const _AuthenticationConflictParsed({required this.conflict});
+  final PluginAuthenticationConflict conflict;
+}
+
+final class _AuthenticationConflictParseFailure extends _AuthenticationConflictParseResult {
+  const _AuthenticationConflictParseFailure({required this.error});
+  final ApiError error;
 }

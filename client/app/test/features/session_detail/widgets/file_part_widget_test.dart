@@ -127,6 +127,24 @@ void main() {
 
   tearDown(() => GetIt.instance.reset());
 
+  testWidgets("renders stored images as metadata until reference delivery is enabled", (tester) async {
+    const attachment = MessageAttachment.storedImage(
+      attachmentId: "attachment-1",
+      bridgeId: "bridge-1",
+      mime: "image/png",
+      filename: "preview.png",
+      byteLength: 1024,
+    );
+
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpAndSettle();
+
+    expect(find.text("preview.png"), findsOneWidget);
+    expect(find.text("image/png"), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(find.byKey(FilePartWidget.previewTapTargetKey), findsNothing);
+  });
+
   testWidgets("renders a bounded inline image without a network request", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",

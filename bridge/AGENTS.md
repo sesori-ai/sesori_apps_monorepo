@@ -36,7 +36,8 @@ Dependencies flow in one direction:
 4. `sesori_plugin_opencode` and `sesori_plugin_codex` — depend on interface + foundation + runtime + `sesori_shared`
 5. `sesori_plugin_acp` — ACP protocol plugin base; depends on interface + foundation + `sesori_shared`
 6. `sesori_plugin_cursor` — Cursor descriptor/adapter; depends on interface + foundation + ACP
-7. `app` — depends on interface + foundation + registered concrete plugins + `sesori_shared` (NOT runtime)
+7. `sesori_plugin_omp` — Oh My Pi adapter; depends on interface + foundation + ACP
+8. `app` — depends on interface + foundation + registered concrete plugins + `sesori_shared` (NOT runtime)
 
 When changing shared types, update in this order.
 

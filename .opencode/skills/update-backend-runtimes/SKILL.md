@@ -20,7 +20,7 @@ Update the bridge's OpenCode, Codex, and Cursor CLI targets to the latest stable
 - Codex manifest tests:
   `bridge/sesori_plugin_codex/test/runtime/codex_runtime_manifest_test.dart`
 - Cursor CLI minimum build:
-  `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart`
+  `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`
 - Cursor managed runtime (pinned build + per-platform checksums):
   `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`
 - Cursor manifest tests:
@@ -105,7 +105,7 @@ done
 shasum -a 256 "$D"/*.tar.gz
 ```
 
-Write `_bundledBuild` as the exact published build string (`2026.08.04-aaa8809`). Do **not** derive the download URL from the parsed `SemanticVersion`: it normalizes away the leading zeros (`2026.8.4-aaa8809`) and would 404. There is no Windows package — leave `PlatformOs.windows` absent so the install capability stays off there.
+Write `_bundledVersion` as the exact published build string (`2026.08.04-aaa8809`). Preserve its `CalendarRuntimeVersion.raw` value in the download URL and version directory. There is no Windows package — leave `PlatformOs.windows` absent so the install capability stays off there.
 
 Cursor ships a `dist-package/` directory whose `cursor-agent` entry binary loads sibling files, so its assets use `RuntimeAssetLayout.packageDirectory`. If a future build ships a single self-contained binary instead, switch the layout rather than flattening the tree.
 
@@ -117,7 +117,7 @@ Because the digests are self-computed, a silently re-published asset fails check
 2. Apply an explicitly requested OpenCode minimum and synchronize the API surface metadata comment; otherwise preserve the existing minimum.
 3. Update Codex's bundled version, release-version documentation, and all six matching SHA-256 values.
 4. Preserve the Codex minimum unless a concrete requirement says otherwise.
-5. Update Cursor's minimum to the official current build's calendar date, and update `CursorRuntimeManifest`'s `_bundledBuild` plus all four computed SHA-256 values.
+5. Update Cursor's minimum to the official current build's calendar date, and update `CursorRuntimeManifest`'s `_bundledVersion` plus all four computed SHA-256 values.
 6. Update hard-coded version URLs, version assertions, and recent-version fixtures in the three manifest/availability tests.
 7. Search the affected plugin packages for the replaced target versions. Update only references that describe the current pin; preserve historical comments and protocol-shape observations tied to older versions.
 8. Run `dart format` on changed Dart files.

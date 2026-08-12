@@ -2,7 +2,7 @@ name: sesori_bridge_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.13.0-0
 
 workspace:
   - app
@@ -13,3 +13,6 @@ workspace:
   - sesori_plugin_interface
   - sesori_plugin_acp
   - sesori_plugin_cursor
+  - sesori_plugin_omp
+  - sesori_plugin_claude
+  - sesori_plugin_pi

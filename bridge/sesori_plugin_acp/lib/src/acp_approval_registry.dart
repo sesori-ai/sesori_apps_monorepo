@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "acp_protocol.dart";
 import "acp_stdio_client.dart";
+import "repositories/mappers/acp_elicitation_mapper.dart";
 
 typedef AcpResponder = void Function(Object id, Object? result);
 typedef AcpErrorResponder = void Function(Object id, int code, String message);
@@ -12,6 +13,9 @@ typedef AcpErrorResponder = void Function(Object id, int code, String message);
 /// bridge's `List<List<String>>` answers (outer = per question, inner =
 /// selected values).
 typedef AcpQuestionReplyBuilder = Object? Function(List<List<String>> answers);
+typedef AcpQuestionResolutionBuilder = Object? Function(AcpQuestionResolution resolution);
+
+enum AcpQuestionResolution { declined, cancelled }
 
 enum _PendingKind { permission, question }
 
@@ -24,6 +28,7 @@ class _PendingApproval {
     this.params = const {},
     this.questions = const [],
     this.replyBuilder,
+    this.resolutionBuilder,
   });
 
   final String bridgeRequestId;
@@ -41,6 +46,10 @@ class _PendingApproval {
 
   /// Builds the reply payload (question kind only).
   final AcpQuestionReplyBuilder? replyBuilder;
+
+  /// Builds protocol-specific decline/cancel results. Null preserves the
+  /// existing JSON-RPC error response used by harness extension questions.
+  final AcpQuestionResolutionBuilder? resolutionBuilder;
 }
 
 /// Routes ACP server-originated requests to the bridge SSE stream and answers
@@ -120,10 +129,13 @@ class AcpApprovalRegistry {
 
   /// The session a server request belongs to: its explicit `sessionId` when
   /// present, otherwise the active turn's session (see [_activeSessionResolver]).
-  /// Returns "" only when neither is available — the caller must treat that as
-  /// unresolved (a request stamped with "" is dropped by the mobile client).
+  /// Returns "" when no session can be resolved, including a present malformed
+  /// `sessionId`; the caller must treat that as unresolved (a request stamped
+  /// with "" is dropped by the mobile client).
   String resolveSessionId(Map<String, dynamic> params) {
-    final explicit = (params["sessionId"] as String?)?.trim();
+    final rawSessionId = params["sessionId"];
+    if (rawSessionId != null && rawSessionId is! String) return "";
+    final explicit = rawSessionId is String ? rawSessionId.trim() : null;
     if (explicit != null && explicit.isNotEmpty) return explicit;
     return _activeSessionResolver?.call() ?? "";
   }
@@ -136,6 +148,7 @@ class AcpApprovalRegistry {
     required String sessionId,
     required List<PluginQuestionInfo> questions,
     required AcpQuestionReplyBuilder replyBuilder,
+    required AcpQuestionResolutionBuilder? resolutionBuilder,
   }) {
     _pending[bridgeRequestId] = _PendingApproval(
       bridgeRequestId: bridgeRequestId,
@@ -144,6 +157,7 @@ class AcpApprovalRegistry {
       kind: _PendingKind.question,
       questions: questions,
       replyBuilder: replyBuilder,
+      resolutionBuilder: resolutionBuilder,
     );
   }
 
@@ -253,7 +267,11 @@ class AcpApprovalRegistry {
           ),
         );
       } else {
-        _respondError(entry.acpId, -32603, questionErrorMessage);
+        _resolveQuestion(
+          entry,
+          resolution: AcpQuestionResolution.cancelled,
+          fallbackErrorMessage: questionErrorMessage,
+        );
         _emit(
           BridgeSseQuestionRejected(
             requestID: entry.bridgeRequestId,
@@ -316,7 +334,11 @@ class AcpApprovalRegistry {
   bool rejectQuestion(String bridgeRequestId) {
     final entry = _pending.remove(bridgeRequestId);
     if (entry == null || entry.kind != _PendingKind.question) return false;
-    _respondError(entry.acpId, -32603, "user rejected");
+    _resolveQuestion(
+      entry,
+      resolution: AcpQuestionResolution.declined,
+      fallbackErrorMessage: "user rejected",
+    );
     _emit(
       BridgeSseQuestionRejected(
         requestID: bridgeRequestId,
@@ -332,6 +354,10 @@ class AcpApprovalRegistry {
   void _handle(AcpServerRequest request) {
     if (request.method == AcpMethods.sessionRequestPermission) {
       _handlePermission(request);
+      return;
+    }
+    if (request.method == AcpMethods.elicitationCreate) {
+      _handleElicitation(request);
       return;
     }
     if (fireAndForgetExtensionMethods.contains(request.method)) {
@@ -378,6 +404,7 @@ class AcpApprovalRegistry {
       params: request.params,
     );
     final summary = _permissionSummary(request.params);
+    final allowAlways = _allowsAlways(request.params);
     _emit(
       BridgeSsePermissionAsked(
         requestID: bridgeRequestId,
@@ -387,8 +414,60 @@ class AcpApprovalRegistry {
         displaySessionId: sessionId,
         tool: summary.tool,
         description: summary.description,
+        allowAlways: allowAlways,
       ),
     );
+  }
+
+  void _handleElicitation(AcpServerRequest request) {
+    final sessionId = resolveSessionId(request.params);
+    if (sessionId.isEmpty) {
+      Log.w("[acp] elicitation with no resolvable session; cancelling");
+      _respond(request.id, const {"action": "cancel"});
+      return;
+    }
+    final form = const AcpElicitationMapper().parse(params: request.params);
+    switch (form) {
+      case AcpUnsupportedElicitationForm(:final reason):
+        Log.w("[acp] declining elicitation: $reason");
+        _respond(request.id, const {"action": "decline"});
+      case AcpSupportedElicitationForm(:final questions):
+        final bridgeId = generateBridgeId();
+        addPendingQuestion(
+          bridgeRequestId: bridgeId,
+          acpId: request.id,
+          sessionId: sessionId,
+          questions: questions,
+          replyBuilder: (answers) => form.buildResponse(answers: answers),
+          resolutionBuilder: (resolution) => {
+            "action": switch (resolution) {
+              AcpQuestionResolution.declined => "decline",
+              AcpQuestionResolution.cancelled => "cancel",
+            },
+          },
+        );
+        _emit(
+          BridgeSseQuestionAsked(
+            id: bridgeId,
+            sessionID: sessionId,
+            displaySessionId: sessionId,
+            questions: questions,
+          ),
+        );
+    }
+  }
+
+  void _resolveQuestion(
+    _PendingApproval entry, {
+    required AcpQuestionResolution resolution,
+    required String fallbackErrorMessage,
+  }) {
+    final builder = entry.resolutionBuilder;
+    if (builder == null) {
+      _respondError(entry.acpId, -32603, fallbackErrorMessage);
+      return;
+    }
+    _respond(entry.acpId, builder(resolution));
   }
 
   /// Derives the tool hint and human description from a permission request's
@@ -428,8 +507,12 @@ class AcpApprovalRegistry {
       displaySessionId: entry.sessionId,
       tool: summary.tool,
       description: summary.description,
+      allowAlways: _allowsAlways(entry.params),
     );
   }
+
+  bool _allowsAlways(Map<String, dynamic> params) =>
+      _optionsFrom(params).any((option) => option["kind"] == "allow_always");
 
   List<Map<String, dynamic>> _optionsFrom(Map<String, dynamic> params) {
     final raw = params["options"];

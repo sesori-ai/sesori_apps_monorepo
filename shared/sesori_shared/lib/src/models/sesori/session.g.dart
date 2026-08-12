@@ -165,6 +165,12 @@ _SessionMessagesRequest _$SessionMessagesRequestFromJson(Map json) =>
       sessionId: json['sessionId'] as String,
       limit: (json['limit'] as num?)?.toInt(),
       before: (json['before'] as num?)?.toInt(),
+      attachmentDelivery:
+          $enumDecodeNullable(
+            _$MessageAttachmentDeliveryEnumMap,
+            json['attachmentDelivery'],
+          ) ??
+          MessageAttachmentDelivery.inline,
     );
 
 Map<String, dynamic> _$SessionMessagesRequestToJson(
@@ -173,4 +179,11 @@ Map<String, dynamic> _$SessionMessagesRequestToJson(
   'sessionId': instance.sessionId,
   'limit': ?instance.limit,
   'before': ?instance.before,
+  'attachmentDelivery':
+      _$MessageAttachmentDeliveryEnumMap[instance.attachmentDelivery]!,
+};
+
+const _$MessageAttachmentDeliveryEnumMap = {
+  MessageAttachmentDelivery.inline: 'inline',
+  MessageAttachmentDelivery.storedReference: 'storedReference',
 };

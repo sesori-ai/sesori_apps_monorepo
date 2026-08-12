@@ -37,9 +37,10 @@ class _FakeChecksumValidator implements ChecksumValidator {
 }
 
 class _FakeArchiveExtractor implements ArchiveExtractor {
-  _FakeArchiveExtractor({required this.success});
+  _FakeArchiveExtractor({required this.success, required this.packageDirectory});
 
   final bool success;
+  final bool packageDirectory;
 
   @override
   Future<ArchiveExtractionResult> extract({
@@ -50,8 +51,14 @@ class _FakeArchiveExtractor implements ArchiveExtractor {
     if (!success) {
       return const ArchiveExtractionResult.failure(reason: "powershell Expand-Archive exited with code 1: boom");
     }
-    Directory(stagingPath).createSync(recursive: true);
-    File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");
+    if (packageDirectory) {
+      final package = Directory(p.join(stagingPath, "dist-package"))..createSync(recursive: true);
+      File(p.join(package.path, "cursor-agent")).writeAsStringSync("BINARY");
+      File(p.join(package.path, "node-runtime")).writeAsStringSync("SIBLING");
+    } else {
+      Directory(stagingPath).createSync(recursive: true);
+      File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");
+    }
     return const ArchiveExtractionResult.success();
   }
 }
@@ -82,6 +89,14 @@ const _asset = RuntimeAsset(
   layout: RuntimeAssetLayout.singleBinary,
 );
 
+const _packageAsset = RuntimeAsset(
+  assetName: "cursor-test.tar.gz",
+  format: ArchiveFormat.tarGz,
+  sha256: "def456",
+  archiveBinaryName: "cursor-agent",
+  layout: RuntimeAssetLayout.packageDirectory,
+);
+
 void main() {
   late Directory managedDir;
 
@@ -99,12 +114,13 @@ void main() {
     DownloadException? downloadError,
     bool checksumValid = true,
     bool extractSuccess = true,
+    bool packageDirectory = false,
     _FakeCommandExecutor? cmd,
   }) {
     return RuntimeInstallService(
       downloadClient: _FakeDownloadClient(exception: downloadError),
       checksumValidator: _FakeChecksumValidator(valid: checksumValid),
-      archiveExtractor: _FakeArchiveExtractor(success: extractSuccess),
+      archiveExtractor: _FakeArchiveExtractor(success: extractSuccess, packageDirectory: packageDirectory),
       commandExecutor: cmd ?? _FakeCommandExecutor(),
       runtimeId: "opencode",
     );
@@ -140,8 +156,36 @@ void main() {
     }
     // The download + staging scratch are cleaned up. The download carries the
     // archive's extension so PowerShell Expand-Archive accepts it on Windows.
-    expect(File(p.join(managedDir.path, ".sesori-runtime-download${_asset.format.fileExtension}")).existsSync(), isFalse);
+    expect(
+      File(p.join(managedDir.path, ".sesori-runtime-download${_asset.format.fileExtension}")).existsSync(),
+      isFalse,
+    );
     expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
+  });
+
+  test("places a package directory with the entry binary and its siblings", () async {
+    final staleFile = File(p.join(versionDir(), "stale"))
+      ..createSync(recursive: true)
+      ..writeAsStringSync("OLD");
+
+    await build(packageDirectory: true)
+        .install(
+          managedDir: managedDir.path,
+          versionDir: versionDir(),
+          binaryFileName: "cursor-agent",
+          downloadUrl: "https://example.test/cursor-test.tar.gz",
+          asset: _packageAsset,
+          startAborted: StartAbortSignal.never,
+        )
+        .drain<void>();
+
+    expect(File(p.join(versionDir(), "cursor-agent")).readAsStringSync(), "BINARY");
+    expect(File(p.join(versionDir(), "node-runtime")).readAsStringSync(), "SIBLING");
+    expect(staleFile.existsSync(), isFalse);
+    expect(
+      File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(),
+      "def456",
+    );
   });
 
   test("isInstalled is false before, true after, and rejects a hash mismatch", () async {
@@ -176,7 +220,9 @@ void main() {
   });
 
   test("maps a download failure to an install exception", () async {
-    final service = build(downloadError: const DownloadException(kind: DownloadFailureKind.network, message: "offline"));
+    final service = build(
+      downloadError: const DownloadException(kind: DownloadFailureKind.network, message: "offline"),
+    );
     await expectLater(install(service).drain<void>(), throwsA(isA<RuntimeInstallException>()));
   });
 

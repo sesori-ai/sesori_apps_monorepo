@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_management.dart';
@@ -9,13 +9,14 @@ part of 'plugin_management.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$PluginManagementMetadata {
 
- PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
+ PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState;@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState get authenticationState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +29,16 @@ $PluginManagementMetadataCopyWith<PluginManagementMetadata> get copyWith => _$Pl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.authenticationState, authenticationState) || other.authenticationState == authenticationState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(managementCapabilities),actionHint);
+int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,authenticationState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(managementCapabilities),actionHint);
 
 @override
 String toString() {
-  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
+  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, authenticationState: $authenticationState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
 }
 
 
@@ -48,7 +49,7 @@ abstract mixin class $PluginManagementMetadataCopyWith<$Res>  {
   factory $PluginManagementMetadataCopyWith(PluginManagementMetadata value, $Res Function(PluginManagementMetadata) _then) = _$PluginManagementMetadataCopyWithImpl;
 @useResult
 $Res call({
- PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
+ PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState,@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState authenticationState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
 });
 
 
@@ -65,12 +66,13 @@ class _$PluginManagementMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
-  return _then(_self.copyWith(
+@pragma('vm:prefer-inline') @override $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? authenticationState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
+  return _then(PluginManagementMetadata(
 setup: null == setup ? _self.setup : setup // ignore: cast_nullable_to_non_nullable
 as PluginSetupMetadata,runtimeState: null == runtimeState ? _self.runtimeState : runtimeState // ignore: cast_nullable_to_non_nullable
 as PluginRuntimeState,workState: null == workState ? _self.workState : workState // ignore: cast_nullable_to_non_nullable
-as PluginManagementWorkState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
+as PluginManagementWorkState,authenticationState: null == authenticationState ? _self.authenticationState : authenticationState // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,hasIdleTimeoutOverride: null == hasIdleTimeoutOverride ? _self.hasIdleTimeoutOverride : hasIdleTimeoutOverride // ignore: cast_nullable_to_non_nullable
 as bool,managementCapabilities: null == managementCapabilities ? _self.managementCapabilities : managementCapabilities // ignore: cast_nullable_to_non_nullable
 as Set<PluginManagementCapability>,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
@@ -95,12 +97,13 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 @JsonSerializable()
 
 class _PluginManagementMetadata implements PluginManagementMetadata {
-  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) required final  Set<PluginManagementCapability> managementCapabilities, required this.actionHint}): _managementCapabilities = managementCapabilities;
+  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, @JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) this.authenticationState = PluginAuthenticationState.idle, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) required  Set<PluginManagementCapability> managementCapabilities, required this.actionHint}): _managementCapabilities = managementCapabilities;
   factory _PluginManagementMetadata.fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
 
 @override final  PluginSetupMetadata setup;
 @override@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) final  PluginRuntimeState runtimeState;
 @override@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) final  PluginManagementWorkState workState;
+@override@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) final  PluginAuthenticationState authenticationState;
 @override final  int idleTimeoutMins;
 @override final  bool hasIdleTimeoutOverride;
  final  Set<PluginManagementCapability> _managementCapabilities;
@@ -125,16 +128,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other._managementCapabilities, _managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.authenticationState, authenticationState) || other.authenticationState == authenticationState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other._managementCapabilities, _managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_managementCapabilities),actionHint);
+int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,authenticationState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_managementCapabilities),actionHint);
 
 @override
 String toString() {
-  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
+  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, authenticationState: $authenticationState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
 }
 
 
@@ -145,7 +148,7 @@ abstract mixin class _$PluginManagementMetadataCopyWith<$Res> implements $Plugin
   factory _$PluginManagementMetadataCopyWith(_PluginManagementMetadata value, $Res Function(_PluginManagementMetadata) _then) = __$PluginManagementMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
+ PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState,@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState authenticationState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
 });
 
 
@@ -162,12 +165,13 @@ class __$PluginManagementMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? authenticationState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
   return _then(_PluginManagementMetadata(
 setup: null == setup ? _self.setup : setup // ignore: cast_nullable_to_non_nullable
 as PluginSetupMetadata,runtimeState: null == runtimeState ? _self.runtimeState : runtimeState // ignore: cast_nullable_to_non_nullable
 as PluginRuntimeState,workState: null == workState ? _self.workState : workState // ignore: cast_nullable_to_non_nullable
-as PluginManagementWorkState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
+as PluginManagementWorkState,authenticationState: null == authenticationState ? _self.authenticationState : authenticationState // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,hasIdleTimeoutOverride: null == hasIdleTimeoutOverride ? _self.hasIdleTimeoutOverride : hasIdleTimeoutOverride // ignore: cast_nullable_to_non_nullable
 as bool,managementCapabilities: null == managementCapabilities ? _self._managementCapabilities : managementCapabilities // ignore: cast_nullable_to_non_nullable
 as Set<PluginManagementCapability>,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
@@ -187,17 +191,297 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 }
 }
 
+PluginAuthenticationChallengeResponse _$PluginAuthenticationChallengeResponseFromJson(
+  Map<String, dynamic> json
+) {
+    return PluginAuthenticationDeviceCodeChallengeResponse.fromJson(
+      json
+    );
+}
+
+/// @nodoc
+mixin _$PluginAuthenticationChallengeResponse {
+
+ PluginAuthenticationChallengeType get type; String get verificationUrl; String get userCode;
+
+  /// Serializes this PluginAuthenticationChallengeResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationChallengeResponse&&(identical(other.type, type) || other.type == type)&&(identical(other.verificationUrl, verificationUrl) || other.verificationUrl == verificationUrl)&&(identical(other.userCode, userCode) || other.userCode == userCode));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,type,verificationUrl,userCode);
+
+@override
+String toString() {
+  return 'PluginAuthenticationChallengeResponse(type: $type, verificationUrl: $verificationUrl, userCode: $userCode)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationDeviceCodeChallengeResponse implements PluginAuthenticationChallengeResponse {
+  const PluginAuthenticationDeviceCodeChallengeResponse({this.type = PluginAuthenticationChallengeType.deviceCode, required this.verificationUrl, required this.userCode});
+  factory PluginAuthenticationDeviceCodeChallengeResponse.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationDeviceCodeChallengeResponseFromJson(json);
+
+@override@JsonKey() final  PluginAuthenticationChallengeType type;
+@override final  String verificationUrl;
+@override final  String userCode;
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationDeviceCodeChallengeResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationDeviceCodeChallengeResponse&&(identical(other.type, type) || other.type == type)&&(identical(other.verificationUrl, verificationUrl) || other.verificationUrl == verificationUrl)&&(identical(other.userCode, userCode) || other.userCode == userCode));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,type,verificationUrl,userCode);
+
+@override
+String toString() {
+  return 'PluginAuthenticationChallengeResponse.deviceCode(type: $type, verificationUrl: $verificationUrl, userCode: $userCode)';
+}
+
+
+}
+
+
+
+
+PluginAuthenticationProgress _$PluginAuthenticationProgressFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'completed':
+          return PluginAuthenticationCompletedProgress.fromJson(
+            json
+          );
+                case 'failed':
+          return PluginAuthenticationFailedProgress.fromJson(
+            json
+          );
+                case 'cancelled':
+          return PluginAuthenticationCancelledProgress.fromJson(
+            json
+          );
+        
+          default:
+            return PluginAuthenticationUnknownProgress.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$PluginAuthenticationProgress {
+
+
+
+  /// Serializes this PluginAuthenticationProgress to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationProgress);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginAuthenticationProgress()';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationCompletedProgress implements PluginAuthenticationProgress {
+  const PluginAuthenticationCompletedProgress({ String? $type}): $type = $type ?? 'completed';
+  factory PluginAuthenticationCompletedProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationCompletedProgressFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationCompletedProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationCompletedProgress);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginAuthenticationProgress.completed()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationFailedProgress implements PluginAuthenticationProgress {
+  const PluginAuthenticationFailedProgress({required this.message,  String? $type}): $type = $type ?? 'failed';
+  factory PluginAuthenticationFailedProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationFailedProgressFromJson(json);
+
+ final  String message;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationFailedProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationFailedProgress&&(identical(other.message, message) || other.message == message));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message);
+
+@override
+String toString() {
+  return 'PluginAuthenticationProgress.failed(message: $message)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationCancelledProgress implements PluginAuthenticationProgress {
+  const PluginAuthenticationCancelledProgress({ String? $type}): $type = $type ?? 'cancelled';
+  factory PluginAuthenticationCancelledProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationCancelledProgressFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationCancelledProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationCancelledProgress);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginAuthenticationProgress.cancelled()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationUnknownProgress implements PluginAuthenticationProgress {
+  const PluginAuthenticationUnknownProgress({ String? $type}): $type = $type ?? 'unknown';
+  factory PluginAuthenticationUnknownProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationUnknownProgressFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationUnknownProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationUnknownProgress);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginAuthenticationProgress.unknown()';
+}
+
+
+}
+
+
+
+
 
 /// @nodoc
 mixin _$PluginManagementResponse {
 
-// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
-// omit snapshotToken; null means that peer cannot identify snapshot changes.
-// Make non-null when those bridge versions are unsupported.
- String? get snapshotToken;// COMPATIBILITY 2026-07-27 (v1.7.0): Stage 12 bridge payloads omit the
-// bridge identity; null means the peer cannot scope management snapshots
-// to a bridge. Make non-null when those bridge versions are unsupported.
- String? get bridgeId; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
+ String? get snapshotToken; String? get bridgeId; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -248,7 +532,7 @@ class _$PluginManagementResponseCopyWithImpl<$Res>
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? snapshotToken = freezed,Object? bridgeId = freezed,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginManagementResponse(
 snapshotToken: freezed == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
 as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
@@ -266,16 +550,10 @@ as List<PluginManagementMetadata>,
 @JsonSerializable()
 
 class _PluginManagementResponse implements PluginManagementResponse {
-  const _PluginManagementResponse({required this.snapshotToken, required this.bridgeId, required this.defaultPluginId, required this.defaultIdleTimeoutMins, required final  List<PluginManagementMetadata> plugins}): _plugins = plugins;
+  const _PluginManagementResponse({required this.snapshotToken, required this.bridgeId, required this.defaultPluginId, required this.defaultIdleTimeoutMins, required  List<PluginManagementMetadata> plugins}): _plugins = plugins;
   factory _PluginManagementResponse.fromJson(Map<String, dynamic> json) => _$PluginManagementResponseFromJson(json);
 
-// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
-// omit snapshotToken; null means that peer cannot identify snapshot changes.
-// Make non-null when those bridge versions are unsupported.
 @override final  String? snapshotToken;
-// COMPATIBILITY 2026-07-27 (v1.7.0): Stage 12 bridge payloads omit the
-// bridge identity; null means the peer cannot scope management snapshots
-// to a bridge. Make non-null when those bridge versions are unsupported.
 @override final  String? bridgeId;
 @override final  String? defaultPluginId;
 @override final  int defaultIdleTimeoutMins;
@@ -421,7 +699,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleEnableRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleEnableRequest({final  String? $type}): $type = $type ?? 'enable';
+  const PluginLifecycleEnableRequest({ String? $type}): $type = $type ?? 'enable';
   factory PluginLifecycleEnableRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleEnableRequestFromJson(json);
 
 
@@ -460,7 +738,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleDisableRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleDisableRequest({required this.mode, final  String? $type}): $type = $type ?? 'disable';
+  const PluginLifecycleDisableRequest({required this.mode,  String? $type}): $type = $type ?? 'disable';
   factory PluginLifecycleDisableRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleDisableRequestFromJson(json);
 
  final  PluginStopMode mode;
@@ -499,7 +777,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleRestartRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleRestartRequest({required this.mode, final  String? $type}): $type = $type ?? 'restart';
+  const PluginLifecycleRestartRequest({required this.mode,  String? $type}): $type = $type ?? 'restart';
   factory PluginLifecycleRestartRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleRestartRequestFromJson(json);
 
  final  PluginStopMode mode;
@@ -538,7 +816,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleRefreshRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleRefreshRequest({final  String? $type}): $type = $type ?? 'refresh';
+  const PluginLifecycleRefreshRequest({ String? $type}): $type = $type ?? 'refresh';
   factory PluginLifecycleRefreshRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleRefreshRequestFromJson(json);
 
 
@@ -577,7 +855,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleInstallRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleInstallRequest({final  String? $type}): $type = $type ?? 'install';
+  const PluginLifecycleInstallRequest({ String? $type}): $type = $type ?? 'install';
   factory PluginLifecycleInstallRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleInstallRequestFromJson(json);
 
 
@@ -674,7 +952,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutApplyAllRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutApplyAllRequest({@JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins, final  String? $type}): $type = $type ?? 'applyAll';
+  const PluginIdleTimeoutApplyAllRequest({@JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'applyAll';
   factory PluginIdleTimeoutApplyAllRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutApplyAllRequestFromJson(json);
 
 @JsonKey(fromJson: _strictIntFromJson) final  int idleTimeoutMins;
@@ -713,7 +991,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutSetOverrideRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutSetOverrideRequest({required this.pluginId, @JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins, final  String? $type}): $type = $type ?? 'setOverride';
+  const PluginIdleTimeoutSetOverrideRequest({required this.pluginId, @JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'setOverride';
   factory PluginIdleTimeoutSetOverrideRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutSetOverrideRequestFromJson(json);
 
  final  String pluginId;
@@ -753,7 +1031,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutClearOverrideRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutClearOverrideRequest({required this.pluginId, final  String? $type}): $type = $type ?? 'clearOverride';
+  const PluginIdleTimeoutClearOverrideRequest({required this.pluginId,  String? $type}): $type = $type ?? 'clearOverride';
   factory PluginIdleTimeoutClearOverrideRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutClearOverrideRequestFromJson(json);
 
  final  String pluginId;
@@ -843,7 +1121,7 @@ class _$PluginLifecycleConflictCopyWithImpl<$Res>
 /// Create a copy of PluginLifecycleConflict
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? pluginId = null,Object? reasons = null,Object? current = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginLifecycleConflict(
 pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,reasons: null == reasons ? _self.reasons : reasons // ignore: cast_nullable_to_non_nullable
 as List<PluginLifecycleConflictReason>,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
@@ -868,7 +1146,7 @@ $PluginManagementMetadataCopyWith<$Res> get current {
 @JsonSerializable()
 
 class _PluginLifecycleConflict implements PluginLifecycleConflict {
-  const _PluginLifecycleConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) required final  List<PluginLifecycleConflictReason> reasons, required this.current}): _reasons = reasons;
+  const _PluginLifecycleConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) required  List<PluginLifecycleConflictReason> reasons, required this.current}): _reasons = reasons;
   factory _PluginLifecycleConflict.fromJson(Map<String, dynamic> json) => _$PluginLifecycleConflictFromJson(json);
 
 @override final  String pluginId;
@@ -941,6 +1219,170 @@ as PluginManagementMetadata,
 }
 
 /// Create a copy of PluginLifecycleConflict
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginManagementMetadataCopyWith<$Res> get current {
+  
+  return $PluginManagementMetadataCopyWith<$Res>(_self.current, (value) {
+    return _then(_self.copyWith(current: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$PluginAuthenticationConflict {
+
+ String get pluginId;@JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown) List<PluginAuthenticationConflictReason> get reasons; PluginManagementMetadata get current;
+/// Create a copy of PluginAuthenticationConflict
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginAuthenticationConflictCopyWith<PluginAuthenticationConflict> get copyWith => _$PluginAuthenticationConflictCopyWithImpl<PluginAuthenticationConflict>(this as PluginAuthenticationConflict, _$identity);
+
+  /// Serializes this PluginAuthenticationConflict to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.reasons, reasons)&&(identical(other.current, current) || other.current == current));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(reasons),current);
+
+@override
+String toString() {
+  return 'PluginAuthenticationConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginAuthenticationConflictCopyWith<$Res>  {
+  factory $PluginAuthenticationConflictCopyWith(PluginAuthenticationConflict value, $Res Function(PluginAuthenticationConflict) _then) = _$PluginAuthenticationConflictCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId,@JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown) List<PluginAuthenticationConflictReason> reasons, PluginManagementMetadata current
+});
+
+
+$PluginManagementMetadataCopyWith<$Res> get current;
+
+}
+/// @nodoc
+class _$PluginAuthenticationConflictCopyWithImpl<$Res>
+    implements $PluginAuthenticationConflictCopyWith<$Res> {
+  _$PluginAuthenticationConflictCopyWithImpl(this._self, this._then);
+
+  final PluginAuthenticationConflict _self;
+  final $Res Function(PluginAuthenticationConflict) _then;
+
+/// Create a copy of PluginAuthenticationConflict
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? pluginId = null,Object? reasons = null,Object? current = null,}) {
+  return _then(PluginAuthenticationConflict(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,reasons: null == reasons ? _self.reasons : reasons // ignore: cast_nullable_to_non_nullable
+as List<PluginAuthenticationConflictReason>,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
+as PluginManagementMetadata,
+  ));
+}
+/// Create a copy of PluginAuthenticationConflict
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginManagementMetadataCopyWith<$Res> get current {
+  
+  return $PluginManagementMetadataCopyWith<$Res>(_self.current, (value) {
+    return _then(_self.copyWith(current: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _PluginAuthenticationConflict implements PluginAuthenticationConflict {
+  const _PluginAuthenticationConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown) required  List<PluginAuthenticationConflictReason> reasons, required this.current}): _reasons = reasons;
+  factory _PluginAuthenticationConflict.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationConflictFromJson(json);
+
+@override final  String pluginId;
+ final  List<PluginAuthenticationConflictReason> _reasons;
+@override@JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown) List<PluginAuthenticationConflictReason> get reasons {
+  if (_reasons is EqualUnmodifiableListView) return _reasons;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_reasons);
+}
+
+@override final  PluginManagementMetadata current;
+
+/// Create a copy of PluginAuthenticationConflict
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PluginAuthenticationConflictCopyWith<_PluginAuthenticationConflict> get copyWith => __$PluginAuthenticationConflictCopyWithImpl<_PluginAuthenticationConflict>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationConflictToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAuthenticationConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other._reasons, _reasons)&&(identical(other.current, current) || other.current == current));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(_reasons),current);
+
+@override
+String toString() {
+  return 'PluginAuthenticationConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PluginAuthenticationConflictCopyWith<$Res> implements $PluginAuthenticationConflictCopyWith<$Res> {
+  factory _$PluginAuthenticationConflictCopyWith(_PluginAuthenticationConflict value, $Res Function(_PluginAuthenticationConflict) _then) = __$PluginAuthenticationConflictCopyWithImpl;
+@override @useResult
+$Res call({
+ String pluginId,@JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown) List<PluginAuthenticationConflictReason> reasons, PluginManagementMetadata current
+});
+
+
+@override $PluginManagementMetadataCopyWith<$Res> get current;
+
+}
+/// @nodoc
+class __$PluginAuthenticationConflictCopyWithImpl<$Res>
+    implements _$PluginAuthenticationConflictCopyWith<$Res> {
+  __$PluginAuthenticationConflictCopyWithImpl(this._self, this._then);
+
+  final _PluginAuthenticationConflict _self;
+  final $Res Function(_PluginAuthenticationConflict) _then;
+
+/// Create a copy of PluginAuthenticationConflict
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? reasons = null,Object? current = null,}) {
+  return _then(_PluginAuthenticationConflict(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,reasons: null == reasons ? _self._reasons : reasons // ignore: cast_nullable_to_non_nullable
+as List<PluginAuthenticationConflictReason>,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
+as PluginManagementMetadata,
+  ));
+}
+
+/// Create a copy of PluginAuthenticationConflict
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')

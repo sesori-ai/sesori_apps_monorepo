@@ -40,7 +40,7 @@ import 'package:sesori_dart_core/src/api/storage/notification_preferences_device
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
-    as _i895;
+    as _i896;
 import 'package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart'
     as _i369;
 import 'package:sesori_dart_core/src/capabilities/session/session_service.dart'
@@ -64,6 +64,8 @@ import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
+import 'package:sesori_dart_core/src/repositories/bridge_settings_repository.dart'
+    as _i102;
 import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
     as _i901;
 import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
@@ -88,8 +90,6 @@ import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/project_view_repository.dart'
     as _i271;
-import 'package:sesori_dart_core/src/repositories/pull_request_refresh_settings_repository.dart'
-    as _i106;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
@@ -100,6 +100,8 @@ import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
+import 'package:sesori_dart_core/src/services/bridge_settings_service.dart'
+    as _i1033;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -124,8 +126,6 @@ import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
     as _i413;
-import 'package:sesori_dart_core/src/services/pull_request_refresh_settings_service.dart'
-    as _i351;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
@@ -166,8 +166,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i895.DefaultModelSelector>(
       () => const _i895.DefaultModelSelector(),
     );
-    gh.lazySingleton<_i895.RoomKeyStorage>(
-      () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
+    gh.lazySingleton<_i896.RoomKeyStorage>(
+      () => _i896.RoomKeyStorage(gh<_i442.SecureStorage>()),
     );
     gh.lazySingleton<_i384.BridgeApi>(
       () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -191,14 +191,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
-    );
-    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
-      () => _i516.NotificationOpenDispatcher(
-        authSession: gh<_i442.AuthSession>(),
-        pushMessagingSource: gh<_i330.PushMessagingSource>(),
-        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
-        routeDispatcher: gh<_i951.RouteDispatcher>(),
-      ),
     );
     gh.lazySingleton<_i198.ComposerDraftRepository>(
       () => _i198.ComposerDraftRepository(
@@ -233,6 +225,15 @@ extension GetItInjectableX on _i174.GetIt {
         storage: gh<_i442.SecureStorage>(),
       ),
     );
+    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
+      () => _i516.NotificationOpenDispatcher(
+        authSession: gh<_i442.AuthSession>(),
+        pushMessagingSource: gh<_i330.PushMessagingSource>(),
+        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
+        routeDispatcher: gh<_i951.RouteDispatcher>(),
+        routeSource: gh<_i366.RouteSource>(),
+      ),
+    );
     gh.lazySingleton<_i205.BridgeRepository>(
       () => _i205.BridgeRepository(api: gh<_i384.BridgeApi>()),
     );
@@ -246,7 +247,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i369.ConnectionService>(
       () => _i369.ConnectionService(
         gh<_i553.RelayCryptoService>(),
-        gh<_i895.RoomKeyStorage>(),
+        gh<_i896.RoomKeyStorage>(),
         gh<_i442.AuthTokenProvider>(),
         gh<_i442.AuthSession>(),
         gh<_i903.LifecycleSource>(),
@@ -279,9 +280,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i531.MessageImageRepository>(
       () => _i531.MessageImageRepository(api: gh<_i938.MessageImageApi>()),
     );
-    gh.lazySingleton<_i471.NotificationRepository>(
-      () => _i471.NotificationRepository(api: gh<_i400.NotificationApi>()),
-    );
     gh.lazySingleton<_i699.RegisteredBridgesService>(
       () => _i699.RegisteredBridgesService(
         bridgeRepository: gh<_i205.BridgeRepository>(),
@@ -297,6 +295,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i594.PluginPreferenceRepository>(
       () => _i594.PluginPreferenceRepository(
         api: gh<_i957.PluginPreferenceApi>(),
+      ),
+    );
+    gh.lazySingleton<_i471.NotificationRepository>(
+      () => _i471.NotificationRepository(
+        api: gh<_i400.NotificationApi>(),
+        deviceIdStorage: gh<_i407.NotificationPreferencesDeviceIdStorage>(),
       ),
     );
     gh.lazySingleton<_i804.ProductAnalyticsPreferenceRepository>(
@@ -379,8 +383,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i271.ProjectViewRepository>(
       () => _i271.ProjectViewRepository(api: gh<_i210.ProjectViewApi>()),
     );
-    gh.lazySingleton<_i106.PullRequestRefreshSettingsRepository>(
-      () => _i106.PullRequestRefreshSettingsRepository(
+    gh.lazySingleton<_i102.BridgeSettingsRepository>(
+      () => _i102.BridgeSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
       ),
     );
@@ -459,9 +463,9 @@ extension GetItInjectableX on _i174.GetIt {
         lifecycleSource: gh<_i903.LifecycleSource>(),
       ),
     );
-    gh.lazySingleton<_i351.PullRequestRefreshSettingsService>(
-      () => _i351.PullRequestRefreshSettingsService(
-        repository: gh<_i106.PullRequestRefreshSettingsRepository>(),
+    gh.lazySingleton<_i1033.BridgeSettingsService>(
+      () => _i1033.BridgeSettingsService(
+        repository: gh<_i102.BridgeSettingsRepository>(),
       ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(

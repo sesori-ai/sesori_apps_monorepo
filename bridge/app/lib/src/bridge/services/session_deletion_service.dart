@@ -43,7 +43,9 @@ class SessionDeletionService {
   /// orphan history that the startup reconcile removes.
   Future<void> _purgeHistory(List<String> sessionIds) async {
     try {
-      await _chatHistoryService.purgeSessionsHistory(sessionIds: sessionIds);
+      // Deletion removes the archive too: the session is gone, so an audit
+      // file for it would outlive the thing it audits.
+      await _chatHistoryService.purgeSessionsHistory(sessionIds: sessionIds, includeArchive: true);
     } on Object catch (error, stackTrace) {
       Log.w(
         "Failed to purge chat history for ${sessionIds.length} deleted "

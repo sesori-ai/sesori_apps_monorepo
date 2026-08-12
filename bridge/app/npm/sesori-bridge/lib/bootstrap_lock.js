@@ -111,7 +111,37 @@ function stopHeartbeat(heartbeatProcess) {
   }
 }
 
+// A lock whose owner process is still running is treated as fresh however far
+// the heartbeat has lagged: spawning the detached heartbeat is not
+// instantaneous, so a mtime-only check can evict a live holder on a loaded
+// machine and let two bootstraps install concurrently.
+//
+// `process.kill(pid, 0)` only proves *some* process holds that pid, so after a
+// hard crash a reused pid would otherwise keep an abandoned lock alive forever.
+// The liveness override therefore expires: past this age the mtime rules again.
+// A real bootstrap (download + extract) never holds the lock anywhere near this
+// long, and it is deliberately not test-overridable so it can't reintroduce the
+// eviction race.
+var OWNER_LIVENESS_MAX_MS = 30 * 60 * 1000;
+
+function ownerIsAlive(lockPath) {
+  try {
+    var stat = fs.statSync(ownerPath(lockPath));
+    if (Date.now() - stat.mtimeMs > OWNER_LIVENESS_MAX_MS) {
+      return false;
+    }
+    var owner = JSON.parse(fs.readFileSync(ownerPath(lockPath), "utf8"));
+    return Number.isInteger(owner.pid) && owner.pid > 0 && processIsAlive(owner.pid);
+  } catch (_) {
+    // Missing or half-written owner file: fall back to the heartbeat mtime.
+    return false;
+  }
+}
+
 function lockIsStale(lockPath) {
+  if (ownerIsAlive(lockPath)) {
+    return false;
+  }
   var targetPaths = [heartbeatPath(lockPath), ownerPath(lockPath), lockPath];
   for (var i = 0; i < targetPaths.length; i++) {
     try {

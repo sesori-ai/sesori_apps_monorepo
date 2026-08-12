@@ -22,7 +22,7 @@ Map<String, dynamic> _$UpdateAttemptToJson(_UpdateAttempt instance) =>
       'startedAt': instance.startedAt.toIso8601String(),
       'stage': _$UpdateStageEnumMap[instance.stage]!,
       'status': _$UpdateAttemptStatusEnumMap[instance.status]!,
-      'reason': instance.reason,
+      'reason': ?instance.reason,
     };
 
 const _$UpdateStageEnumMap = {

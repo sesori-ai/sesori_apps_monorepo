@@ -14,5 +14,6 @@ sealed class PluginPendingPermission with _$PluginPendingPermission {
     required String? displaySessionId,
     required String tool,
     required String description,
+    required bool allowAlways,
   }) = _PluginPendingPermission;
 }

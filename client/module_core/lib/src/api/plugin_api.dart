@@ -38,4 +38,19 @@ class PluginApi {
       fromJson: PluginManagementResponse.fromJson,
     );
   }
+
+  Future<ApiResponse<PluginAuthenticationChallengeResponse>> startAuthentication({required String pluginId}) {
+    return _client.post(
+      "/plugin/${Uri.encodeComponent(pluginId)}/authentication",
+      body: const SuccessEmptyResponse().toJson(),
+      fromJson: PluginAuthenticationChallengeResponse.fromJson,
+    );
+  }
+
+  Future<ApiResponse<SuccessEmptyResponse>> cancelAuthentication({required String pluginId}) {
+    return _client.delete(
+      "/plugin/${Uri.encodeComponent(pluginId)}/authentication",
+      fromJson: SuccessEmptyResponse.fromJson,
+    );
+  }
 }

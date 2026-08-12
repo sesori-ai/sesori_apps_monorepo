@@ -26,10 +26,5 @@
       "repository": "anomalyco/opencode",
       "description": "OpenCode AI assistant — REST/SSE API the bridge plugin integrates with"
     }
-  },
-  "permission": {
-    "skill": {
-      "pr-inline-comments": "deny"
-    }
   }
 }

@@ -4,10 +4,10 @@
   </a>
 </p>
 
-<h1 align="center">Run OpenCode, Codex, and Cursor from your phone.</h1>
+<h1 align="center">Run OpenCode, Codex, Cursor, and Claude Code from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, and <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a> today, with <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a> coming soon.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, and <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -144,7 +144,7 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 | [OpenCode](https://opencode.ai) | Available | Deep native integration. |
 | [OpenAI Codex CLI](https://github.com/openai/codex) | Beta | Enabled by default in an upcoming release. |
 | [Cursor](https://cursor.com) | Beta | ACP-based Cursor plugin; enabled by default in an upcoming release. |
-| [Claude Code](https://claude.com) | Coming soon | Plugin architecture already supports multi-assistant backends. |
+| [Claude Code](https://claude.com) | Beta | Native stream-json integration; enabled by default in an upcoming release. |
 
 ---
 

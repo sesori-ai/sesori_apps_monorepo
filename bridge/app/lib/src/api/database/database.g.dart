@@ -4628,34 +4628,26 @@ class $$SessionTableTableTableManager
                         >
                       >(state) {
                         if (projectId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.projectId,
-                                    referencedTable:
-                                        $$SessionTableTableReferences
-                                            ._projectIdTable(db),
-                                    referencedColumn:
-                                        $$SessionTableTableReferences
-                                            ._projectIdTable(db)
-                                            .projectId,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.projectId,
+                            referencedTable: $$SessionTableTableReferences
+                                ._projectIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._projectIdTable(db)
+                                .projectId,
+                          ) as T;
                         }
                         if (parentSessionId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.parentSessionId,
-                                    referencedTable:
-                                        $$SessionTableTableReferences
-                                            ._parentSessionIdTable(db),
-                                    referencedColumn:
-                                        $$SessionTableTableReferences
-                                            ._parentSessionIdTable(db)
-                                            .sessionId,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.parentSessionId,
+                            referencedTable: $$SessionTableTableReferences
+                                ._parentSessionIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._parentSessionIdTable(db)
+                                .sessionId,
+                          ) as T;
                         }
 
                         return state;
@@ -5336,19 +5328,15 @@ class $$PullRequestsTableTableTableManager
                     >
                   >(state) {
                     if (projectId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.projectId,
-                                referencedTable:
-                                    $$PullRequestsTableTableReferences
-                                        ._projectIdTable(db),
-                                referencedColumn:
-                                    $$PullRequestsTableTableReferences
-                                        ._projectIdTable(db)
-                                        .projectId,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.projectId,
+                        referencedTable: $$PullRequestsTableTableReferences
+                            ._projectIdTable(db),
+                        referencedColumn: $$PullRequestsTableTableReferences
+                            ._projectIdTable(db)
+                            .projectId,
+                      ) as T;
                     }
 
                     return state;

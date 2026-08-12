@@ -15,6 +15,263 @@ import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
+  test("authentication joins, publishes state, reinspects, and starts when ready", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final progress = <PluginAuthenticationProgressUpdate>[];
+    service.authenticationProgress.listen(progress.add);
+
+    final first = service.authenticate(pluginId: "one");
+    final joined = service.authenticate(pluginId: "one");
+    expect(service.managementSnapshot.plugins.single.authenticationState, PluginAuthenticationState.inProgress);
+    repository.authenticationEvents.add(
+      PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    );
+
+    expect(await first, await joined);
+    expect(repository.authenticationCalls, 1);
+    repository.authenticationEvents.add(const PluginAuthenticationCompleted());
+    await repository.authenticationEvents.close();
+    while (progress.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(progress.single.progress, const PluginAuthenticationProgress.completed());
+    expect(repository.inspectCalls, 1);
+    expect(repository.startCalls, 1);
+    expect(service.managementSnapshot.plugins.single.authenticationState, PluginAuthenticationState.idle);
+    expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.ready);
+  });
+
+  test("authentication cancellation aborts upstream and emits cancelled", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final progress = <PluginAuthenticationProgressUpdate>[];
+    service.authenticationProgress.listen(progress.add);
+    final challenge = service.authenticate(pluginId: "one");
+    repository.authenticationEvents.add(
+      PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    );
+    await challenge;
+
+    await service.cancelAuthentication(pluginId: "one");
+
+    expect(repository.authenticationAborted, isTrue);
+    expect(progress.single.progress, const PluginAuthenticationProgress.cancelled());
+    expect(service.managementSnapshot.plugins.single.authenticationState, PluginAuthenticationState.idle);
+  });
+
+  test("authentication cancellation remains cancelled when setup inspection fails", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..inspectionError = StateError("inspection failed");
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final progress = <PluginAuthenticationProgressUpdate>[];
+    service.authenticationProgress.listen(progress.add);
+    final started = service.authenticate(pluginId: "one");
+
+    final cancelled = service.cancelAuthentication(pluginId: "one");
+    await expectLater(started, throwsA(isA<PluginAuthenticationChallengeUnavailableException>()));
+    await cancelled;
+
+    expect(repository.authenticationAborted, isTrue);
+    expect(progress.single.progress, const PluginAuthenticationProgress.cancelled());
+  });
+
+  test("authentication plugin failure message is replaced before wire progress", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final progress = <PluginAuthenticationProgressUpdate>[];
+    service.authenticationProgress.listen(progress.add);
+    final started = service.authenticate(pluginId: "one");
+    repository.authenticationEvents
+      ..add(
+        PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        ),
+      )
+      ..add(const PluginAuthenticationFailed(message: "private workspace policy detail"));
+    await started;
+    await repository.authenticationEvents.close();
+    while (progress.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(
+      progress.single.progress,
+      const PluginAuthenticationProgress.failed(
+        message: "Authentication failed. Check the bridge logs for details.",
+      ),
+    );
+  });
+
+  test("authentication completion fails when authoritative setup stays blocked", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final progress = <PluginAuthenticationProgressUpdate>[];
+    service.authenticationProgress.listen(progress.add);
+    final challenge = service.authenticate(pluginId: "one");
+    repository.authenticationEvents
+      ..add(
+        PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        ),
+      )
+      ..add(const PluginAuthenticationCompleted());
+    await challenge;
+    await repository.authenticationEvents.close();
+    while (progress.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(progress.single.progress, isA<PluginAuthenticationFailedProgress>());
+    expect(repository.startCalls, 0);
+  });
+
+  test("authentication rejects unsupported, unnecessary, and command-conflicting starts", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: Completer<void>(),
+      startFailureMessage: null,
+    );
+    final unsupported = _commandService(repository: repository, settingsRepository: null)
+      ..initialize(
+        disabledPluginIds: const {},
+        setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+      );
+    addTearDown(unsupported.dispose);
+    expect(
+      () => unsupported.authenticate(pluginId: "one"),
+      throwsA(
+        isA<PluginAuthenticationConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginAuthenticationConflictReason.unsupported],
+        ),
+      ),
+    );
+
+    final ready = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    )..initialize(disabledPluginIds: const {}, setupById: const {"one": PluginSetupReady()});
+    addTearDown(ready.dispose);
+    expect(
+      () => ready.authenticate(pluginId: "one"),
+      throwsA(
+        isA<PluginAuthenticationConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginAuthenticationConflictReason.setupNotRequired],
+        ),
+      ),
+    );
+
+    final commandRepository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+      inspectionGate: Completer<void>(),
+      startFailureMessage: null,
+    );
+    final commandConflict =
+        _commandService(
+          repository: commandRepository,
+          settingsRepository: null,
+          managementCapabilities: const {
+            PluginControlCapability.authentication,
+            PluginControlCapability.setupRefresh,
+          },
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+        );
+    addTearDown(commandConflict.dispose);
+    unawaited(commandConflict.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()));
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      () => commandConflict.authenticate(pluginId: "one"),
+      throwsA(
+        isA<PluginAuthenticationConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginAuthenticationConflictReason.inFlight],
+        ),
+      ),
+    );
+    commandRepository.inspectionGate!.complete();
+  });
+
   test("derives alphabetical eligibility and default from setup", () {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["zeta", "alpha", "beta"]);
     addTearDown(runtime.dispose);
@@ -24,6 +281,7 @@ void main() {
         (
           id: "zeta",
           displayName: "Zeta",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -32,6 +290,7 @@ void main() {
         (
           id: "beta",
           displayName: "Beta",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
@@ -40,6 +299,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -60,6 +320,7 @@ void main() {
 
     expect(policy.eligiblePluginIds, ["alpha", "zeta"]);
     expect(policy.defaultPluginId, "alpha");
+    expect(policy.eagerPluginIds, isEmpty);
     expect(service.compositionView.eligiblePluginIds, ["alpha", "zeta"]);
     expect(service.compositionView.orderedPluginIds, ["alpha", "beta", "zeta"]);
     final sessionOptionsScopeById = service.compositionView.sessionOptionsScopeById;
@@ -76,6 +337,65 @@ void main() {
     expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "zeta").state, PluginRuntimeState.blocked);
   });
 
+  test("eager plugins activate only when eligible and setup-ready", () {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["wombat", "xenon", "yeti", "zebra"]);
+    addTearDown(runtime.dispose);
+    final service = _service(
+      runtime: runtime,
+      plugins: const [
+        (
+          id: "zebra",
+          displayName: "Zebra",
+          activationPolicy: PluginActivationPolicy.eager,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "yeti",
+          displayName: "Yeti",
+          activationPolicy: PluginActivationPolicy.eager,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "xenon",
+          displayName: "Xenon",
+          activationPolicy: PluginActivationPolicy.eager,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "wombat",
+          displayName: "Wombat",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+    );
+    addTearDown(service.dispose);
+
+    final policy = service.initialize(
+      disabledPluginIds: const {"yeti"},
+      setupById: const {
+        "zebra": PluginSetupReady(),
+        "yeti": PluginSetupReady(),
+        "xenon": PluginSetupRuntimeMissing(actionHint: "Install Xenon."),
+        "wombat": PluginSetupReady(),
+      },
+    );
+
+    expect(policy.eagerPluginIds, ["zebra"]);
+  });
+
   test("prefers OpenCode as the default before falling back to alphabetical setup readiness", () async {
     final opencode = _FakePluginApi(id: "opencode");
     final alpha = _FakePluginApi(id: "alpha");
@@ -87,6 +407,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -95,6 +416,7 @@ void main() {
         (
           id: "opencode",
           displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -130,6 +452,7 @@ void main() {
         (
           id: "opencode",
           displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -138,6 +461,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -167,6 +491,7 @@ void main() {
         (
           id: "opencode",
           displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -175,6 +500,7 @@ void main() {
         (
           id: "cursor",
           displayName: "Cursor",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
@@ -237,6 +563,7 @@ void main() {
               (
                 id: "opencode",
                 displayName: "OpenCode",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.resident,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -245,6 +572,7 @@ void main() {
               (
                 id: "alpha",
                 displayName: "Alpha",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -253,6 +581,7 @@ void main() {
               (
                 id: "beta",
                 displayName: "Beta",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: defaultManagementCapabilities,
@@ -385,6 +714,7 @@ void main() {
             (
               id: "external",
               displayName: "External",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: {PluginControlCapability.setupRefresh},
@@ -393,6 +723,7 @@ void main() {
             (
               id: "managed",
               displayName: "Managed",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -422,6 +753,7 @@ void main() {
             (
               id: "alpha",
               displayName: "Alpha",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -485,6 +817,7 @@ void main() {
             (
               id: "alpha",
               displayName: "Alpha",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -493,6 +826,7 @@ void main() {
             (
               id: "beta",
               displayName: "Beta",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: defaultManagementCapabilities,
@@ -612,6 +946,7 @@ void main() {
               (
                 id: "managed",
                 displayName: "Managed",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: {PluginControlCapability.idleTimeout},
@@ -620,6 +955,7 @@ void main() {
               (
                 id: "external",
                 displayName: "External",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: {PluginControlCapability.setupRefresh},
@@ -736,6 +1072,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -990,6 +1327,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1045,6 +1383,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1102,6 +1441,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1146,6 +1486,7 @@ void main() {
               (
                 id: "one",
                 displayName: "One",
+                activationPolicy: PluginActivationPolicy.onDemand,
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
@@ -1355,17 +1696,19 @@ void main() {
   });
 
   test("install streams progress, enables, re-inspects, and starts when ready", () async {
-    final repository = _CommandLifecycleRepository(
-      inspectionResult: const PluginSetupReady(),
-      inspectionGate: null,
-      startFailureMessage: null,
-    )..installEvents = const [
-        ProvisionResolving(),
-        ProvisionDownloading(receivedBytes: 10, totalBytes: 100),
-        ProvisionVerifying(),
-        ProvisionExtracting(),
-        ProvisionReady(binaryPath: "/managed/one"),
-      ];
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [
+            ProvisionResolving(),
+            ProvisionDownloading(receivedBytes: 10, totalBytes: 100),
+            ProvisionVerifying(),
+            ProvisionExtracting(),
+            ProvisionReady(binaryPath: "/managed/one"),
+          ];
     addTearDown(repository.dispose);
     final settingsRepository = _MutableBridgeSettingsRepository(
       settings: const BridgeSettings(
@@ -1374,14 +1717,13 @@ void main() {
     );
     final service =
         _commandService(
-            repository: repository,
-            settingsRepository: settingsRepository,
-            managementCapabilities: installCapableManagementCapabilities,
-          )
-          ..initialize(
-            disabledPluginIds: const {"one"},
-            setupById: const {"one": PluginSetupNotInspected()},
-          );
+          repository: repository,
+          settingsRepository: settingsRepository,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {"one"},
+          setupById: const {"one": PluginSetupNotInspected()},
+        );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -1410,14 +1752,16 @@ void main() {
   });
 
   test("a failed install reports a terminal failure without enabling the plugin", () async {
-    final repository = _CommandLifecycleRepository(
-      inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
-      inspectionGate: null,
-      startFailureMessage: null,
-    )..installEvents = const [
-        ProvisionResolving(),
-        ProvisionFailed(message: "checksum verification failed"),
-      ];
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [
+            ProvisionResolving(),
+            ProvisionFailed(message: "checksum verification failed"),
+          ];
     addTearDown(repository.dispose);
     final settingsRepository = _MutableBridgeSettingsRepository(
       settings: const BridgeSettings(
@@ -1426,14 +1770,13 @@ void main() {
     );
     final service =
         _commandService(
-            repository: repository,
-            settingsRepository: settingsRepository,
-            managementCapabilities: installCapableManagementCapabilities,
-          )
-          ..initialize(
-            disabledPluginIds: const {"one"},
-            setupById: const {"one": PluginSetupNotInspected()},
-          );
+          repository: repository,
+          settingsRepository: settingsRepository,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {"one"},
+          setupById: const {"one": PluginSetupNotInspected()},
+        );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -1459,14 +1802,13 @@ void main() {
     addTearDown(repository.dispose);
     final service =
         _commandService(
-            repository: repository,
-            settingsRepository: null,
-            managementCapabilities: installCapableManagementCapabilities,
-          )
-          ..initialize(
-            disabledPluginIds: const {"one"},
-            setupById: const {"one": PluginSetupNotInspected()},
-          );
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {"one"},
+          setupById: const {"one": PluginSetupNotInspected()},
+        );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -1484,24 +1826,24 @@ void main() {
 
   test("a duplicate install joins and a different command conflicts while installing", () async {
     final installGate = Completer<void>();
-    final repository = _CommandLifecycleRepository(
-      inspectionResult: const PluginSetupReady(),
-      inspectionGate: null,
-      startFailureMessage: null,
-    )
-      ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
-      ..installGate = installGate;
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..installGate = installGate;
     addTearDown(repository.dispose);
     final service =
         _commandService(
-            repository: repository,
-            settingsRepository: null,
-            managementCapabilities: installCapableManagementCapabilities,
-          )
-          ..initialize(
-            disabledPluginIds: const {},
-            setupById: const {"one": PluginSetupNotInspected()},
-          );
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupNotInspected()},
+        );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -1640,6 +1982,7 @@ void main() {
         (
           id: "beta",
           displayName: "Beta",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
@@ -1648,6 +1991,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -1699,6 +2043,7 @@ void main() {
         (
           id: "alpha",
           displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
@@ -1729,6 +2074,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1762,6 +2108,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1812,6 +2159,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1857,6 +2205,7 @@ void main() {
             (
               id: "one",
               displayName: "One",
+              activationPolicy: PluginActivationPolicy.onDemand,
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
@@ -1928,6 +2277,7 @@ PluginLifecycleService _singleIdleService({
         (
           id: "one",
           displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
           residencyPolicy: residencyPolicy,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: managementCapabilities,
@@ -1957,6 +2307,7 @@ PluginLifecycleService _commandService({
       (
         id: "one",
         displayName: "One",
+        activationPolicy: PluginActivationPolicy.onDemand,
         residencyPolicy: PluginResidencyPolicy.transient,
         sessionOptionsScope: PluginSessionOptionsScope.project,
         managementCapabilities: managementCapabilities,
@@ -2170,6 +2521,25 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
   int installCalls = 0;
   List<RuntimeProvisionProgress> installEvents = const [];
   Completer<void>? installGate;
+  final StreamController<PluginAuthenticationEvent> authenticationEvents =
+      StreamController<PluginAuthenticationEvent>();
+  int authenticationCalls = 0;
+  bool authenticationAborted = false;
+  Object? inspectionError;
+
+  @override
+  PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) {
+    authenticationCalls++;
+    return PluginRuntimeAuthenticationOperation(
+      events: authenticationEvents.stream,
+      abort: () {
+        authenticationAborted = true;
+        authenticationEvents
+          ..addError(const PluginStartAbortedException())
+          ..close();
+      },
+    );
+  }
 
   @override
   Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) async* {
@@ -2211,6 +2581,8 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
   }) async {
     inspectCalls++;
     await inspectionGate?.future;
+    final currentInspectionError = inspectionError;
+    if (currentInspectionError != null) throw currentInspectionError;
     _current = _copySnapshot(
       setup: inspectionResult,
       accessGate: _current.accessGate,

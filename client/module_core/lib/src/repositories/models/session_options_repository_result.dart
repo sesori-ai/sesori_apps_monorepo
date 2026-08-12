@@ -5,6 +5,7 @@ final class SessionOptionsCatalog {
   SessionOptionsCatalog({
     required List<AgentInfo> agents,
     required List<ProviderInfo> providers,
+    required this.providersConnectedOnly,
     required List<CommandInfo> commands,
   }) : agents = List.unmodifiable(agents),
        providers = List.unmodifiable(providers),
@@ -12,11 +13,21 @@ final class SessionOptionsCatalog {
 
   final List<AgentInfo> agents;
   final List<ProviderInfo> providers;
+  final bool providersConnectedOnly;
   final List<CommandInfo> commands;
 }
 
 sealed class LegacySessionOptionsRepositoryResult {
   const LegacySessionOptionsRepositoryResult();
+}
+
+enum LegacySessionOptionSource { agents, providers, commands }
+
+final class LegacySessionOptionError {
+  const LegacySessionOptionError({required this.source, required this.error});
+
+  final LegacySessionOptionSource source;
+  final ApiError error;
 }
 
 final class LegacySessionOptionsRepositoryAvailable extends LegacySessionOptionsRepositoryResult {
@@ -26,9 +37,18 @@ final class LegacySessionOptionsRepositoryAvailable extends LegacySessionOptions
 }
 
 final class LegacySessionOptionsRepositoryFailure extends LegacySessionOptionsRepositoryResult {
-  const LegacySessionOptionsRepositoryFailure({required this.error});
+  LegacySessionOptionsRepositoryFailure({required List<LegacySessionOptionError> errors})
+    : errors = List.unmodifiable(errors);
 
-  final ApiError error;
+  final List<LegacySessionOptionError> errors;
+}
+
+final class LegacySessionOptionsRepositoryPartial extends LegacySessionOptionsRepositoryResult {
+  LegacySessionOptionsRepositoryPartial({required this.catalog, required List<LegacySessionOptionError> errors})
+    : errors = List.unmodifiable(errors);
+
+  final SessionOptionsCatalog catalog;
+  final List<LegacySessionOptionError> errors;
 }
 
 sealed class SessionOptionsRepositoryResult {
@@ -43,6 +63,10 @@ final class SessionOptionsRepositoryAvailable extends SessionOptionsRepositoryRe
 
 final class SessionOptionsRepositoryCacheUnavailable extends SessionOptionsRepositoryResult {
   const SessionOptionsRepositoryCacheUnavailable();
+}
+
+final class SessionOptionsRepositoryUnsupported extends SessionOptionsRepositoryResult {
+  const SessionOptionsRepositoryUnsupported();
 }
 
 final class SessionOptionsRepositoryProjectNotFound extends SessionOptionsRepositoryResult {

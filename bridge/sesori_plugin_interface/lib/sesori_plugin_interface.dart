@@ -9,6 +9,8 @@ export "src/host/host_process_service.dart";
 export "src/host/plugin_host.dart";
 export "src/lifecycle/bridge_plugin.dart";
 export "src/lifecycle/bridge_plugin_descriptor.dart";
+export "src/lifecycle/plugin_activation_policy.dart";
+export "src/lifecycle/plugin_authentication.dart";
 export "src/lifecycle/plugin_authentication_required_exception.dart";
 export "src/lifecycle/plugin_config.dart";
 export "src/lifecycle/plugin_control_capability.dart";

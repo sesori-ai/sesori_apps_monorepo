@@ -241,6 +241,19 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
     );
   }
 
+  Future<void> clearSyncedAtForSessions({required List<String> sessionIds}) {
+    if (sessionIds.isEmpty) return Future<void>.value();
+    return transaction(() async {
+      for (var start = 0; start < sessionIds.length; start += _maxBindVariables) {
+        final end = start + _maxBindVariables;
+        final chunk = sessionIds.sublist(start, end > sessionIds.length ? sessionIds.length : end);
+        await (update(historySyncStateTable)..where((table) => table.sessionId.isIn(chunk))).write(
+          const HistorySyncStateTableCompanion(syncedAt: Value(null)),
+        );
+      }
+    });
+  }
+
   /// Every session id the store holds rows for.
   Future<Set<String>> getStoredSessionIds() async {
     final rows = await (selectOnly(historyMessagesTable, distinct: true)

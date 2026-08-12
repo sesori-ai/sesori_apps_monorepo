@@ -20,6 +20,14 @@ Map<String, dynamic> _$PullRequestRefreshIntervalSettingUpdateToJson(
   'type': instance.$type,
 };
 
+YoloSettingUpdate _$YoloSettingUpdateFromJson(Map json) => YoloSettingUpdate(
+  enabled: json['enabled'] as bool,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$YoloSettingUpdateToJson(YoloSettingUpdate instance) =>
+    <String, dynamic>{'enabled': instance.enabled, 'type': instance.$type};
+
 UnknownBridgeSettingUpdate _$UnknownBridgeSettingUpdateFromJson(Map json) =>
     UnknownBridgeSettingUpdate($type: json['type'] as String?);
 

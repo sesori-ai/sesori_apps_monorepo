@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'send_prompt_request.dart';
@@ -9,6 +9,7 @@ part of 'send_prompt_request.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$SendPromptRequestCopyWithImpl<$Res>
 /// Create a copy of SendPromptRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(SendPromptRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
@@ -109,7 +110,7 @@ $SessionVariantCopyWith<$Res>? get variant {
 @JsonSerializable()
 
 class _SendPromptRequest implements SendPromptRequest {
-  const _SendPromptRequest({required this.sessionId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.variant}): _parts = parts;
+  const _SendPromptRequest({required this.sessionId, required  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.variant}): _parts = parts;
   factory _SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);
 
 @override final  String sessionId;
@@ -283,7 +284,7 @@ $PromptPartCopyWith(PromptPart _, $Res Function(PromptPart) __);
 @JsonSerializable()
 
 class PromptPartText implements PromptPart {
-  const PromptPartText({required this.text, final  String? $type}): $type = $type ?? 'text';
+  const PromptPartText({required this.text,  String? $type}): $type = $type ?? 'text';
   factory PromptPartText.fromJson(Map<String, dynamic> json) => _$PromptPartTextFromJson(json);
 
  final  String text;
@@ -356,7 +357,7 @@ as String,
 @JsonSerializable()
 
 class PromptPartFilePath implements PromptPart {
-  const PromptPartFilePath({required this.mime, required this.path, required this.filename, final  String? $type}): $type = $type ?? 'file_path';
+  const PromptPartFilePath({required this.mime, required this.path, required this.filename,  String? $type}): $type = $type ?? 'file_path';
   factory PromptPartFilePath.fromJson(Map<String, dynamic> json) => _$PromptPartFilePathFromJson(json);
 
  final  String mime;
@@ -433,7 +434,7 @@ as String?,
 @JsonSerializable()
 
 class PromptPartFileUrl implements PromptPart {
-  const PromptPartFileUrl({required this.mime, required this.url, required this.filename, final  String? $type}): $type = $type ?? 'file_url';
+  const PromptPartFileUrl({required this.mime, required this.url, required this.filename,  String? $type}): $type = $type ?? 'file_url';
   factory PromptPartFileUrl.fromJson(Map<String, dynamic> json) => _$PromptPartFileUrlFromJson(json);
 
  final  String mime;
@@ -510,7 +511,7 @@ as String?,
 @JsonSerializable()
 
 class PromptPartFileData implements PromptPart {
-  const PromptPartFileData({required this.mime, required this.base64, required this.filename, final  String? $type}): $type = $type ?? 'file_data';
+  const PromptPartFileData({required this.mime, required this.base64, required this.filename,  String? $type}): $type = $type ?? 'file_data';
   factory PromptPartFileData.fromJson(Map<String, dynamic> json) => _$PromptPartFileDataFromJson(json);
 
  final  String mime;
@@ -638,7 +639,7 @@ class _$PromptModelCopyWithImpl<$Res>
 /// Create a copy of PromptModel
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? providerID = null,Object? modelID = null,}) {
-  return _then(_self.copyWith(
+  return _then(PromptModel(
 providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,modelID: null == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String,

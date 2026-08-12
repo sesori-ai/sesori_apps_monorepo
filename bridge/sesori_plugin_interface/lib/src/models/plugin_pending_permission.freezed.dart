@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_pending_permission.dart';
@@ -9,6 +9,7 @@ part of 'plugin_pending_permission.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -16,7 +17,7 @@ mixin _$PluginPendingPermission {
 
  String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown.
- String? get displaySessionId; String get tool; String get description;
+ String? get displaySessionId; String get tool; String get description; bool get allowAlways;
 /// Create a copy of PluginPendingPermission
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +30,16 @@ $PluginPendingPermissionCopyWith<PluginPendingPermission> get copyWith => _$Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description);
+int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description,allowAlways);
 
 @override
 String toString() {
-  return 'PluginPendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description)';
+  return 'PluginPendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
 }
 
 
@@ -49,7 +50,7 @@ abstract mixin class $PluginPendingPermissionCopyWith<$Res>  {
   factory $PluginPendingPermissionCopyWith(PluginPendingPermission value, $Res Function(PluginPendingPermission) _then) = _$PluginPendingPermissionCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, String tool, String description
+ String id, String sessionID, String? displaySessionId, String tool, String description, bool allowAlways
 });
 
 
@@ -66,14 +67,15 @@ class _$PluginPendingPermissionCopyWithImpl<$Res>
 
 /// Create a copy of PluginPendingPermission
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,}) {
-  return _then(_self.copyWith(
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? allowAlways = null,}) {
+  return _then(PluginPendingPermission(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
 as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,
+as String,allowAlways: null == allowAlways ? _self.allowAlways : allowAlways // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -85,7 +87,7 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class _PluginPendingPermission implements PluginPendingPermission {
-  const _PluginPendingPermission({required this.id, required this.sessionID, required this.displaySessionId, required this.tool, required this.description});
+  const _PluginPendingPermission({required this.id, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, required this.allowAlways});
   
 
 @override final  String id;
@@ -95,6 +97,7 @@ class _PluginPendingPermission implements PluginPendingPermission {
 @override final  String? displaySessionId;
 @override final  String tool;
 @override final  String description;
+@override final  bool allowAlways;
 
 /// Create a copy of PluginPendingPermission
 /// with the given fields replaced by the non-null parameter values.
@@ -109,16 +112,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginPendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginPendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description);
+int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description,allowAlways);
 
 @override
 String toString() {
-  return 'PluginPendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description)';
+  return 'PluginPendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
 }
 
 
@@ -129,7 +132,7 @@ abstract mixin class _$PluginPendingPermissionCopyWith<$Res> implements $PluginP
   factory _$PluginPendingPermissionCopyWith(_PluginPendingPermission value, $Res Function(_PluginPendingPermission) _then) = __$PluginPendingPermissionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, String tool, String description
+ String id, String sessionID, String? displaySessionId, String tool, String description, bool allowAlways
 });
 
 
@@ -146,14 +149,15 @@ class __$PluginPendingPermissionCopyWithImpl<$Res>
 
 /// Create a copy of PluginPendingPermission
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? allowAlways = null,}) {
   return _then(_PluginPendingPermission(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
 as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,
+as String,allowAlways: null == allowAlways ? _self.allowAlways : allowAlways // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

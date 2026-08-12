@@ -64,6 +64,7 @@ class _FilePartContent extends StatelessWidget {
   String? get _attachmentFilename => switch (attachment) {
     MessageAttachmentInlineImage(:final filename) ||
     MessageAttachmentRemoteUrl(:final filename) ||
+    MessageAttachmentStoredImage(:final filename) ||
     MessageAttachmentMetadata(:final filename) => filename,
     MessageAttachmentUnknown() => null,
   };
@@ -85,7 +86,9 @@ class _FilePartContent extends StatelessWidget {
         uri: attachment.safeRemoteUri,
         icon: Icons.image_outlined,
       ),
-      MessageAttachmentMetadata() || MessageAttachmentUnknown() => _buildFallbackAttachment(
+      MessageAttachmentStoredImage() ||
+      MessageAttachmentMetadata() ||
+      MessageAttachmentUnknown() => _buildFallbackAttachment(
         context: context,
         imageLoadFailed: false,
       ),
@@ -106,6 +109,13 @@ class _FilePartContent extends StatelessWidget {
         icon: imageLoadFailed ? Icons.broken_image : Icons.insert_drive_file,
       ),
       MessageAttachmentMetadata(:final mime, :final filename) => _buildFileTile(
+        prego: prego,
+        filename: _displayFilename(filename: filename),
+        mime: _displayMime(mime: mime),
+        uri: null,
+        icon: Icons.insert_drive_file,
+      ),
+      MessageAttachmentStoredImage(:final mime, :final filename) => _buildFileTile(
         prego: prego,
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),

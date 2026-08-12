@@ -94,7 +94,7 @@ void main() {
       emitted = <BridgeSseEvent>[];
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      plugin = AcpPlugin(
+      plugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
@@ -232,7 +232,7 @@ void main() {
     final emitted = <BridgeSseEvent>[];
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
-    final plugin = AcpPlugin(
+    final plugin = TestAcpPlugin(
       id: "acp",
       agentDisplayName: "ACP",
       launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),

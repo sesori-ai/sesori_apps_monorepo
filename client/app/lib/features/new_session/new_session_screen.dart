@@ -17,6 +17,7 @@ import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/project_nav_subtitle.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
+import "new_session_no_harness_notice.dart";
 import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
 
@@ -246,7 +247,11 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   /// so it stays with the composer instead of scrolling away inside the block
   /// it acts on. Floating rather than in flow: a cramped viewport — landscape
   /// with a multiline draft — must still spend its height on the composer.
-  Widget _buildOptionsRefresh({required NewSessionCubit cubit}) {
+  ///
+  /// When harness discovery itself failed before identifying a harness, it
+  /// retries discovery instead and says so. A confirmed empty harness list has
+  /// its own notice and no refresh action.
+  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isHarnessDiscovery}) {
     return Positioned(
       bottom: _refreshBottomGap,
       left: 0,
@@ -254,7 +259,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       child: Center(
         child: PregoButtonsSolid(
           key: const Key("new_session_options_refresh"),
-          label: context.loc.newSessionOptionsRefresh,
+          label: isHarnessDiscovery ? context.loc.newSessionHarnessesRefresh : context.loc.newSessionOptionsRefresh,
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           leadingIcon: TablerRegular.refresh,
@@ -275,12 +280,29 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget _buildOptions({
     required AgentModelData? data,
     required ({String message, bool isFailure})? status,
+    required bool needsHarnessDiscovery,
+    required bool hasNoHarnesses,
   }) {
     if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
       return const NewSessionOptionsSkeleton(
         rowHeight: _optionRowHeight,
         rowSpacing: _optionRowSpacing,
       );
+    }
+
+    // With no harness there is nothing to choose between, and nothing for the
+    // workspace option to shape — no session can start. Say why in the
+    // chooser's place when the bridge answered that itself; when discovery
+    // failed instead, the error banner already explains it and only the retry
+    // above the composer is left standing.
+    if (needsHarnessDiscovery) {
+      return hasNoHarnesses
+          ? NewSessionNoHarnessNotice(
+              onSettingsPressed: () => context.pushRoute(
+                const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
+              ),
+            )
+          : const SizedBox.shrink();
     }
 
     final hasPlugins = data.plugins.isNotEmpty;
@@ -315,10 +337,16 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
+    final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
+    final hasNoHarnesses = cubit.hasNoHarnesses;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
-    final optionsBottomPadding = optionsStatus == null
-        ? _optionsBottomPadding
-        : _optionsBottomPadding + _refreshBandHeight(context);
+    // A confirmed empty harness list is explained by the notice and has no
+    // refresh action. Keep discovery retry available only when discovery failed
+    // before the bridge could confirm what it runs.
+    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null;
+    final optionsBottomPadding = showsRefresh
+        ? _optionsBottomPadding + _refreshBandHeight(context)
+        : _optionsBottomPadding;
     final isComposerEnabled = cubit.canCreateSession && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
@@ -404,57 +432,64 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             ),
                             child: child,
                           ),
-                          child: _buildOptions(data: composerData, status: optionsStatus),
+                          child: _buildOptions(
+                            data: composerData,
+                            status: optionsStatus,
+                            needsHarnessDiscovery: needsHarnessDiscovery,
+                            hasNoHarnesses: hasNoHarnesses,
+                          ),
                         ),
-                        if (optionsStatus != null) _buildOptionsRefresh(cubit: cubit),
+                        if (showsRefresh)
+                          _buildOptionsRefresh(cubit: cubit, isHarnessDiscovery: needsHarnessDiscovery),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Semantics(
-                      enabled: isComposerEnabled,
-                      child: ExcludeFocus(
-                        excluding: !isComposerEnabled,
-                        child: IgnorePointer(
-                          ignoring: !isComposerEnabled,
-                          child: PromptInput(
-                            draftIdentity: ComposerDraftRepository.newSessionIdentity(
-                              projectId: widget.projectId,
+                  if (!hasNoHarnesses)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Semantics(
+                        enabled: isComposerEnabled,
+                        child: ExcludeFocus(
+                          excluding: !isComposerEnabled,
+                          child: IgnorePointer(
+                            ignoring: !isComposerEnabled,
+                            child: PromptInput(
+                              draftIdentity: ComposerDraftRepository.newSessionIdentity(
+                                projectId: widget.projectId,
+                              ),
+                              initialDraft: context.read<NewSessionCubit>().composerDraft,
+                              hasMessages: false,
+                              attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+                              isBusy: state is NewSessionSending,
+                              onSend: ({required text, required command, required inputMode, required attachments}) {
+                                context.read<NewSessionCubit>().createSession(
+                                  text: text,
+                                  command: command,
+                                  inputMode: inputMode,
+                                  attachments: attachments,
+                                  dedicatedWorktree: _dedicatedWorktree,
+                                );
+                              },
+                              onVoiceTranscriptionCompleted: context
+                                  .read<NewSessionCubit>()
+                                  .reportVoiceTranscriptionCompleted,
+                              onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
+                                draft: draft,
+                              ),
+                              onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
+                              onAbort: _dismissScreen,
+                              surfaceStyleController: _composerSurfaceStyle,
+                              header: _buildErrorBanner(state),
+                              composerHeader: _buildComposerHeader(state),
+                              availableCommands: composerData?.commands ?? const [],
+                              stagedCommand: composerData?.stagedCommand,
+                              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                             ),
-                            initialDraft: context.read<NewSessionCubit>().composerDraft,
-                            hasMessages: false,
-                            attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
-                            isBusy: state is NewSessionSending,
-                            onSend: ({required text, required command, required inputMode, required attachments}) {
-                              context.read<NewSessionCubit>().createSession(
-                                text: text,
-                                command: command,
-                                inputMode: inputMode,
-                                attachments: attachments,
-                                dedicatedWorktree: _dedicatedWorktree,
-                              );
-                            },
-                            onVoiceTranscriptionCompleted: context
-                                .read<NewSessionCubit>()
-                                .reportVoiceTranscriptionCompleted,
-                            onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
-                              draft: draft,
-                            ),
-                            onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
-                            onAbort: _dismissScreen,
-                            surfaceStyleController: _composerSurfaceStyle,
-                            header: _buildErrorBanner(state),
-                            composerHeader: _buildComposerHeader(state),
-                            availableCommands: composerData?.commands ?? const [],
-                            stagedCommand: composerData?.stagedCommand,
-                            onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                            onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                           ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

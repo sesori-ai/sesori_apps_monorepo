@@ -10,6 +10,7 @@ _RegisterTokenRequest _$RegisterTokenRequestFromJson(Map json) =>
     _RegisterTokenRequest(
       token: json['token'] as String,
       platform: $enumDecode(_$DevicePlatformEnumMap, json['platform']),
+      deviceId: json['deviceId'] as String?,
     );
 
 Map<String, dynamic> _$RegisterTokenRequestToJson(
@@ -17,6 +18,7 @@ Map<String, dynamic> _$RegisterTokenRequestToJson(
 ) => <String, dynamic>{
   'token': instance.token,
   'platform': _$DevicePlatformEnumMap[instance.platform]!,
+  'deviceId': ?instance.deviceId,
 };
 
 const _$DevicePlatformEnumMap = {

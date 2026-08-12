@@ -35,6 +35,29 @@ void main() {
     expect((result as SuccessResponse<PullRequestRefreshSettingsResponse>).data.intervalSeconds, 30);
   });
 
+  test("GET parses the aggregate bridge settings", () async {
+    when(
+      () => client.get<BridgeSettingsResponse>(
+        "/settings",
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson = invocation.namedArguments[#fromJson] as BridgeSettingsResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(
+        fromJson({
+          "pullRequestRefresh": {"intervalSeconds": 30},
+          "yolo": {"enabled": true},
+        }),
+      );
+    });
+
+    final result = await api.getBridgeSettings();
+
+    final settings = (result as SuccessResponse<BridgeSettingsResponse>).data;
+    expect(settings.pullRequestRefresh.intervalSeconds, 30);
+    expect(settings.yolo.enabled, isTrue);
+  });
+
   test("PATCH serializes and parses a committed setting variant", () async {
     when(
       () => client.patch<BridgeSettingUpdate>(
@@ -49,6 +72,32 @@ void main() {
       );
     });
     const update = BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 45);
+
+    final result = await api.update(update: update);
+
+    expect((result as BridgeSettingUpdateApiCommitted).update, update);
+    final body = verify(
+      () => client.patch<BridgeSettingUpdate>(
+        "/settings",
+        body: captureAny(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).captured.single;
+    expect(body, update.toJson());
+  });
+
+  test("PATCH serializes and parses a committed YOLO setting", () async {
+    when(
+      () => client.patch<BridgeSettingUpdate>(
+        "/settings",
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson = invocation.namedArguments[#fromJson] as BridgeSettingUpdate Function(Map<String, dynamic>);
+      return ApiResponse.success(fromJson(const {"type": "yolo", "enabled": true}));
+    });
+    const update = BridgeSettingUpdate.yolo(enabled: true);
 
     final result = await api.update(update: update);
 

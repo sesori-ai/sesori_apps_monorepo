@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'acp_protocol.dart';
@@ -9,6 +9,7 @@ part of 'acp_protocol.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -70,7 +71,7 @@ class _$AcpSessionInfoCopyWithImpl<$Res>
 /// Create a copy of AcpSessionInfo
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? cwd = freezed,Object? title = freezed,Object? updatedAtMs = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AcpSessionInfo(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -218,7 +219,7 @@ class _$AcpSessionListResultCopyWithImpl<$Res>
 /// Create a copy of AcpSessionListResult
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessions = null,Object? nextCursor = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AcpSessionListResult(
 sessions: null == sessions ? _self.sessions : sessions // ignore: cast_nullable_to_non_nullable
 as List<AcpSessionInfo>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -233,7 +234,7 @@ as String?,
 @JsonSerializable()
 
 class _AcpSessionListResult implements AcpSessionListResult {
-  const _AcpSessionListResult({@JsonKey(fromJson: _sessionInfosFromJson) final  List<AcpSessionInfo> sessions = const <AcpSessionInfo>[], required this.nextCursor}): _sessions = sessions;
+  const _AcpSessionListResult({@JsonKey(fromJson: _sessionInfosFromJson)  List<AcpSessionInfo> sessions = const <AcpSessionInfo>[], required this.nextCursor}): _sessions = sessions;
   factory _AcpSessionListResult.fromJson(Map<String, dynamic> json) => _$AcpSessionListResultFromJson(json);
 
  final  List<AcpSessionInfo> _sessions;

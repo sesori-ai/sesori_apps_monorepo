@@ -390,7 +390,7 @@ class RelayClient {
     try {
       await _sendEncryptedMessage(request);
 
-      return completer.future.timeout(
+      return await completer.future.timeout(
         _requestTimeout,
         onTimeout: () {
           _pendingRequests.remove(request.id);
@@ -425,7 +425,11 @@ class RelayClient {
 
     final controller = StreamController<RelaySseEvent>.broadcast();
     _sseController = controller;
-    unawaited(_sendEncryptedMessage(RelayMessage.sseSubscribe(path: path)));
+    unawaited(
+      _sendEncryptedMessage(
+        RelayMessage.sseSubscribe(path: path, attachmentDelivery: MessageAttachmentDelivery.inline),
+      ),
+    );
     return controller.stream;
   }
 

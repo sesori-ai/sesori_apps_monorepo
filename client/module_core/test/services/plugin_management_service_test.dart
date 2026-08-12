@@ -31,10 +31,181 @@ void main() {
     analytics = _MockProductAnalyticsService();
     reportedEvents = [];
     when(
-      () => analytics.logEvent(event: any(named: "event"), occurredAtUtc: any(named: "occurredAtUtc")),
+      () => analytics.logEvent(
+        event: any(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
     ).thenAnswer((invocation) async {
       reportedEvents.add(invocation.namedArguments[#event]! as ProductAnalyticsEvent);
       return AnalyticsDeliveryResult.acceptedBySdk;
+    });
+  });
+
+  group("authentication orchestration", () {
+    test("retains an HTTPS challenge and refreshes on terminal progress", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(
+          const PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationChallengeResponse.deviceCode(
+              verificationUrl: "https://auth.example/device",
+              userCode: "ABCD-EFGH",
+            ),
+          ),
+        )
+        ..queueLoad(_supported(_response(token: "terminal")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final result = await service.startAuthentication(pluginId: "codex");
+      expect(result, isA<PluginAuthenticationStartChallenge>());
+      expect(
+        service.authenticationChallenges.value["codex"],
+        PluginAuthenticationChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        ),
+      );
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+      connection.emitAuthenticationProgress(
+        pluginId: "codex",
+        progress: const PluginAuthenticationProgress.completed(),
+      );
+      await _waitFor(() => repository.loadCalls == 2);
+
+      expect(service.authenticationChallenges.value, isEmpty);
+      expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
+    });
+
+    test("rejects non-HTTPS challenge and clears operations on reconnect", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(
+          const PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationChallengeResponse.deviceCode(
+              verificationUrl: "http://auth.example/device",
+              userCode: "ABCD-EFGH",
+            ),
+          ),
+        );
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+
+      expect(await service.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailure>());
+      expect(service.authenticationChallenges.value, isEmpty);
+      connection.emitStatus(const ConnectionDisconnected());
+      expect(service.authenticationChallenges.value, isEmpty);
+    });
+
+    test("fast terminal settles authorship before the start response returns", () async {
+      final start = Completer<PluginAuthenticationStartResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(start.future)
+        ..queueLoad(_supported(_response(token: "terminal")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+      final result = service.startAuthentication(pluginId: "codex");
+      connection.emitAuthenticationProgress(
+        pluginId: "codex",
+        progress: const PluginAuthenticationProgress.cancelled(),
+      );
+      start.complete(
+        const PluginAuthenticationStartResult.challenge(
+          challenge: PluginAuthenticationChallengeResponse.deviceCode(
+            verificationUrl: "https://auth.example/device",
+            userCode: "ABCD-EFGH",
+          ),
+        ),
+      );
+      await result;
+
+      expect(terminals.single.progress, const PluginAuthenticationProgress.cancelled());
+      expect(service.authenticationChallenges.value, isEmpty);
+    });
+
+    test("fast terminal settles an uncertain start response", () async {
+      final start = Completer<PluginAuthenticationStartResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(start.future)
+        ..queueLoad(_supported(_response(token: "terminal")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+      final result = service.startAuthentication(pluginId: "codex");
+      connection.emitAuthenticationProgress(
+        pluginId: "codex",
+        progress: const PluginAuthenticationProgress.completed(),
+      );
+      start.complete(const PluginAuthenticationStartResult.uncertain());
+
+      expect(await result, isA<PluginAuthenticationStartUncertain>());
+      expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
+    });
+
+    test("fast terminal settles before the cancellation response returns", () async {
+      final cancel = Completer<PluginAuthenticationCancelResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(
+          const PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationChallengeResponse.deviceCode(
+              verificationUrl: "https://auth.example/device",
+              userCode: "ABCD-EFGH",
+            ),
+          ),
+        )
+        ..queueAuthenticationCancel(cancel.future)
+        ..queueLoad(_supported(_response(token: "terminal")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      await service.startAuthentication(pluginId: "codex");
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+      final result = service.cancelAuthentication(pluginId: "codex");
+      connection.emitAuthenticationProgress(
+        pluginId: "codex",
+        progress: const PluginAuthenticationProgress.cancelled(),
+      );
+      cancel.complete(const PluginAuthenticationCancelResult.success());
+
+      expect(await result, isA<PluginAuthenticationCancelSuccess>());
+      expect(terminals.single.progress, const PluginAuthenticationProgress.cancelled());
     });
   });
 
@@ -704,10 +875,10 @@ void main() {
     final repository = _FakePluginRepository()..queueLoad(activeLoad.future);
     final connection = _FakeConnectionService(initialStatus: _connected);
     final service = PluginManagementService(
-        pluginRepository: repository,
-        connectionService: connection,
-        productAnalyticsService: analytics,
-      );
+      pluginRepository: repository,
+      connectionService: connection,
+      productAnalyticsService: analytics,
+    );
     await _waitFor(() => repository.loadCalls == 1);
 
     final snapshotsDone = expectLater(service.snapshots, emitsDone);
@@ -1117,6 +1288,8 @@ Future<void> _waitFor(bool Function() predicate) async {
 class _FakePluginRepository implements PluginRepository {
   final Queue<Future<PluginManagementLoadResult>> _loads = Queue();
   final Queue<Future<PluginManagementMutationResult>> _mutations = Queue();
+  final Queue<Future<PluginAuthenticationStartResult>> _authenticationStarts = Queue();
+  final Queue<Future<PluginAuthenticationCancelResult>> _authenticationCancels = Queue();
   int loadCalls = 0;
   int mutationCalls = 0;
 
@@ -1127,6 +1300,22 @@ class _FakePluginRepository implements PluginRepository {
   void queueMutation(FutureOr<PluginManagementMutationResult> result) {
     _mutations.add(Future<PluginManagementMutationResult>.value(result));
   }
+
+  void queueAuthenticationStart(FutureOr<PluginAuthenticationStartResult> result) {
+    _authenticationStarts.add(Future<PluginAuthenticationStartResult>.value(result));
+  }
+
+  void queueAuthenticationCancel(FutureOr<PluginAuthenticationCancelResult> result) {
+    _authenticationCancels.add(Future<PluginAuthenticationCancelResult>.value(result));
+  }
+
+  @override
+  Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) =>
+      _authenticationStarts.removeFirst();
+
+  @override
+  Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) =>
+      _authenticationCancels.removeFirst();
 
   @override
   Future<PluginManagementLoadResult> getManagement() {
@@ -1204,6 +1393,14 @@ class _FakeConnectionService implements ConnectionService {
           percent: percent,
           message: null,
         ),
+      ),
+    );
+  }
+
+  void emitAuthenticationProgress({required String pluginId, required PluginAuthenticationProgress progress}) {
+    _events.add(
+      SseEvent(
+        data: SesoriSseEvent.pluginAuthenticationProgress(pluginId: pluginId, progress: progress),
       ),
     );
   }

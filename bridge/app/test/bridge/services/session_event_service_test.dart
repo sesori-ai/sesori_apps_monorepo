@@ -119,6 +119,63 @@ void main() {
       );
     });
 
+    test("persists backend-originated prompt defaults under the stable session", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+
+      final normalized = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 1,
+          event: const BridgeSseSessionPromptDefaultsChanged(
+            sessionID: "backend-root",
+            agent: "Default",
+            model: null,
+          ),
+        ),
+      );
+
+      final event = normalized.single as BridgeSseSessionPromptDefaultsChanged;
+      expect(event.sessionID, "stable-root");
+      expect(event.agent, "Default");
+      final stored = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(stored?.lastAgent, "Default");
+      expect(stored?.lastAgentModel, isNull);
+    });
+
+    test("publishes backend-originated prompt defaults when persistence fails", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.failNextPromptDefaultsUpdate();
+
+      final normalized = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 1,
+          event: const BridgeSseSessionPromptDefaultsChanged(
+            sessionID: "backend-root",
+            agent: "Default",
+            model: null,
+          ),
+        ),
+      );
+
+      expect(normalized.single, isA<BridgeSseSessionPromptDefaultsChanged>());
+      expect(failureReporter.recordedIdentifiers, isEmpty);
+    });
+
     test("only runtime-authorized terminal provenance passes a stopped generation fence", () async {
       await _insertRoot(
         database: database,
@@ -171,6 +228,7 @@ void main() {
               displaySessionId: "backend-root",
               tool: "shell",
               description: "stale permission",
+              allowAlways: true,
             ),
           ),
         ),
@@ -512,6 +570,7 @@ void main() {
             displaySessionId: "unknown-display",
             tool: "bash",
             description: "run",
+            allowAlways: true,
           ),
         ),
       );
@@ -816,6 +875,7 @@ void main() {
         displaySessionId: "backend-root",
         tool: "bash",
         description: "continue root",
+        allowAlways: true,
       );
       const childPermissionEvent = BridgeSsePermissionAsked(
         requestID: "child-permission",
@@ -823,6 +883,7 @@ void main() {
         displaySessionId: "backend-root",
         tool: "bash",
         description: "continue child",
+        allowAlways: true,
       );
 
       expect(
@@ -911,6 +972,7 @@ void main() {
           displaySessionId: "backend-root",
           tool: "bash",
           description: "continue child",
+          allowAlways: true,
         ),
         BridgeSseSessionUpdated(info: childInfo, titleChanged: false),
       ];
@@ -1217,6 +1279,7 @@ class _TransactionGatedSessionDao extends SessionDao {
 
   Completer<void>? _transactionEntered;
   Completer<void>? _releaseTransaction;
+  bool _failPromptDefaultsUpdate = false;
 
   Future<void> get projectionTransactionEntered => _transactionEntered!.future;
 
@@ -1227,6 +1290,23 @@ class _TransactionGatedSessionDao extends SessionDao {
 
   void releaseProjectionTransaction() {
     _releaseTransaction!.complete();
+  }
+
+  void failNextPromptDefaultsUpdate() {
+    _failPromptDefaultsUpdate = true;
+  }
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) {
+    if (_failPromptDefaultsUpdate) {
+      _failPromptDefaultsUpdate = false;
+      return Future<void>.error(StateError("prompt defaults write failed"));
+    }
+    return super.updatePromptDefaults(sessionId: sessionId, agent: agent, agentModel: agentModel);
   }
 
   @override

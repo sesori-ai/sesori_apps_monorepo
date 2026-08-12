@@ -7,7 +7,7 @@ import "package:test/test.dart";
 
 /// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
 /// so a test can land an abort while a turn is mid-selection.
-class _GatedSelectionPlugin extends AcpPlugin {
+class _GatedSelectionPlugin extends TestAcpPlugin {
   _GatedSelectionPlugin({
     required super.id,
     required super.agentDisplayName,
@@ -24,7 +24,7 @@ class _GatedSelectionPlugin extends AcpPlugin {
 
   @override
   Future<void> applyTurnSelection({
-    required AcpStdioClient client,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -59,7 +59,7 @@ void main() {
       fake = FakeAcpProcess();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      plugin = AcpPlugin(
+      plugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
@@ -247,6 +247,88 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("a completed prompt emits a final text snapshot before idle", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "describe it");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "The image shows "},
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "a garden."},
+          },
+        },
+      });
+      respondTo(prompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 20 && idleCount() == 0; i++) {
+        await pump();
+      }
+
+      final assistantParts = emitted
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .where((part) => part.messageID.contains("-assistant"))
+          .toList();
+      expect(assistantParts.map((part) => part.text), ["", "The image shows a garden."]);
+      final snapshotIndex = emitted.indexWhere(
+        (event) => event is BridgeSseMessagePartUpdated && event.part.text == "The image shows a garden.",
+      );
+      final idleIndex = emitted.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(snapshotIndex, greaterThanOrEqualTo(0));
+      expect(idleIndex, greaterThan(snapshotIndex));
+    });
+
+    test("a failed prompt still emits a final partial text snapshot", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "describe it");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Partial answer"},
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "error": {"code": -32000, "message": "agent failed"},
+      });
+      for (var i = 0; i < 20 && idleCount() == 0; i++) {
+        await pump();
+      }
+
+      expect(
+        emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
+        contains("Partial answer"),
+      );
+      expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
+    });
+
     test("a second prompt on one session dispatches only after the first turn completes", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
@@ -294,7 +376,7 @@ void main() {
       await plugin.dispose();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      plugin = AcpPlugin(
+      plugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
@@ -653,7 +735,7 @@ void main() {
       final spawned = <FakeAcpProcess>[];
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      final respawning = AcpPlugin(
+      final respawning = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),

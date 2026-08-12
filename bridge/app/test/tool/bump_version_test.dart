@@ -56,7 +56,7 @@ Future<_FixtureApp> _createFixtureApp() async {
 name: bump_version_fixture
 version: $oldVersion
 environment:
-  sdk: ^3.11.0
+  sdk: ^3.13.0-0
 dependencies:
   path: ^1.9.0
 ''');
@@ -114,7 +114,7 @@ dependencies:
   }
 
   final pubGet = await Process.run(
-    'dart',
+    Platform.resolvedExecutable,
     ['pub', 'get', '--offline'],
     workingDirectory: rootPath,
   );
@@ -130,7 +130,7 @@ Future<ProcessResult> _runTool({
   required List<String> args,
 }) {
   return Process.run(
-    'dart',
+    Platform.resolvedExecutable,
     ['run', 'tool/bump_version.dart', ...args],
     workingDirectory: fixture.rootPath,
   );

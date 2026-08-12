@@ -13,13 +13,14 @@ _AcpSessionInfo _$AcpSessionInfoFromJson(Map json) => _AcpSessionInfo(
   updatedAtMs: const AcpTimestampMsConverter().fromJson(json['updatedAt']),
 );
 
-Map<String, dynamic> _$AcpSessionInfoToJson(_AcpSessionInfo instance) =>
-    <String, dynamic>{
-      'sessionId': instance.sessionId,
-      'cwd': instance.cwd,
-      'title': instance.title,
-      'updatedAt': const AcpTimestampMsConverter().toJson(instance.updatedAtMs),
-    };
+Map<String, dynamic> _$AcpSessionInfoToJson(
+  _AcpSessionInfo instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'cwd': ?instance.cwd,
+  'title': ?instance.title,
+  'updatedAt': ?const AcpTimestampMsConverter().toJson(instance.updatedAtMs),
+};
 
 _AcpSessionListResult _$AcpSessionListResultFromJson(Map json) =>
     _AcpSessionListResult(
@@ -33,5 +34,5 @@ Map<String, dynamic> _$AcpSessionListResultToJson(
   _AcpSessionListResult instance,
 ) => <String, dynamic>{
   'sessions': instance.sessions.map((e) => e.toJson()).toList(),
-  'nextCursor': instance.nextCursor,
+  'nextCursor': ?instance.nextCursor,
 };

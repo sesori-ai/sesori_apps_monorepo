@@ -52,14 +52,26 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   before exceeding it; when a smaller independently valid PR is not practical,
   record the reason for the expected overage in the plan.
 - For durable planned work, the first PR step always raises the plan under
-  `.plan/active/<slug>/` before implementation begins. The final PR step always
-  retires the plan after implementation by moving that directory to
-  `.plan/completed/<slug>/`. Include both lifecycle PRs in the fixed step total.
+  `.plan/active/<slug>/` before implementation begins. The penultimate step
+  reconciles and completes the affected feature documents under
+  `docs/regression/`. The final step runs the level and matrix already recorded
+  in `PLAN.md`, records the result, and retires the plan by moving it to
+  `.plan/completed/<slug>/` only after that coverage passes.
+  Include all three lifecycle steps in the fixed step total.
 
 For a new durable plan, `PLAN.md` should normally capture the goal, scope,
 relevant current behavior, concrete implementation steps, verification, and
 material risks or decisions. Add a lightweight `TRACKER.md` or step files only
 when they will help execution.
+
+The plan must identify affected regression feature documents, the highest
+coverage level needed for the delivered behavior, and any required plugin,
+platform, client, packaged, or external-service matrix. Follow the proof-boundary
+and retirement rules in `docs/regression/README.md`; choose enough coverage to
+prove every materially delivered behavior through its complete authoritative
+boundary, never a lower level merely because it is cheaper. Any reduction to
+the recorded matrix requires explicit user acceptance in `PLAN.md` before
+retirement.
 
 ## Evidence And Proportionality
 

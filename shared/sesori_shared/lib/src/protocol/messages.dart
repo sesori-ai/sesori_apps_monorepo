@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../models/sesori/message_part.dart";
+
 part "messages.freezed.dart";
 part "messages.g.dart";
 
@@ -26,7 +28,11 @@ sealed class RelayMessage with _$RelayMessage {
   const factory RelayMessage.sseEvent({required String data}) = RelaySseEvent;
 
   @FreezedUnionValue("sse_subscribe")
-  const factory RelayMessage.sseSubscribe({required String path}) = RelaySseSubscribe;
+  const factory RelayMessage.sseSubscribe({
+    required String path,
+    // COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
+    @Default(MessageAttachmentDelivery.inline) MessageAttachmentDelivery attachmentDelivery,
+  }) = RelaySseSubscribe;
 
   @FreezedUnionValue("sse_unsubscribe")
   const factory RelayMessage.sseUnsubscribe() = RelaySseUnsubscribe;

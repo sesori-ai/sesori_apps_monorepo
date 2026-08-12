@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'product_analytics_preference_storage.dart';
@@ -9,6 +9,7 @@ part of 'product_analytics_preference_storage.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 StoredProductAnalyticsPreference _$StoredProductAnalyticsPreferenceFromJson(
@@ -109,7 +110,7 @@ as String,
 @JsonSerializable()
 
 class StoredProductAnalyticsSynced implements StoredProductAnalyticsPreference {
-  const StoredProductAnalyticsSynced({required this.userId, required this.revision, required this.userKey, required this.preference, final  String? $type}): $type = $type ?? 'synced';
+  const StoredProductAnalyticsSynced({required this.userId, required this.revision, required this.userKey, required this.preference,  String? $type}): $type = $type ?? 'synced';
   factory StoredProductAnalyticsSynced.fromJson(Map<String, dynamic> json) => _$StoredProductAnalyticsSyncedFromJson(json);
 
 @override final  String userId;
@@ -188,7 +189,7 @@ as ProductAnalyticsPreference,
 @JsonSerializable()
 
 class StoredProductAnalyticsPendingDisable implements StoredProductAnalyticsPreference {
-  const StoredProductAnalyticsPendingDisable({required this.userId, required this.revision, required this.userKey, required this.operationId, final  String? $type}): $type = $type ?? 'pending_disable';
+  const StoredProductAnalyticsPendingDisable({required this.userId, required this.revision, required this.userKey, required this.operationId,  String? $type}): $type = $type ?? 'pending_disable';
   factory StoredProductAnalyticsPendingDisable.fromJson(Map<String, dynamic> json) => _$StoredProductAnalyticsPendingDisableFromJson(json);
 
 @override final  String userId;
@@ -267,7 +268,7 @@ as String,
 @JsonSerializable()
 
 class StoredProductAnalyticsPendingEnable implements StoredProductAnalyticsPreference {
-  const StoredProductAnalyticsPendingEnable({required this.userId, required this.revision, required this.userKey, required this.operationId, final  String? $type}): $type = $type ?? 'pending_enable';
+  const StoredProductAnalyticsPendingEnable({required this.userId, required this.revision, required this.userKey, required this.operationId,  String? $type}): $type = $type ?? 'pending_enable';
   factory StoredProductAnalyticsPendingEnable.fromJson(Map<String, dynamic> json) => _$StoredProductAnalyticsPendingEnableFromJson(json);
 
 @override final  String userId;

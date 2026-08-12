@@ -229,13 +229,15 @@ class PermissionModal extends StatelessWidget {
                     child: Text(context.loc.diffPermissionOnce),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => _reply(context, reply: PermissionReply.always),
-                    child: Text(context.loc.diffPermissionAlwaysAllow),
+                if (permission.allowAlways) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => _reply(context, reply: PermissionReply.always),
+                      child: Text(context.loc.diffPermissionAlwaysAllow),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 16),

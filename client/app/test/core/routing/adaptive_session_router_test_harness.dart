@@ -356,6 +356,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
     pluginId: "opencode",
     supportsPromptAttachments: false,
     messages: const [],
+    olderMessagesCursor: null,
     pendingQuestions: const [],
     pendingPermissions: const [],
     childSessions: childSessionsBySession[sessionId] ?? const [],

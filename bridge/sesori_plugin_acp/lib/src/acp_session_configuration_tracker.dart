@@ -60,6 +60,13 @@ class AcpSessionConfigurationTracker {
     _sessionProviderIds.remove(sessionId);
   }
 
+  void clear() {
+    _defaultModelId = null;
+    _defaultProviderId = null;
+    _sessionModelIds.clear();
+    _sessionProviderIds.clear();
+  }
+
   String? _useful({required String? value}) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;

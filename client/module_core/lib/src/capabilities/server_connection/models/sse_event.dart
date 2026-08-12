@@ -38,6 +38,7 @@ class SseEvent {
     SesoriCatalogImportProgress() ||
     SesoriPluginManagementChanged() ||
     SesoriPluginInstallProgress() ||
+    SesoriPluginAuthenticationProgress() ||
     SesoriCommandCatalogUpdated() ||
     SesoriPtyCreated() ||
     SesoriPtyUpdated() ||

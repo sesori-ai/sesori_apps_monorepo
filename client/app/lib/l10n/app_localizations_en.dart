@@ -180,6 +180,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionBridge => 'Bridge';
 
   @override
+  String get settingsYoloTitle => 'YOLO mode';
+
+  @override
+  String get settingsYoloWarning => 'Automatically approves all permission requests. Use with caution.';
+
+  @override
+  String get settingsYoloLoading => 'Loading the bridge setting…';
+
+  @override
+  String get settingsYoloDisconnected => 'Connect to a bridge to configure this setting.';
+
+  @override
+  String get settingsYoloUnsupported => 'Update the connected bridge to configure this setting.';
+
+  @override
+  String get settingsYoloLoadFailed => 'Couldn\'t load the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsYoloUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsYoloUpdateFailed => 'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsYoloRetry => 'Retry YOLO setting';
+
+  @override
   String get settingsPullRequestRefreshTitle => 'Pull request refresh';
 
   @override
@@ -380,6 +407,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementRequestFailed => 'Check your connection and try again.';
 
   @override
+  String get harnessAuthenticationLogIn => 'Log in';
+
+  @override
+  String get harnessAuthenticationContinue => 'Continue login';
+
+  @override
+  String get harnessAuthenticationDescription => 'Authorize this harness from your phone.';
+
+  @override
+  String get harnessAuthenticationSheetTitle => 'Log in to harness';
+
+  @override
+  String get harnessAuthenticationSecurityDescription =>
+      'Only continue if you started this login. Sesori will open the harness provider\'s secure website; verify the address before entering the code.';
+
+  @override
+  String get harnessAuthenticationSecuritySemantics =>
+      'Security notice. Only continue if you started this login. Verify the website address before entering the code.';
+
+  @override
+  String get harnessAuthenticationCodeLabel => 'One-time code';
+
+  @override
+  String get harnessAuthenticationCopyCode => 'Copy one-time code';
+
+  @override
+  String get harnessAuthenticationCodeCopied => 'Code copied';
+
+  @override
+  String get harnessAuthenticationWaiting => 'Waiting for authorization on the bridge…';
+
+  @override
+  String get harnessAuthenticationOpenBrowser => 'Open secure website';
+
+  @override
+  String get harnessAuthenticationCancel => 'Cancel login';
+
+  @override
+  String get harnessAuthenticationCancelling => 'Cancelling…';
+
+  @override
+  String get harnessAuthenticationCancellingUncertain =>
+      'Cancellation was sent, but the response was lost. Waiting for the bridge to confirm…';
+
+  @override
+  String get harnessAuthenticationFailedTitle => 'Harness login failed';
+
+  @override
+  String get harnessAuthenticationDismissError => 'Dismiss login error';
+
+  @override
+  String get harnessAuthenticationNotFound => 'The harness is no longer registered on this bridge.';
+
+  @override
+  String get harnessAuthenticationUnsupported => 'Update the connected bridge to log in from this device.';
+
+  @override
+  String get harnessAuthenticationConflict =>
+      'The harness is busy with another management action. Refresh before trying again.';
+
+  @override
+  String get harnessAuthenticationUncertain =>
+      'The connection changed before the result could be confirmed. Refresh before trying again.';
+
+  @override
+  String get harnessAuthenticationInvalidChallenge =>
+      'The bridge returned an invalid login website. Check the bridge logs for details.';
+
+  @override
+  String get harnessAuthenticationBrowserFailed =>
+      'The secure website could not be opened. Copy the code and try again.';
+
+  @override
+  String get harnessAuthenticationRequestFailed => 'Check your connection and try again.';
+
+  @override
   String get harnessesRegisteredSection => 'Registered Harnesses';
 
   @override
@@ -532,13 +635,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
-  String get settingsSectionChatInput => 'Chat input';
+  String get settingsDefaultInputTitle => 'Default input';
 
   @override
-  String get settingsChatInputVoiceFirst => 'Voice first';
+  String get settingsDefaultInputVoice => 'Voice';
 
   @override
-  String get settingsChatInputTextFirst => 'Text first';
+  String get settingsDefaultInputText => 'Text';
+
+  @override
+  String get settingsDefaultInputTextPreview => 'Ask Sesori';
 
   @override
   String get settingsSectionSupport => 'Support';
@@ -898,6 +1004,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailQueuedCommand => 'Queued command';
+
+  @override
+  String get sessionDetailSendingMessage => 'Sending';
 
   @override
   String get sessionDetailCancelQueued => 'Cancel';
@@ -1340,6 +1449,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionHarnessSettings => 'Harness settings';
+
+  @override
+  String get newSessionNoHarnessTitle => 'No coding harness installed';
+
+  @override
+  String get newSessionNoHarnessDescription =>
+      'The connected bridge has no coding harness it can run. Install one from Harness settings.';
+
+  @override
+  String get newSessionHarnessesRefresh => 'Check for harnesses';
 
   @override
   String get newSessionOptionsLoadingSemantics => 'Loading session options';

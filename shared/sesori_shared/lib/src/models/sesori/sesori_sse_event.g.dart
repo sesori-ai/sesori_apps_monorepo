@@ -102,6 +102,24 @@ const _$PluginInstallPhaseEnumMap = {
   PluginInstallPhase.unknown: 'unknown',
 };
 
+SesoriPluginAuthenticationProgress _$SesoriPluginAuthenticationProgressFromJson(
+  Map json,
+) => SesoriPluginAuthenticationProgress(
+  pluginId: json['pluginId'] as String,
+  progress: PluginAuthenticationProgress.fromJson(
+    Map<String, dynamic>.from(json['progress'] as Map),
+  ),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$SesoriPluginAuthenticationProgressToJson(
+  SesoriPluginAuthenticationProgress instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'progress': instance.progress.toJson(),
+  'type': instance.$type,
+};
+
 SesoriCommandCatalogUpdated _$SesoriCommandCatalogUpdatedFromJson(Map json) =>
     SesoriCommandCatalogUpdated(
       pluginId: json['pluginId'] as String,
@@ -335,6 +353,7 @@ SesoriPermissionAsked _$SesoriPermissionAskedFromJson(Map json) =>
       displaySessionId: json['displaySessionId'] as String?,
       tool: json['tool'] as String,
       description: json['description'] as String,
+      allowAlways: json['allowAlways'] as bool? ?? true,
       $type: json['type'] as String?,
     );
 
@@ -346,6 +365,7 @@ Map<String, dynamic> _$SesoriPermissionAskedToJson(
   'displaySessionId': ?instance.displaySessionId,
   'tool': instance.tool,
   'description': instance.description,
+  'allowAlways': instance.allowAlways,
   'type': instance.$type,
 };
 

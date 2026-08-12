@@ -155,6 +155,15 @@
   "settingsNotificationsTitle": "Notifications",
   "settingsHarnessesTitle": "Harnesses",
   "settingsSectionBridge": "Bridge",
+  "settingsYoloTitle": "YOLO mode",
+  "settingsYoloWarning": "Automatically approves all permission requests. Use with caution.",
+  "settingsYoloLoading": "Loading the bridge setting…",
+  "settingsYoloDisconnected": "Connect to a bridge to configure this setting.",
+  "settingsYoloUnsupported": "Update the connected bridge to configure this setting.",
+  "settingsYoloLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
+  "settingsYoloUncertain": "The update status is unknown. Refresh before trying again.",
+  "settingsYoloUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
+  "settingsYoloRetry": "Retry YOLO setting",
   "settingsPullRequestRefreshTitle": "Pull request refresh",
   "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
   "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
@@ -246,6 +255,29 @@
   "harnessManagementConflict": "The bridge rejected the action because the harness state changed.",
   "harnessManagementUncertain": "The connection changed before the result could be confirmed. Refresh before trying again.",
   "harnessManagementRequestFailed": "Check your connection and try again.",
+  "harnessAuthenticationLogIn": "Log in",
+  "harnessAuthenticationContinue": "Continue login",
+  "harnessAuthenticationDescription": "Authorize this harness from your phone.",
+  "harnessAuthenticationSheetTitle": "Log in to harness",
+  "harnessAuthenticationSecurityDescription": "Only continue if you started this login. Sesori will open the harness provider's secure website; verify the address before entering the code.",
+  "harnessAuthenticationSecuritySemantics": "Security notice. Only continue if you started this login. Verify the website address before entering the code.",
+  "harnessAuthenticationCodeLabel": "One-time code",
+  "harnessAuthenticationCopyCode": "Copy one-time code",
+  "harnessAuthenticationCodeCopied": "Code copied",
+  "harnessAuthenticationWaiting": "Waiting for authorization on the bridge…",
+  "harnessAuthenticationOpenBrowser": "Open secure website",
+  "harnessAuthenticationCancel": "Cancel login",
+  "harnessAuthenticationCancelling": "Cancelling…",
+  "harnessAuthenticationCancellingUncertain": "Cancellation was sent, but the response was lost. Waiting for the bridge to confirm…",
+  "harnessAuthenticationFailedTitle": "Harness login failed",
+  "harnessAuthenticationDismissError": "Dismiss login error",
+  "harnessAuthenticationNotFound": "The harness is no longer registered on this bridge.",
+  "harnessAuthenticationUnsupported": "Update the connected bridge to log in from this device.",
+  "harnessAuthenticationConflict": "The harness is busy with another management action. Refresh before trying again.",
+  "harnessAuthenticationUncertain": "The connection changed before the result could be confirmed. Refresh before trying again.",
+  "harnessAuthenticationInvalidChallenge": "The bridge returned an invalid login website. Check the bridge logs for details.",
+  "harnessAuthenticationBrowserFailed": "The secure website could not be opened. Copy the code and try again.",
+  "harnessAuthenticationRequestFailed": "Check your connection and try again.",
   "harnessesRegisteredSection": "Registered Harnesses",
   "harnessesEmptyTitle": "No harnesses registered",
   "harnessesEmptyDescription": "The connected bridge hasn't registered any coding harnesses.",
@@ -312,17 +344,21 @@
   "@settingsAppearanceSystem": {
     "description": "Theme option that follows the device appearance setting"
   },
-  "settingsSectionChatInput": "Chat input",
-  "@settingsSectionChatInput": {
-    "description": "Settings section choosing which input the session composer leads with"
+  "settingsDefaultInputTitle": "Default input",
+  "@settingsDefaultInputTitle": {
+    "description": "Settings entry and page title for choosing the default session composer input"
   },
-  "settingsChatInputVoiceFirst": "Voice first",
-  "@settingsChatInputVoiceFirst": {
-    "description": "Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation"
+  "settingsDefaultInputVoice": "Voice",
+  "@settingsDefaultInputVoice": {
+    "description": "Default input option that leads with voice dictation"
   },
-  "settingsChatInputTextFirst": "Text first",
-  "@settingsChatInputTextFirst": {
-    "description": "Chat input option: the composer rests as a tap-to-type field with the microphone alongside"
+  "settingsDefaultInputText": "Text",
+  "@settingsDefaultInputText": {
+    "description": "Default input option that leads with typed text"
+  },
+  "settingsDefaultInputTextPreview": "Ask Sesori",
+  "@settingsDefaultInputTextPreview": {
+    "description": "Placeholder shown in the typed-input preview"
   },
   "settingsSectionSupport": "Support",
   "settingsSupportEmail": "Email",
@@ -559,6 +595,7 @@
   "sessionDetailSubtaskUnnamed": "Background task",
   "sessionDetailQueuedMessage": "Queued",
   "sessionDetailQueuedCommand": "Queued command",
+  "sessionDetailSendingMessage": "Sending",
   "sessionDetailCancelQueued": "Cancel",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerModel": "Model",
@@ -773,6 +810,9 @@
   "newSessionPluginUnavailable": "Unavailable",
   "newSessionPluginFailed": "Failed",
   "newSessionHarnessSettings": "Harness settings",
+  "newSessionNoHarnessTitle": "No coding harness installed",
+  "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
+  "newSessionHarnessesRefresh": "Check for harnesses",
   "newSessionOptionsLoadingSemantics": "Loading session options",
   "newSessionOptionsRefresh": "Refresh the model list",
   "newSessionOptionsCached": "Using cached coding tool options.",

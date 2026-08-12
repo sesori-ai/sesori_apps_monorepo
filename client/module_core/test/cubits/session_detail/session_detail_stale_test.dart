@@ -478,7 +478,7 @@ void main() {
       expect(refreshed.streamingText, {"part-race": "delta-during-refresh"});
     });
 
-    test("partial API failure: providers fail and refresh still succeeds with empty providers", () async {
+    test("option failure retains the prior snapshot while waiting for retry", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
@@ -515,8 +515,8 @@ void main() {
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.isRefreshing, isFalse);
-      expect(loaded.messages.first.info.id, "msg-provider-fallback");
-      expect(loaded.availableProviders, isEmpty);
+      expect(loaded.messages.first.info.id, "msg-1");
+      expect(loaded.availableProviders, _providers().items);
     });
 
     test("stale signal is ignored when state is SessionDetailLoading", () async {
@@ -714,6 +714,56 @@ void main() {
 
       await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(messageLoads, 2);
+    });
+
+    test("an option load failure preserves catalogs and retries until options load", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      final before = cubit.state as SessionDetailLoaded;
+      var providerLoads = 0;
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async {
+        providerLoads++;
+        return providerLoads == 1
+            ? ApiResponse<ProviderListResponse>.error(ApiError.generic())
+            : ApiResponse.success(_providers());
+      });
+
+      mockConnectionService.emitDataMayBeStale();
+      await pumpEventQueue();
+
+      expect(providerLoads, 1);
+      final afterFailure = cubit.state as SessionDetailLoaded;
+      expect(afterFailure.availableAgents, before.availableAgents);
+      expect(afterFailure.availableProviders, before.availableProviders);
+      expect(afterFailure.availableCommands, before.availableCommands);
+
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(providerLoads, 2);
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(providerLoads, 2);
     });
 
     test("a disconnected failed refresh waits for reconnect instead of retrying each cooldown", () async {

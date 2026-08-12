@@ -11,6 +11,7 @@ void main() {
     ),
     runtimeState: PluginRuntimeState.active,
     workState: PluginManagementWorkState.idle,
+    authenticationState: PluginAuthenticationState.idle,
     idleTimeoutMins: 0,
     hasIdleTimeoutOverride: true,
     managementCapabilities: {
@@ -45,6 +46,7 @@ void main() {
         "setup",
         "runtimeState",
         "workState",
+        "authenticationState",
         "idleTimeoutMins",
         "hasIdleTimeoutOverride",
         "managementCapabilities",
@@ -90,14 +92,133 @@ void main() {
   });
 
   test("install capability round-trips on the wire", () {
-    final json = plugin.copyWith(
-      managementCapabilities: {PluginManagementCapability.install},
-    ).toJson();
+    final json = plugin
+        .copyWith(
+          managementCapabilities: {PluginManagementCapability.install},
+        )
+        .toJson();
 
     expect(json["managementCapabilities"], ["install"]);
     expect(
       PluginManagementMetadata.fromJson(json).managementCapabilities,
       {PluginManagementCapability.install},
+    );
+  });
+
+  test("authentication capability and state round-trip", () {
+    final json = plugin
+        .copyWith(
+          authenticationState: PluginAuthenticationState.inProgress,
+          managementCapabilities: {PluginManagementCapability.authentication},
+        )
+        .toJson();
+
+    expect(json["authenticationState"], "inProgress");
+    expect(json["managementCapabilities"], ["authentication"]);
+    expect(
+      PluginManagementMetadata.fromJson(json).authenticationState,
+      PluginAuthenticationState.inProgress,
+    );
+  });
+
+  test("older management payloads default authentication state to idle", () {
+    final json = plugin.toJson()..remove("authenticationState");
+
+    expect(
+      PluginManagementMetadata.fromJson(json).authenticationState,
+      PluginAuthenticationState.idle,
+    );
+  });
+
+  test("future authentication states decode to unknown", () {
+    final json = plugin.toJson()..["authenticationState"] = "futureState";
+
+    expect(
+      PluginManagementMetadata.fromJson(json).authenticationState,
+      PluginAuthenticationState.unknown,
+    );
+  });
+
+  test("authentication challenge and progress variants round-trip", () {
+    const challenge = PluginAuthenticationChallengeResponse.deviceCode(
+      verificationUrl: "https://auth.example/device",
+      userCode: "ABCD-EFGH",
+    );
+    const progress = <PluginAuthenticationProgress>[
+      PluginAuthenticationProgress.completed(),
+      PluginAuthenticationProgress.failed(message: "Sanitized failure"),
+      PluginAuthenticationProgress.cancelled(),
+      PluginAuthenticationProgress.unknown(),
+    ];
+
+    expect(
+      PluginAuthenticationChallengeResponse.fromJson(challenge.toJson()),
+      challenge,
+    );
+    for (final event in progress) {
+      expect(PluginAuthenticationProgress.fromJson(event.toJson()), event);
+    }
+    expect(challenge.toJson(), {
+      "type": "deviceCode",
+      "verificationUrl": "https://auth.example/device",
+      "userCode": "ABCD-EFGH",
+    });
+    expect(progress[0].toJson(), {"type": "completed"});
+    expect(progress[1].toJson(), {
+      "type": "failed",
+      "message": "Sanitized failure",
+    });
+    expect(progress[2].toJson(), {"type": "cancelled"});
+    expect(progress[3].toJson(), {"type": "unknown"});
+  });
+
+  test("authentication variants require their exact fields", () {
+    expect(
+      () => PluginAuthenticationChallengeResponse.fromJson({
+        "type": "deviceCode",
+        "userCode": "ABCD-EFGH",
+      }),
+      throwsA(anything),
+    );
+    for (final json in const [
+      <String, dynamic>{
+        "verificationUrl": "https://auth.example/device",
+        "userCode": "ABCD-EFGH",
+      },
+      <String, dynamic>{
+        "type": "future",
+        "verificationUrl": "https://auth.example/device",
+        "userCode": "ABCD-EFGH",
+      },
+    ]) {
+      expect(
+        () => PluginAuthenticationChallengeResponse.fromJson(json),
+        throwsA(isA<FormatException>()),
+      );
+    }
+    expect(
+      () => PluginAuthenticationProgress.fromJson({"type": "failed"}),
+      throwsA(anything),
+    );
+    expect(
+      PluginAuthenticationProgress.fromJson({"type": "future"}),
+      const PluginAuthenticationProgress.unknown(),
+    );
+  });
+
+  test("authentication conflicts round-trip and unknown reasons fail closed", () {
+    const conflict = PluginAuthenticationConflict(
+      pluginId: "codex",
+      reasons: [PluginAuthenticationConflictReason.setupNotRequired],
+      current: plugin,
+    );
+    final json = conflict.toJson();
+
+    expect(PluginAuthenticationConflict.fromJson(json), conflict);
+    json["reasons"] = ["futureReason"];
+    expect(
+      PluginAuthenticationConflict.fromJson(json).reasons,
+      [PluginAuthenticationConflictReason.unknown],
     );
   });
 

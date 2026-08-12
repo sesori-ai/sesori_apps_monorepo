@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_image_bearing_item_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_image_bearing_item_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 CodexImageBearingItemDto _$CodexImageBearingItemDtoFromJson(
@@ -71,7 +72,7 @@ $CodexImageBearingItemDtoCopyWith(CodexImageBearingItemDto _, $Res Function(Code
 @JsonSerializable(createToJson: false)
 
 class CodexImageGenerationItemDto implements CodexImageBearingItemDto {
-  const CodexImageGenerationItemDto({required this.id, @JsonKey(unknownEnumValue: CodexImageGenerationStatus.unknown, defaultValue: CodexImageGenerationStatus.unknown) required this.status, required this.revisedPrompt, required this.result, required this.savedPath, final  String? $type}): $type = $type ?? 'imageGeneration';
+  const CodexImageGenerationItemDto({required this.id, @JsonKey(unknownEnumValue: CodexImageGenerationStatus.unknown, defaultValue: CodexImageGenerationStatus.unknown) required this.status, required this.revisedPrompt, required this.result, required this.savedPath,  String? $type}): $type = $type ?? 'imageGeneration';
   factory CodexImageGenerationItemDto.fromJson(Map<String, dynamic> json) => _$CodexImageGenerationItemDtoFromJson(json);
 
  final  String id;
@@ -149,7 +150,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class CodexMcpToolCallItemDto implements CodexImageBearingItemDto {
-  const CodexMcpToolCallItemDto({required this.id, required this.server, required this.tool, @JsonKey(unknownEnumValue: CodexToolCallStatus.unknown, defaultValue: CodexToolCallStatus.unknown) required this.status, @JsonKey(name: "result")@CodexMcpResultContentConverter() required final  List<CodexImageBearingContentDto> content, @CodexToolErrorConverter() required this.error, final  String? $type}): _content = content,$type = $type ?? 'mcpToolCall';
+  const CodexMcpToolCallItemDto({required this.id, required this.server, required this.tool, @JsonKey(unknownEnumValue: CodexToolCallStatus.unknown, defaultValue: CodexToolCallStatus.unknown) required this.status, @JsonKey(name: "result")@CodexMcpResultContentConverter() required  List<CodexImageBearingContentDto> content, @CodexToolErrorConverter() required this.error,  String? $type}): _content = content,$type = $type ?? 'mcpToolCall';
   factory CodexMcpToolCallItemDto.fromJson(Map<String, dynamic> json) => _$CodexMcpToolCallItemDtoFromJson(json);
 
  final  String id;
@@ -235,7 +236,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class CodexDynamicToolCallItemDto implements CodexImageBearingItemDto {
-  const CodexDynamicToolCallItemDto({required this.id, @CodexToolNameConverter() required this.tool, required this.arguments, @JsonKey(unknownEnumValue: CodexToolCallStatus.unknown, defaultValue: CodexToolCallStatus.unknown) required this.status, @JsonKey(name: "contentItems")@CodexImageBearingContentListConverter() required final  List<CodexImageBearingContentDto> content, final  String? $type}): _content = content,$type = $type ?? 'dynamicToolCall';
+  const CodexDynamicToolCallItemDto({required this.id, @CodexToolNameConverter() required this.tool, required this.arguments, @JsonKey(unknownEnumValue: CodexToolCallStatus.unknown, defaultValue: CodexToolCallStatus.unknown) required this.status, @JsonKey(name: "contentItems")@CodexImageBearingContentListConverter() required  List<CodexImageBearingContentDto> content,  String? $type}): _content = content,$type = $type ?? 'dynamicToolCall';
   factory CodexDynamicToolCallItemDto.fromJson(Map<String, dynamic> json) => _$CodexDynamicToolCallItemDtoFromJson(json);
 
  final  String id;
@@ -318,7 +319,7 @@ as List<CodexImageBearingContentDto>,
 @JsonSerializable(createToJson: false)
 
 class CodexUnknownImageBearingItemDto implements CodexImageBearingItemDto {
-  const CodexUnknownImageBearingItemDto({final  String? $type}): $type = $type ?? 'unknown';
+  const CodexUnknownImageBearingItemDto({ String? $type}): $type = $type ?? 'unknown';
   factory CodexUnknownImageBearingItemDto.fromJson(Map<String, dynamic> json) => _$CodexUnknownImageBearingItemDtoFromJson(json);
 
 
@@ -418,7 +419,7 @@ $CodexImageBearingContentDtoCopyWith(CodexImageBearingContentDto _, $Res Functio
 @JsonSerializable(createToJson: false)
 
 class CodexMcpTextContentDto implements CodexImageBearingContentDto {
-  const CodexMcpTextContentDto({required this.text, final  String? $type}): $type = $type ?? 'text';
+  const CodexMcpTextContentDto({required this.text,  String? $type}): $type = $type ?? 'text';
   factory CodexMcpTextContentDto.fromJson(Map<String, dynamic> json) => _$CodexMcpTextContentDtoFromJson(json);
 
  final  String text;
@@ -488,7 +489,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexMcpImageContentDto implements CodexImageBearingContentDto {
-  const CodexMcpImageContentDto({required this.data, required this.mimeType, final  String? $type}): $type = $type ?? 'image';
+  const CodexMcpImageContentDto({required this.data, required this.mimeType,  String? $type}): $type = $type ?? 'image';
   factory CodexMcpImageContentDto.fromJson(Map<String, dynamic> json) => _$CodexMcpImageContentDtoFromJson(json);
 
  final  String data;
@@ -560,7 +561,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexDynamicTextContentDto implements CodexImageBearingContentDto {
-  const CodexDynamicTextContentDto({required this.text, final  String? $type}): $type = $type ?? 'inputText';
+  const CodexDynamicTextContentDto({required this.text,  String? $type}): $type = $type ?? 'inputText';
   factory CodexDynamicTextContentDto.fromJson(Map<String, dynamic> json) => _$CodexDynamicTextContentDtoFromJson(json);
 
  final  String text;
@@ -630,7 +631,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexDynamicImageContentDto implements CodexImageBearingContentDto {
-  const CodexDynamicImageContentDto({required this.imageUrl, final  String? $type}): $type = $type ?? 'inputImage';
+  const CodexDynamicImageContentDto({required this.imageUrl,  String? $type}): $type = $type ?? 'inputImage';
   factory CodexDynamicImageContentDto.fromJson(Map<String, dynamic> json) => _$CodexDynamicImageContentDtoFromJson(json);
 
  final  String imageUrl;
@@ -700,7 +701,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexDynamicAudioContentDto implements CodexImageBearingContentDto {
-  const CodexDynamicAudioContentDto({required this.audioUrl, final  String? $type}): $type = $type ?? 'inputAudio';
+  const CodexDynamicAudioContentDto({required this.audioUrl,  String? $type}): $type = $type ?? 'inputAudio';
   factory CodexDynamicAudioContentDto.fromJson(Map<String, dynamic> json) => _$CodexDynamicAudioContentDtoFromJson(json);
 
  final  String audioUrl;
@@ -770,7 +771,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexUnknownImageBearingContentDto implements CodexImageBearingContentDto {
-  const CodexUnknownImageBearingContentDto({final  String? $type}): $type = $type ?? 'unknown';
+  const CodexUnknownImageBearingContentDto({ String? $type}): $type = $type ?? 'unknown';
   factory CodexUnknownImageBearingContentDto.fromJson(Map<String, dynamic> json) => _$CodexUnknownImageBearingContentDtoFromJson(json);
 
 

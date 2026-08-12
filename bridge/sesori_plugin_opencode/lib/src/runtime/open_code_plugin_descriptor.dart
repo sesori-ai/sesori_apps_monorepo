@@ -272,6 +272,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   }
 
   @override
+  PluginActivationPolicy activationPolicy({required PluginConfig config}) {
+    return config.flag(_OpenCodeConfigKey.noAutoStart) ? PluginActivationPolicy.eager : PluginActivationPolicy.onDemand;
+  }
+
+  @override
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
     if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       return const {PluginControlCapability.setupRefresh};

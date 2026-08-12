@@ -17,8 +17,8 @@ import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/sesori_logo.dart";
 import "widgets/account_row.dart";
 import "widgets/appearance_picker.dart";
+import "widgets/bridge_settings_section.dart";
 import "widgets/chat_input_mode_picker.dart";
-import "widgets/pull_request_refresh_settings_section.dart";
 import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first settings section.
@@ -44,8 +44,8 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         BlocProvider(
-          create: (_) => PullRequestRefreshSettingsCubit(
-            service: getIt<PullRequestRefreshSettingsService>(),
+          create: (_) => BridgeSettingsCubit(
+            service: getIt<BridgeSettingsService>(),
             connectionService: getIt<ConnectionService>(),
           ),
         ),
@@ -66,7 +66,9 @@ class _SettingsBody extends StatelessWidget {
     return PregoGlassScaffold(
       title: loc.settingsTitle,
       banner: ConnectionBanner.maybeFor(context),
-      onRefresh: context.read<PullRequestRefreshSettingsCubit>().refresh,
+      onRefresh: () async {
+        await context.read<BridgeSettingsCubit>().refresh();
+      },
       automaticallyImplyLeading: false,
       actions: [
         PregoButtonsIconGlass(
@@ -131,16 +133,16 @@ class _SettingsBody extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: PregoSpacing.xl),
-                const PullRequestRefreshSettingsSection(),
+                const BridgeSettingsSection(),
+                const SizedBox(height: PregoSpacing.xl),
+                SettingsSection(
+                  title: loc.settingsDefaultInputTitle,
+                  child: const ChatInputModePicker(),
+                ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
                   title: loc.settingsSectionAppearance,
                   child: const AppearancePicker(),
-                ),
-                const SizedBox(height: PregoSpacing.xl),
-                SettingsSection(
-                  title: loc.settingsSectionChatInput,
-                  child: const ChatInputModePicker(),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(

@@ -149,6 +149,8 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastGetCommandsProjectId;
 
   String? lastGetMessagesSessionId;
+  String? lastGetPendingQuestionsSessionId;
+  String? lastGetPendingPermissionsSessionId;
 
   String? lastGetProvidersProjectId;
   String? lastCreateSessionDirectory;
@@ -415,14 +417,19 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => pendingQuestionsResult;
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    lastGetPendingQuestionsSessionId = sessionId;
+    return pendingQuestionsResult;
+  }
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => pendingQuestionsResult;
 
   @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async =>
-      pendingPermissionsResult;
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
+    lastGetPendingPermissionsSessionId = sessionId;
+    return pendingPermissionsResult;
+  }
 
   @override
   Future<void> replyToQuestion({
@@ -830,6 +837,9 @@ class _NoopSessionRepository implements SessionRepository {
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
   @override
+  Future<Set<String>> getStoredSessionIdsForPlugin({required String pluginId}) async => const {};
+
+  @override
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
     required SessionOperation operation,
@@ -918,6 +928,8 @@ class _NoopSessionRepository implements SessionRepository {
   Future<List<String>> getSessionSubtreeIds({required String sessionId}) async => [sessionId];
   @override
   Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async => sessionIds;
+  @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async => const {};
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
       const <StoredSession>[];
@@ -1080,6 +1092,9 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  Future<Set<String>> getStoredSessionIdsForPlugin({required String pluginId}) async => const {};
 
   @override
   Future<void> dispose() async {}
@@ -1349,6 +1364,15 @@ class FakeSessionRepository implements SessionRepository {
   Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async {
     final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
     return rows.keys.toSet();
+  }
+
+  @override
+  Future<Set<String>> getArchivedSessionIds({required Set<String> sessionIds}) async {
+    final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
+    return {
+      for (final entry in rows.entries)
+        if (entry.value.archivedAt != null) entry.key,
+    };
   }
 
   @override

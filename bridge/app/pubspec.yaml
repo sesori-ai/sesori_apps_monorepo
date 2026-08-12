@@ -1,17 +1,18 @@
 name: sesori_bridge
 description: Dart implementation of the Sesori Bridge CLI for WebSocket communication.
-version: 1.7.1
+version: 1.8.0
 publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.13.0-0
 
 dependencies:
   args: ^2.7.0
   cryptography: ^2.9.0
   web_socket_channel: ^3.0.3
   http: ^1.6.0
+  image: ^4.9.1
   crypto: ^3.0.7
   path: ^1.9.1
   qr: ^4.0.0
@@ -33,13 +34,11 @@ dependencies:
     path: ../sesori_plugin_acp
   cursor_plugin:
     path: ../sesori_plugin_cursor
+  claude_plugin:
+    path: ../sesori_plugin_claude
   meta: ^1.19.0
-  # Pinned lock-step with drift_dev: 2.34.1+ requires analyzer ^13, but the
-  # workspace is held on analyzer 10 by injectable_generator. drift_dev is
-  # therefore capped at 2.34.0, and the runtime must match its codegen sibling —
-  # a 2.34.0/2.34.1 skew breaks the drift schema verifier. Bump both together
-  # once analyzer 13 is unblocked.
-  drift: 2.34.0
+  # Keep runtime and codegen on the same patch; skew breaks the Drift schema verifier.
+  drift: 2.34.3
   collection: ^1.19.1
   win32: ^6.3.0
 
@@ -51,6 +50,6 @@ dev_dependencies:
   # production code reaches sqlite3 only transitively through drift.
   sqlite3: ^3.5.0
   build_runner: any
-  freezed: ^3.2.5
+  freezed: 4.0.0-dev.3
   json_serializable: ^6.14.0
-  drift_dev: ^2.34.0
+  drift_dev: 2.34.3

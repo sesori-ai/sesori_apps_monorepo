@@ -52,6 +52,7 @@ SessionDetailLoadResult _loadedResult() {
       pluginId: "opencode",
       supportsPromptAttachments: false,
       messages: [],
+      olderMessagesCursor: null,
       pendingQuestions: [],
       pendingPermissions: [],
       childSessions: [],
@@ -75,6 +76,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       pluginId: "opencode",
       supportsPromptAttachments: false,
       messages: const [],
+      olderMessagesCursor: null,
       pendingQuestions: const [],
       pendingPermissions: const [],
       childSessions: const [],
@@ -98,6 +100,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       pluginId: "opencode",
       supportsPromptAttachments: false,
       messages: [],
+      olderMessagesCursor: null,
       pendingQuestions: [
         PendingQuestion(
           id: "question-1",
@@ -339,10 +342,8 @@ void main() {
     );
     await tester.pump();
 
-    unawaited(
-      navigatorKey.currentState!.push<void>(
-        MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text("Covering route"))),
-      ),
+    navigatorKey.currentState!.push<void>(
+      MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text("Covering route"))),
     );
     await tester.pumpAndSettle();
     clearInteractions(productAnalyticsService);

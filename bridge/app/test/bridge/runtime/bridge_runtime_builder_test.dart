@@ -74,6 +74,7 @@ void main() {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
+      archivedSessionStorage: testChatHistory.archivedStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -83,7 +84,7 @@ void main() {
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
-        reconnectBackoff: ReconnectBackoffPolicy.standard,
+      reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(
       database: database,

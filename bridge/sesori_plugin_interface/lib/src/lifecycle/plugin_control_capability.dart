@@ -15,4 +15,7 @@ enum PluginControlCapability {
   /// platform (never with an explicit binary override or an unsupported
   /// platform target).
   install,
+
+  /// Run the descriptor's optional interactive authentication flow.
+  authentication,
 }

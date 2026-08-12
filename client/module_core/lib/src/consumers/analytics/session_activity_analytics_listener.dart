@@ -4,6 +4,7 @@ import "package:meta/meta.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../cubits/session_detail/session_detail_cubit.dart";
+import "../../cubits/session_detail/session_detail_resolvers.dart";
 import "../../cubits/session_detail/session_detail_state.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -104,7 +105,7 @@ class SessionActivityAnalyticsListener {
   }
 
   bool _hasActivity({required SessionDetailLoaded state}) =>
-      state.messages.isNotEmpty ||
+      state.hasRenderableMessages ||
       state.pendingQuestions.isNotEmpty ||
       state.pendingPermissions.isNotEmpty ||
       state.sessionStatus is SessionStatusBusy ||

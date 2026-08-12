@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_permissions_handler.dart";
+import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -12,10 +13,12 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late GetSessionPermissionsHandler handler;
+    late _FakeYoloSettingsService yoloSettingsService;
 
     setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      yoloSettingsService = _FakeYoloSettingsService(enabled: false);
       await recordSessionBinding(
         database: db,
         sessionId: "root",
@@ -34,7 +37,7 @@ void main() {
       );
       handler = GetSessionPermissionsHandler(
         permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        suppressPendingPermissions: false,
+        yoloSettingsService: yoloSettingsService,
       );
     });
 
@@ -67,7 +70,7 @@ void main() {
     test("returns 400 for an empty session id when pending permissions are suppressed", () async {
       final suppressedHandler = GetSessionPermissionsHandler(
         permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        suppressPendingPermissions: true,
+        yoloSettingsService: _FakeYoloSettingsService(enabled: true),
       );
 
       await expectLater(
@@ -85,7 +88,7 @@ void main() {
     test("preserves not-found for an unknown session when pending permissions are suppressed", () async {
       final suppressedHandler = GetSessionPermissionsHandler(
         permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        suppressPendingPermissions: true,
+        yoloSettingsService: _FakeYoloSettingsService(enabled: true),
       );
 
       await expectLater(
@@ -108,11 +111,12 @@ void main() {
           displaySessionId: "backend-root",
           tool: "bash",
           description: "Run ls",
+          allowAlways: true,
         ),
       ];
       final suppressedHandler = GetSessionPermissionsHandler(
         permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        suppressPendingPermissions: true,
+        yoloSettingsService: _FakeYoloSettingsService(enabled: true),
       );
 
       final response = await suppressedHandler.handle(
@@ -126,6 +130,39 @@ void main() {
       expect(response, const PendingPermissionResponse(data: []));
     });
 
+    test("reads snapshot suppression from the live setting", () async {
+      plugin.pendingPermissionsResult = const [
+        PluginPendingPermission(
+          id: "p-1",
+          sessionID: "backend-root",
+          displaySessionId: "backend-root",
+          tool: "bash",
+          description: "Run ls",
+          allowAlways: true,
+        ),
+      ];
+
+      await yoloSettingsService.update(enabled: true);
+      final suppressed = await handler.handle(
+        makeRequest("POST", "/session/permissions"),
+        body: const SessionIdRequest(sessionId: "root"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      await yoloSettingsService.update(enabled: false);
+      final forwarded = await handler.handle(
+        makeRequest("POST", "/session/permissions"),
+        body: const SessionIdRequest(sessionId: "root"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(suppressed.data, isEmpty);
+      expect(forwarded.data.single.id, "p-1");
+    });
+
     test("maps plugin permissions to shared, preserving displaySessionId", () async {
       plugin.pendingPermissionsResult = [
         const PluginPendingPermission(
@@ -134,6 +171,7 @@ void main() {
           displaySessionId: "backend-root",
           tool: "bash",
           description: "Run ls",
+          allowAlways: false,
         ),
       ];
 
@@ -152,6 +190,7 @@ void main() {
       expect(item.displaySessionId, equals("root"));
       expect(item.tool, equals("bash"));
       expect(item.description, equals("Run ls"));
+      expect(item.allowAlways, isFalse);
     });
 
     test("does not query a derived plugin for a tombstoned session", () async {
@@ -167,7 +206,7 @@ void main() {
       );
       final derivedHandler = GetSessionPermissionsHandler(
         permissionRepository: repository,
-        suppressPendingPermissions: false,
+        yoloSettingsService: _FakeYoloSettingsService(enabled: false),
       );
 
       await expectLater(
@@ -201,6 +240,7 @@ void main() {
             displaySessionId: "root",
             tool: "shell",
             description: "child",
+            allowAlways: true,
           ),
           PluginPendingPermission(
             id: "deleted-root",
@@ -208,6 +248,7 @@ void main() {
             displaySessionId: "gone-root",
             tool: "shell",
             description: "root",
+            allowAlways: true,
           ),
           PluginPendingPermission(
             id: "visible",
@@ -215,6 +256,7 @@ void main() {
             displaySessionId: "root",
             tool: "shell",
             description: "visible",
+            allowAlways: true,
           ),
         ];
       await recordSessionBinding(
@@ -245,7 +287,7 @@ void main() {
           plugin: derivedPlugin,
           sessionDao: db.sessionDao,
         ),
-        suppressPendingPermissions: false,
+        yoloSettingsService: _FakeYoloSettingsService(enabled: false),
       );
 
       final response = await derivedHandler.handle(
@@ -270,6 +312,7 @@ void main() {
             displaySessionId: "gone-root",
             tool: "shell",
             description: "stale",
+            allowAlways: true,
           ),
         ];
       await db.sessionDao.insertSessionTombstone(
@@ -310,6 +353,7 @@ void main() {
             displaySessionId: "live-root",
             tool: "shell",
             description: "stale child",
+            allowAlways: true,
           ),
         ];
       await db.sessionDao.insertSessionTombstone(
@@ -341,6 +385,23 @@ void main() {
       expect(derivedPlugin.permissionReplyCalls, isZero);
     });
   });
+}
+
+class _FakeYoloSettingsService implements YoloSettingsService {
+  _FakeYoloSettingsService({required bool enabled}) : _settings = YoloSettingsResponse(enabled: enabled);
+
+  YoloSettingsResponse _settings;
+
+  @override
+  YoloSettingsResponse get currentSettings => _settings;
+
+  @override
+  Future<YoloSettingsResponse> readCommittedSettings() async => _settings;
+
+  @override
+  Future<YoloSettingsResponse> update({required bool enabled}) async {
+    return _settings = YoloSettingsResponse(enabled: enabled);
+  }
 }
 
 class _DerivedPermissionPlugin implements BridgeDerivedProjectsPluginApi {
