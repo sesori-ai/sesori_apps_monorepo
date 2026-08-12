@@ -4,7 +4,7 @@ part of "../project_list_screen.dart";
 /// user already completed setup, so instead of the install onboarding they are
 /// asked to bring the bridge back up. Mirrors the Figma "bridge disconnected"
 /// state (node 2325:48309): the connection graphic over the machine name of
-/// the bridge being reached and a "Disconnected · <last seen>" status line,
+/// the bridge being reached and a "Disconnected · `<last seen>`" status line,
 /// then the always-visible start-the-bridge command, a "Why is this needed?"
 /// explainer, and an expandable "Install commands" disclosure at the end for
 /// when the bridge needs to be (re)installed. The "Need help?" support menu
