@@ -26,9 +26,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockPermissionRepository extends Mock implements PermissionRepository {}
+class MockPermissionRepository extends Mock implements PermissionRepository;
 
-class MockPluginRepository extends Mock implements PluginRepository {}
+class MockPluginRepository extends Mock implements PluginRepository;
 
 void main() {
   const sessionId = "session-1";

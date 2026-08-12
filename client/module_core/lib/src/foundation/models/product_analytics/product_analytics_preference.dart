@@ -6,7 +6,7 @@ enum ProductAnalyticsPreference {
   disabled(wireValue: "disabled");
 
   final String wireValue;
-  const ProductAnalyticsPreference({required this.wireValue});
+  ProductAnalyticsPreference({required this.wireValue});
 }
 
 final _productAnalyticsUserKeyPattern = RegExp(r"^[a-f0-9]{64}$");

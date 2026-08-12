@@ -77,7 +77,7 @@ enum ProductAnalyticsPreferenceConflictError {
   conflict(wireValue: "conflict");
 
   final String wireValue;
-  const ProductAnalyticsPreferenceConflictError({required this.wireValue});
+  ProductAnalyticsPreferenceConflictError({required this.wireValue});
 }
 
 @lazySingleton

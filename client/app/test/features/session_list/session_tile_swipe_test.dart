@@ -25,7 +25,7 @@ import "../../helpers/test_helpers.dart";
 /// settles open comfortably past ~200px of drag, the leading one past ~150px,
 /// and the full-swipe commit threshold is 480px. ~20px of every drag is spent
 /// on touch slop.
-class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
+class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit;
 
 void main() {
   late _MockSessionListCubit cubit;

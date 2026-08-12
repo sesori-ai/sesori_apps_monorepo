@@ -30,7 +30,7 @@ enum CursorMode {
   plan(id: "plan", displayName: "Plan"),
   ask(id: "ask", displayName: "Ask");
 
-  const CursorMode({required this.id, required this.displayName});
+  CursorMode({required this.id, required this.displayName});
 
   final String id;
   final String displayName;

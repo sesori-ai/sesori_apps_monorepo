@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/icons/vespr_icons.g.dart";
 
-import "../../../core/extensions/build_context_x.dart";
+import "../../core/extensions/build_context_x.dart";
 
 /// The login options whose button can show an in-flight loading spinner.
 enum LoginOption { github, apple, google }

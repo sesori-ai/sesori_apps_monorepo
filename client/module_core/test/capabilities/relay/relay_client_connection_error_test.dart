@@ -7,7 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
-class _MockRoomKeyStorage extends Mock implements RoomKeyStorage {}
+class _MockRoomKeyStorage extends Mock implements RoomKeyStorage;
 
 void main() {
   test("failed WebSocket handshake does not escape as an uncaught async error", () async {

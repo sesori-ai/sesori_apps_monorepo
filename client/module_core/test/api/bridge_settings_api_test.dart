@@ -7,7 +7,7 @@ import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockRelayHttpApiClient extends Mock implements RelayHttpApiClient {}
+class _MockRelayHttpApiClient extends Mock implements RelayHttpApiClient;
 
 void main() {
   late _MockRelayHttpApiClient client;

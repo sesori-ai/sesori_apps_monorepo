@@ -6,7 +6,7 @@ import "package:sesori_dart_core/src/repositories/models/bridge_settings_result.
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockBridgeSettingsApi extends Mock implements BridgeSettingsApi {}
+class _MockBridgeSettingsApi extends Mock implements BridgeSettingsApi;
 
 void main() {
   late _MockBridgeSettingsApi api;

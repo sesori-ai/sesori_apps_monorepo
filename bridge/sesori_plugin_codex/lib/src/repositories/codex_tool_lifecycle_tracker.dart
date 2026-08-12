@@ -32,7 +32,7 @@ class CodexToolLifecycleTracker {
   }) {
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
     return switch (line) {
-      CodexRolloutResponseItemLineDto(payload: final payload) => _observeRolloutPayload(
+      CodexRolloutResponseItemLineDto(: final payload) => _observeRolloutPayload(
         thread: thread,
         payload: payload,
       ),

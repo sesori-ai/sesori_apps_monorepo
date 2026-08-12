@@ -8,7 +8,7 @@ enum PiThinkingLevel {
   xhigh("xhigh"),
   max("max");
 
-  const PiThinkingLevel(this.wireValue);
+  PiThinkingLevel(this.wireValue);
 
   final String wireValue;
 

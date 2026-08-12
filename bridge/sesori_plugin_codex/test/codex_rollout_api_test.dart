@@ -2268,7 +2268,7 @@ CodexRolloutSessionMetadataPayloadDto _sessionMetadataPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutSessionMetadataLineDto(payload: final payload) => payload,
+    CodexRolloutSessionMetadataLineDto(: final payload) => payload,
     _ => throw StateError("Expected session metadata rollout line"),
   };
 }
@@ -2277,7 +2277,7 @@ CodexRolloutTurnContextPayloadDto _turnContextPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutTurnContextLineDto(payload: final payload) => payload,
+    CodexRolloutTurnContextLineDto(: final payload) => payload,
     _ => throw StateError("Expected turn context rollout line"),
   };
 }
@@ -2286,7 +2286,7 @@ CodexRolloutResponseItemDto _responseItemPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutResponseItemLineDto(payload: final payload) => payload,
+    CodexRolloutResponseItemLineDto(: final payload) => payload,
     _ => throw StateError("Expected response item rollout line"),
   };
 }

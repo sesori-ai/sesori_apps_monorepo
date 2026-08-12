@@ -41,7 +41,7 @@ class _InMemorySecureStorage implements SecureStorage {
   }
 }
 
-class _MockAuthSession extends Mock implements AuthSession {}
+class _MockAuthSession extends Mock implements AuthSession;
 
 /// Lets pending microtasks (the store's unawaited clear-on-logout) settle.
 Future<void> _settle() async {

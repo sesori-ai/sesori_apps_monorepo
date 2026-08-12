@@ -31,7 +31,7 @@ enum ClaudeTranscriptContextKind {
   attachment(wireType: "attachment"),
   system(wireType: "system");
 
-  const ClaudeTranscriptContextKind({required this.wireType});
+  ClaudeTranscriptContextKind({required this.wireType});
 
   final String wireType;
 

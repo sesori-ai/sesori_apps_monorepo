@@ -6,9 +6,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockPluginManagementService extends Mock implements PluginManagementService {}
+class _MockPluginManagementService extends Mock implements PluginManagementService;
 
-class _MockUrlLauncher extends Mock implements UrlLauncher {}
+class _MockUrlLauncher extends Mock implements UrlLauncher;
 
 const _response = PluginManagementResponse(
   snapshotToken: "snapshot-1",

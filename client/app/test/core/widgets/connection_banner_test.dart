@@ -24,7 +24,7 @@ class _MutableConnectionOverlayCubit extends StubConnectionOverlayCubit {
   void reconnect() => reconnectCount++;
 }
 
-class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
+class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit;
 
 Widget _app({required ConnectionOverlayCubit cubit, required Widget home}) {
   return BlocProvider<ConnectionOverlayCubit>.value(

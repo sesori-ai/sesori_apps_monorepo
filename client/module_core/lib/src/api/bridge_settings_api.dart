@@ -34,7 +34,7 @@ class BridgeSettingsApi {
       fromJson: BridgeSettingUpdate.fromJson,
     )) {
       SuccessResponse(:final data) => BridgeSettingUpdateApiCommitted(update: data),
-      ErrorResponse(error: final NonSuccessCodeError error) when error.errorCode == 400 => _mapRejection(error: error),
+      ErrorResponse(: final NonSuccessCodeError error) when error.errorCode == 400 => _mapRejection(error: error),
       ErrorResponse(:final error) => BridgeSettingUpdateApiFailure(error: error),
     };
   }

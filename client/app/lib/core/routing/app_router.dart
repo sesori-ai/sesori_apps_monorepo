@@ -5,9 +5,6 @@ import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../core/widgets/session_split/empty_session_detail_panel.dart";
-import "../../core/widgets/session_split/session_split_scope.dart";
-import "../../core/widgets/session_split/session_split_shell.dart";
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
@@ -25,6 +22,9 @@ import "../../features/splash/splash_screen.dart";
 import "../di/injection.dart";
 import "../extensions/build_context_x.dart";
 import "../widgets/sesori_logo.dart";
+import "../widgets/session_split/empty_session_detail_panel.dart";
+import "../widgets/session_split/session_split_scope.dart";
+import "../widgets/session_split/session_split_shell.dart";
 import "imperative_pane_route.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();

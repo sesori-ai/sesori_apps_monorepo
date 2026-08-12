@@ -4,7 +4,7 @@ enum PiCompactionReason {
   threshold("threshold"),
   overflow("overflow");
 
-  const PiCompactionReason(this.wireValue);
+  PiCompactionReason(this.wireValue);
 
   final String wireValue;
 

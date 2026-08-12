@@ -8,9 +8,9 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockAuthTokenProvider extends Mock implements AuthTokenProvider {}
+class MockAuthTokenProvider extends Mock implements AuthTokenProvider;
 
-class MockAuthSession extends Mock implements AuthSession {}
+class MockAuthSession extends Mock implements AuthSession;
 
 void main() {
   setUpAll(registerAllFallbackValues);

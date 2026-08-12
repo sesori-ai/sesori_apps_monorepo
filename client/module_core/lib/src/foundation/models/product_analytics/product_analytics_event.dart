@@ -6,7 +6,7 @@ enum SupportChannel {
   x(wireValue: "x");
 
   final String wireValue;
-  const SupportChannel({required this.wireValue});
+  SupportChannel({required this.wireValue});
 }
 
 enum OnboardingSurface {
@@ -15,7 +15,7 @@ enum OnboardingSurface {
   bridgeOffline(wireValue: "bridge_offline");
 
   final String wireValue;
-  const OnboardingSurface({required this.wireValue});
+  OnboardingSurface({required this.wireValue});
 }
 
 enum BridgeInstallMethod {
@@ -25,7 +25,7 @@ enum BridgeInstallMethod {
   bun(wireValue: "bun");
 
   final String wireValue;
-  const BridgeInstallMethod({required this.wireValue});
+  BridgeInstallMethod({required this.wireValue});
 }
 
 enum BridgeInstallOs {
@@ -33,7 +33,7 @@ enum BridgeInstallOs {
   windows(wireValue: "windows");
 
   final String wireValue;
-  const BridgeInstallOs({required this.wireValue});
+  BridgeInstallOs({required this.wireValue});
 }
 
 enum AnalyticsScreen {
@@ -48,7 +48,7 @@ enum AnalyticsScreen {
   sessionDiffs(wireValue: "session_diffs");
 
   final String wireValue;
-  const AnalyticsScreen({required this.wireValue});
+  AnalyticsScreen({required this.wireValue});
 }
 
 enum AnalyticsInputMode {
@@ -56,7 +56,7 @@ enum AnalyticsInputMode {
   voiceAssisted(wireValue: "voice_assisted");
 
   final String wireValue;
-  const AnalyticsInputMode({required this.wireValue});
+  AnalyticsInputMode({required this.wireValue});
 }
 
 enum AnalyticsInventoryState {
@@ -64,7 +64,7 @@ enum AnalyticsInventoryState {
   nonEmpty(wireValue: "non_empty");
 
   final String wireValue;
-  const AnalyticsInventoryState({required this.wireValue});
+  AnalyticsInventoryState({required this.wireValue});
 }
 
 enum AnalyticsActivityState {
@@ -72,7 +72,7 @@ enum AnalyticsActivityState {
   nonEmpty(wireValue: "non_empty");
 
   final String wireValue;
-  const AnalyticsActivityState({required this.wireValue});
+  AnalyticsActivityState({required this.wireValue});
 }
 
 enum AnalyticsSubmissionKind {
@@ -80,7 +80,7 @@ enum AnalyticsSubmissionKind {
   command(wireValue: "command");
 
   final String wireValue;
-  const AnalyticsSubmissionKind({required this.wireValue});
+  AnalyticsSubmissionKind({required this.wireValue});
 }
 
 @immutable
@@ -119,7 +119,7 @@ enum AnalyticsWorkspaceKind {
   dedicatedWorktree(wireValue: "dedicated_worktree");
 
   final String wireValue;
-  const AnalyticsWorkspaceKind({required this.wireValue});
+  AnalyticsWorkspaceKind({required this.wireValue});
 }
 
 enum AnalyticsSessionCreationFailureReason {
@@ -130,7 +130,7 @@ enum AnalyticsSessionCreationFailureReason {
   unknown(wireValue: "unknown");
 
   final String wireValue;
-  const AnalyticsSessionCreationFailureReason({required this.wireValue});
+  AnalyticsSessionCreationFailureReason({required this.wireValue});
 }
 
 enum AnalyticsPermissionDecision {
@@ -139,7 +139,7 @@ enum AnalyticsPermissionDecision {
   reject(wireValue: "reject");
 
   final String wireValue;
-  const AnalyticsPermissionDecision({required this.wireValue});
+  AnalyticsPermissionDecision({required this.wireValue});
 }
 
 /// Outcome of a phone-triggered managed harness runtime install. Bounded on
@@ -149,7 +149,7 @@ enum AnalyticsHarnessInstallOutcome {
   failed(wireValue: "failed");
 
   final String wireValue;
-  const AnalyticsHarnessInstallOutcome({required this.wireValue});
+  AnalyticsHarnessInstallOutcome({required this.wireValue});
 }
 
 enum AnalyticsChangeState {
@@ -157,7 +157,7 @@ enum AnalyticsChangeState {
   nonEmpty(wireValue: "non_empty");
 
   final String wireValue;
-  const AnalyticsChangeState({required this.wireValue});
+  AnalyticsChangeState({required this.wireValue});
 }
 
 @immutable

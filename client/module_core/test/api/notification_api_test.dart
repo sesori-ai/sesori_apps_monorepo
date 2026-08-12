@@ -4,7 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpApiClient {}
+class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpApiClient;
 
 void main() {
   late MockAuthenticatedHttpApiClient mockClient;

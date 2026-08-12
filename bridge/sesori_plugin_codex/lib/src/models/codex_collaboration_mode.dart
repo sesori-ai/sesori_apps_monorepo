@@ -12,7 +12,7 @@ enum CodexCollaborationMode {
     defaultReasoningEffort: "medium",
   );
 
-  const CodexCollaborationMode({
+  CodexCollaborationMode({
     required this.agentName,
     required this.wireValue,
     required this.description,
