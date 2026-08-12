@@ -231,7 +231,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - `dart pub get` from `bridge/`: pass.
 - `dart analyze --fatal-infos` from `bridge/sesori_plugin_omp/` and
   `bridge/sesori_plugin_acp/`: pass.
-- `dart test` from `bridge/sesori_plugin_omp/`: pass, 22 tests.
+- `dart test` from `bridge/sesori_plugin_omp/`: pass, 27 tests.
 - `dart test` from `bridge/sesori_plugin_acp/`: pass, 240 tests.
 - `dart test` from `bridge/sesori_plugin_cursor/`: pass, 126 tests.
 - Architecture implementation review rejected raw ACP results crossing the OMP
@@ -240,7 +240,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - No user-visible, database, client/bridge wire-contract, or client-UI change;
   OMP persisted artifacts are removed only for already tombstoned sessions.
 - `git diff --check`: pass.
-- Diff: +2,009/-23 = 2,032 changed lines; generated lines: 0; tests run: 388.
+- Diff: +2,206/-27 = 2,233 changed lines; generated lines: 0; tests run: 393.
 - Recorded overage: the planned catalog/options and persisted-cleanup layers,
   isolated ACP lifecycle, and focused tests form one coherent Step 7 boundary;
   splitting would publish an incomplete plugin contract.
