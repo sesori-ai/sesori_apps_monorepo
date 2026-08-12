@@ -90,7 +90,11 @@ class MessageImageCubit extends Cubit<MessageImageState> {
     );
     if (isClosed || generation != _previewGeneration) return;
     if (result is MessageImageLoadFailure) {
-      logw("Failed to load a message image preview");
+      if (_attachment is MessageAttachmentStoredImage) {
+        logw("Failed to load a stored message image preview", result.cause, result.stackTrace);
+      } else {
+        logw("Failed to load a message image preview");
+      }
     }
     emit(
       MessageImageState(

@@ -302,7 +302,7 @@ void main() {
     expect(requests, 5);
   });
 
-  test("coalescing separates metadata that affects validation and output", () async {
+  test("coalesces transport while mapping each caller's metadata", () async {
     final response = Completer<ApiResponse<SessionAttachmentResponse>>();
     var requests = 0;
     when(
@@ -337,13 +337,17 @@ void main() {
       rendition: SessionAttachmentRendition.thumbnail,
     );
 
-    expect(requests, 4);
+    expect(requests, 1);
     response.complete(
       ApiResponse.success(
         SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
       ),
     );
-    await Future.wait([first, differentFilename, differentLength, differentMime]);
+    final results = await Future.wait([first, differentFilename, differentLength, differentMime]);
+    expect((results[0] as MessageImageLoadSuccess).actionFilename, "preview.png");
+    expect((results[1] as MessageImageLoadSuccess).actionFilename, "other.png");
+    expect(results[2], isA<MessageImageLoadSuccess>());
+    expect((results[3] as MessageImageLoadSuccess).mime, "image/png");
   });
 
   test("validates stored MIME, base64, byte length, bounds, and raster signature", () async {

@@ -15,10 +15,9 @@ typedef _StoredRequestScope = ({
   String sessionId,
   String attachmentId,
   SessionAttachmentRendition rendition,
-  String mime,
-  String? filename,
-  int byteLength,
 });
+
+final _strictBase64 = RegExp(r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
 
 Uint8List? _tryDecodeBase64Image(String base64Data) {
   try {
@@ -26,6 +25,13 @@ Uint8List? _tryDecodeBase64Image(String base64Data) {
   } on FormatException {
     return null;
   }
+}
+
+Uint8List? _tryDecodeStrictBase64Image(String base64Data) {
+  if (base64Data.length.isOdd || base64Data.length % 4 != 0 || !_strictBase64.hasMatch(base64Data)) {
+    return null;
+  }
+  return _tryDecodeBase64Image(base64Data);
 }
 
 sealed class MessageImageLoadResult {
@@ -96,7 +102,6 @@ final class MessageImageRequestException implements Exception {
 class MessageImageRepository {
   static const _remoteFetchTimeout = Duration(seconds: 15);
   static const _maxFilenameBytes = 255;
-  static final _strictBase64 = RegExp(r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
   static const _supportedRasterMimes = {
     "image/bmp",
     "image/gif",
@@ -108,7 +113,7 @@ class MessageImageRepository {
   final MessageImageApi _api;
   final SessionApi _sessionApi;
   final AuthSession _authSession;
-  final Map<_StoredRequestScope, Future<MessageImageLoadResult>> _activeStoredLoads = {};
+  final Map<_StoredRequestScope, Future<ApiResponse<SessionAttachmentResponse>>> _activeStoredLoads = {};
 
   MessageImageRepository({
     required MessageImageApi api,
@@ -171,12 +176,11 @@ class MessageImageRepository {
     required String base64Data,
     required String? filename,
   }) async {
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64Data.length) ||
-        !_isStrictBase64(base64Data: base64Data)) {
+    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64Data.length)) {
       return const MessageImageLoadRejected();
     }
     try {
-      final bytes = await Isolate.run(() => _tryDecodeBase64Image(base64Data));
+      final bytes = await Isolate.run(() => _tryDecodeStrictBase64Image(base64Data));
       if (bytes == null ||
           bytes.length > maxInlineMessageAttachmentBytes ||
           !_hasExpectedSignature(bytes: bytes, mime: mime)) {
@@ -253,39 +257,18 @@ class MessageImageRepository {
       sessionId: sessionId,
       attachmentId: attachment.attachmentId,
       rendition: rendition,
-      mime: attachment.mime,
-      filename: attachment.filename,
-      byteLength: attachment.byteLength,
     );
     final active = _activeStoredLoads[scope];
-    if (active != null) return active;
-
-    final load = _loadStoredUncoalesced(
-      sessionId: sessionId,
-      attachment: attachment,
-      rendition: rendition,
-    );
-    _activeStoredLoads[scope] = load;
+    final request =
+        active ??
+        _sessionApi.getAttachment(
+          sessionId: sessionId,
+          attachmentId: attachment.attachmentId,
+          rendition: rendition,
+        );
+    _activeStoredLoads[scope] = request;
     try {
-      return await load;
-    } finally {
-      if (identical(_activeStoredLoads[scope], load)) {
-        final _ = _activeStoredLoads.remove(scope);
-      }
-    }
-  }
-
-  Future<MessageImageLoadResult> _loadStoredUncoalesced({
-    required String sessionId,
-    required MessageAttachmentStoredImage attachment,
-    required SessionAttachmentRendition rendition,
-  }) async {
-    try {
-      final response = await _sessionApi.getAttachment(
-        sessionId: sessionId,
-        attachmentId: attachment.attachmentId,
-        rendition: rendition,
-      );
+      final response = await request;
       return switch (response) {
         SuccessResponse(:final data) => await _validateStoredResponse(
           response: data,
@@ -303,6 +286,10 @@ class MessageImageRepository {
         ),
         stackTrace: stackTrace,
       );
+    } finally {
+      if (identical(_activeStoredLoads[scope], request)) {
+        final _ = _activeStoredLoads.remove(scope);
+      }
     }
   }
 
@@ -329,12 +316,11 @@ class MessageImageRepository {
         !_supportedRasterMimes.contains(mime) ||
         response.byteLength < 0 ||
         response.byteLength > maxBytes ||
-        !base64WithinLimit ||
-        !_isStrictBase64(base64Data: response.base64)) {
+        !base64WithinLimit) {
       return const MessageImageLoadRejected();
     }
 
-    final bytes = await Isolate.run(() => _tryDecodeBase64Image(response.base64));
+    final bytes = await Isolate.run(() => _tryDecodeStrictBase64Image(response.base64));
     if (bytes == null ||
         bytes.length != response.byteLength ||
         bytes.length > maxBytes ||
@@ -385,9 +371,6 @@ class MessageImageRepository {
     };
     return MessageImageLoadFailure(cause: cause, stackTrace: stackTrace);
   }
-
-  static bool _isStrictBase64({required String base64Data}) =>
-      base64Data.length.isEven && base64Data.length % 4 == 0 && _strictBase64.hasMatch(base64Data);
 
   static String _normalizedMime({required String mime}) => mime.split(";").first.trim().toLowerCase();
 
