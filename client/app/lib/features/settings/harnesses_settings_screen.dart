@@ -63,9 +63,9 @@ class _HarnessesSettingsBody extends StatelessWidget {
         ),
         BlocListener<PluginManagementCubit, PluginManagementState>(
           listenWhen: (previous, current) =>
-              _authenticationChallenge(previous) == null && _authenticationChallenge(current) != null,
+              _authenticationChallenge(state: previous) == null && _authenticationChallenge(state: current) != null,
           listener: (context, state) {
-            final challenge = _authenticationChallenge(state);
+            final challenge = _authenticationChallenge(state: state);
             if (challenge == null) return;
             unawaited(_showAuthenticationSheet(context: context, cubit: cubit));
           },
@@ -118,9 +118,7 @@ class _HarnessesSettingsBody extends StatelessWidget {
 }
 
 ({String pluginId, Uri verificationUri, String userCode, bool cancelling, bool uncertain, bool browserFailed})?
-_authenticationChallenge(
-  PluginManagementState state,
-) => switch (state) {
+_authenticationChallenge({required PluginManagementState state}) => switch (state) {
   PluginManagementReady(
     authentication: PluginAuthenticationPresentationChallenge(:final pluginId, :final verificationUri, :final userCode),
   ) =>
@@ -1020,7 +1018,9 @@ Future<void> _showAuthenticationSheet({
       child: const _AuthenticationSheet(),
     ),
   );
-  if (!cubit.isClosed) cubit.dismissAuthentication();
+  if (!cubit.isClosed && _authenticationChallenge(state: cubit.state) != null) {
+    cubit.dismissAuthentication();
+  }
 }
 
 class _AuthenticationSheet extends StatelessWidget {
@@ -1042,18 +1042,18 @@ class _AuthenticationSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<PluginManagementCubit, PluginManagementState>(
       listenWhen: (previous, current) =>
-          _authenticationChallenge(previous) != null && _authenticationChallenge(current) == null,
+          _authenticationChallenge(state: previous) != null && _authenticationChallenge(state: current) == null,
       listener: (context, _) {
         if (ModalRoute.of(context)?.isCurrent ?? false) context.pop();
       },
-      child: _buildContent(context),
+      child: _buildContent(context: context),
     );
   }
 
-  Widget _buildContent(BuildContext context) {
+  Widget _buildContent({required BuildContext context}) {
     final loc = context.loc;
     final state = context.watch<PluginManagementCubit>().state;
-    final challenge = _authenticationChallenge(state);
+    final challenge = _authenticationChallenge(state: state);
     if (challenge == null) {
       return Padding(
         padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
@@ -1102,7 +1102,11 @@ class _AuthenticationSheet extends StatelessWidget {
             const SizedBox(height: PregoSpacing.md),
           ],
           Text(
-            challenge.uncertain ? loc.harnessAuthenticationCancellingUncertain : loc.harnessAuthenticationWaiting,
+            challenge.uncertain
+                ? loc.harnessAuthenticationCancellingUncertain
+                : challenge.cancelling
+                ? loc.harnessAuthenticationCancelling
+                : loc.harnessAuthenticationWaiting,
             textAlign: TextAlign.center,
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
