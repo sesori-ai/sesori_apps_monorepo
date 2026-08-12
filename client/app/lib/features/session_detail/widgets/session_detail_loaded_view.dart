@@ -87,6 +87,13 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
     final editableSessionId = widget.readOnly ? null : widget.sessionId;
     final hasBottomControls =
         editableSessionId != null || state.sendingSubmission != null || state.queuedMessages.isNotEmpty;
+    final showEmptyState =
+        !state.hasRenderableMessages &&
+        state.retryErrorMessage == null &&
+        state.olderMessagesCursor == null &&
+        !state.isLoadingOlderMessages &&
+        state.sendingSubmission == null &&
+        state.queuedMessages.isEmpty;
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
 
     // The scaffold lets this view fill the full height behind the transparent
@@ -100,7 +107,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
         Column(
           children: [
             Expanded(
-              child: !state.hasRenderableMessages && state.retryErrorMessage == null
+              child: showEmptyState
                   ? Center(child: Text(loc.sessionDetailEmpty))
                   : PregoTopBarInsetBuilder(
                       builder: (context, topInset, _) => ValueListenableBuilder<double>(

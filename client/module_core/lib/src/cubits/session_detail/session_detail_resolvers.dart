@@ -8,7 +8,9 @@ extension SessionMessagePresentation on MessageWithParts {
     return parts.any(
       (part) =>
           (part.type == MessagePartType.text && (part.text?.isNotEmpty ?? false)) ||
-          (part.type == MessagePartType.file && part.attachment != null),
+          (part.type == MessagePartType.file &&
+              part.attachment != null &&
+              part.attachment is! MessageAttachmentUnknown),
     );
   }
 }

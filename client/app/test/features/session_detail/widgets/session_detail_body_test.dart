@@ -19,6 +19,7 @@ import "package:sesori_mobile/features/session_detail/widgets/background_tasks_b
 import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
+import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -254,6 +255,78 @@ void main() {
             time: null,
           ),
           parts: [],
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text("No messages yet"), findsOneWidget);
+  });
+
+  testWidgets("an empty newest page keeps older transcript paging reachable", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      olderMessagesCursor: 42,
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SessionDetailMessageList), findsOneWidget);
+    expect(find.text("No messages yet"), findsNothing);
+  });
+
+  testWidgets("sending feedback replaces the empty transcript label", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      sendingSubmission: const QueuedSessionSubmission.text(
+        text: "Cold-start prompt",
+        inputMode: ComposerInputMode.typed,
+        attachments: [],
+      ),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("No messages yet"), findsNothing);
+    expect(find.text("Cold-start prompt"), findsOneWidget);
+  });
+
+  testWidgets("an unknown attachment does not create an empty user bubble", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      messages: const [
+        MessageWithParts(
+          info: Message.user(
+            id: "unknown-attachment-user",
+            sessionID: "session-1",
+            agent: null,
+            time: null,
+          ),
+          parts: [
+            MessagePart(
+              id: "unknown-file",
+              sessionID: "session-1",
+              messageID: "unknown-attachment-user",
+              type: MessagePartType.file,
+              text: null,
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+              attachment: MessageAttachment.unknown(),
+            ),
+          ],
         ),
       ],
     );

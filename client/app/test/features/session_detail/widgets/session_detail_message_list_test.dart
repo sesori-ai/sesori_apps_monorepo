@@ -262,6 +262,42 @@ void main() {
     );
   });
 
+  testWidgets("an older page still appears when a frozen message is removed during loading", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: [
+          for (var index = 10; index < 40; index++)
+            _message(messageId: "m$index", role: "user", text: "message $index"),
+        ],
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+    await tester.pumpAndSettle();
+    key.currentState!.startLoadingOlderMessages();
+    await tester.pump();
+    key.currentState!.removeMessage("m20");
+    await tester.pump();
+    key.currentState!.prependOlderMessages(
+      older: [
+        for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    for (var attempt = 0; attempt < 15; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.textContaining("message 0"), findsOneWidget);
+  });
+
   testWidgets("scrolling back through history requests the older page", (tester) async {
     var requested = 0;
     await tester.pumpWidget(

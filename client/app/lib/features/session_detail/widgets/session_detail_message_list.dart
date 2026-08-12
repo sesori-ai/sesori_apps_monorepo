@@ -290,8 +290,6 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     final boundary = widget.messages.indexWhere((message) => message.info.id == frozenOldestId);
     if (boundary <= 0) return const [];
     final frozenIds = frozen.messages.map((message) => message.info.id).toSet();
-    final liveIds = widget.messages.map((message) => message.info.id).toSet();
-    if (!liveIds.containsAll(frozenIds)) return const [];
     final prepended = widget.messages.sublist(0, boundary);
     if (prepended.any((message) => frozenIds.contains(message.info.id))) return const [];
     return prepended;
