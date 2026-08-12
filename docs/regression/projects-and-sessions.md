@@ -21,6 +21,10 @@ child sessions with titles, activity, statuses, and unseen state.
 - Opening validates the path and surfaces the git-initialization choice. Hiding
   delists without destroying sessions or history. Import is explicit, per
   plugin, atomic, non-destructive, cancellable, and attributes progress.
+- A session created in a dedicated worktree receives a system prompt identifying
+  that worktree, its initial branch, and base branch. The prompt requires all
+  work to remain in that worktree, while permitting branch switches and new
+  branches within it.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
