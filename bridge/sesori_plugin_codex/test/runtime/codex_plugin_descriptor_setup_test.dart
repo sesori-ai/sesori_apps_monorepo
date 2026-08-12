@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -211,6 +212,33 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
+    test("authentication preserves abort after runtime selection", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 10,
+            stdoutBytes: utf8.encode("codex 0.100.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      await expectLater(
+        descriptor
+            .authenticate(
+              config: const PluginConfig(
+                values: {"port": null, "bin": "/custom/codex"},
+              ),
+              processes: processes,
+              environment: const <String, String>{},
+              stateDirectory: stateDirectory,
+              aborted: _AbortOnThirdCheck(),
+            )
+            .toList(),
+        throwsA(isA<PluginStartAbortedException>()),
+      );
+    });
+
     test("reports an outdated explicitly configured runtime as unavailable", () async {
       const explicitConfig = PluginConfig(
         values: {"port": null, "bin": "/custom/codex"},
@@ -403,4 +431,14 @@ class _ProbeProcess implements SpawnedProcess {
 
   @override
   ProcessIdentity get identity => throw UnimplementedError();
+}
+
+class _AbortOnThirdCheck implements StartAbortSignal {
+  int _checks = 0;
+
+  @override
+  bool get isAborted => ++_checks >= 3;
+
+  @override
+  Future<void> get whenAborted => Completer<void>().future;
 }

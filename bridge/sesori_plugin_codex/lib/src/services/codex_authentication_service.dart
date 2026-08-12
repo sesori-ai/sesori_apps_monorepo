@@ -40,6 +40,9 @@ class CodexAuthenticationService {
         Future.any<void>([
           _repository.waitForCompletion(),
           _client.processExit.then<void>((exitCode) {
+            if (_aborted.isAborted) {
+              throw const PluginStartAbortedException();
+            }
             throw CodexAuthenticationException(
               message: "Codex App Server exited during device login",
               cause: StateError(

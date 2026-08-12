@@ -64,6 +64,37 @@ void main() {
       expect(client.disposed, isTrue);
     });
 
+    test("preserves abort while child exits during cancellation", () async {
+      final client = _FakeStdioClient();
+      final cancelGate = Completer<void>();
+      final repository = _FakeAuthenticationRepository(
+        cancelGate: cancelGate.future,
+      );
+      final abort = StartAbortController();
+      final service = CodexAuthenticationService(
+        client: client,
+        repository: repository,
+        aborted: abort.signal,
+        requestTimeout: const Duration(seconds: 2),
+      );
+      final events = service.authenticate().toList();
+      await repository.started;
+      await Future<void>.delayed(Duration.zero);
+
+      abort.abort();
+      await Future<void>.delayed(Duration.zero);
+      client.exit(7);
+
+      await expectLater(
+        events,
+        throwsA(isA<PluginStartAbortedException>()),
+      );
+      cancelGate.complete();
+      expect(repository.cancelled, isTrue);
+      expect(repository.disposed, isTrue);
+      expect(client.disposed, isTrue);
+    });
+
     test("sanitizes repository failures and cleans up", () async {
       final client = _FakeStdioClient();
       final repository = _FakeAuthenticationRepository();
@@ -143,6 +174,9 @@ void main() {
 }
 
 class _FakeAuthenticationRepository implements CodexAuthenticationRepository {
+  _FakeAuthenticationRepository({this.cancelGate});
+
+  final Future<void>? cancelGate;
   final Completer<void> _started = Completer<void>();
   final Completer<void> _completion = Completer<void>();
   bool cancelled = false;
@@ -174,6 +208,7 @@ class _FakeAuthenticationRepository implements CodexAuthenticationRepository {
   @override
   Future<void> cancel() async {
     cancelled = true;
+    await cancelGate;
   }
 
   @override

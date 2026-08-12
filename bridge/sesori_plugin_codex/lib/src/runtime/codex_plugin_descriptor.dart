@@ -404,6 +404,9 @@ class CodexPluginDescriptor extends BridgePluginDescriptor implements Interactiv
           stateDirectory: stateDirectory,
           aborted: aborted,
         );
+    if (aborted.isAborted) {
+      throw const PluginStartAbortedException();
+    }
     if (selection case CodexRuntimeNotSelected()) {
       yield const PluginAuthenticationFailed(
         message: "No supported Codex runtime is available for login.",
