@@ -133,6 +133,7 @@ class AcpApprovalRegistry {
   /// unresolved (a request stamped with "" is dropped by the mobile client).
   String resolveSessionId(Map<String, dynamic> params) {
     final rawSessionId = params["sessionId"];
+    if (rawSessionId != null && rawSessionId is! String) return "";
     final explicit = rawSessionId is String ? rawSessionId.trim() : null;
     if (explicit != null && explicit.isNotEmpty) return explicit;
     return _activeSessionResolver?.call() ?? "";

@@ -247,6 +247,16 @@ void main() {
     });
 
     test("cancels a form with a non-string session id", () async {
+      await registry.dispose();
+      registry = AcpApprovalRegistry(
+        emit: emitted.add,
+        respond: (id, result) => responses.add((id, result)),
+        respondError: (id, code, message) => errors.add((id, code, message)),
+        onFireAndForgetNotification: (_) {},
+        activeSessionResolver: () => "active-session",
+      );
+      registry.attach(requests.stream);
+
       requests.add(
         const AcpServerRequest(
           id: 42,
