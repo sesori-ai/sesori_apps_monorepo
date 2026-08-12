@@ -57,14 +57,15 @@ The visible policy remains otherwise unchanged:
    cases remain unknown rather than guessed.
 6. Existing databases add a nullable `last_user_interaction_at` column without
    backfilling polluted `last_user_message_at` or backend `updated_at` values.
-7. The marker is monotonic across duplicate/replayed events, reconnects, bridge
-   restart, and clock rollback, using existing ordered pipelines rather than a
-   new lock or registry.
+7. The marker is monotonic across duplicate events, reconnects, bridge restart,
+   and clock rollback, using existing ordered pipelines rather than a new lock
+   or registry. An accepted bridge-owned OpenCode write still records one fact
+   if its raw SSE envelope/part pair is lost during reconnect.
 8. REST session payloads and the existing `session.unseen_changed` live patch
    carry the nullable marker additively. Old app/new bridge and new app/old
    bridge combinations retain their current behavior.
 9. A stale REST or `session.updated` payload cannot replace a fresher live
-   marker already held by the session-list Cubit.
+   marker, including when the patch arrives during the initial REST load.
 10. Sessions whose marker is absent use `time.updated` as the compatibility
     fallback. Equal keys have a deterministic ID tie-breaker.
 11. No backend identifier, interaction kind, prompt text, command name,
@@ -203,6 +204,15 @@ parsing and updating the existing service/tracker state, it delegates the raw
 neutral interaction fact, then continues existing presentation mapping.
 Classification still occurs before `SseEventMapper` erases raw part provenance.
 
+The same tracker also coordinates bridge-owned prompt/command acceptance. The
+plugin starts one bounded pending write before dispatch, raw classification may
+satisfy that write first, and successful API completion emits a null-timestamp
+fallback only when no matching raw fact was observed. Failed acceptance emits no
+fallback. This produces one fact in the ordinary path while covering the real
+disconnect window where OpenCode accepted the write but its envelope or part was
+lost before the fresh non-replaying SSE connection. Initial create-session turns
+use the same coordination after the backend session ID is known.
+
 - Keep at most one pending user envelope per session: message ID plus the
   message creation timestamp. This state is bounded by the number of known
   sessions, not transcript length.
@@ -221,7 +231,8 @@ Classification still occurs before `SseEventMapper` erases raw part provenance.
 - Remove pending/suppression state when the tracker observes session deletion;
   call its `reset` from the existing OpenCode reconnect/reset path and its
   `dispose` during plugin disposal. Do not add a transcript-sized dedupe set;
-  duplicate known-timestamp facts are rejected by the persisted monotonic write.
+  one envelope is consumed once, and bridge-write coordination emits at most one
+  fact for its accepted action.
 - Raw `question.replied` and `question.rejected` events are authoritative and
   cover both Sesori and laptop replies.
 - Raw `permission.replied` is not authoritative: OpenCode emits the same event
@@ -231,6 +242,10 @@ Classification still occurs before `SseEventMapper` erases raw part provenance.
 This design relies on OpenCode's observed and generated API ordering:
 `message.updated` precedes its parts. It does not add a timer, delayed flush,
 history read, or content comparison for a theoretical reversed sequence.
+OpenCode facts use null `occurredAt`: interaction order is acceptance/observation
+order, and bridge stamping remains monotonic even when the backend clock rolls
+back. Other plugins may provide a known timestamp only where replay identity and
+clock semantics make it authoritative.
 
 #### Codex
 
@@ -393,14 +408,19 @@ ordering, or child-task ordering.
 - `applySessionUpdatedEvent` keeps the greater existing/new interaction marker
   alongside its current PR metadata merge; and
 - `mergeRestSnapshot` treats fetched membership and ordinary fields as
-  authoritative while max-merging markers from matching sessions already held,
-  so an in-flight fetch cannot roll back a live patch.
+  authoritative while max-merging markers from matching sessions already held
+  and from the existing `SessionUnseenTracker`, so an in-flight or initial fetch
+  cannot roll back a live patch.
 
 `SessionListCubit` only validates the SSE project/state, delegates
 `SesoriSessionUnseenChanged` to `applyInteractionPatch`, delegates successful
 REST replacement to `mergeRestSnapshot`, and re-runs `visibleSessions`.
-`SessionUnseenTracker` remains the authority for unseen booleans and ignores the
-additional property.
+`SessionUnseenTracker` remains the live list-state cache: extend its existing
+per-project tick and session map to retain the nullable marker from
+`SesoriSessionUnseenChanged` alongside unseen state. It performs no ordering or
+merge decision; `SessionListService` consumes its cached marker map. This reuses
+the tracker that already receives patches before a list Cubit is loaded rather
+than adding another long-lived owner.
 
 No new long-lived tracker, Cubit generation, tick map, or optimistic interaction
 state is required. Bridge markers are monotonic, so a per-session max at the two
@@ -457,8 +477,10 @@ existing merge seams is sufficient.
 |---|---|---|
 | Automatic compaction looks user-authored | Observed backend behavior | Classify raw OpenCode parts before mapping; test auto, continuation, and overflow replay |
 | Auto-approved/cancelled replies look manual | Ordinary reachable flow | Required permission origin plus manual-only plugin fact emission; cancellation methods emit no fact |
-| Duplicate/replayed backend events | Ordinary reconnect flow | Persisted monotonic conditional update and existing ordered write tail |
-| REST/SSE replacement race | Ordinary in-flight refresh flow | Max the marker at the two existing client replacement seams |
+| Duplicate backend events | Ordinary live-event flow | Plugin-local one-shot classification plus persisted monotonic conditional update and existing ordered write tail |
+| Accepted OpenCode write loses SSE pair | Ordinary disconnect window | Coordinate bridge write with raw observation and emit one successful null-time fallback only when raw did not satisfy it |
+| Backend clock rollback | Ordinary clock-adjustment flow | OpenCode uses null occurred-at and bridge monotonic stamping; known times remain only for authoritative plugin sources |
+| REST/SSE replacement race | Ordinary initial/in-flight refresh flow | Existing unseen tracker retains the patch; service maxes it at client replacement seams |
 | Reversed OpenCode message/part order | Theoretical against current upstream order | Accepted; no timer or history lookup. Missing one reorder self-heals on the next genuine interaction |
 | Direct laptop interaction in a separate ACP/Claude process | Unobservable by current architecture | Accepted limitation; keep marker unchanged rather than guess |
 | Direct OpenCode permission decision | Event cannot distinguish one choice from `always` cascade | Accepted limitation; only Sesori manual decisions count until upstream adds provenance |
@@ -502,7 +524,7 @@ series.
 - Validate exact titles, fixed denominator, scope, and `git diff --check`.
 - No production, generated, database, wire, or user-visible change.
 
-**Changed-line target:** 550-950 documentation lines.
+**Changed-line target:** 550-1,050 documentation lines.
 
 ### Step 2/7 - Authoritative plugin facts
 
@@ -512,14 +534,16 @@ series.
 - Add the internal interaction event and required permission origin enum.
 - Update every registered plugin and all app/plugin call sites in lockstep.
 - Add `OpenCodeUserInteractionTracker` and implement pending-envelope
-  classification, lifecycle cleanup, and automatic-compaction exclusions.
+  classification, bridge-write fallback coordination, lifecycle cleanup, and
+  automatic-compaction exclusions.
 - Add `CodexGeneratedContextValidator` plus
   `CodexUserInteractionTracker`, then implement Codex, ACP/Cursor, and Claude
   authoritative emission rules.
 - Add bridge event ID translation and explicit no-public-wire mapping.
 - Test prompt, command, initial turn, manual compaction, manual answer/decision,
   auto approval, cancellation, synthetic continuation, overflow replay, and
-  duplicate-known-time behavior at the owning boundaries.
+  duplicate handling, backend clock rollback, and disconnect-between-acceptance-
+  and-SSE behavior at the owning boundaries.
 - No database, released wire, client, or user-visible behavior yet.
 
 **Changed-line target:** 1,050-1,500 lines. If complete production-plugin tests
@@ -573,12 +597,13 @@ localized.
 - Replace alphabetical running order with the effective-recency comparator.
 - Add `SessionListService.applyInteractionPatch` and `mergeRestSnapshot`; preserve
   max values across live patches, session updates, and in-flight REST
-  replacement while keeping the Cubit orchestration-only.
+  replacement. Extend `SessionUnseenTracker`'s existing list-state cache so an
+  initial-load patch is retained while keeping the Cubit orchestration-only.
 - Keep awaiting-only, inactive, archived, project, and child ordering behavior
   unchanged.
 - Add service/Cubit tests for marker order, null fallback, deterministic ties,
-  auto-update stability, live reordering, stale REST, old bridge payloads, and
-  project mismatch.
+  auto-update stability, live reordering, initial/in-flight stale REST, old
+  bridge payloads, and project mismatch.
 - Verify both mobile and desktop downstream analysis because both consume
   `module_core`, while noting the desktop shell has no catalog UI.
 
@@ -627,8 +652,8 @@ Step 2:
 - `OpenCodeUserInteractionTracker` tests: ordinary root prompt/file prompt,
   child-generated prompt exclusion, slash/subtask command, manual compaction,
   auto compaction, synthetic continuation, overflow replay, question
-  reply/reject, manual versus automatic permission, and bounded pending-state
-  cleanup.
+  reply/reject, manual versus automatic permission, bridge-write/raw one-fact
+  coordination, lost-SSE fallback, clock rollback, and bounded pending-state cleanup.
 - `CodexGeneratedContextValidator` and `CodexUserInteractionTracker` tests: one
   first-lifecycle user-item fact, generated-context exclusion, bounded terminal
   cleanup, ordinary command, explicit manual compact, generic context compaction

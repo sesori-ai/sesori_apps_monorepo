@@ -33,7 +33,9 @@
 - [x] One required manual/automatic permission origin updates all internal
   plugin implementors in lockstep.
 - [x] `OpenCodeUserInteractionTracker` owns raw message/part classifier state
-  before compaction provenance is erased; the top-level plugin delegates.
+  before compaction provenance is erased, coordinates one-fact bridge-write
+  fallback, and uses bridge monotonic observation time; the top-level plugin
+  delegates.
 - [x] `CodexUserInteractionTracker` owns bounded first-user-item observation and
   shares one `CodexGeneratedContextValidator` with history mapping; ACP/Cursor
   and Claude use their accepted bridge-owned write paths.
@@ -42,8 +44,9 @@
   are reused; no new lock, tracker service, or bridge ordering snapshot.
 - [x] Existing `session.unseen_changed` becomes the additive post-commit
   session-list patch; no new public SSE variant.
-- [x] `SessionListService` owns live/session-update/REST marker max merges; the
-  Cubit only validates, delegates, and emits.
+- [x] `SessionListService` owns live/session-update/REST marker max merges;
+  `SessionUnseenTracker` retains initial-load patches and the Cubit only
+  validates, delegates, and emits.
 - [x] Existing unseen semantics and `last_user_message_at` are retained.
 
 ## Accepted Limitations
@@ -63,7 +66,7 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/7 | `🌱 [session-user-interaction-order] docs: plan running session interaction order [step 1/7]` | 550-950 | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) open |
+| [ ] | 1/7 | `🌱 [session-user-interaction-order] docs: plan running session interaction order [step 1/7]` | 550-1,050 | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) open |
 | [ ] | 2/7 | `🚧 [session-user-interaction-order] feat(plugins): report genuine user interactions [step 2/7]` | 1,050-1,500 | Pending |
 | [ ] | 3/7 | `🚧 [session-user-interaction-order] feat(bridge): persist session interaction recency [step 3/7]` | 4,500-6,500; generated migration cap exception | Pending |
 | [ ] | 4/7 | `⚙️ [session-user-interaction-order] feat(protocol): publish session interaction recency [step 4/7]` | 700-1,300 | Pending |
@@ -93,10 +96,12 @@
 - [ ] Update OpenCode, Codex, ACP/Cursor, Claude, bridge call sites, and test
   fakes in lockstep.
 - [ ] Add `OpenCodeUserInteractionTracker` with bounded envelope/part classifier
-  and lifecycle cleanup.
+  bridge-write fallback coordination, and lifecycle cleanup.
 - [ ] Add `CodexGeneratedContextValidator` and bounded
   `CodexUserInteractionTracker`; inject the validator into history mapping.
 - [ ] Prove automatic compaction continuation/overflow replay exclusions.
+- [ ] Prove one fact across ordinary raw delivery, lost-SSE fallback, and backend
+  clock rollback.
 - [ ] Prove manual versus automatic/cancelled reply behavior.
 - [ ] Prove internal event ID/display-root translation and no public wire event.
 - [ ] Run focused plugin/interface/app tests and strict analysis.
@@ -131,6 +136,7 @@
 - [ ] Preserve inactive, awaiting-only, archived, project, and child policies.
 - [ ] Add `SessionListService.applyInteractionPatch` and consume live marker
   patches through it.
+- [ ] Extend `SessionUnseenTracker` to retain marker patches across initial load.
 - [ ] Add `SessionListService.mergeRestSnapshot` and max-merge session updates
   at the service boundary.
 - [ ] Test new/old bridge, live reorder, stale fetch, auto-update stability, and
@@ -183,9 +189,9 @@
   migration, PR lifecycle, or regression-matrix finding remained.
 - **2026-08-13 plan validation:** exact slug, seven-step denominator, titles,
   ordering, line targets, architecture record, regression matrix, and cleanup
-  agree between plan and tracker. Both new files pass no-index whitespace
-  validation; 929 documentation lines are within the revised 550-950 Step 1
-  target. No Dart/Flutter suite was run for this documentation-only work.
+  agree between plan and tracker. Both new files passed no-index whitespace
+  validation before publication. No Dart/Flutter suite was run for this
+  documentation-only work.
 - **2026-08-13 main refresh:** fast-forwarded the required branch/worktree from
   `ec479cef5` to `88059e200`. Schema v13, the four-plugin registry, client running
   comparator, and plan ownership seams remain unchanged. The bundled OpenCode
@@ -199,3 +205,12 @@
   The PR is mergeable and CI started successfully. Qodo reported only that its
   review is pending; Cursor Bugbot reported its own usage limit, with no code or
   plan finding.
+- **2026-08-13 Step 1 review:** accepted three concrete race/clock findings.
+  OpenCode now coordinates bridge-write fallback with raw observation and uses
+  bridge monotonic time; the existing unseen tracker retains marker patches
+  through initial REST load. The stale tracker-state finding was already fixed
+  in `c8aed9ee5`. Against merge base `88059e200`,
+  `git diff --numstat $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`
+  reports PLAN `+758/-0` and TRACKER `+216/-0`, totaling `+974/-0` within the
+  revised 550-1,050 target. The same range passes
+  `git diff --check $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`.
