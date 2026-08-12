@@ -221,6 +221,7 @@ void main() {
       await removal;
       final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
       expect(rows.map((row) => row.partId), contains("kept"));
+      expect(blockingRepository.syncStateAdvances, 1, reason: "only the preceding capture committed");
     });
 
     test("legacy budgeting spans separately delivered image parts of one message", () async {
@@ -362,6 +363,7 @@ class _BlockingWriteRepository extends ChatHistoryRepository {
 
   final Completer<void> blocker;
   final Completer<void> _blocked = Completer<void>();
+  int syncStateAdvances = 0;
 
   Future<void> get blocked => _blocked.future;
 
@@ -381,6 +383,20 @@ class _BlockingWriteRepository extends ChatHistoryRepository {
       storageScope: storageScope,
       part: part,
       updatedAt: updatedAt,
+    );
+  }
+
+  @override
+  Future<void> advanceSyncState({
+    required String sessionId,
+    required int watermark,
+    required int backendActivityAt,
+  }) {
+    syncStateAdvances++;
+    return super.advanceSyncState(
+      sessionId: sessionId,
+      watermark: watermark,
+      backendActivityAt: backendActivityAt,
     );
   }
 }

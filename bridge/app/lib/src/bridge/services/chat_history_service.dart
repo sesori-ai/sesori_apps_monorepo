@@ -311,11 +311,14 @@ class ChatHistoryService {
     return _capture(
       sessionId: sessionId,
       description: "message ${message.id}",
-      write: (observedAt) => _chatHistoryRepository.upsertMessage(
-        sessionId: sessionId,
-        message: message,
-        updatedAt: observedAt,
-      ),
+      write: (observedAt) async {
+        await _chatHistoryRepository.upsertMessage(
+          sessionId: sessionId,
+          message: message,
+          updatedAt: observedAt,
+        );
+        return true;
+      },
     );
   }
 
@@ -332,6 +335,7 @@ class ChatHistoryService {
           part: part,
           updatedAt: observedAt,
         );
+        return true;
       },
     );
   }
@@ -434,8 +438,8 @@ class ChatHistoryService {
       sessionId: sessionId,
       description: "removal of message $messageId",
       write: (_) {
-        if (!shouldCapture()) return Future<void>.value();
-        return _chatHistoryRepository.deleteMessage(sessionId: sessionId, messageId: messageId);
+        if (!shouldCapture()) return Future.value(false);
+        return _chatHistoryRepository.deleteMessage(sessionId: sessionId, messageId: messageId).then((_) => true);
       },
     );
   }
@@ -450,12 +454,14 @@ class ChatHistoryService {
       sessionId: sessionId,
       description: "removal of part $partId",
       write: (_) {
-        if (!shouldCapture()) return Future<void>.value();
-        return _chatHistoryRepository.deletePart(
-          sessionId: sessionId,
-          messageId: messageId,
-          partId: partId,
-        );
+        if (!shouldCapture()) return Future.value(false);
+        return _chatHistoryRepository
+            .deletePart(
+              sessionId: sessionId,
+              messageId: messageId,
+              partId: partId,
+            )
+            .then((_) => true);
       },
     );
   }
@@ -647,14 +653,15 @@ class ChatHistoryService {
   Future<void> _capture({
     required String sessionId,
     required String description,
-    required Future<void> Function(int observedAt) write,
+    required Future<bool> Function(int observedAt) write,
   }) {
     final observedAt = DateTime.now().millisecondsSinceEpoch;
     return _enqueue(
       sessionId: sessionId,
       write: () async {
         try {
-          await write(observedAt);
+          final committed = await write(observedAt);
+          if (!committed) return;
           await _chatHistoryRepository.advanceSyncState(
             sessionId: sessionId,
             watermark: observedAt,
