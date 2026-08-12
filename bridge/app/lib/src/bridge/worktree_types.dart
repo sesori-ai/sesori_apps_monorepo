@@ -17,11 +17,11 @@ class WorktreeUnsafe extends WorktreeSafetyResult {
   WorktreeUnsafe({required this.issues, this.activeBranch});
 }
 
-sealed class SafetyIssue {}
+sealed class SafetyIssue;
 
-class UnstagedChanges extends SafetyIssue {}
+class UnstagedChanges extends SafetyIssue;
 
-sealed class WorktreeResult {}
+sealed class WorktreeResult;
 
 class WorktreeSuccess extends WorktreeResult {
   final String path;

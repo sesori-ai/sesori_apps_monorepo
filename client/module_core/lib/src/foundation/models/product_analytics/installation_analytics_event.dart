@@ -7,7 +7,7 @@ enum AnalyticsLoginProvider {
   email(wireValue: "email");
 
   final String wireValue;
-  const AnalyticsLoginProvider({required this.wireValue});
+  AnalyticsLoginProvider({required this.wireValue});
 }
 
 enum AnalyticsLoginFailureKind {
@@ -18,7 +18,7 @@ enum AnalyticsLoginFailureKind {
   unknown(wireValue: "unknown");
 
   final String wireValue;
-  const AnalyticsLoginFailureKind({required this.wireValue});
+  AnalyticsLoginFailureKind({required this.wireValue});
 }
 
 @immutable

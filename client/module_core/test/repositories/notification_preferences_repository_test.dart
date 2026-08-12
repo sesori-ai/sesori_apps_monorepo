@@ -6,9 +6,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockNotificationPreferencesApi extends Mock implements NotificationPreferencesApi {}
+class MockNotificationPreferencesApi extends Mock implements NotificationPreferencesApi;
 
-class MockNotificationPreferencesDeviceIdStorage extends Mock implements NotificationPreferencesDeviceIdStorage {}
+class MockNotificationPreferencesDeviceIdStorage extends Mock implements NotificationPreferencesDeviceIdStorage;
 
 const _deviceId = "123e4567-e89b-42d3-a456-426614174000";
 const _userA = "user-a";

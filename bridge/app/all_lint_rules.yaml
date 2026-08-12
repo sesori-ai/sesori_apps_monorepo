@@ -71,6 +71,7 @@ linter:
     - document_ignores
     - empty_catches
     - empty_constructor_bodies
+    - empty_container_bodies
     - empty_statements
     - eol_at_end_of_file
     - exhaustive_cases
@@ -165,6 +166,8 @@ linter:
     - remove_deprecations_in_breaking_versions
     - require_trailing_commas
     - secure_pubspec_urls
+    - simple_directive_paths
+    - simplify_variable_pattern
     - sized_box_for_whitespace
     - sized_box_shrink_expand
     - slash_for_doc_comments
@@ -189,6 +192,7 @@ linter:
     - unnecessary_brace_in_string_interps
     - unnecessary_breaks
     - unnecessary_const
+    - unnecessary_const_in_enum_constructor
     - unnecessary_constructor_name
     # - unnecessary_final
     - unnecessary_getters_setters

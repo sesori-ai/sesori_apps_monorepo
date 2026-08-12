@@ -7,7 +7,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
 
-class MockBridgeApi extends Mock implements BridgeApi {}
+class MockBridgeApi extends Mock implements BridgeApi;
 
 void main() {
   late MockBridgeApi mockApi;

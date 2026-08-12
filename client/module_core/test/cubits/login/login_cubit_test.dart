@@ -16,15 +16,15 @@ import "package:sesori_dart_core/src/services/installation_analytics_service.dar
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockOAuthFlowProvider extends Mock implements OAuthFlowProvider {}
+class MockOAuthFlowProvider extends Mock implements OAuthFlowProvider;
 
-class MockUrlLauncher extends Mock implements UrlLauncher {}
+class MockUrlLauncher extends Mock implements UrlLauncher;
 
-class MockAuthSession extends Mock implements AuthSession {}
+class MockAuthSession extends Mock implements AuthSession;
 
-class MockLifecycleSource extends Mock implements LifecycleSource {}
+class MockLifecycleSource extends Mock implements LifecycleSource;
 
-class MockInstallationAnalyticsService extends Mock implements InstallationAnalyticsService {}
+class MockInstallationAnalyticsService extends Mock implements InstallationAnalyticsService;
 
 const testAuthInitResponse = AuthInitResponse(
   authUrl: "https://accounts.google.com/o/oauth2/auth",

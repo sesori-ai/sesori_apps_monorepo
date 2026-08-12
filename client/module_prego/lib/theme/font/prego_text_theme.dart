@@ -13,7 +13,7 @@ enum _PregoTextThemeVariant {
     .light => PregoColors.light.textPrimary,
   };
 
-  const _PregoTextThemeVariant();
+  _PregoTextThemeVariant();
 }
 
 class PregoTextTheme {

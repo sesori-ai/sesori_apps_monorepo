@@ -7,7 +7,7 @@ import "package:sesori_auth/src/storage/token_storage_service.dart";
 import "package:sesori_shared/sesori_shared.dart" show AuthProvider, AuthUser, parseJwtExpiry;
 import "package:test/test.dart";
 
-class MockSecureStorage extends Mock implements SecureStorage {}
+class MockSecureStorage extends Mock implements SecureStorage;
 
 void main() {
   late MockSecureStorage mockStorage;

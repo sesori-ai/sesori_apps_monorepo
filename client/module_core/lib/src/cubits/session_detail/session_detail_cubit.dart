@@ -40,7 +40,7 @@ enum _SessionRefreshTrigger {
 
   final String logValue;
 
-  const _SessionRefreshTrigger(this.logValue);
+  _SessionRefreshTrigger(this.logValue);
 }
 
 enum _SessionRefreshAction { observed, ignored, queued, coalesced, started, completed }

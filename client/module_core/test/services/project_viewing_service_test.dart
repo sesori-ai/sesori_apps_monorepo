@@ -7,9 +7,9 @@ import "package:sesori_dart_core/src/repositories/project_view_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockProjectViewRepository extends Mock implements ProjectViewRepository {}
+class _MockProjectViewRepository extends Mock implements ProjectViewRepository;
 
-class _MockConnectionService extends Mock implements ConnectionService {}
+class _MockConnectionService extends Mock implements ConnectionService;
 
 class _FakeLifecycleSource implements LifecycleSource {
   final BehaviorSubject<LifecycleState> states;

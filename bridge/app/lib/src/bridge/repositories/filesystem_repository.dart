@@ -36,7 +36,7 @@ enum FilesystemEntityKind { notFound, notDirectory, directory }
 /// any entity occupying the target path, not only a directory.
 enum CreatableDirectoryStatus { creatable, parentMissing, alreadyExists }
 
-sealed class BoundedTextFileReadResult {}
+sealed class BoundedTextFileReadResult;
 
 class BoundedTextFileContent extends BoundedTextFileReadResult {
   final String content;
@@ -44,13 +44,13 @@ class BoundedTextFileContent extends BoundedTextFileReadResult {
   BoundedTextFileContent({required this.content});
 }
 
-class BoundedTextFileMissing extends BoundedTextFileReadResult {}
+class BoundedTextFileMissing extends BoundedTextFileReadResult;
 
-class BoundedTextFileBinary extends BoundedTextFileReadResult {}
+class BoundedTextFileBinary extends BoundedTextFileReadResult;
 
-class BoundedTextFileTooLarge extends BoundedTextFileReadResult {}
+class BoundedTextFileTooLarge extends BoundedTextFileReadResult;
 
-class BoundedTextFileReadFailure extends BoundedTextFileReadResult {}
+class BoundedTextFileReadFailure extends BoundedTextFileReadResult;
 
 /// Layer 2 aggregator over [FilesystemApi]. Owns the mapping from raw
 /// `dart:io` results into shared models and the classification of

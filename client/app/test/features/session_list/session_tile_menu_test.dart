@@ -22,7 +22,7 @@ import "../../helpers/test_helpers.dart";
 /// beside the menu — the same treatment the project list gets. The entries come
 /// from the real [SessionListActionDispatcher], so this covers the wiring from
 /// the row all the way to the actions it dispatches.
-class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
+class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit;
 
 void main() {
   late _MockSessionListCubit cubit;

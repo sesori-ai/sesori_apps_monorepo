@@ -50,7 +50,7 @@ enum AppRouteDef {
   sessionDiffs("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam/diffs"),
   ;
 
-  const AppRouteDef(this.path);
+  AppRouteDef(this.path);
   final String path;
 }
 

@@ -12,7 +12,7 @@ enum PiRpcCommand {
   getTree("get_tree"),
   setSessionName("set_session_name");
 
-  const PiRpcCommand(this.wireValue);
+  PiRpcCommand(this.wireValue);
 
   final String wireValue;
 

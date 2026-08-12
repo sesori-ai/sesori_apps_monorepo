@@ -5,7 +5,7 @@ import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockSessionRepository extends Mock implements SessionRepository {}
+class MockSessionRepository extends Mock implements SessionRepository;
 
 void main() {
   group("SessionService", () {

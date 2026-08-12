@@ -171,9 +171,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
               await _delay(delay);
             }
           case AuthSessionStatusResponseComplete(
-            accessToken: final accessToken,
-            refreshToken: final refreshToken,
-            user: final user,
+            : final accessToken,
+            : final refreshToken,
+            : final user,
           ):
             await _persistOAuthCompletion(
               accessToken: accessToken,

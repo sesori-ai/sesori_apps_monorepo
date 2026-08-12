@@ -9,11 +9,11 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/relay/room_key_storage.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../relay/relay_client.dart";
 import "../relay/relay_config.dart";
+import "../relay/room_key_storage.dart";
 import "api_paths.dart";
 import "models/connection_status.dart";
 import "models/sse_event.dart";

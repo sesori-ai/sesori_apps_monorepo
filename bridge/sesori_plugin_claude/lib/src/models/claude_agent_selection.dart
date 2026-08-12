@@ -13,7 +13,7 @@ enum ClaudeAgentSelection {
     permissionMode: ClaudePermissionMode.plan,
   );
 
-  const ClaudeAgentSelection({
+  ClaudeAgentSelection({
     required this.displayName,
     required this.description,
     required this.permissionMode,

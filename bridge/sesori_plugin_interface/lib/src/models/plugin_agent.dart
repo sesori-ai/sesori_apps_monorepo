@@ -20,7 +20,7 @@ enum PluginAgentVariant {
   xhigh("xhigh")
   ;
 
-  const PluginAgentVariant(this.safeName);
+  PluginAgentVariant(this.safeName);
   final String safeName;
 
   /// Parses a raw string into a [PluginAgentVariant], or returns `null`

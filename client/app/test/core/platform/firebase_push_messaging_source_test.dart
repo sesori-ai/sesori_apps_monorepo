@@ -6,9 +6,9 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase_push_messaging_source.dart";
 
-class MockFirebaseMessaging extends Mock implements FirebaseMessaging {}
+class MockFirebaseMessaging extends Mock implements FirebaseMessaging;
 
-class FakeNotificationSettings extends Fake implements NotificationSettings {}
+class FakeNotificationSettings extends Fake implements NotificationSettings;
 
 void main() {
   late FirebasePushMessagingSource source;

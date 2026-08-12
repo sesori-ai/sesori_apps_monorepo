@@ -18,7 +18,7 @@ import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockUrlLauncher extends Mock implements UrlLauncher {}
+class _MockUrlLauncher extends Mock implements UrlLauncher;
 
 class _FakeImageSaver implements ImageSaver {
   Uint8List? savedBytes;

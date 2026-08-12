@@ -13,7 +13,7 @@ import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockBridgeSettingsService extends Mock implements BridgeSettingsService {}
+class _MockBridgeSettingsService extends Mock implements BridgeSettingsService;
 
 void main() {
   late _MockBridgeSettingsService service;
