@@ -612,7 +612,7 @@ class SessionRepository {
               generation: generation,
             ),
           );
-          return _mapPluginProjectActivitySummaries(observation: observation);
+          return await _mapPluginProjectActivitySummaries(observation: observation);
         } on Object catch (error, stackTrace) {
           Log.w("Could not read activity summaries from plugin $pluginId", error, stackTrace);
           return const <ProjectActivitySummary>[];
