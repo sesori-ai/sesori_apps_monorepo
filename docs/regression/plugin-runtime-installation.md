@@ -12,8 +12,8 @@ management API, when it reports its runtime as missing or too old.
   removes the offer. The app offers it only for a missing or too-old runtime, never for
   ready, authentication-required, or unknown states.
 - Artifact installation writes the pinned version into the harness's own managed state
-  area; placement preserves either the published executable or its required package
-  directory, never installs system-wide, touches files elsewhere, or starts the backend.
+  area; placement preserves a published bare executable, an archived executable, or its
+  required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
   Artifacts are checksum-verified, and no partial binary or package is adopted.
 - The command is accepted immediately because an install can outlast a request budget;
   progress reports phases with a percentage, and the terminal outcome also lands in the

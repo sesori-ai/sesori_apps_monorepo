@@ -8,30 +8,31 @@ import "runtime_version.dart";
 /// Most runtimes ship a single self-contained executable ([singleBinary]).
 /// Cursor ships a `dist-package/` tree whose entry binary loads sibling files,
 /// so the whole directory must be kept together ([packageDirectory]).
-enum RuntimeAssetLayout() { singleBinary, packageDirectory }
+enum RuntimeArchiveLayout() { singleBinary, packageDirectory }
 
-/// One platform's pinned release archive for a managed runtime: the asset name,
-/// its container [format], the SHA-256 the download is verified against, the
-/// name of the executable file *inside* the extracted archive, and how that
-/// archive is placed on disk.
+/// One platform's pinned release artifact for a managed runtime, identified by
+/// its publisher [assetName] and verified against [sha256] before placement.
+sealed class const RuntimeAsset({required final String assetName, required final String sha256});
+
+/// A runtime release artifact distributed inside an archive.
 ///
 /// [archiveBinaryName] is distinct from [RuntimeManifest.binaryFileName] (the
-/// canonical on-disk name the binary is placed under): some publishers ship the
-/// executable under a target-triple name (e.g. `codex-aarch64-apple-darwin`)
-/// that must be normalized to a plain `codex`. For publishers whose archive
-/// member already matches the canonical name (e.g. OpenCode's `opencode`), the
-/// two are equal.
-final class const RuntimeAsset({
-  required final String assetName,
+/// canonical on-disk name): some publishers use a target-triple member name
+/// that the installer normalizes to the canonical name.
+final class const ArchiveRuntimeAsset({
+  required super.assetName,
   required final ArchiveFormat format,
-  required final String sha256,
+  required super.sha256,
 
   /// The entry executable's name inside the extracted archive. For
-  /// [RuntimeAssetLayout.packageDirectory] it names the binary within the
+  /// [RuntimeArchiveLayout.packageDirectory] it names the binary within the
   /// placed tree; its siblings travel with it.
   required final String archiveBinaryName,
-  required final RuntimeAssetLayout layout,
-});
+  required final RuntimeArchiveLayout layout,
+}) extends RuntimeAsset;
+
+/// A runtime published as a bare executable with no archive container.
+final class const DirectBinaryRuntimeAsset({required super.assetName, required super.sha256}) extends RuntimeAsset;
 
 /// The harness-specific seam of the shared runtime-provisioning system: the
 /// pinned facts a [ManagedRuntimeProvisionService] needs to decide which binary

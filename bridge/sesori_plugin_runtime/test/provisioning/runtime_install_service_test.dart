@@ -31,12 +31,15 @@ class _FakeChecksumValidator({required final bool valid}) implements ChecksumVal
 
 class _FakeArchiveExtractor({required final bool success, required final bool packageDirectory})
     implements ArchiveExtractor {
+  int extractCalls = 0;
+
   @override
   Future<ArchiveExtractionResult> extract({
     required String archivePath,
     required String stagingPath,
     required ArchiveFormat format,
   }) async {
+    extractCalls++;
     if (!success) {
       return const ArchiveExtractionResult.failure(reason: "powershell Expand-Archive exited with code 1: boom");
     }
@@ -70,21 +73,23 @@ class _FakeCommandExecutor() implements CommandExecutor {
   }
 }
 
-const _asset = RuntimeAsset(
+const _asset = ArchiveRuntimeAsset(
   assetName: "opencode-test.zip",
   format: ArchiveFormat.zip,
   sha256: "abc123",
   archiveBinaryName: "opencode",
-  layout: RuntimeAssetLayout.singleBinary,
+  layout: RuntimeArchiveLayout.singleBinary,
 );
 
-const _packageAsset = RuntimeAsset(
+const _packageAsset = ArchiveRuntimeAsset(
   assetName: "cursor-test.tar.gz",
   format: ArchiveFormat.tarGz,
   sha256: "def456",
   archiveBinaryName: "cursor-agent",
-  layout: RuntimeAssetLayout.packageDirectory,
+  layout: RuntimeArchiveLayout.packageDirectory,
 );
+
+const _directAsset = DirectBinaryRuntimeAsset(assetName: "omp-test", sha256: "789abc");
 
 void main() {
   late Directory managedDir;
@@ -105,11 +110,12 @@ void main() {
     bool extractSuccess = true,
     bool packageDirectory = false,
     _FakeCommandExecutor? cmd,
+    _FakeArchiveExtractor? extractor,
   }) {
     return RuntimeInstallService(
       downloadClient: _FakeDownloadClient(exception: downloadError),
       checksumValidator: _FakeChecksumValidator(valid: checksumValid),
-      archiveExtractor: _FakeArchiveExtractor(success: extractSuccess, packageDirectory: packageDirectory),
+      archiveExtractor: extractor ?? _FakeArchiveExtractor(success: extractSuccess, packageDirectory: packageDirectory),
       commandExecutor: cmd ?? _FakeCommandExecutor(),
       runtimeId: "opencode",
     );
@@ -175,6 +181,83 @@ void main() {
       File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(),
       "def456",
     );
+  });
+
+  test("places a direct binary without extraction and cleans stale staging", () async {
+    final extractor = _FakeArchiveExtractor(success: true, packageDirectory: false);
+    final staleStaging = Directory(p.join(managedDir.path, ".sesori-runtime-staging"))..createSync(recursive: true);
+    File(p.join(staleStaging.path, "stale")).writeAsStringSync("OLD");
+
+    final events = await build(extractor: extractor)
+        .install(
+          managedDir: managedDir.path,
+          versionDir: versionDir(),
+          binaryFileName: "omp",
+          downloadUrl: "https://example.test/omp-test",
+          asset: _directAsset,
+          startAborted: StartAbortSignal.never,
+        )
+        .toList();
+
+    expect(File(p.join(versionDir(), "omp")).readAsBytesSync(), [1, 2, 3, 4]);
+    expect(File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(), "789abc");
+    expect(events.any((event) => event is ProvisionExtracting), isFalse);
+    expect(extractor.extractCalls, 0);
+    expect(staleStaging.existsSync(), isFalse);
+    expect(File(p.join(managedDir.path, ".sesori-runtime-download")).existsSync(), isFalse);
+  });
+
+  test("places a direct Windows executable under the canonical exe name", () async {
+    await build()
+        .install(
+          managedDir: managedDir.path,
+          versionDir: versionDir(),
+          binaryFileName: "omp.exe",
+          downloadUrl: "https://example.test/omp-test.exe",
+          asset: _directAsset,
+          startAborted: StartAbortSignal.never,
+        )
+        .drain<void>();
+
+    expect(File(p.join(versionDir(), "omp.exe")).existsSync(), isTrue);
+  });
+
+  test("does not place a direct binary when checksum verification fails", () async {
+    await expectLater(
+      build(checksumValid: false)
+          .install(
+            managedDir: managedDir.path,
+            versionDir: versionDir(),
+            binaryFileName: "omp",
+            downloadUrl: "https://example.test/omp-test",
+            asset: _directAsset,
+            startAborted: StartAbortSignal.never,
+          )
+          .drain<void>(),
+      throwsA(isA<RuntimeInstallException>()),
+    );
+    expect(File(p.join(versionDir(), "omp")).existsSync(), isFalse);
+    expect(File(p.join(managedDir.path, ".sesori-runtime-download")).existsSync(), isFalse);
+  });
+
+  test("cancels a direct binary install before placement", () async {
+    final controller = StartAbortController()..abort();
+
+    await expectLater(
+      build()
+          .install(
+            managedDir: managedDir.path,
+            versionDir: versionDir(),
+            binaryFileName: "omp",
+            downloadUrl: "https://example.test/omp-test",
+            asset: _directAsset,
+            startAborted: controller.signal,
+          )
+          .drain<void>(),
+      throwsA(isA<PluginStartAbortedException>()),
+    );
+    expect(File(p.join(versionDir(), "omp")).existsSync(), isFalse);
+    expect(File(p.join(managedDir.path, ".sesori-runtime-download")).existsSync(), isFalse);
   });
 
   test("isInstalled is false before, true after, and rejects a hash mismatch", () async {

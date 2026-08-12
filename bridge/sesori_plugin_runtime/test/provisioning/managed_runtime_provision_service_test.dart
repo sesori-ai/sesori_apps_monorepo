@@ -5,12 +5,12 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
 class const _StubManifest() implements RuntimeManifest {
-  static const RuntimeAsset _asset = RuntimeAsset(
+  static const RuntimeAsset _asset = ArchiveRuntimeAsset(
     assetName: "opencode-test.zip",
     format: ArchiveFormat.zip,
     sha256: "abc123",
     archiveBinaryName: "opencode",
-    layout: RuntimeAssetLayout.singleBinary,
+    layout: RuntimeArchiveLayout.singleBinary,
   );
 
   @override

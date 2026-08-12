@@ -26,9 +26,8 @@ void main() {
     });
 
     test("darwin/windows ship .zip, linux ships .tar.gz", () {
-      RuntimeAsset asset(PlatformOs os, PlatformArch arch) => manifest.assetFor(
-        target: PlatformTarget(os: os, arch: arch),
-      )!;
+      ArchiveRuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
+          manifest.assetFor(target: PlatformTarget(os: os, arch: arch))! as ArchiveRuntimeAsset;
 
       expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.zip);
       expect(asset(PlatformOs.macos, PlatformArch.arm64).assetName, endsWith(".zip"));

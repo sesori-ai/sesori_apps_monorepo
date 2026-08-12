@@ -7,12 +7,9 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
 class const _StubManifest({required final bool hasAsset}) implements RuntimeManifest {
-  static const RuntimeAsset _asset = RuntimeAsset(
-    assetName: "opencode-test.zip",
-    format: ArchiveFormat.zip,
+  static const RuntimeAsset _asset = DirectBinaryRuntimeAsset(
+    assetName: "opencode-test",
     sha256: "abc123",
-    archiveBinaryName: "opencode",
-    layout: RuntimeAssetLayout.singleBinary,
   );
 
   @override
