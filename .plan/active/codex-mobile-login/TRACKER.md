@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Steps 1-5 merged; Step 6 PR open
-- **Current step:** 7/8 implemented locally; Step 6 in review
-- **Implementation base:** Step 5 merge commit `e13b9a38`
+- **Series state:** Steps 1-6 merged; Step 7 ready to publish
+- **Current step:** 7/8
+- **Implementation base:** Step 6 merge commit `b799ea48`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** [#837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837)
-- **Next action:** Monitor Step 6; publish Step 7 after merge and live smoke verification
+- **Current PR:** Pending Step 7 publication
+- **Next action:** Publish Step 7; complete live smoke with explicit user interaction
 
 ## Plan Review
 
@@ -31,8 +31,8 @@
 | [x] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) merged |
 | [x] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) merged |
 | [x] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) merged |
-| [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | [PR #837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837) open |
-| [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Implemented locally; awaiting Step 6 merge and live smoke |
+| [x] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | [PR #837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837) merged |
+| [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Ready to publish; live smoke pending user interaction |
 | [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | Pending |
 
 ## Locked Decisions
@@ -130,6 +130,12 @@
   again failed before reading code with `no such column: replacement_seq`;
   this step adds presentation and backend-owned guidance only, with no new
   dependency ownership, wire contract, or persistence boundary.
+  Post-merge focused checks still pass (27 mobile widget tests and 14 Codex
+  descriptor setup tests), with fatal-info analysis clean in both packages.
+  A simulator and installed Sesori app are available, but local Codex is already
+  logged in; a true logged-out smoke would require changing credentials or
+  pairing/taking over bridge state and completing provider authorization. Those
+  user-state changes were not performed without explicit approval.
 
 ## Findings And Plan Deltas
 
