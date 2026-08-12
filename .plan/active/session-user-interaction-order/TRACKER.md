@@ -5,10 +5,10 @@
 - **Plan slug:** `session-user-interaction-order`
 - **Implementation base:** `main` at `88059e200`
 - **Branch/worktree:** `session-order-ux-review`
-- **Series state:** Reviewed plan; three architecture findings applied; current
-  main revalidated; no implementation started
-- **Current step:** 1/7 ready for publication
-- **Next action:** commit, push, and open the Step 1 plan PR
+- **Plan PR:** [#865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865)
+- **Series state:** Step 1/7 in review; no implementation published
+- **Current step:** 1/7 open; Step 2/7 beginning locally
+- **Next action:** monitor Step 1 and implement authoritative plugin facts locally
 - **Source changes:** none
 - **Tests run:** none
 
@@ -63,7 +63,7 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/7 | `🌱 [session-user-interaction-order] docs: plan running session interaction order [step 1/7]` | 550-950 | Reviewed and validated locally |
+| [ ] | 1/7 | `🌱 [session-user-interaction-order] docs: plan running session interaction order [step 1/7]` | 550-950 | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) open |
 | [ ] | 2/7 | `🚧 [session-user-interaction-order] feat(plugins): report genuine user interactions [step 2/7]` | 1,050-1,500 | Pending |
 | [ ] | 3/7 | `🚧 [session-user-interaction-order] feat(bridge): persist session interaction recency [step 3/7]` | 4,500-6,500; generated migration cap exception | Pending |
 | [ ] | 4/7 | `⚙️ [session-user-interaction-order] feat(protocol): publish session interaction recency [step 4/7]` | 700-1,300 | Pending |
@@ -85,7 +85,7 @@
 - [x] Fix exact seven-step titles and line targets.
 - [x] Run architecture plan review and apply valid findings.
 - [x] Run `git diff --check` and plan/tracker consistency validation.
-- [ ] Commit, push, and open the Step 1 PR for the confirmed reviewed series.
+- [x] Commit, push, and open the Step 1 PR for the confirmed reviewed series.
 
 ## Step 2 Checklist
 
@@ -194,3 +194,8 @@
   overflow replay. Main's attachment-mapping and regression-copy changes do not
   alter this plan. No architecture re-review was needed because no architecture
   or product decision changed.
+- **2026-08-13 Step 1 publication:** committed the 929-line plan as `4be4705ce`,
+  pushed `session-order-ux-review`, and opened [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865).
+  The PR is mergeable and CI started successfully. Qodo reported only that its
+  review is pending; Cursor Bugbot reported its own usage limit, with no code or
+  plan finding.
