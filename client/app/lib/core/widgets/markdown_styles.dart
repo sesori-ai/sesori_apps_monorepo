@@ -15,8 +15,17 @@ import "code_block.dart";
 void handleMarkdownLinkTap(String text, String? href, String title) {
   if (href == null) return;
   final uri = Uri.tryParse(href);
-  if (uri == null) return;
+  if (uri == null || !_isAllowedMarkdownUri(uri)) return;
   unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp).then<void>((_) {}));
+}
+
+bool _isAllowedMarkdownUri(Uri uri) {
+  final scheme = uri.scheme.toLowerCase();
+  return switch (scheme) {
+    "http" || "https" => uri.host.isNotEmpty && uri.userInfo.isEmpty,
+    "mailto" => uri.path.isNotEmpty,
+    _ => false,
+  };
 }
 
 // ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override
