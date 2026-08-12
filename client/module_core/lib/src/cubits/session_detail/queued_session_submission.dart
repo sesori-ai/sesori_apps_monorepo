@@ -10,14 +10,14 @@ sealed class QueuedSessionSubmission {
     required String text,
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
-    required String agent,
+    required String? agent,
     required AgentModel? agentModel,
   }) = QueuedTextSubmission;
 
   const factory QueuedSessionSubmission.command({
     required String text,
     required String command,
-    required String agent,
+    required String? agent,
     required AgentModel? agentModel,
   }) = QueuedCommandSubmission;
 
