@@ -44,6 +44,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     required bool isArchived,
     // Queued messages (waiting to be sent when connection is restored).
     required List<QueuedSessionSubmission> queuedMessages,
+    // Submission currently awaiting bridge acceptance.
+    required QueuedSessionSubmission? sendingSubmission,
     // Available agents and providers for selection.
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,

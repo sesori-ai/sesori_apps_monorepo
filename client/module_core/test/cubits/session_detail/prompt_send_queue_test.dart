@@ -45,20 +45,47 @@ void main() {
       expect(queue.items.map((e) => e.displayText), ["same", "other"]);
     });
 
-    test("dequeue removes from the front", () {
+    test("beginSend moves the front submission into the active slot", () {
       queue.enqueue(_a);
       queue.enqueue(_b);
-      expect(queue.dequeue()?.displayText, "a");
+      expect(queue.beginSend()?.displayText, "a");
+      expect(queue.active?.displayText, "a");
+      expect(queue.items.map((e) => e.displayText), ["b"]);
+      expect(queue.isSending, isTrue);
+    });
+
+    test("beginSend returns null when empty", () {
+      expect(queue.beginSend(), isNull);
+    });
+
+    test("beginSend returns null while another submission is active", () {
+      queue.enqueue(_a);
+      queue.enqueue(_b);
+      queue.beginSend();
+
+      expect(queue.beginSend(), isNull);
+      expect(queue.active?.displayText, "a");
       expect(queue.items.map((e) => e.displayText), ["b"]);
     });
 
-    test("dequeue returns null when empty", () {
-      expect(queue.dequeue(), isNull);
+    test("completeSend clears the active submission", () {
+      queue.enqueue(_a);
+      queue.beginSend();
+
+      queue.completeSend();
+
+      expect(queue.active, isNull);
+      expect(queue.isSending, isFalse);
     });
 
-    test("requeue inserts at the front", () {
+    test("failSend restores the active submission at the front", () {
+      queue.enqueue(_retried);
       queue.enqueue(_existing);
-      queue.requeue(_retried);
+      queue.beginSend();
+
+      queue.failSend();
+
+      expect(queue.active, isNull);
       expect(queue.items.map((e) => e.displayText), ["retried", "existing"]);
     });
 
@@ -92,21 +119,31 @@ void main() {
       expect(() => items.add(_b), throwsUnsupportedError);
     });
 
-    test("full cycle: enqueue, dequeue, requeue, dequeue", () {
+    test("cancelling a pending item does not include the active submission in its index", () {
+      queue.enqueue(_a);
+      queue.enqueue(_b);
+      queue.enqueue(_c);
+      queue.beginSend();
+
+      expect(queue.cancel(0)?.displayText, "b");
+      expect(queue.active?.displayText, "a");
+      expect(queue.items.map((e) => e.displayText), ["c"]);
+    });
+
+    test("full cycle: enqueue, begin, fail, begin, complete", () {
       queue.enqueue(_msg1);
       queue.enqueue(_msg2);
 
-      // Dequeue first — simulate send.
-      final sent = queue.dequeue();
+      final sent = queue.beginSend();
       expect(sent?.displayText, "msg1");
 
-      // Simulate failure — requeue.
-      queue.requeue(sent!);
+      queue.failSend();
       expect(queue.items.map((e) => e.displayText), ["msg1", "msg2"]);
 
-      // Retry succeeds.
-      expect(queue.dequeue()?.displayText, "msg1");
+      expect(queue.beginSend()?.displayText, "msg1");
+      queue.completeSend();
       expect(queue.items.map((e) => e.displayText), ["msg2"]);
+      expect(queue.active, isNull);
     });
   });
 }

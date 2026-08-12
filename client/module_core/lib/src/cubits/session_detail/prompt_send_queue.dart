@@ -10,9 +10,15 @@ import "queued_session_submission.dart";
 /// cubit that owns this queue.
 class PromptSendQueue {
   final Queue<QueuedSessionSubmission> _items = Queue<QueuedSessionSubmission>();
+  QueuedSessionSubmission? _active;
 
   /// Unmodifiable snapshot of the current queue contents.
   List<QueuedSessionSubmission> get items => List.unmodifiable(_items.toList());
+
+  /// The submission currently awaiting bridge acceptance.
+  QueuedSessionSubmission? get active => _active;
+
+  bool get isSending => _active != null;
 
   /// Whether the queue has no pending messages.
   bool get isEmpty => _items.isEmpty;
@@ -23,12 +29,21 @@ class PromptSendQueue {
   /// Add a submission to the end of the queue.
   void enqueue(QueuedSessionSubmission submission) => _items.addLast(submission);
 
-  /// Remove and return the first submission for sending.
-  /// Returns `null` if the queue is empty.
-  QueuedSessionSubmission? dequeue() => _items.isEmpty ? null : _items.removeFirst();
+  /// Moves the first pending submission into the active slot.
+  QueuedSessionSubmission? beginSend() {
+    if (_active != null || _items.isEmpty) return null;
+    return _active = _items.removeFirst();
+  }
 
-  /// Re-insert a submission at the front after a failed send attempt.
-  void requeue(QueuedSessionSubmission submission) => _items.addFirst(submission);
+  void completeSend() => _active = null;
+
+  /// Restores the active submission at the head after a failed send.
+  void failSend() {
+    final active = _active;
+    if (active == null) return;
+    _active = null;
+    _items.addFirst(active);
+  }
 
   /// Remove a submission by index (user cancellation).
   /// Returns the removed submission, or `null` if the index is invalid.

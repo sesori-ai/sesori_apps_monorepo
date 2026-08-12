@@ -1003,6 +1003,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailQueuedCommand => 'Queued command';
 
   @override
+  String get sessionDetailSendingMessage => 'Sending';
+
+  @override
   String get sessionDetailCancelQueued => 'Cancel';
 
   @override

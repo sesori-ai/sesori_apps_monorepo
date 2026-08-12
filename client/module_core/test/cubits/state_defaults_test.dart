@@ -23,6 +23,7 @@ void main() {
       isRootSession: true,
       isArchived: false,
       queuedMessages: [],
+      sendingSubmission: null,
       availableAgents: [],
       availableProviders: [],
       availableCommands: [],

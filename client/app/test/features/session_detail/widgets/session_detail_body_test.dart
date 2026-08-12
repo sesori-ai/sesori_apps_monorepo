@@ -131,6 +131,7 @@ SessionDetailLoaded _loadedState({
     isRootSession: true,
     isArchived: false,
     queuedMessages: const [],
+    sendingSubmission: null,
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
     availableCommands: const [],
@@ -242,6 +243,29 @@ void main() {
     await GetIt.instance.reset();
   });
 
+  testWidgets("an empty user envelope keeps the empty transcript state visible", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      messages: const [
+        MessageWithParts(
+          info: Message.user(
+            id: "empty-user-envelope",
+            sessionID: "session-1",
+            agent: null,
+            time: null,
+          ),
+          parts: [],
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text("No messages yet"), findsOneWidget);
+  });
+
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -280,6 +304,7 @@ void main() {
       isRootSession: true,
       isArchived: false,
       queuedMessages: const [],
+      sendingSubmission: null,
       availableAgents: [testAgentInfo()],
       availableProviders: testProviderListResponse().items,
       availableCommands: const [],
@@ -2341,5 +2366,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("1 image"), findsOneWidget);
+  });
+
+  testWidgets("an in-flight submission stays visible without a cancel action", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      sendingSubmission: const QueuedSessionSubmission.text(
+        text: "Cold-start prompt",
+        inputMode: ComposerInputMode.typed,
+        attachments: [],
+      ),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("Cold-start prompt"), findsOneWidget);
+    expect(find.text("Sending"), findsOneWidget);
+    expect(find.text("Cancel"), findsNothing);
   });
 }

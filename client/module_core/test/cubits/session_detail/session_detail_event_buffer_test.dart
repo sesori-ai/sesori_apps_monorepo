@@ -564,6 +564,75 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
+    test("connected send stays visible until the bridge accepts it", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      final accepted = Completer<ApiResponse<void>>();
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[],
+            olderMessagesCursor: null,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) => accepted.future);
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+
+      final send = cubit.sendMessage(
+        text: "Cold-start prompt",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      await _awaitCondition(() {
+        final state = cubit.state;
+        return state is SessionDetailLoaded && state.sendingSubmission?.displayText == "Cold-start prompt";
+      });
+
+      var state = cubit.state as SessionDetailLoaded;
+      expect(state.queuedMessages, isEmpty);
+      expect(state.sendingSubmission?.displayText, "Cold-start prompt");
+
+      accepted.complete(ApiResponse.success(null));
+      await send;
+
+      state = cubit.state as SessionDetailLoaded;
+      expect(state.sendingSubmission, isNull);
+      expect(state.queuedMessages, isEmpty);
+    });
+
     test("stale pre-disconnect refresh cannot authorize a queued attachment", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const supportedSnapshot = SessionDetailSnapshot(
@@ -1002,6 +1071,350 @@ void main() {
 
       expect((cubit.state as SessionDetailLoaded).isArchived, isFalse);
     });
+
+    test("refresh supersedes older deferred parts and retains in-flight events", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      final refresh = Completer<SessionDetailLoadResult>();
+
+      MessagePart textPart({required String id, required String text}) => MessagePart(
+        id: id,
+        sessionID: _sessionId,
+        messageID: "message-1",
+        type: MessagePartType.text,
+        text: text,
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: null,
+      );
+
+      SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
+        projectId: "project-1",
+        pluginId: "opencode",
+        supportsPromptAttachments: false,
+        messages: messages,
+        olderMessagesCursor: null,
+        pendingQuestions: const <PendingQuestion>[],
+        pendingPermissions: const <PendingPermission>[],
+        childSessions: const <Session>[],
+        statuses: const <String, SessionStatus>{},
+        agents: const <AgentInfo?>[],
+        providerData: null,
+        commands: const <CommandInfo>[],
+        canonicalSessionTitle: null,
+        promptDefaults: null,
+        isRootSession: true,
+        isArchived: false,
+      );
+
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => SessionDetailLoadResult.loaded(
+          snapshot: snapshot(messages: const []),
+          isBridgeConnected: true,
+        ),
+      );
+      when(
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) => refresh.future);
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+
+      sessionEvents.add(
+        SesoriMessagePartUpdated(
+          part: textPart(id: "part-before-refresh", text: "stale"),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      mockConnectionService.emitDataMayBeStale();
+      await untilCalled(
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      );
+
+      sessionEvents.add(
+        SesoriMessagePartUpdated(
+          part: textPart(id: "part-during-refresh", text: "live"),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final snapshotPart = textPart(id: "part-before-refresh", text: "fresh snapshot");
+      refresh.complete(
+        SessionDetailLoadResult.loaded(
+          snapshot: snapshot(
+            messages: [
+              MessageWithParts(
+                info: const Message.user(
+                  id: "message-1",
+                  sessionID: _sessionId,
+                  agent: "build",
+                  time: MessageTime(created: 100, completed: null),
+                ),
+                parts: [snapshotPart],
+              ),
+            ],
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+      await _awaitCondition(() {
+        final state = cubit.state;
+        return state is SessionDetailLoaded && !state.isRefreshing && state.messages.single.parts.length == 2;
+      });
+
+      final parts = (cubit.state as SessionDetailLoaded).messages.single.parts;
+      expect(parts.map((part) => (part.id, part.text)), [
+        ("part-before-refresh", "fresh snapshot"),
+        ("part-during-refresh", "live"),
+      ]);
+    });
+
+    test("keeps a finalized part that arrives before its message envelope", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[],
+            olderMessagesCursor: null,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+
+      const part = MessagePart(
+        id: "part-1",
+        sessionID: _sessionId,
+        messageID: "message-1",
+        type: MessagePartType.text,
+        text: "Keep this prompt",
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: null,
+      );
+      sessionEvents.add(const SesoriMessagePartUpdated(part: part));
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).messages, isEmpty);
+
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "message-1",
+            sessionID: _sessionId,
+            agent: "build",
+            time: MessageTime(created: 100, completed: null),
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final message = (cubit.state as SessionDetailLoaded).messages.single;
+      expect(message.info.id, "message-1");
+      expect(message.parts, [part]);
+    });
+
+    test("applies the latest deferred update without changing part order", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[],
+            olderMessagesCursor: null,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+
+      MessagePart part({required String id, required String text}) => MessagePart(
+        id: id,
+        sessionID: _sessionId,
+        messageID: "message-1",
+        type: MessagePartType.text,
+        text: text,
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: null,
+      );
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+      sessionEvents.add(
+        SesoriMessagePartUpdated(
+          part: part(id: "part-a", text: "old"),
+        ),
+      );
+      sessionEvents.add(
+        SesoriMessagePartUpdated(
+          part: part(id: "part-b", text: "second"),
+        ),
+      );
+      sessionEvents.add(
+        SesoriMessagePartUpdated(
+          part: part(id: "part-a", text: "new"),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "message-1",
+            sessionID: _sessionId,
+            agent: "build",
+            time: MessageTime(created: 100, completed: null),
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final parts = (cubit.state as SessionDetailLoaded).messages.single.parts;
+      expect(parts.map((item) => item.id), ["part-a", "part-b"]);
+      expect(parts.map((item) => item.text), ["new", "second"]);
+    });
+
+    test("inserts late message envelopes by transcript time", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      const newest = MessageWithParts(
+        info: Message.assistant(
+          id: "message-3",
+          sessionID: _sessionId,
+          agent: "build",
+          modelID: "gpt-4",
+          providerID: "openai",
+          time: MessageTime(created: 300, completed: null),
+        ),
+        parts: <MessagePart>[],
+      );
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[newest],
+            olderMessagesCursor: null,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "message-1",
+            sessionID: _sessionId,
+            agent: "build",
+            time: MessageTime(created: 100, completed: null),
+          ),
+        ),
+      );
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.assistant(
+            id: "message-2",
+            sessionID: _sessionId,
+            agent: "build",
+            modelID: "gpt-4",
+            providerID: "openai",
+            time: MessageTime(created: 200, completed: null),
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id),
+        ["message-1", "message-2", "message-3"],
+      );
+    });
+
     test("does not buffer irrelevant global events (PTY, file watcher, etc.)", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final completer = Completer<SessionDetailLoadResult>();

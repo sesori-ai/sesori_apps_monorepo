@@ -1,10 +1,28 @@
+import "package:sesori_shared/sesori_shared.dart";
+
 import "session_detail_state.dart";
+
+extension SessionMessagePresentation on MessageWithParts {
+  bool get hasRenderableUserContent {
+    if (info is! MessageUser) return true;
+    return parts.any(
+      (part) =>
+          (part.type == MessagePartType.text && (part.text?.isNotEmpty ?? false)) ||
+          (part.type == MessagePartType.file && part.attachment != null),
+    );
+  }
+}
 
 /// Pure-data resolvers for [SessionDetailState].
 ///
 /// Keeps data-derivation logic in module_core rather than in
 /// presentation widgets, satisfying the layered architecture.
 extension SessionDetailResolvers on SessionDetailState {
+  bool get hasRenderableMessages {
+    final self = this;
+    return self is SessionDetailLoaded && self.messages.any((message) => message.hasRenderableUserContent);
+  }
+
   /// Resolves the display text and streaming flag for a reasoning part.
   ///
   /// Returns the streaming text if the part is actively streaming,

@@ -1945,6 +1945,12 @@ abstract class AppLocalizations {
   /// **'Queued command'**
   String get sessionDetailQueuedCommand;
 
+  /// No description provided for @sessionDetailSendingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get sessionDetailSendingMessage;
+
   /// No description provided for @sessionDetailCancelQueued.
   ///
   /// In en, this message translates to:

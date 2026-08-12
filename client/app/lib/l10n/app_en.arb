@@ -591,6 +591,7 @@
   "sessionDetailSubtaskUnnamed": "Background task",
   "sessionDetailQueuedMessage": "Queued",
   "sessionDetailQueuedCommand": "Queued command",
+  "sessionDetailSendingMessage": "Sending",
   "sessionDetailCancelQueued": "Cancel",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerModel": "Model",
