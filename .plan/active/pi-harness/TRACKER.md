@@ -305,9 +305,10 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - No user-visible, database, persisted-data, client/bridge wire-contract, or
   client-UI change.
 - `git diff --check`: pass.
-- Whole-PR merge-base diff `88059e200...HEAD`: +1,317/-17 = 1,334 changed
-  lines; generated lines: 0; tests run: 180 full-suite tests plus 41 focused
-  descriptor tests.
+- Step 9 implementation and review-fix diff `88059e200...9cd87d646`:
+  +1,317/-17 = 1,334 changed lines; generated lines: 0; tests run: 180
+  full-suite tests plus 41 focused descriptor tests. Later commits only record
+  this measurement.
 
 ## Findings And Plan Deltas
 
