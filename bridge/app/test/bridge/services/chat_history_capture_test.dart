@@ -93,13 +93,22 @@ void main() {
         part: _part(id: "p2", messageId: "m1", text: "two"),
       );
 
-      await history.service.capturePartRemoved(sessionId: "ses_a", messageId: "m1", partId: "p1");
+      await history.service.capturePartRemoved(
+        sessionId: "ses_a",
+        messageId: "m1",
+        partId: "p1",
+        shouldCapture: () => true,
+      );
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).single.parts.map((part) => part.id),
         const ["p2"],
       );
 
-      await history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m1");
+      await history.service.captureMessageRemoved(
+        sessionId: "ses_a",
+        messageId: "m1",
+        shouldCapture: () => true,
+      );
       expect(await _storedMessages(history: history, sessionId: "ses_a"), isEmpty);
     });
 
@@ -176,6 +185,48 @@ void main() {
       await listener.dispose();
 
       expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNull);
+    });
+
+    test("the listener no longer stores finalized parts", () async {
+      final history = createTestChatHistory();
+      final source = StreamController<NormalizedSourcedBridgeEvent>();
+      final listener = ChatHistoryListener(
+        source: source.stream,
+        chatHistoryService: history.service,
+      )..start();
+
+      source.add((
+        pluginId: "opencode",
+        generation: 1,
+        event: const BridgeSseMessagePartUpdated(
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "ses_a",
+            messageID: "m1",
+            type: PluginMessagePartType.text,
+            text: "one",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+            attachment: null,
+          ),
+        ),
+        allowDuringStop: false,
+        terminalHandoffConsumed: null,
+      ));
+      await source.close();
+      await listener.dispose();
+
+      expect(
+        await history.database.chatHistoryDao.getParts(sessionId: "ses_a"),
+        isEmpty,
+        reason: "part capture belongs to the Orchestrator, which owns live attachment materialization",
+      );
     });
 
     test("an invalidation failure does not fail listener teardown", () async {
@@ -346,7 +397,11 @@ void main() {
         message: _message(id: "m2"),
       );
 
-      await history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+      await history.service.captureMessageRemoved(
+        sessionId: "ses_a",
+        messageId: "m2",
+        shouldCapture: () => true,
+      );
       await history.service.backfillSession(sessionId: "ses_a");
 
       // The fetch happens after the removal, so its transcript is the newer
@@ -368,7 +423,11 @@ void main() {
       final history = createTestChatHistory(sessionRepository: repository);
       Future<void>? removal;
       repository.onFetch = () async {
-        removal = history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+        removal = history.service.captureMessageRemoved(
+          sessionId: "ses_a",
+          messageId: "m2",
+          shouldCapture: () => true,
+        );
       };
 
       await history.service.backfillSession(sessionId: "ses_a");
@@ -389,6 +448,7 @@ void main() {
           sessionId: "ses_a",
           messageId: "m1",
           partId: "m1-p1",
+          shouldCapture: () => true,
         );
       };
 

@@ -4,6 +4,7 @@ import "dart:convert";
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/sse/sse_event_delivery.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -59,7 +60,7 @@ void main() {
       final client = _RecordingRelayClient();
       manager.setRoomKey(makeRoomKey());
 
-      manager.enqueueEvent(_event("none"));
+      manager.enqueueUniform(_event("none"));
       await _pumpEventLoop();
 
       expect(client.sentConnIDs, isEmpty);
@@ -80,7 +81,7 @@ void main() {
       manager.subscribeForTest(2, client);
 
       final event = _event("repo-a");
-      manager.enqueueEvent(event);
+      manager.enqueueUniform(event);
 
       await _waitForSendCount(client, 2);
 
@@ -118,7 +119,7 @@ void main() {
       addTearDown(manager.stop);
 
       manager.subscribeForTest(7, client);
-      manager.enqueueEvent(_event("repo-x"));
+      manager.enqueueUniform(_event("repo-x"));
       await _pumpEventLoop();
 
       expect(client.sentConnIDs, isEmpty);
@@ -178,7 +179,7 @@ void main() {
 
       // Phone connects and receives one event.
       manager.subscribeForTest(1, client);
-      manager.enqueueEvent(_event("event-a"));
+      manager.enqueueUniform(_event("event-a"));
       await _waitForSendCount(client, 1);
       expect(client.sentConnIDs, [1]);
 
@@ -187,8 +188,8 @@ void main() {
       expect(manager.pendingReplayCount, equals(1));
 
       // Events arriving while phone is away are buffered in the orphan queue.
-      manager.enqueueEvent(_event("event-b"));
-      manager.enqueueEvent(_event("event-c"));
+      manager.enqueueUniform(_event("event-b"));
+      manager.enqueueUniform(_event("event-c"));
 
       // Phone reconnects with a new connID (relay assigns fresh IDs).
       manager.subscribeForTest(5, client);
@@ -214,11 +215,11 @@ void main() {
       manager.subscribeForTest(1, client);
       manager.subscribeForTest(2, client);
 
-      manager.enqueueEvent(_event("event-a"));
+      manager.enqueueUniform(_event("event-a"));
       await _waitForSendCount(client, 2);
 
       manager.unsubscribe(1);
-      manager.enqueueEvent(_event("event-b"));
+      manager.enqueueUniform(_event("event-b"));
       await _waitForSendCount(client, 3);
 
       manager.subscribeForTest(3, client);
@@ -247,7 +248,7 @@ void main() {
         manager.subscribeForTest(2, client);
 
         manager.unsubscribe(1);
-        manager.enqueueEvent(_event("queued-for-orphan"));
+        manager.enqueueUniform(_event("queued-for-orphan"));
         await _waitForSendCount(client, 1);
 
         now = now.add(SSEManager.defaultReplayWindow + const Duration(seconds: 1));
@@ -275,7 +276,7 @@ void main() {
       manager.subscribeForTest(1, client);
       manager.subscribeForTest(2, client);
 
-      manager.enqueueEvent(_event("before-orphan"));
+      manager.enqueueUniform(_event("before-orphan"));
       await _waitForSendCount(client, 2);
 
       // Simulate relay disconnect — all subscribers become orphans.
@@ -284,7 +285,7 @@ void main() {
       expect(manager.pendingReplayCount, equals(2));
 
       // Events arriving during relay reconnect are buffered.
-      manager.enqueueEvent(_event("during-reconnect"));
+      manager.enqueueUniform(_event("during-reconnect"));
 
       // First phone reconnects — picks up orphan with buffered event.
       manager.subscribeForTest(3, client);
@@ -312,13 +313,13 @@ void main() {
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
-      manager.enqueueEvent(_event("relay-turnover"));
+      manager.enqueueUniform(_event("relay-turnover"));
       await _waitForSendCount(client, 1);
       expect(manager.subscriberCount, 0);
       expect(manager.pendingReplayCount, 1);
 
       for (var index = 0; index < 5; index++) {
-        manager.enqueueEvent(_event("buffered-$index"));
+        manager.enqueueUniform(_event("buffered-$index"));
       }
 
       client.nextOutcome = RelaySendOutcome.sent;
@@ -347,12 +348,66 @@ void main() {
         manager.subscribeForTest(1, client);
         client.nextOutcome = RelaySendOutcome.sent;
       };
-      manager.enqueueEvent(_event("reused-connection-id"));
+      manager.enqueueUniform(_event("reused-connection-id"));
       await _waitForSendCount(client, 2);
 
       expect(manager.subscriberCount, 1);
       expect(manager.pendingReplayCount, 0);
       expect(client.sentConnIDs, [1, 1]);
+    });
+
+    test("each subscriber receives the attachment shape it subscribed with", () async {
+      final roomKey = makeRoomKey();
+      final client = _RecordingRelayClient();
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
+      manager.setRoomKey(roomKey);
+      addTearDown(manager.stop);
+
+      manager.subscribeForTest(1, client);
+      manager.subscribeForTest(2, client, attachmentDelivery: MessageAttachmentDelivery.storedReference);
+
+      manager.enqueueEvent(_attachmentShapedDelivery());
+      await _waitForSendCount(client, 2);
+
+      final legacy = await _decryptEventData(client.sentPayloads[0], roomKey);
+      final capable = await _decryptEventData(client.sentPayloads[1], roomKey);
+      expect(legacy, contains(_imageBase64));
+      expect(capable, isNot(contains(_imageBase64)));
+      expect(capable, contains("stored_image"));
+    });
+
+    test("reconnect adopts only an orphan queued for the same attachment shape", () async {
+      final roomKey = makeRoomKey();
+      final client = _RecordingRelayClient();
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
+      manager.setRoomKey(roomKey);
+      addTearDown(manager.stop);
+
+      manager.subscribeForTest(1, client);
+      manager.subscribeForTest(2, client, attachmentDelivery: MessageAttachmentDelivery.storedReference);
+      manager.unsubscribe(1);
+      manager.unsubscribe(2);
+      manager.enqueueEvent(_attachmentShapedDelivery());
+
+      // The capable phone reconnects first; the inline orphan must stay behind
+      // for the old app it belongs to.
+      manager.subscribeForTest(3, client, attachmentDelivery: MessageAttachmentDelivery.storedReference);
+      await _waitForSendCount(client, 1);
+      expect(manager.pendingReplayCount, 1);
+      expect(await _decryptEventData(client.sentPayloads.single, roomKey), isNot(contains(_imageBase64)));
+
+      manager.subscribeForTest(4, client);
+      await _waitForSendCount(client, 2);
+      expect(manager.pendingReplayCount, 0);
+      expect(await _decryptEventData(client.sentPayloads.last, roomKey), contains(_imageBase64));
     });
 
     test("stop clears subscribers and orphan queues", () {
@@ -391,7 +446,7 @@ void main() {
       addTearDown(manager.stop);
 
       manager.subscribeForTest(42, throwingClient);
-      manager.enqueueEvent(_event("repo-err"));
+      manager.enqueueUniform(_event("repo-err"));
 
       // Wait for the send function to throw and the onError callback to fire.
       await failureReported.future.timeout(const Duration(seconds: 5));
@@ -413,6 +468,56 @@ SesoriSseEvent _event(String worktree) {
       ),
     ],
   );
+}
+
+const _imageBase64 = "aW1hZ2UtYnl0ZXM=";
+
+/// One live part event in both shapes: the released inline payload and the
+/// reference payload that carries no bytes.
+SseEventDelivery _attachmentShapedDelivery() {
+  MessagePart part({required MessageAttachment attachment}) => MessagePart(
+    id: "p1",
+    sessionID: "ses_a",
+    messageID: "m1",
+    type: MessagePartType.file,
+    text: null,
+    tool: null,
+    state: null,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: attachment,
+  );
+  return SseEventDelivery.attachmentShaped(
+    inlineEvent: SesoriSseEvent.messagePartUpdated(
+      part: part(
+        attachment: const MessageAttachment.inlineImage(
+          mime: "image/png",
+          base64: _imageBase64,
+          filename: "shot.png",
+        ),
+      ),
+    ),
+    storedReferenceEvent: SesoriSseEvent.messagePartUpdated(
+      part: part(
+        attachment: MessageAttachment.storedImage(
+          attachmentId: "a" * 64,
+          bridgeId: "br_test1234",
+          mime: "image/png",
+          filename: "shot.png",
+          byteLength: 11,
+        ),
+      ),
+    ),
+  );
+}
+
+Future<String> _decryptEventData(List<int> framed, List<int> roomKey) async {
+  final message = RelayMessage.fromJson(await _decryptEnvelope(framed, roomKey));
+  return (message as RelaySseEvent).data;
 }
 
 Future<Map<String, dynamic>> _decryptEnvelope(
@@ -533,14 +638,21 @@ class _CompletingFailureReporter extends CapturingFailureReporter {
 }
 
 extension on SSEManager {
-  void subscribeForTest(int connID, RelayClient client) {
+  void subscribeForTest(
+    int connID,
+    RelayClient client, {
+    MessageAttachmentDelivery attachmentDelivery = MessageAttachmentDelivery.inline,
+  }) {
     subscribePath(
       connID: connID,
       path: "/global/event",
       client: client,
       connection: _testRelayConnection,
+      attachmentDelivery: attachmentDelivery,
     );
   }
+
+  void enqueueUniform(SesoriSseEvent event) => enqueueEvent(SseEventDelivery.uniform(event: event));
 }
 
 late RelayConnection _testRelayConnection;

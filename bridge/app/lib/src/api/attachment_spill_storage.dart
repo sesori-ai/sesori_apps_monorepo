@@ -89,6 +89,15 @@ class AttachmentSpillStorage {
     return file.readAsBytes();
   }
 
+  /// The stored byte length, or null when the spill file is gone.
+  Future<int?> byteLength({required AttachmentStorageScope scope, required String digest}) async {
+    if (!isContentAddress(digest: digest)) {
+      throw ArgumentError.value(digest, "digest", "not a sha256 content address");
+    }
+    final file = File(_filePath(scope: scope, digest: digest));
+    return file.existsSync() ? file.length() : null;
+  }
+
   Future<({Uint8List bytes, AttachmentThumbnailFormat format})?> readThumbnail({
     required AttachmentStorageScope scope,
     required String digest,

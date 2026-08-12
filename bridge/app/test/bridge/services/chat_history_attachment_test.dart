@@ -4,6 +4,7 @@ import "dart:typed_data";
 
 import "package:image/image.dart" as image;
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
+import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
@@ -180,6 +181,7 @@ void main() {
       chatHistoryRepository: repository,
       sessionRepository: _PresentSessionRepository(),
       attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+      bridgeIdProvider: const _BridgeIdProvider(),
     );
 
     await Future.wait([
@@ -293,4 +295,11 @@ class _TrackingChatHistoryRepository implements ChatHistoryRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+class _BridgeIdProvider implements BridgeIdProvider {
+  const _BridgeIdProvider();
+
+  @override
+  String get bridgeId => "br_test1234";
 }

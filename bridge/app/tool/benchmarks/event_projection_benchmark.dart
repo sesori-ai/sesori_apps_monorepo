@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
+import "package:sesori_bridge/src/bridge/sse/sse_event_delivery.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -182,6 +183,7 @@ class _EventProjectionBenchmark {
         path: "/global/event",
         client: relay.client,
         connection: relay.connection,
+        attachmentDelivery: MessageAttachmentDelivery.inline,
       );
       sseManager.unsubscribe(1);
     } finally {
@@ -294,7 +296,7 @@ class _EventProjectionBenchmark {
     }
     final mapped = bridgeEventMapper.map(event: output.single, pluginId: _pluginId);
     if (mapped == null) throw StateError("projected session update did not map to a shared event");
-    sseManager.enqueueEvent(mapped);
+    sseManager.enqueueEvent(SseEventDelivery.uniform(event: mapped));
   }
 
   Future<void> _seed({required AppDatabase database}) async {

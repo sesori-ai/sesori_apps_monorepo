@@ -24,6 +24,7 @@ import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
+import "deferred_part_event_buffer.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_detail_state.dart";
@@ -69,7 +70,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final FailureReporter _failureReporter;
   ComposerDraft _composerDraft;
   final PromptSendQueue _promptQueue = PromptSendQueue();
-  bool _isSending = false;
+  final DeferredPartEventBuffer _deferredPartEvents = DeferredPartEventBuffer();
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
@@ -177,6 +178,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<_SessionRefreshResult> _loadMessages({required bool isReload}) async {
     final connectionGeneration = _connectionGeneration;
+    final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     emit(const SessionDetailState.loading());
     late final SessionDetailLoadResult result;
@@ -208,6 +210,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
+        _deferredPartEvents.discardForMessagesThrough(
+          messageIds: snapshot.messages.map((message) => message.info.id),
+          sequence: deferredPartEventSequence,
+        );
         emit(_buildLoadedState(snapshot: snapshot));
         final effectiveProjectId = snapshot.projectId;
         if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
@@ -224,6 +230,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         // loading/error state.
         _sessionViewingService.setViewingSession(_sessionId);
         _drainPendingEvents();
+        _drainDeferredPartsForLoadedMessages();
         _tryDrainQueue();
         return _SessionRefreshResult.applied;
       case SessionDetailLoadResultWaitingForConnection():
@@ -243,6 +250,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _projectViewingService.markClaimFailed(claim: _projectViewClaim);
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
+        _deferredPartEvents.clear();
         loge("Session detail load failed", error, stackTrace);
         emit(
           SessionDetailState.failed(
@@ -268,6 +276,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (cursor == null || current.isLoadingOlderMessages) return;
 
     final generation = _transcriptGeneration;
+    final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     emit(current.copyWith(isLoadingOlderMessages: true));
     final page = await _loadService.loadOlderMessages(sessionId: _sessionId, before: cursor);
     if (isClosed) return;
@@ -296,6 +305,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       for (final message in page.messages)
         if (!known.contains(message.info.id)) message,
     ];
+    _deferredPartEvents.discardForMessagesThrough(
+      messageIds: page.messages.map((message) => message.info.id),
+      sequence: deferredPartEventSequence,
+    );
     emit(
       latest.copyWith(
         messages: [...older, ...latest.messages],
@@ -303,6 +316,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         isLoadingOlderMessages: false,
       ),
     );
+    _drainDeferredPartsForLoadedMessages();
   }
 
   Future<void> _runLoadingRefresh({required _SessionRefreshTrigger trigger}) async {
@@ -477,8 +491,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
     final connectionGeneration = _connectionGeneration;
     final commandCatalogGeneration = _commandCatalogGeneration;
+    final deferredPartEventSequence = _deferredPartEvents.latestSequence;
 
-    emit(current.copyWith(isRefreshing: true, queuedMessages: _promptQueue.items));
+    emit(
+      current.copyWith(
+        isRefreshing: true,
+        queuedMessages: _promptQueue.items,
+        sendingSubmission: _promptQueue.active,
+      ),
+    );
 
     try {
       final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
@@ -486,7 +507,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       if (connectionGeneration != _connectionGeneration) {
         final latest = state;
         if (latest is SessionDetailLoaded) {
-          emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+          emit(
+            latest.copyWith(
+              isRefreshing: false,
+              queuedMessages: _promptQueue.items,
+              sendingSubmission: _promptQueue.active,
+            ),
+          );
         }
         return _SessionRefreshResult.staleConnection;
       }
@@ -547,6 +574,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
           // The transcript is being replaced wholesale, so any older-page
           // request still in flight no longer joins onto it.
+          _deferredPartEvents.discardForMessagesThrough(
+            messageIds: snapshot.messages.map((message) => message.info.id),
+            sequence: deferredPartEventSequence,
+          );
           _transcriptGeneration++;
           emit(
             latest.copyWith(
@@ -579,6 +610,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
                 stagedCommand: preservedStagedCommand,
               ),
               queuedMessages: _promptQueue.items,
+              sendingSubmission: _promptQueue.active,
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
@@ -592,19 +624,32 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             _sessionViewingService.setViewingSession(_sessionId);
           }
           _drainPendingEvents();
+          _drainDeferredPartsForLoadedMessages();
           return _SessionRefreshResult.applied;
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
           final latest = state;
           if (latest is SessionDetailLoaded) {
-            emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+            emit(
+              latest.copyWith(
+                isRefreshing: false,
+                queuedMessages: _promptQueue.items,
+                sendingSubmission: _promptQueue.active,
+              ),
+            );
           }
           return _SessionRefreshResult.waitingForConnection;
         case SessionDetailLoadResultFailed(:final error, :final stackTrace):
           logw("Silent refresh failed", error, stackTrace);
           final latest = state;
           if (latest is SessionDetailLoaded) {
-            emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+            emit(
+              latest.copyWith(
+                isRefreshing: false,
+                queuedMessages: _promptQueue.items,
+                sendingSubmission: _promptQueue.active,
+              ),
+            );
           }
           return _SessionRefreshResult.failed;
       }
@@ -613,7 +658,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       if (isClosed) return _SessionRefreshResult.closed;
       final latest = state;
       if (latest is SessionDetailLoaded) {
-        emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+        emit(
+          latest.copyWith(
+            isRefreshing: false,
+            queuedMessages: _promptQueue.items,
+            sendingSubmission: _promptQueue.active,
+          ),
+        );
       }
       return _SessionRefreshResult.failed;
     }
@@ -1084,7 +1135,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (index >= 0) {
       messages[index] = messages[index].copyWith(info: message);
     } else {
-      messages.add(MessageWithParts(info: message, parts: const []));
+      final entry = MessageWithParts(info: message, parts: const []);
+      final insertionIndex = _messageInsertionIndex(messages: messages, message: message);
+      messages.insert(insertionIndex, entry);
     }
 
     if (isClosed) return;
@@ -1107,6 +1160,21 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     } else {
       emit(current.copyWith(messages: messages));
     }
+    _drainDeferredPartsForMessage(messageId: message.id);
+  }
+
+  int _messageInsertionIndex({required List<MessageWithParts> messages, required Message message}) {
+    final created = message.time?.created;
+    if (created == null) return messages.length;
+    for (var index = 0; index < messages.length; index++) {
+      final existing = messages[index].info;
+      final existingCreated = existing.time?.created;
+      if (existingCreated == null) continue;
+      if (existingCreated > created) {
+        return index;
+      }
+    }
+    return messages.length;
   }
 
   void _onMessageRemoved(String messageId) {
@@ -1114,6 +1182,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     final messages = current.messages.where((item) => item.info.id != messageId).toList();
+    _deferredPartEvents.removeMessage(messageId: messageId);
 
     if (isClosed) return;
     emit(current.copyWith(messages: messages));
@@ -1149,19 +1218,24 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final messages = List<MessageWithParts>.from(current.messages);
     final messageIndex = messages.indexWhere((item) => item.info.id == part.messageID);
 
-    if (messageIndex >= 0) {
-      final message = messages[messageIndex];
-      final parts = List<MessagePart>.from(message.parts);
-      final partIndex = parts.indexWhere((item) => item.id == part.id);
-
-      if (partIndex >= 0) {
-        parts[partIndex] = part;
-      } else {
-        parts.add(part);
-      }
-
-      messages[messageIndex] = message.copyWith(parts: parts);
+    if (messageIndex < 0) {
+      _deferredPartEvents.deferUpdated(part: part);
+      if (isClosed) return;
+      emit(current.copyWith(streamingText: _streamingBuffer.snapshot()));
+      return;
     }
+
+    final message = messages[messageIndex];
+    final parts = List<MessagePart>.from(message.parts);
+    final partIndex = parts.indexWhere((item) => item.id == part.id);
+
+    if (partIndex >= 0) {
+      parts[partIndex] = part;
+    } else {
+      parts.add(part);
+    }
+
+    messages[messageIndex] = message.copyWith(parts: parts);
 
     if (isClosed) return;
     emit(
@@ -1181,11 +1255,20 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final messages = List<MessageWithParts>.from(current.messages);
     final messageIndex = messages.indexWhere((item) => item.info.id == messageId);
 
-    if (messageIndex >= 0) {
-      final message = messages[messageIndex];
-      final parts = message.parts.where((item) => item.id != partId).toList();
-      messages[messageIndex] = message.copyWith(parts: parts);
+    if (messageIndex < 0) {
+      _deferredPartEvents.deferRemoved(
+        sessionId: _sessionId,
+        messageId: messageId,
+        partId: partId,
+      );
+      if (isClosed) return;
+      emit(current.copyWith(streamingText: _streamingBuffer.snapshot()));
+      return;
     }
+
+    final message = messages[messageIndex];
+    final parts = message.parts.where((item) => item.id != partId).toList();
+    messages[messageIndex] = message.copyWith(parts: parts);
 
     if (isClosed) return;
     emit(
@@ -1194,6 +1277,21 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         streamingText: _streamingBuffer.snapshot(),
       ),
     );
+  }
+
+  void _drainDeferredPartsForMessage({required String messageId}) {
+    final events = _deferredPartEvents.takeForMessage(messageId: messageId);
+    events.forEach(_processSessionEvent);
+  }
+
+  void _drainDeferredPartsForLoadedMessages() {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final knownMessageIds = current.messages.map((message) => message.info.id).toSet();
+    final readyMessageIds = _deferredPartEvents.messageIds.where(knownMessageIds.contains).toList();
+    for (final messageId in readyMessageIds) {
+      _drainDeferredPartsForMessage(messageId: messageId);
+    }
   }
 
   void _emitStreamingSnapshot() {
@@ -1341,40 +1439,25 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
+    final selectedAgent = current is SessionDetailLoaded ? current.selectedAgent : null;
+    final selectedAgentModel = current is SessionDetailLoaded ? current.selectedAgentModel : null;
     final submission = normalizedCommand == null
-        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
-        : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
-    if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
-      _promptQueue.enqueue(submission);
-      _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
-      if (_isConnected && current is SessionDetailLoaded) {
-        unawaited(_drainQueuedMessages());
-      }
-      return;
-    }
-
-    // Send from the submission so the immediate and drained paths carry the
-    // exact same payload — notably a command submission's empty attachments.
-    final result = await _sessionRepository.sendMessage(
-      sessionId: _sessionId,
-      text: submission.text,
-      attachments: submission.attachments,
-      agent: current.selectedAgent,
-      model: _agentModelToPromptModel(current.selectedAgentModel),
-      variant: switch (current.selectedAgentModel?.variant) {
-        null => null,
-        final variant => SessionVariant(id: variant),
-      },
-      command: submission.command,
-    );
-
-    switch (result) {
-      case SuccessResponse():
-        _reportAcceptedSubmission(submission: submission);
-      case ErrorResponse():
-        _promptQueue.requeue(submission);
-        _emitQueueUpdate(_latestLoadedState());
-    }
+        ? QueuedSessionSubmission.text(
+            text: trimmed,
+            inputMode: inputMode,
+            attachments: attachments,
+            agent: selectedAgent,
+            agentModel: selectedAgentModel,
+          )
+        : QueuedSessionSubmission.command(
+            text: trimmed,
+            command: normalizedCommand,
+            agent: selectedAgent,
+            agentModel: selectedAgentModel,
+          );
+    _promptQueue.enqueue(submission);
+    _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
+    if (_isConnected && current is SessionDetailLoaded) await _drainQueuedMessages();
   }
 
   void cancelQueuedMessage(int index) {
@@ -1393,11 +1476,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final current = known ?? state;
     if (current is! SessionDetailLoaded) return;
-    emit(current.copyWith(queuedMessages: _promptQueue.items));
+    emit(
+      current.copyWith(
+        queuedMessages: _promptQueue.items,
+        sendingSubmission: _promptQueue.active,
+      ),
+    );
   }
 
   Future<void> _drainQueuedMessages() async {
-    if (_isSending) return;
+    if (_promptQueue.isSending) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
@@ -1410,10 +1498,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       // cancellable rather than allowing later text prompts to overtake it.
       return;
     }
-    final submission = _promptQueue.dequeue();
+    final submission = _promptQueue.beginSend();
     if (submission == null) return;
+    final sendConnectionGeneration = _connectionGeneration;
 
-    _isSending = true;
     _emitQueueUpdate(current);
 
     var sendSucceeded = false;
@@ -1422,30 +1510,37 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         sessionId: _sessionId,
         text: submission.text,
         attachments: submission.attachments,
-        agent: current.selectedAgent,
-        model: _agentModelToPromptModel(current.selectedAgentModel),
-        variant: switch (current.selectedAgentModel?.variant) {
+        agent: submission.agent,
+        model: _agentModelToPromptModel(submission.agentModel),
+        variant: switch (submission.agentModel?.variant) {
           null => null,
           final variant => SessionVariant(id: variant),
         },
         command: submission.command,
       );
 
-      if (result case ErrorResponse()) {
-        _promptQueue.requeue(submission);
-        _emitQueueUpdate(_latestLoadedState());
-      } else {
-        sendSucceeded = true;
-        _reportAcceptedSubmission(submission: submission);
+      switch (result) {
+        case SuccessResponse():
+          sendSucceeded = true;
+          _promptQueue.completeSend();
+          _reportAcceptedSubmission(submission: submission);
+        case ErrorResponse():
+          _promptQueue.failSend();
       }
-    } finally {
-      _isSending = false;
+    } on Object catch (error, stackTrace) {
+      _promptQueue.failSend();
+      logw("Failed to send queued session submission", error, stackTrace);
     }
 
+    _emitQueueUpdate(_latestLoadedState());
+
+    if (!sendSucceeded && sendConnectionGeneration != _connectionGeneration && _isConnected) {
+      unawaited(_drainQueuedMessages());
+      return;
+    }
     if (sendSucceeded) {
       final latest = state;
       if (latest is SessionDetailLoaded && _isConnected) {
-        _emitQueueUpdate(latest);
         unawaited(_drainQueuedMessages());
       }
     }
@@ -1907,6 +2002,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
       queuedMessages: _promptQueue.items,
+      sendingSubmission: _promptQueue.active,
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,
@@ -1977,6 +2073,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _projectViewingService.releaseClaim(claim: _projectViewClaim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
+    _deferredPartEvents.clear();
     _eventSubscription.cancel();
     _globalEventSubscription.cancel();
     _connectionStatusSubscription.cancel();

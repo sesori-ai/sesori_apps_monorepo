@@ -26,6 +26,10 @@ entirely along with its transcript and, optionally, its worktree and branch.
   cancels its turn and pending input, waits within a bounded deadline for that
   session to settle, then closes it before local plugin state is removed. A
   timeout or close failure remains observable and leaves local state retryable.
+- OMP tombstone reconciliation pages its ACP catalog to exhaustion, resumes the
+  matching session without replay, invokes `/session delete`, then closes it.
+  A bounded but truncated scan uses OMP's global-ID resume fallback; only an
+  exhausted scan is treated as idempotent not-found.
 - Cleanup safety rejection happens before mutation. Once cleanup starts, a later
   visible failure can leave an earlier requested step complete, such as a removed
   worktree with its branch still present; retry can finish the residue. The session
@@ -85,4 +89,5 @@ branches that remain after the asserted cleanup behavior.
 
 Bridge session lifecycle, deletion, archived-validator, and mutation dispatch
 services; chat-history export and purge; archived-record completeness model;
-worktree service; shared cleanup rejection model; client list/detail surfaces.
+worktree service; shared cleanup rejection model; OMP cleanup service; client
+list/detail surfaces.

@@ -10,6 +10,7 @@ import "../../../core/widgets/agent_model_buttons.dart";
 import "../../../core/widgets/composer_surface_style.dart";
 import "background_tasks_bar.dart";
 import "prompt_input.dart";
+import "queued_message_bubble.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
 
@@ -50,8 +51,8 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
   /// the chat — the background-tasks bar, queued messages and the composer. Fed
   /// to the message list so the newest message rests just above them (and the
   /// "jump to latest" pill clears them) while older content scrolls up behind
-  /// the composer's fade. Stays 0 in the read-only variant, which renders none
-  /// of these controls.
+  /// the composer's fade. Read-only variants normally stay at 0, except while
+  /// an already-submitted prompt remains visible at the bottom edge.
   ///
   /// A notifier rather than state: the composer's layout morphs animate its
   /// height frame-by-frame, and each measurement must re-inset only the
@@ -84,6 +85,15 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
     final loc = context.loc;
     final state = widget.state;
     final editableSessionId = widget.readOnly ? null : widget.sessionId;
+    final hasBottomControls =
+        editableSessionId != null || state.sendingSubmission != null || state.queuedMessages.isNotEmpty;
+    final showEmptyState =
+        !state.hasRenderableMessages &&
+        state.retryErrorMessage == null &&
+        state.olderMessagesCursor == null &&
+        !state.isLoadingOlderMessages &&
+        state.sendingSubmission == null &&
+        state.queuedMessages.isEmpty;
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
 
     // The scaffold lets this view fill the full height behind the transparent
@@ -97,7 +107,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
         Column(
           children: [
             Expanded(
-              child: state.messages.isEmpty && state.retryErrorMessage == null
+              child: showEmptyState
                   ? Center(child: Text(loc.sessionDetailEmpty))
                   : PregoTopBarInsetBuilder(
                       builder: (context, topInset, _) => ValueListenableBuilder<double>(
@@ -105,6 +115,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                         builder: (context, bottomControlsHeight, _) => SessionDetailMessageList(
                           projectId: widget.projectId,
                           messages: state.messages,
+                          isLoadingOlderMessages: state.isLoadingOlderMessages,
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,
@@ -120,11 +131,10 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                           // queued messages and composer); content in between scrolls
                           // up behind the bar's fade and the composer's fade.
                           topInset: topInset,
-                          // The read-only variant renders no floating controls, so
-                          // force the inset to 0 there — guarding against a stale
-                          // measured height lingering if a state object is reused
-                          // across an editable -> read-only transition.
-                          bottomInset: widget.readOnly ? 0 : bottomControlsHeight,
+                          // Read-only sessions normally have no controls, but a
+                          // send already in progress or stranded by archiving
+                          // remains visible and must not cover the transcript.
+                          bottomInset: hasBottomControls ? bottomControlsHeight : 0,
                         ),
                       ),
                     ),
@@ -178,7 +188,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
         // are measured as one cluster so the chat insets its newest message
         // clear of the whole stack — and so the tasks bar/queued stay tappable
         // above the composer instead of hidden behind it.
-        if (editableSessionId != null)
+        if (hasBottomControls)
           Positioned(
             bottom: 0,
             left: 0,
@@ -191,7 +201,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (state.children.isNotEmpty)
+                  if (editableSessionId != null && state.children.isNotEmpty)
                     ValueListenableBuilder<PregoComposerSurfaceStyle>(
                       valueListenable: _composerSurfaceStyle,
                       builder: (context, surfaceStyle, _) => BackgroundTasksBar(
@@ -201,59 +211,68 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                         childStatuses: state.childStatuses,
                       ),
                     ),
+                  if (state.sendingSubmission case final sendingSubmission?)
+                    QueuedMessageBubble(
+                      submission: sendingSubmission,
+                      presentation: const QueuedMessageBubblePresentation.sending(),
+                    ),
                   if (state.queuedMessages.isNotEmpty)
                     SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: PromptInput(
-                      draftIdentity: editableSessionId,
-                      initialDraft: context.read<SessionDetailCubit>().composerDraft,
-                      // Queued messages count: the user has already "sent"
-                      // something, so the composer should rest as a follow-up
-                      // field even before the first message lands in the list.
-                      hasMessages: state.messages.isNotEmpty || state.queuedMessages.isNotEmpty,
-                      attachmentsSupported: state.supportsPromptAttachments,
-                      isBusy: hasActiveWork(
-                        sessionStatus: state.sessionStatus,
-                        childStatuses: state.childStatuses,
-                      ),
-                      onSend: ({required text, required command, required inputMode, required attachments}) =>
-                          context.read<SessionDetailCubit>().sendMessage(
-                            text: text,
-                            command: command,
-                            inputMode: inputMode,
-                            attachments: attachments,
-                          ),
-                      onVoiceTranscriptionCompleted: context
-                          .read<SessionDetailCubit>()
-                          .reportVoiceTranscriptionCompleted,
-                      onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(
-                        draft: draft,
-                      ),
-                      onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
-                      onAbort: () => context.read<SessionDetailCubit>().abort(),
-                      surfaceStyleController: _composerSurfaceStyle,
-                      header: null,
-                      composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
-                        valueListenable: _composerSurfaceStyle,
-                        builder: (context, surfaceStyle, _) => AgentModelButtons(
-                          surfaceStyle: surfaceStyle,
-                          agents: state.availableAgents,
-                          selectedAgent: state.selectedAgent,
-                          onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
-                          providers: state.availableProviders,
-                          selectedAgentModel: state.selectedAgentModel,
-                          onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                          availableVariants: state.availableVariants,
-                          onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                  if (editableSessionId != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: PromptInput(
+                        draftIdentity: editableSessionId,
+                        initialDraft: context.read<SessionDetailCubit>().composerDraft,
+                        // Queued messages count: the user has already "sent"
+                        // something, so the composer should rest as a follow-up
+                        // field even before the first message lands in the list.
+                        hasMessages:
+                            state.hasRenderableMessages ||
+                            state.sendingSubmission != null ||
+                            state.queuedMessages.isNotEmpty,
+                        attachmentsSupported: state.supportsPromptAttachments,
+                        isBusy: hasActiveWork(
+                          sessionStatus: state.sessionStatus,
+                          childStatuses: state.childStatuses,
                         ),
+                        onSend: ({required text, required command, required inputMode, required attachments}) =>
+                            context.read<SessionDetailCubit>().sendMessage(
+                              text: text,
+                              command: command,
+                              inputMode: inputMode,
+                              attachments: attachments,
+                            ),
+                        onVoiceTranscriptionCompleted: context
+                            .read<SessionDetailCubit>()
+                            .reportVoiceTranscriptionCompleted,
+                        onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(
+                          draft: draft,
+                        ),
+                        onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
+                        onAbort: () => context.read<SessionDetailCubit>().abort(),
+                        surfaceStyleController: _composerSurfaceStyle,
+                        header: null,
+                        composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                          valueListenable: _composerSurfaceStyle,
+                          builder: (context, surfaceStyle, _) => AgentModelButtons(
+                            surfaceStyle: surfaceStyle,
+                            agents: state.availableAgents,
+                            selectedAgent: state.selectedAgent,
+                            onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
+                            providers: state.availableProviders,
+                            selectedAgentModel: state.selectedAgentModel,
+                            onModelSelected: context.read<SessionDetailCubit>().selectModel,
+                            availableVariants: state.availableVariants,
+                            onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                          ),
+                        ),
+                        availableCommands: state.availableCommands,
+                        stagedCommand: state.stagedCommand,
+                        onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
+                        onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
                       ),
-                      availableCommands: state.availableCommands,
-                      stagedCommand: state.stagedCommand,
-                      onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
-                      onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
                     ),
-                  ),
                 ],
               ),
             ),

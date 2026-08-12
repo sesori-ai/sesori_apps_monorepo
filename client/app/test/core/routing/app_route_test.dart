@@ -175,13 +175,16 @@ void main() {
       expect(settingsPage.child, isA<SettingsScreen>());
     });
 
-    test("settings child routes build notifications, Harnesses, and profile without management nesting", () {
+    test("settings child routes build their screens without management nesting", () {
       final settingsRoute = buildAppRoutes().whereType<GoRoute>().singleWhere(
         (route) => route.path == AppRouteDef.settings.path,
       );
       final children = settingsRoute.routes.whereType<GoRoute>().toList();
 
-      expect(children.map((route) => route.path), equals(["notifications", "harnesses", "profile"]));
+      expect(
+        children.map((route) => route.path),
+        equals(["notifications", "harnesses", "profile"]),
+      );
       expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
       // Harnesses rise as a modal from the new-session harness menu and push
       // in from the settings list, so the route builds its own page per

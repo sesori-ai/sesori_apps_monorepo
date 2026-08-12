@@ -118,6 +118,69 @@ void main() {
       expect(plugin.supportsFormElicitation, isTrue);
     });
 
+    test("does not prompt after a partially applied model selection", () async {
+      await connect();
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final createFrame = await waitForFrame(AcpMethods.sessionNew);
+      respond(createFrame, {
+        "sessionId": "session-1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "one/model",
+            "options": const [
+              {"value": "one/model", "name": "One"},
+              {"value": "other/team/model", "name": "Other"},
+            ],
+          },
+        ],
+      });
+      await creating;
+
+      await plugin.sendPrompt(
+        sessionId: "session-1",
+        parts: const [PluginPromptPart.text(text: "private prompt")],
+        variant: null,
+        agent: null,
+        model: (providerID: "other", modelID: "other/team/model"),
+      );
+      final selection = await waitForFrame(AcpMethods.sessionSetConfigOption);
+      expect(selection["params"], {
+        "sessionId": "session-1",
+        "configId": "model",
+        "value": "other/team/model",
+      });
+      respond(selection, {
+        "sessionId": "session-1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "one/model",
+            "options": const [
+              {"value": "one/model", "name": "One"},
+              {"value": "other/team/model", "name": "Other"},
+            ],
+          },
+        ],
+      });
+      for (var i = 0; i < 200 && events.whereType<BridgeSseSessionError>().isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      expect(frames(AcpMethods.sessionPrompt), isEmpty);
+      expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
+    });
+
     test("uses ACP global and cwd session list forms", () async {
       await connect(
         capabilities: const {

@@ -635,13 +635,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
-  String get settingsSectionChatInput => 'Chat input';
+  String get settingsDefaultInputTitle => 'Default input';
 
   @override
-  String get settingsChatInputVoiceFirst => 'Voice first';
+  String get settingsDefaultInputVoice => 'Voice';
 
   @override
-  String get settingsChatInputTextFirst => 'Text first';
+  String get settingsDefaultInputText => 'Text';
+
+  @override
+  String get settingsDefaultInputTextPreview => 'Ask Sesori';
 
   @override
   String get settingsSectionSupport => 'Support';
@@ -1001,6 +1004,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailQueuedCommand => 'Queued command';
+
+  @override
+  String get sessionDetailSendingMessage => 'Sending';
 
   @override
   String get sessionDetailCancelQueued => 'Cancel';

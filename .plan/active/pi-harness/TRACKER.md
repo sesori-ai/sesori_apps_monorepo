@@ -3,16 +3,17 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `fd6c797a`
-- **Series state:** Step 5/21 merged; Step 6/21 ready to publish
-- **Current step:** 6/21, add the OMP ACP plugin core
+- **Implementation base:** `origin/main` at `ec290e14`
+- **Series state:** Step 6/21 merged; Step 7/21 in review
+- **Current step:** 7/21, expose OMP options and persisted cleanup
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
 - **Step 4 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/829
 - **Step 5 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/832
-- **Step 6 PR:** not opened
-- **Next action:** publish Step 6, then start Step 7 locally
+- **Step 6 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/838
+- **Step 7 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/846
+- **Next action:** monitor Step 7; Step 8 remains blocked on its runtime dependency
 
 ## Locked Decisions
 
@@ -45,8 +46,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 3/21 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/21]` | 1,200-1,500 (recorded overage) | Merged as PR #820; title normalized |
 | [x] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Merged as PR #829 |
 | [x] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 (recorded overage) | Merged as PR #832 |
-| [ ] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Verified; ready to publish |
-| [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 | Not started |
+| [x] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Merged as PR #838 |
+| [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 (recorded overage) | In review as PR #846 |
 | [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Blocked on runtime dependency |
 | [ ] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Blocked on Step 8 |
 | [ ] | 10/21 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 | Not started |
@@ -214,6 +215,35 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   client-UI change; app registration remains Step 18.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
 - Diff: +666/-12 = 678 changed lines; generated lines: 0; tests run: 11.
+
+### Step 7/21
+
+- Added OMP-owned bounded ACP leases, scratch `--session-dir` catalog probes,
+  mapped repositories, coherent normalized-project trackers, and options and
+  persisted-cleanup services.
+- Project options preserve exact slash-containing model values, the configured
+  pre-sweep default, model-specific thinking variants, modes, and project-local
+  command snapshots. Rejected or partially applied config writes fail before
+  prompt dispatch.
+- Persisted cleanup exhausts opaque ACP pagination before idempotent not-found,
+  uses global-ID resume after a truncated scan, invokes `/session delete`, then
+  closes and settles the isolated lease.
+- `dart pub get` from `bridge/`: pass.
+- `dart analyze --fatal-infos` from `bridge/sesori_plugin_omp/` and
+  `bridge/sesori_plugin_acp/`: pass.
+- `dart test` from `bridge/sesori_plugin_omp/`: pass, 30 tests.
+- `dart test` from `bridge/sesori_plugin_acp/`: pass, 240 tests.
+- `dart test` from `bridge/sesori_plugin_cursor/`: pass, 126 tests.
+- Architecture implementation review rejected raw ACP results crossing the OMP
+  repository boundary; repositories now own transport mapping. Second review:
+  approved with no findings.
+- No user-visible, database, client/bridge wire-contract, or client-UI change;
+  OMP persisted artifacts are removed only for already tombstoned sessions.
+- `git diff --check`: pass.
+- Diff: +2,324/-28 = 2,352 changed lines; generated lines: 0; tests run: 396.
+- Recorded overage: the planned catalog/options and persisted-cleanup layers,
+  isolated ACP lifecycle, and focused tests form one coherent Step 7 boundary;
+  splitting would publish an incomplete plugin contract.
 
 ## Findings And Plan Deltas
 

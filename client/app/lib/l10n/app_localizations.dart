@@ -1249,23 +1249,29 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
-  /// Settings section choosing which input the session composer leads with
+  /// Settings entry and page title for choosing the default session composer input
   ///
   /// In en, this message translates to:
-  /// **'Chat input'**
-  String get settingsSectionChatInput;
+  /// **'Default input'**
+  String get settingsDefaultInputTitle;
 
-  /// Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation
+  /// Default input option that leads with voice dictation
   ///
   /// In en, this message translates to:
-  /// **'Voice first'**
-  String get settingsChatInputVoiceFirst;
+  /// **'Voice'**
+  String get settingsDefaultInputVoice;
 
-  /// Chat input option: the composer rests as a tap-to-type field with the microphone alongside
+  /// Default input option that leads with typed text
   ///
   /// In en, this message translates to:
-  /// **'Text first'**
-  String get settingsChatInputTextFirst;
+  /// **'Text'**
+  String get settingsDefaultInputText;
+
+  /// Placeholder shown in the typed-input preview
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Sesori'**
+  String get settingsDefaultInputTextPreview;
 
   /// No description provided for @settingsSectionSupport.
   ///
@@ -1944,6 +1950,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Queued command'**
   String get sessionDetailQueuedCommand;
+
+  /// No description provided for @sessionDetailSendingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get sessionDetailSendingMessage;
 
   /// No description provided for @sessionDetailCancelQueued.
   ///

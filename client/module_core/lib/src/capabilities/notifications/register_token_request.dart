@@ -9,6 +9,10 @@ sealed class RegisterTokenRequest with _$RegisterTokenRequest {
   const factory RegisterTokenRequest({
     required String token,
     required DevicePlatform platform,
+    // Must serialize as an absent key rather than an explicit null: the server
+    // treats deviceId as optional, which accepts omission but 400s on null.
+    // include_if_null: false in build.yaml is what produces that package-wide.
+    required String? deviceId,
   }) = _RegisterTokenRequest;
 
   factory RegisterTokenRequest.fromJson(Map<String, dynamic> json) => _$RegisterTokenRequestFromJson(json);

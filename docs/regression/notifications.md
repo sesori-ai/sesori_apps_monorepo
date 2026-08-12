@@ -19,6 +19,10 @@ Apple and Google is external.
   produced it.
 - The client registers when authenticated, re-registers on token refresh, unregisters before logout, restores
   registration if logout fails, and never re-registers while logout is in flight.
+- Registration sends the same device ID the preferences are stored under, so the server can associate this push token
+  with this device and suppress a disabled category before it reaches the delivery provider. A device ID that cannot be
+  read registers the token without one: that install stays unfiltered rather than losing push, and recovers on the next
+  registration.
 - Foreground rendering needs the category enabled plus title and body; an unknown category and a preference read
   failure both default to enabled. Preferences are per account and cleared on account switch.
 - A notification opened while unauthenticated defers until authentication, then
@@ -34,8 +38,8 @@ Apple and Google is external.
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
 | L2 Routine | Automated and headless bridge, representative plugin, fake push client: current event-to-payload content mapping, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. |
-| L3 Release | Client end to end on the release-target client platform with a fake messaging source: registration, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. |
-| L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
+| L3 Release | Client end to end on the release-target client platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. |
+| L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
 
 ## Exploration Guidance

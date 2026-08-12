@@ -31,6 +31,7 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
   late String? _retryErrorMessage;
+  bool _isLoadingOlderMessages = false;
 
   @override
   void initState() {
@@ -40,8 +41,15 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
     _retryErrorMessage = widget.initialRetryErrorMessage;
   }
 
+  void startLoadingOlderMessages() {
+    setState(() => _isLoadingOlderMessages = true);
+  }
+
   void prependOlderMessages({required List<MessageWithParts> older}) {
-    setState(() => _messages = [...older, ..._messages]);
+    setState(() {
+      _messages = [...older, ..._messages];
+      _isLoadingOlderMessages = false;
+    });
   }
 
   void appendNewestMessage(MessageWithParts message) {
@@ -72,6 +80,7 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
+          isLoadingOlderMessages: _isLoadingOlderMessages,
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
@@ -124,6 +133,16 @@ MessageWithParts _message({
     ],
   );
 }
+
+const _emptyUserMessage = MessageWithParts(
+  info: Message.user(
+    id: "empty-user",
+    sessionID: "session-1",
+    agent: null,
+    time: null,
+  ),
+  parts: <MessagePart>[],
+);
 
 List<MessageWithParts> _userMessages({required int count}) {
   return List.generate(
@@ -179,6 +198,28 @@ Future<void> _detachViewport(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets("does not render a user envelope until it has visible parts", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: const [_emptyUserMessage],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_messageKey("empty-user"), findsNothing);
+
+    key.currentState!.appendNewestMessage(
+      _message(messageId: "visible-user", role: "user", text: "Visible prompt"),
+    );
+    await _pumpListUpdate(tester);
+
+    expect(find.text("Visible prompt"), findsOneWidget);
+    expect(_messageKey("empty-user"), findsNothing);
+  });
+
   testWidgets("an older page appears after it is prepended while scrolled back", (tester) async {
     final key = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -199,10 +240,13 @@ void main() {
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
     await tester.pumpAndSettle();
 
-    key.currentState!.prependOlderMessages(older: [
-      for (var index = 0; index < 10; index++)
-        _message(messageId: "m$index", role: "user", text: "message $index"),
-    ]);
+    key.currentState!.startLoadingOlderMessages();
+    await tester.pump();
+    key.currentState!.prependOlderMessages(
+      older: [
+        for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
+      ],
+    );
     await tester.pumpAndSettle();
 
     // Scroll the rest of the way back to look for the oldest message.
@@ -218,13 +262,48 @@ void main() {
     );
   });
 
+  testWidgets("an older page still appears when a frozen message is removed during loading", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: [
+          for (var index = 10; index < 40; index++)
+            _message(messageId: "m$index", role: "user", text: "message $index"),
+        ],
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+    await tester.pumpAndSettle();
+    key.currentState!.startLoadingOlderMessages();
+    await tester.pump();
+    key.currentState!.removeMessage("m20");
+    await tester.pump();
+    key.currentState!.prependOlderMessages(
+      older: [
+        for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    for (var attempt = 0; attempt < 15; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.textContaining("message 0"), findsOneWidget);
+  });
+
   testWidgets("scrolling back through history requests the older page", (tester) async {
     var requested = 0;
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
         initialMessages: [
-          for (var index = 0; index < 40; index++)
-            _message(messageId: "m$index", role: "user", text: "message $index"),
+          for (var index = 0; index < 40; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
         ],
         initialStreamingText: const {},
         onLoadOlderMessages: () async => requested++,

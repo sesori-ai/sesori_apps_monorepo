@@ -136,13 +136,13 @@ class _SettingsBody extends StatelessWidget {
                 const BridgeSettingsSection(),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
-                  title: loc.settingsSectionAppearance,
-                  child: const AppearancePicker(),
+                  title: loc.settingsDefaultInputTitle,
+                  child: const ChatInputModePicker(),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
-                  title: loc.settingsSectionChatInput,
-                  child: const ChatInputModePicker(),
+                  title: loc.settingsSectionAppearance,
+                  child: const AppearancePicker(),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(

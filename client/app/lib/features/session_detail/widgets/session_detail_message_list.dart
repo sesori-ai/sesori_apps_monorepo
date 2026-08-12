@@ -4,7 +4,7 @@ import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
 import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
-import "package:sesori_dart_core/logging.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
@@ -64,6 +64,7 @@ class SessionDetailMessageList extends StatefulWidget {
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
   final String? retryErrorMessage;
+  final bool isLoadingOlderMessages;
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
   /// both as extra bottom scroll padding — so the newest message rests clear of
@@ -90,6 +91,7 @@ class SessionDetailMessageList extends StatefulWidget {
     required this.children,
     required this.childStatuses,
     required this.onLoadOlderMessages,
+    required this.isLoadingOlderMessages,
     this.retryErrorMessage,
     this.bottomInset = 0,
     this.topInset = 0,
@@ -175,6 +177,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
   _DetachedSnapshot? _snapshot;
+  bool _olderPageRequestInFlight = false;
 
   /// Cache for the id → data-source-index map consumed by the row
   /// builder. Keyed on a content signature of `(length, firstId,
@@ -198,6 +201,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   @override
   void initState() {
     super.initState();
+    _olderPageRequestInFlight = widget.isLoadingOlderMessages;
     _follow = ScrollFollowTracker(edge: ScrollFollowEdge.min);
     _follow.addListener(_onFollowChanged);
     _revealController = AnimationController(
@@ -224,6 +228,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   @override
   void didUpdateWidget(SessionDetailMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.isLoadingOlderMessages) {
+      _olderPageRequestInFlight = true;
+    }
+    final olderPageRequestCompleted = _olderPageRequestInFlight && !widget.isLoadingOlderMessages;
     // While detached the controller is intentionally left stale so the
     // list structure cannot shift under the reader; `_onFollowChanged`
     // re-syncs on reattach.
@@ -234,10 +242,13 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     // Freezing them would leave the page loaded but invisible until the
     // user returned to the newest message.
     if (_follow.following) {
+      if (olderPageRequestCompleted) _olderPageRequestInFlight = false;
       _syncChatController();
       return;
     }
     final frozen = _snapshot;
+    if (!olderPageRequestCompleted) return;
+    _olderPageRequestInFlight = false;
     if (frozen == null) return;
     final prepended = _prependedOlderMessages(frozen: frozen);
     if (prepended.isEmpty) return;
@@ -277,7 +288,11 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     final frozenOldestId = frozen.messages.firstOrNull?.info.id;
     if (frozenOldestId == null) return const [];
     final boundary = widget.messages.indexWhere((message) => message.info.id == frozenOldestId);
-    return boundary <= 0 ? const [] : widget.messages.sublist(0, boundary);
+    if (boundary <= 0) return const [];
+    final frozenIds = frozen.messages.map((message) => message.info.id).toSet();
+    final prepended = widget.messages.sublist(0, boundary);
+    if (prepended.any((message) => frozenIds.contains(message.info.id))) return const [];
+    return prepended;
   }
 
   void _onFollowChanged() {
@@ -347,25 +362,26 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   }) {
     return <chat_core.Message>[
       for (final message in messages)
-        chat_core.Message.custom(
-          id: message.info.id,
-          authorId: switch (message.info) {
-            MessageUser() => _kUserAuthorId,
-            MessageAssistant() => _kAgentAuthorId,
-            MessageError() => _kAgentAuthorId,
-          },
-          // Role discriminates assistant from error under the shared
-          // agent authorId, so a live assistant→error transition on the
-          // same message id is no longer value-equal and forces the row
-          // to re-render as the error card.
-          metadata: <String, String>{
-            _kRoleMetadataKey: switch (message.info) {
-              MessageUser() => _kUserRole,
-              MessageAssistant() => _kAssistantRole,
-              MessageError() => _kErrorRole,
+        if (message.hasRenderableUserContent)
+          chat_core.Message.custom(
+            id: message.info.id,
+            authorId: switch (message.info) {
+              MessageUser() => _kUserAuthorId,
+              MessageAssistant() => _kAgentAuthorId,
+              MessageError() => _kAgentAuthorId,
             },
-          },
-        ),
+            // Role discriminates assistant from error under the shared
+            // agent authorId, so a live assistant→error transition on the
+            // same message id is no longer value-equal and forces the row
+            // to re-render as the error card.
+            metadata: <String, String>{
+              _kRoleMetadataKey: switch (message.info) {
+                MessageUser() => _kUserRole,
+                MessageAssistant() => _kAssistantRole,
+                MessageError() => _kErrorRole,
+              },
+            },
+          ),
       if (hasRetryError) const chat_core.Message.custom(id: _kRetryErrorRowId, authorId: _kAgentAuthorId),
     ];
   }
@@ -517,6 +533,9 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     final index = indexById[entry.id];
     if (index == null || index >= messages.length) return const SizedBox.shrink();
     final message = messages[index];
+    if (!message.hasRenderableUserContent) {
+      return const SizedBox.shrink();
+    }
     final card = switch (message.info) {
       MessageUser() => UserMessageCard(message: message),
       MessageAssistant() => AssistantMessageCard(

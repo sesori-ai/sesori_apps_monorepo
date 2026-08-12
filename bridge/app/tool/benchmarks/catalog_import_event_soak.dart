@@ -18,6 +18,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
+import "package:sesori_bridge/src/bridge/sse/sse_event_delivery.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
@@ -184,6 +185,7 @@ class _CatalogImportEventSoak {
           path: "/global/event",
           client: relay.client,
           connection: relay.connection,
+          attachmentDelivery: MessageAttachmentDelivery.inline,
         );
         sseManager.unsubscribe(1);
       } finally {
@@ -583,7 +585,7 @@ class _CatalogImportEventSoak {
     if (encoded.contains(fixture.sessions.first.id)) {
       throw StateError("shared event leaked backend session id ${fixture.sessions.first.id}");
     }
-    sseManager.enqueueEvent(shared);
+    sseManager.enqueueEvent(SseEventDelivery.uniform(event: shared));
     return 1;
   }
 
@@ -884,9 +886,9 @@ class _CountingSSEManager extends SSEManager {
   int enqueueCount = 0;
 
   @override
-  void enqueueEvent(SesoriSseEvent event) {
+  void enqueueEvent(SseEventDelivery delivery) {
     enqueueCount++;
-    super.enqueueEvent(event);
+    super.enqueueEvent(delivery);
   }
 }
 

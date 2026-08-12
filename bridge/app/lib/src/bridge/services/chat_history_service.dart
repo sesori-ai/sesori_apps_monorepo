@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/attachment_spill_storage.dart";
 import "../../api/models/archived_session_file_dto.dart";
+import "../../auth/bridge_id_provider.dart";
 import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/chat_history_repository.dart";
 import "../repositories/models/stored_session.dart";
@@ -34,6 +35,28 @@ final class SessionAttachmentTooLarge extends SessionAttachmentResult {
   const SessionAttachmentTooLarge();
 }
 
+/// The outcome of storing one finalized part whose delivery shape depends on
+/// that write having landed.
+sealed class CapturedPartDelivery {
+  const CapturedPartDelivery();
+}
+
+/// The part as stored, projected once per delivery mode.
+final class CapturedPartShapes extends CapturedPartDelivery {
+  /// The released shape: bounded inline images, excess degraded to metadata.
+  final MessagePart inlinePart;
+
+  /// The capable shape: stored images carry an identifier instead of bytes.
+  final MessagePart storedReferencePart;
+
+  const CapturedPartShapes({required this.inlinePart, required this.storedReferencePart});
+}
+
+/// The write did not land, so no reference may be advertised for it.
+final class CapturedPartUnavailable extends CapturedPartDelivery {
+  const CapturedPartUnavailable();
+}
+
 /// The single writer of the chat history store.
 ///
 /// Every mutation runs through a per-session queue so writes for one session
@@ -43,13 +66,16 @@ class ChatHistoryService {
     required ChatHistoryRepository chatHistoryRepository,
     required SessionRepository sessionRepository,
     required AttachmentThumbnailBuilder attachmentThumbnailBuilder,
+    required BridgeIdProvider bridgeIdProvider,
   }) : _chatHistoryRepository = chatHistoryRepository,
        _sessionRepository = sessionRepository,
-       _attachmentThumbnailBuilder = attachmentThumbnailBuilder;
+       _attachmentThumbnailBuilder = attachmentThumbnailBuilder,
+       _bridgeIdProvider = bridgeIdProvider;
 
   final ChatHistoryRepository _chatHistoryRepository;
   final SessionRepository _sessionRepository;
   final AttachmentThumbnailBuilder _attachmentThumbnailBuilder;
+  final BridgeIdProvider _bridgeIdProvider;
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
   Future<void> _thumbnailGenerationLane = Future.value();
@@ -69,7 +95,9 @@ class ChatHistoryService {
     required String sessionId,
     int? limit,
     int? before,
+    required MessageAttachmentDelivery attachmentDelivery,
   }) async {
+    final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
     // The archive check, the freshness decision, and the read all run inside
     // the session queue, so they observe one state. Deciding outside it would
     // let queued work — an observed import, or a failed capture clearing
@@ -91,6 +119,7 @@ class ChatHistoryService {
             storageScope: storageScope,
             limit: limit,
             before: before,
+            attachmentProjection: attachmentProjection,
           );
           if (archived != null) return archived;
         }
@@ -104,6 +133,7 @@ class ChatHistoryService {
           storageScope: storageScope,
           limit: limit,
           before: before,
+          attachmentProjection: attachmentProjection,
         );
       },
     );
@@ -120,9 +150,20 @@ class ChatHistoryService {
         storageScope: storageScope,
         limit: limit,
         before: before,
+        attachmentProjection: attachmentProjection,
       ),
     );
   }
+
+  MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>
+      switch (delivery) {
+        MessageAttachmentDelivery.inline => const InlineMessageAttachmentProjection(),
+        MessageAttachmentDelivery.storedReference => StoredReferenceMessageAttachmentProjection(
+          bridgeId:
+              _bridgeIdProvider.bridgeId ??
+              (throw StateError("stored attachment delivery requires bridge registration")),
+        ),
+      };
 
   Future<SessionAttachmentResult> getSessionAttachment({
     required String sessionId,
@@ -270,11 +311,14 @@ class ChatHistoryService {
     return _capture(
       sessionId: sessionId,
       description: "message ${message.id}",
-      write: (observedAt) => _chatHistoryRepository.upsertMessage(
-        sessionId: sessionId,
-        message: message,
-        updatedAt: observedAt,
-      ),
+      write: (observedAt) async {
+        await _chatHistoryRepository.upsertMessage(
+          sessionId: sessionId,
+          message: message,
+          updatedAt: observedAt,
+        );
+        return true;
+      },
     );
   }
 
@@ -291,15 +335,112 @@ class ChatHistoryService {
           part: part,
           updatedAt: observedAt,
         );
+        return true;
       },
     );
   }
 
-  Future<void> captureMessageRemoved({required String sessionId, required String messageId}) {
+  /// Whether [part] carries bridge-owned image bytes, so its live event cannot
+  /// be shaped until the capture that spills those bytes has landed.
+  ///
+  /// The Orchestrator uses this single predicate so "needs an awaited capture"
+  /// and "may be delivered as a reference" can never disagree.
+  bool requiresAwaitedAttachmentCapture({required MessagePart part}) {
+    if (part.attachment is MessageAttachmentInlineImage) return true;
+    final attachments = part.state?.attachments ?? const <MessageAttachment>[];
+    return attachments.any((attachment) => attachment is MessageAttachmentInlineImage);
+  }
+
+  /// Records a finalized part and returns it in every delivery shape.
+  ///
+  /// Runs in the same per-session queue as every other capture, so the spill
+  /// write it performs cannot race an archive export, purge, or backfill, and
+  /// the returned reference is addressable the moment it reaches the wire.
+  ///
+  /// The legacy shape is projected from the complete stored logical collection
+  /// rather than this event alone, so separately delivered image parts keep the
+  /// released aggregate inline budget.
+  Future<CapturedPartDelivery> capturePartForDelivery({
+    required String sessionId,
+    required MessagePart part,
+    required bool Function() shouldCapture,
+  }) {
+    final observedAt = DateTime.now().millisecondsSinceEpoch;
+    return _enqueueRead(
+      sessionId: sessionId,
+      read: () async {
+        try {
+          if (!shouldCapture()) return const CapturedPartUnavailable();
+          final storageScope = await _requireStorageScope(sessionId: sessionId);
+          if (!shouldCapture()) return const CapturedPartUnavailable();
+          await _chatHistoryRepository.upsertPart(
+            sessionId: sessionId,
+            storageScope: storageScope,
+            part: part,
+            updatedAt: observedAt,
+          );
+          await _chatHistoryRepository.advanceSyncState(
+            sessionId: sessionId,
+            watermark: observedAt,
+            backendActivityAt: observedAt,
+          );
+          final inlinePart = await _projectStoredPart(
+            sessionId: sessionId,
+            storageScope: storageScope,
+            part: part,
+            delivery: MessageAttachmentDelivery.inline,
+          );
+          final storedReferencePart = await _projectStoredPart(
+            sessionId: sessionId,
+            storageScope: storageScope,
+            part: part,
+            delivery: MessageAttachmentDelivery.storedReference,
+          );
+          if (inlinePart == null || storedReferencePart == null) {
+            return const CapturedPartUnavailable();
+          }
+          return CapturedPartShapes(inlinePart: inlinePart, storedReferencePart: storedReferencePart);
+        } on Object catch (error, stackTrace) {
+          Log.w(
+            "Failed to capture part ${part.id} of message ${part.messageID} for session $sessionId; "
+            "dropping the synced marker so the next read re-backfills and delivering the inline shape",
+            error,
+            stackTrace,
+          );
+          await _clearSyncedAtQuietly(sessionId: sessionId);
+          return const CapturedPartUnavailable();
+        }
+      },
+    );
+  }
+
+  Future<MessagePart?> _projectStoredPart({
+    required String sessionId,
+    required AttachmentStorageScope storageScope,
+    required MessagePart part,
+    required MessageAttachmentDelivery delivery,
+  }) {
+    return _chatHistoryRepository.projectStoredPart(
+      sessionId: sessionId,
+      storageScope: storageScope,
+      messageId: part.messageID,
+      partId: part.id,
+      attachmentProjection: _attachmentProjectionFor(delivery: delivery),
+    );
+  }
+
+  Future<void> captureMessageRemoved({
+    required String sessionId,
+    required String messageId,
+    required bool Function() shouldCapture,
+  }) {
     return _capture(
       sessionId: sessionId,
       description: "removal of message $messageId",
-      write: (_) => _chatHistoryRepository.deleteMessage(sessionId: sessionId, messageId: messageId),
+      write: (_) {
+        if (!shouldCapture()) return Future.value(false);
+        return _chatHistoryRepository.deleteMessage(sessionId: sessionId, messageId: messageId).then((_) => true);
+      },
     );
   }
 
@@ -307,15 +448,21 @@ class ChatHistoryService {
     required String sessionId,
     required String messageId,
     required String partId,
+    required bool Function() shouldCapture,
   }) {
     return _capture(
       sessionId: sessionId,
       description: "removal of part $partId",
-      write: (_) => _chatHistoryRepository.deletePart(
-        sessionId: sessionId,
-        messageId: messageId,
-        partId: partId,
-      ),
+      write: (_) {
+        if (!shouldCapture()) return Future.value(false);
+        return _chatHistoryRepository
+            .deletePart(
+              sessionId: sessionId,
+              messageId: messageId,
+              partId: partId,
+            )
+            .then((_) => true);
+      },
     );
   }
 
@@ -441,14 +588,17 @@ class ChatHistoryService {
     required String sessionId,
     int? limit,
     int? before,
+    required MessageAttachmentDelivery attachmentDelivery,
   }) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
     if (session == null) return null;
+    final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
     return _chatHistoryRepository.getArchivedSessionMessages(
       sessionId: sessionId,
       storageScope: _storageScopeFor(session: session),
       limit: limit,
       before: before,
+      attachmentProjection: attachmentProjection,
     );
   }
 
@@ -503,14 +653,15 @@ class ChatHistoryService {
   Future<void> _capture({
     required String sessionId,
     required String description,
-    required Future<void> Function(int observedAt) write,
+    required Future<bool> Function(int observedAt) write,
   }) {
     final observedAt = DateTime.now().millisecondsSinceEpoch;
     return _enqueue(
       sessionId: sessionId,
       write: () async {
         try {
-          await write(observedAt);
+          final committed = await write(observedAt);
+          if (!committed) return;
           await _chatHistoryRepository.advanceSyncState(
             sessionId: sessionId,
             watermark: observedAt,

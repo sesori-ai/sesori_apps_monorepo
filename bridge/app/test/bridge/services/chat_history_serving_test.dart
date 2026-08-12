@@ -95,7 +95,13 @@ void main() {
             ),
           );
         }
-        unawaited(history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2"));
+        unawaited(
+          history.service.captureMessageRemoved(
+            sessionId: "ses_a",
+            messageId: "m2",
+            shouldCapture: () => true,
+          ),
+        );
       };
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;

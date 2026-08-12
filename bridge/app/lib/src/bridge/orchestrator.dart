@@ -157,6 +157,7 @@ import "services/session_unseen_service.dart";
 import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
+import "sse/sse_event_delivery.dart";
 import "sse/sse_manager.dart";
 
 typedef OrchestratorComposition = ({
@@ -477,6 +478,7 @@ class Orchestrator {
       ),
       sessionRepository: sessionRepository,
       attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+      bridgeIdProvider: _bridgeRegistrationService,
     );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
@@ -639,6 +641,7 @@ class Orchestrator {
       sessionDeletionListener: sessionDeletionListener,
       chatHistoryListener: chatHistoryListener,
       chatHistoryActivityListener: chatHistoryActivityListener,
+      chatHistoryService: chatHistoryService,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
       sessionEventDispatcher: sessionEventDispatcher,
@@ -723,6 +726,7 @@ class OrchestratorSession {
   final SessionDeletionListener _sessionDeletionListener;
   final ChatHistoryListener _chatHistoryListener;
   final ChatHistoryActivityListener _chatHistoryActivityListener;
+  final ChatHistoryService _chatHistoryService;
   final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener;
   final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener;
   final SessionEventDispatcher _sessionEventDispatcher;
@@ -765,6 +769,10 @@ class OrchestratorSession {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
   final Set<Future<void>> _inFlightRelayCompletions = <Future<void>>{};
+
+  /// Part captures dispatched without awaiting, kept observable so shutdown
+  /// does not close the history database out from under a finalized write.
+  final Set<Future<void>> _pendingPartCaptures = <Future<void>>{};
   final Map<String, int> _inFlightRouteCounts = <String, int>{};
   Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
@@ -791,6 +799,7 @@ class OrchestratorSession {
     required SessionDeletionListener sessionDeletionListener,
     required ChatHistoryListener chatHistoryListener,
     required ChatHistoryActivityListener chatHistoryActivityListener,
+    required ChatHistoryService chatHistoryService,
     required SessionOptionsCreationRefreshListener sessionOptionsCreationRefreshListener,
     required SessionOptionsChangedRefreshListener sessionOptionsChangedRefreshListener,
     required SessionEventDispatcher sessionEventDispatcher,
@@ -836,6 +845,7 @@ class OrchestratorSession {
        _sessionDeletionListener = sessionDeletionListener,
        _chatHistoryListener = chatHistoryListener,
        _chatHistoryActivityListener = chatHistoryActivityListener,
+       _chatHistoryService = chatHistoryService,
        _sessionOptionsCreationRefreshListener = sessionOptionsCreationRefreshListener,
        _sessionOptionsChangedRefreshListener = sessionOptionsChangedRefreshListener,
        _sessionEventDispatcher = sessionEventDispatcher,
@@ -1175,6 +1185,9 @@ class OrchestratorSession {
     await Future.wait([
       attempt(() async {
         await Future.wait(_pluginEventProcessingTails.values);
+        // After the tails, because a processed event may have just dispatched
+        // its capture.
+        await Future.wait(_pendingPartCaptures.toList(growable: false));
       }),
       attempt(_routedRequestDispatcher.drain),
       attempt(_drainRelayCompletions),
@@ -1516,7 +1529,40 @@ class OrchestratorSession {
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
-      final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event: event, pluginId: pluginId);
+      final SseEventDelivery? delivery;
+      if (event is BridgeSseMessagePartUpdated) {
+        delivery = await _captureAndShapePart(
+          part: event.part,
+          shouldCapture: () => _isCurrentSource(
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          ),
+        );
+      } else {
+        bool shouldCapture() => _isCurrentSource(
+          pluginId: pluginId,
+          generation: generation,
+          allowDuringStop: allowDuringStop,
+        );
+        if (event case BridgeSseMessageRemoved(:final sessionID, :final messageID)) {
+          await _chatHistoryService.captureMessageRemoved(
+            sessionId: sessionID,
+            messageId: messageID,
+            shouldCapture: shouldCapture,
+          );
+        }
+        if (event case BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID)) {
+          await _chatHistoryService.capturePartRemoved(
+            sessionId: sessionID,
+            messageId: messageID,
+            partId: partID,
+            shouldCapture: shouldCapture,
+          );
+        }
+        final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event: event, pluginId: pluginId);
+        delivery = sesoriEvent == null ? null : SseEventDelivery.uniform(event: sesoriEvent);
+      }
       if (generation != null &&
           !_pluginRuntime.isCurrentEvent(
             pluginId: pluginId,
@@ -1525,9 +1571,9 @@ class OrchestratorSession {
           )) {
         return;
       }
-      if (sesoriEvent != null) {
+      if (delivery != null) {
         await _deliverSseEvent(
-          event: sesoriEvent,
+          delivery: delivery,
           pluginId: pluginId,
           generation: generation,
           allowDuringStop: allowDuringStop,
@@ -1570,13 +1616,59 @@ class OrchestratorSession {
     }
   }
 
+  /// Stores one finalized part and returns the event shapes its subscribers
+  /// may receive, or null when the part is not visible on the wire.
+  ///
+  /// Capture is the Orchestrator's job for every part, not only image-bearing
+  /// ones: the parts of one message must enter the session queue in the order
+  /// the plugin emitted them, and only this path observes that order once an
+  /// image part has to be awaited.
+  Future<SseEventDelivery?> _captureAndShapePart({
+    required PluginMessagePart part,
+    required bool Function() shouldCapture,
+  }) async {
+    if (part.type == PluginMessagePartType.unknown) return null;
+    final sharedPart = _mapper.mapMessagePart(part: part);
+    final visible = _mapper.isMessagePartVisible(part: part);
+    if (!_chatHistoryService.requiresAwaitedAttachmentCapture(part: sharedPart)) {
+      // Deliberately not awaited: an ordinary part's wire shape does not depend
+      // on its write, and the queue it just joined preserves the order.
+      final capture = _chatHistoryService.capturePart(sessionId: sharedPart.sessionID, part: sharedPart);
+      _pendingPartCaptures.add(capture);
+      unawaited(capture.whenComplete(() => _pendingPartCaptures.remove(capture)));
+      return visible ? SseEventDelivery.uniform(event: _mapper.buildMessagePartEvent(part: sharedPart)) : null;
+    }
+
+    final captured = await _chatHistoryService.capturePartForDelivery(
+      sessionId: sharedPart.sessionID,
+      part: sharedPart,
+      shouldCapture: shouldCapture,
+    );
+    if (!visible) return null;
+    return switch (captured) {
+      CapturedPartShapes(:final inlinePart, :final storedReferencePart) => SseEventDelivery.attachmentShaped(
+        inlineEvent: _mapper.buildMessagePartEvent(part: inlinePart),
+        storedReferenceEvent: _mapper.buildMessagePartEvent(part: storedReferencePart),
+      ),
+      // The write did not land, so no identifier is addressable. Every
+      // subscriber receives the mapped inline shape it would have received
+      // before references existed.
+      CapturedPartUnavailable() => SseEventDelivery.uniform(
+        event: _mapper.buildMessagePartEvent(part: sharedPart),
+      ),
+    };
+  }
+
   Future<void> _deliverSseEvent({
-    required SesoriSseEvent event,
+    required SseEventDelivery delivery,
     required String? pluginId,
     required int? generation,
     required bool allowDuringStop,
   }) async {
     if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
+    // Bridge-local consumers observe the released inline shape; only the wire
+    // is shaped per subscriber.
+    final event = delivery.inlineEvent;
     Log.v(
       "[sse] mapped to: ${event.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
     );
@@ -1590,7 +1682,7 @@ class OrchestratorSession {
       await _routeUnseenActivity(event);
     }
     if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
-    _enqueueWireEvent(event);
+    _enqueueDelivery(delivery);
     if (event is! SesoriSessionCreated) {
       try {
         await _routeUnseenActivity(event);
@@ -1616,7 +1708,7 @@ class OrchestratorSession {
         final summary = await _buildProjectsSummary();
         if (summary != null) {
           await _deliverSseEvent(
-            event: summary,
+            delivery: SseEventDelivery.uniform(event: summary),
             pluginId: pluginId,
             generation: generation,
             allowDuringStop: allowDuringStop,
@@ -1654,9 +1746,13 @@ class OrchestratorSession {
     );
   }
 
-  void _enqueueWireEvent(SesoriSseEvent event) {
-    _sseManager.enqueueEvent(event);
-    if (!_localWireEventsController.isClosed) _localWireEventsController.add(event);
+  void _enqueueWireEvent(SesoriSseEvent event) => _enqueueDelivery(SseEventDelivery.uniform(event: event));
+
+  void _enqueueDelivery(SseEventDelivery delivery) {
+    _sseManager.enqueueEvent(delivery);
+    // The local debug stream has no capability surface of its own, so it keeps
+    // the released inline shape.
+    if (!_localWireEventsController.isClosed) _localWireEventsController.add(delivery.inlineEvent);
   }
 
   /// Builds the projects-summary SSE event: fetches the activity summary with
@@ -2134,13 +2230,14 @@ class OrchestratorSession {
             );
         }
       case final RelaySseSubscribe subscribe:
-        Log.v("SseSubscribe: path=${subscribe.path}");
+        Log.v("SseSubscribe: path=${subscribe.path} attachments=${subscribe.attachmentDelivery.name}");
         try {
           _sseManager.subscribePath(
             connID: connID,
             path: subscribe.path,
             client: _client,
             connection: connection,
+            attachmentDelivery: subscribe.attachmentDelivery,
           );
           _trackRelayCompletion(
             completion: _completeInitialProjectsSummary(connID: connID),

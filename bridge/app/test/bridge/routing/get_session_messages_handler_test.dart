@@ -12,14 +12,16 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetSessionMessagesHandler", () {
     late FakeBridgePlugin plugin;
+    late TestChatHistory history;
     late GetSessionMessagesHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
+      history = createTestChatHistory(
+        sessionRepository: _MessageSessionRepository(plugin: plugin),
+      );
       handler = GetSessionMessagesHandler(
-        chatHistoryService: createTestChatHistory(
-          sessionRepository: _MessageSessionRepository(plugin: plugin),
-        ).service,
+        chatHistoryService: history.service,
       );
     });
 
@@ -131,6 +133,68 @@ void main() {
       );
 
       expect(response.messages.length, equals(2));
+    });
+
+    test("keeps default delivery inline and threads explicit stored references", () async {
+      plugin.messagesResult = [
+        PluginMessageWithParts(
+          info: const PluginMessage.user(
+            id: "m1",
+            sessionID: "s1",
+            agent: null,
+            time: null,
+          ),
+          parts: [
+            PluginMessagePart(
+              id: "p1",
+              sessionID: "s1",
+              messageID: "m1",
+              type: PluginMessagePartType.file,
+              text: null,
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+              attachment: PluginMessageAttachment.inlineImage(
+                mime: "image/png",
+                base64: base64Encode(const [1, 2, 3]),
+                filename: "shot.png",
+              ),
+            ),
+          ],
+        ),
+      ];
+
+      final inlineResponse = await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
+        pathParams: const {},
+        queryParams: const {},
+        fragment: null,
+      );
+      expect(inlineResponse.messages.single.parts.single.attachment, isA<MessageAttachmentInlineImage>());
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionMessagesRequest(
+          sessionId: "s1",
+          limit: null,
+          before: null,
+          attachmentDelivery: MessageAttachmentDelivery.storedReference,
+        ),
+        pathParams: const {},
+        queryParams: const {},
+        fragment: null,
+      );
+
+      expect(
+        response.messages.single.parts.single.attachment,
+        isA<MessageAttachmentStoredImage>().having((image) => image.bridgeId, "bridgeId", "br_test1234"),
+      );
     });
 
     test("handleInternal returns 502 for upstream incompatibility", () async {
