@@ -15,7 +15,40 @@ void main() {
       );
     });
 
-    SesoriSseEvent? mapEvent(BridgeSseEvent event) => mapper.map(event: event, pluginId: "test-plugin");
+    SesoriSseEvent? mapEvent(BridgeSseEvent event) {
+      if (event case BridgeSseMessagePartUpdated(:final part)) {
+        if (!mapper.isMessagePartVisible(part: part)) return null;
+        return mapper.buildMessagePartEvent(part: mapper.mapMessagePart(part: part));
+      }
+      return mapper.map(event: event, pluginId: "test-plugin");
+    }
+
+    test("finalized part events require the store-before-delivery mapping seam", () {
+      expect(
+        mapper.map(
+          event: const BridgeSseMessagePartUpdated(
+            part: PluginMessagePart(
+              id: "p1",
+              sessionID: "s1",
+              messageID: "m1",
+              type: PluginMessagePartType.text,
+              text: "hello",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+              attachment: null,
+            ),
+          ),
+          pluginId: "test-plugin",
+        ),
+        isNull,
+      );
+    });
 
     test("filters plugin lifecycle events from bridge-global wire semantics", () {
       const lifecycleEvents = <BridgeSseEvent>[

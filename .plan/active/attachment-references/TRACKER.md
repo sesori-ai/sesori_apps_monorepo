@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 4 PR open
-- **Current step:** 4/11
+- **Series state:** Step 4 PR open; Step 5 implemented locally
+- **Current step:** 5/11 (implementation local)
 - **Implementation base:** `origin/main` at `ec290e14`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** [#843](https://github.com/sesori-ai/sesori_apps_monorepo/pull/843)
-- **Next action:** Monitor Step 4 while implementing Step 5 locally
+- **Next action:** Monitor Step 4; commit and open Step 5 once approved
 
 ## Plan Review
 
@@ -115,6 +115,21 @@
   across 11 files (788 changed lines), within the 700-1,150 target;
   `git diff --check origin/main...HEAD` passes.
   Implementation was committed as `a693d3c5` and synchronized in `5f37e20e`.
+- Step 5 (local): Moved finalized part capture from
+  `ChatHistoryListener` to the Orchestrator, added
+  `ChatHistoryService.requiresAwaitedAttachmentCapture` plus one queued
+  `capturePartForDelivery` that persists once and returns typed inline/reference
+  parts projected from the complete stored collection, and gave each SSE
+  subscriber and orphan queue its own attachment delivery mode with
+  matching-mode adoption. `dart analyze --fatal-infos` passes in the bridge app;
+  66 focused tests and all 2,584 bridge-app tests pass, including new coverage for the predicate,
+  one-write dual shaping, cross-part legacy budgeting, capture failure fallback,
+  listener ownership, mixed old/new subscribers, orphan mode matching, and
+  orchestrator store-before-deliver, ordering, invisible parts, and generation
+  fencing. Architecture implementation review approved after moving finalized
+  part wire visibility and event construction fully behind `BridgeEventMapper`.
+  The complete diff has 1,247 additions and 87 deletions across 16 files (1,334
+  changed lines), within the 1,100-1,500 target; `git diff --check` passes.
 
 ## Findings And Plan Deltas
 

@@ -35,6 +35,28 @@ final class SessionAttachmentTooLarge extends SessionAttachmentResult {
   const SessionAttachmentTooLarge();
 }
 
+/// The outcome of storing one finalized part whose delivery shape depends on
+/// that write having landed.
+sealed class CapturedPartDelivery {
+  const CapturedPartDelivery();
+}
+
+/// The part as stored, projected once per delivery mode.
+final class CapturedPartShapes extends CapturedPartDelivery {
+  /// The released shape: bounded inline images, excess degraded to metadata.
+  final MessagePart inlinePart;
+
+  /// The capable shape: stored images carry an identifier instead of bytes.
+  final MessagePart storedReferencePart;
+
+  const CapturedPartShapes({required this.inlinePart, required this.storedReferencePart});
+}
+
+/// The write did not land, so no reference may be advertised for it.
+final class CapturedPartUnavailable extends CapturedPartDelivery {
+  const CapturedPartUnavailable();
+}
+
 /// The single writer of the chat history store.
 ///
 /// Every mutation runs through a per-session queue so writes for one session
@@ -311,6 +333,92 @@ class ChatHistoryService {
           updatedAt: observedAt,
         );
       },
+    );
+  }
+
+  /// Whether [part] carries bridge-owned image bytes, so its live event cannot
+  /// be shaped until the capture that spills those bytes has landed.
+  ///
+  /// The Orchestrator uses this single predicate so "needs an awaited capture"
+  /// and "may be delivered as a reference" can never disagree.
+  bool requiresAwaitedAttachmentCapture({required MessagePart part}) {
+    if (part.attachment is MessageAttachmentInlineImage) return true;
+    final attachments = part.state?.attachments ?? const <MessageAttachment>[];
+    return attachments.any((attachment) => attachment is MessageAttachmentInlineImage);
+  }
+
+  /// Records a finalized part and returns it in every delivery shape.
+  ///
+  /// Runs in the same per-session queue as every other capture, so the spill
+  /// write it performs cannot race an archive export, purge, or backfill, and
+  /// the returned reference is addressable the moment it reaches the wire.
+  ///
+  /// The legacy shape is projected from the complete stored logical collection
+  /// rather than this event alone, so separately delivered image parts keep the
+  /// released aggregate inline budget.
+  Future<CapturedPartDelivery> capturePartForDelivery({
+    required String sessionId,
+    required MessagePart part,
+  }) {
+    final observedAt = DateTime.now().millisecondsSinceEpoch;
+    return _enqueueRead(
+      sessionId: sessionId,
+      read: () async {
+        try {
+          final storageScope = await _requireStorageScope(sessionId: sessionId);
+          await _chatHistoryRepository.upsertPart(
+            sessionId: sessionId,
+            storageScope: storageScope,
+            part: part,
+            updatedAt: observedAt,
+          );
+          await _chatHistoryRepository.advanceSyncState(
+            sessionId: sessionId,
+            watermark: observedAt,
+            backendActivityAt: observedAt,
+          );
+          final inlinePart = await _projectStoredPart(
+            sessionId: sessionId,
+            storageScope: storageScope,
+            part: part,
+            delivery: MessageAttachmentDelivery.inline,
+          );
+          final storedReferencePart = await _projectStoredPart(
+            sessionId: sessionId,
+            storageScope: storageScope,
+            part: part,
+            delivery: MessageAttachmentDelivery.storedReference,
+          );
+          if (inlinePart == null || storedReferencePart == null) {
+            return const CapturedPartUnavailable();
+          }
+          return CapturedPartShapes(inlinePart: inlinePart, storedReferencePart: storedReferencePart);
+        } on Object catch (error, stackTrace) {
+          Log.w(
+            "Failed to capture part ${part.id} of message ${part.messageID} for session $sessionId; "
+            "dropping the synced marker so the next read re-backfills and delivering the inline shape",
+            error,
+            stackTrace,
+          );
+          await _clearSyncedAtQuietly(sessionId: sessionId);
+          return const CapturedPartUnavailable();
+        }
+      },
+    );
+  }
+
+  Future<MessagePart?> _projectStoredPart({
+    required String sessionId,
+    required AttachmentStorageScope storageScope,
+    required MessagePart part,
+    required MessageAttachmentDelivery delivery,
+  }) {
+    return _chatHistoryRepository.projectStoredPart(
+      sessionId: sessionId,
+      storageScope: storageScope,
+      messageId: part.messageID,
+      partId: part.id,
+      attachmentProjection: _attachmentProjectionFor(delivery: delivery),
     );
   }
 

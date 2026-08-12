@@ -207,6 +207,33 @@ class ChatHistoryRepository {
     );
   }
 
+  /// One stored part projected for delivery, or null when the row is gone.
+  ///
+  /// The legacy inline budget is consumed by the part's stored siblings in
+  /// collection order first, so a message whose images arrive as separate part
+  /// updates degrades exactly where one combined page would.
+  Future<MessagePart?> projectStoredPart({
+    required String sessionId,
+    required AttachmentStorageScope storageScope,
+    required String messageId,
+    required String partId,
+    required MessageAttachmentProjection attachmentProjection,
+  }) async {
+    final rows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: [messageId]);
+    var remainingInlineBytes = maxInlineMessageAttachmentBytes;
+    for (final row in rows) {
+      final projected = await _rehydratePart(
+        storageScope: storageScope,
+        partJson: row.partJson,
+        attachmentProjection: attachmentProjection,
+        remainingInlineBytes: remainingInlineBytes,
+      );
+      if (row.partId == partId) return projected.part;
+      remainingInlineBytes = projected.remainingInlineBytes;
+    }
+    return null;
+  }
+
   Future<void> deleteMessage({required String sessionId, required String messageId}) {
     return _chatHistoryDao.deleteMessage(sessionId: sessionId, messageId: messageId);
   }

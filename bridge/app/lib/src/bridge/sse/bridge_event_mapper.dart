@@ -55,11 +55,9 @@ class BridgeEventMapper {
           sessionID: sessionID,
           messageID: messageID,
         ),
-        BridgeSseMessagePartUpdated(:final part) => () {
-          if (!part.type.isVisible) return null;
-          final truncated = _truncateToolOutput(part);
-          return SesoriSseEvent.messagePartUpdated(part: truncated.toShared(sessionId: truncated.sessionID));
-        }(),
+        // Finalized parts are stored before delivery, so the Orchestrator maps
+        // them through [mapMessagePart] and [buildMessagePartEvent].
+        BridgeSseMessagePartUpdated() => null,
         BridgeSseMessagePartDelta(
           :final sessionID,
           :final messageID,
@@ -180,6 +178,21 @@ class BridgeEventMapper {
       );
       return null;
     }
+  }
+
+  /// Maps one finalized plugin part into its shared form.
+  ///
+  /// Exposed because the Orchestrator both stores and delivers that part, and
+  /// the stored transcript must not disagree with the event a phone renders.
+  MessagePart mapMessagePart({required PluginMessagePart part}) {
+    final truncated = _truncateToolOutput(part);
+    return truncated.toShared(sessionId: truncated.sessionID);
+  }
+
+  bool isMessagePartVisible({required PluginMessagePart part}) => part.type.isVisible;
+
+  SesoriSseEvent buildMessagePartEvent({required MessagePart part}) {
+    return SesoriSseEvent.messagePartUpdated(part: part);
   }
 
   /// Builds a projects summary event from already-remapped summary data

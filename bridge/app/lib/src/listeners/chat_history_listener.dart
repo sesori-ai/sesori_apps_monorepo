@@ -3,7 +3,6 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/plugin_to_shared_mapping.dart";
 import "../bridge/services/chat_history_service.dart";
 import "../bridge/services/session_event_dispatcher.dart";
 
@@ -12,6 +11,12 @@ import "../bridge/services/session_event_dispatcher.dart";
 /// It consumes events after [SessionEventDispatcher] normalization, so ids are
 /// already translated to bridge session ids and stale generations are fenced.
 /// Streaming deltas are ignored: only full snapshots are stored.
+///
+/// Finalized *part* snapshots are deliberately absent here: the Orchestrator
+/// captures them, because a part carrying bridge-owned images must be stored
+/// before its live event can advertise a reference. Capturing ordinary parts
+/// here as well would let a later part enter the session queue ahead of an
+/// awaited image part and reverse persisted part order.
 class ChatHistoryListener {
   final Stream<NormalizedSourcedBridgeEvent> _source;
   final ChatHistoryService _chatHistoryService;
@@ -29,7 +34,9 @@ class ChatHistoryListener {
   void start() {
     if (_subscription != null || _disposed) return;
     _subscription = _source.listen(
-      (sourced) => _track(capture: _capture(pluginId: sourced.pluginId, event: sourced.event)),
+      (sourced) => _track(
+        capture: _capture(pluginId: sourced.pluginId, event: sourced.event),
+      ),
       // Source errors are surfaced by the dispatcher's own consumers; capture
       // simply has nothing to store for a failed event.
       onError: (Object _) {},
@@ -47,16 +54,12 @@ class ChatHistoryListener {
     return switch (event) {
       BridgeSseServerConnected() => _chatHistoryService.invalidatePluginHistory(pluginId: pluginId),
       BridgeSseMessageUpdated(:final info) => _captureMessage(info: info),
-      BridgeSseMessagePartUpdated(:final part) => _chatHistoryService.capturePart(
-        sessionId: part.sessionID,
-        part: part.toShared(sessionId: part.sessionID),
-      ),
       BridgeSseMessageRemoved(:final sessionID, :final messageID) => _chatHistoryService.captureMessageRemoved(
         sessionId: sessionID,
         messageId: messageID,
       ),
-      BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID) => _chatHistoryService
-          .capturePartRemoved(sessionId: sessionID, messageId: messageID, partId: partID),
+      BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID) =>
+        _chatHistoryService.capturePartRemoved(sessionId: sessionID, messageId: messageID, partId: partID),
       _ => Future<void>.value(),
     };
   }

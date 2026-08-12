@@ -29,12 +29,20 @@ content the transcript renders live and after reload.
   explicitly requests stored references receives bridge-scoped image metadata
   in the same part and tool-attachment order, including after archive; a missing
   stored file degrades to metadata instead of failing the transcript.
+- Live message-part events follow the same rule per SSE subscription. A
+  subscription that asked for inline delivery keeps the released shape, and one
+  that asked for stored references receives metadata for bridge-owned images in
+  the same event, with no second event and no reconnect replay handing a queued
+  event to a subscription of the other kind. A part carrying bridge-owned image
+  bytes is persisted before its live event is delivered, so a delivered
+  reference is always fetchable; if that write fails, every subscriber receives
+  the inline shape rather than a dangling identifier.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, and unknown-variant behavior holds in its owning suites; history projection preserves inline defaults and returns stored references only when requested. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, and unknown-variant behavior holds in its owning suites; history projection and live event shaping preserve inline defaults and return stored references only when requested. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin, generated and tool-output images displayed, text/image/text order preserved live and after reload, viewer copy/share/save. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
@@ -72,9 +80,10 @@ live, after paging back, or after a reopen, and vary the plugin.
   covered by the remote-attachment guarantee.
 - Cursor path-only generated images are read locally inside its plugin and
   delivered as bounded attachments; the host path still never crosses the wire.
-- Lazy stored-image delivery remains unfinished in product clients and live
-  events. The bridge supports explicit stored-reference history reads and
-  on-demand renditions, while normal clients still request inline history.
+- Lazy stored-image delivery remains unfinished in product clients. The bridge
+  supports explicit stored-reference history reads, live events, and on-demand
+  renditions, while normal clients still request inline delivery on both
+  surfaces.
 
 ## Sources
 
