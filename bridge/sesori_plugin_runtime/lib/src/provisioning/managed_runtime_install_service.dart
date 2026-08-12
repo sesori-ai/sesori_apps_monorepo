@@ -13,6 +13,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "managed_runtime_cleaner.dart";
 import "runtime_install_service.dart";
 import "runtime_manifest.dart";
+import "runtime_version.dart";
 import "runtime_version_validator.dart";
 
 /// Installs a manifest's pinned managed runtime on explicit request and
@@ -54,7 +55,7 @@ class ManagedRuntimeInstallService {
 
     final String id = _manifest.runtimeId;
     final String name = _manifest.displayName;
-    final SemanticVersion bundled = _manifest.bundledVersion;
+    final RuntimeVersion bundled = _manifest.bundledVersion;
 
     final PlatformTarget target;
     try {
@@ -75,7 +76,7 @@ class ManagedRuntimeInstallService {
     }
 
     final String managedDir = p.join(stateDirectory, id);
-    final String versionDir = p.join(managedDir, bundled.toString());
+    final String versionDir = p.join(managedDir, bundled.raw);
     final String binaryPath = p.join(versionDir, _manifest.binaryFileName);
 
     if (_installService.isInstalled(
@@ -85,7 +86,7 @@ class ManagedRuntimeInstallService {
     )) {
       // Confirm the cached binary still runs before reporting it as the
       // install result; a broken cached copy falls through to a reinstall.
-      final SemanticVersion? cachedVersion = await _versionValidator.detectVersion(
+      final RuntimeVersion? cachedVersion = await _versionValidator.detectVersion(
         executable: binaryPath,
         environment: environment,
       );
@@ -95,7 +96,7 @@ class ManagedRuntimeInstallService {
         // Sweep before the terminal event: consumers may stop listening as
         // soon as ProvisionReady arrives, which would cancel this stream and
         // leave superseded version directories behind.
-        await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.toString());
+        await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.raw);
         yield ProvisionReady(binaryPath: binaryPath);
         return;
       }
@@ -133,7 +134,7 @@ class ManagedRuntimeInstallService {
     // Probe the freshly-placed binary before trusting it: a downloaded asset
     // that cannot execute on this host (CPU/dynamic-loader mismatch) must
     // fail honestly rather than reporting a ready path start() cannot spawn.
-    final SemanticVersion? installedVersion = await _versionValidator.detectVersion(
+    final RuntimeVersion? installedVersion = await _versionValidator.detectVersion(
       executable: binaryPath,
       environment: environment,
     );
@@ -150,7 +151,7 @@ class ManagedRuntimeInstallService {
     Log.i("[$id] installed managed $name $bundled");
     // Sweep before the terminal event: consumers may stop listening as soon as
     // ProvisionReady arrives, which would cancel this stream mid-sweep.
-    await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.toString());
+    await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.raw);
     yield ProvisionReady(binaryPath: binaryPath);
   }
 

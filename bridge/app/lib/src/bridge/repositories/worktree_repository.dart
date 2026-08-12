@@ -195,7 +195,6 @@ class WorktreeRepository {
 
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async {
     final snapshot = await _gitApi.inspectWorktreeSafety(
       worktreePath: worktreePath,
@@ -209,12 +208,6 @@ class WorktreeRepository {
     if (snapshot.hasUnstagedChanges) {
       issues.add(UnstagedChanges());
     }
-    if (snapshot.actualBranch != expectedBranch) {
-      issues.add(
-        BranchMismatch(expected: expectedBranch, actual: snapshot.actualBranch),
-      );
-    }
-
     if (issues.isEmpty) {
       return WorktreeSafe();
     }

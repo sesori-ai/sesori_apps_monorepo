@@ -1,9 +1,19 @@
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
+import "runtime_version.dart";
+
+/// How a publisher's extracted archive is placed into the version directory.
+///
+/// Most runtimes ship a single self-contained executable ([singleBinary]).
+/// Cursor ships a `dist-package/` tree whose entry binary loads sibling files,
+/// so the whole directory must be kept together ([packageDirectory]).
+enum RuntimeAssetLayout { singleBinary, packageDirectory }
+
 /// One platform's pinned release archive for a managed runtime: the asset name,
-/// its container [format], the SHA-256 the download is verified against, and the
-/// name of the executable file *inside* the extracted archive.
+/// its container [format], the SHA-256 the download is verified against, the
+/// name of the executable file *inside* the extracted archive, and how that
+/// archive is placed on disk.
 ///
 /// [archiveBinaryName] is distinct from [RuntimeManifest.binaryFileName] (the
 /// canonical on-disk name the binary is placed under): some publishers ship the
@@ -17,12 +27,19 @@ final class RuntimeAsset {
     required this.format,
     required this.sha256,
     required this.archiveBinaryName,
+    required this.layout,
   });
 
   final String assetName;
   final ArchiveFormat format;
   final String sha256;
+
+  /// The entry executable's name inside the extracted archive. For
+  /// [RuntimeAssetLayout.packageDirectory] it names the binary within the
+  /// placed tree; its siblings travel with it.
   final String archiveBinaryName;
+
+  final RuntimeAssetLayout layout;
 }
 
 /// The harness-specific seam of the shared runtime-provisioning system: the
@@ -63,10 +80,15 @@ abstract class RuntimeManifest {
   String get binaryFileName;
 
   /// Minimum pre-installed (PATH) version the bridge will use as-is.
-  SemanticVersion get minPathVersion;
+  RuntimeVersion get minPathVersion;
 
   /// The exact version the managed runtime installs.
-  SemanticVersion get bundledVersion;
+  RuntimeVersion get bundledVersion;
+
+  /// Parses a token of this runtime's `--version` output into its own version
+  /// scheme. Keeping this with the pins guarantees probes and comparisons use
+  /// one scheme per runtime.
+  RuntimeVersion? parseVersion({required String value});
 
   /// The pinned asset for [target], or `null` when the platform is unsupported.
   RuntimeAsset? assetFor({required PlatformTarget target});
@@ -78,6 +100,6 @@ abstract class RuntimeManifest {
   /// state root. Computing the path is read-only and does not imply that the
   /// runtime is installed or valid.
   String managedBinaryPath({required String stateDirectory}) {
-    return p.join(stateDirectory, runtimeId, bundledVersion.toString(), binaryFileName);
+    return p.join(stateDirectory, runtimeId, bundledVersion.raw, binaryFileName);
   }
 }

@@ -108,7 +108,6 @@ class SessionLifecycleService {
     if (deleteWorktree && !force) {
       final safety = await _worktreeService.checkWorktreeSafety(
         worktreePath: worktreePath,
-        expectedBranch: branchName,
       );
       if (safety case WorktreeUnsafe(:final issues)) {
         return CleanupRejected(
@@ -138,7 +137,7 @@ class SessionLifecycleService {
       final deleted = await _worktreeService.deleteBranch(
         projectId: projectId,
         branchName: branchName,
-        force: deleteWorktree || force,
+        force: force,
       );
       if (!deleted &&
           await _worktreeService.branchExists(
@@ -320,10 +319,6 @@ class SessionLifecycleService {
         .map(
           (issue) => switch (issue) {
             UnstagedChanges() => const CleanupIssue.unstagedChanges(),
-            BranchMismatch(:final expected, :final actual) => CleanupIssue.branchMismatch(
-              expected: expected,
-              actual: actual,
-            ),
           },
         )
         .toList();

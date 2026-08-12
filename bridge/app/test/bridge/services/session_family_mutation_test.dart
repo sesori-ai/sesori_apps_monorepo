@@ -300,7 +300,6 @@ class _FamilyRepository implements SessionRepository {
     if (record == null) throw StateError("missing test session $sessionId");
     record.archivedAt = archived ? 1 : null;
   }
-
   @override
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
@@ -462,7 +461,6 @@ class _FamilyWorktreeService implements WorktreeService {
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async => safetyResult;
 
   @override
@@ -478,7 +476,6 @@ class _FamilyWorktreeService implements WorktreeService {
 
   @override
   Future<bool> branchExists({required String projectId, required String branchName}) async => false;
-
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

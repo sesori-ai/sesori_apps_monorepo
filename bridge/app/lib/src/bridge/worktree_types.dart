@@ -4,18 +4,13 @@ class WorktreeSafe extends WorktreeSafetyResult;
 
 class WorktreeUnsafe extends WorktreeSafetyResult {
   final List<SafetyIssue> issues;
+
   WorktreeUnsafe({required this.issues});
 }
 
 sealed class SafetyIssue;
 
 class UnstagedChanges extends SafetyIssue;
-
-class BranchMismatch extends SafetyIssue {
-  final String expected;
-  final String actual;
-  BranchMismatch({required this.expected, required this.actual});
-}
 
 sealed class WorktreeResult;
 

@@ -1,6 +1,9 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "runtime_manifest.dart";
+import "runtime_version.dart";
+
 /// Probes a candidate runtime binary's version by running `<bin> --version`.
 ///
 /// Used to decide whether a pre-installed (PATH) runtime is recent enough to use
@@ -11,19 +14,21 @@ class RuntimeVersionValidator {
   final CommandExecutor _commandExecutor;
   final String _runtimeId;
   final Duration _probeTimeout;
+  final RuntimeManifest _manifest;
 
   RuntimeVersionValidator({
     required CommandExecutor commandExecutor,
-    required String runtimeId,
+    required RuntimeManifest manifest,
     Duration probeTimeout = const Duration(seconds: 10),
   }) : _commandExecutor = commandExecutor,
-       _runtimeId = runtimeId,
+       _manifest = manifest,
+       _runtimeId = manifest.runtimeId,
        _probeTimeout = probeTimeout;
 
-  /// Runs `<executable> --version` and returns the parsed [SemanticVersion], or
+  /// Runs `<executable> --version` and returns the parsed [RuntimeVersion], or
   /// `null` when the binary cannot be launched, exits non-zero, hangs past the
   /// probe timeout, or prints no parseable version. Never throws.
-  Future<SemanticVersion?> detectVersion({
+  Future<RuntimeVersion?> detectVersion({
     required String executable,
     required Map<String, String>? environment,
   }) async {
@@ -52,16 +57,15 @@ class RuntimeVersionValidator {
     return version;
   }
 
-  /// Extracts the first whitespace-separated token that parses as a semantic
-  /// version. A bare `X.Y.Z` (OpenCode) and a labelled `codex-cli X.Y.Z` (codex)
-  /// both parse: every token is tried, and the non-version tokens are skipped. A
-  /// leading `v`/`V` (e.g. `v1.17.9`) is stripped so a prefixed build is not
+  /// Extracts the first whitespace-separated token that parses with the
+  /// manifest's version scheme. Every token is tried, and non-version tokens
+  /// are skipped. A leading `v`/`V` is stripped so prefixed builds are not
   /// misdetected as unsupported.
-  SemanticVersion? parseVersionOutput({required String output}) {
+  RuntimeVersion? parseVersionOutput({required String output}) {
     for (final rawToken in output.split(RegExp(r"\s+"))) {
       final token = rawToken.trim();
       final candidate = (token.startsWith("v") || token.startsWith("V")) ? token.substring(1) : token;
-      final version = SemanticVersion.tryParse(value: candidate);
+      final version = _manifest.parseVersion(value: candidate);
       if (version != null) {
         return version;
       }

@@ -215,7 +215,6 @@ void main() {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
           UnstagedChanges(),
-          BranchMismatch(expected: "session-003", actual: "main"),
         ],
       );
 
@@ -237,7 +236,6 @@ void main() {
         equals(
           const [
             CleanupIssue.unstagedChanges(),
-            CleanupIssue.branchMismatch(expected: "session-003", actual: "main"),
           ],
         ),
       );
@@ -285,7 +283,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchForce, isTrue);
+      expect(worktreeService.lastDeleteBranchForce, isFalse);
     });
 
     test("failed branch deletion throws instead of reporting success", () async {
@@ -691,7 +689,6 @@ class _FakeWorktreeService extends WorktreeService {
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
-    required String expectedBranch,
   }) async {
     checkCallCount++;
     return safetyResult;

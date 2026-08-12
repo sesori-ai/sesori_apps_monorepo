@@ -12,6 +12,7 @@ class _StubManifest implements RuntimeManifest {
     format: ArchiveFormat.zip,
     sha256: "abc123",
     archiveBinaryName: "opencode",
+    layout: RuntimeAssetLayout.singleBinary,
   );
 
   @override
@@ -30,10 +31,13 @@ class _StubManifest implements RuntimeManifest {
   String get binaryFileName => "opencode";
 
   @override
-  SemanticVersion get minPathVersion => SemanticVersion.parse(value: "1.0.0");
+  RuntimeVersion get minPathVersion => SemanticRuntimeVersion.parse(value: "1.0.0");
 
   @override
-  SemanticVersion get bundledVersion => SemanticVersion.parse(value: "1.17.9");
+  RuntimeVersion get bundledVersion => SemanticRuntimeVersion.parse(value: "1.17.9");
+
+  @override
+  RuntimeVersion? parseVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
 
   @override
   RuntimeAsset? assetFor({required PlatformTarget target}) => _asset;
@@ -55,14 +59,14 @@ class _FakeValidator implements RuntimeVersionValidator {
     this.onDetect,
   });
 
-  final SemanticVersion? pathVersion;
-  final SemanticVersion? managedVersion;
-  final Map<String, SemanticVersion?> candidateVersions;
+  final RuntimeVersion? pathVersion;
+  final RuntimeVersion? managedVersion;
+  final Map<String, RuntimeVersion?> candidateVersions;
   final void Function(String executable)? onDetect;
   final List<String> detectedExecutables = [];
 
   @override
-  Future<SemanticVersion?> detectVersion({
+  Future<RuntimeVersion?> detectVersion({
     required String executable,
     required Map<String, String>? environment,
   }) async {
@@ -74,8 +78,8 @@ class _FakeValidator implements RuntimeVersionValidator {
   }
 
   @override
-  SemanticVersion? parseVersionOutput({required String output}) {
-    return SemanticVersion.tryParse(value: output);
+  RuntimeVersion? parseVersionOutput({required String output}) {
+    return SemanticRuntimeVersion.tryParse(value: output);
   }
 }
 
@@ -105,10 +109,10 @@ void main() {
   final managedBinaryPath = p.join(stateDirectory, "opencode", "1.17.9", "opencode");
 
   Future<List<RuntimeProvisionProgress>> resolve({
-    required SemanticVersion? pathVersion,
-    required SemanticVersion? managedVersion,
+    required RuntimeVersion? pathVersion,
+    required RuntimeVersion? managedVersion,
     List<String> fallbackCandidates = const [],
-    Map<String, SemanticVersion?> candidateVersions = const {},
+    Map<String, RuntimeVersion?> candidateVersions = const {},
   }) {
     return ManagedRuntimeProvisionService(
           manifest: const _StubManifest(),
@@ -130,7 +134,7 @@ void main() {
 
   test("uses a sufficiently recent PATH runtime", () async {
     final events = await resolve(
-      pathVersion: SemanticVersion.parse(value: "1.5.0"),
+      pathVersion: SemanticRuntimeVersion.parse(value: "1.5.0"),
       managedVersion: null,
     );
 
@@ -142,7 +146,7 @@ void main() {
   test("uses an existing pinned managed runtime when PATH is absent", () async {
     final events = await resolve(
       pathVersion: null,
-      managedVersion: SemanticVersion.parse(value: "1.17.9"),
+      managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
     );
 
     expect((events.last as ProvisionReady).binaryPath, managedBinaryPath);
@@ -151,8 +155,8 @@ void main() {
 
   test("explains fallback from an outdated PATH runtime", () async {
     final events = await resolve(
-      pathVersion: SemanticVersion.parse(value: "0.9.0"),
-      managedVersion: SemanticVersion.parse(value: "1.17.9"),
+      pathVersion: SemanticRuntimeVersion.parse(value: "0.9.0"),
+      managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
     );
 
     expect(events.whereType<ProvisionNotice>(), hasLength(1));
@@ -162,11 +166,11 @@ void main() {
   test("uses a sufficiently recent fallback candidate when PATH is absent", () async {
     final events = await resolve(
       pathVersion: null,
-      managedVersion: SemanticVersion.parse(value: "1.17.9"),
+      managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
       fallbackCandidates: const ["/apps/bundle/opencode", "/apps/old/opencode"],
       candidateVersions: {
-        "/apps/bundle/opencode": SemanticVersion.parse(value: "1.5.0"),
-        "/apps/old/opencode": SemanticVersion.parse(value: "1.6.0"),
+        "/apps/bundle/opencode": SemanticRuntimeVersion.parse(value: "1.5.0"),
+        "/apps/old/opencode": SemanticRuntimeVersion.parse(value: "1.6.0"),
       },
     );
 
@@ -176,11 +180,11 @@ void main() {
   test("skips outdated and missing fallback candidates before the managed runtime", () async {
     final events = await resolve(
       pathVersion: null,
-      managedVersion: SemanticVersion.parse(value: "1.17.9"),
+      managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
       fallbackCandidates: const ["/apps/missing/opencode", "/apps/old/opencode"],
       candidateVersions: {
         "/apps/missing/opencode": null,
-        "/apps/old/opencode": SemanticVersion.parse(value: "0.9.0"),
+        "/apps/old/opencode": SemanticRuntimeVersion.parse(value: "0.9.0"),
       },
     );
 
@@ -190,7 +194,7 @@ void main() {
   test("does not accept a managed runtime with a different version", () async {
     final events = await resolve(
       pathVersion: null,
-      managedVersion: SemanticVersion.parse(value: "1.0.0"),
+      managedVersion: SemanticRuntimeVersion.parse(value: "1.0.0"),
     );
 
     expect(events.last, isA<ProvisionFailed>());
