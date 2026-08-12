@@ -52,7 +52,16 @@ class OmpPlugin extends AcpPlugin {
        );
 
   @override
+  String get clientName => "sesori-bridge";
+
+  @override
+  String get clientVersion => "0.0.0";
+
+  @override
   String? get authMethodId => "agent";
+
+  @override
+  Map<String, dynamic>? get initializeCapabilityMeta => null;
 
   @override
   bool get supportsFormElicitation => true;
@@ -62,6 +71,9 @@ class OmpPlugin extends AcpPlugin {
 
   @override
   bool get failsTurnOnSelectionError => true;
+
+  @override
+  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
 
   @override
   Iterable<BridgeSseEvent> mapPromptFailure({
