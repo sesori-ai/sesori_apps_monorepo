@@ -25,4 +25,14 @@ void main() {
 
     expect(styleSheet.p, paragraphStyle);
   });
+
+  test("buildUserMessageMarkdownStyleSheet keeps Markdown legible on the brand surface", () {
+    final styleSheet = buildUserMessageMarkdownStyleSheet(prego: prego);
+
+    expect(styleSheet.p?.color, prego.colors.textBrandPrimary);
+    expect(styleSheet.a?.color, prego.colors.textBrandPrimary);
+    expect(styleSheet.strong?.color, prego.colors.textBrandPrimary);
+    expect(styleSheet.listBullet?.color, prego.colors.textBrandPrimary);
+    expect(styleSheet.code?.color, prego.colors.textBrandPrimary);
+  });
 }

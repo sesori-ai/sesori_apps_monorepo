@@ -37,6 +37,38 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
   );
 }
 
+/// Session Markdown styled for the brand surface of an outgoing user bubble.
+MarkdownStyleSheet buildUserMessageMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final foreground = prego.colors.textBrandPrimary;
+  final body = prego.textTheme.textSm.regular.copyWith(color: foreground);
+  final base = buildSessionMarkdownStyleSheet(
+    prego: prego,
+    paragraphStyle: body,
+  );
+
+  return base.copyWith(
+    a: body.copyWith(
+      decoration: TextDecoration.underline,
+      decorationColor: foreground,
+    ),
+    code: base.code?.copyWith(color: foreground),
+    h1: prego.textTheme.textXl.bold.copyWith(color: foreground),
+    h2: prego.textTheme.textLg.bold.copyWith(color: foreground),
+    h3: prego.textTheme.textMd.bold.copyWith(color: foreground),
+    h4: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    h5: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    h6: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    em: body.copyWith(fontStyle: FontStyle.italic),
+    strong: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    del: body.copyWith(decoration: TextDecoration.lineThrough),
+    blockquote: body,
+    checkbox: body,
+    listBullet: body,
+    tableHead: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    tableBody: body,
+  );
+}
+
 /// Custom [MarkdownBody.builders] for session chat markdown. Replaces the
 /// default fenced-code-block rendering with a syntax-highlighted, copyable
 /// [CodeBlock]. Pass `highlightEnabled: false` while a message is streaming so
