@@ -82,17 +82,31 @@ class SessionDetailArchivedNotice extends StatelessWidget {
 }
 
 class SessionDetailQueuedMessagesSection extends StatelessWidget {
+  final QueuedSessionSubmission? sendingSubmission;
   final List<QueuedSessionSubmission> messages;
 
-  const SessionDetailQueuedMessagesSection({super.key, required this.messages});
+  const SessionDetailQueuedMessagesSection({
+    super.key,
+    required this.sendingSubmission,
+    required this.messages,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // beginSend moves this exact submission instance from pending to active;
+        // identity keeps its bubble element mounted so it can animate the change.
+        if (sendingSubmission case final submission?)
+          QueuedMessageBubble(
+            key: ObjectKey(submission),
+            submission: submission,
+            presentation: const QueuedMessageBubblePresentation.sending(),
+          ),
         for (var i = 0; i < messages.length; i++)
           QueuedMessageBubble(
+            key: ObjectKey(messages[i]),
             submission: messages[i],
             presentation: QueuedMessageBubblePresentation.pending(
               onCancel: () => context.read<SessionDetailCubit>().cancelQueuedMessage(i),
