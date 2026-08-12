@@ -96,7 +96,10 @@
   before reading code with the internal task-store schema error `no such
   column: replacement_seq`. Post-rebase focused tests pass (123 bridge app,
   14 Codex descriptor, and plugin-interface authentication tests), fatal-info
-  analysis remains clean, and `git diff --check origin/main...HEAD` passes.
+  analysis remains clean, `git diff --check origin/main...HEAD` passes, and
+  `git diff --numstat origin/main...HEAD` reports 844 additions and 73
+  deletions. The lower-than-estimated size reflects reuse of existing lifecycle
+  ownership rather than introducing a parallel coordinator.
 
 ## Findings And Plan Deltas
 
