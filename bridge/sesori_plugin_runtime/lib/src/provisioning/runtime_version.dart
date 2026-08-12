@@ -55,10 +55,15 @@ final class SemanticRuntimeVersion extends RuntimeVersion {
   }
 
   @override
-  bool operator ==(Object other) => other is SemanticRuntimeVersion && other.version == version;
+  bool operator ==(Object other) => other is SemanticRuntimeVersion && compareTo(other) == 0;
 
   @override
-  int get hashCode => version.hashCode;
+  int get hashCode => Object.hash(
+    version.major,
+    version.minor,
+    version.patch,
+    Object.hashAll(version.prereleaseIdentifiers),
+  );
 }
 
 /// A calendar-dated runtime version (Cursor): `YYYY.MM.DD` optionally followed
@@ -89,11 +94,16 @@ final class CalendarRuntimeVersion extends RuntimeVersion {
     final trimmed = value.trim();
     final match = _pattern.firstMatch(trimmed);
     if (match == null) return null;
+    final year = int.parse(match.group(1)!);
+    final month = int.parse(match.group(2)!);
+    final day = int.parse(match.group(3)!);
+    final date = DateTime.utc(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) return null;
     return CalendarRuntimeVersion._(
       raw: trimmed,
-      year: int.parse(match.group(1)!),
-      month: int.parse(match.group(2)!),
-      day: int.parse(match.group(3)!),
+      year: year,
+      month: month,
+      day: day,
     );
   }
 

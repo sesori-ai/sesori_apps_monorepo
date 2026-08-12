@@ -84,4 +84,11 @@ void main() {
 
     expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isFalse);
   });
+
+  test("ignores installer staging and non-version directories", () {
+    versionDir(".sesori-runtime-staging");
+    versionDir("notes");
+
+    expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isFalse);
+  });
 }

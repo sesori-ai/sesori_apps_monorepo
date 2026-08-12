@@ -281,6 +281,9 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     /// What to tell the user when nothing usable was found and Sesori can
     /// install the runtime itself.
     String missingRuntimeHint() {
+      if (!_supportsManagedInstall(config: config)) {
+        return "Install the Cursor CLI locally, then retry setup detection.";
+      }
       const inventory = ManagedRuntimeInventory(manifest: CursorRuntimeManifest());
       return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
           ? "This bridge needs a newer Cursor CLI. Install it from Sesori to update the managed runtime."

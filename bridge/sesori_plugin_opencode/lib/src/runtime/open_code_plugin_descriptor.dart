@@ -31,13 +31,12 @@ abstract final class _OpenCodeConfigKey {
 /// constructs an [OpenCodePlugin] with auto-initialization disabled (the
 /// descriptor awaits [OpenCodeManagedApi.initialize] explicitly); tests inject a
 /// fake.
-typedef OpenCodeManagedApiFactory =
-    OpenCodeManagedApi Function({
-      required String serverUrl,
-      required String? password,
-      required void Function() onConnected,
-      required void Function() onDisconnected,
-    });
+typedef OpenCodeManagedApiFactory = OpenCodeManagedApi Function({
+  required String serverUrl,
+  required String? password,
+  required void Function() onConnected,
+  required void Function() onDisconnected,
+});
 
 OpenCodeManagedApi _defaultBuildApi({
   required String serverUrl,
@@ -322,10 +321,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       final installService = ManagedRuntimeInstallService(
         manifest: manifest,
         versionValidator: RuntimeVersionValidator(
-        commandExecutor: commandExecutor,
-        manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
-      ),
+          commandExecutor: commandExecutor,
+          manifest: manifest,
+          probeTimeout: _versionProbeTimeout,
+        ),
         installService: RuntimeInstallService(
           downloadClient: BinaryDownloadClient(httpClient: httpClient),
           checksumValidator: ChecksumValidator(),
@@ -366,10 +365,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
     final versionValidator = RuntimeVersionValidator(
-        commandExecutor: executor,
-        manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
-      );
+      commandExecutor: executor,
+      manifest: manifest,
+      probeTimeout: _versionProbeTimeout,
+    );
 
     Future<bool> managedRuntimeIsReady() async {
       if (hasExplicitBin) return false;

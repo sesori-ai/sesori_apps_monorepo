@@ -34,7 +34,11 @@ class ManagedRuntimeInventory {
     final pinned = _manifest.bundledVersion.raw;
     try {
       return managedDir.listSync(followLinks: false).any(
-        (entity) => entity is Directory && p.basename(entity.path) != pinned,
+        (entity) {
+          if (entity is! Directory) return false;
+          final name = p.basename(entity.path);
+          return name != pinned && _manifest.parseVersion(value: name) != null;
+        },
       );
     } on Object catch (error, stackTrace) {
       // Wording-only input: an unreadable directory falls back to the generic

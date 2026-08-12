@@ -14,6 +14,15 @@ void main() {
     test("rejects a non-semver string", () {
       expect(SemanticRuntimeVersion.tryParse(value: "2026.08.04-18-00-12-abc"), isNull);
     });
+
+    test("equality follows semver precedence", () {
+      final first = SemanticRuntimeVersion.parse(value: "1.18.11+first");
+      final second = SemanticRuntimeVersion.parse(value: "1.18.11+second");
+
+      expect(first.compareTo(second), isZero);
+      expect(first, second);
+      expect(first.hashCode, second.hashCode);
+    });
   });
 
   group("CalendarRuntimeVersion", () {
@@ -52,6 +61,11 @@ void main() {
     test("rejects a non-calendar string", () {
       expect(CalendarRuntimeVersion.tryParse(value: "1.18.11"), isNull);
       expect(CalendarRuntimeVersion.tryParse(value: "not-a-version"), isNull);
+    });
+
+    test("rejects impossible calendar dates", () {
+      expect(CalendarRuntimeVersion.tryParse(value: "2026.13.01-build"), isNull);
+      expect(CalendarRuntimeVersion.tryParse(value: "2026.02.30-build"), isNull);
     });
   });
 

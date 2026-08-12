@@ -57,10 +57,9 @@ class RuntimeVersionValidator {
     return version;
   }
 
-  /// Extracts the first whitespace-separated token that parses as a semantic
-  /// version. A bare `X.Y.Z` (OpenCode) and a labelled `codex-cli X.Y.Z` (codex)
-  /// both parse: every token is tried, and the non-version tokens are skipped. A
-  /// leading `v`/`V` (e.g. `v1.17.9`) is stripped so a prefixed build is not
+  /// Extracts the first whitespace-separated token that parses with the
+  /// manifest's version scheme. Every token is tried, and non-version tokens
+  /// are skipped. A leading `v`/`V` is stripped so prefixed builds are not
   /// misdetected as unsupported.
   RuntimeVersion? parseVersionOutput({required String output}) {
     for (final rawToken in output.split(RegExp(r"\s+"))) {

@@ -19,9 +19,7 @@ Update the bridge's OpenCode, Codex, and Cursor CLI targets to the latest stable
   `bridge/sesori_plugin_codex/lib/src/runtime/codex_runtime_manifest.dart`
 - Codex manifest tests:
   `bridge/sesori_plugin_codex/test/runtime/codex_runtime_manifest_test.dart`
-- Cursor CLI minimum build:
-  `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`
-- Cursor managed runtime (pinned build + per-platform checksums):
+- Cursor managed runtime, PATH minimum, and per-platform checksums:
   `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`
 - Cursor manifest tests:
   `bridge/sesori_plugin_cursor/test/runtime/cursor_runtime_manifest_test.dart`
@@ -143,6 +141,7 @@ For Cursor, also confirm the pinned download URL resolves before committing (a
 wrong build string 404s only at install time on a user's machine):
 
 ```bash
+BUILD=2026.08.11-e8db854
 curl -fsSI "https://downloads.cursor.com/lab/$BUILD/darwin/arm64/agent-cli-package.tar.gz" | head -1
 ```
 
