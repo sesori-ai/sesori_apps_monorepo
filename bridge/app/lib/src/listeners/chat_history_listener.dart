@@ -54,10 +54,6 @@ class ChatHistoryListener {
     return switch (event) {
       BridgeSseServerConnected() => _chatHistoryService.invalidatePluginHistory(pluginId: pluginId),
       BridgeSseMessageUpdated(:final info) => _captureMessage(info: info),
-      BridgeSseMessageRemoved(:final sessionID, :final messageID) => _chatHistoryService.captureMessageRemoved(
-        sessionId: sessionID,
-        messageId: messageID,
-      ),
       _ => Future<void>.value(),
     };
   }

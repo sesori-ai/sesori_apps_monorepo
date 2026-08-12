@@ -191,6 +191,41 @@ void main() {
     expect(rows.map((row) => row.partId), equals(["p_after"]));
   });
 
+  test("a message removal stays ordered after an immediately preceding part update", () async {
+    final harness = await _LiveAttachmentHarness.create();
+    addTearDown(harness.close);
+
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(
+          id: "p_removed",
+          attachment: PluginMessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List.fromList([1, 2, 3])),
+            filename: "shot.png",
+          ),
+        ),
+      ),
+    );
+    harness.plugin.emitEvent(
+      const BridgeSseMessageRemoved(sessionID: _backendSessionId, messageID: "m1"),
+    );
+    final delivered = harness.nextMessagePartUpdated(partId: "p_after");
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(id: "p_after", text: "after removal", messageId: "m2"),
+      ),
+    );
+    await delivered;
+
+    await _waitFor(
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      reason: "the part after the message removal to be stored",
+    );
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    expect(rows.map((row) => row.partId), equals(["p_after"]));
+  });
+
   test("a stale generation stops the part before capture and delivery", () async {
     final harness = await _LiveAttachmentHarness.create();
     addTearDown(harness.close);
@@ -227,12 +262,13 @@ Future<void> _waitFor(Future<bool> Function() condition, {required String reason
 PluginMessagePart _pluginPart({
   required String id,
   String? text,
+  String messageId = "m1",
   PluginMessagePartType type = PluginMessagePartType.text,
   PluginMessageAttachment? attachment,
 }) => PluginMessagePart(
   id: id,
   sessionID: _backendSessionId,
-  messageID: "m1",
+  messageID: messageId,
   type: attachment == null ? type : PluginMessagePartType.file,
   text: text,
   tool: null,

@@ -425,11 +425,18 @@ class ChatHistoryService {
     );
   }
 
-  Future<void> captureMessageRemoved({required String sessionId, required String messageId}) {
+  Future<void> captureMessageRemoved({
+    required String sessionId,
+    required String messageId,
+    required bool Function() shouldCapture,
+  }) {
     return _capture(
       sessionId: sessionId,
       description: "removal of message $messageId",
-      write: (_) => _chatHistoryRepository.deleteMessage(sessionId: sessionId, messageId: messageId),
+      write: (_) {
+        if (!shouldCapture()) return Future<void>.value();
+        return _chatHistoryRepository.deleteMessage(sessionId: sessionId, messageId: messageId);
+      },
     );
   }
 
@@ -437,15 +444,19 @@ class ChatHistoryService {
     required String sessionId,
     required String messageId,
     required String partId,
+    required bool Function() shouldCapture,
   }) {
     return _capture(
       sessionId: sessionId,
       description: "removal of part $partId",
-      write: (_) => _chatHistoryRepository.deletePart(
-        sessionId: sessionId,
-        messageId: messageId,
-        partId: partId,
-      ),
+      write: (_) {
+        if (!shouldCapture()) return Future<void>.value();
+        return _chatHistoryRepository.deletePart(
+          sessionId: sessionId,
+          messageId: messageId,
+          partId: partId,
+        );
+      },
     );
   }
 

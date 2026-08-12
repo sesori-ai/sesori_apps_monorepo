@@ -93,13 +93,22 @@ void main() {
         part: _part(id: "p2", messageId: "m1", text: "two"),
       );
 
-      await history.service.capturePartRemoved(sessionId: "ses_a", messageId: "m1", partId: "p1");
+      await history.service.capturePartRemoved(
+        sessionId: "ses_a",
+        messageId: "m1",
+        partId: "p1",
+        shouldCapture: () => true,
+      );
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).single.parts.map((part) => part.id),
         const ["p2"],
       );
 
-      await history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m1");
+      await history.service.captureMessageRemoved(
+        sessionId: "ses_a",
+        messageId: "m1",
+        shouldCapture: () => true,
+      );
       expect(await _storedMessages(history: history, sessionId: "ses_a"), isEmpty);
     });
 
@@ -388,7 +397,11 @@ void main() {
         message: _message(id: "m2"),
       );
 
-      await history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+      await history.service.captureMessageRemoved(
+        sessionId: "ses_a",
+        messageId: "m2",
+        shouldCapture: () => true,
+      );
       await history.service.backfillSession(sessionId: "ses_a");
 
       // The fetch happens after the removal, so its transcript is the newer
@@ -410,7 +423,11 @@ void main() {
       final history = createTestChatHistory(sessionRepository: repository);
       Future<void>? removal;
       repository.onFetch = () async {
-        removal = history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+        removal = history.service.captureMessageRemoved(
+          sessionId: "ses_a",
+          messageId: "m2",
+          shouldCapture: () => true,
+        );
       };
 
       await history.service.backfillSession(sessionId: "ses_a");
@@ -431,6 +448,7 @@ void main() {
           sessionId: "ses_a",
           messageId: "m1",
           partId: "m1-p1",
+          shouldCapture: () => true,
         );
       };
 

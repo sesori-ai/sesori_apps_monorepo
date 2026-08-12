@@ -182,6 +182,47 @@ void main() {
       expect(rows.map((row) => row.partId), equals(["blocker"]));
     });
 
+    test("does not remove a part when the source becomes stale while queued", () async {
+      final history = createTestChatHistory();
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _part(id: "kept"),
+      );
+      final blocker = Completer<void>();
+      final blockingRepository = _BlockingWriteRepository(
+        blocker: blocker,
+        chatHistoryDao: history.database.chatHistoryDao,
+        attachmentSpillStorage: history.spillStorage,
+        archivedSessionStorage: history.archivedStorage,
+      );
+      final service = ChatHistoryService(
+        chatHistoryRepository: blockingRepository,
+        sessionRepository: _BackfillingSessionRepository(),
+        attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+        bridgeIdProvider: const _BridgeIdProvider("br_test1234"),
+      );
+      var current = true;
+      final precedingCapture = service.capturePart(
+        sessionId: "ses_a",
+        part: _part(id: "blocker"),
+      );
+      await blockingRepository.blocked;
+
+      final removal = service.capturePartRemoved(
+        sessionId: "ses_a",
+        messageId: "m1",
+        partId: "kept",
+        shouldCapture: () => current,
+      );
+      current = false;
+      blocker.complete();
+
+      await precedingCapture;
+      await removal;
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
+      expect(rows.map((row) => row.partId), contains("kept"));
+    });
+
     test("legacy budgeting spans separately delivered image parts of one message", () async {
       final history = createTestChatHistory();
       final firstBytes = Uint8List(3 * 1024 * 1024);

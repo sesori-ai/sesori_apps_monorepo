@@ -1540,11 +1540,24 @@ class OrchestratorSession {
           ),
         );
       } else {
+        bool shouldCapture() => _isCurrentSource(
+          pluginId: pluginId,
+          generation: generation,
+          allowDuringStop: allowDuringStop,
+        );
+        if (event case BridgeSseMessageRemoved(:final sessionID, :final messageID)) {
+          await _chatHistoryService.captureMessageRemoved(
+            sessionId: sessionID,
+            messageId: messageID,
+            shouldCapture: shouldCapture,
+          );
+        }
         if (event case BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID)) {
           await _chatHistoryService.capturePartRemoved(
             sessionId: sessionID,
             messageId: messageID,
             partId: partID,
+            shouldCapture: shouldCapture,
           );
         }
         final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event: event, pluginId: pluginId);
