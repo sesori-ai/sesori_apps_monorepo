@@ -236,10 +236,10 @@ backend session ID is known.
   later genuine prompt.
 - A bridge-owned manual compact is one action. Its optional instruction prompt
   receives the correlated message ID and is marked as compact guidance so its
-  raw text part cannot emit independently; successful summarize acceptance
-  satisfies the same pending action. The later manual `CompactionPart` is
-  coalesced with that action. A laptop-originated manual compact still emits
-  from its raw compaction part.
+  raw text part cannot emit independently. Summarize has no upstream caller-ID,
+  so raw manual compactions never consume its bridge fallback. Emit that
+  fallback only when no raw manual compact was observed during the bridge call;
+  concurrent laptop compaction therefore cannot suppress a lost bridge fact.
 - Remove pending/suppression state when the tracker observes session deletion;
   call its `reset` from the existing OpenCode reconnect/reset path and its
   `dispose` during plugin disposal. Do not add a transcript-sized dedupe set;
@@ -247,10 +247,12 @@ backend session ID is known.
   duplicate delivery, and correlated bridge-write coordination emits at most
   one fact for its accepted action.
 - Raw `question.replied` and `question.rejected` events are authoritative and
-  cover both Sesori and laptop replies.
+  cover laptop replies. Bridge calls coordinate by request ID and emit a
+  successful-call fallback only when the exact raw event was not observed.
 - Raw `permission.replied` is not authoritative: OpenCode emits the same event
   for `always` cascades. Emit one fact only from a successful manual
-  `replyToPermission` call. Direct laptop permission decisions remain unknown.
+  `replyToPermission` 2xx outcome; a reconciled 404 returns not-accepted and
+  emits none. Direct laptop permission decisions remain unknown.
 
 This design relies on OpenCode's observed and generated API ordering:
 `message.updated` precedes its parts. It does not add a timer, delayed flush,
@@ -269,8 +271,9 @@ clock semantics make it authoritative.
 - The tracker emits once from the first app-server `userMessage` item lifecycle
   observation; that typed item is the authoritative prompt/command boundary and
   also covers another observable Codex surface. It keeps only in-flight
-  `(threadId, itemId)` keys: `item/started` emits and records, `item/completed`
-  removes and emits only if no start was observed. Turn terminal, thread delete,
+  `(threadId, itemId)` keys plus one latest completed item ID per thread:
+  `item/started` emits and records, `item/completed` removes and emits only if no
+  start or matching completion was observed. Turn terminal, thread delete,
   reconnect/reset, and disposal clear remaining keys. Do not emit again from
   `sendPrompt` or an ordinary `sendCommand` response.
 - Extract the existing private generated repository/context test into one pure
@@ -282,6 +285,8 @@ clock semantics make it authoritative.
   emit no fact.
 - Successful registry question/permission methods emit facts only for explicit
   manual calls. `cancelForSession` remains a no-fact cleanup path.
+- The tracker accepts notification, manual-compact, and manual-registry triggers;
+  `CodexPlugin` only delegates and forwards returned facts.
 - App-server user items have no reliable message timestamp, so these events use
   null `occurredAt` and bridge observation time.
 
@@ -403,8 +408,7 @@ For running sessions, compare:
    `lastUserInteractionAt ?? time.updated ?? 0`;
 2. a known interaction marker before an unknown marker when effective keys are
    equal;
-3. `time.updated` descending; and
-4. session ID ascending as a deterministic final tie-breaker.
+3. session ID ascending as a deterministic final tie-breaker.
 
 The `time.updated` fallback preserves useful behavior with old bridges and
 pre-migration sessions. Once a verified marker exists, later automatic backend
@@ -493,7 +497,8 @@ existing merge seams is sufficient.
 | Duplicate OpenCode envelope/part delivery | Ordinary transport duplicate | Retain one most-recent classified message ID per session and consume each pending envelope once |
 | Accepted OpenCode write loses SSE pair | Ordinary disconnect window | Correlate with caller-supplied message ID and emit one successful null-time fallback only when that exact raw message did not satisfy it |
 | Concurrent laptop and Sesori writes | First-class multi-surface flow | Correlate pending bridge action by message ID; unrelated raw facts emit independently and cannot satisfy it |
-| Manual compact with instructions | Ordinary compact command flow | Mark the correlated no-reply instruction as compact guidance and coalesce it with summarize/manual-compaction evidence into one fact |
+| Manual compact with instructions | Ordinary compact command flow | Mark guidance non-emitting; raw compact cannot consume fallback; fallback only when no raw compact was observed during the call |
+| OpenCode reply disconnect/reconciliation | Ordinary race flow | Request-ID fallback for accepted questions; reconciled permission 404 emits no fact |
 | Backend clock rollback | Ordinary clock-adjustment flow | OpenCode uses null occurred-at and bridge monotonic stamping; known times remain only for authoritative plugin sources |
 | REST/SSE replacement race | Ordinary initial/in-flight refresh flow | Existing unseen tracker retains the patch; service maxes it at client replacement seams |
 | Reversed OpenCode message/part order | Theoretical against current upstream order | Accepted; no timer or history lookup. Missing one reorder self-heals on the next genuine interaction |
@@ -669,14 +674,16 @@ Step 2:
 - `OpenCodeUserInteractionTracker` tests: ordinary root prompt/file prompt,
   child-generated prompt exclusion, slash/subtask command, manual compaction,
   auto compaction, synthetic continuation, overflow replay, question
-  reply/reject, manual versus automatic permission, bridge-write/raw one-fact
-  message-ID-correlated write/raw one-fact coordination, unrelated concurrent
+  reply/reject, manual versus automatic permission, message-ID-correlated
+  write/raw one-fact coordination, unrelated concurrent
   laptop writes, immediate duplicate delivery, instructed-compaction
-  coalescing, lost-SSE fallback, clock rollback, and bounded pending-state cleanup.
+  fallback, request-ID reply fallback, reconciled permission 404, clock rollback,
+  and bounded pending-state cleanup.
 - `CodexGeneratedContextValidator` and `CodexUserInteractionTracker` tests: one
-  first-lifecycle user-item fact, generated-context exclusion, bounded terminal
-  cleanup, ordinary command, explicit manual compact, generic context compaction
-  exclusion, manual registry replies, and cancellation exclusion.
+  first-lifecycle user-item fact, generated-context exclusion, duplicate
+  completion rejection, bounded terminal cleanup, ordinary command, explicit
+  manual compact, generic context compaction exclusion, manual registry replies,
+  and cancellation exclusion.
 - ACP/Cursor and Claude tests: accepted/failed prompt and command, initial turn,
   compact mapping, manual reply, cancellation/disposal exclusion.
 - Bridge app mapper tests: backend/stable IDs and display-root translation; no

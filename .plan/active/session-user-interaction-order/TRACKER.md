@@ -101,11 +101,15 @@
   and lifecycle cleanup under `OpenCodeService`.
 - [ ] Add `CodexGeneratedContextValidator` and bounded
   `CodexUserInteractionTracker`; inject the validator into history mapping.
+- [ ] Route all Codex triggers through the tracker and reject duplicate completed
+  item notifications.
 - [ ] Prove automatic compaction continuation/overflow replay exclusions.
 - [ ] Prove one fact across ordinary raw delivery, lost-SSE fallback, and backend
   clock rollback.
 - [ ] Prove concurrent laptop/Sesori writes cannot cross-satisfy, instructed
-  compact emits once, and immediate complete-message duplicates are rejected.
+  compact fallback cannot be consumed by another raw compact, and immediate
+  complete-message duplicates are rejected.
+- [ ] Prove request-ID question fallback and reconciled permission 404 exclusion.
 - [ ] Prove manual versus automatic/cancelled reply behavior.
 - [ ] Prove internal event ID/display-root translation and no public wire event.
 - [ ] Run focused plugin/interface/app tests and strict analysis.
@@ -215,7 +219,7 @@
   through initial REST load. The stale tracker-state finding was already fixed
   in `c8aed9ee5`. Against merge base `88059e200`,
   `git diff --numstat $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`
-  reports PLAN `+777/-0` and TRACKER `+228/-0`, totaling `+1,005/-0` within the
+  reports PLAN `+784/-0` and TRACKER `+236/-0`, totaling `+1,020/-0` within the
   revised 550-1,050 target. The same range passes
   `git diff --check $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`.
 - **2026-08-13 Step 1 second review:** consolidated four OpenCode comments at
@@ -226,3 +230,7 @@
   those existing classes still own unseen behavior and only reuse their ordered
   timestamp persistence seam; they do not become owners of the complete session
   list-state invariant.
+- **2026-08-13 Step 1 third review:** clarified summarize's no-caller-ID
+  boundary, question fallback, permission 404 exclusion, Codex completion
+  idempotency/coordinator ownership, and stable equal-known-marker ties. The
+  repeated unseen-owner rename remains declined.
