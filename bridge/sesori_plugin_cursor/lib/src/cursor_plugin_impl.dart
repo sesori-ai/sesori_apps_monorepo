@@ -141,10 +141,28 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   String? _appliedThoughtLevelId;
 
   @override
+  String get clientName => "sesori-bridge";
+
+  @override
+  String get clientVersion => "0.0.0";
+
+  @override
   String? get authMethodId => "cursor_login";
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => const {"parameterizedModelPicker": true};
+
+  @override
+  bool get supportsFormElicitation => false;
+
+  @override
+  bool get serializesPromptsProcessWide => false;
+
+  @override
+  bool get failsTurnOnSelectionError => false;
+
+  @override
+  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
 
   @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {

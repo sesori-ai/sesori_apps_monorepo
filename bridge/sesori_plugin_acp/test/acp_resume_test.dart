@@ -18,7 +18,7 @@ void main() {
       fake = FakeAcpProcess();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      plugin = AcpPlugin(
+      plugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),

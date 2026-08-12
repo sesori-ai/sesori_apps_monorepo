@@ -129,8 +129,9 @@ class AcpApprovalRegistry {
 
   /// The session a server request belongs to: its explicit `sessionId` when
   /// present, otherwise the active turn's session (see [_activeSessionResolver]).
-  /// Returns "" only when neither is available — the caller must treat that as
-  /// unresolved (a request stamped with "" is dropped by the mobile client).
+  /// Returns "" when no session can be resolved, including a present malformed
+  /// `sessionId`; the caller must treat that as unresolved (a request stamped
+  /// with "" is dropped by the mobile client).
   String resolveSessionId(Map<String, dynamic> params) {
     final rawSessionId = params["sessionId"];
     if (rawSessionId != null && rawSessionId is! String) return "";
