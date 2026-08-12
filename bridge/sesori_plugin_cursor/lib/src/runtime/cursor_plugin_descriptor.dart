@@ -28,14 +28,13 @@ const int _setupProbeOutputLimit = 64 * 1024;
 /// binary. The production default constructs the real plugin wired to the
 /// host-backed process factory; tests inject a fake to avoid spawning the
 /// Cursor CLI.
-typedef CursorPluginFactory =
-    CursorPlugin Function({
-      required String binaryPath,
-      required String launchDirectory,
-      required String? apiEndpoint,
-      required AcpProcessFactory processFactory,
-      required CursorSessionCleanupService sessionCleanupService,
-    });
+typedef CursorPluginFactory = CursorPlugin Function({
+  required String binaryPath,
+  required String launchDirectory,
+  required String? apiEndpoint,
+  required AcpProcessFactory processFactory,
+  required CursorSessionCleanupService sessionCleanupService,
+});
 
 CursorPlugin _defaultBuildPlugin({
   required String binaryPath,
@@ -232,7 +231,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   }
 
   /// Version probing for the Cursor CLI. Its `--version` prints a bare calendar
-  /// build (`2026.08.04-aaa8809`), which the shared validator parses.
+  /// build (`2026.08.11-e8db854`), which the shared validator parses.
   RuntimeVersionValidator _versionValidatorFor({required HostProcessService processes}) {
     return RuntimeVersionValidator(
       commandExecutor: HostProcessCommandExecutor(

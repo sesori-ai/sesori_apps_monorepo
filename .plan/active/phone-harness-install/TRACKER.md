@@ -6,7 +6,7 @@
 | 2/6 Capability, contracts, descriptor seams | #778 | merged | |
 | 3/6 Bridge install command end to end | #779 | merged | |
 | 4/6 Phone install button and progress | #780 | merged | |
-| 5/6 Cursor managed runtime and install | — | in progress | Recovered the unpublished local successor and reconciled it with current `origin/main`. |
+| 5/6 Cursor managed runtime and install | — | ready for PR | Recovered the unpublished local successor, reconciled current `origin/main`, and refreshed the official `2026.08.11-e8db854` pin. |
 | 6/6 Retire the plan | — | pending | |
 
 ## Working Rules

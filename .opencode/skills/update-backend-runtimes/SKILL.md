@@ -34,9 +34,10 @@ Read `bridge/AGENTS.md` before editing. Never hand-edit generated files.
 
 - Update OpenCode's `bundledVersion` to the latest stable `anomalyco/opencode` GitHub release.
 - Update Codex's `bundledVersion` to the latest stable `openai/codex` GitHub release.
-- Update Cursor's `minVersion` to the calendar date of the current build advertised by the official installer at `https://cursor.com/install`.
+- Update Cursor's bundled runtime to the current build advertised by the official installer at `https://cursor.com/install`.
 - Do not raise OpenCode's `minPathVersion` unless the user gives a specific minimum or bridge code requires a newer API. If it changes, keep `opencode_v1_surface.json` metadata aligned.
 - Do not raise Codex's `minPathVersion` unless bridge code requires a newer app-server capability or the user explicitly requests it.
+- Do not raise Cursor's `minPathVersion` unless bridge behavior requires a newer capability or the user explicitly requests it.
 - Ignore prereleases. Confirm GitHub's `latest` release and the corresponding npm package version agree for OpenCode and Codex when npm is available.
 
 ## Discover Releases
@@ -89,14 +90,16 @@ curl -fsSL https://cursor.com/install
 
 Extract the build identifier used in both the version directory and download URL, for example `2026.07.16-899851b`. Do not install or update Cursor locally just to discover the version. If the installer does not expose one unambiguous build identifier, stop and report the blocker rather than guessing.
 
-Cursor comparison parses only the leading `YYYY.MM.DD` calendar version. Store that date in `minVersion` so the displayed requirement exactly matches enforcement.
+Cursor comparison parses only the leading `YYYY.MM.DD` calendar version. Preserve
+the current `minPathVersion` unless a concrete capability requirement changes;
+the bundled build remains an independent exact pin.
 
 #### Cursor managed runtime checksums
 
 Cursor publishes no digest manifest, so the manifest's SHA-256 values are computed by us at pin time. Download all four published packages for the build and hash them:
 
 ```bash
-BUILD=2026.08.04-aaa8809   # the installer's build identifier
+BUILD=2026.08.11-e8db854   # the installer's build identifier
 D=$(mktemp -d)
 for t in darwin/arm64 darwin/x64 linux/arm64 linux/x64; do
   curl -fsSL -o "$D/$(echo $t | tr / -).tar.gz" \
@@ -105,7 +108,7 @@ done
 shasum -a 256 "$D"/*.tar.gz
 ```
 
-Write `_bundledVersion` as the exact published build string (`2026.08.04-aaa8809`). Preserve its `CalendarRuntimeVersion.raw` value in the download URL and version directory. There is no Windows package — leave `PlatformOs.windows` absent so the install capability stays off there.
+Write `_bundledVersion` as the exact published build string (for example `2026.08.11-e8db854`). Preserve its `CalendarRuntimeVersion.raw` value in the download URL and version directory. There is no Windows package — leave `PlatformOs.windows` absent so the install capability stays off there.
 
 Cursor ships a `dist-package/` directory whose `cursor-agent` entry binary loads sibling files, so its assets use `RuntimeAssetLayout.packageDirectory`. If a future build ships a single self-contained binary instead, switch the layout rather than flattening the tree.
 
@@ -117,7 +120,7 @@ Because the digests are self-computed, a silently re-published asset fails check
 2. Apply an explicitly requested OpenCode minimum and synchronize the API surface metadata comment; otherwise preserve the existing minimum.
 3. Update Codex's bundled version, release-version documentation, and all six matching SHA-256 values.
 4. Preserve the Codex minimum unless a concrete requirement says otherwise.
-5. Update Cursor's minimum to the official current build's calendar date, and update `CursorRuntimeManifest`'s `_bundledVersion` plus all four computed SHA-256 values.
+5. Update `CursorRuntimeManifest`'s `_bundledVersion` to the official current build and refresh all four computed SHA-256 values. Preserve its minimum unless a concrete requirement says otherwise.
 6. Update hard-coded version URLs, version assertions, and recent-version fixtures in the three manifest/availability tests.
 7. Search the affected plugin packages for the replaced target versions. Update only references that describe the current pin; preserve historical comments and protocol-shape observations tied to older versions.
 8. Run `dart format` on changed Dart files.

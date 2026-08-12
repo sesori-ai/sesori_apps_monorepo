@@ -12,14 +12,16 @@ void main() {
     expect(manifest.binaryFileName, "cursor-agent");
     // The publisher's exact strings survive: a normalized 2026.8.4 would 404
     // the download and mis-name the on-disk version directory.
-    expect(manifest.bundledVersion.raw, "2026.08.04-aaa8809");
+    expect(manifest.bundledVersion.raw, "2026.08.11-e8db854");
     expect(manifest.minPathVersion.raw, "2026.07.16");
   });
 
   test("publishes darwin and linux packages but not windows", () {
     for (final os in [PlatformOs.macos, PlatformOs.linux]) {
       for (final arch in [PlatformArch.arm64, PlatformArch.x64]) {
-        final asset = manifest.assetFor(target: PlatformTarget(os: os, arch: arch));
+        final asset = manifest.assetFor(
+          target: PlatformTarget(os: os, arch: arch),
+        );
         expect(asset, isNotNull, reason: "$os/$arch must be published");
         expect(asset!.layout, RuntimeAssetLayout.packageDirectory);
         expect(asset.format, ArchiveFormat.tarGz);
@@ -29,7 +31,9 @@ void main() {
     }
     for (final arch in [PlatformArch.arm64, PlatformArch.x64]) {
       expect(
-        manifest.assetFor(target: PlatformTarget(os: PlatformOs.windows, arch: arch)),
+        manifest.assetFor(
+          target: PlatformTarget(os: PlatformOs.windows, arch: arch),
+        ),
         isNull,
         reason: "Cursor publishes no Windows package",
       );
@@ -40,7 +44,11 @@ void main() {
     final digests = {
       for (final os in [PlatformOs.macos, PlatformOs.linux])
         for (final arch in [PlatformArch.arm64, PlatformArch.x64])
-          manifest.assetFor(target: PlatformTarget(os: os, arch: arch))!.sha256,
+          manifest
+              .assetFor(
+                target: PlatformTarget(os: os, arch: arch),
+              )!
+              .sha256,
     };
 
     expect(digests, hasLength(4));
@@ -53,7 +61,7 @@ void main() {
 
     expect(
       manifest.downloadUrlFor(asset: asset),
-      "https://downloads.cursor.com/lab/2026.08.04-aaa8809/darwin/arm64/agent-cli-package.tar.gz",
+      "https://downloads.cursor.com/lab/2026.08.11-e8db854/darwin/arm64/agent-cli-package.tar.gz",
     );
     expect(manifest.downloadUrlFor(asset: asset), isNot(contains("2026.8.4")));
   });
@@ -61,7 +69,7 @@ void main() {
   test("managed binaries live under a version-scoped directory", () {
     expect(
       manifest.managedBinaryPath(stateDirectory: "/state"),
-      "/state/cursor/2026.08.04-aaa8809/cursor-agent",
+      "/state/cursor/2026.08.11-e8db854/cursor-agent",
     );
   });
 }

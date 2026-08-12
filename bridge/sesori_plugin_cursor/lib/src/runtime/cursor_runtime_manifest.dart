@@ -7,7 +7,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// Cursor differs from OpenCode and codex in three ways that shape this file:
 ///
 /// 1. **Calendar versions.** Builds are `YYYY.MM.DD-<suffix>` (e.g.
-///    `2026.08.04-aaa8809`, and historically `2026.06.15-18-00-12-6f5a2cf`).
+///    `2026.08.11-e8db854`, and historically `2026.06.15-18-00-12-6f5a2cf`).
 ///    Semver cannot express these: the multi-dash form fails to parse at all,
 ///    and a dated build would sort *below* the same day's bare version because
 ///    semver treats the suffix as a prerelease. Cursor therefore pins
@@ -43,7 +43,7 @@ class CursorRuntimeManifest extends RuntimeManifest {
   /// verbatim: [CalendarRuntimeVersion] keeps the publisher's string, so the
   /// download URL and the on-disk version directory both use it unchanged.
   static final CalendarRuntimeVersion _bundledVersion = CalendarRuntimeVersion.parse(
-    value: "2026.08.04-aaa8809",
+    value: "2026.08.11-e8db854",
   );
 
   static const String _downloadBaseUrl = "https://downloads.cursor.com/lab";
@@ -60,14 +60,14 @@ class CursorRuntimeManifest extends RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "darwin/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "fc1d267622ff806a33dbf516148b9fd3957807f4d931c763118c269f92b535fc",
+        sha256: "46044d6d7bcbd7b49a0cf1cd01aa4ca79aaa2ea5f2c7a32965fc0ebe29841790",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeAssetLayout.packageDirectory,
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "darwin/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "3b2b95fa681745f30b1d031e67d23c1a19934ed42f39dea3ab7d2d7728320aa5",
+        sha256: "d5c1ce96dd36469e0231d818d4ccf390caac52d94e607c56ebeecc247cab2b1b",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeAssetLayout.packageDirectory,
       ),
@@ -76,14 +76,14 @@ class CursorRuntimeManifest extends RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "linux/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "d5196289292a660b59807ac508c9ac36ec1e1a1a7e4697af3ef6824fdea984ee",
+        sha256: "ea13f92e295f523a99ce8d8f57d6894d21e5d1e2d030ffad718ccd5955ca2eed",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeAssetLayout.packageDirectory,
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "linux/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "e282068dcb5cdd668b8ce2e3456c58be13bb64a834e1ad49f8534b5cd7aa2fe5",
+        sha256: "bfff4bf6f4e9dd30c1d0ef0a70b6077b074015dd2948e4c50685d53afdcfce5a",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeAssetLayout.packageDirectory,
       ),
