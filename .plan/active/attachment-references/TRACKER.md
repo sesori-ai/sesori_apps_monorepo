@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 7 implementation in progress
+- **Series state:** Step 7 PR open
 - **Current step:** 7/11
 - **Implementation base:** `origin/main` at `3ae9dd43`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** None
-- **Next action:** Implement and verify Step 7, then open its PR
+- **Current PR:** [#864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864)
+- **Next action:** Monitor Step 7 while implementing Step 8 locally
 
 ## Plan Review
 
@@ -37,7 +37,7 @@
 | [x] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | [PR #843](https://github.com/sesori-ai/sesori_apps_monorepo/pull/843) merged |
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
 | [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
-| [ ] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | Local implementation verified |
+| [ ] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) open |
 | [ ] | 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Pending |
 | [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
 | [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
@@ -175,6 +175,8 @@
   within the revised 1,500-2,000 target; `git diff --check` passes. Actual
   cross-layer identity, transport, state, and security work raised Step 7 from
   moderate to complex.
+  Committed as `f8c5a3b5`, pushed, and opened as
+  [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864).
 
 ## Findings And Plan Deltas
 
