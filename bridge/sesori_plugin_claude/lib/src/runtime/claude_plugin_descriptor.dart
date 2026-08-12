@@ -90,7 +90,7 @@ final class ClaudePluginDescriptor extends BridgePluginDescriptor {
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
 
   @override
-  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
   bool get supportsPromptAttachments => true;
@@ -214,6 +214,7 @@ final class ClaudePluginDescriptor extends BridgePluginDescriptor {
       catalogService: ClaudeCatalogService(
         catalog: const ClaudeBackendCatalogRepository(),
         processes: processes,
+        generateSessionId: _generateUuidV4,
       ),
       approvals: approvals,
       eventDispatcher: ClaudeEventDispatcher(

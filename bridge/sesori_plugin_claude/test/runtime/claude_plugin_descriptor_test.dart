@@ -16,7 +16,7 @@ void main() {
       expect(descriptor.id, "claude");
       expect(descriptor.displayName, "Claude Code");
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
-      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
+      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");

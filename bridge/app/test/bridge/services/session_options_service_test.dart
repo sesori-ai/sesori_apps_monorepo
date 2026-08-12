@@ -408,9 +408,15 @@ void main() {
         ..captureResult = const SessionOptionsCaptureFailed();
       final service = _service(repository: repository, now: now);
 
-      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+      final output = await _captureLogOutput(
+        level: LogLevel.debug,
+        action: () async {
+          final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+          expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
+        },
+      );
 
-      expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
+      expect(output, contains("Session options discovery failed for plugin plugin-1"));
     });
 
     test("project absence is returned without cache or plugin access", () async {
@@ -464,7 +470,13 @@ void main() {
         ..captureHandler = (_) => Future.error(cause, causeStackTrace);
       final service = _service(repository: repository, now: now);
 
-      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      late SessionOptionsOutcome outcome;
+      final output = await _captureLogOutput(
+        level: LogLevel.debug,
+        action: () async {
+          outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+        },
+      );
 
       expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
       final failure = (outcome as SessionOptionsRefreshFailedUnavailable).failure;
@@ -473,6 +485,8 @@ void main() {
       expect(caught.cause, same(cause));
       expect(caught.causeStackTrace, same(causeStackTrace));
       expect(caught.toString(), isNot(contains("private capture details")));
+      expect(output, contains("Session options capture failed for plugin plugin-1"));
+      expect(output, contains("private capture details"));
     });
 
     test("capture failure revalidates retention before retaining the cached response", () async {

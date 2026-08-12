@@ -9,6 +9,12 @@ import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
 
+const _testIds = [
+  "11111111-2222-4333-8444-555555555555",
+  "99999999-8888-4777-8666-555555555555",
+  "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+];
+
 void main() {
   group("ClaudePlugin", () {
     late _PluginHarness harness;
@@ -19,7 +25,7 @@ void main() {
 
     tearDown(() => harness.close());
 
-    test("discovers and caches a complete catalog before any user session", () async {
+    test("discovers and caches a complete catalog in the selected project", () async {
       final options = await harness.plugin.getSessionOptions(
         projectId: "/tmp/project",
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
@@ -30,7 +36,10 @@ void main() {
       expect(observed.options.providers.providers.single.models, hasLength(2));
       expect(observed.options.commands.single.name, "review");
       expect(harness.processes, hasLength(1));
+      expect(harness.specs.single.workingDirectory, "/tmp/project");
+      expect(harness.processes.single.killed, isTrue);
 
+      // A cached read is served without spawning a second probe.
       await harness.plugin.getCommands(projectId: null);
       expect(harness.processes, hasLength(1));
 
@@ -38,7 +47,34 @@ void main() {
         projectId: "/tmp/project",
         discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
       );
-      expect(_controlSubtypes(harness.processes.single), contains("list_models"));
+      expect(harness.processes, hasLength(2));
+      expect(_controlSubtypes(harness.processes.last), contains("list_models"));
+    });
+
+    test("shares one catalog probe across concurrent reads", () async {
+      final results = await Future.wait([
+        harness.plugin.getAgents(projectId: "/tmp/project"),
+        harness.plugin.getProviders(projectId: "/tmp/project"),
+        harness.plugin.getCommands(projectId: null),
+      ]);
+
+      expect(results, hasLength(3));
+      expect(harness.processes, hasLength(1));
+    });
+
+    test("caches catalogs independently by project directory", () async {
+      await harness.plugin.getSessionOptions(
+        projectId: "/tmp/project",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+      await harness.plugin.getSessionOptions(
+        projectId: "/tmp/other-project",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+
+      expect(harness.processes, hasLength(2));
+      expect(harness.specs.map((spec) => spec.workingDirectory), ["/tmp/project", "/tmp/other-project"]);
+      expect(harness.processes.every((process) => process.killed), isTrue);
     });
 
     test("creates under the generated id and buffers creation before listening", () async {
@@ -455,6 +491,7 @@ final class _PluginHarness {
       catalogService: ClaudeCatalogService(
         catalog: const ClaudeBackendCatalogRepository(),
         processes: processRepository,
+        generateSessionId: _nextId,
       ),
       approvals: approvals,
       eventDispatcher: ClaudeEventDispatcher(content: content, tools: ClaudeToolTracker()),
@@ -476,7 +513,7 @@ final class _PluginHarness {
   final bool failInitialize;
   var _idIndex = 0;
 
-  String _nextId() => [otherTestSessionId, testSessionId][_idIndex++];
+  String _nextId() => _testIds[_idIndex++];
 
   Future<PluginSession> createSession() => plugin.createSession(
     directory: "/tmp/project",

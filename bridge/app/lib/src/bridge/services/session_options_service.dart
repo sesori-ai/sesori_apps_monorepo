@@ -256,7 +256,7 @@ class SessionOptionsService {
       return _captureFailure(
         resolved: resolved,
         automatic: automatic,
-        message: "Automatic session options capture failed for plugin ${resolved.key.pluginId}",
+        message: "Session options capture failed for plugin ${resolved.key.pluginId}",
         error: error,
         stackTrace: stackTrace,
       );
@@ -269,7 +269,7 @@ class SessionOptionsService {
         return _captureFailure(
           resolved: resolved,
           automatic: automatic,
-          message: "Automatic session options discovery failed for plugin ${resolved.key.pluginId}",
+          message: "Session options discovery failed for plugin ${resolved.key.pluginId}",
           error: null,
           stackTrace: null,
         );
@@ -387,8 +387,7 @@ class SessionOptionsService {
       return _CommitFailed(
         outcome: _refreshFailure(
           retained: newest,
-          automatic: automatic,
-          message: "Automatic session options cache commit failed for plugin ${key.pluginId}",
+          message: "Session options cache commit failed for plugin ${key.pluginId}",
           error: error,
           stackTrace: stackTrace,
         ),
@@ -405,7 +404,6 @@ class SessionOptionsService {
 
   SessionOptionsOutcome _refreshFailure({
     required SessionOptionsCacheEntry? retained,
-    required bool automatic,
     required String message,
     required Object? error,
     required StackTrace? stackTrace,
@@ -423,12 +421,13 @@ class SessionOptionsService {
         causeStackTrace: caughtStackTrace,
       );
     }
-    if (automatic) {
-      if (error == null) {
-        Log.w(message);
-      } else {
-        Log.w(message, error, stackTrace);
-      }
+    // Explicit requests are logged too: the client only ever sees an opaque
+    // `refreshFailedUnavailable` code, so this log is the sole place that
+    // retains the original error, stack trace, and operation context.
+    if (error == null) {
+      Log.w(message);
+    } else {
+      Log.w(message, error, stackTrace);
     }
     return retained == null
         ? SessionOptionsRefreshFailedUnavailable(failure: failure)
@@ -448,7 +447,6 @@ class SessionOptionsService {
     final retained = await _readValid(key: resolved.key);
     return _refreshFailure(
       retained: retained,
-      automatic: automatic,
       message: message,
       error: error,
       stackTrace: stackTrace,
