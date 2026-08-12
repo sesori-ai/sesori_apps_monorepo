@@ -108,10 +108,12 @@
   projecting capable requests to stored references while preserving inline
   defaults, the released aggregate budget, metadata degradation, part/tool
   order, and pagination. `dart analyze --fatal-infos` passes in the bridge app;
-  77 focused history/routing tests and all 2,559 bridge-app tests pass.
+  77 focused history/routing tests and all 2,571 bridge-app tests pass.
   Architecture implementation review approved the delivery, DI, scope, and
-  compatibility seams with no blockers. The implementation was synchronized
-  with `origin/main` at `ec290e14` after Step 3 merged.
+  compatibility seams with no blockers. After synchronization with
+  `origin/main` at `ec290e14`, the final diff has 725 additions and 61 deletions
+  across 11 files (786 changed lines), within the 700-1,150 target.
+  Implementation was committed as `a693d3c5` and synchronized in `5f37e20e`.
 
 ## Findings And Plan Deltas
 
