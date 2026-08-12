@@ -57,9 +57,9 @@ class _Visitor extends SimpleAstVisitor<void> {
 
   void _checkSizedBoxArgs(InstanceCreationExpression node) {
     for (final arg in node.argumentList.arguments) {
-      if (arg is NamedExpression) {
-        final name = arg.name.label.name;
-        if ((name == 'height' || name == 'width') && _isHardcodedNumber(arg.expression)) {
+      if (arg is NamedArgument) {
+        final name = arg.name.lexeme;
+        if ((name == 'height' || name == 'width') && _isHardcodedNumber(arg.argumentExpression)) {
           rule.reportAtNode(arg);
         }
       }
@@ -68,7 +68,7 @@ class _Visitor extends SimpleAstVisitor<void> {
 
   void _checkGapArgs(InstanceCreationExpression node) {
     for (final arg in node.argumentList.arguments) {
-      if (arg is! NamedExpression && _isHardcodedNumber(arg)) {
+      if (arg is! NamedArgument && _isHardcodedNumber(arg.argumentExpression)) {
         rule.reportAtNode(arg);
       }
     }

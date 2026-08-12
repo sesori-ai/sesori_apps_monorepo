@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'session_attachment.dart';
@@ -9,6 +9,7 @@ part of 'session_attachment.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$SessionAttachmentRequestCopyWithImpl<$Res>
 /// Create a copy of SessionAttachmentRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? attachmentId = null,Object? rendition = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionAttachmentRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,attachmentId: null == attachmentId ? _self.attachmentId : attachmentId // ignore: cast_nullable_to_non_nullable
 as String,rendition: null == rendition ? _self.rendition : rendition // ignore: cast_nullable_to_non_nullable
@@ -202,7 +203,7 @@ class _$SessionAttachmentResponseCopyWithImpl<$Res>
 /// Create a copy of SessionAttachmentResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? mime = null,Object? base64 = null,Object? byteLength = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionAttachmentResponse(
 mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
 as String,base64: null == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
 as String,byteLength: null == byteLength ? _self.byteLength : byteLength // ignore: cast_nullable_to_non_nullable

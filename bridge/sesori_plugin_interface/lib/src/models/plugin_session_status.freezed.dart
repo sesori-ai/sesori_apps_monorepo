@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_session_status.dart';
@@ -9,6 +9,7 @@ part of 'plugin_session_status.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -48,7 +49,7 @@ $PluginSessionStatusCopyWith(PluginSessionStatus _, $Res Function(PluginSessionS
 @JsonSerializable(createFactory: false)
 
 class PluginSessionStatusIdle implements PluginSessionStatus {
-  const PluginSessionStatusIdle({final  String? $type}): $type = $type ?? 'idle';
+  const PluginSessionStatusIdle({ String? $type}): $type = $type ?? 'idle';
   
 
 
@@ -87,7 +88,7 @@ String toString() {
 @JsonSerializable(createFactory: false)
 
 class PluginSessionStatusBusy implements PluginSessionStatus {
-  const PluginSessionStatusBusy({final  String? $type}): $type = $type ?? 'busy';
+  const PluginSessionStatusBusy({ String? $type}): $type = $type ?? 'busy';
   
 
 
@@ -126,7 +127,7 @@ String toString() {
 @JsonSerializable(createFactory: false)
 
 class PluginSessionStatusRetry implements PluginSessionStatus {
-  const PluginSessionStatusRetry({required this.attempt, required this.message, required this.next, final  String? $type}): $type = $type ?? 'retry';
+  const PluginSessionStatusRetry({required this.attempt, required this.message, required this.next,  String? $type}): $type = $type ?? 'retry';
   
 
  final  int attempt;

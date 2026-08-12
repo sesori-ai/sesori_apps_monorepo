@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'cursor_available_models_dto.dart';
@@ -9,6 +9,7 @@ part of 'cursor_available_models_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -64,7 +65,7 @@ class _$CursorAvailableModelsDtoCopyWithImpl<$Res>
 /// Create a copy of CursorAvailableModelsDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? models = null,}) {
-  return _then(_self.copyWith(
+  return _then(CursorAvailableModelsDto(
 models: null == models ? _self.models : models // ignore: cast_nullable_to_non_nullable
 as List<CursorAvailableModelDto>,
   ));
@@ -78,7 +79,7 @@ as List<CursorAvailableModelDto>,
 @JsonSerializable(createToJson: false)
 
 class _CursorAvailableModelsDto implements CursorAvailableModelsDto {
-  const _CursorAvailableModelsDto({final  List<CursorAvailableModelDto> models = const <CursorAvailableModelDto>[]}): _models = models;
+  const _CursorAvailableModelsDto({ List<CursorAvailableModelDto> models = const <CursorAvailableModelDto>[]}): _models = models;
   factory _CursorAvailableModelsDto.fromJson(Map<String, dynamic> json) => _$CursorAvailableModelsDtoFromJson(json);
 
  final  List<CursorAvailableModelDto> _models;
@@ -199,7 +200,7 @@ class _$CursorAvailableModelDtoCopyWithImpl<$Res>
 /// Create a copy of CursorAvailableModelDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? value = null,Object? name = freezed,Object? configOptions = null,}) {
-  return _then(_self.copyWith(
+  return _then(CursorAvailableModelDto(
 value: null == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,configOptions: null == configOptions ? _self.configOptions : configOptions // ignore: cast_nullable_to_non_nullable
@@ -215,7 +216,7 @@ as List<CursorModelConfigOptionDto>,
 @JsonSerializable(createToJson: false)
 
 class _CursorAvailableModelDto implements CursorAvailableModelDto {
-  const _CursorAvailableModelDto({required this.value, required this.name, final  List<CursorModelConfigOptionDto> configOptions = const <CursorModelConfigOptionDto>[]}): _configOptions = configOptions;
+  const _CursorAvailableModelDto({required this.value, required this.name,  List<CursorModelConfigOptionDto> configOptions = const <CursorModelConfigOptionDto>[]}): _configOptions = configOptions;
   factory _CursorAvailableModelDto.fromJson(Map<String, dynamic> json) => _$CursorAvailableModelDtoFromJson(json);
 
 @override final  String value;
@@ -340,7 +341,7 @@ class _$CursorModelConfigOptionDtoCopyWithImpl<$Res>
 /// Create a copy of CursorModelConfigOptionDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? description = freezed,Object? category = freezed,Object? currentValue = freezed,Object? options = null,}) {
-  return _then(_self.copyWith(
+  return _then(CursorModelConfigOptionDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -359,7 +360,7 @@ as List<CursorConfigOptionValueDto>,
 @JsonSerializable(createToJson: false)
 
 class _CursorModelConfigOptionDto implements CursorModelConfigOptionDto {
-  const _CursorModelConfigOptionDto({required this.id, required this.name, required this.description, required this.category, required this.currentValue, final  List<CursorConfigOptionValueDto> options = const <CursorConfigOptionValueDto>[]}): _options = options;
+  const _CursorModelConfigOptionDto({required this.id, required this.name, required this.description, required this.category, required this.currentValue,  List<CursorConfigOptionValueDto> options = const <CursorConfigOptionValueDto>[]}): _options = options;
   factory _CursorModelConfigOptionDto.fromJson(Map<String, dynamic> json) => _$CursorModelConfigOptionDtoFromJson(json);
 
 @override final  String id;
@@ -490,7 +491,7 @@ class _$CursorConfigOptionValueDtoCopyWithImpl<$Res>
 /// Create a copy of CursorConfigOptionValueDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? value = null,Object? name = freezed,Object? description = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CursorConfigOptionValueDto(
 value: null == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable

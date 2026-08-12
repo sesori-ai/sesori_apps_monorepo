@@ -2,7 +2,7 @@ name: sesori_client_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.13.0-0
   flutter: ">=3.47.0-0.4.pre <3.48.0"
 
 workspace:

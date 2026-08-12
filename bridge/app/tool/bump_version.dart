@@ -69,7 +69,7 @@ Future<void> updatePackageJson({
   // Update optionalDependencies if present
   if (json.containsKey('optionalDependencies')) {
     final optionalDeps = json['optionalDependencies'] as Map<String, dynamic>;
-    optionalDeps.updateAll((final key, final value) {
+    optionalDeps.updateAll((key, value) {
       if (value == oldVersion) {
         return newVersion;
       }
@@ -89,7 +89,7 @@ Future<void> updatePackageJson({
   await writeFile(path: path, content: '$formatted\n');
 }
 
-Future<void> main(final List<String> args) async {
+Future<void> main(List<String> args) async {
   if (args.isEmpty) {
     stderr.writeln('Usage: dart run tool/bump_version.dart <version>');
     stderr.writeln('Example: dart run tool/bump_version.dart 0.3.0');

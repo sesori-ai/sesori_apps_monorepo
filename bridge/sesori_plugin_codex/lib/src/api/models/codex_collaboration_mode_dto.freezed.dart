@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_collaboration_mode_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_collaboration_mode_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -65,7 +66,7 @@ class _$CodexCollaborationModeDtoCopyWithImpl<$Res>
 /// Create a copy of CodexCollaborationModeDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? mode = null,Object? settings = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexCollaborationModeDto(
 mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as String,settings: null == settings ? _self.settings : settings // ignore: cast_nullable_to_non_nullable
 as CodexCollaborationModeSettingsDto,
@@ -219,7 +220,7 @@ class _$CodexCollaborationModeSettingsDtoCopyWithImpl<$Res>
 /// Create a copy of CodexCollaborationModeSettingsDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? model = null,Object? reasoningEffort = freezed,Object? developerInstructions = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexCollaborationModeSettingsDto(
 model: null == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String,reasoningEffort: freezed == reasoningEffort ? _self.reasoningEffort : reasoningEffort // ignore: cast_nullable_to_non_nullable
 as String?,developerInstructions: freezed == developerInstructions ? _self.developerInstructions : developerInstructions // ignore: cast_nullable_to_non_nullable

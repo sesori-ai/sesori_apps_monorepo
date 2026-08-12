@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'message.dart';
@@ -9,6 +9,7 @@ part of 'message.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 Message _$MessageFromJson(
@@ -122,7 +123,7 @@ $MessageTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class MessageUser extends Message {
-  const MessageUser({required this.id, required this.sessionID, required this.agent, required this.time, final  String? $type}): $type = $type ?? 'user',super._();
+  const MessageUser({required this.id, required this.sessionID, required this.agent, required this.time,  String? $type}): $type = $type ?? 'user',super._();
   factory MessageUser.fromJson(Map<String, dynamic> json) => _$MessageUserFromJson(json);
 
 @override final  String id;
@@ -213,7 +214,7 @@ $MessageTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class MessageAssistant extends Message {
-  const MessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.time, final  String? $type}): $type = $type ?? 'assistant',super._();
+  const MessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.time,  String? $type}): $type = $type ?? 'assistant',super._();
   factory MessageAssistant.fromJson(Map<String, dynamic> json) => _$MessageAssistantFromJson(json);
 
 @override final  String id;
@@ -308,7 +309,7 @@ $MessageTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class MessageError extends Message {
-  const MessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.errorName, required this.errorMessage, required this.time, final  String? $type}): $type = $type ?? 'error',super._();
+  const MessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.errorName, required this.errorMessage, required this.time,  String? $type}): $type = $type ?? 'error',super._();
   factory MessageError.fromJson(Map<String, dynamic> json) => _$MessageErrorFromJson(json);
 
 @override final  String id;
@@ -458,7 +459,7 @@ class _$MessageTimeCopyWithImpl<$Res>
 /// Create a copy of MessageTime
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? completed = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(MessageTime(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,completed: freezed == completed ? _self.completed : completed // ignore: cast_nullable_to_non_nullable
 as int?,

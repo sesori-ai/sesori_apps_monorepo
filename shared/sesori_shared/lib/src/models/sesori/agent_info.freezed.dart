@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'agent_info.dart';
@@ -9,6 +9,7 @@ part of 'agent_info.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$AgentsCopyWithImpl<$Res>
 /// Create a copy of Agents
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? agents = null,}) {
-  return _then(_self.copyWith(
+  return _then(Agents(
 agents: null == agents ? _self.agents : agents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,
   ));
@@ -80,7 +81,7 @@ as List<AgentInfo>,
 @JsonSerializable()
 
 class _Agents implements Agents {
-  const _Agents({required final  List<AgentInfo> agents}): _agents = agents;
+  const _Agents({required  List<AgentInfo> agents}): _agents = agents;
   factory _Agents.fromJson(Map<String, dynamic> json) => _$AgentsFromJson(json);
 
  final  List<AgentInfo> _agents;
@@ -206,7 +207,7 @@ class _$AgentInfoCopyWithImpl<$Res>
 /// Create a copy of AgentInfo
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? mode = null,Object? hidden = null,}) {
-  return _then(_self.copyWith(
+  return _then(AgentInfo(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
@@ -376,7 +377,7 @@ class _$AgentModelCopyWithImpl<$Res>
 /// Create a copy of AgentModel
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? modelID = null,Object? providerID = null,Object? variant = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AgentModel(
 modelID: null == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable

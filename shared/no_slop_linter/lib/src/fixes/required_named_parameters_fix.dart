@@ -37,13 +37,8 @@ mixin _RequiredNamedParamsFixHelpers {
 
   /// Ensure a named param has 'required' if it's nullable without a default.
   String _ensureRequired(FormalParameter param) {
-    if (param is DefaultFormalParameter) {
-      final isRequired = param.isRequired;
-      final hasDefault = param.defaultValue != null;
-
-      if (!isRequired && !hasDefault && _isNullableParameter(param)) {
-        return _insertRequired(param);
-      }
+    if (!param.isRequired && param.defaultClause == null && _isNullableParameter(param)) {
+      return _insertRequired(param);
     }
     return param.toSource();
   }
@@ -68,35 +63,23 @@ mixin _RequiredNamedParamsFixHelpers {
   }
 
   bool _isSuperParameter(FormalParameter param) {
-    if (param is SuperFormalParameter) return true;
-    if (param is DefaultFormalParameter) {
-      return param.parameter is SuperFormalParameter;
-    }
-    return false;
+    return param is SuperFormalParameter;
   }
 
-  bool _isNullableParameter(DefaultFormalParameter param) {
-    final innerParam = param.parameter;
-    if (innerParam is SimpleFormalParameter) {
-      final type = innerParam.type;
-      if (type is NamedType) {
-        return type.question != null;
-      }
-      if (type is GenericFunctionType) {
-        return type.question != null;
-      }
+  bool _isNullableParameter(FormalParameter param) {
+    final type = param.type;
+    if (type is NamedType) {
+      return type.question != null;
+    }
+    if (type is GenericFunctionType) {
+      return type.question != null;
     }
     return false;
   }
 
   /// Check if a named param needs 'required' added.
   bool _needsRequired(FormalParameter param) {
-    if (param is DefaultFormalParameter) {
-      final isRequired = param.isRequired;
-      final hasDefault = param.defaultValue != null;
-      return !isRequired && !hasDefault && _isNullableParameter(param);
-    }
-    return false;
+    return !param.isRequired && param.defaultClause == null && _isNullableParameter(param);
   }
 }
 
@@ -243,20 +226,10 @@ class RequiredNamedParamsAddRequiredFix extends ResolvedCorrectionProducer with 
 
   /// Gets the correct offset to insert 'required' keyword.
   int _getRequiredInsertOffset(FormalParameter param) {
-    if (param is DefaultFormalParameter) {
-      final innerParam = param.parameter;
-      if (innerParam is SimpleFormalParameter) {
-        final type = innerParam.type;
-        if (type != null) {
-          return type.offset;
-        }
-        final name = innerParam.name;
-        if (name != null) {
-          return name.offset;
-        }
-      }
-      return innerParam.offset;
+    final type = param.type;
+    if (type != null) {
+      return type.offset;
     }
-    return param.offset;
+    return param.name?.offset ?? param.offset;
   }
 }

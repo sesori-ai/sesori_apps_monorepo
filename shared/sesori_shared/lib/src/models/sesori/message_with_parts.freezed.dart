@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'message_with_parts.dart';
@@ -9,6 +9,7 @@ part of 'message_with_parts.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -17,7 +18,6 @@ mixin _$MessageWithPartsResponse {
 
  List<MessageWithParts> get messages;/// Cursor for the next older page, to be sent back verbatim as the
 /// request's `before`. Null means the transcript is complete.
-// COMPATIBILITY 2026-08-08 (v1.7.2): Bridges that predate pagination omit nextCursor, which decodes to null and correctly means "complete". Make this required once those bridges are unsupported.
  int? get nextCursor;
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -69,7 +69,7 @@ class _$MessageWithPartsResponseCopyWithImpl<$Res>
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? messages = null,Object? nextCursor = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(MessageWithPartsResponse(
 messages: null == messages ? _self.messages : messages // ignore: cast_nullable_to_non_nullable
 as List<MessageWithParts>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
 as int?,
@@ -84,7 +84,7 @@ as int?,
 @JsonSerializable()
 
 class _MessageWithPartsResponse implements MessageWithPartsResponse {
-  const _MessageWithPartsResponse({required final  List<MessageWithParts> messages, required this.nextCursor}): _messages = messages;
+  const _MessageWithPartsResponse({required  List<MessageWithParts> messages, required this.nextCursor}): _messages = messages;
   factory _MessageWithPartsResponse.fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
 
  final  List<MessageWithParts> _messages;
@@ -96,7 +96,6 @@ class _MessageWithPartsResponse implements MessageWithPartsResponse {
 
 /// Cursor for the next older page, to be sent back verbatim as the
 /// request's `before`. Null means the transcript is complete.
-// COMPATIBILITY 2026-08-08 (v1.7.2): Bridges that predate pagination omit nextCursor, which decodes to null and correctly means "complete". Make this required once those bridges are unsupported.
 @override final  int? nextCursor;
 
 /// Create a copy of MessageWithPartsResponse
@@ -215,7 +214,7 @@ class _$MessageWithPartsCopyWithImpl<$Res>
 /// Create a copy of MessageWithParts
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? info = null,Object? parts = null,}) {
-  return _then(_self.copyWith(
+  return _then(MessageWithParts(
 info: null == info ? _self.info : info // ignore: cast_nullable_to_non_nullable
 as Message,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
 as List<MessagePart>,
@@ -239,7 +238,7 @@ $MessageCopyWith<$Res> get info {
 @JsonSerializable()
 
 class _MessageWithParts implements MessageWithParts {
-  const _MessageWithParts({required this.info, required final  List<MessagePart> parts}): _parts = parts;
+  const _MessageWithParts({required this.info, required  List<MessagePart> parts}): _parts = parts;
   factory _MessageWithParts.fromJson(Map<String, dynamic> json) => _$MessageWithPartsFromJson(json);
 
 @override final  Message info;

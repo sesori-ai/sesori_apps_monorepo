@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_management.dart';
@@ -9,16 +9,14 @@ part of 'plugin_management.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$PluginManagementMetadata {
 
- PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState;// COMPATIBILITY 2026-08-12 (v1.9.0): Older bridge payloads omit
-// authenticationState, which honestly means no authentication operation
-// was active. Remove @Default after the minimum supported bridge sends it.
-@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState get authenticationState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
+ PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState;@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState get authenticationState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -69,7 +67,7 @@ class _$PluginManagementMetadataCopyWithImpl<$Res>
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? authenticationState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginManagementMetadata(
 setup: null == setup ? _self.setup : setup // ignore: cast_nullable_to_non_nullable
 as PluginSetupMetadata,runtimeState: null == runtimeState ? _self.runtimeState : runtimeState // ignore: cast_nullable_to_non_nullable
 as PluginRuntimeState,workState: null == workState ? _self.workState : workState // ignore: cast_nullable_to_non_nullable
@@ -99,15 +97,12 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 @JsonSerializable()
 
 class _PluginManagementMetadata implements PluginManagementMetadata {
-  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, @JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) this.authenticationState = PluginAuthenticationState.idle, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) required final  Set<PluginManagementCapability> managementCapabilities, required this.actionHint}): _managementCapabilities = managementCapabilities;
+  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, @JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) this.authenticationState = PluginAuthenticationState.idle, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) required  Set<PluginManagementCapability> managementCapabilities, required this.actionHint}): _managementCapabilities = managementCapabilities;
   factory _PluginManagementMetadata.fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
 
 @override final  PluginSetupMetadata setup;
 @override@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) final  PluginRuntimeState runtimeState;
 @override@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) final  PluginManagementWorkState workState;
-// COMPATIBILITY 2026-08-12 (v1.9.0): Older bridge payloads omit
-// authenticationState, which honestly means no authentication operation
-// was active. Remove @Default after the minimum supported bridge sends it.
 @override@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) final  PluginAuthenticationState authenticationState;
 @override final  int idleTimeoutMins;
 @override final  bool hasIdleTimeoutOverride;
@@ -330,7 +325,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginAuthenticationCompletedProgress implements PluginAuthenticationProgress {
-  const PluginAuthenticationCompletedProgress({final  String? $type}): $type = $type ?? 'completed';
+  const PluginAuthenticationCompletedProgress({ String? $type}): $type = $type ?? 'completed';
   factory PluginAuthenticationCompletedProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationCompletedProgressFromJson(json);
 
 
@@ -369,7 +364,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginAuthenticationFailedProgress implements PluginAuthenticationProgress {
-  const PluginAuthenticationFailedProgress({required this.message, final  String? $type}): $type = $type ?? 'failed';
+  const PluginAuthenticationFailedProgress({required this.message,  String? $type}): $type = $type ?? 'failed';
   factory PluginAuthenticationFailedProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationFailedProgressFromJson(json);
 
  final  String message;
@@ -408,7 +403,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginAuthenticationCancelledProgress implements PluginAuthenticationProgress {
-  const PluginAuthenticationCancelledProgress({final  String? $type}): $type = $type ?? 'cancelled';
+  const PluginAuthenticationCancelledProgress({ String? $type}): $type = $type ?? 'cancelled';
   factory PluginAuthenticationCancelledProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationCancelledProgressFromJson(json);
 
 
@@ -447,7 +442,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginAuthenticationUnknownProgress implements PluginAuthenticationProgress {
-  const PluginAuthenticationUnknownProgress({final  String? $type}): $type = $type ?? 'unknown';
+  const PluginAuthenticationUnknownProgress({ String? $type}): $type = $type ?? 'unknown';
   factory PluginAuthenticationUnknownProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationUnknownProgressFromJson(json);
 
 
@@ -486,13 +481,7 @@ String toString() {
 /// @nodoc
 mixin _$PluginManagementResponse {
 
-// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
-// omit snapshotToken; null means that peer cannot identify snapshot changes.
-// Make non-null when those bridge versions are unsupported.
- String? get snapshotToken;// COMPATIBILITY 2026-07-27 (v1.7.0): Stage 12 bridge payloads omit the
-// bridge identity; null means the peer cannot scope management snapshots
-// to a bridge. Make non-null when those bridge versions are unsupported.
- String? get bridgeId; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
+ String? get snapshotToken; String? get bridgeId; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -543,7 +532,7 @@ class _$PluginManagementResponseCopyWithImpl<$Res>
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? snapshotToken = freezed,Object? bridgeId = freezed,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginManagementResponse(
 snapshotToken: freezed == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
 as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
@@ -561,16 +550,10 @@ as List<PluginManagementMetadata>,
 @JsonSerializable()
 
 class _PluginManagementResponse implements PluginManagementResponse {
-  const _PluginManagementResponse({required this.snapshotToken, required this.bridgeId, required this.defaultPluginId, required this.defaultIdleTimeoutMins, required final  List<PluginManagementMetadata> plugins}): _plugins = plugins;
+  const _PluginManagementResponse({required this.snapshotToken, required this.bridgeId, required this.defaultPluginId, required this.defaultIdleTimeoutMins, required  List<PluginManagementMetadata> plugins}): _plugins = plugins;
   factory _PluginManagementResponse.fromJson(Map<String, dynamic> json) => _$PluginManagementResponseFromJson(json);
 
-// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
-// omit snapshotToken; null means that peer cannot identify snapshot changes.
-// Make non-null when those bridge versions are unsupported.
 @override final  String? snapshotToken;
-// COMPATIBILITY 2026-07-27 (v1.7.0): Stage 12 bridge payloads omit the
-// bridge identity; null means the peer cannot scope management snapshots
-// to a bridge. Make non-null when those bridge versions are unsupported.
 @override final  String? bridgeId;
 @override final  String? defaultPluginId;
 @override final  int defaultIdleTimeoutMins;
@@ -716,7 +699,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleEnableRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleEnableRequest({final  String? $type}): $type = $type ?? 'enable';
+  const PluginLifecycleEnableRequest({ String? $type}): $type = $type ?? 'enable';
   factory PluginLifecycleEnableRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleEnableRequestFromJson(json);
 
 
@@ -755,7 +738,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleDisableRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleDisableRequest({required this.mode, final  String? $type}): $type = $type ?? 'disable';
+  const PluginLifecycleDisableRequest({required this.mode,  String? $type}): $type = $type ?? 'disable';
   factory PluginLifecycleDisableRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleDisableRequestFromJson(json);
 
  final  PluginStopMode mode;
@@ -794,7 +777,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleRestartRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleRestartRequest({required this.mode, final  String? $type}): $type = $type ?? 'restart';
+  const PluginLifecycleRestartRequest({required this.mode,  String? $type}): $type = $type ?? 'restart';
   factory PluginLifecycleRestartRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleRestartRequestFromJson(json);
 
  final  PluginStopMode mode;
@@ -833,7 +816,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleRefreshRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleRefreshRequest({final  String? $type}): $type = $type ?? 'refresh';
+  const PluginLifecycleRefreshRequest({ String? $type}): $type = $type ?? 'refresh';
   factory PluginLifecycleRefreshRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleRefreshRequestFromJson(json);
 
 
@@ -872,7 +855,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginLifecycleInstallRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleInstallRequest({final  String? $type}): $type = $type ?? 'install';
+  const PluginLifecycleInstallRequest({ String? $type}): $type = $type ?? 'install';
   factory PluginLifecycleInstallRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleInstallRequestFromJson(json);
 
 
@@ -969,7 +952,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutApplyAllRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutApplyAllRequest({@JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins, final  String? $type}): $type = $type ?? 'applyAll';
+  const PluginIdleTimeoutApplyAllRequest({@JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'applyAll';
   factory PluginIdleTimeoutApplyAllRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutApplyAllRequestFromJson(json);
 
 @JsonKey(fromJson: _strictIntFromJson) final  int idleTimeoutMins;
@@ -1008,7 +991,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutSetOverrideRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutSetOverrideRequest({required this.pluginId, @JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins, final  String? $type}): $type = $type ?? 'setOverride';
+  const PluginIdleTimeoutSetOverrideRequest({required this.pluginId, @JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'setOverride';
   factory PluginIdleTimeoutSetOverrideRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutSetOverrideRequestFromJson(json);
 
  final  String pluginId;
@@ -1048,7 +1031,7 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutClearOverrideRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutClearOverrideRequest({required this.pluginId, final  String? $type}): $type = $type ?? 'clearOverride';
+  const PluginIdleTimeoutClearOverrideRequest({required this.pluginId,  String? $type}): $type = $type ?? 'clearOverride';
   factory PluginIdleTimeoutClearOverrideRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutClearOverrideRequestFromJson(json);
 
  final  String pluginId;
@@ -1138,7 +1121,7 @@ class _$PluginLifecycleConflictCopyWithImpl<$Res>
 /// Create a copy of PluginLifecycleConflict
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? pluginId = null,Object? reasons = null,Object? current = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginLifecycleConflict(
 pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,reasons: null == reasons ? _self.reasons : reasons // ignore: cast_nullable_to_non_nullable
 as List<PluginLifecycleConflictReason>,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
@@ -1163,7 +1146,7 @@ $PluginManagementMetadataCopyWith<$Res> get current {
 @JsonSerializable()
 
 class _PluginLifecycleConflict implements PluginLifecycleConflict {
-  const _PluginLifecycleConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) required final  List<PluginLifecycleConflictReason> reasons, required this.current}): _reasons = reasons;
+  const _PluginLifecycleConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) required  List<PluginLifecycleConflictReason> reasons, required this.current}): _reasons = reasons;
   factory _PluginLifecycleConflict.fromJson(Map<String, dynamic> json) => _$PluginLifecycleConflictFromJson(json);
 
 @override final  String pluginId;
@@ -1302,7 +1285,7 @@ class _$PluginAuthenticationConflictCopyWithImpl<$Res>
 /// Create a copy of PluginAuthenticationConflict
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? pluginId = null,Object? reasons = null,Object? current = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginAuthenticationConflict(
 pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,reasons: null == reasons ? _self.reasons : reasons // ignore: cast_nullable_to_non_nullable
 as List<PluginAuthenticationConflictReason>,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
@@ -1327,7 +1310,7 @@ $PluginManagementMetadataCopyWith<$Res> get current {
 @JsonSerializable()
 
 class _PluginAuthenticationConflict implements PluginAuthenticationConflict {
-  const _PluginAuthenticationConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown) required final  List<PluginAuthenticationConflictReason> reasons, required this.current}): _reasons = reasons;
+  const _PluginAuthenticationConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown) required  List<PluginAuthenticationConflictReason> reasons, required this.current}): _reasons = reasons;
   factory _PluginAuthenticationConflict.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationConflictFromJson(json);
 
 @override final  String pluginId;

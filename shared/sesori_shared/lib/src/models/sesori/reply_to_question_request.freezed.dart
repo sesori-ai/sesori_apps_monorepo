@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'reply_to_question_request.dart';
@@ -9,14 +9,14 @@ part of 'reply_to_question_request.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$ReplyToQuestionRequest {
 
- String get requestId;// questions request id
- String get sessionId; List<ReplyAnswer> get answers;
+ String get requestId; String get sessionId; List<ReplyAnswer> get answers;
 /// Create a copy of ReplyToQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -67,7 +67,7 @@ class _$ReplyToQuestionRequestCopyWithImpl<$Res>
 /// Create a copy of ReplyToQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = null,Object? answers = null,}) {
-  return _then(_self.copyWith(
+  return _then(ReplyToQuestionRequest(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
 as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,answers: null == answers ? _self.answers : answers // ignore: cast_nullable_to_non_nullable
@@ -83,11 +83,10 @@ as List<ReplyAnswer>,
 @JsonSerializable()
 
 class _ReplyToQuestionRequest implements ReplyToQuestionRequest {
-  const _ReplyToQuestionRequest({required this.requestId, required this.sessionId, required final  List<ReplyAnswer> answers}): _answers = answers;
+  const _ReplyToQuestionRequest({required this.requestId, required this.sessionId, required  List<ReplyAnswer> answers}): _answers = answers;
   factory _ReplyToQuestionRequest.fromJson(Map<String, dynamic> json) => _$ReplyToQuestionRequestFromJson(json);
 
 @override final  String requestId;
-// questions request id
 @override final  String sessionId;
  final  List<ReplyAnswer> _answers;
 @override List<ReplyAnswer> get answers {
@@ -163,12 +162,7 @@ as List<ReplyAnswer>,
 /// @nodoc
 mixin _$RejectQuestionRequest {
 
- String get requestId;// questions request id
-// `required` so callers cannot forget to supply it, but nullable on the
-// wire: older clients that omit it deserialize to null, and the bridge
-// falls back to resolving the owning session from the question id.
-// COMPATIBILITY 2026-06-17 (v1.1.0): Old clients omit sessionId on rejection. Make it non-null and remove bridge null handling once those clients are unsupported.
- String? get sessionId;
+ String get requestId; String? get sessionId;
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -219,7 +213,7 @@ class _$RejectQuestionRequestCopyWithImpl<$Res>
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(RejectQuestionRequest(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
 as String,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -238,11 +232,6 @@ class _RejectQuestionRequest implements RejectQuestionRequest {
   factory _RejectQuestionRequest.fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);
 
 @override final  String requestId;
-// questions request id
-// `required` so callers cannot forget to supply it, but nullable on the
-// wire: older clients that omit it deserialize to null, and the bridge
-// falls back to resolving the owning session from the question id.
-// COMPATIBILITY 2026-06-17 (v1.1.0): Old clients omit sessionId on rejection. Make it non-null and remove bridge null handling once those clients are unsupported.
 @override final  String? sessionId;
 
 /// Create a copy of RejectQuestionRequest
@@ -361,7 +350,7 @@ class _$ReplyAnswerCopyWithImpl<$Res>
 /// Create a copy of ReplyAnswer
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? values = null,}) {
-  return _then(_self.copyWith(
+  return _then(ReplyAnswer(
 values: null == values ? _self.values : values // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
@@ -375,7 +364,7 @@ as List<String>,
 @JsonSerializable()
 
 class _ReplyAnswer implements ReplyAnswer {
-  const _ReplyAnswer({required final  List<String> values}): _values = values;
+  const _ReplyAnswer({required  List<String> values}): _values = values;
   factory _ReplyAnswer.fromJson(Map<String, dynamic> json) => _$ReplyAnswerFromJson(json);
 
  final  List<String> _values;

@@ -36,7 +36,7 @@ class _FixtureApp {
   String get wrapperPackagePath => p.join(rootPath, 'bridge', 'app', 'npm', 'sesori-bridge', 'package.json');
 
   List<String> get packagePaths => _platformPackages
-      .map((final package) => p.join(rootPath, 'bridge', 'app', 'npm', package, 'package.json'))
+      .map((package) => p.join(rootPath, 'bridge', 'app', 'npm', package, 'package.json'))
       .toList();
 }
 
@@ -64,7 +64,7 @@ Future<_FixtureApp> _createFixtureApp({required String clientVersion, String? br
 name: sync_versions_fixture
 version: $clientVersion
 environment:
-  sdk: ^3.11.0
+  sdk: ^3.13.0-0
 ''');
 
   await File(p.join(rootPath, 'bridge', 'app', 'pubspec.yaml')).writeAsString('''
@@ -124,7 +124,7 @@ Future<ProcessResult> _runTool({
   required List<String> args,
 }) {
   return Process.run(
-    'dart',
+    Platform.resolvedExecutable,
     <String>['tool/sync_versions.dart', ...args],
     workingDirectory: fixture.rootPath,
   );
@@ -197,7 +197,7 @@ resolution: workspace
 name: sesori_mobile
 version: 1.0.6+8
 environment:
-  sdk: ^3.11.0
+  sdk: ^3.13.0-0
 ''');
         await _writeJsonFile(
           path: currentFixture.wrapperPackagePath,

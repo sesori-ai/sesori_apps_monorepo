@@ -5,7 +5,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.13.0-0
 
 dependencies:
   args: ^2.7.0
@@ -54,6 +54,6 @@ dev_dependencies:
   # production code reaches sqlite3 only transitively through drift.
   sqlite3: ^3.5.0
   build_runner: any
-  freezed: ^3.2.5
+  freezed: 4.0.0-dev.3
   json_serializable: ^6.14.0
   drift_dev: ^2.34.0

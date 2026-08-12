@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'project_activity_summary.dart';
@@ -9,6 +9,7 @@ part of 'project_activity_summary.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$ProjectActivitySummaryCopyWithImpl<$Res>
 /// Create a copy of ProjectActivitySummary
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? activeSessions = null,}) {
-  return _then(_self.copyWith(
+  return _then(ProjectActivitySummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,activeSessions: null == activeSessions ? _self.activeSessions : activeSessions // ignore: cast_nullable_to_non_nullable
 as List<ActiveSession>,
@@ -81,7 +82,7 @@ as List<ActiveSession>,
 @JsonSerializable()
 
 class _ProjectActivitySummary implements ProjectActivitySummary {
-  const _ProjectActivitySummary({required this.id, required final  List<ActiveSession> activeSessions}): _activeSessions = activeSessions;
+  const _ProjectActivitySummary({required this.id, required  List<ActiveSession> activeSessions}): _activeSessions = activeSessions;
   factory _ProjectActivitySummary.fromJson(Map<String, dynamic> json) => _$ProjectActivitySummaryFromJson(json);
 
 @override final  String id;

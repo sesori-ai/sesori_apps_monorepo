@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_model_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_model_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -64,7 +65,7 @@ class _$CodexModelListResponseDtoCopyWithImpl<$Res>
 /// Create a copy of CodexModelListResponseDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,Object? nextCursor = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexModelListResponseDto(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<CodexModelDto>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -79,7 +80,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _CodexModelListResponseDto implements CodexModelListResponseDto {
-  const _CodexModelListResponseDto({@CodexModelListConverter() required final  List<CodexModelDto> data, required this.nextCursor}): _data = data;
+  const _CodexModelListResponseDto({@CodexModelListConverter() required  List<CodexModelDto> data, required this.nextCursor}): _data = data;
   factory _CodexModelListResponseDto.fromJson(Map<String, dynamic> json) => _$CodexModelListResponseDtoFromJson(json);
 
  final  List<CodexModelDto> _data;
@@ -202,7 +203,7 @@ class _$CodexModelDtoCopyWithImpl<$Res>
 /// Create a copy of CodexModelDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? displayName = freezed,Object? hidden = freezed,Object? supportedReasoningEfforts = freezed,Object? defaultReasoningEffort = freezed,Object? isDefault = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexModelDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,hidden: freezed == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
@@ -221,7 +222,7 @@ as bool?,
 @JsonSerializable(createToJson: false)
 
 class _CodexModelDto implements CodexModelDto {
-  const _CodexModelDto({required this.id, required this.displayName, required this.hidden, @CodexReasoningEffortListConverter() required final  List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, required this.defaultReasoningEffort, required this.isDefault}): _supportedReasoningEfforts = supportedReasoningEfforts;
+  const _CodexModelDto({required this.id, required this.displayName, required this.hidden, @CodexReasoningEffortListConverter() required  List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, required this.defaultReasoningEffort, required this.isDefault}): _supportedReasoningEfforts = supportedReasoningEfforts;
   factory _CodexModelDto.fromJson(Map<String, dynamic> json) => _$CodexModelDtoFromJson(json);
 
 @override final  String? id;
@@ -354,7 +355,7 @@ class _$CodexReasoningEffortOptionDtoCopyWithImpl<$Res>
 /// Create a copy of CodexReasoningEffortOptionDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? reasoningEffort = freezed,Object? description = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexReasoningEffortOptionDto(
 reasoningEffort: freezed == reasoningEffort ? _self.reasoningEffort : reasoningEffort // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,

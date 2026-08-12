@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: _fe_analyzer_shared
-      sha256: "3b19a47f6ea7c2632760777c78174f47f6aec1e05f0cd611380d4593b8af1dbc"
+      sha256: cd6add6f846f35fb79f3c315296703c1a24f3cfd7f4739d91a74961c1c7e9f1b
       url: "https://pub.dev"
     source: hosted
-    version: "96.0.0"
+    version: "100.0.0"
   _flutterfire_internals:
     dependency: transitive
     description:
@@ -21,26 +21,34 @@ packages:
     dependency: transitive
     description:
       name: analysis_server_plugin
-      sha256: c9611c4b053f868434400e734c594a7e8464f307f8eaf7ff266d903cd2d615c0
+      sha256: c4021359e7a673ecd9c6db5f11fea12fabb55e0ba96fa08c78920ae81936f1d1
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.10"
+    version: "0.3.15"
   analyzer:
     dependency: transitive
     description:
       name: analyzer
-      sha256: "0c516bc4ad36a1a75759e54d5047cb9d15cded4459df01aa35a0b5ec7db2c2a0"
+      sha256: "6ba98576948803398b69e3a444df24eacdbe12ed699c7014e120ea38552debbf"
       url: "https://pub.dev"
     source: hosted
-    version: "10.2.0"
+    version: "13.0.0"
+  analyzer_buffer:
+    dependency: transitive
+    description:
+      name: analyzer_buffer
+      sha256: "445b77e2054fa3e8c8a8ef1b5e9e6b23bb8028fffd34b5e60eaef315b7750674"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.3"
   analyzer_plugin:
     dependency: transitive
     description:
       name: analyzer_plugin
-      sha256: a886aaa94fb128ffe9cf5ee2495d9ef42ef129fe2e265b84b8820987ca15f4cd
+      sha256: "9a81dc36f7f71890d7cf83960a3a7df1e6c9a24035f98eb848e91ad48b1d21c6"
       url: "https://pub.dev"
     source: hosted
-    version: "0.14.4"
+    version: "0.14.9"
   ansicolor:
     dependency: transitive
     description:
@@ -317,10 +325,10 @@ packages:
     dependency: transitive
     description:
       name: dart_style
-      sha256: "29f7ecc274a86d32920b1d9cfc7502fa87220da41ec60b55f329559d5732e2b2"
+      sha256: "59d53ef8eaed9d288ed9767618e2b31c4fa0383a127db59d5eb2e737a7638a60"
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.7"
+    version: "3.1.9"
   dbus:
     dependency: transitive
     description:
@@ -811,10 +819,10 @@ packages:
     dependency: transitive
     description:
       name: freezed
-      sha256: f23ea33b3863f119b58ed1b586e881a46bd28715ddcc4dbc33104524e3434131
+      sha256: "9ec135696554923c59339d46dd50adbaf81099be06ffda0fb9c06f410aea9137"
       url: "https://pub.dev"
     source: hosted
-    version: "3.2.5"
+    version: "4.0.0-dev.3"
   freezed_annotation:
     dependency: transitive
     description:
@@ -1019,10 +1027,10 @@ packages:
     dependency: transitive
     description:
       name: injectable_generator
-      sha256: "433ad4d94837ff187803b2bf04c6707db6fad8d245f1d693e2e34053bc07ec28"
+      sha256: "424ea884e3adc9585df0af408cb3b0de19fc2faf52b62bed8b73f3fb15a63115"
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.2"
+    version: "3.1.1"
   intl:
     dependency: transitive
     description:
@@ -1107,10 +1115,10 @@ packages:
     dependency: transitive
     description:
       name: lean_builder
-      sha256: c16e95ddf7b2d49dd551357b7212fe2ce9f13ec7ad1b1e660c157184031e96c0
+      sha256: "123eef9fba96ec12a18b8eb4889850368d78e8c0a6a63eaa45ec4cf3e73fbded"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.10"
+    version: "1.2.0"
   lints:
     dependency: transitive
     description:
@@ -1940,5 +1948,5 @@ packages:
     source: hosted
     version: "2.2.4"
 sdks:
-  dart: ">=3.12.2 <4.0.0"
+  dart: ">=3.13.0-0 <4.0.0"
   flutter: ">=3.47.0-0.4.pre <3.48.0"

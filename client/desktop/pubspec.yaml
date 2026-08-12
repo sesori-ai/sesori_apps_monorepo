@@ -9,7 +9,7 @@ resolution: workspace
 version: 0.1.0
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.13.0-0
 
 dependencies:
   device_info_plus: ^13.2.0

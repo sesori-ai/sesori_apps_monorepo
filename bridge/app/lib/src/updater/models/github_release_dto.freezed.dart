@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'github_release_dto.dart';
@@ -9,6 +9,7 @@ part of 'github_release_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -64,7 +65,7 @@ class _$GitHubReleaseDtoCopyWithImpl<$Res>
 /// Create a copy of GitHubReleaseDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? tagName = null,Object? publishedAt = freezed,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
-  return _then(_self.copyWith(
+  return _then(GitHubReleaseDto(
 tagName: null == tagName ? _self.tagName : tagName // ignore: cast_nullable_to_non_nullable
 as String,publishedAt: freezed == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
 as String?,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
@@ -82,7 +83,7 @@ as List<GitHubAssetDto>,
 @JsonSerializable(createToJson: false)
 
 class _GitHubReleaseDto implements GitHubReleaseDto {
-  const _GitHubReleaseDto({@JsonKey(name: 'tag_name') required this.tagName, @JsonKey(name: 'published_at') required this.publishedAt, required this.draft, required this.prerelease, required final  List<GitHubAssetDto> assets}): _assets = assets;
+  const _GitHubReleaseDto({@JsonKey(name: 'tag_name') required this.tagName, @JsonKey(name: 'published_at') required this.publishedAt, required this.draft, required this.prerelease, required  List<GitHubAssetDto> assets}): _assets = assets;
   factory _GitHubReleaseDto.fromJson(Map<String, dynamic> json) => _$GitHubReleaseDtoFromJson(json);
 
 @override@JsonKey(name: 'tag_name') final  String tagName;
@@ -211,7 +212,7 @@ class _$GitHubAssetDtoCopyWithImpl<$Res>
 /// Create a copy of GitHubAssetDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? browserDownloadUrl = null,}) {
-  return _then(_self.copyWith(
+  return _then(GitHubAssetDto(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,browserDownloadUrl: null == browserDownloadUrl ? _self.browserDownloadUrl : browserDownloadUrl // ignore: cast_nullable_to_non_nullable
 as String,

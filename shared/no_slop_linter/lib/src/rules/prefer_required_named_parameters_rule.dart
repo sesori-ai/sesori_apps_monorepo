@@ -121,22 +121,17 @@ class _Visitor extends SimpleAstVisitor<void> {
         continue;
       }
 
-      if (param is DefaultFormalParameter) {
-        final isRequired = param.isRequired;
-        final hasDefault = param.defaultValue != null;
-
-        if (!isRequired && !hasDefault) {
-          if (!_isNullableParameter(param) && !_isNullableFunctionParameter(param)) {
-            continue;
-          }
-          if (_isNullableFunctionParameter(param)) {
-            continue;
-          }
-          if (_hasQueryParamAnnotation(param)) {
-            continue;
-          }
-          missingRequiredParams.add(paramName);
+      if (!param.isRequired && param.defaultClause == null) {
+        if (!_isNullableParameter(param) && !_isNullableFunctionParameter(param)) {
+          continue;
         }
+        if (_isNullableFunctionParameter(param)) {
+          continue;
+        }
+        if (_hasQueryParamAnnotation(param)) {
+          continue;
+        }
+        missingRequiredParams.add(paramName);
       }
     }
 
@@ -157,38 +152,25 @@ class _Visitor extends SimpleAstVisitor<void> {
   }
 
   String _getParameterName(FormalParameter param) {
-    if (param is DefaultFormalParameter) {
-      return param.parameter.name?.lexeme ?? '?';
-    }
     return param.name?.lexeme ?? '?';
   }
 
   bool _isSuperParameter(FormalParameter param) {
-    if (param is SuperFormalParameter) return true;
-    if (param is DefaultFormalParameter) {
-      return param.parameter is SuperFormalParameter;
+    return param is SuperFormalParameter;
+  }
+
+  bool _isNullableParameter(FormalParameter param) {
+    final type = param.type;
+    if (type is NamedType) {
+      return type.question != null;
     }
     return false;
   }
 
-  bool _isNullableParameter(DefaultFormalParameter param) {
-    final innerParam = param.parameter;
-    if (innerParam is SimpleFormalParameter) {
-      final type = innerParam.type;
-      if (type is NamedType) {
-        return type.question != null;
-      }
-    }
-    return false;
-  }
-
-  bool _isNullableFunctionParameter(DefaultFormalParameter param) {
-    final innerParam = param.parameter;
-    if (innerParam is SimpleFormalParameter) {
-      final type = innerParam.type;
-      if (type is GenericFunctionType) {
-        return type.question != null;
-      }
+  bool _isNullableFunctionParameter(FormalParameter param) {
+    final type = param.type;
+    if (type is GenericFunctionType) {
+      return type.question != null;
     }
     return false;
   }

@@ -15,6 +15,7 @@ on:
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/**'
+      - '.tool-versions'
   pull_request:
     paths:
       - 'client/app/**'
@@ -26,6 +27,7 @@ on:
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/**'
+      - '.tool-versions'
 
 jobs:
   test:
