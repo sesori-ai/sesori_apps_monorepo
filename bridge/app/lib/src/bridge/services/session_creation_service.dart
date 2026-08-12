@@ -29,16 +29,20 @@ class SessionCreationService {
     // plugin/git side effect. The stored path is authoritative; unknown ids
     // must not be treated as directories.
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
-    await _sessionRepository.ensurePluginRoutable(
-      pluginId: request.pluginId,
-      operation: SessionOperation.createSession,
-    );
     final normalizedCommand = request.command?.normalize();
     final agentModel = request.model;
     final userTexts = _extractTexts(parts: request.parts);
     final firstText = userTexts.firstOrNull;
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
-    final metadata = await _generateMetadata(firstText: firstText);
+    // Harness warmup and title/worktree naming are independent and both slow —
+    // overlap them so create latency tracks the slower of the two, not the sum.
+    final (_, metadata) = await (
+      _sessionRepository.ensurePluginRoutable(
+        pluginId: request.pluginId,
+        operation: SessionOperation.createSession,
+      ),
+      _generateMetadata(firstText: firstText),
+    ).wait;
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,

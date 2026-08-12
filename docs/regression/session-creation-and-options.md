@@ -23,7 +23,8 @@ variant, and worktree mode, and creating the session with its first input.
   backend and no-ops for a superseded generation.
 - Creation resolves and validates the project handle before checking plugin
   routability, so an unknown project causes no plugin, metadata, git, or session
-  persistence effect.
+  persistence effect. After that validation, plugin warmup and session-metadata
+  generation run concurrently; worktree prep and plugin create wait for both.
 - Dedicated mode creates a branch and worktree from the resolved base branch,
   rejects unsafe names, falls back to the project directory when the repository
   is absent, commitless, or creation fails, and records worktree, branch, base

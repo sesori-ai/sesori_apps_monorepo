@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
@@ -8,6 +9,9 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -189,6 +193,63 @@ void main() {
       expect(worktreeService.resolveCalls, 1);
     });
 
+    test("warms the plugin while generating session metadata", () async {
+      worktreeService.headCommit = "abc123";
+
+      final ensureEntered = Completer<void>();
+      final metadataEntered = Completer<void>();
+      final release = Completer<void>();
+      metadataService.holdUntil = release.future;
+      metadataService.onGenerateStarted = metadataEntered.complete;
+
+      final repository = _EnsureHoldSessionRepository(
+        inner: singlePluginSessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestDao: db.pullRequestDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        holdUntil: release.future,
+        onEnsureStarted: ensureEntered.complete,
+      );
+      final overlappingDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      final overlappingMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: repository,
+        sessionOperationDispatcher: overlappingDispatcher,
+      );
+      addTearDown(() async {
+        await overlappingDispatcher.dispose();
+        await overlappingMutationDispatcher.dispose();
+      });
+      final overlappingService = SessionCreationService(
+        metadataService: metadataService,
+        worktreeService: worktreeService,
+        sessionRepository: repository,
+        sessionMutationDispatcher: overlappingMutationDispatcher,
+      );
+
+      final created = overlappingService.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      await Future.wait([ensureEntered.future, metadataEntered.future]);
+      release.complete();
+      await created;
+
+      expect(metadataService.generateCalls, 1);
+      expect(plugin.createCalls, 1);
+    });
+
     test("allocates around a cross-plugin backend-id collision without changing the retained binding", () async {
       await db.projectsDao.recordOpenedProject(
         projectId: "/retained",
@@ -241,6 +302,8 @@ void main() {
 
 class _FakeMetadataService extends MetadataService {
   int generateCalls = 0;
+  Future<void>? holdUntil;
+  void Function()? onGenerateStarted;
 
   _FakeMetadataService()
     : super(
@@ -252,8 +315,89 @@ class _FakeMetadataService extends MetadataService {
   @override
   Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
     generateCalls++;
+    onGenerateStarted?.call();
+    final hold = holdUntil;
+    if (hold != null) {
+      await hold;
+    }
     return null;
   }
+}
+
+class _EnsureHoldSessionRepository implements SessionRepository {
+  final SessionRepository _inner;
+  final Future<void> _holdUntil;
+  final void Function() _onEnsureStarted;
+
+  _EnsureHoldSessionRepository({
+    required SessionRepository inner,
+    required Future<void> holdUntil,
+    required void Function() onEnsureStarted,
+  }) : _inner = inner,
+       _holdUntil = holdUntil,
+       _onEnsureStarted = onEnsureStarted;
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) {
+    return _inner.resolveProjectDirectory(projectId: projectId);
+  }
+
+  @override
+  Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
+    _onEnsureStarted();
+    await _holdUntil;
+    return _inner.ensurePluginRoutable(pluginId: pluginId, operation: operation);
+  }
+
+  @override
+  Future<Session> createSession({
+    required String pluginId,
+    required String projectId,
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? userVisibleText,
+    required SessionVariant? variant,
+    required String? agent,
+    required PromptModel? model,
+    required bool isDedicated,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
+  }) {
+    return _inner.createSession(
+      pluginId: pluginId,
+      projectId: projectId,
+      directory: directory,
+      parentSessionId: parentSessionId,
+      parts: parts,
+      userVisibleText: userVisibleText,
+      variant: variant,
+      agent: agent,
+      model: model,
+      isDedicated: isDedicated,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      baseBranch: baseBranch,
+      baseCommit: baseCommit,
+      lastAgent: lastAgent,
+      lastAgentModel: lastAgentModel,
+    );
+  }
+
+  @override
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) {
+    return _inner.enrichSession(session: session, verifiedGithubLogin: verifiedGithubLogin);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeTokenRefresher implements TokenRefresher {
