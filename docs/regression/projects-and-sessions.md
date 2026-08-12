@@ -23,8 +23,8 @@ child sessions with titles, activity, statuses, and unseen state.
   plugin, atomic, non-destructive, cancellable, and attributes progress.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
-  work to remain in that worktree, while permitting branch switches and new
-  branches within it.
+  work to remain in that worktree, while permitting use of the initial branch,
+  branch switches, and new branches within it.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.

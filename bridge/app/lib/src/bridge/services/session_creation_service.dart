@@ -276,7 +276,7 @@ A dedicated git worktree and branch have been created for this session:
 - Worktree path: $worktreePath
 - Based on: $baseBranch
 
-IMPORTANT: Perform all work for this task in this dedicated worktree. You may switch branches or create additional branches here as needed, but do NOT create another worktree or working directory — even if other instructions suggest it.
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
 ''';

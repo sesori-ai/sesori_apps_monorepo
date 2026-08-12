@@ -33,7 +33,7 @@ A dedicated git worktree and branch have been created for this session:
 - Worktree path: $worktreePath
 - Based on: $baseBranch
 
-IMPORTANT: Perform all work for this task in this dedicated worktree. You may switch branches or create additional branches here as needed, but do NOT create another worktree or working directory — even if other instructions suggest it.
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
 ''';
@@ -463,8 +463,8 @@ void main() {
       expect(prompt, contains("/repo/.worktrees/session-017"));
       expect(prompt, contains("develop"));
       expect(prompt, contains("Perform all work for this task in this dedicated worktree"));
-      expect(prompt, contains("switch branches or create additional branches"));
-      expect(prompt, contains("do NOT create another worktree or working directory"));
+      expect(prompt, contains("use the initial branch above, or switch branches"));
+      expect(prompt, contains("Do NOT create another worktree or working directory"));
     });
 
     test("plugin failure is propagated and no session row is inserted", () async {
