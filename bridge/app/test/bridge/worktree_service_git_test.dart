@@ -406,14 +406,11 @@ void main() {
 
         expect(snapshot.worktreeExists, isFalse);
         expect(snapshot.hasUnstagedChanges, isFalse);
-        expect(snapshot.actualBranch, isEmpty);
         expect(processRunner.invocations, isEmpty);
       });
 
-      test("returns raw git status and branch details for existing worktree", () async {
-        processRunner
-          ..enqueue(result: _processResult(exitCode: 0, stdout: "M file.txt\n"))
-          ..enqueue(result: _processResult(exitCode: 0, stdout: "main\n"));
+      test("returns git status details for existing worktree", () async {
+        processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "M file.txt\n"));
 
         final snapshot = await service.inspectWorktreeSafety(
           worktreePath: tempDir.path,
@@ -421,13 +418,8 @@ void main() {
 
         expect(snapshot.worktreeExists, isTrue);
         expect(snapshot.hasUnstagedChanges, isTrue);
-        expect(snapshot.actualBranch, equals("main"));
-        expect(processRunner.invocations, hasLength(2));
+        expect(processRunner.invocations, hasLength(1));
         expect(processRunner.invocations.first.arguments, equals(["status", "--porcelain"]));
-        expect(
-          processRunner.invocations.last.arguments,
-          equals(["rev-parse", "--abbrev-ref", "HEAD"]),
-        );
       });
     });
 

@@ -798,22 +798,18 @@ void main() {
     test("clean worktree: returns WorktreeSafe", () async {
       // git status --porcelain → empty (clean)
       processRunner.enqueue(result: _ok(stdout: ""));
-      // git rev-parse --abbrev-ref HEAD → "session-001"
-      processRunner.enqueue(result: _ok(stdout: "session-001\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
       );
 
       expect(result, isA<WorktreeSafe>());
-      expect(processRunner.invocations, hasLength(2));
+      expect(processRunner.invocations, hasLength(1));
     });
 
     test("dirty worktree: returns WorktreeUnsafe with UnstagedChanges", () async {
       // git status --porcelain → non-empty (dirty)
       processRunner.enqueue(result: _ok(stdout: "M file.txt\n"));
-      // git rev-parse --abbrev-ref HEAD → "session-001"
-      processRunner.enqueue(result: _ok(stdout: "session-001\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
@@ -828,8 +824,6 @@ void main() {
     test("different branch remains safe", () async {
       // git status --porcelain → empty (clean)
       processRunner.enqueue(result: _ok(stdout: ""));
-      // git rev-parse --abbrev-ref HEAD → "main" (wrong branch)
-      processRunner.enqueue(result: _ok(stdout: "main\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
@@ -841,8 +835,6 @@ void main() {
     test("dirty worktree on a different branch returns UnstagedChanges", () async {
       // git status --porcelain → non-empty (dirty)
       processRunner.enqueue(result: _ok(stdout: "M file.txt\nA new.dart\n"));
-      // git rev-parse --abbrev-ref HEAD → "main" (wrong branch)
-      processRunner.enqueue(result: _ok(stdout: "main\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
