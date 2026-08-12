@@ -56,8 +56,8 @@ class MessageImageCubit extends Cubit<MessageImageState> {
       rendition: SessionAttachmentRendition.original,
     );
     if (isClosed || generation != _originalGeneration) return;
-    if (result is MessageImageLoadFailure) {
-      logw("Failed to load a stored message image original");
+    if (result case MessageImageLoadFailure(:final cause, :final stackTrace)) {
+      logw("Failed to load a stored message image original", cause, stackTrace);
     }
     emit(
       MessageImageState(
