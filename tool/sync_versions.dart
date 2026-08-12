@@ -50,7 +50,7 @@ class _ClientVersion {
   final String? build;
 }
 
-Future<void> main(List<String> args) async {
+Future<void> main(final List<String> args) async {
   try {
     final parsed = _parseArgs(args);
     final repoRoot = Directory(
@@ -152,7 +152,7 @@ Future<void> main(List<String> args) async {
   }
 }
 
-_ParsedArgs _parseArgs(List<String> args) {
+_ParsedArgs _parseArgs(final List<String> args) {
   bool dryRun = false;
   String? type;
   String? version;
@@ -174,7 +174,7 @@ _ParsedArgs _parseArgs(List<String> args) {
         args: args,
         index: index,
         flag: '--type',
-        assign: (value) => type = value,
+        assign: (final value) => type = value,
       );
       continue;
     }
@@ -189,7 +189,7 @@ _ParsedArgs _parseArgs(List<String> args) {
         args: args,
         index: index,
         flag: '--version',
-        assign: (value) => version = value,
+        assign: (final value) => version = value,
       );
       continue;
     }
@@ -235,7 +235,7 @@ int _consumeNextValue({
   return nextIndex;
 }
 
-String _valueFromFlag(String arg, String prefix) {
+String _valueFromFlag(final String arg, final String prefix) {
   final value = arg.substring(prefix.length);
   if (value.isEmpty) {
     throw _CliError(
@@ -245,7 +245,7 @@ String _valueFromFlag(String arg, String prefix) {
   return value;
 }
 
-String _join(String root, List<String> segments) {
+String _join(final String root, final List<String> segments) {
   var path = root;
   for (final segment in segments) {
     path = '$path${Platform.pathSeparator}$segment';
@@ -258,7 +258,7 @@ Future<String> _readFile({required String path}) => File(path).readAsString();
 Future<void> _writeFile({required String path, required String content}) =>
     File(path).writeAsString(content);
 
-_ClientVersion _readClientVersion(String content) {
+_ClientVersion _readClientVersion(final String content) {
   final match = _pubspecVersionPattern.firstMatch(content);
   if (match == null) {
     throw const _CliError('Error: Could not find version in client pubspec');
@@ -273,7 +273,7 @@ _ClientVersion _readClientVersion(String content) {
   return _ClientVersion(semver: parsed.group(1)!, build: parsed.group(2));
 }
 
-String _readBridgeVersion(String content) {
+String _readBridgeVersion(final String content) {
   final match = _pubspecVersionPattern.firstMatch(content);
   if (match == null) {
     throw const _CliError('Error: Could not find version in bridge pubspec');
@@ -362,7 +362,7 @@ Future<void> _writePackageJson({
   final optionalDependencies = decoded['optionalDependencies'];
   if (optionalDependencies is Map<String, dynamic>) {
     optionalDependencies.updateAll(
-      (_, value) => value == oldVersion ? newVersion : value,
+      (final _, final value) => value == oldVersion ? newVersion : value,
     );
   }
 
