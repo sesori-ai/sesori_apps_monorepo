@@ -21,7 +21,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// 3. **A package directory, not a lone binary.** The archive contains a
 ///    `dist-package/` tree whose `cursor-agent` entry binary loads sibling
 ///    files (node runtime, native modules), so the assets declare
-///    [RuntimeAssetLayout.packageDirectory] and the whole tree is installed.
+///    [RuntimeArchiveLayout.packageDirectory] and the whole tree is installed.
 ///
 /// Windows is deliberately absent: Cursor publishes darwin and linux only, so
 /// [assetFor] returns null there and the descriptor does not advertise the
@@ -57,35 +57,35 @@ class CursorRuntimeManifest extends RuntimeManifest {
   /// stays a pure function of the asset.
   static const Map<PlatformOs, Map<PlatformArch, RuntimeAsset>> _assets = {
     PlatformOs.macos: {
-      PlatformArch.arm64: RuntimeAsset(
+      PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "darwin/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "46044d6d7bcbd7b49a0cf1cd01aa4ca79aaa2ea5f2c7a32965fc0ebe29841790",
         archiveBinaryName: _packageBinaryName,
-        layout: RuntimeAssetLayout.packageDirectory,
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
-      PlatformArch.x64: RuntimeAsset(
+      PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "darwin/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "d5c1ce96dd36469e0231d818d4ccf390caac52d94e607c56ebeecc247cab2b1b",
         archiveBinaryName: _packageBinaryName,
-        layout: RuntimeAssetLayout.packageDirectory,
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
     },
     PlatformOs.linux: {
-      PlatformArch.arm64: RuntimeAsset(
+      PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "linux/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "ea13f92e295f523a99ce8d8f57d6894d21e5d1e2d030ffad718ccd5955ca2eed",
         archiveBinaryName: _packageBinaryName,
-        layout: RuntimeAssetLayout.packageDirectory,
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
-      PlatformArch.x64: RuntimeAsset(
+      PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "linux/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "bfff4bf6f4e9dd30c1d0ef0a70b6077b074015dd2948e4c50685d53afdcfce5a",
         archiveBinaryName: _packageBinaryName,
-        layout: RuntimeAssetLayout.packageDirectory,
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
     },
   };

@@ -11,12 +11,9 @@ class _StubManifest implements RuntimeManifest {
 
   final bool hasAsset;
 
-  static const RuntimeAsset _asset = RuntimeAsset(
-    assetName: "opencode-test.zip",
-    format: ArchiveFormat.zip,
+  static const RuntimeAsset _asset = DirectBinaryRuntimeAsset(
+    assetName: "opencode-test",
     sha256: "abc123",
-    archiveBinaryName: "opencode",
-    layout: RuntimeAssetLayout.singleBinary,
   );
 
   @override

@@ -23,10 +23,9 @@ class RuntimeInstallException implements Exception {
 /// place the binary at `<versionDir>/<binaryFileName>` → write a verification
 /// sentinel.
 ///
-/// The executable is located inside the extracted archive by [RuntimeAsset.archiveBinaryName]
-/// and moved into a freshly created version directory under the canonical
-/// [binaryFileName] (normalizing publishers that ship a target-triple-named
-/// member). The sentinel (the verified SHA-256) is written last, so an
+/// Archive executables are located by [ArchiveRuntimeAsset.archiveBinaryName]
+/// and normalized to [binaryFileName]. Direct binaries are placed there without
+/// extraction. The sentinel (the verified SHA-256) is written last, so an
 /// interrupted install leaves no sentinel and is cleanly redone next attempt.
 /// No lock is required: single-live-bridge enforcement covers cross-process
 /// overlap, callers gate concurrent same-plugin work (setup-blocked plugins
@@ -97,7 +96,11 @@ class RuntimeInstallService {
     // shells out to PowerShell `Expand-Archive`, which rejects any source path
     // that does not end in `.zip` (a bare extensionless file fails the install).
     // The format is the same source of truth the extractor switches on.
-    final String downloadPath = p.join(managedDir, "$_downloadFileName${asset.format.fileExtension}");
+    final String extension = switch (asset) {
+      ArchiveRuntimeAsset(:final format) => format.fileExtension,
+      DirectBinaryRuntimeAsset() => "",
+    };
+    final String downloadPath = p.join(managedDir, "$_downloadFileName$extension");
     final String stagingPath = p.join(managedDir, _stagingDirName);
 
     try {
@@ -114,34 +117,42 @@ class RuntimeInstallService {
       }
       _throwIfAborted(startAborted);
 
-      yield const ProvisionExtracting();
-      final ArchiveExtractionResult extracted = await _archiveExtractor.extract(
-        archivePath: downloadPath,
-        stagingPath: stagingPath,
-        format: asset.format,
-      );
-      if (!extracted.succeeded) {
-        throw RuntimeInstallException("failed to extract ${asset.assetName} (${extracted.failureReason})");
-      }
-      _throwIfAborted(startAborted);
+      switch (asset) {
+        case ArchiveRuntimeAsset():
+          yield const ProvisionExtracting();
+          final ArchiveExtractionResult extracted = await _archiveExtractor.extract(
+            archivePath: downloadPath,
+            stagingPath: stagingPath,
+            format: asset.format,
+          );
+          if (!extracted.succeeded) {
+            throw RuntimeInstallException("failed to extract ${asset.assetName} (${extracted.failureReason})");
+          }
+          _throwIfAborted(startAborted);
 
-      final File? binaryInStaging = _locateBinary(stagingPath: stagingPath, archiveBinaryName: asset.archiveBinaryName);
-      if (binaryInStaging == null) {
-        throw RuntimeInstallException("archive ${asset.assetName} did not contain ${asset.archiveBinaryName}");
-      }
-
-      switch (asset.layout) {
-        case RuntimeAssetLayout.singleBinary:
-          _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
-        case RuntimeAssetLayout.packageDirectory:
-          // The entry binary loads siblings from its own directory, so the
-          // whole tree is placed and the canonical name is a symlink-free
-          // rename of the entry file within it.
-          _placePackage(
-            packageInStaging: binaryInStaging.parent,
+          final File? binaryInStaging = _locateBinary(
+            stagingPath: stagingPath,
+            archiveBinaryName: asset.archiveBinaryName,
+          );
+          if (binaryInStaging == null) {
+            throw RuntimeInstallException("archive ${asset.assetName} did not contain ${asset.archiveBinaryName}");
+          }
+          switch (asset.layout) {
+            case RuntimeArchiveLayout.singleBinary:
+              _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
+            case RuntimeArchiveLayout.packageDirectory:
+              _placePackage(
+                packageInStaging: binaryInStaging.parent,
+                versionDir: versionDir,
+                binaryFileName: binaryFileName,
+                archiveBinaryName: asset.archiveBinaryName,
+              );
+          }
+        case DirectBinaryRuntimeAsset():
+          _placeBinary(
+            binaryInStaging: File(downloadPath),
             versionDir: versionDir,
             binaryFileName: binaryFileName,
-            archiveBinaryName: asset.archiveBinaryName,
           );
       }
       await _makeExecutable(binaryPath: p.join(versionDir, binaryFileName), assetName: asset.assetName);

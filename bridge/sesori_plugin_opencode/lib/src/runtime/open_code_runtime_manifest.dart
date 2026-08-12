@@ -37,54 +37,54 @@ class OpenCodeRuntimeManifest extends RuntimeManifest {
   /// Pinned per-platform assets for [bundledVersion]. darwin/windows ship `.zip`,
   /// linux ships `.tar.gz`; the non-baseline, non-musl CLI builds are used. The
   /// OpenCode archives contain the executable under its plain canonical name, so
-  /// [RuntimeAsset.archiveBinaryName] equals [binaryFileName] per platform.
+  /// [ArchiveRuntimeAsset.archiveBinaryName] equals [binaryFileName] per platform.
   static const Map<PlatformOs, Map<PlatformArch, RuntimeAsset>> _assets = {
     PlatformOs.macos: {
-      PlatformArch.arm64: RuntimeAsset(
+      PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "opencode-darwin-arm64.zip",
         format: ArchiveFormat.zip,
         sha256: "188ff6a716bcd40e33ac62f17f4aec9bd760164fa6a2cde66f779a5db4abc7ce",
         archiveBinaryName: "opencode",
-        layout: RuntimeAssetLayout.singleBinary,
+        layout: RuntimeArchiveLayout.singleBinary,
       ),
-      PlatformArch.x64: RuntimeAsset(
+      PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "opencode-darwin-x64.zip",
         format: ArchiveFormat.zip,
         sha256: "95953ab2aca4322b90690bf34697cc9b47b6a7c72f78e7c469056fb589124d31",
         archiveBinaryName: "opencode",
-        layout: RuntimeAssetLayout.singleBinary,
+        layout: RuntimeArchiveLayout.singleBinary,
       ),
     },
     PlatformOs.linux: {
-      PlatformArch.arm64: RuntimeAsset(
+      PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "opencode-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "03e07aa461ac241dfa8c7ab54ed58c7a0e911c62fc3cb490b83e4fb3424eb73b",
         archiveBinaryName: "opencode",
-        layout: RuntimeAssetLayout.singleBinary,
+        layout: RuntimeArchiveLayout.singleBinary,
       ),
-      PlatformArch.x64: RuntimeAsset(
+      PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "opencode-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
         sha256: "a4dffcc00a5a93256c6bd06aa0c984320528f564db52a1f4becd5c7de9fb59a1",
         archiveBinaryName: "opencode",
-        layout: RuntimeAssetLayout.singleBinary,
+        layout: RuntimeArchiveLayout.singleBinary,
       ),
     },
     PlatformOs.windows: {
-      PlatformArch.arm64: RuntimeAsset(
+      PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "opencode-windows-arm64.zip",
         format: ArchiveFormat.zip,
         sha256: "4510ccf446284f5492438c4b40b23895dc7ae78cb5eb4e7f51cbe998c1148d58",
         archiveBinaryName: "opencode.exe",
-        layout: RuntimeAssetLayout.singleBinary,
+        layout: RuntimeArchiveLayout.singleBinary,
       ),
-      PlatformArch.x64: RuntimeAsset(
+      PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "opencode-windows-x64.zip",
         format: ArchiveFormat.zip,
         sha256: "f3a5ea814aecc692a4e04259d9005283f364225b38456c90f9a47b7a9d83c0e9",
         archiveBinaryName: "opencode.exe",
-        layout: RuntimeAssetLayout.singleBinary,
+        layout: RuntimeArchiveLayout.singleBinary,
       ),
     },
   };
