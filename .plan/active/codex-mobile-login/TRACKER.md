@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 4 merged; Step 5 ready for publication
-- **Current step:** 5/8 locally
+- **Series state:** Step 5 PR open
+- **Current step:** 5/8 in review
 - **Implementation base:** Step 4 merge commit `2bc60ae3`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** None; Step 5 is being reverified after the Step 4 merge
-- **Next action:** Publish Step 5
+- **Current PR:** [#835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835)
+- **Next action:** Monitor Step 5 review/CI and implement Step 6 locally
 
 ## Plan Review
 
@@ -30,7 +30,7 @@
 | [x] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827) merged |
 | [x] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) merged |
 | [x] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) merged |
-| [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Local verification |
+| [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) open |
 | [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | Pending |
 | [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Pending |
 | [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | Pending |
@@ -99,7 +99,8 @@
   analysis remains clean, `git diff --check origin/main...HEAD` passes, and
   `git diff --numstat origin/main...HEAD` reports 844 additions and 73
   deletions. The lower-than-estimated size reflects reuse of existing lifecycle
-  ownership rather than introducing a parallel coordinator.
+  ownership rather than introducing a parallel coordinator. Pushed and opened
+  as [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835).
 
 ## Findings And Plan Deltas
 
