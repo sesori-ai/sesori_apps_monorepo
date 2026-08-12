@@ -88,3 +88,89 @@ final class PluginManagementMutationResultFailure extends PluginManagementMutati
 
   const PluginManagementMutationResultFailure({required this.error});
 }
+
+sealed class PluginAuthenticationStartResult {
+  const PluginAuthenticationStartResult();
+
+  const factory PluginAuthenticationStartResult.challenge({
+    required PluginAuthenticationChallengeResponse challenge,
+  }) = PluginAuthenticationStartChallenge;
+
+  const factory PluginAuthenticationStartResult.notFound() = PluginAuthenticationStartNotFound;
+
+  const factory PluginAuthenticationStartResult.conflict({
+    required PluginAuthenticationConflict conflict,
+  }) = PluginAuthenticationStartConflict;
+
+  const factory PluginAuthenticationStartResult.unsupported() = PluginAuthenticationStartUnsupported;
+
+  const factory PluginAuthenticationStartResult.uncertain() = PluginAuthenticationStartUncertain;
+
+  const factory PluginAuthenticationStartResult.failure({required ApiError error}) = PluginAuthenticationStartFailure;
+}
+
+final class PluginAuthenticationStartChallenge extends PluginAuthenticationStartResult {
+  const PluginAuthenticationStartChallenge({required this.challenge});
+  final PluginAuthenticationChallengeResponse challenge;
+}
+
+final class PluginAuthenticationStartNotFound extends PluginAuthenticationStartResult {
+  const PluginAuthenticationStartNotFound();
+}
+
+final class PluginAuthenticationStartConflict extends PluginAuthenticationStartResult {
+  const PluginAuthenticationStartConflict({required this.conflict});
+  final PluginAuthenticationConflict conflict;
+}
+
+final class PluginAuthenticationStartUnsupported extends PluginAuthenticationStartResult {
+  const PluginAuthenticationStartUnsupported();
+}
+
+final class PluginAuthenticationStartUncertain extends PluginAuthenticationStartResult {
+  const PluginAuthenticationStartUncertain();
+}
+
+final class PluginAuthenticationStartFailure extends PluginAuthenticationStartResult {
+  const PluginAuthenticationStartFailure({required this.error});
+  final ApiError error;
+}
+
+sealed class PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelResult();
+
+  const factory PluginAuthenticationCancelResult.success() = PluginAuthenticationCancelSuccess;
+  const factory PluginAuthenticationCancelResult.notFound() = PluginAuthenticationCancelNotFound;
+  const factory PluginAuthenticationCancelResult.conflict({
+    required PluginAuthenticationConflict conflict,
+  }) = PluginAuthenticationCancelConflict;
+  const factory PluginAuthenticationCancelResult.unsupported() = PluginAuthenticationCancelUnsupported;
+  const factory PluginAuthenticationCancelResult.uncertain() = PluginAuthenticationCancelUncertain;
+  const factory PluginAuthenticationCancelResult.failure({required ApiError error}) = PluginAuthenticationCancelFailure;
+}
+
+final class PluginAuthenticationCancelSuccess extends PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelSuccess();
+}
+
+final class PluginAuthenticationCancelNotFound extends PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelNotFound();
+}
+
+final class PluginAuthenticationCancelConflict extends PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelConflict({required this.conflict});
+  final PluginAuthenticationConflict conflict;
+}
+
+final class PluginAuthenticationCancelUnsupported extends PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelUnsupported();
+}
+
+final class PluginAuthenticationCancelUncertain extends PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelUncertain();
+}
+
+final class PluginAuthenticationCancelFailure extends PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelFailure({required this.error});
+  final ApiError error;
+}

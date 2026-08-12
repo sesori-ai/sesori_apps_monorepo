@@ -10,7 +10,10 @@ void main() {
         "protocolVersion": 1,
         "agentCapabilities": {
           "loadSession": true,
-          "sessionCapabilities": {"list": <String, dynamic>{}},
+          "sessionCapabilities": {
+            "list": <String, dynamic>{},
+            "close": <String, dynamic>{},
+          },
         },
         "authMethods": [
           {"id": "cursor_login", "name": "Cursor Login"},
@@ -19,6 +22,7 @@ void main() {
       expect(init.protocolVersion, 1);
       expect(init.agentCapabilities.loadSession, isTrue);
       expect(init.agentCapabilities.listSessions, isTrue);
+      expect(init.agentCapabilities.closeSession, isTrue);
       expect(init.requiresAuth, isTrue);
       expect(init.authMethods.single.id, "cursor_login");
     });
@@ -27,7 +31,28 @@ void main() {
       final init = AcpInitializeResult.fromJson(const {"protocolVersion": 1});
       expect(init.agentCapabilities.loadSession, isFalse);
       expect(init.agentCapabilities.listSessions, isFalse);
+      expect(init.agentCapabilities.closeSession, isFalse);
       expect(init.requiresAuth, isFalse);
+    });
+  });
+
+  group("ACP client capabilities", () {
+    test("advertises only form elicitation when enabled", () {
+      final capabilities = buildClientCapabilities(
+        formElicitation: true,
+      );
+      expect(capabilities["elicitation"], {
+        "form": <String, dynamic>{},
+      });
+      expect(capabilities, isNot(contains("auth")));
+      expect(capabilities["terminal"], isFalse);
+    });
+
+    test("omits elicitation when disabled", () {
+      expect(
+        buildClientCapabilities(formElicitation: false),
+        isNot(contains("elicitation")),
+      );
     });
   });
 

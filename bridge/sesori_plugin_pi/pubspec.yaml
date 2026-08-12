@@ -7,6 +7,8 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
+  sesori_plugin_interface:
+    path: ../sesori_plugin_interface
   path: ^1.9.1
 
 dev_dependencies:

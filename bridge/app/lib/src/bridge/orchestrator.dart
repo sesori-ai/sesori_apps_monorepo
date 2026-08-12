@@ -50,6 +50,7 @@ import "../routing/get_plugins_handler.dart";
 import "../routing/get_pull_request_refresh_settings_handler.dart";
 import "../routing/patch_bridge_settings_handler.dart";
 import "../routing/patch_plugin_idle_timeout_handler.dart";
+import "../routing/plugin_authentication_handlers.dart";
 import "../routing/post_plugin_lifecycle_command_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
@@ -558,6 +559,8 @@ class Orchestrator {
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
+        PostPluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
+        DeletePluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         GetBridgeSettingsHandler(settingsRepository: _bridgeSettingsRepository),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
@@ -655,6 +658,7 @@ class Orchestrator {
       catalogImportProgress: catalogImportService.progress,
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
       pluginInstallProgress: _pluginLifecycleService.installProgress,
+      pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -806,6 +810,7 @@ class OrchestratorSession {
     required Stream<CatalogImportProgress> catalogImportProgress,
     required Stream<String> pluginManagementSnapshotTokens,
     required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
+    required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
     required StreamController<int> bytesSentController,
     required StreamController<SesoriSseEvent> localWireEventsController,
     required FailureReporter failureReporter,
@@ -896,6 +901,16 @@ class OrchestratorSession {
               phase: update.phase,
               percent: update.percent,
               message: update.message,
+            ),
+          );
+        })
+        .addTo(_subscriptions);
+    pluginAuthenticationProgress
+        .listen((update) {
+          _enqueueWireEvent(
+            SesoriSseEvent.pluginAuthenticationProgress(
+              pluginId: update.pluginId,
+              progress: update.progress,
             ),
           );
         })

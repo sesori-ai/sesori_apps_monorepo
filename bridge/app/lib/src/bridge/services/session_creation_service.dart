@@ -25,14 +25,14 @@ class SessionCreationService {
        _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
-    await _sessionRepository.ensurePluginRoutable(
-      pluginId: request.pluginId,
-      operation: SessionOperation.createSession,
-    );
     // Validate the opaque project handle before metadata generation or any
     // plugin/git side effect. The stored path is authoritative; unknown ids
     // must not be treated as directories.
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
+    await _sessionRepository.ensurePluginRoutable(
+      pluginId: request.pluginId,
+      operation: SessionOperation.createSession,
+    );
     final normalizedCommand = request.command?.normalize();
     final agentModel = request.model;
     final userTexts = _extractTexts(parts: request.parts);

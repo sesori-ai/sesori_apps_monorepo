@@ -19,6 +19,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 
 class _MockPluginManagementService extends Mock implements PluginManagementService {}
+class _MockUrlLauncher extends Mock implements UrlLauncher {}
 
 const _managed = PluginManagementMetadata(
   setup: PluginSetupMetadata(
@@ -168,6 +169,9 @@ void main() {
   late _MockPluginManagementService service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
   late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
+  late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
+  late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
+  late _MockUrlLauncher urlLauncher;
 
   setUpAll(() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
@@ -180,10 +184,15 @@ void main() {
   setUp(() async {
     await GetIt.instance.reset();
     service = _MockPluginManagementService();
+    urlLauncher = _MockUrlLauncher();
     snapshots = BehaviorSubject();
     installProgress = BehaviorSubject.seeded(const {});
+    authenticationChallenges = BehaviorSubject.seeded(const {});
+    authenticationTerminal = StreamController.broadcast();
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
     when(() => service.installProgress).thenAnswer((_) => installProgress.stream);
+    when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
+    when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
     when(() => service.onDispose()).thenAnswer((_) async {});
     when(
@@ -234,12 +243,15 @@ void main() {
       ),
     );
     GetIt.instance.registerSingleton<PluginManagementService>(service);
+    GetIt.instance.registerSingleton<UrlLauncher>(urlLauncher);
   });
 
   tearDown(() async {
     await GetIt.instance.reset();
     await snapshots.close();
     await installProgress.close();
+    await authenticationChallenges.close();
+    await authenticationTerminal.close();
   });
 
   testWidgets("renders loading, unsupported, and initial failure treatments", (tester) async {

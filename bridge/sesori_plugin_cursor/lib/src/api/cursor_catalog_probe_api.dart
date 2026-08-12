@@ -34,6 +34,7 @@ class CursorCatalogProbeApi {
         params: buildInitializeParams(
           clientName: "sesori-bridge",
           clientVersion: "0.0.0",
+          formElicitation: false,
           capabilityMeta: const {"parameterizedModelPicker": true},
         ),
         timeout: _remaining(timeout: timeout, stopwatch: stopwatch),

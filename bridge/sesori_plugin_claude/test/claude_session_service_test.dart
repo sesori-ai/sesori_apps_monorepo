@@ -74,7 +74,6 @@ void main() {
       process.emit({
         "type": "control_request",
         "request_id": "permission-1",
-        "session_id": testSessionId,
         "request": {
           "subtype": "can_use_tool",
           "tool_name": "Write",

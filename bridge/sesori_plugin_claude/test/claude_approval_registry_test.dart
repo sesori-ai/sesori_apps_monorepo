@@ -20,9 +20,13 @@ void main() {
       );
     });
 
+    bool handle({required String sessionId, required ClaudeControlRequestMessage message}) =>
+        registry.handle(sessionId: sessionId, message: message);
+
     test("surfaces a permission with sanitized detail and capability", () {
       expect(
-        registry.handle(
+        handle(
+          sessionId: "session-1",
           message: _request(
             requestId: "request-1",
             request: {
@@ -47,7 +51,7 @@ void main() {
     });
 
     test("once allows only the current input", () {
-      registry.handle(message: _permission());
+      handle(sessionId: "session-1", message: _permission());
 
       expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.once), isTrue);
 
@@ -59,7 +63,8 @@ void main() {
     });
 
     test("always sends only session-scoped addRules suggestions", () {
-      registry.handle(
+      handle(
+        sessionId: "session-1",
         message: _permission(
           suggestions: const [
             {
@@ -103,7 +108,10 @@ void main() {
       {"type": "addRules", "destination": "cliArg"},
     ]) {
       test("always rejects ${suggestion["type"]}/${suggestion["destination"]}", () {
-        registry.handle(message: _permission(suggestions: [suggestion]));
+        handle(
+          sessionId: "session-1",
+          message: _permission(suggestions: [suggestion]),
+        );
 
         registry.replyPermission(id: "br-1", reply: PluginPermissionReply.always);
 
@@ -115,7 +123,8 @@ void main() {
     }
 
     test("suppressed always degrades safely even if an older client sends it", () {
-      registry.handle(
+      handle(
+        sessionId: "session-1",
         message: _permission(
           suppressAlways: true,
           suggestions: const [
@@ -140,7 +149,8 @@ void main() {
     });
 
     test("AskUserQuestion maps answers by full question text", () {
-      registry.handle(
+      handle(
+        sessionId: "session-1",
         message: _request(
           requestId: "question-request",
           request: {
@@ -185,7 +195,8 @@ void main() {
     });
 
     test("ExitPlanMode approval preserves the plan input", () {
-      registry.handle(
+      handle(
+        sessionId: "session-1",
         message: _request(
           requestId: "plan-request",
           request: {
@@ -211,8 +222,9 @@ void main() {
     });
 
     test("reject and teardown deny requests and emit clearing events", () {
-      registry.handle(message: _permission());
-      registry.handle(
+      handle(sessionId: "session-1", message: _permission());
+      handle(
+        sessionId: "session-1",
         message: _request(
           requestId: "question-request",
           request: {
@@ -231,9 +243,29 @@ void main() {
       expect(responses.every((response) => response.payload["behavior"] == "deny"), isTrue);
       expect(events.whereType<BridgeSsePermissionReplied>(), hasLength(1));
       expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+      expect(
+        registry.consumeHandledPermissionDenials(
+          sessionId: "session-1",
+          denials: const [
+            {"tool_use_id": "toolu-permission-request"},
+            {"tool_use_id": "toolu-question-request"},
+          ],
+        ),
+        isTrue,
+      );
+      expect(
+        registry.consumeHandledPermissionDenials(
+          sessionId: "session-1",
+          denials: const [
+            {"tool_use_id": "toolu-unprompted"},
+          ],
+        ),
+        isFalse,
+      );
 
-      registry.handle(message: _permission());
-      registry.handle(
+      handle(sessionId: "session-1", message: _permission());
+      handle(
+        sessionId: "session-1",
         message: _request(
           requestId: "question-request-2",
           request: {
@@ -256,10 +288,10 @@ void main() {
     });
 
     test("dispose cancels pending requests across sessions", () {
-      registry.handle(message: _permission());
-      registry.handle(
+      handle(sessionId: "session-1", message: _permission());
+      handle(
+        sessionId: "session-2",
         message: _request(
-          sessionId: "session-2",
           requestId: "request-2",
           request: {"tool_name": "Read", "input": <String, Object?>{}},
         ),
@@ -277,7 +309,7 @@ void main() {
         emit: events.add,
         respond: ({required sessionId, required requestId, required payload}) => false,
       );
-      registry.handle(message: _permission());
+      handle(sessionId: "session-1", message: _permission());
       events.clear();
 
       expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.once), isFalse);
@@ -303,15 +335,16 @@ ClaudeControlRequestMessage _permission({
 );
 
 ClaudeControlRequestMessage _request({
-  String sessionId = "session-1",
   required String requestId,
   required Map<String, Object?> request,
 }) =>
     ClaudeStreamMessage.parse({
           "type": "control_request",
-          "session_id": sessionId,
-          "uuid": "frame-$requestId",
           "request_id": requestId,
-          "request": {"subtype": "can_use_tool", ...request},
+          "request": {
+            "subtype": "can_use_tool",
+            "tool_use_id": "toolu-$requestId",
+            ...request,
+          },
         })
         as ClaudeControlRequestMessage;

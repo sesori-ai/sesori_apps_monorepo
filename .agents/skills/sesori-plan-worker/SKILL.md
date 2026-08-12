@@ -33,7 +33,12 @@ guide, not a boundary on what you may do.
 4. Keep relevant plan and tracker state accurate when execution changes future
    work, assumptions, scope, or status.
 5. Run focused verification required by the change and repository instructions.
-6. Report the result, verification, and any unresolved risk or blocker.
+6. Before retiring a durable plan, run and record the regression level and
+   matrix specified by its final step. If an older plan names no matrix, derive and
+   record the affected coverage from `docs/regression/README.md` first. Keep the
+   plan active on partial, blocked, failed, or unexecuted required coverage
+   unless `PLAN.md` records the user's explicit acceptance of that limitation.
+7. Report the result, verification, and any unresolved risk or blocker.
 
 Do not impose one-PR limits, waves, branch names, worktrees, tracker schemas, or
 delivery steps unless the user, current plan, repository instructions, or the

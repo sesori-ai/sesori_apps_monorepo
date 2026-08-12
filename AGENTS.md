@@ -71,6 +71,8 @@ eagerly "just in case."
   an honest backfill and a non-null column. Keep the field nullable when absence
   is genuinely meaningful or no valid backfill exists.
 - Never hand-edit generated files. Change their source and run the generator.
+- Add or update the relevant `docs/regression/` feature document when adding a
+  feature or materially changing existing feature behavior.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
 - Every PR title starts with one implementation-complexity emoji: `🌱` trivial,

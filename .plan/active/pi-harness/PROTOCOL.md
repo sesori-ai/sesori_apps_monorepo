@@ -1,5 +1,9 @@
 # Pi RPC And Runtime Protocol: Ground Truth
 
+This file covers `earendil-works/pi` only. Oh My Pi is a divergent backend with
+its own ACP-based integration record in `OMP_PROTOCOL.md`; do not apply OMP
+protocol, storage, launch, or runtime facts to this package.
+
 ## Status And Sources
 
 - **State:** researched from official docs/source and a live standalone binary.
@@ -15,7 +19,7 @@
 
 Official docs and source disagree in a few places. This document records source
 behavior where they differ. Step 2 rechecks the selected implementation pin,
-and Step 14 records live authenticated traces with all content redacted.
+and Step 20 records live authenticated traces with all content redacted.
 
 ## 1. Identity And Version
 
@@ -262,6 +266,7 @@ Empty names are rejected.
 
 Top-level event types include agent/turn/message start-update-end, tool/bash
 execution, queue updates, compaction/retry/summarization lifecycle,
+`entry_appended`, `session_info_changed`, `thinking_level_changed`,
 `extension_error`, `extension_ui_request`, and final `agent_settled`.
 
 Typical order is `agent_start` -> `turn_start` -> user/assistant message frames
@@ -403,10 +408,10 @@ content: [text|thinking|toolCall]
 api, provider, model, usage, stopReason, errorMessage?, timestamp
 ```
 
-Terminal stop reasons:
+Stop-reason values:
 
 ```text
-stop, length, toolUse, error, aborted
+pending, stop, length, toolUse, error, aborted, deferred
 ```
 
 Tool result:
@@ -498,8 +503,9 @@ set_editor_text
 ```
 
 Dialog promises live only in an in-process map. They cannot be re-enumerated or
-answered after process replacement. Timeouts auto-resolve inside Pi; the plugin
-mirrors the timeout to remove the phone card.
+answered after process replacement. Select, confirm, and input timeouts
+auto-resolve inside Pi; editor has no upstream timeout. The plugin owns editor
+expiry and mirrors the other timeouts to remove the phone card.
 
 Pi RPC declares `ctx.mode == "rpc"` and `ctx.hasUI == true`, but terminal-only
 custom components, headers/footers, theme changes, raw input, and editor
@@ -569,7 +575,7 @@ choices.
 
 ## 12. Verification Still Required During Implementation
 
-- Refresh all source facts against the exact managed pin selected in Step 11.
+- Refresh all source facts against the exact managed pin selected in Step 17.
 - Capture redacted authenticated event ordering and model readiness for API-key,
   OAuth, and extension-defined providers.
 - Verify cross-platform custom roots and all six assets, including one live host

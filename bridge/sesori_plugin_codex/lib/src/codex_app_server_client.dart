@@ -80,6 +80,17 @@ class CodexServerRequest {
   final Map<String, dynamic> params;
 }
 
+/// Request and notification surface shared by Codex App Server transports.
+abstract interface class CodexAppServerTransport {
+  Stream<CodexServerNotification> get notifications;
+
+  Future<dynamic> request({
+    required String method,
+    Object? params,
+    Duration timeout = const Duration(seconds: 30),
+  });
+}
+
 /// Factory used by the WebSocket client to open the underlying channel.
 /// Injected for tests so we can swap in an in-memory transport.
 typedef CodexWebSocketChannelFactory = WebSocketChannel Function(Uri uri);
@@ -98,7 +109,7 @@ WebSocketChannel _defaultConnect(Uri uri) => WebSocketChannel.connect(uri);
 ///      by JSON-RPC `id`.
 ///   4. Listen on [notifications] and [serverRequests] for streaming events.
 ///   5. Call [dispose] to close the socket and fail any in-flight requests.
-class CodexAppServerClient {
+class CodexAppServerClient implements CodexAppServerTransport {
   CodexAppServerClient({
     required String serverUrl,
     String? capabilityToken,
@@ -133,6 +144,7 @@ class CodexAppServerClient {
   final StreamController<CodexServerRequest> _serverRequests = StreamController.broadcast();
 
   /// Server-originated notifications (broadcast).
+  @override
   Stream<CodexServerNotification> get notifications => _notifications.stream;
 
   /// Server-originated requests that expect a response (broadcast).
@@ -238,6 +250,7 @@ class CodexAppServerClient {
   ///
   /// Throws [CodexRpcException] on error responses, [TimeoutException] on
   /// timeout, [StateError] if the socket isn't open.
+  @override
   Future<dynamic> request({
     required String method,
     Object? params,

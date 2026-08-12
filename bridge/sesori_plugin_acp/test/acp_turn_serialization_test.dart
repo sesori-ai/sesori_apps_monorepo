@@ -7,7 +7,7 @@ import "package:test/test.dart";
 
 /// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
 /// so a test can land an abort while a turn is mid-selection.
-class _GatedSelectionPlugin extends AcpPlugin {
+class _GatedSelectionPlugin extends TestAcpPlugin {
   _GatedSelectionPlugin({
     required super.id,
     required super.agentDisplayName,
@@ -24,7 +24,7 @@ class _GatedSelectionPlugin extends AcpPlugin {
 
   @override
   Future<void> applyTurnSelection({
-    required AcpStdioClient client,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -59,7 +59,7 @@ void main() {
       fake = FakeAcpProcess();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      plugin = AcpPlugin(
+      plugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
@@ -376,7 +376,7 @@ void main() {
       await plugin.dispose();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      plugin = AcpPlugin(
+      plugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
@@ -735,7 +735,7 @@ void main() {
       final spawned = <FakeAcpProcess>[];
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      final respawning = AcpPlugin(
+      final respawning = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),

@@ -15,6 +15,7 @@ sesori_apps_monorepo/
 │   sesori_plugin_codex/        # Codex backend plugin
 │   sesori_plugin_acp/          # Agent Client Protocol backend plugin
 │   sesori_plugin_cursor/       # Cursor ACP backend plugin
+│   sesori_plugin_omp/          # Oh My Pi ACP backend plugin
 ├── client/                     # Flutter workspace — mobile + desktop shells
 │   app/                        # Mobile Flutter UI shell
 │   desktop/                    # Desktop Flutter product shell
@@ -58,6 +59,8 @@ graph TD
   sesori_plugin_cursor --> sesori_plugin_interface
   sesori_plugin_cursor --> sesori_bridge_foundation
   sesori_plugin_cursor --> sesori_plugin_acp
+  sesori_plugin_omp[bridge/sesori_plugin_omp] --> sesori_plugin_interface
+  sesori_plugin_omp --> sesori_plugin_acp
 
   mobile_app[client/app] --> module_core[client/module_core]
   mobile_app --> module_prego[client/module_prego]

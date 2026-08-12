@@ -6,7 +6,7 @@
 /// set is available for a given model.
 ///
 /// Verified against Claude CLI 2.1.221 — see
-/// `.plan/active/claude-code-plugin/PROTOCOL.md` section 4.
+/// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 4.
 enum ClaudeEffortLevel {
   low,
   medium,

@@ -84,6 +84,32 @@ void main() {
     expect(routeSource.currentRouteStream.value, AppRouteDef.settings);
   });
 
+  testWidgets("currentLocation keeps the query of a pushed route", (tester) async {
+    await pumpRouter(tester);
+    router.go(const AppRoute.projects().buildPath());
+    await tester.pumpAndSettle();
+
+    unawaited(
+      router.push<void>(
+        const AppRoute.sessionDetail(
+          projectId: "p1",
+          projectName: null,
+          sessionId: "s1",
+          sessionTitle: null,
+          readOnly: true,
+        ).buildPath(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // `readOnly` lives in the query and is the only thing separating the
+    // read-only session screen from the editable one, so a location that drops
+    // the query cannot tell them apart.
+    final location = Uri.parse(routeSource.currentLocation!);
+    expect(location.path, "/projects/p1/sessions/s1");
+    expect(location.queryParameters["readOnly"], "true");
+  });
+
   testWidgets("reports pushed screens nested in the session shell", (tester) async {
     await pumpRouter(tester);
     router.go(const AppRoute.projects().buildPath());

@@ -1,93 +1,98 @@
-# Pi Harness Support
+# Pi And Oh My Pi Harness Support
 
 ## Status
 
 - **Plan slug:** `pi-harness`
-- **Status:** Step 1/15, plan PR open
+- **Status:** Step 4/21, Pi and Oh My Pi plan revision
 - **Plan date:** 2026-08-10
+- **Revised:** 2026-08-11 after Steps 1-3 merged
 - **Implementation base:** `origin/main` at
-  `3803df12d2afa41abe6894df88146ad6543e9ec6`
-- **Upstream research baseline:** Pi Agent Harness `v0.84.1`, published
-  2026-08-07 from `earendil-works/pi`
-- **Plan delivery:** this document, `TRACKER.md`, and `PROTOCOL.md` are Step
-  1/15
-- **Delivery:** one planning PR, ten bridge package/runtime PRs, one activation
-  PR, one client/docs PR, one live-verification PR, and one plan-retirement PR
+  `ca550a7b8ff98db06d7fdb2873aa0867fd754f55`
+- **Upstream research baselines:** Pi Agent Harness `v0.84.1`, published
+  2026-08-07 from `earendil-works/pi`, and Oh My Pi `v17.2.13`, published
+  2026-08-11 from `can1357/oh-my-pi`
+- **Plan delivery:** `PLAN.md`, `TRACKER.md`, and Pi `PROTOCOL.md` landed in
+  Step 1/21; this revision and `OMP_PROTOCOL.md` are Step 4/21
+- **Delivery:** two planning PRs, fifteen bridge package/runtime PRs, one joint
+  activation PR, one client/docs PR, one live-verification PR, and one
+  plan-retirement PR
 
 ## Goal
 
-Add the [Pi Agent Harness](https://github.com/earendil-works/pi) as a
-first-class Sesori coding backend. Sesori must be able to download a pinned Pi
-standalone release, verify it, preserve its complete runtime package, launch its
-documented JSONL RPC mode, and expose the useful Pi experience from phone and
-desktop surfaces without leaking Pi-specific behavior outside the plugin.
+Add both [Pi Agent Harness](https://github.com/earendil-works/pi) and
+[Oh My Pi](https://github.com/can1357/oh-my-pi) (OMP) as independent first-class
+Sesori coding backends. Sesori must install and verify each backend's official
+runtime, drive Pi through its documented JSONL RPC mode, drive OMP through ACP
+v1, and expose both experiences from phone and desktop surfaces without
+conflating their identities, storage, protocols, or release trains.
 
 "Full support" in this plan means:
 
-- managed runtime install on every platform for which Pi publishes a release;
-- existing and Sesori-created Pi sessions grouped by their real working
+- managed runtime install on every supported platform for which each upstream
+  publishes a compatible release;
+- existing and Sesori-created Pi and OMP sessions grouped by their real working
   directories;
 - new and resumed sessions;
 - persisted history and live text/reasoning streaming;
 - tool calls, partial output, completion, errors, retries, compaction, and
   abort;
-- configured providers, models, model-specific thinking levels, Pi extensions,
-  skills, prompt templates, image prompts, and RPC-capable extension dialogs;
+- configured providers, models, model-specific thinking levels, commands,
+  skills, image prompts, and reachable extension dialogs for both backends;
 - the existing plugin management, picker, catalog, relay, and client flows; and
-- explicit, honest degradation for Pi features that its RPC protocol does not
-  expose.
+- explicit, honest degradation for backend features that the selected Pi RPC or
+  OMP ACP boundary does not expose.
 
 ## Success Criteria
 
-1. `GET /plugin` advertises `pi` with display name `Pi`, correct setup and
-   install capabilities, and a first-party brand mark.
-2. Tapping Install downloads the pinned standalone asset for the current
-   OS/architecture, checks its SHA-256, installs the complete extracted package
-   under Pi's isolated plugin runtime directory, and starts Pi when setup is
-   ready.
-3. A PATH Pi at or above the compatibility floor wins over the managed copy; a
-   too-old PATH Pi falls back to the exact managed pin; an explicit `--pi-bin`
-   remains authoritative and disables managed install.
-4. A new phone-created session uses a bridge-generated ID, launches in the
-   chosen project/worktree, streams text and thinking, renders tools through
-   pending/running/completed or error states, and remains resumable after the
-   bridge restarts.
-5. Existing sessions under the user's normal Pi session store import without
-   reading prompt or transcript text merely to build the catalog. Explicit Pi
-   names are used as titles; first prompts are not promoted into bridge titles.
-6. Imported Pi sessions retain resolvable `parentSession` relationships and
-   appear through the existing child-session catalog.
-7. Multiple Pi sessions may run concurrently. Each active session owns its own
-   lazily spawned RPC process; idle processes are reaped and resume from their
-   absolute session file on the next turn.
-8. Model/provider discovery is project-scoped, includes project extensions
-   because Pi is launched with `--approve`, and exposes exact thinking levels
-   by probing a non-persisted RPC session rather than hardcoding provider rules.
-9. Pi extension `select`, `confirm`, `input`, and `editor` dialogs round-trip as
-   Sesori questions. Notifications use existing toast events and render through
-   backend-neutral client presentation. Unsupported fire-and-forget decorations
-   are parsed and deliberately ignored rather than breaking the run.
-10. Pi's native no-permission-prompt behavior is preserved. The plugin reports
-    no pending permissions and does not install a Sesori permission extension.
+1. `GET /plugin` advertises separate `pi` and `omp` entries with display names
+   `Pi` and `Oh My Pi`, correct setup/install capabilities, and distinct
+   first-party brand marks.
+2. Tapping Install downloads the pinned asset for the current host, checks its
+   SHA-256, installs Pi's complete package tree or OMP's bare executable under
+   separate managed-runtime directories, and starts only the selected plugin.
+3. A compatible PATH binary wins over its managed copy; a too-old PATH binary
+   falls back to that plugin's exact pin. Explicit `--pi-bin` and `--omp-bin`
+   values remain authoritative and independently disable managed install.
+4. A new phone-created Pi session uses a bridge-generated ID; OMP returns its
+   own stable ID from ACP `session/new`. Both launch in the chosen
+   project/worktree, stream text/reasoning/tools, and remain resumable after a
+   bridge restart.
+5. Existing Pi sessions import through a bounded metadata-only file scan. OMP
+   sessions import through paginated ACP `session/list`; Sesori never parses OMP
+   transcript files merely to enumerate them.
+6. Imported Pi sessions retain resolvable `parentSession` relationships. OMP
+   parent/child lineage is explicitly unavailable because ACP `session/list`
+   does not expose it; no private-file scan is added solely to infer that field.
+7. Multiple sessions remain resident concurrently. Pi owns one lazy RPC process
+   per active session; OMP uses one lazy ACP process that hosts multiple sessions
+   while serializing OMP prompt turns process-wide for exact form correlation.
+8. Model/provider discovery is project-scoped. Pi probes a non-persisted RPC
+   session; OMP probes ACP config options in an isolated temporary session root.
+   Both expose exact per-model thinking levels without hardcoded provider rules.
+9. Pi RPC dialogs and OMP ACP form elicitations round-trip as Sesori questions.
+   Backend notifications and local-login guidance use backend-neutral toast
+   presentation where the selected protocol exposes them.
+10. Pi's native no-permission-prompt behavior is preserved. OMP's inherited
+    `tools.approvalMode` is preserved: its default `yolo` mode asks nothing,
+    while a user-configured stricter mode uses standard ACP permissions.
 11. Project-scoped discovery and prompt failures use ordinary operation/session
-    failure plus a rendered guidance toast for local `/login`; they never disable
-    Pi for other projects through plugin-global auth state.
-12. Supported inline image data reaches Pi's RPC `images` field. Path, URL, and
-    non-image variants fail visibly and never become accidental prompt strings.
-13. No Pi protocol value, path layout, provider assumption, tool name, or
-    runtime quirk escapes `bridge/sesori_plugin_pi/`. The intentional shared
-    exceptions are Pi identity, registration, and branding. Existing toast
-    events gain backend-neutral presentation with no Pi-specific branch.
+    failure plus privacy-safe local `/login` guidance; they never disable either
+    backend for unrelated projects through plugin-global auth state.
+12. Supported inline image data reaches Pi RPC or OMP ACP. Unsupported
+    attachment forms fail visibly and never become accidental prompt strings.
+13. Pi behavior stays in `bridge/sesori_plugin_pi/`; OMP behavior stays in
+    `bridge/sesori_plugin_omp/`. Only standard ACP behavior is shared through
+    `sesori_plugin_acp`; no Pi-family protocol or storage abstraction is added.
 14. No new relay route, database column, or `MessagePartType` is introduced.
-    Older clients render unknown `pi` through data-driven contracts but ignore
-    notification and `/login` toasts until upgraded; generic failures remain.
+    Older clients treat unknown `pi` and `omp` identities through existing
+    data-driven compatibility and retain generic failures.
 15. Every implementation PR is independently buildable and normally stays at
     or below 1,500 changed lines, including tests and generated output.
 
 ## Research Findings
 
-`PROTOCOL.md` is the canonical researched protocol/runtime record. The
-load-bearing conclusions for this plan are:
+`PROTOCOL.md` is the canonical Pi record and `OMP_PROTOCOL.md` is the canonical
+OMP record. The load-bearing conclusions are:
 
 - Pi exposes strict-LF JSONL RPC, not ACP, with request-ID correlation but no
   handshake or capability version.
@@ -101,6 +106,21 @@ load-bearing conclusions for this plan are:
 - Auth uses normal Pi environment/config or local `/login`; pending dialogs are
   process-local and cannot survive process replacement.
 - Official standalone releases are complete package trees, not lone binaries.
+- OMP is an independently versioned hard fork, not a wire-compatible Pi build.
+  Its current RPC mode adds negotiation/chunking and removes Pi commands and
+  launch flags on which the merged Pi code depends.
+- OMP exposes ACP v1 through `omp acp`; source and a live `v17.2.13` binary
+  verified `initialize`, authentication, global/scoped paginated session lists,
+  persistent `session/new`, `session/load`, `session/resume`, models/thinking/
+  modes through config options, commands, images, tools, permissions, and form
+  elicitations.
+- OMP ACP solves the missing caller-owned session-ID problem because
+  `session/new` returns OMP's durable ID. Reusing `sesori_plugin_acp` also avoids
+  implementing OMP's separate JSONL RPC dialect and tracks the protocol OMP
+  actively exposes to editor clients.
+- OMP `v17.2.13` publishes seven checksummed bare executables: macOS arm64/x64,
+  Linux glibc arm64/x64, Linux musl arm64/x64, and Windows x64. It publishes no
+  Windows arm64 asset.
 
 Pi `v0.84.1` publishes these six checksummed assets:
 
@@ -118,7 +138,9 @@ package-directory layout and never invokes npm or Pi's installer scripts.
 
 ## Locked Product Decisions
 
-Confirmed with the user on 2026-08-10:
+Pi decisions 1-7 were confirmed with the user on 2026-08-10. Decisions 8-12
+follow the user's 2026-08-11 request to add Oh My Pi and authorization to choose
+ACP when research strongly supported it:
 
 1. The target is `earendil-works/pi` and its `pi` CLI.
 2. Preserve Pi's native no-permission-prompt policy.
@@ -132,16 +154,38 @@ Confirmed with the user on 2026-08-10:
    terminal Pi before continuing the same session from Sesori. Pi has no attach
    API or reliable ownership marker, so no brittle process guard is added.
 7. OpenCode remains the preferred default plugin.
+8. The second target is `can1357/oh-my-pi` and its `omp` CLI, with a distinct
+   `omp` plugin identity. It is not presented as another Pi binary.
+9. OMP uses `omp acp`, not its divergent JSONL RPC mode. There is no shared
+   Pi-family package; `sesori_plugin_pi` and `sesori_plugin_omp` are sibling
+   concrete plugins, with OMP reusing only the existing protocol-level
+   `sesori_plugin_acp` package.
+10. Use the user's normal OMP profile, data, model, plugin, and credential
+    configuration. Inherit `OMP_PROFILE`, legacy `PI_PROFILE`,
+    `PI_CODING_AGENT_DIR`, XDG roots, and provider credentials rather than
+    creating a Sesori-only profile.
+11. Preserve OMP's configured approval policy. Do not pass `--yolo` or otherwise
+    weaken a user's `always-ask`/`write` policy; standard ACP permission requests
+    reach the phone when OMP emits them.
+12. Local OMP `/login`/setup is sufficient. Phone-side provider login and ACP
+    terminal-auth orchestration are excluded from this series.
 
 Decision 5 is security-relevant. Pi project extensions execute arbitrary code
 with the bridge user's permissions. The implementation must test that
 `--approve` is always present and documentation must state the consequence.
+
+Decision 11 is also security-relevant. OMP defaults `tools.approvalMode` to
+`yolo`, but users can configure stricter policies. Sesori inherits that choice
+instead of silently forcing either approval or denial behavior.
 
 ## Scope
 
 ### Included
 
 - New `bridge/sesori_plugin_pi/` pure-Dart package.
+- New `bridge/sesori_plugin_omp/` pure-Dart ACP adapter package.
+- Focused standard ACP additions for form elicitations, `session/close`, and a
+  narrow backend failure-presentation hook used by OMP.
 - Bespoke strict-JSONL RPC, metadata-only session catalog, bridge-derived
   projects, and default/configured/known session roots.
 - Full reachable plugin API mapping: new/resume, rename/delete, history,
@@ -153,6 +197,13 @@ with the bridge user's permissions. The implementation must test that
 - Extension dialogs and notifications that fit existing Sesori contracts.
 - Official managed runtime download, Pi identity/branding/guidance, and runtime
   update-skill support.
+- OMP ACP session enumeration/load/resume, live/replay mapping, modes, commands,
+  provider/model/thinking selection, configured permissions, and isolated
+  catalog probing.
+- OMP persisted deletion through OMP's own resumed-session `/session delete`
+  flow after standard ACP close, so OMP owns writer and artifact cleanup.
+- Direct-binary managed-runtime provisioning, OMP glibc/musl selection, OMP
+  identity/branding/guidance, and runtime update-skill support.
 
 ### Excluded
 
@@ -166,10 +217,49 @@ with the bridge user's permissions. The implementation must test that
   Pi-specific client state branch.
 - Generic files, Pi SDK embedding, npm installation, or bundled Node.
 - Provider/model/tool/command names in analytics.
+- OMP's JSONL RPC mode, a `sesori_plugin_pi_family` package, or sharing Pi wire,
+  launch, storage, or process classes with OMP.
+- OMP RPC-only host tools, host URIs, subagent frames, handoff, protocol-v2
+  chunking, or other features absent from ACP.
+- ACP client-owned filesystem/terminal execution. Sesori advertises those
+  capabilities as false, so OMP continues to execute tools locally.
+- ACP URL elicitations, phone-driven OMP terminal auth, or OMP parent/child
+  lineage not present in standard ACP session metadata.
 
 ## Architecture
 
-### Plugin type and lifecycle
+### Backend boundary decision
+
+The two upstreams share ancestry, but not a stable integration contract:
+
+| Concern | Pi `v0.84.1` | OMP `v17.2.13` |
+|---|---|---|
+| Supported boundary | strict-LF JSONL RPC | ACP v1 (`omp acp`) |
+| Session ID creation | caller supplies `--session-id` | ACP `session/new` returns OMP ID |
+| Resume/history | absolute `--session`, `get_entries` tree | ACP `session/load` replay |
+| Catalog | file metadata scan | ACP `session/list` pages |
+| Completion | `agent_settled` event | `session/prompt` response |
+| Selection | Pi RPC model/thinking commands | ACP config options |
+| Permissions/dialogs | Pi extension UI, no native permissions | ACP permissions and form elicitations |
+| Runtime | extracted package directory | bare executable |
+
+OMP's JSONL RPC is not a compatible alternative: it has a `ready` handshake,
+protocol negotiation and chunk frames, adds many OMP-only methods, removes Pi's
+`get_entries`, `get_tree`, `get_commands`, and thinking-level command, and does
+not accept Pi's `--session-id` or `--approve` flags. A shared Pi-family base
+would therefore branch on the backend at every meaningful API and would couple
+two independently released protocols. The only honest shared boundary is ACP:
+
+```text
+sesori_plugin_pi  -> plugin interface + foundation + runtime + shared
+sesori_plugin_omp -> sesori_plugin_acp + plugin interface + foundation + runtime + shared
+```
+
+No production class moves out of `sesori_plugin_pi`. If later evidence shows a
+small backend-neutral utility has multiple real consumers, extraction can be
+considered then; ancestry alone is not evidence.
+
+### Pi plugin type and lifecycle
 
 `PiPlugin` extends `BridgeDerivedProjectsPluginApi` and implements
 `PersistedSessionCleanupApi`.
@@ -185,7 +275,7 @@ with the bridge user's permissions. The implementation must test that
 - The descriptor remains transient under normal bridge lifecycle policy.
 - Prompt attachments are declared supported because Pi RPC accepts images.
 
-### Package layout
+### Pi package layout
 
 ```text
 bridge/sesori_plugin_pi/
@@ -215,8 +305,58 @@ The placement follows `Foundation -> API -> Repository -> Service -> Consumer`:
 - services and the Layer-3 event dispatcher coordinate repositories/trackers;
 - the plugin implementation is the consumer and composition root.
 
-No generic RPC abstraction is extracted into shared packages. ACP, Claude, and
-Pi have materially different framing, request, event, and lifecycle contracts.
+No generic RPC abstraction is extracted into shared packages. ACP, Claude, Pi,
+and OMP RPC have materially different framing, request, event, and lifecycle
+contracts.
+
+### OMP plugin type and lifecycle
+
+`OmpPlugin` extends the existing `AcpPlugin` and implements
+`PersistedSessionCleanupApi`.
+
+- It launches `omp acp` over stdio and uses the generic ACP handshake, session
+  enumeration, history replay, live content/tool mapping, turn serialization,
+  abort, permission, and process-recovery behavior already used by Cursor.
+- OMP has no bridge-visible project model. `session/list` returns each real cwd,
+  so `OmpPlugin` remains a `BridgeDerivedProjectsPluginApi` through its base.
+- `sessionOptionsScope` is `project`: OMP model/plugin/command configuration can
+  vary by cwd.
+- One lazy ACP child hosts multiple OMP sessions. It is not forced into Pi's
+  one-process-per-session model.
+- The descriptor uses `SteadyPluginLifecycle`; there is no port, daemon socket,
+  ownership file, or independently restarted server.
+- Standard ACP prompt image blocks are supported. Client-side fs/terminal
+  capabilities stay false because OMP owns local tool execution.
+- OMP's `agent` auth method acknowledges use of existing local credentials; it
+  is not proof that a usable model exists. Project catalog/prompt paths remain
+  the authoritative readiness checks.
+
+### OMP package layout
+
+```text
+bridge/sesori_plugin_omp/
+  pubspec.yaml, analysis_options.yaml
+  lib/omp_plugin.dart, lib/omp_testing.dart
+  lib/src/omp_binary.dart
+  lib/src/omp_event_mapper.dart
+  lib/src/omp_plugin_impl.dart
+  lib/src/api/{omp_acp_api,omp_linux_libc_probe_api}.dart
+  lib/src/models/{omp_catalog_models,omp_linux_libc}.dart
+  lib/src/repositories/{omp_catalog_repository,omp_session_cleanup_repository}.dart
+  lib/src/repositories/omp_runtime_asset_repository.dart
+  lib/src/trackers/omp_catalog_tracker.dart
+  lib/src/services/{omp_catalog_service,omp_session_options_service}.dart
+  lib/src/services/omp_session_cleanup_service.dart
+  lib/src/services/omp_runtime_asset_service.dart
+  lib/src/runtime/{omp_runtime_manifest,omp_plugin_descriptor,omp_bridge_plugin}.dart
+  test/
+```
+
+The OMP package owns OMP config-option IDs, model-ID splitting, commands,
+failure classification, deletion command, launch flags, versions, release
+assets, libc choice, and setup guidance. `sesori_plugin_acp` owns only standard
+ACP method/schema/lifecycle behavior. OMP never imports `sesori_plugin_pi`, and
+Pi never imports OMP or ACP.
 
 ### `PiRpcClient`
 
@@ -238,12 +378,161 @@ One client owns one child process and:
 - closes stdin first, then uses bounded SIGTERM/SIGKILL on POSIX and bounded
   process termination on Windows.
 
-Only top-level discriminator routing and the unknown-envelope fallback are
-hand-written. Every known response, event, dialog, and nested payload uses a
-generated DTO; DTOs land with their first consumer so codegen does not create
-unconsumed multi-thousand-line PRs.
+Transport envelopes and the response, event, extension-dialog, and assistant-
+delta discriminator variants are hand-written sealed types with explicit
+unknown fallbacks. Closed leaf payloads use generated DTOs and land with their
+first consumer so codegen does not create unconsumed multi-thousand-line PRs.
+Step 3 consumes no closed leaf payload, so its generated DTO count is zero;
+Step 10 adds codegen with the first closed session metadata leaves.
+This matches the existing Claude transport boundary while keeping every known
+Pi top-level variant typed.
 
-### Session catalog
+### Standard ACP additions for OMP
+
+The OMP adapter reuses `AcpStdioClient`, `AcpPlugin`, `AcpEventMapper`,
+`AcpReplayCollector`, `AcpCommandTracker`, and `AcpApprovalRegistry`. Step 5
+adds only protocol behavior demonstrated by OMP and valid for any ACP v1 agent:
+
+- advertise `clientCapabilities.elicitation.form` and handle
+  `elicitation/create` server requests;
+- map bounded object properties of type string, string enum, and boolean into
+  Sesori questions, preserving property keys only inside the ACP package;
+- map accepted answers back to typed ACP scalar content, and map reject/abort/
+  disposal to `decline` or `cancel` without leaving stale cards;
+- degrade unsupported schemas by declining with a bounded local diagnostic;
+- present editor defaults as a bounded labelled full-replacement prefill because
+  the shared question contract has no editable-prefill field;
+- parse `sessionCapabilities.close`; deletion cancels an active target, awaits
+  that session's queued/in-flight turn settlement within a bounded deadline,
+  closes it, and only then drops local state. Timeout fails deletion and keeps
+  the local state retryable;
+- add an opt-in pre-dispatch turn-selection failure policy. The default remains
+  Cursor's best-effort behavior, while OMP may fail the turn before
+  `session/prompt`. For durable empty-session creation, a failed preselection
+  returns the created session with an explicit options warning and retries the
+  selection fail-closed before its first prompt rather than orphaning an unbound
+  backend session;
+- replace the raw-client `applyTurnSelection` hook parameter with a
+  connection-scoped `AcpSessionConfigRepository` created inside `AcpPlugin`.
+  Subclasses receive that repository, not `AcpStdioClient`, and delegate through
+  their service; and
+- add a narrow overridable post-dispatch failure mapper. The base still emits
+  the generic session error; OMP may add privacy-safe local `/login` guidance
+  for the demonstrated `No model selected` response without forwarding the
+  response's local `agent.db` path.
+
+The form implementation does not advertise URL elicitation or terminal auth.
+It does not add OMP names or schemas to ACP core, and it does not refactor
+Cursor's existing catalog package.
+
+### OMP sessions, history, and live events
+
+The generic ACP implementation already matches OMP's verified boundary:
+
+- `session/list` is called unfiltered and for known directories, follows opaque
+  `nextCursor` values with the existing page bound, deduplicates by OMP session
+  ID, and attributes each session to the returned cwd;
+- `session/new` returns the durable OMP UUID and immediately materializes a
+  discoverable file, so OMP needs no Pi pending-new marker;
+- `session/load` replays the active OMP transcript as standard
+  `session/update` notifications on a short-lived client for history and makes
+  an existing session resident before a new turn;
+- `session/prompt` completion owns busy/idle settlement; text, thought, image,
+  tool, plan, title, command, and usage updates use existing ACP mapping;
+- `session/cancel` aborts a turn and resolves pending permissions/forms; and
+- one ACP process may host independent resident sessions, but ACP's
+  server-initiated permission/form requests carry no session ID. Step 5 adds an
+  opt-in process-wide prompt lane to the ACP base, and OMP enables it so only
+  one OMP prompt can own those requests at a time. Cursor and the default ACP
+  behavior retain their existing per-session lanes.
+
+OMP ACP does not return parent metadata. `getChildSessions` therefore remains
+empty for OMP, while imported Pi lineage remains fully supported. Standard ACP
+also has no rename method. Sesori's title override remains authoritative for
+the phone; users may invoke OMP's advertised `/rename` command when they also
+want the OMP-native title changed. This is explicit degradation, not a private
+OMP JSONL rewrite.
+
+### OMP catalogs and selection
+
+`OmpAcpApi` owns only the external-tool mechanics for bounded isolated `omp acp`
+leases: launch in the requested cwd, initialize, expose primitive ACP requests,
+close/dispose, and remove an explicitly supplied plugin-state scratch directory.
+It does not choose catalog selections or persisted-cleanup policy.
+
+`OmpCatalogRepository` consumes that API and exposes mapped session creation,
+config selection, snapshot capture, and close operations. It maps:
+
+- `configOptions` category/id `model` values of
+  `<provider>/<model-id>` into providers and models by splitting only the first
+  slash, while retaining the exact combined value for ACP writes. The probe
+  captures the initial model `currentValue` before any sweep, orders that
+  provider first, and publishes the exact model as `defaultModelID`; later
+  sweep responses cannot replace the captured default;
+- mode options into primary `PluginAgent` values, with OMP's current/default
+  mode first;
+- each selected model's returned `thinking` options into exact
+  `PluginSessionVariant` values; and
+- `available_commands_update` into existing command values.
+
+`OmpCatalogTracker` owns the last coherent snapshot per normalized project.
+`OmpCatalogService` coordinates the repository and tracker. A probe opens one
+scratch lease, creates one ACP session, captures bootstrap notifications,
+sweeps model selections, closes the session, and settles the lease. Reuse
+returns the tracked snapshot or probes when absent, while refresh always probes.
+A no-model result is a project-scoped failed discovery with local `/login`
+guidance and never replaces the last good snapshot. Catalog sessions therefore
+never enter the user's normal OMP history.
+
+`AcpSessionConfigRepository` owns exact `session/set_config_option` writes and
+maps the returned standard ACP config state below the hook. OMP's
+`applyTurnSelection` override receives this repository instead of a raw client
+and delegates immediately to `OmpSessionOptionsService`. The service consumes
+that connection-scoped repository plus the catalog service/tracker and is the
+project-scoped owner of
+`getSessionOptions`, `getAgents`, `getProviders`, `getCommands`, and
+turn-selection lookup/application. Commands come from `OmpCatalogTracker`'s
+coherent per-project snapshot; OMP never serves the process-global,
+last-update-wins `AcpCommandTracker` snapshot. The superclass still receives
+its required process-scoped `AcpSessionOptionsService` for generic ACP state.
+Every requested model, mode, and thinking write must succeed; the repository
+retains the cause and throws on rejection or partial application. OMP opts into
+the base's fail-closed selection policy, settles the accepted turn as failed,
+and never dispatches a prompt with settings different from the phone selection.
+An empty session whose preselection fails remains bound to the phone with a
+pending exact selection; its first prompt retries that selection fail-closed.
+
+### OMP permissions, dialogs, and cleanup
+
+OMP's default `tools.approvalMode` is `yolo`; users can configure `write` or
+`always-ask`. Sesori passes no approval override. When OMP emits
+`session/request_permission`, the existing ACP registry presents the supplied
+allow-once/allow-always/reject options and echoes OMP's exact option ID.
+
+OMP extension `select`, `confirm`, `input`, and `editor` plus plan approval use
+the standard ACP form support above. OMP `notify` currently remains a local OMP
+debug notification because upstream ACP emits no client notification for it.
+Unsupported custom components, terminal input, theme, and decorations remain
+upstream no-ops.
+
+Normal bridge deletion cancels and waits for active prompt settlement, invokes
+standard ACP `session/close`, tombstones the row, and removes it from live state.
+`OmpSessionCleanupRepository` consumes `OmpAcpApi` and exposes the exact mapped
+list, resume, delete-command, and close
+operations. `OmpSessionCleanupService` coordinates the bounded isolated lease,
+finds the tombstoned ID through `session/list`, resumes it without replay in its
+returned cwd,
+sends OMP's advertised `/session delete`, closes the session, and settles the
+lease. It classifies not-found only after cursor exhaustion. If the standard
+page bound is reached with a cursor remaining, it uses OMP's source-verified
+global-ID `session/resume` fallback with an isolated scratch cwd; a failed
+fallback is retryable rather than idempotent success. `OmpPlugin` implements
+`PersistedSessionCleanupApi` by delegation only. This delegates JSONL writer
+shutdown and artifact cleanup to OMP rather than reimplementing OMP's
+profile/XDG/session layout in Dart. As with Pi, concurrently operating the same
+session from a terminal and Sesori is an explicitly unsupported handoff.
+
+### Pi session catalog
 
 `PiSessionStorageApi` is the single resolver from a Pi session ID to its
 absolute JSONL path and resolves roots without directly reading `HOME`:
@@ -279,7 +568,7 @@ For each candidate JSONL file:
 Catalog reads do not decode user/assistant/tool content. A missing file is not
 enough to invalidate a bridge-created row because Pi persists lazily.
 
-### History and content mapping
+### Pi history and content mapping
 
 `PiSessionProcessRepository.loadHistory` owns the client lease, RPC
 `get_entries`, `leafId` branch traversal, and invocation of the repository-local
@@ -319,7 +608,7 @@ same-millisecond custom messages. Tool call IDs remain Pi's stable IDs.
 History failures throw a cause-preserving `PluginOperationException`. Only a
 successfully loaded active branch with no visible messages returns `[]`.
 
-### Live events and tools
+### Pi live events and tools
 
 Layer-3 `PiEventDispatcher` coordinates `PiToolTracker` and pure mappers to map:
 
@@ -338,7 +627,7 @@ Layer-3 `PiEventDispatcher` coordinates `PiToolTracker` and pure mappers to map:
 `message_end.message` is authoritative. Deltas build a provisional live part;
 the final message repairs it. Live/replay parity is a direct test requirement.
 
-### Extension UI
+### Pi extension UI
 
 `PiExtensionUiTracker` keeps pending dialog state per session:
 
@@ -372,7 +661,7 @@ stated in the prompt; no hidden prefill is silently retained.
 found. A user's own permission extension can still ask through generic Pi
 dialogs, which appear as questions because Pi supplies no permission semantics.
 
-### Session processes and turns
+### Pi session processes and turns
 
 `PiSessionProcessRepository` owns:
 
@@ -436,7 +725,7 @@ Delete resolves imported descendants, invalidates/rejects every affected lane
 and dialog, and stops their resident processes before removing only the named
 root's marker/file. Exit callbacks cannot advance or relaunch tombstoned work.
 
-### Catalogs and selections
+### Pi catalogs and selections
 
 `PiBackendCatalogRepository` owns a bounded short-lived lease over the injected
 `PiProcessFactory`/`PiRpcClient` boundary, launched in project cwd with
@@ -473,11 +762,11 @@ usable snapshot missing an optional catalog component returns `observed` with
 good tracker snapshot. Bridge core remains the owner of durable cache and
 retention policy.
 
-### Runtime and setup
+### Pi runtime and setup
 
 `PiRuntimeManifest` is a `packageDirectory` manifest with semantic versions.
 The implementation starts from the researched `v0.84.1` pin and refreshes to
-the latest stable release at Step 11 if a newer release exists and passes the
+the latest stable release at Step 17 if a newer release exists and passes the
 same protocol/E2E checks.
 
 - PATH executable: `pi`.
@@ -501,7 +790,7 @@ Project-scoped auth failures never escape as
 `PluginAuthenticationRequiredException`, which bridge core interprets as
 plugin-global auth loss. Catalog discovery returns
 `PluginSessionOptionsDiscoveryResult.failed` plus an existing bounded guidance
-toast rendered by Step 13; admitted turns emit existing `session.error` plus
+toast rendered by Step 18; admitted turns emit existing `session.error` plus
 that toast. Other synchronous calls use ordinary cause-preserving operation
 failures. No new wire event is required.
 
@@ -515,7 +804,46 @@ sets `PI_SKIP_VERSION_CHECK=1` because Sesori owns managed runtime updates, but
 does not force `PI_OFFLINE` or `PI_TELEMETRY`; model/package behavior and the
 user's telemetry choice remain Pi's.
 
-### `BridgePluginApi` mapping
+### OMP runtime and setup
+
+`OmpRuntimeManifest` starts from the live-verified `v17.2.13` floor and pin.
+The exact pin is refreshed in Step 9 only after the same ACP probe passes.
+
+- PATH executable: `omp` (`omp.exe` is not the published Windows asset name,
+  but the managed canonical entry is normalized to `omp.exe`).
+- Version output: `omp/<semver>`; the manifest parser owns this prefix.
+- Release URLs:
+  `https://github.com/can1357/oh-my-pi/releases/download/v<version>/<asset>`.
+- Assets: macOS arm64/x64, Linux glibc arm64/x64, Linux musl arm64/x64, and
+  Windows x64; Windows arm64 is unsupported until upstream publishes it.
+- `OmpLinuxLibcProbeApi` is the lower-layer host boundary. It owns the Alpine
+  marker read and `ldd` invocation through required injected process execution
+  and returns raw bounded evidence. `OmpRuntimeAssetRepository` maps that
+  evidence into the closed `OmpLinuxLibc.glibc`/`musl` enum and resolves the pure
+  manifest asset. `OmpRuntimeAssetService` coordinates the platform decision;
+  the descriptor consumes only that service, all three collaborators are
+  required composer injections, and tests fake their concrete classes.
+  `PlatformTarget` is not widened for one publisher.
+
+OMP assets are raw executables rather than archives. Step 8 extends the shared
+runtime asset model with an honest direct-binary variant that carries no archive
+format/member fields. Download, checksum verification, executable permission,
+atomic placement, sentinel-last installation, version probing, and stale-version
+sweep remain shared. Existing archive/package variants and consumers are
+updated in lockstep; no nullable archive sentinel fields are introduced.
+
+`inspectSetup` validates runtime only. OMP ACP always advertises the local
+`agent` auth method and accepts `authenticate` even with no configured model, so
+that handshake is not an authentication probe. Project-scoped catalog discovery
+returns failed with local `/login` guidance when model options are absent;
+prompt errors use the same privacy-safe guidance without forwarding OMP's local
+database path.
+
+The launch inherits OMP profile/XDG/credential/configuration variables. It does
+not force approval mode, telemetry, marketplace refresh, offline mode, or a
+Sesori profile. ACP mode does not run OMP's interactive version-check path.
+
+### Pi `BridgePluginApi` mapping
 
 | Contract | Pi implementation |
 |---|---|
@@ -544,28 +872,61 @@ user's telemetry choice remain Pi's.
 | `getActiveSessionsSummary` | synchronous session-service summary by cwd |
 | `dispose` | idempotent process/dialog/event teardown |
 
+### OMP `BridgePluginApi` mapping
+
+| Contract | OMP implementation |
+|---|---|
+| `getSessions`, `listAllSessions` | standard paginated ACP `session/list` |
+| `launchDirectory`, `primeSessionDirectory` | inherited ACP derived-project attribution |
+| `getCommands` | ACP `available_commands_update` project snapshot |
+| `getSessionOptions` | isolated OMP ACP project probe with reuse/refresh |
+| `createSession` | ACP new; empty preselection failure binds and retries before first turn |
+| `renameSession` | bridge-local title override; OMP `/rename` remains an advertised command |
+| `deleteSession` | abort, await bounded prompt settlement, ACP close, then local cleanup |
+| `deletePersistedSession` | isolated list/resume plus OMP `/session delete` and close |
+| `archiveSession`, `deleteWorkspace` | no-op under best-effort contracts |
+| `getChildSessions` | empty; ACP list exposes no parent metadata |
+| `getSessionStatuses` | inherited ACP per-session turn state |
+| `getSessionMessages` | short-lived ACP `session/load` replay |
+| `sendPrompt`, `sendCommand` | OMP turn lane; selection failure stops before prompt dispatch |
+| `abortSession` | ACP cancel plus pending permission/form cancellation |
+| `getAgents`, `getProviders` | OMP mode/config-option project snapshot |
+| questions | standard ACP form elicitations |
+| permissions | standard ACP permission registry, preserving OMP policy |
+| `healthCheck` | ACP connection/handshake after descriptor runtime probe |
+| `getActiveSessionsSummary` | inherited ACP session/cwd summary |
+| `dispose` | catalog lease plus inherited ACP teardown |
+
 ## Registration And Client Work
 
-Step 2 adds the app-invisible package to the bridge workspace, Makefile, CI, and
-dependency-update inventory. The app does not depend on or register it until
-Step 12, after the complete plugin and descriptor exist.
+Step 2 added the app-invisible Pi package to the bridge workspace, Makefile, CI,
+and dependency-update inventory. Step 6 does the same for OMP. The app does not
+depend on or register either new backend until Step 18, after both descriptors
+are complete.
 
-Step 12 adds `Harness.pi`, the app dependency, and the sole concrete registration
-in `plugin_registry.dart`, then updates exact-set fixtures. OpenCode remains the
-preferred default; string plugin identity keeps this additive change wire-safe.
+Step 18 first adds the minimum safety presentation required for activation:
+backend-neutral toast rendering plus user-facing local `/login`, Pi
+always-`--approve` project-code trust, and inherited OMP approval-policy
+guidance. It then adds `Harness.pi` and `Harness.omp`, both app dependencies, and
+the two concrete registrations in `plugin_registry.dart`, followed by exact-set
+fixtures. OpenCode remains the preferred default; string plugin identity keeps
+both additive changes wire-safe. There is no merged state where either backend
+is selectable without its mandatory guidance.
 
-Step 13 adds Pi assets/branding/docs plus backend-neutral toast presentation.
-`SseToastCubit` maps existing toast events into closed presentation variants;
-the relay-connected mobile shell renders them through its root messenger.
-Existing attachment capability drives composer behavior; no Pi checks enter
+`SseToastCubit` lives in `module_core/lib/src/cubits/` and maps existing toast
+events into sealed idle/show variants with a monotonic sequence on every show,
+so equal repeated guidance remains a new effect. The relay-connected mobile
+shell renders them through its root messenger. Step 19 adds Pi/OMP assets,
+branding, and the remaining full install/profile/handoff documentation. Existing
+attachment capability drives composer behavior; no Pi or OMP checks enter
 shared client state.
 
 ## Analytics Assessment
 
 No new analytics event is planned.
 
-- Pi session creation and message actions use existing authoritative product
-  events.
+- Pi and OMP session creation and message actions use existing authoritative
+  product events.
 - Rendering transport toasts is transient presentation, not a product outcome
   or reporting question.
 - Managed install already emits the bounded completed/failed harness install
@@ -573,24 +934,29 @@ No new analytics event is planned.
 - Existing privacy rules deliberately keep harness identity and provider/model
   names off the analytics wire.
 
-A Pi-specific adoption event would require reopening that privacy decision and
-a corresponding reporting question. This series does neither.
+A backend-specific adoption event would require reopening that privacy decision
+and a corresponding reporting question. This series does neither.
 
 ## Dependencies And Sequencing
 
-1. **Package-directory runtime support:** Step 11 depends on
+1. **Package-directory runtime support:** Pi Step 17 depends on
    `phone-harness-install` Step 5 landing `RuntimeAssetLayout.packageDirectory`.
    Its local branch also generalizes `RuntimeVersion`; Pi consumes that if it
    lands, but its semantic pin does not independently require the generalization.
    Do not duplicate or cherry-pick either primitive. If deferred, pause before
-   Step 11 and ask whether package-directory support moves into this series.
-2. **Claude activation overlap:** Claude's workspace/CI inventory has merged;
+   Step 17 and ask whether package-directory support moves into this series.
+2. **Direct-binary runtime support:** OMP publishes no runtime archives. Step 8
+   extends the merged runtime asset variants after the package-directory branch
+   lands; it must not implement a parallel installer before that dependency is
+   reconciled.
+3. **Claude activation overlap:** Claude's workspace/CI inventory has merged;
    its outstanding activation still owns `Harness`, app pubspec, registry, and
-   exact-set fixtures, followed by branding. Pi Step 12 waits if Claude
-   activation is not merged, then Pi registration/client work rebases and
+   exact-set fixtures, followed by branding. Joint Step 18 waits if Claude
+   activation is not merged, then registration/client work rebases and
    preserves every Claude entry rather than stale exact-set assertions.
-3. Every Pi PR targets `main` and follows the prior Pi step. No implementation
-   worktree or successor PR is created by this plan PR.
+4. Every series PR targets `main` and follows the prior numbered step. Steps 1-3
+   are already merged; Step 4 is the plan delta and no Step 5 production change
+   is bundled into it.
 
 ## Cleanup Assessment
 
@@ -600,238 +966,280 @@ cache, job, or listener obsolete.
 Directly caused cleanup is included:
 
 - README copy that hardcodes exactly three harness names becomes scalable;
-- the runtime update skill's stated backend list expands to include Pi; and
+- the runtime update skill's stated backend list expands to include Pi and OMP;
 - exact known-harness fixtures expand rather than adding fallback shims.
+
+The only shared production cleanup is directly caused by OMP: runtime assets
+become honest archive/package/direct-binary variants instead of adding nullable
+archive fields, and ACP closes sessions it deletes. Cursor's catalog code is not
+moved or generalized because OMP's isolated scratch-session probe has different
+inputs and lifecycle.
 
 The existing OpenCode compatibility default remains required for released peers
 that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 ## Delivery Rules
 
-- `TRACKER.md` is canonical for the fixed fifteen exact PR titles, complexity,
-  line targets, order, and current state. Step 1 raises this directory and Step
-  15 moves it to `.plan/completed/pi-harness/`.
+- `TRACKER.md` is canonical for the revised fixed twenty-one exact PR titles,
+  complexity, line targets, order, and current state. Step 1 raised this
+  directory, Step 4 records the requirement change, and Step 21 moves it to
+  `.plan/completed/pi-harness/`.
 - Every step follows repository line-count, generated-file, internal-contract,
   PR-body, sequential merge, and architecture-review rules.
-- Steps 2-13 run applicable codegen, focused/full owning-package tests, fatal
-  analysis, `git diff --check`, and architecture implementation review.
+- Production Steps 2-3 and 5-19 run applicable codegen, focused/full
+  owning-package tests, fatal analysis, `git diff --check`, and architecture
+  implementation review.
 
 ## Step Details And Verification
 
-### Step 1/15: Raise the plan
+### Step 1/21: Raise the Pi plan
 
-- Add `PLAN.md`, `TRACKER.md`, and researched `PROTOCOL.md` under
+- Add `PLAN.md`, `TRACKER.md`, and researched Pi `PROTOCOL.md` under
   `.plan/active/pi-harness/`.
-- Record user decisions, upstream sources, release digests, dependencies,
-  fixed titles, estimates, risks, and verification.
-- Run architecture plan review, apply valid findings, `git diff --check`, and
-  Markdown/reference checks. No Dart/Flutter suites for documentation-only work.
+- Record the original Pi decisions, sources, release digests, fixed sequence,
+  risks, dependencies, and verification.
+- Run architecture plan review and documentation validation. This step is
+  merged as PR #811.
 
-### Step 2/15: Scaffold the protocol package
+### Step 2/21: Scaffold the Pi protocol package
 
-- Re-check the latest stable Pi release. Keep `0.84.1` as the compatibility
-  baseline unless a newer pin is selected and the protocol record is updated.
-- Create `sesori_plugin_pi`, public/testing barrels, analysis config, and only
-  the dependencies used in this step.
-- Add `PiLaunchSpec`, process handle/factory seam, new/resume launch
-  variants, `--approve`, and inherited-environment policy.
-- Add the closed Pi thinking-level enum and protocol fixture helpers.
-- Land Wave-1 workspace, Makefile, CI, and dependency-update inventory entries.
-- Unit-test exact argument vectors, absolute-path resume behavior, Windows entry
-  name, and environment preservation.
+- Create `sesori_plugin_pi`, launch/process seams, exact Pi launch variants,
+  `--approve`, environment policy, protocol enums, fixture helpers, and
+  app-invisible workspace/CI inventory.
+- Test Pi arguments, absolute resume, executable naming, and environment
+  preservation. This step is merged as PR #819.
 
-### Step 3/15: Add the JSONL RPC transport
+### Step 3/21: Add the Pi JSONL RPC transport
 
-- Add hand-written discriminator/unknown routing plus generated DTOs for every
-  known response, event, dialog, and consumed nested payload.
-- Add `PiRpcClient` with strict LF framing, request IDs, asynchronous prompt
-  acknowledgement, continuous stdout draining, bounded stderr diagnostics,
-  pending failure on exit, and graceful/forced teardown.
-- Add `FakePiProcess` and `pi_testing.dart` exports.
-- Cover split/multiple UTF-8 chunks, CRLF input tolerance, U+2028/U+2029 inside
-  JSON strings, response/event reordering, unknown frames, process exit,
-  startup frames before router attachment, stdout/verbose-stderr backpressure,
-  broken pipes, bounded redaction, and teardown fencing.
+- Add the sealed Pi transport boundary, strict LF framing, correlation,
+  continuous draining, bounded diagnostics, process lifecycle, and test fake.
+- Cover framing, ordering, unknown frames, exits, backpressure, broken pipes,
+  redaction, and bounded teardown. Closed generated leaf DTOs begin at Step 10.
+- This step is merged as PR #820.
 
-### Step 4/15: Enumerate persisted sessions
+### Step 4/21: Expand the plan to Oh My Pi
 
-- Add minimal generated session-header/settings DTOs only where closed JSON
-  parsing warrants them.
-- Add `PiSessionStorageApi` and `PiSessionCatalogRepository` with environment,
-  normal config, default nested root, configured root, and known-directory
-  discovery.
-- Scan metadata in an isolate, map explicit titles and parent paths, preserve
-  lazy-new-session bridge attribution, and expose exact session paths privately.
-- Cover malformed headers, half-written final lines, title clear/replace,
-  oversized non-metadata records, duplicate roots/IDs, parent outside the first
-  root, custom session dirs, deleted cwd, symlinks, pagination, and privacy-safe
-  diagnostics.
-- Validate against a synthetic tree and a privacy-preserving structural scan of
-  a real Pi session root when available.
+- Reconcile the branch with merged Step 3 and research OMP source, releases,
+  ACP, RPC divergence, storage, runtime, config/auth, permissions, and live ACP
+  behavior at the exact selected tag.
+- Record the no-shared-Pi-family/OMP-over-ACP decision, add
+  `OMP_PROTOCOL.md`, revise success/degradation criteria, and rebaseline the
+  remaining exact sequence from 15 to 21 steps.
+- Update the titles of merged PRs #811, #819, and #820 to the `/21` denominator
+  after this plan revision opens, so the whole series has one fixed total.
+- Run architecture plan review, `git diff --check`, and Markdown/reference
+  validation. No Dart/Flutter suites for this documentation-only step.
 
-### Step 5/15: Replay Pi session history
+### Step 5/21: Bridge ACP form elicitations
 
-- Add the session-entry/message/content DTOs this step consumes and run codegen.
-- Add history DTO/file input plus the `PiSessionProcessRepository` operation and
-  mappers over RPC/file entries with active-branch traversal.
-- Map text, reasoning, images, tool calls/results, visible custom messages,
-  bash execution, errors, visible compaction cards, and branch-summary omission.
-- Keep replay message/part IDs deterministic for Step 6 live parity.
-- Throw cause-preserving failures; never turn transport/auth/parse failure into
-  empty history.
-- Cover branches, pre-compaction history, unknown entries, timestamp fallback,
-  no-model/auth file fallback, v1-v3 migration, tool results, compaction parity,
-  attachment bounds, hidden-context stripping, marker-like prompt/command text,
-  equal-timestamp ordinals, live/replay parity, and no payload logging.
+- Extend only standard `sesori_plugin_acp` contracts: form elicitation
+  capability/request/reply handling, supported scalar schemas, bounded editor
+  default presentation, session-close capability, and OMP's narrow sanitized
+  turn-failure presentation hook.
+- Add an opt-in process-wide prompt lane for agents whose server-initiated
+  requests omit session identity; keep the default per-session behavior.
+- Add opt-in fail-closed turn selection before prompt dispatch and bounded
+  per-session cancellation settlement before close; preserve Cursor defaults.
+- Replace the raw-client selection hook parameter with ACP's connection-scoped
+  config repository; update internal Cursor consumers in lockstep without
+  changing behavior. Preserve durable empty sessions on preselection failure
+  and retry their pending exact selection before the first turn.
+- Keep Cursor behavior stable and URL elicitation/terminal auth unadvertised.
+- Cover enum/string/boolean and multi-property forms, typed answer conversion,
+  unsupported schemas, late/rejected replies, abort/delete/exit/disposal,
+  close-supported/unsupported agents, cancellation/close races and timeout,
+  process-wide ordering, selection failure policy, empty-session preselection
+  recovery without an orphan, and sensitive prefill/error non-logging.
 
-### Step 6/15: Map live messages and tools
+### Step 6/21: Add the OMP ACP plugin core
 
-- Add `PiToolTracker` and Layer-3 `PiEventDispatcher` over session-tagged RPC
-  frames and pure mappers.
-- Map message deltas/finals, tool start/cumulative update/end, retries,
-  compaction, typed failures, status, diff staleness, and true settlement.
-- Treat final messages/results as authoritative and prune all per-turn/session
-  state at exact boundaries.
-- Prove complete live shapes equal Step 5 replay shapes.
-- Cover interleaving, multiple content indices, tool-call args that become known
-  only at `toolcall_end`, duplicate terminal frames, provider errors, abort, and
-  unknown event absorption.
+- Create `sesori_plugin_omp`, its public barrel, `OmpBinary` launch spec,
+  `OmpPlugin` over `AcpPlugin`, OMP event/failure mapping, and only this step's
+  dependencies.
+- Preserve inherited profiles, credentials, project config, plugins, and
+  approval mode; advertise no client filesystem/terminal capabilities.
+- Add app-invisible workspace, Makefile, CI, and dependency-update inventory.
+- Cover `omp acp` arguments, environment preservation, handshake/auth, global
+  and cwd session lists, new/load/resume, history/live/tool/image mapping,
+  configured permissions/forms, two-session form routing through OMP's opted-in
+  process-wide lane, fail-closed selection, cancellation settlement, reconnect,
+  and disposal with the ACP fake plus redacted upstream fixtures.
 
-### Step 7/15: Bridge extension dialogs
+### Step 7/21: Expose OMP options and persisted cleanup
 
-- Add `PiExtensionUiTracker` and coordinating `PiExtensionUiService` for
-  select/confirm/input/editor questions, lifecycle events, and bounded toasts.
-- Implement exact value/confirmed/cancelled responses and session-keyed routing.
-- Resolve/store each dialog's display root and aggregate descendant cards for
-  root-session queries; index normalized cwd for project-level queries.
-- Present editor prefill as a bounded labelled excerpt and make full-replacement
-  semantics explicit because the shared question contract has no prefill field.
-- Parse and explicitly degrade unsupported fire-and-forget UI methods.
-- Clear or reject on timeout, abort, process exit, idle reap, and disposal.
-- Keep permissions empty by the locked native-Pi decision.
-- Cover late replies, timeout races, process replacement, reject semantics,
-  imported parent chains, project/worktree queries, multiline answers, prefill
-  truncation/replacement, and sensitive prefill/title non-logging.
+- Add OMP-owned ACP API, catalog repository/service/tracker, session-options
+  service over ACP's config repository, and cleanup repository/service over
+  bounded isolated ACP leases, including a `--session-dir` scratch process for
+  catalog discovery.
+- Map project modes, commands, provider/model IDs, and each model's exact
+  thinking options; let the plugin delegate selection application to the
+  options service, which writes through `session/set_config_option`. Serve
+  commands from the catalog tracker's per-project snapshot, never ACP's
+  process-global command tracker. Capture the initial model before sweeps and
+  publish it as the exact project default.
+- Add OMP persisted cleanup through bounded ACP list/resume, `/session delete`,
+  close, and disposal after normal live-session close. Keep workflow and
+  cursor-exhausted not-found policy in the cleanup service, use OMP's global-ID
+  resume fallback after a truncated scan, and keep title rename explicitly
+  bridge-local.
+- Cover no-model/login guidance, custom providers and slash-containing model
+  IDs, per-model thinking changes, distinct project command snapshots, command
+  bootstrap timing, coherent refresh, scratch cleanup, truncated and exhausted
+  tombstoned deletion, failures, and no payload/path leakage.
 
-### Step 8/15: Manage session residency and turns
+### Step 8/21: Install direct binary runtime assets
+
+- Rebase on the package-directory/runtime-version dependency and model runtime
+  assets as honest archive-package versus direct-binary variants.
+- Extend shared provisioning to download, verify, atomically place, chmod,
+  sentinel, probe, and sweep a checksummed bare executable without fake archive
+  fields or a second installer.
+- Update every internal manifest/test consumer in lockstep.
+- Cover direct success, checksum failure, cancellation, stale staging, Windows
+  executable placement, existing archive/package behavior, and cleanup.
+
+### Step 9/21: Add OMP managed runtime and lifecycle
+
+- Add `OmpRuntimeManifest` for the seven official `v17.2.13` assets, semantic
+  `omp/<version>` parser, glibc/musl choice, explicit-bin/PATH/managed
+  precedence, descriptor, setup, install, lifecycle, and abort rollback.
+- Add `OmpLinuxLibcProbeApi` with required process execution, typed
+  `OmpLinuxLibc`, runtime asset repository/service ownership, descriptor-to-
+  service invocation, and pure manifest consumption.
+- Preserve OMP environment/config/approval policy and extend
+  `update-backend-runtimes` with OMP release, checksum, raw-binary, and ACP
+  checks.
+- Cover all seven targets, no Windows arm64 capability, libc selection,
+  install/version failures, project-independent setup, connection degradation,
+  restart, and teardown.
+- Perform a local official managed install and isolated `initialize`,
+  `session/list`, `session/new`, `session/load`, and cleanup probe.
+
+### Step 10/21: Enumerate persisted Pi sessions
+
+- Add minimal generated Pi session-header/settings DTOs plus
+  `PiSessionStorageApi` and `PiSessionCatalogRepository`.
+- Discover environment, normal/configured/default/known roots; scan bounded
+  metadata in an isolate; map explicit titles, parent paths, lazy attribution,
+  pagination, and private exact paths.
+- Cover malformed/half-written/oversized records, title changes, duplicate
+  roots/IDs, external parents, custom roots, deleted cwd, symlinks, privacy-safe
+  diagnostics, and a structural real-root scan when available.
+
+### Step 11/21: Replay Pi session history
+
+- Add consumed entry/message/content DTOs and codegen, history file input,
+  `PiSessionProcessRepository` history operation, and active-branch mappers.
+- Map text, reasoning, images, tools/results, custom messages, bash, errors,
+  compaction cards, and branch-summary omission with deterministic IDs for Step
+  12 live parity.
+- Preserve cause-bearing failures and cover branches, compaction, v1-v3 file
+  fallback, attachment bounds, hidden context, equal timestamps, parity, and no
+  payload logging.
+
+### Step 12/21: Map Pi live messages and tools
+
+- Add `PiToolTracker` and Layer-3 `PiEventDispatcher` over session-tagged frames
+  and pure mappers.
+- Map deltas/finals, tool lifecycle/cumulative output, retries, compaction,
+  errors, statuses, diff staleness, and true `agent_settled` completion.
+- Prove complete live shapes equal Step 11 replay and cover interleaving,
+  content indices, late tool args, duplicate terminal frames, provider errors,
+  abort, and unknown variants.
+
+### Step 13/21: Bridge Pi extension dialogs
+
+- Add `PiExtensionUiTracker` and `PiExtensionUiService` for
+  select/confirm/input/editor, lifecycle events, display-root/project indexes,
+  bounded toasts, exact replies, and explicit decorative-UI degradation.
+- Clear/reject state on timeout, abort, process exit/replacement, idle reap, and
+  disposal; keep Pi permissions honestly empty.
+- Cover imported parents/worktrees, late replies, prefill replacement and
+  truncation, multiline answers, and sensitive field non-logging.
+
+### Step 14/21: Manage Pi session residency and turns
 
 - Extend `PiSessionProcessRepository` and add `PiSessionService` with one lazy
-  process per active session, generation-fenced connects, new/resume launch,
-  selection state, per-session turn lanes, merged events, and idle reap.
-- Persist privacy-safe pending-new markers until file observation; relaunch an
-  unpersisted session as new after child/bridge restart.
-- Mint secure UUID session IDs in the service and validate Pi's ID grammar in
-  `PiLaunchSpec`; map validated inline image data to RPC and reject path, URL,
-  or non-image parts before prompt acceptance.
-- Apply model/thinking immediately before each queued turn; prompts return on
-  lane admission, while commands reject busy and otherwise await correlated
-  backend acceptance; later run failures surface through session events.
-- Abort by invalidating queued work, rejecting dialogs, sending `abort`, and
-  tearing down the process so Pi's own hidden queues cannot continue.
-- Preserve concurrent turns across different sessions.
-- Cover spawn races, serialization, cross-session parallelism, lazy persistence,
-  resume after reap, transient history/rename leases, ID/attachment validation,
-  immediate prompt admission, busy-command rejection, acceptance completers,
-  dialog-first command acceptance, rejection followed by the next prompt,
-  response-before-`agent_start` barriers, typed-slash no-run, post-acceptance
-  exit, project-scoped auth/toast behavior, abort, and shutdown.
+  process per active session, pending-new markers, secure IDs, generation-fenced
+  connects, selections, per-session lanes, merged events, and idle reap.
+- Map validated inline images, reject unsupported attachments, preserve
+  cross-session concurrency, and tear the process down after abort.
+- Cover spawn/serialization/resume races, transient history/rename leases,
+  immediate prompt admission, busy commands, dialog-first acceptance, no-run
+  commands, post-acceptance exits, auth guidance, shutdown, and queued work.
 
-### Step 9/15: Expose models and commands
+### Step 15/21: Expose Pi models and commands
 
-- Add generated model/command DTOs, `PiBackendCatalogRepository`,
-  `PiCatalogTracker`, and coordinating `PiCatalogService`.
-- Let the repository own each bounded project-cwd, no-session client lease and
-  enumerate/map models, thinking variants, providers, and commands; synthesize
-  one Pi agent.
-- Preserve the initial state model as the default and order its provider first.
-- Implement project-scoped `reuse`/`refresh`, complete/partial observed results,
-  explicit failed results, and atomic replacement of coherent snapshots only.
-- Classify no-model/auth preflight honestly without logging provider account
-  data or credentials.
-- Cover custom providers, known provider mapping, duplicate IDs, reasoning and
-  non-reasoning models, `max`, command sources, project-specific resources,
-  empty/auth state without global teardown, probe-dialog cancellation, probe
-  exit, and refresh fallback.
+- Add generated catalog DTOs, `PiBackendCatalogRepository`,
+  `PiCatalogTracker`, and `PiCatalogService` over bounded approved no-session
+  project probes.
+- Map providers/models/thinking variants/commands, preserve the initial default,
+  synthesize one Pi agent, and implement coherent project reuse/refresh with
+  complete/partial/failed results.
+- Cover custom providers, duplicate IDs, reasoning support, `max`, command
+  sources, project resources, no-model/auth, probe-dialog cancellation, exit,
+  and last-good fallback.
 
-### Step 10/15: Implement the plugin API
+### Step 16/21: Implement the Pi plugin API
 
-- Add `PiPlugin` as the full composition root over Steps 3-9 and implement every
-  `BridgePluginApi`/`PersistedSessionCleanupApi` member.
-- Wire buffered plugin events, catalog/path lookup, session creation, rename,
-  delete, child sessions, history, prompt/command, questions, statuses,
-  providers, health, summaries, and idempotent disposal.
-- Empty creation `parts` starts an idle session only; the bridge's subsequent
-  `sendCommand` owns the first execution.
-- Emit session-created before first-turn admission so pre-commit events buffer.
-- Keep archive/workspace operations honest no-ops and permission methods
-  honest empty/not-found results.
-- Cover full contract behavior, missing session/path, lazy persistence,
-  empty-parts command creation, created-before-output ordering, delete during an
-  active turn with queued work, active-child root deletion, buffered first
-  listener, cause-preserving errors, and disposal order.
+- Add `PiPlugin` as the composition root over merged Step 3 and Steps 10-15,
+  implementing every `BridgePluginApi`/`PersistedSessionCleanupApi` member.
+- Wire events, catalog/path lookup, creation, rename/delete, children, history,
+  prompts/commands, questions, statuses, providers, health, summaries, and
+  idempotent disposal.
+- Cover empty-parts command creation, created-before-output buffering, missing
+  paths, lazy persistence, active root/child deletion, cause-preserving errors,
+  no-op contracts, and disposal order.
 
-### Step 11/15: Add managed runtime and lifecycle
+### Step 17/21: Add Pi managed runtime and lifecycle
 
-- Require merged package-directory runtime support from the dependency section.
-- Add `PiRuntimeManifest` with the six official assets, full-package layout,
-  semantic pin/floor, URLs, and digests refreshed for the chosen stable release.
-- Add descriptor config/capability/runtime-only setup inspection, read-only
-  ensure, explicit install, start/abort rollback, and `PiBridgePlugin` lifecycle.
-- Set `PI_SKIP_VERSION_CHECK=1`, preserve other Pi environment/config, and pass
-  `--approve` to every real/probe process.
-- Extend `update-backend-runtimes` with Pi release/API/digest/package checks.
-- Test runtime precedence, explicit-bin behavior, six targets, archive layout,
-  install capability, checksum failure, cwd-less setup/sessionless health,
-  lifecycle status/work state, and package asset preservation.
-- Perform a local managed install from the official asset and run `--version`
-  plus an RPC `get_state` probe from the installed tree.
+- Require merged package-directory support; add the six refreshed official Pi
+  assets, package layout, semantic pin/floor, descriptor/setup/install/lifecycle,
+  and start/abort rollback.
+- Set `PI_SKIP_VERSION_CHECK=1`, preserve other Pi config, pass `--approve` to
+  every real/probe process, and extend runtime-update checks.
+- Cover precedence, explicit bin, six targets, archive tree, capability,
+  checksum/setup/health/lifecycle failures, and package preservation.
+- Perform an official managed install, `--version`, and RPC `get_state` probe.
 
-### Step 12/15: Register the Pi harness
+### Step 18/21: Register Pi and OMP
 
-- Add `Harness.pi`, app dependency, registry import/descriptor, and exact known
-  plugin tests.
-- Update any build/runtime enumeration fixture that intentionally lists every
-  registered plugin.
-- Wait for and rebase on merged Claude activation; keep OpenCode preferred.
-- Verify shared identity tests, app registry/lifecycle/catalog tests, Pi suite,
-  app fatal analysis, and implementation review.
+- Before activation, add backend-neutral `SseToastCubit` rendering plus minimum
+  local-login, Pi project-code trust, and OMP approval-policy guidance.
+- Add `Harness.pi` and `Harness.omp`, both app dependencies, registry descriptors,
+  and every intentional exact known-plugin fixture only after that guidance.
+- Preserve merged Claude entries and OpenCode as preferred default.
+- Verify shared identity, registry/lifecycle/catalog, both plugin suites,
+  monotonic repeated/empty toast effects, mandatory guidance, app fatal
+  analysis, and architecture review.
 
-### Step 13/15: Add Pi branding and guidance
+### Step 19/21: Add Pi and OMP branding and guidance
 
-- Add official light/dark Pi SVGs and brand/display-name cases with widget/unit
-  coverage.
-- Add backend-neutral `SseToastCubit` in `module_core` with sealed idle/show
-  state; each show carries a monotonic sequence, title/message, and closed
-  `info|success|warning|error` variant. Null/unknown maps to info; empty is ignored.
-- Render the cubit's title/message/variant from the mobile app root through its
-  `ScaffoldMessenger`, independent of the current route.
-- Do not instantiate relay state solely in desktop's current auth-only shell;
-  reuse the shared cubit when its relay/session surface lands.
-- Update README/bridge docs for Pi, managed install, local `/login`,
-  `--pi-bin`, project trust, and terminal-session handoff.
-- Make headline copy scalable instead of appending a fourth hardcoded backend.
-- Test pure-Dart event mapping and mobile root presentation, including auth
-  guidance, extension notifications, variants, duplicates, and empty payloads.
-- Verify client/module_prego analysis, asset rendering, links, and diff checks.
+- Add official light/dark assets and display-name cases for both backends with
+  widget/unit coverage.
+- Expand the activation-safe guidance into full managed-install documentation
+  covering `--pi-bin`, `--omp-bin`, unsupported ACP features, profile behavior,
+  and terminal-session handoff.
+- Make backend headline copy scalable and test guidance, notifications,
+  asset rendering, links, and touched client analysis.
 
-### Step 14/15: Verify the end-to-end integration
+### Step 20/21: Verify both integrations end to end
 
-- Pin a release/authenticated local account or API-key fixture without
-  committing credentials or captures.
-- Exercise phone-driven managed install, setup refresh, new session, text and
-  image prompt, live reasoning, read/edit/bash tools, model/thinking switch,
-  skill/template/extension command, extension dialog, retry/error, abort,
-  resume after process reap/bridge restart, rename, delete, external import,
-  documented terminal handoff, imported parent relationships, and missing auth.
-- Run the applicable mobile and desktop presentation paths and confirm no Pi
-  logic exists outside declared identity/brand points.
-- Record redacted results and any protocol corrections in `PROTOCOL.md` and
-  `TRACKER.md`; fix concrete failures in this PR without broad cleanup.
-- Verify package/app/client focused suites and fatal analysis.
+- Pin authenticated Pi and OMP fixtures without committing credentials or raw
+  captures.
+- Exercise phone-driven managed install/setup, new and imported sessions, text
+  and image prompts, reasoning, tools, models/thinking/modes, commands,
+  Pi dialogs, OMP forms/permissions, retry/error, abort, process restart/resume,
+  rename semantics, delete cleanup, handoff, Pi parents, and missing auth.
+- Verify OMP glibc/musl selection where hosts are available and explicitly
+  record unavailable platform checks.
+- Confirm no backend logic escaped declared plugin/identity/brand seams; record
+  redacted evidence and corrections in both protocol files and `TRACKER.md`.
+- Run focused package/app/client suites and fatal analysis.
 
-### Step 15/15: Retire the plan
+### Step 21/21: Retire the plan
 
-- Confirm Steps 1-14 merged and tracker/E2E evidence is complete.
+- Confirm Steps 1-20 merged and tracker/E2E evidence is complete.
 - Move `.plan/active/pi-harness/` to `.plan/completed/pi-harness/`.
 - Run `git diff --check`; no Dart/Flutter suites.
 
@@ -839,19 +1247,38 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 - Official docs/source, the `v0.84.1` x64 archive/digest, `pi --version`, and a
   no-auth RPC probe were inspected; `PROTOCOL.md` records the evidence.
+- OMP tag/source, npm identity, all `v17.2.13` release assets/digests, the
+  official macOS arm64 binary, `omp/17.2.13`, and an isolated live ACP
+  initialize/auth/list/new/prompt probe were inspected; `OMP_PROTOCOL.md`
+  records the evidence.
 - The absent handshake is handled by a tested floor/pin and tolerant unknown
-  variants, not invented negotiation.
+  variants for Pi, not invented negotiation. OMP uses ACP's real v1 initialize
+  handshake instead of OMP RPC's separate negotiation protocol.
 - Terminal ownership, process-local dialogs, lazy first-file visibility, and
   ignored decorative UI are accepted limitations with explicit user impact.
 - Always-approved project code is a locked security decision with mandatory
   documentation and argument tests.
 - Supply-chain checks require official assets, pinned digests, full-package
-  extraction, sentinel-last placement, and no npm execution.
+  extraction for Pi, direct-binary placement for OMP, sentinel-last placement,
+  and no npm execution.
 - Per-session lanes address reachable concurrent sends; no global lock or
   cross-backend process registry is planned.
+- OMP ACP does not expose parent metadata or a standard rename method; imported
+  child relationships are absent and Sesori title overrides remain local. These
+  bounded degradations are preferred over parsing private OMP transcripts or
+  inventing a second protocol.
+- OMP releases frequently. The managed pin changes only through the runtime
+  update workflow after the exact ACP and asset checks pass; release cadence is
+  not a reason to accept unverified latest binaries.
 
 ## Plan Review Record
 
 Architecture plan review rejected the initial draft on six wiring gaps. All
 required corrections were applied; `TRACKER.md` records them. Per repository
 policy, the corrected plan was not re-reviewed merely for approval.
+
+The Step 4 Pi/OMP architecture review accepted the core boundary and rejected
+four documentation gaps. Snapshot ownership, session-options ownership, cubit
+placement, and overage recording were corrected; `TRACKER.md` records the
+result. Per repository policy, the corrected plan was not re-reviewed merely
+for approval.

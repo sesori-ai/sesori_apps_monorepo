@@ -63,6 +63,13 @@ typedef SourcedPluginRuntimeEvent = ({
 });
 typedef SourcedPluginProvisionProgress = ({String pluginId, RuntimeProvisionProgress event});
 
+class PluginRuntimeAuthenticationOperation {
+  const PluginRuntimeAuthenticationOperation({required this.events, required this.abort});
+
+  final Stream<PluginAuthenticationEvent> events;
+  final void Function() abort;
+}
+
 sealed class PluginRuntimeCommandResult {
   const PluginRuntimeCommandResult({required this.snapshot});
 
@@ -129,6 +136,7 @@ class PluginRuntime {
   Future<void>? _disposeFuture;
   bool _apiDisposalStarted = false;
   final Set<StartAbortController> _installAbortControllers = <StartAbortController>{};
+  final Set<StartAbortController> _authenticationAbortControllers = <StartAbortController>{};
   final Map<BridgePluginApi, Future<void>> _apiDisposals = Map<BridgePluginApi, Future<void>>.identity();
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
@@ -242,6 +250,32 @@ class PluginRuntime {
     } finally {
       _installAbortControllers.remove(abortController);
     }
+  }
+
+  PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) {
+    final slot = _requireSlot(pluginId);
+    if (_shuttingDown) throw const PluginStartAbortedException();
+    final descriptor = slot.registration.descriptor;
+    if (descriptor is! InteractivePluginAuthenticationDescriptor) {
+      throw StateError('Plugin "$pluginId" does not support interactive authentication.');
+    }
+    final authenticationDescriptor = descriptor as InteractivePluginAuthenticationDescriptor;
+    final abortController = StartAbortController();
+    _authenticationAbortControllers.add(abortController);
+    final events = (() async* {
+      try {
+        yield* authenticationDescriptor.authenticate(
+          config: slot.registration.config,
+          processes: _setupProcesses,
+          environment: _environment,
+          stateDirectory: slot.registration.stateDirectory,
+          aborted: abortController.signal,
+        );
+      } finally {
+        _authenticationAbortControllers.remove(abortController);
+      }
+    })();
+    return PluginRuntimeAuthenticationOperation(events: events, abort: abortController.abort);
   }
 
   void applyAccess({required List<PluginRuntimeAccess> entries}) {
@@ -605,6 +639,9 @@ class PluginRuntime {
     if (_shuttingDown) return;
     _shuttingDown = true;
     for (final controller in _installAbortControllers) {
+      controller.abort();
+    }
+    for (final controller in _authenticationAbortControllers) {
       controller.abort();
     }
     for (final slot in _slots.values) {

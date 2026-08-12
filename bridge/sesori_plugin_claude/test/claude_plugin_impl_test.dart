@@ -4,6 +4,7 @@ import "dart:io";
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/claude_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
@@ -271,6 +272,85 @@ void main() {
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
       expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+      await subscription.cancel();
+    });
+
+    test("preserves an error result after a handled permission denial", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "permission-1",
+        "request": {
+          "subtype": "can_use_tool",
+          "tool_name": "Write",
+          "tool_use_id": "toolu-1",
+          "input": {"file_path": "a.dart"},
+        },
+      });
+      await pump();
+      await harness.plugin.replyToPermission(
+        requestId: "br-1",
+        sessionId: testSessionId,
+        reply: PluginPermissionReply.reject,
+      );
+
+      process.emit({
+        "type": "result",
+        "subtype": "success",
+        "session_id": testSessionId,
+        "uuid": "result-error",
+        "is_error": true,
+        "terminal_reason": "api_error",
+        "api_error_status": 500,
+        "permission_denials": [
+          {"tool_name": "Write", "tool_use_id": "toolu-1"},
+        ],
+      });
+      await pump();
+
+      final errorEvent = events.whereType<BridgeSseMessageUpdated>().last;
+      final error = shared.Message.fromJson(errorEvent.info) as shared.MessageError;
+      expect(error.errorName, "api_error");
+      expect(error.errorMessage, "Claude Code could not complete the API request (HTTP 500).");
+      expect(
+        harness.approvals.consumeHandledPermissionDenials(
+          sessionId: testSessionId,
+          denials: const [
+            {"tool_use_id": "toolu-1"},
+          ],
+        ),
+        isFalse,
+      );
+      await subscription.cancel();
+    });
+
+    test("suppresses the terminal result after an explicit interruption", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      await harness.plugin.abortSession(sessionId: testSessionId);
+      process.emit({
+        "type": "result",
+        "subtype": "error_during_execution",
+        "session_id": testSessionId,
+        "uuid": "interrupted-result",
+        "is_error": true,
+        "terminal_reason": "other",
+      });
+      await pump();
+
+      final errors = events
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => shared.Message.fromJson(event.info))
+          .whereType<shared.MessageError>();
+      expect(errors, isEmpty);
       await subscription.cancel();
     });
 

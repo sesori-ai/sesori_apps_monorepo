@@ -39,9 +39,14 @@ sealed class ClaudeSessionProcessEvent {
 }
 
 final class ClaudeSessionProcessMessage extends ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessMessage({required super.sessionId, required this.message});
+  const ClaudeSessionProcessMessage({
+    required super.sessionId,
+    required this.message,
+    required this.interrupted,
+  });
 
   final ClaudeStreamMessage message;
+  final bool interrupted;
 
   ClaudeControlRequestMessage? get controlRequest => switch (message) {
     final ClaudeControlRequestMessage request => request,
@@ -234,7 +239,7 @@ final class ClaudeSessionProcessRepository {
       accepted: true,
       outcome: Future.any<ClaudeResultMessage?>([result, exit]).then((message) {
         if (process.interrupted) return const ClaudeTurnInterrupted();
-        if (message == null || message.isError || message.permissionDenials.isNotEmpty) {
+        if (message == null || message.isError) {
           return const ClaudeTurnFailed();
         }
         return const ClaudeTurnCompleted();
@@ -356,7 +361,13 @@ final class ClaudeSessionProcessRepository {
         current?.appliedModel = message.model;
       }
       if (!_events.isClosed) {
-        _events.add(ClaudeSessionProcessMessage(sessionId: sessionId, message: message));
+        _events.add(
+          ClaudeSessionProcessMessage(
+            sessionId: sessionId,
+            message: message,
+            interrupted: process.interrupted,
+          ),
+        );
       }
     });
     _resident[sessionId] = process;

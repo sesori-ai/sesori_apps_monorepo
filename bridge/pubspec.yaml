@@ -13,5 +13,6 @@ workspace:
   - sesori_plugin_interface
   - sesori_plugin_acp
   - sesori_plugin_cursor
+  - sesori_plugin_omp
   - sesori_plugin_claude
   - sesori_plugin_pi

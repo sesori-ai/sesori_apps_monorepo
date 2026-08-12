@@ -5,7 +5,7 @@
 /// bridge needs no Node runtime.
 ///
 /// The wire protocol this package implements is documented in
-/// `.plan/active/claude-code-plugin/PROTOCOL.md`, verified against Claude CLI
+/// `.plan/completed/claude-code-plugin/PROTOCOL.md`, verified against Claude CLI
 /// 2.1.221 and `@anthropic-ai/claude-agent-sdk@0.3.221`.
 library;
 

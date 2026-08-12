@@ -141,10 +141,28 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   String? _appliedThoughtLevelId;
 
   @override
+  String get clientName => "sesori-bridge";
+
+  @override
+  String get clientVersion => "0.0.0";
+
+  @override
   String? get authMethodId => "cursor_login";
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => const {"parameterizedModelPicker": true};
+
+  @override
+  bool get supportsFormElicitation => false;
+
+  @override
+  bool get serializesPromptsProcessWide => false;
+
+  @override
+  bool get failsTurnOnSelectionError => false;
+
+  @override
+  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
 
   @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
@@ -191,7 +209,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
 
   @override
   Future<void> applyTurnSelection({
-    required AcpStdioClient client,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -210,7 +228,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
       var applied = true;
       if (targetModel != _appliedModelId) {
         applied = await _setConfig(
-          client: client,
+          configRepository: configRepository,
           sessionId: sessionId,
           configId: modelConfigId,
           value: targetModel,
@@ -236,7 +254,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
         _catalogTracker.hasModeOption(modeId: requestedMode) &&
         requestedMode != _appliedModeId) {
       if (await _setConfig(
-        client: client,
+        configRepository: configRepository,
         sessionId: sessionId,
         configId: modeConfigId,
         value: requestedMode,
@@ -256,7 +274,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
         requestedThoughtLevel != _appliedThoughtLevelId &&
         thoughtLevel.variants.contains(requestedThoughtLevel)) {
       if (await _setConfig(
-        client: client,
+        configRepository: configRepository,
         sessionId: sessionId,
         configId: thoughtLevel.configId,
         value: requestedThoughtLevel,
@@ -267,24 +285,18 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   }
 
   Future<bool> _setConfig({
-    required AcpStdioClient client,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required String configId,
     required String value,
   }) async {
     try {
-      final raw = await client.request(
-        method: AcpMethods.sessionSetConfigOption,
-        params: {
-          "sessionId": sessionId,
-          "configId": configId,
-          "value": value,
-        },
+      final result = await configRepository.setConfigOption(
+        sessionId: sessionId,
+        configId: configId,
+        value: value,
       );
-      if (raw is Map) {
-        final result = AcpNewSessionResult.fromJson(
-          raw.cast<String, dynamic>(),
-        );
+      if (result != null) {
         final capture = _catalogService.captureSessionConfig(
           result: result,
           fromNewSession: false,

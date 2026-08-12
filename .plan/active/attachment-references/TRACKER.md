@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 3 PR open
-- **Current step:** 3/11
-- **Implementation base:** `origin/main` at `f91fee47`
+- **Series state:** Step 4 ready for PR
+- **Current step:** 4/11
+- **Implementation base:** `origin/main` at `ec290e14`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818)
-- **Next action:** Wait for PR #818 to merge while completing Step 4 locally
+- **Current PR:** Pending
+- **Next action:** Publish Step 4, then begin Step 5 locally
 
 ## Plan Review
 
@@ -33,8 +33,8 @@
 |---|---|---|---:|---|
 | [x] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) merged |
 | [x] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812) merged |
-| [ ] | 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) open |
-| [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Implemented and verified locally; waiting for Step 3 merge |
+| [x] | 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) merged |
+| [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Ready for PR |
 | [ ] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Pending |
 | [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | Pending |
 | [ ] | 7/11 | `⚙️ [attachment-references] feat(client): load stored image renditions [step 7/11]` | 850-1,350 | Pending |
@@ -102,7 +102,7 @@
   across 34 files (2,250 changed lines), within that revised target;
   `git diff --check origin/main...HEAD` passes.
   Implementation began in `865e0334`, synchronized with `origin/main` in
-  `aa94152d`, and is open as
+  `aa94152d`, and merged as `6a9d016f` through
   [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818).
 - Step 4: Threaded attachment delivery through active and archived history,
   projecting capable requests to stored references while preserving inline
@@ -110,8 +110,8 @@
   order, and pagination. `dart analyze --fatal-infos` passes in the bridge app;
   77 focused history/routing tests and all 2,559 bridge-app tests pass.
   Architecture implementation review approved the delivery, DI, scope, and
-  compatibility seams with no blockers. The staged diff has 700 additions and
-  50 deletions across 9 files (750 changed lines), within the 700-1,150 target.
+  compatibility seams with no blockers. The implementation was synchronized
+  with `origin/main` at `ec290e14` after Step 3 merged.
 
 ## Findings And Plan Deltas
 
@@ -152,8 +152,8 @@
   the same `(pluginId, backendSessionId)`, so moving the old local-id layout alone
   would duplicate bytes. The user selected a platform-native root shared across
   accounts/data directories, durable backend-session disk scope, and manual-only
-  file lifetime. Step 3 owns this revision; Step 4 has been restored, adapted to
-  the shared scope, and verified locally while its predecessor PR remains open.
+  file lifetime. Step 3 owns this revision; Step 4 was restored and adapted to
+  the shared scope before publication.
 - **2026-08-11 - No internal-layout migration:** The user explicitly rejected
   backward-compatibility work for the barely exercised development/internal
   spill layout. The shared root replaces it without migration, fallback reads,
