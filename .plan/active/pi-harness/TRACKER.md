@@ -4,7 +4,7 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** `origin/main` at `3ae9dd43e`
-- **Series state:** Step 7/21 merged; Step 8/21 ready for review
+- **Series state:** Step 7/21 merged; Step 8/21 in review
 - **Current step:** 8/21, install direct binary runtime assets
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
@@ -14,7 +14,8 @@
 - **Step 6 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/838
 - **Step 7 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/846
 - **Prerequisite PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/857
-- **Next action:** finish Step 8 verification and raise its standalone PR
+- **Step 8 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/862
+- **Next action:** monitor Step 8; Step 9 remains local until Step 8 merges
 
 ## Locked Decisions
 
@@ -48,7 +49,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 (recorded overage) | Merged as PR #832 |
 | [x] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Merged as PR #838 |
 | [x] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 (recorded overage) | Merged as PR #846 |
-| [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Ready for review; dependency merged as PR #857 |
+| [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | In review as PR #862; dependency merged as PR #857 |
 | [ ] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Blocked on Step 8 |
 | [ ] | 10/21 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 | Not started |
 | [ ] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 | Not started |

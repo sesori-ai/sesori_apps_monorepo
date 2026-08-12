@@ -21,7 +21,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// 3. **A package directory, not a lone binary.** The archive contains a
 ///    `dist-package/` tree whose `cursor-agent` entry binary loads sibling
 ///    files (node runtime, native modules), so the assets declare
-  ///    [RuntimeArchiveLayout.packageDirectory] and the whole tree is installed.
+///    [RuntimeArchiveLayout.packageDirectory] and the whole tree is installed.
 ///
 /// Windows is deliberately absent: Cursor publishes darwin and linux only, so
 /// [assetFor] returns null there and the descriptor does not advertise the

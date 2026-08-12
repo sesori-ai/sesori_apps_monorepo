@@ -10,17 +10,8 @@ import "runtime_version.dart";
 /// so the whole directory must be kept together ([packageDirectory]).
 enum RuntimeArchiveLayout { singleBinary, packageDirectory }
 
-/// One platform's pinned release archive for a managed runtime: the asset name,
-/// its container [format], the SHA-256 the download is verified against, the
-/// name of the executable file *inside* the extracted archive, and how that
-/// archive is placed on disk.
-///
-/// [archiveBinaryName] is distinct from [RuntimeManifest.binaryFileName] (the
-/// canonical on-disk name the binary is placed under): some publishers ship the
-/// executable under a target-triple name (e.g. `codex-aarch64-apple-darwin`)
-/// that must be normalized to a plain `codex`. For publishers whose archive
-/// member already matches the canonical name (e.g. OpenCode's `opencode`), the
-/// two are equal.
+/// One platform's pinned release artifact for a managed runtime, identified by
+/// its publisher [assetName] and verified against [sha256] before placement.
 sealed class RuntimeAsset {
   const RuntimeAsset({
     required this.assetName,
@@ -31,6 +22,11 @@ sealed class RuntimeAsset {
   final String sha256;
 }
 
+/// A runtime release artifact distributed inside an archive.
+///
+/// [archiveBinaryName] is distinct from [RuntimeManifest.binaryFileName] (the
+/// canonical on-disk name): some publishers use a target-triple member name
+/// that the installer normalizes to the canonical name.
 final class ArchiveRuntimeAsset extends RuntimeAsset {
   const ArchiveRuntimeAsset({
     required super.assetName,
