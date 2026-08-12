@@ -17,9 +17,7 @@ analyzer:
       "lib/generated/**",
     ]
   language:
-    strict-casts: true
     strict-inference: true
-    strict-raw-types: true
   errors:
     # Without ignore here, we cause import of all_lint_rules to warn, because some rules conflict.
     # We explicitly enable conflicting rules and are fixing the conflicts in this file.

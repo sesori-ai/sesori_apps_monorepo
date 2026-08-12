@@ -506,14 +506,17 @@ class ChatHistoryRepository {
     required MessagePart part,
   }) async {
     final json = part.toJson();
-    if (json["attachment"] case final Map<String, dynamic> attachment) {
+    final Object? rawAttachment = json["attachment"];
+    if (rawAttachment case final Map<String, dynamic> attachment) {
       json["attachment"] = await _spillAttachment(
         storageScope: storageScope,
         attachment: attachment,
       );
     }
-    if (json["state"] case final Map<String, dynamic> state) {
-      if (state["attachments"] case final List<dynamic> attachments) {
+    final Object? rawState = json["state"];
+    if (rawState case final Map<String, dynamic> state) {
+      final Object? rawAttachments = state["attachments"];
+      if (rawAttachments case final List<dynamic> attachments) {
         state["attachments"] = [
           for (final attachment in attachments)
             if (attachment is Map<String, dynamic>)
@@ -583,7 +586,8 @@ class ChatHistoryRepository {
   }) async {
     var remaining = remainingInlineBytes;
     final json = jsonDecodeMap(partJson);
-    if (json["attachment"] case final Map<String, dynamic> attachment) {
+    final Object? rawAttachment = json["attachment"];
+    if (rawAttachment case final Map<String, dynamic> attachment) {
       final projected = await _rehydrateAttachment(
         storageScope: storageScope,
         attachment: attachment,
@@ -593,8 +597,10 @@ class ChatHistoryRepository {
       json["attachment"] = projected.attachment;
       remaining = projected.remainingInlineBytes;
     }
-    if (json["state"] case final Map<String, dynamic> state) {
-      if (state["attachments"] case final List<dynamic> attachments) {
+    final Object? rawState = json["state"];
+    if (rawState case final Map<String, dynamic> state) {
+      final Object? rawAttachments = state["attachments"];
+      if (rawAttachments case final List<dynamic> attachments) {
         final projectedAttachments = <dynamic>[];
         for (final attachment in attachments) {
           if (attachment is! Map<String, dynamic>) {

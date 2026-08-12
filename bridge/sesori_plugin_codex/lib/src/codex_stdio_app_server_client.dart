@@ -226,7 +226,8 @@ class CodexStdioAppServerClient implements CodexAppServerTransport {
           ),
         );
       } else {
-        pending.completer.complete(map["result"]);
+        final Object? result = map["result"];
+        pending.completer.complete(result);
       }
       return;
     }

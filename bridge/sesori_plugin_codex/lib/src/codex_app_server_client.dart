@@ -333,7 +333,8 @@ class CodexAppServerClient implements CodexAppServerTransport {
             ),
           );
         } else {
-          completer.complete(map["result"]);
+          final Object? result = map["result"];
+          completer.complete(result);
         }
         return;
       }

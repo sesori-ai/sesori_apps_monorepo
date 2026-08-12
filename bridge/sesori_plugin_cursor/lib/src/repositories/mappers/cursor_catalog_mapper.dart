@@ -160,7 +160,7 @@ abstract final class CursorCatalogMapper {
   }) {
     return [
       for (final option in _flattenedOptions(config: config))
-        if (option["value"] case final String value when value.isNotEmpty)
+        if (_optionValue(option) case final String value when value.isNotEmpty)
           CursorCatalogOption(
             value: value,
             name: switch (option["name"]) {
@@ -174,6 +174,8 @@ abstract final class CursorCatalogMapper {
           ),
     ];
   }
+
+  static Object? _optionValue(Map<String, dynamic> option) => option["value"];
 
   static List<String> _orderedValues({required Map<String, dynamic> config}) {
     final values = [for (final option in _options(config: config)) option.value];

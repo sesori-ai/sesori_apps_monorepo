@@ -150,7 +150,7 @@ class OmpCatalogRepository {
   static List<OmpCatalogOption> _options(Map<String, dynamic>? config) {
     return [
       for (final option in _flattenedOptions(config))
-        if (option["value"] case final String value when value.isNotEmpty)
+        if (_optionValue(option) case final String value when value.isNotEmpty)
           OmpCatalogOption(
             value: value,
             name: switch (option["name"]) {
@@ -164,6 +164,8 @@ class OmpCatalogRepository {
           ),
     ];
   }
+
+  static Object? _optionValue(Map<String, dynamic> option) => option["value"];
 
   static List<Map<String, dynamic>> _flattenedOptions(Map<String, dynamic>? config) {
     final raw = config?["options"];
