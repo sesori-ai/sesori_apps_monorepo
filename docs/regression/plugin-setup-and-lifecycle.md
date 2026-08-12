@@ -33,6 +33,13 @@ idle suspension, the management snapshot, and lifecycle commands.
 - The bridge exposes explicit plugin-scoped start and cancel routes. Duplicate starts join
   the active operation, management commands conflict while it runs, cancellation settles
   upstream cleanup, and setup reinspection remains authoritative before normal startup.
+- Client authentication orchestration accepts only absolute HTTPS challenge URLs, retains
+  challenge data ephemerally, and opens the browser only after an explicit user action.
+  Start and cancel response loss remain uncertain; terminal SSE is presented only for an
+  operation this client started, then triggers an authoritative management refresh.
+- Authentication ownership and challenge state are fenced to the current connection epoch
+  and bridge identity and clear on reconnect, identity change, or disposal. External
+  operations still update shared management metadata without claiming local presentation.
 
 ## Regression Levels
 
@@ -62,6 +69,9 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 - A missing authentication state from an older bridge decoding as anything but idle, a
   future state or conflict reason failing open, challenge data entering snapshots/SSE, or
   a failed progress payload without its required sanitized message.
+- A malformed or non-HTTPS verification URL reaching the launcher, a browser opening
+  without explicit user intent, response loss reported as definite failure, a fast terminal
+  event being lost, or stale challenge state surviving reconnect or bridge replacement.
 - One failing harness taking down the rest of the bridge, or an empty picker
   instead of the explicit no-harness state when none is usable.
 
@@ -69,9 +79,9 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 
 - The harness set comes from the current registry; unregistered in-development harnesses
   are out of scope, and no lifecycle path installs a runtime.
-- Backend authentication and credential persistence happen on the bridge machine; client
-  orchestration and presentation remain outside this document until their planned steps
-  land. A forced disable leaves work interrupted.
+- Backend authentication and credential persistence happen on the bridge machine. Client
+  presentation controls remain outside this document until their planned step lands. A
+  forced disable leaves work interrupted.
 - Idle windows are minutes-order, so observing a real elapse belongs at L4 or above.
 
 ## Sources

@@ -82,7 +82,8 @@ Future<void> main(List<String> args) async {
     );
 
     // Only enforce sync guard for automatic bumps; explicit --version can realign.
-    if (parsed.version == null && clientVersion.semver != bridgeCurrentVersion) {
+    if (parsed.version == null &&
+        clientVersion.semver != bridgeCurrentVersion) {
       throw _CliError(
         'Error: Bridge ($bridgeCurrentVersion) and client (${clientVersion.semver}) versions are out of sync. '
         'Run `make bump-version VERSION=${clientVersion.semver}` to align them before bumping.',
@@ -106,9 +107,9 @@ Future<void> main(List<String> args) async {
     ];
 
     if (parsed.dryRun) {
-    stdout.writeln('Target bridge version: $targetBridgeVersion');
-    stdout.writeln('Target client version: $targetClientVersion');
-    stdout.writeln('Planned releaseTag: v$targetBridgeVersion');
+      stdout.writeln('Target bridge version: $targetBridgeVersion');
+      stdout.writeln('Target client version: $targetClientVersion');
+      stdout.writeln('Planned releaseTag: v$targetBridgeVersion');
       stdout.writeln('Files that would change:');
       for (final relativePath in plannedPaths) {
         stdout.writeln('  - $relativePath');

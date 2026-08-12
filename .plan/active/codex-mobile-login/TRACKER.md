@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 5 PR open
-- **Current step:** 5/8 in review
-- **Implementation base:** Step 4 merge commit `2bc60ae3`
+- **Series state:** Steps 1-5 merged; Step 6 PR open
+- **Current step:** 6/8
+- **Implementation base:** Step 5 merge commit `e13b9a38`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** [#835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835)
-- **Next action:** Monitor Step 5 review/CI and implement Step 6 locally
+- **Current PR:** [#837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837)
+- **Next action:** Monitor Step 6 and implement Step 7 locally
 
 ## Plan Review
 
@@ -30,8 +30,8 @@
 | [x] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827) merged |
 | [x] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) merged |
 | [x] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) merged |
-| [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) open |
-| [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | Pending |
+| [x] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) merged |
+| [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | [PR #837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837) open |
 | [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Pending |
 | [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | Pending |
 
@@ -101,6 +101,21 @@
   deletions. The lower-than-estimated size reflects reuse of existing lifecycle
   ownership rather than introducing a parallel coordinator. Pushed and opened
   as [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835).
+- Step 6 local: After rebasing onto Step 5 merge commit `e13b9a38`, full
+  `module_core` tests pass (1,054 tests), focused API,
+  repository, service, and cubit authentication tests pass (78 tests), and
+  fatal-info analysis is clean in `module_core` and the mobile app. Coverage
+  includes typed routes, conflict and response-loss mapping, absolute HTTPS
+  challenge validation, fast terminal SSE ordering, reconnect fencing,
+  explicit browser launch, cancellation, and terminal presentation. The
+  required architecture implementation review could not run because the
+  review sub-agent failed before reading code with the internal task-store
+  schema error `no such column: replacement_seq`. `git diff --check
+  origin/main...HEAD` passes and the final production/test/doc scope contains
+  2,101 additions and 29 deletions. The overage above the 1,500-line target is
+  primarily generated Freezed presentation state plus focused API, repository,
+  service, and cubit race coverage added for the security-sensitive cross-layer
+  flow and review-discovered response-ordering cases.
 
 ## Findings And Plan Deltas
 
@@ -157,3 +172,14 @@
   settlement. The successor remains local until Step 4 merges.
 - **2026-08-12 - Step 4 merged:** Rebased Step 5 onto merge commit `2bc60ae3`
   after PR #834 merged with fail-closed future-progress compatibility.
+- **2026-08-12 - Step 6 implementation:** Added typed authentication transport
+  and repository outcomes, connection- and bridge-fenced service correlation,
+  ephemeral HTTPS-only challenges, fast-terminal retention, and independent
+  cubit presentation state with explicit browser launch and cancellation. No
+  authentication control is rendered yet; Step 7 owns presentation.
+- **2026-08-12 - Step 5 review:** Addressed all three Qodo threads in
+  `bc0cb552`: active operations now always own a non-null abort seam,
+  cancellation remains authoritative through setup-inspection failure, and
+  plugin-controlled failure details remain local while wire progress uses a
+  fixed safe message. PR #835 is green, approved, mergeable, and has zero
+  unresolved threads.

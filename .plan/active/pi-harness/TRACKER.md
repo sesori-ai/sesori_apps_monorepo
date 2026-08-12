@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `fd6c797a`
-- **Series state:** Step 6/21 open; Step 7/21 local successor started
+- **Implementation base:** `origin/main` at `ec290e14`
+- **Series state:** Step 6/21 merged; Step 7/21 local implementation in progress
 - **Current step:** 7/21, expose OMP options and persisted cleanup
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
@@ -12,8 +12,8 @@
 - **Step 4 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/829
 - **Step 5 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/832
 - **Step 6 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/838
-- **Step 7 PR:** not opened; keep local until Step 6 merges
-- **Next action:** implement Step 7 while monitoring Step 6
+- **Step 7 PR:** not opened
+- **Next action:** implement and verify Step 7
 
 ## Locked Decisions
 
@@ -46,8 +46,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 3/21 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/21]` | 1,200-1,500 (recorded overage) | Merged as PR #820; title normalized |
 | [x] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Merged as PR #829 |
 | [x] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 (recorded overage) | Merged as PR #832 |
-| [ ] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Open as PR #838 |
-| [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 | Local successor started |
+| [x] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Merged as PR #838 |
+| [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 | Local implementation in progress |
 | [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Blocked on runtime dependency |
 | [ ] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Blocked on Step 8 |
 | [ ] | 10/21 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 | Not started |

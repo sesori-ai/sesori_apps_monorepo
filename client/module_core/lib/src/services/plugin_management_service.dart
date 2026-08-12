@@ -30,6 +30,8 @@ typedef _CapturedManagementRequest = ({
   bool hasBridgeIdentity,
 });
 
+typedef PluginAuthenticationTerminalUpdate = ({String pluginId, PluginAuthenticationProgress progress});
+
 sealed class PluginManagementIdleTimeoutInput {
   const PluginManagementIdleTimeoutInput();
 
@@ -71,6 +73,11 @@ class PluginManagementService with Disposable {
   final ProductAnalyticsService _productAnalyticsService;
   final BehaviorSubject<PluginManagementLoadResult> _snapshots = BehaviorSubject();
   final BehaviorSubject<Map<String, PluginInstallProgress>> _installProgress = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, PluginAuthenticationChallenge>> _authenticationChallenges = BehaviorSubject.seeded(
+    const {},
+  );
+  final StreamController<PluginAuthenticationTerminalUpdate> _authenticationTerminalController =
+      StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _connected;
@@ -101,12 +108,21 @@ class PluginManagementService with Disposable {
   /// Plugin ids with an install command still awaiting its response, used only
   /// to decide whether a terminal event must be held until acceptance is known.
   final Set<String> _installRequestsInFlight = {};
+  final Set<String> _authenticationRequestsInFlight = {};
+  final Set<String> _selfStartedAuthentications = {};
+  final Map<String, PluginAuthenticationProgress> _pendingAuthenticationOutcomes = {};
+  final Map<String, _ManagementRequestFence> _authenticationFences = {};
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
 
   /// In-flight managed runtime installs, keyed by plugin id. An entry appears
   /// when the bridge reports progress and disappears when the install settles.
   ValueStream<Map<String, PluginInstallProgress>> get installProgress => _installProgress.stream;
+
+  ValueStream<Map<String, PluginAuthenticationChallenge>> get authenticationChallenges =>
+      _authenticationChallenges.stream;
+
+  Stream<PluginAuthenticationTerminalUpdate> get authenticationTerminal => _authenticationTerminalController.stream;
 
   Future<void> refresh() {
     _markStale();
@@ -170,6 +186,60 @@ class PluginManagementService with Disposable {
     return _runMutation(
       request: () => _pluginRepository.updateIdleTimeout(request: request),
     );
+  }
+
+  Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
+    if (_disposed || !_connected || !_activeBridgeIdentityKnown) {
+      return PluginAuthenticationStartResult.failure(error: ApiError.generic());
+    }
+    final captured = _captureRequest(staleGeneration: _staleGeneration);
+    _selfStartedAuthentications.add(pluginId);
+    _authenticationRequestsInFlight.add(pluginId);
+    _authenticationFences[pluginId] = captured.fence;
+    final result = await _pluginRepository.startAuthentication(pluginId: pluginId);
+    _authenticationRequestsInFlight.remove(pluginId);
+    if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+      _forgetAuthentication(pluginId: pluginId);
+      return const PluginAuthenticationStartResult.uncertain();
+    }
+
+    switch (result) {
+      case PluginAuthenticationStartChallenge(:final challenge):
+        final mapped = _mapAuthenticationChallenge(challenge);
+        if (mapped == null) {
+          _forgetAuthentication(pluginId: pluginId);
+          return PluginAuthenticationStartResult.failure(error: ApiError.generic());
+        }
+        _publishAuthenticationChallenge(pluginId: pluginId, challenge: mapped);
+        final pending = _pendingAuthenticationOutcomes.remove(pluginId);
+        if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
+        return result;
+      case PluginAuthenticationStartUncertain():
+        final pending = _pendingAuthenticationOutcomes.remove(pluginId);
+        if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
+        return result;
+      case PluginAuthenticationStartNotFound() ||
+          PluginAuthenticationStartConflict() ||
+          PluginAuthenticationStartUnsupported() ||
+          PluginAuthenticationStartFailure():
+        _forgetAuthentication(pluginId: pluginId);
+        return result;
+    }
+  }
+
+  Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {
+    if (_disposed || !_connected || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+      return PluginAuthenticationCancelResult.failure(error: ApiError.generic());
+    }
+    _authenticationRequestsInFlight.add(pluginId);
+    final result = await _pluginRepository.cancelAuthentication(pluginId: pluginId);
+    _authenticationRequestsInFlight.remove(pluginId);
+    if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+      return const PluginAuthenticationCancelResult.uncertain();
+    }
+    final pending = _pendingAuthenticationOutcomes.remove(pluginId);
+    if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
+    return result;
   }
 
   PluginManagementCommandPlan planApplyAllIdleTimeout({required PluginManagementIdleTimeoutInput input}) {
@@ -240,6 +310,10 @@ class PluginManagementService with Disposable {
   }
 
   void _onSseEvent(SseEvent event) {
+    if (event.data case SesoriPluginAuthenticationProgress(:final pluginId, :final progress)) {
+      _applyAuthenticationProgress(pluginId: pluginId, progress: progress);
+      return;
+    }
     if (event.data case SesoriPluginInstallProgress(:final pluginId, :final phase, :final percent)) {
       _applyInstallProgress(pluginId: pluginId, phase: phase, percent: percent);
       return;
@@ -255,6 +329,86 @@ class PluginManagementService with Disposable {
       if (snapshotToken == currentToken) return;
       _markStale();
     }
+  }
+
+  void _applyAuthenticationProgress({required String pluginId, required PluginAuthenticationProgress progress}) {
+    if (_disposed) return;
+    _markStale();
+    if (_authenticationRequestsInFlight.contains(pluginId)) {
+      _pendingAuthenticationOutcomes[pluginId] = progress;
+      return;
+    }
+    _settleAuthentication(pluginId: pluginId, progress: progress);
+  }
+
+  void _settleAuthentication({required String pluginId, required PluginAuthenticationProgress progress}) {
+    final startedHere =
+        _selfStartedAuthentications.contains(pluginId) && _isAuthenticationFenceCurrent(pluginId: pluginId);
+    _forgetAuthentication(pluginId: pluginId);
+    if (startedHere && !_authenticationTerminalController.isClosed) {
+      _authenticationTerminalController.add((pluginId: pluginId, progress: progress));
+    }
+  }
+
+  PluginAuthenticationChallenge? _mapAuthenticationChallenge(PluginAuthenticationChallengeResponse challenge) {
+    return switch (challenge) {
+      PluginAuthenticationDeviceCodeChallengeResponse(
+        :final verificationUrl,
+        :final userCode,
+      ) =>
+        switch (Uri.tryParse(verificationUrl)) {
+          final uri? when uri.scheme == "https" && uri.host.isNotEmpty => PluginAuthenticationChallenge(
+            verificationUri: uri,
+            userCode: userCode,
+          ),
+          _ => null,
+        },
+    };
+  }
+
+  bool _isAuthenticationFenceCurrent({required String pluginId}) {
+    final fence = _authenticationFences[pluginId];
+    return fence != null &&
+        _isConnectionFenceCurrent(fence) &&
+        _activeBridgeIdentityKnown &&
+        _activeBridgeId == fence.bridgeId;
+  }
+
+  void _publishAuthenticationChallenge({
+    required String pluginId,
+    required PluginAuthenticationChallenge challenge,
+  }) {
+    if (_disposed || _authenticationChallenges.isClosed) return;
+    _authenticationChallenges.add(
+      Map<String, PluginAuthenticationChallenge>.unmodifiable({
+        ..._authenticationChallenges.value,
+        pluginId: challenge,
+      }),
+    );
+  }
+
+  void _forgetAuthentication({required String pluginId}) {
+    _selfStartedAuthentications.remove(pluginId);
+    _authenticationRequestsInFlight.remove(pluginId);
+    _pendingAuthenticationOutcomes.remove(pluginId);
+    _authenticationFences.remove(pluginId);
+    if (_disposed || _authenticationChallenges.isClosed || !_authenticationChallenges.value.containsKey(pluginId)) {
+      return;
+    }
+    _authenticationChallenges.add(
+      Map<String, PluginAuthenticationChallenge>.unmodifiable(
+        Map<String, PluginAuthenticationChallenge>.from(_authenticationChallenges.value)..remove(pluginId),
+      ),
+    );
+  }
+
+  void _clearAuthentications() {
+    _selfStartedAuthentications.clear();
+    _authenticationRequestsInFlight.clear();
+    _pendingAuthenticationOutcomes.clear();
+    _authenticationFences.clear();
+    if (_disposed || _authenticationChallenges.isClosed || _authenticationChallenges.value.isEmpty) return;
+    _authenticationChallenges.add(const {});
   }
 
   void _applyInstallProgress({
@@ -555,6 +709,7 @@ class PluginManagementService with Disposable {
     // Progress belongs to the bridge connection that reported it; a new
     // connection or bridge identity re-reports whatever is still running.
     _clearInstallProgress();
+    _clearAuthentications();
     _snapshots.add(const PluginManagementLoadResult.loading());
   }
 
@@ -566,6 +721,8 @@ class PluginManagementService with Disposable {
     await _refreshTail;
     await _snapshots.close();
     await _installProgress.close();
+    await _authenticationChallenges.close();
+    await _authenticationTerminalController.close();
   }
 }
 
@@ -590,11 +747,25 @@ class PluginInstallProgress {
   final int? percent;
 
   @override
-  bool operator ==(Object other) =>
-      other is PluginInstallProgress && other.phase == phase && other.percent == percent;
+  bool operator ==(Object other) => other is PluginInstallProgress && other.phase == phase && other.percent == percent;
 
   @override
   int get hashCode => Object.hash(phase, percent);
+}
+
+@immutable
+class PluginAuthenticationChallenge {
+  const PluginAuthenticationChallenge({required this.verificationUri, required this.userCode});
+
+  final Uri verificationUri;
+  final String userCode;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PluginAuthenticationChallenge && other.verificationUri == verificationUri && other.userCode == userCode;
+
+  @override
+  int get hashCode => Object.hash(verificationUri, userCode);
 }
 
 enum _RefreshOutcome { applied, failed, superseded, fenced }
