@@ -213,7 +213,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - No user-visible, database, persisted-data, client/bridge wire-contract, or
   client-UI change; app registration remains Step 18.
 - `git diff --check`: pass.
-- Diff: +652/-9 = 661 changed lines; generated lines: 0; tests run: 11.
+- Diff: +666/-12 = 678 changed lines; generated lines: 0; tests run: 11.
 
 ## Findings And Plan Deltas
 
