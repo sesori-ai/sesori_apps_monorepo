@@ -346,6 +346,57 @@ void main() {
       );
     });
   });
+
+  group("authentication", () {
+    test("maps challenge, unsupported conflict, and response loss", () async {
+      when(
+        () => api.startAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PluginAuthenticationChallengeResponse.deviceCode(
+            verificationUrl: "https://auth.example/device",
+            userCode: "ABCD-EFGH",
+          ),
+        ),
+      );
+      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartChallenge>());
+
+      const conflict = PluginAuthenticationConflict(
+        pluginId: "codex",
+        reasons: [PluginAuthenticationConflictReason.unsupported],
+        current: _managementPlugin,
+      );
+      when(
+        () => api.startAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 409, rawErrorString: jsonEncode(conflict.toJson())),
+        ),
+      );
+      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartUnsupported>());
+
+      when(
+        () => api.startAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.dartHttpClient(const RelayResponseLostException(message: "socket closed")),
+        ),
+      );
+      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartUncertain>());
+    });
+
+    test("maps cancellation success and uncertain response loss", () async {
+      when(
+        () => api.cancelAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
+      expect(await repository.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelSuccess>());
+
+      when(
+        () => api.cancelAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.emptyResponse()));
+      expect(await repository.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelUncertain>());
+    });
+  });
 }
 
 const _managementPlugin = PluginManagementMetadata(

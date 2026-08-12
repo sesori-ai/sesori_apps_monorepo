@@ -36,6 +36,53 @@ class PluginRepository {
     return _mapMutation(future: _api.updateIdleTimeout(request: request));
   }
 
+  Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
+    return switch (await _api.startAuthentication(pluginId: pluginId)) {
+      SuccessResponse(:final data) => PluginAuthenticationStartResult.challenge(challenge: data),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginAuthenticationStartResult.notFound(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
+        _mapAuthenticationConflict(body: body),
+      ErrorResponse(
+        error: JsonParsingError() ||
+            EmptyResponseError() ||
+            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()),
+      ) =>
+        const PluginAuthenticationStartResult.uncertain(),
+      ErrorResponse(:final error) => PluginAuthenticationStartResult.failure(error: error),
+    };
+  }
+
+  Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {
+    return switch (await _api.cancelAuthentication(pluginId: pluginId)) {
+      SuccessResponse() => const PluginAuthenticationCancelResult.success(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginAuthenticationCancelResult.notFound(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 409)) => const PluginAuthenticationCancelResult.unsupported(),
+      ErrorResponse(
+        error: JsonParsingError() ||
+            EmptyResponseError() ||
+            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()),
+      ) =>
+        const PluginAuthenticationCancelResult.uncertain(),
+      ErrorResponse(:final error) => PluginAuthenticationCancelResult.failure(error: error),
+    };
+  }
+
+  PluginAuthenticationStartResult _mapAuthenticationConflict({required String? body}) {
+    if (body != null) {
+      try {
+        final conflict = PluginAuthenticationConflict.fromJson(jsonDecodeMap(body));
+        return conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
+            ? const PluginAuthenticationStartResult.unsupported()
+            : PluginAuthenticationStartResult.conflict(conflict: conflict);
+      } on Object {
+        // The typed failure below is the single observable outcome.
+      }
+    }
+    return PluginAuthenticationStartResult.failure(
+      error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body),
+    );
+  }
+
   Future<PluginManagementMutationResult> _mapMutation({
     required Future<ApiResponse<PluginManagementResponse>> future,
   }) async {

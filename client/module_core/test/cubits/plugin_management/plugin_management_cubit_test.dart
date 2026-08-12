@@ -8,6 +8,8 @@ import "package:test/test.dart";
 
 class _MockPluginManagementService extends Mock implements PluginManagementService {}
 
+class _MockUrlLauncher extends Mock implements UrlLauncher {}
+
 const _response = PluginManagementResponse(
   snapshotToken: "snapshot-1",
   bridgeId: "bridge-1",
@@ -25,19 +27,29 @@ void main() {
   late _MockPluginManagementService service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
   late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
+  late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
+  late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late PluginManagementCubit cubit;
+  late _MockUrlLauncher urlLauncher;
 
   setUpAll(() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
     registerFallbackValue(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 1));
+    registerFallbackValue(Uri.parse("https://example.com"));
+    registerFallbackValue(UrlLaunchMode.externalApp);
   });
 
   setUp(() {
     service = _MockPluginManagementService();
+    urlLauncher = _MockUrlLauncher();
     snapshots = BehaviorSubject();
     installProgress = BehaviorSubject.seeded(const {});
+    authenticationTerminal = StreamController.broadcast(sync: true);
+    authenticationChallenges = BehaviorSubject.seeded(const {});
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
     when(() => service.installProgress).thenAnswer((_) => installProgress.stream);
+    when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
+    when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
     when(
       () => service.command(
@@ -48,13 +60,31 @@ void main() {
     when(
       () => service.updateIdleTimeout(request: any(named: "request")),
     ).thenAnswer((_) async => const PluginManagementMutationResult.success(response: _response));
-    cubit = PluginManagementCubit(service: service);
+    when(
+      () => service.startAuthentication(pluginId: any(named: "pluginId")),
+    ).thenAnswer(
+      (_) async => const PluginAuthenticationStartResult.challenge(
+        challenge: PluginAuthenticationChallengeResponse.deviceCode(
+          verificationUrl: "https://auth.example/device",
+          userCode: "ABCD-EFGH",
+        ),
+      ),
+    );
+    when(
+      () => service.cancelAuthentication(pluginId: any(named: "pluginId")),
+    ).thenAnswer((_) async => const PluginAuthenticationCancelResult.success());
+    when(
+      () => urlLauncher.launch(any(), mode: any(named: "mode")),
+    ).thenAnswer((_) async => true);
+    cubit = PluginManagementCubit(service: service, urlLauncher: urlLauncher);
   });
 
   tearDown(() async {
     await cubit.close();
     await snapshots.close();
     await installProgress.close();
+    await authenticationTerminal.close();
+    await authenticationChallenges.close();
   });
 
   test("starts loading and maps supported snapshots to idle ready state", () async {
@@ -69,6 +99,7 @@ void main() {
         response: _response,
         refresh: PluginManagementRefreshState.idle(),
         action: PluginManagementActionState.idle(),
+        authentication: PluginAuthenticationPresentationState.idle(),
         installs: {},
       ),
     );
@@ -94,6 +125,60 @@ void main() {
     await _settle();
 
     expect(cubit.state, const PluginManagementState.loading());
+  });
+
+  test("authentication presents challenge, launches explicitly, and settles terminal progress", () async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await _settle();
+
+    await cubit.startAuthentication(pluginId: "codex");
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      isA<PluginAuthenticationPresentationChallenge>(),
+    );
+    verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
+    await cubit.launchAuthenticationBrowser();
+    verify(
+      () => urlLauncher.launch(Uri.parse("https://auth.example/device"), mode: UrlLaunchMode.externalApp),
+    ).called(1);
+
+    authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
+    await _settle();
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      const PluginAuthenticationPresentationState.idle(),
+    );
+  });
+
+  test("authentication cancellation waits for terminal progress", () async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await _settle();
+    await cubit.startAuthentication(pluginId: "codex");
+
+    await cubit.cancelAuthentication();
+    final cancelling = (cubit.state as PluginManagementReady).authentication;
+    expect(
+      cancelling,
+      isA<PluginAuthenticationPresentationChallenge>().having((state) => state.cancelling, "cancelling", true),
+    );
+    authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.cancelled()));
+    await _settle();
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      const PluginAuthenticationPresentationState.idle(),
+    );
   });
 
   test("delegates refresh and retains a published refresh error with the ready snapshot", () async {
@@ -203,7 +288,7 @@ void main() {
 
       // The screen builds a fresh cubit on every visit, so reopening harness
       // settings during an install must not hide it.
-      final reopened = PluginManagementCubit(service: service);
+      final reopened = PluginManagementCubit(service: service, urlLauncher: urlLauncher);
       addTearDown(reopened.close);
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
       await _settle();
