@@ -208,12 +208,10 @@ class WorktreeRepository {
     if (snapshot.hasUnstagedChanges) {
       issues.add(UnstagedChanges());
     }
-    final activeBranch = snapshot.actualBranch == "HEAD" ? null : snapshot.actualBranch;
-
     if (issues.isEmpty) {
-      return WorktreeSafe(activeBranch: activeBranch);
+      return WorktreeSafe();
     }
-    return WorktreeUnsafe(issues: issues, activeBranch: activeBranch);
+    return WorktreeUnsafe(issues: issues);
   }
 
   Future<bool> removeWorktree({

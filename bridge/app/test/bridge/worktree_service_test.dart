@@ -795,7 +795,7 @@ void main() {
       }
     });
 
-    test("clean worktree: returns WorktreeSafe with active branch", () async {
+    test("clean worktree: returns WorktreeSafe", () async {
       // git status --porcelain → empty (clean)
       processRunner.enqueue(result: _ok(stdout: ""));
       // git rev-parse --abbrev-ref HEAD → "session-001"
@@ -806,7 +806,6 @@ void main() {
       );
 
       expect(result, isA<WorktreeSafe>());
-      expect(result.activeBranch, equals("session-001"));
       expect(processRunner.invocations, hasLength(2));
     });
 
@@ -826,7 +825,7 @@ void main() {
       expect(unsafe.issues.first, isA<UnstagedChanges>());
     });
 
-    test("different branch remains safe and reports the active branch", () async {
+    test("different branch remains safe", () async {
       // git status --porcelain → empty (clean)
       processRunner.enqueue(result: _ok(stdout: ""));
       // git rev-parse --abbrev-ref HEAD → "main" (wrong branch)
@@ -837,7 +836,6 @@ void main() {
       );
 
       expect(result, isA<WorktreeSafe>());
-      expect(result.activeBranch, equals("main"));
     });
 
     test("dirty worktree on a different branch returns UnstagedChanges", () async {
@@ -854,7 +852,6 @@ void main() {
       final unsafe = result as WorktreeUnsafe;
       expect(unsafe.issues, hasLength(1));
       expect(unsafe.issues.whereType<UnstagedChanges>(), hasLength(1));
-      expect(unsafe.activeBranch, equals("main"));
     });
 
     test("non-existent path: returns WorktreeSafe (already cleaned up), no git commands called", () async {

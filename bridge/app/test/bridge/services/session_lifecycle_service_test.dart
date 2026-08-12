@@ -265,24 +265,6 @@ void main() {
       expect(worktreeService.lastRemoveForce, isTrue);
     });
 
-    test("deletes the active branch after removing a worktree", () async {
-      worktreeService.safetyResult = WorktreeSafe(activeBranch: "task-branch");
-
-      final result = await _cleanup(
-        service: service,
-        sessionRepository: sessionRepository,
-        sessionId: "s-active-branch",
-        worktreePath: "/repo/.worktrees/session-active-branch",
-        branchName: "session-active-branch",
-        deleteWorktree: true,
-        deleteBranch: true,
-        force: false,
-      );
-
-      expect(result, isA<CleanupSuccess>());
-      expect(worktreeService.lastDeletedBranch, equals("task-branch"));
-    });
-
     test("delete worktree and branch runs both operations", () async {
       worktreeService.safetyResult = WorktreeSafe();
 
@@ -690,7 +672,6 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
   bool? lastDeleteBranchForce;
-  String? lastDeletedBranch;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -733,7 +714,6 @@ class _FakeWorktreeService extends WorktreeService {
     required bool force,
   }) async {
     deleteBranchCallCount++;
-    lastDeletedBranch = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
   }

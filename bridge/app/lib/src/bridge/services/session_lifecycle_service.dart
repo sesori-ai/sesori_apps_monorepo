@@ -105,9 +105,8 @@ class SessionLifecycleService {
       }
     }
 
-    WorktreeSafetyResult? safety;
     if (deleteWorktree) {
-      safety = await _worktreeService.checkWorktreeSafety(
+      final safety = await _worktreeService.checkWorktreeSafety(
         worktreePath: worktreePath,
       );
       if (!force) {
@@ -120,7 +119,6 @@ class SessionLifecycleService {
         }
       }
     }
-    final branchToDelete = safety?.activeBranch ?? branchName;
 
     if (deleteWorktree) {
       final removed = await _worktreeService.removeWorktree(
@@ -140,13 +138,13 @@ class SessionLifecycleService {
     if (deleteBranch) {
       final deleted = await _worktreeService.deleteBranch(
         projectId: projectId,
-        branchName: branchToDelete,
+        branchName: branchName,
         force: deleteWorktree || force,
       );
       if (!deleted &&
           await _worktreeService.branchExists(
             projectId: projectId,
-            branchName: branchToDelete,
+            branchName: branchName,
           )) {
         throw SessionCleanupFailedException(
           sessionId: sessionId,
