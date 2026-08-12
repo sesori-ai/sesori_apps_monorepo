@@ -194,28 +194,34 @@ its backend-specific evidence.
 
 Add `OpenCodeUserInteractionTracker` beside the existing OpenCode trackers. It
 owns the bounded message-envelope/part classifier, automatic-overflow
-suppression, and all classifier lifecycle state. It receives the existing
-`ActiveSessionTracker` as a required dependency for root/display attribution;
-it does not duplicate the session-parent graph.
+suppression, bridge-write correlation, and all classifier lifecycle state.
+`OpenCodeService` composes it with the existing `ActiveSessionTracker`, which
+remains the sole parent/display graph owner; the interaction tracker receives
+resolved root attribution rather than depending on its tracker peer directly.
 
-`OpenCodePlugin._handleRawSseEvent` remains a composition pipeline: after
-parsing and updating the existing service/tracker state, it delegates the raw
-`SseEventData` to `OpenCodeUserInteractionTracker`, forwards any returned
-neutral interaction fact, then continues existing presentation mapping.
-Classification still occurs before `SseEventMapper` erases raw part provenance.
+`OpenCodePlugin._handleRawSseEvent` parses once, delegates the raw event to
+`OpenCodeService`, forwards any returned neutral interaction fact, then
+continues existing presentation mapping. The service updates its trackers and
+classifies before `SseEventMapper` erases raw part provenance. Prompt, command,
+create-session, reconnect, and disposal paths likewise delegate interaction
+coordination to the service rather than sequencing tracker peers in the plugin.
 
-The same tracker also coordinates bridge-owned prompt/command acceptance. The
-plugin starts one bounded pending write before dispatch, raw classification may
-satisfy that write first, and successful API completion emits a null-timestamp
-fallback only when no matching raw fact was observed. Failed acceptance emits no
-fallback. This produces one fact in the ordinary path while covering the real
-disconnect window where OpenCode accepted the write but its envelope or part was
-lost before the fresh non-replaying SSE connection. Initial create-session turns
-use the same coordination after the backend session ID is known.
+The same tracker coordinates bridge-owned prompt/command acceptance by message
+identity. Generate an OpenCode-compatible message ID before dispatch and pass it
+through the existing optional `messageID` field on prompt and command payloads.
+The matching raw classification may satisfy that pending write first; successful
+API completion emits a null-timestamp fallback only when that exact message ID
+was not observed. Failed acceptance emits no fallback. A laptop-originated
+message cannot consume a Sesori write. This produces one fact in the ordinary
+path while covering the real disconnect window where OpenCode accepted the
+write but its envelope or part was lost before the fresh non-replaying SSE
+connection. Initial create-session turns use the same correlation after the
+backend session ID is known.
 
-- Keep at most one pending user envelope per session: message ID plus the
-  message creation timestamp. This state is bounded by the number of known
-  sessions, not transcript length.
+- Keep at most one pending user envelope and one most-recently classified
+  message ID per session. The latter rejects an immediate duplicate complete
+  envelope/part delivery after the pending envelope was consumed. State remains
+  bounded by known sessions, not transcript length.
 - A later part classifies only the matching pending envelope.
 - A root-session non-synthetic text/file/subtask prompt records one interaction.
   A child user prompt is not counted because OpenCode creates those for agent
@@ -228,11 +234,18 @@ use the same coordination after the backend session ID is known.
   envelope. Clear suppression when consumed or when compaction/status terminal
   evidence proves no replay remains, so a failed compaction cannot suppress a
   later genuine prompt.
+- A bridge-owned manual compact is one action. Its optional instruction prompt
+  receives the correlated message ID and is marked as compact guidance so its
+  raw text part cannot emit independently; successful summarize acceptance
+  satisfies the same pending action. The later manual `CompactionPart` is
+  coalesced with that action. A laptop-originated manual compact still emits
+  from its raw compaction part.
 - Remove pending/suppression state when the tracker observes session deletion;
   call its `reset` from the existing OpenCode reconnect/reset path and its
   `dispose` during plugin disposal. Do not add a transcript-sized dedupe set;
-  one envelope is consumed once, and bridge-write coordination emits at most one
-  fact for its accepted action.
+  one envelope is consumed once, the last classified ID rejects immediate
+  duplicate delivery, and correlated bridge-write coordination emits at most
+  one fact for its accepted action.
 - Raw `question.replied` and `question.rejected` events are authoritative and
   cover both Sesori and laptop replies.
 - Raw `permission.replied` is not authoritative: OpenCode emits the same event
@@ -477,8 +490,10 @@ existing merge seams is sufficient.
 |---|---|---|
 | Automatic compaction looks user-authored | Observed backend behavior | Classify raw OpenCode parts before mapping; test auto, continuation, and overflow replay |
 | Auto-approved/cancelled replies look manual | Ordinary reachable flow | Required permission origin plus manual-only plugin fact emission; cancellation methods emit no fact |
-| Duplicate backend events | Ordinary live-event flow | Plugin-local one-shot classification plus persisted monotonic conditional update and existing ordered write tail |
-| Accepted OpenCode write loses SSE pair | Ordinary disconnect window | Coordinate bridge write with raw observation and emit one successful null-time fallback only when raw did not satisfy it |
+| Duplicate OpenCode envelope/part delivery | Ordinary transport duplicate | Retain one most-recent classified message ID per session and consume each pending envelope once |
+| Accepted OpenCode write loses SSE pair | Ordinary disconnect window | Correlate with caller-supplied message ID and emit one successful null-time fallback only when that exact raw message did not satisfy it |
+| Concurrent laptop and Sesori writes | First-class multi-surface flow | Correlate pending bridge action by message ID; unrelated raw facts emit independently and cannot satisfy it |
+| Manual compact with instructions | Ordinary compact command flow | Mark the correlated no-reply instruction as compact guidance and coalesce it with summarize/manual-compaction evidence into one fact |
 | Backend clock rollback | Ordinary clock-adjustment flow | OpenCode uses null occurred-at and bridge monotonic stamping; known times remain only for authoritative plugin sources |
 | REST/SSE replacement race | Ordinary initial/in-flight refresh flow | Existing unseen tracker retains the patch; service maxes it at client replacement seams |
 | Reversed OpenCode message/part order | Theoretical against current upstream order | Accepted; no timer or history lookup. Missing one reorder self-heals on the next genuine interaction |
@@ -534,16 +549,18 @@ series.
 - Add the internal interaction event and required permission origin enum.
 - Update every registered plugin and all app/plugin call sites in lockstep.
 - Add `OpenCodeUserInteractionTracker` and implement pending-envelope
-  classification, bridge-write fallback coordination, lifecycle cleanup, and
-  automatic-compaction exclusions.
+  classification, message-ID-correlated bridge-write fallback, manual-compaction
+  coalescing, lifecycle cleanup, and automatic-compaction exclusions. Compose
+  it under `OpenCodeService` with resolved display attribution.
 - Add `CodexGeneratedContextValidator` plus
   `CodexUserInteractionTracker`, then implement Codex, ACP/Cursor, and Claude
   authoritative emission rules.
 - Add bridge event ID translation and explicit no-public-wire mapping.
 - Test prompt, command, initial turn, manual compaction, manual answer/decision,
   auto approval, cancellation, synthetic continuation, overflow replay, and
-  duplicate handling, backend clock rollback, and disconnect-between-acceptance-
-  and-SSE behavior at the owning boundaries.
+  duplicate handling, concurrent laptop/Sesori writes, instructed compaction,
+  backend clock rollback, and disconnect-between-acceptance-and-SSE behavior at
+  the owning boundaries.
 - No database, released wire, client, or user-visible behavior yet.
 
 **Changed-line target:** 1,050-1,500 lines. If complete production-plugin tests
@@ -653,7 +670,9 @@ Step 2:
   child-generated prompt exclusion, slash/subtask command, manual compaction,
   auto compaction, synthetic continuation, overflow replay, question
   reply/reject, manual versus automatic permission, bridge-write/raw one-fact
-  coordination, lost-SSE fallback, clock rollback, and bounded pending-state cleanup.
+  message-ID-correlated write/raw one-fact coordination, unrelated concurrent
+  laptop writes, immediate duplicate delivery, instructed-compaction
+  coalescing, lost-SSE fallback, clock rollback, and bounded pending-state cleanup.
 - `CodexGeneratedContextValidator` and `CodexUserInteractionTracker` tests: one
   first-lifecycle user-item fact, generated-context exclusion, bounded terminal
   cleanup, ordinary command, explicit manual compact, generic context compaction

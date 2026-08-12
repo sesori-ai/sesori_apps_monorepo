@@ -33,9 +33,10 @@
 - [x] One required manual/automatic permission origin updates all internal
   plugin implementors in lockstep.
 - [x] `OpenCodeUserInteractionTracker` owns raw message/part classifier state
-  before compaction provenance is erased, coordinates one-fact bridge-write
-  fallback, and uses bridge monotonic observation time; the top-level plugin
-  delegates.
+  before compaction provenance is erased, coordinates message-ID-correlated
+  bridge-write fallback under `OpenCodeService`, coalesces manual compact
+  guidance, and uses bridge monotonic observation time; the top-level plugin
+  delegates once.
 - [x] `CodexUserInteractionTracker` owns bounded first-user-item observation and
   shares one `CodexGeneratedContextValidator` with history mapping; ACP/Cursor
   and Claude use their accepted bridge-owned write paths.
@@ -96,12 +97,15 @@
 - [ ] Update OpenCode, Codex, ACP/Cursor, Claude, bridge call sites, and test
   fakes in lockstep.
 - [ ] Add `OpenCodeUserInteractionTracker` with bounded envelope/part classifier
-  bridge-write fallback coordination, and lifecycle cleanup.
+  message-ID-correlated bridge-write fallback coordination, compact coalescing,
+  and lifecycle cleanup under `OpenCodeService`.
 - [ ] Add `CodexGeneratedContextValidator` and bounded
   `CodexUserInteractionTracker`; inject the validator into history mapping.
 - [ ] Prove automatic compaction continuation/overflow replay exclusions.
 - [ ] Prove one fact across ordinary raw delivery, lost-SSE fallback, and backend
   clock rollback.
+- [ ] Prove concurrent laptop/Sesori writes cannot cross-satisfy, instructed
+  compact emits once, and immediate complete-message duplicates are rejected.
 - [ ] Prove manual versus automatic/cancelled reply behavior.
 - [ ] Prove internal event ID/display-root translation and no public wire event.
 - [ ] Run focused plugin/interface/app tests and strict analysis.
@@ -211,6 +215,14 @@
   through initial REST load. The stale tracker-state finding was already fixed
   in `c8aed9ee5`. Against merge base `88059e200`,
   `git diff --numstat $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`
-  reports PLAN `+758/-0` and TRACKER `+216/-0`, totaling `+974/-0` within the
+  reports PLAN `+777/-0` and TRACKER `+228/-0`, totaling `+1,005/-0` within the
   revised 550-1,050 target. The same range passes
   `git diff --check $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`.
+- **2026-08-13 Step 1 second review:** consolidated four OpenCode comments at
+  their shared correlation seam. Upstream prompt and command payloads accept a
+  caller-supplied `messageID`; the service-owned tracker now uses it for exact
+  bridge-write/raw correlation, instructed-compaction coalescing, and bounded
+  immediate-duplicate rejection. Declined a broad unseen-owner rename because
+  those existing classes still own unseen behavior and only reuse their ordered
+  timestamp persistence seam; they do not become owners of the complete session
+  list-state invariant.
