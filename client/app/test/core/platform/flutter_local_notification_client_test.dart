@@ -7,7 +7,7 @@ import "package:sesori_mobile/core/platform/flutter_local_notification_client.da
 import "package:sesori_mobile/core/platform/notification_tap_event.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-class MockFlutterLocalNotificationsPlugin extends Mock implements FlutterLocalNotificationsPlugin {}
+class MockFlutterLocalNotificationsPlugin extends Mock implements FlutterLocalNotificationsPlugin;
 
 void main() {
   late MockFlutterLocalNotificationsPlugin mockPlugin;

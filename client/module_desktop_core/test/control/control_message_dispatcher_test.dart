@@ -8,7 +8,7 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockAuthTokenProvider extends Mock implements AuthTokenProvider {}
+class _MockAuthTokenProvider extends Mock implements AuthTokenProvider;
 
 void main() {
   late ControlChannelServer server;

@@ -5,15 +5,15 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/main.dart";
 
-class MockLocalNotificationClient extends Mock implements LocalNotificationClient {}
+class MockLocalNotificationClient extends Mock implements LocalNotificationClient;
 
-class MockPushMessagingSource extends Mock implements PushMessagingSource {}
+class MockPushMessagingSource extends Mock implements PushMessagingSource;
 
-class MockNotificationRegistrationService extends Mock implements NotificationRegistrationService {}
+class MockNotificationRegistrationService extends Mock implements NotificationRegistrationService;
 
-class MockForegroundNotificationDispatcher extends Mock implements ForegroundNotificationDispatcher {}
+class MockForegroundNotificationDispatcher extends Mock implements ForegroundNotificationDispatcher;
 
-class MockNotificationOpenDispatcher extends Mock implements NotificationOpenDispatcher {}
+class MockNotificationOpenDispatcher extends Mock implements NotificationOpenDispatcher;
 
 void main() {
   test("notification core collaborators start after configureDependencies", () async {

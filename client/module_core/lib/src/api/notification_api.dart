@@ -30,7 +30,7 @@ class NotificationApi {
   }
 
   void _throwIfError<T>(ApiResponse<T> response) {
-    if (response case ErrorResponse<T>(error: final error)) {
+    if (response case ErrorResponse<T>(: final error)) {
       throw error;
     }
   }

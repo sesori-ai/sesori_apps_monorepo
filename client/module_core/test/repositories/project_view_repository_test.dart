@@ -3,7 +3,7 @@ import "package:sesori_dart_core/src/api/project_view_api.dart";
 import "package:sesori_dart_core/src/repositories/project_view_repository.dart";
 import "package:test/test.dart";
 
-class _MockProjectViewApi extends Mock implements ProjectViewApi {}
+class _MockProjectViewApi extends Mock implements ProjectViewApi;
 
 void main() {
   test("ProjectViewRepository preserves the nullable declaration", () async {

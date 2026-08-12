@@ -6,7 +6,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/external_link.dart";
 
-class _MockUrlLauncher extends Mock implements UrlLauncher {}
+class _MockUrlLauncher extends Mock implements UrlLauncher;
 
 class _UriLeakingException implements Exception {
   final Uri uri;

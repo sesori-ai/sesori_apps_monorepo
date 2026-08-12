@@ -6,7 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockNotificationPreferencesService extends Mock implements NotificationPreferencesService {}
+class MockNotificationPreferencesService extends Mock implements NotificationPreferencesService;
 
 void main() {
   late MockNotificationPreferencesService mockService;

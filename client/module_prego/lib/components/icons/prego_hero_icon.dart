@@ -21,7 +21,7 @@ enum PregoHeroIconType {
   icon10("hero_icon_10"),
   ;
 
-  const PregoHeroIconType(this.id);
+  PregoHeroIconType(this.id);
 
   /// Stable string identifier for database persistence.
   ///

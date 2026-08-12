@@ -15,11 +15,11 @@ import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockNotificationCanceller extends Mock implements NotificationCanceller {}
+class MockNotificationCanceller extends Mock implements NotificationCanceller;
 
-class MockPermissionRepository extends Mock implements PermissionRepository {}
+class MockPermissionRepository extends Mock implements PermissionRepository;
 
-class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService {}
+class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService;
 
 const _sessionId = "session-1";
 

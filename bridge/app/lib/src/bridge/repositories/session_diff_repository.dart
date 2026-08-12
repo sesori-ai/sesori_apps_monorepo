@@ -1,7 +1,7 @@
 import "../api/git_cli_api.dart";
 import "mappers/git_diff_output_mapper.dart";
 
-sealed class SessionDiffQueryResult {}
+sealed class SessionDiffQueryResult;
 
 class SessionDiffQuerySuccess extends SessionDiffQueryResult {
   final String baseRevision;
@@ -15,9 +15,9 @@ class SessionDiffQuerySuccess extends SessionDiffQueryResult {
   });
 }
 
-class SessionDiffBaseUnreachable extends SessionDiffQueryResult {}
+class SessionDiffBaseUnreachable extends SessionDiffQueryResult;
 
-class SessionDiffNoCommonAncestor extends SessionDiffQueryResult {}
+class SessionDiffNoCommonAncestor extends SessionDiffQueryResult;
 
 class SessionDiffQueryFailure extends SessionDiffQueryResult {
   final String message;
@@ -27,7 +27,7 @@ class SessionDiffQueryFailure extends SessionDiffQueryResult {
 
 enum SessionDiffComparisonMode { exactRevision, mergeBase }
 
-sealed class SessionDiffRevisionFileReadResult {}
+sealed class SessionDiffRevisionFileReadResult;
 
 class SessionDiffRevisionFileContent extends SessionDiffRevisionFileReadResult {
   final String content;
@@ -35,11 +35,11 @@ class SessionDiffRevisionFileContent extends SessionDiffRevisionFileReadResult {
   SessionDiffRevisionFileContent({required this.content});
 }
 
-class SessionDiffRevisionFileBinary extends SessionDiffRevisionFileReadResult {}
+class SessionDiffRevisionFileBinary extends SessionDiffRevisionFileReadResult;
 
-class SessionDiffRevisionFileTooLarge extends SessionDiffRevisionFileReadResult {}
+class SessionDiffRevisionFileTooLarge extends SessionDiffRevisionFileReadResult;
 
-class SessionDiffRevisionFileReadFailure extends SessionDiffRevisionFileReadResult {}
+class SessionDiffRevisionFileReadFailure extends SessionDiffRevisionFileReadResult;
 
 class SessionDiffRepository {
   final GitCliApi _gitCliApi;

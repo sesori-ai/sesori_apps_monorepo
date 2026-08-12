@@ -96,19 +96,19 @@ class StubChatInputModeCubit extends Cubit<ChatInputMode> implements ChatInputMo
   Future<void> select({required ChatInputMode mode}) async => emit(mode);
 }
 
-class MockProjectApi extends Mock implements ProjectApi {}
+class MockProjectApi extends Mock implements ProjectApi;
 
-class MockProjectRepository extends Mock implements ProjectRepository {}
+class MockProjectRepository extends Mock implements ProjectRepository;
 
-class MockBridgeRepository extends Mock implements BridgeRepository {}
+class MockBridgeRepository extends Mock implements BridgeRepository;
 
-class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService {}
+class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService;
 
-class MockSessionApi extends Mock implements SessionApi {}
+class MockSessionApi extends Mock implements SessionApi;
 
-class MockSessionService extends Mock implements SessionService {}
+class MockSessionService extends Mock implements SessionService;
 
-class MockSessionRepository extends Mock implements SessionRepository {}
+class MockSessionRepository extends Mock implements SessionRepository;
 
 class MockConnectionService extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
@@ -119,41 +119,41 @@ class MockConnectionService extends Mock implements ConnectionService {
   void emitDataMayBeStale() => _dataMayBeStale.add(null);
 }
 
-class MockOAuthFlowProvider extends Mock implements OAuthFlowProvider {}
+class MockOAuthFlowProvider extends Mock implements OAuthFlowProvider;
 
-class MockAuthSession extends Mock implements AuthSession {}
+class MockAuthSession extends Mock implements AuthSession;
 
-class MockAuthTokenProvider extends Mock implements AuthTokenProvider {}
+class MockAuthTokenProvider extends Mock implements AuthTokenProvider;
 
-class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpApiClient {}
+class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpApiClient;
 
-class MockRelayHttpApiClient extends Mock implements RelayHttpApiClient {}
+class MockRelayHttpApiClient extends Mock implements RelayHttpApiClient;
 
-class MockHttpApiClient extends Mock implements HttpApiClient {}
+class MockHttpApiClient extends Mock implements HttpApiClient;
 
-class MockRelayCryptoService extends Mock implements RelayCryptoService {}
+class MockRelayCryptoService extends Mock implements RelayCryptoService;
 
-class MockRoomKeyStorage extends Mock implements RoomKeyStorage {}
+class MockRoomKeyStorage extends Mock implements RoomKeyStorage;
 
-class MockRelayClient extends Mock implements RelayClient {}
+class MockRelayClient extends Mock implements RelayClient;
 
-class MockVoiceApi extends Mock implements VoiceApi {}
+class MockVoiceApi extends Mock implements VoiceApi;
 
-class MockAudioRecorder extends Mock implements AudioRecorder {}
+class MockAudioRecorder extends Mock implements AudioRecorder;
 
-class MockRecorderPrewarmClient extends Mock implements RecorderPrewarmClient {}
+class MockRecorderPrewarmClient extends Mock implements RecorderPrewarmClient;
 
-class MockRecordingFileProvider extends Mock implements RecordingFileProvider {}
+class MockRecordingFileProvider extends Mock implements RecordingFileProvider;
 
-class MockWakeLockService extends Mock implements WakeLockService {}
+class MockWakeLockService extends Mock implements WakeLockService;
 
-class MockAudioFormatConfig extends Mock implements AudioFormatConfig {}
+class MockAudioFormatConfig extends Mock implements AudioFormatConfig;
 
-class MockDeepLinkSource extends Mock implements DeepLinkSource {}
+class MockDeepLinkSource extends Mock implements DeepLinkSource;
 
-class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
+class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage;
 
-class MockSecureStorage extends Mock implements SecureStorage {}
+class MockSecureStorage extends Mock implements SecureStorage;
 
 class MockLifecycleSource extends Mock implements LifecycleSource {
   final BehaviorSubject<LifecycleState> _state = BehaviorSubject.seeded(LifecycleState.resumed);
@@ -164,11 +164,11 @@ class MockLifecycleSource extends Mock implements LifecycleSource {
   void emitState(LifecycleState state) => _state.add(state);
 }
 
-class MockNotificationCanceller extends Mock implements NotificationCanceller {}
+class MockNotificationCanceller extends Mock implements NotificationCanceller;
 
-class MockUrlLauncher extends Mock implements UrlLauncher {}
+class MockUrlLauncher extends Mock implements UrlLauncher;
 
-class MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+class MockProductAnalyticsService extends Mock implements ProductAnalyticsService;
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
   final states = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
@@ -286,7 +286,7 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
   void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
 }
 
-class MockSessionViewingService extends Mock implements SessionViewingService {}
+class MockSessionViewingService extends Mock implements SessionViewingService;
 
 /// A [MockSessionViewingService] with its void methods pre-stubbed.
 MockSessionViewingService stubbedSessionViewingService() {
@@ -296,7 +296,7 @@ MockSessionViewingService stubbedSessionViewingService() {
   return mock;
 }
 
-class MockProjectViewingService extends Mock implements ProjectViewingService {}
+class MockProjectViewingService extends Mock implements ProjectViewingService;
 
 MockProjectViewingService stubbedProjectViewingService() {
   final mock = MockProjectViewingService();
@@ -385,17 +385,17 @@ class MockSseEventTracker extends Mock implements SseEventTracker {
   }
 }
 
-class MockFailureReporter extends Mock implements FailureReporter {}
+class MockFailureReporter extends Mock implements FailureReporter;
 
-class MockFirebaseCrashlytics extends Mock implements FirebaseCrashlytics {}
+class MockFirebaseCrashlytics extends Mock implements FirebaseCrashlytics;
 
-class MockFirebaseAnalytics extends Mock implements FirebaseAnalytics {}
+class MockFirebaseAnalytics extends Mock implements FirebaseAnalytics;
 
 // ---------------------------------------------------------------------------
 // Fake classes — for registerFallbackValue
 // ---------------------------------------------------------------------------
 
-class FakeUri extends Fake implements Uri {}
+class FakeUri extends Fake implements Uri;
 
 void delegateSessionRepositoryToService({
   required MockSessionRepository repository,

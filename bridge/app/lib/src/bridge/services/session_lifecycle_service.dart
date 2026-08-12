@@ -43,7 +43,7 @@ class ArchiveStatusUpdate {
   ArchiveStatusUpdate({required this.session, required this.changed, required this.projectId});
 }
 
-class SessionNotFoundException implements Exception {}
+class SessionNotFoundException implements Exception;
 
 class SessionLifecycleService {
   final WorktreeService _worktreeService;

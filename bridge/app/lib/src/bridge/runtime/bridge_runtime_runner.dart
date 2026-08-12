@@ -164,7 +164,7 @@ enum SupervisedExitCode {
   /// clean stop even when the shutdown itself completes fine.
   controlChannelLost(1);
 
-  const SupervisedExitCode(this.code);
+  SupervisedExitCode(this.code);
 
   /// The process exit code reported to the GUI supervisor.
   final int code;

@@ -14,9 +14,9 @@ import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockSessionDetailCubit extends Mock implements SessionDetailCubit {}
+class _MockSessionDetailCubit extends Mock implements SessionDetailCubit;
 
-class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService;
 
 class _FakeLifecycleSource implements LifecycleSource {
   final BehaviorSubject<LifecycleState> states;

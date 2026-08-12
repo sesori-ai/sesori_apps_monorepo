@@ -4,7 +4,7 @@ enum PiNotificationType {
   warning("warning"),
   error("error");
 
-  const PiNotificationType(this.wireValue);
+  PiNotificationType(this.wireValue);
 
   final String wireValue;
 

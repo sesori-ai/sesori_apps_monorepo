@@ -14,11 +14,11 @@ import "package:sesori_shared/sesori_shared.dart" show AuthInitResponse, AuthPro
 
 import "../../helpers/test_helpers.dart";
 
-class MockUrlLauncher extends Mock implements UrlLauncher {}
+class MockUrlLauncher extends Mock implements UrlLauncher;
 
-class MockLifecycleSource extends Mock implements LifecycleSource {}
+class MockLifecycleSource extends Mock implements LifecycleSource;
 
-class MockInstallationAnalyticsService extends Mock implements InstallationAnalyticsService {}
+class MockInstallationAnalyticsService extends Mock implements InstallationAnalyticsService;
 
 void main() {
   setUpAll(() {

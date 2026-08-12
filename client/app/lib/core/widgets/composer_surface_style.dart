@@ -8,7 +8,7 @@ enum ComposerSurfaceLayout {
   compact(surfaceStyle: PregoComposerSurfaceStyle.emphasized),
   typing(surfaceStyle: PregoComposerSurfaceStyle.emphasized);
 
-  const ComposerSurfaceLayout({required this.surfaceStyle});
+  ComposerSurfaceLayout({required this.surfaceStyle});
 
   final PregoComposerSurfaceStyle surfaceStyle;
 }

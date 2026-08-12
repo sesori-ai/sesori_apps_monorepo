@@ -9,7 +9,7 @@ enum LegalDocument {
   terms("/terms"),
   privacy("/privacy");
 
-  const LegalDocument(this.path);
+  LegalDocument(this.path);
 
   /// Path of the document's markdown endpoint, relative to [authBaseUrl].
   final String path;
