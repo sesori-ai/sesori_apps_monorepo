@@ -148,6 +148,7 @@ void main() {
       PluginAuthenticationProgress.completed(),
       PluginAuthenticationProgress.failed(message: "Sanitized failure"),
       PluginAuthenticationProgress.cancelled(),
+      PluginAuthenticationProgress.unknown(),
     ];
 
     expect(
@@ -168,6 +169,7 @@ void main() {
       "message": "Sanitized failure",
     });
     expect(progress[2].toJson(), {"type": "cancelled"});
+    expect(progress[3].toJson(), {"type": "unknown"});
   });
 
   test("authentication variants require their exact fields", () {
@@ -199,8 +201,8 @@ void main() {
       throwsA(anything),
     );
     expect(
-      () => PluginAuthenticationProgress.fromJson({"type": "future"}),
-      throwsA(anything),
+      PluginAuthenticationProgress.fromJson({"type": "future"}),
+      const PluginAuthenticationProgress.unknown(),
     );
   });
 

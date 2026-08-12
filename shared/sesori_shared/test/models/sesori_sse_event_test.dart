@@ -41,6 +41,22 @@ void main() {
     expect(events.first, isNot(isA<SesoriSessionEvent>()));
   });
 
+  test('future plugin authentication progress fails closed to unknown', () {
+    final event = SesoriSseEvent.fromJson({
+      'type': 'plugin.authentication.progress',
+      'pluginId': 'codex',
+      'progress': {'type': 'future'},
+    });
+
+    expect(
+      event,
+      const SesoriSseEvent.pluginAuthenticationProgress(
+        pluginId: 'codex',
+        progress: PluginAuthenticationProgress.unknown(),
+      ),
+    );
+  });
+
   group('plugin install progress', () {
     test('round-trips a downloading phase with percent', () {
       const event = SesoriSseEvent.pluginInstallProgress(

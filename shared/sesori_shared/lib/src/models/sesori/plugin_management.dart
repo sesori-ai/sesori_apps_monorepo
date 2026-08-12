@@ -99,7 +99,13 @@ sealed class PluginAuthenticationChallengeResponse with _$PluginAuthenticationCh
   }
 }
 
-@Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: true,
+  copyWith: false,
+)
 sealed class PluginAuthenticationProgress with _$PluginAuthenticationProgress {
   @FreezedUnionValue("completed")
   const factory PluginAuthenticationProgress.completed() = PluginAuthenticationCompletedProgress;
@@ -111,6 +117,8 @@ sealed class PluginAuthenticationProgress with _$PluginAuthenticationProgress {
 
   @FreezedUnionValue("cancelled")
   const factory PluginAuthenticationProgress.cancelled() = PluginAuthenticationCancelledProgress;
+
+  const factory PluginAuthenticationProgress.unknown() = PluginAuthenticationUnknownProgress;
 
   factory PluginAuthenticationProgress.fromJson(Map<String, dynamic> json) =>
       _$PluginAuthenticationProgressFromJson(json);

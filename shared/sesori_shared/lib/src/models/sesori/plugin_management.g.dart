@@ -143,6 +143,14 @@ Map<String, dynamic> _$PluginAuthenticationCancelledProgressToJson(
   PluginAuthenticationCancelledProgress instance,
 ) => <String, dynamic>{'type': instance.$type};
 
+PluginAuthenticationUnknownProgress
+_$PluginAuthenticationUnknownProgressFromJson(Map json) =>
+    PluginAuthenticationUnknownProgress($type: json['type'] as String?);
+
+Map<String, dynamic> _$PluginAuthenticationUnknownProgressToJson(
+  PluginAuthenticationUnknownProgress instance,
+) => <String, dynamic>{'type': instance.$type};
+
 _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
     _PluginManagementResponse(
       snapshotToken: json['snapshotToken'] as String?,

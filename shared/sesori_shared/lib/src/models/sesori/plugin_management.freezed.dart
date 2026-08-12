@@ -289,11 +289,8 @@ PluginAuthenticationProgress _$PluginAuthenticationProgressFromJson(
           );
         
           default:
-            throw CheckedFromJsonException(
-  json,
-  'type',
-  'PluginAuthenticationProgress',
-  'Invalid union type "${json['type']}"!'
+            return PluginAuthenticationUnknownProgress.fromJson(
+  json
 );
         }
       
@@ -438,6 +435,45 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
   return 'PluginAuthenticationProgress.cancelled()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationUnknownProgress implements PluginAuthenticationProgress {
+  const PluginAuthenticationUnknownProgress({final  String? $type}): $type = $type ?? 'unknown';
+  factory PluginAuthenticationUnknownProgress.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationUnknownProgressFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationUnknownProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationUnknownProgress);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginAuthenticationProgress.unknown()';
 }
 
 
