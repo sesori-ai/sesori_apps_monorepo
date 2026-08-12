@@ -22,6 +22,8 @@ sealed class RuntimeAsset {
   final String sha256;
 }
 
+typedef RuntimeAssetResolver = Future<RuntimeAsset?> Function({required PlatformTarget target});
+
 /// A runtime release artifact distributed inside an archive.
 ///
 /// [archiveBinaryName] is distinct from [RuntimeManifest.binaryFileName] (the

@@ -1,11 +1,11 @@
 ---
 name: update-backend-runtimes
-description: Update the targeted OpenCode, Codex, and Cursor CLI runtime versions used by the Sesori bridge. Use when asked to update, bump, or refresh the coding backend runtimes, their minimum versions, or their release checksums.
+description: Update the targeted OpenCode, Codex, Cursor, and OMP CLI runtime versions used by the Sesori bridge. Use when asked to update, bump, or refresh the coding backend runtimes, their minimum versions, or their release checksums.
 ---
 
 # Update Backend Runtimes
 
-Update the bridge's OpenCode, Codex, and Cursor CLI targets to the latest stable releases. This is separate from the general Dart/Flutter dependency update workflow.
+Update the bridge's OpenCode, Codex, Cursor, and OMP CLI targets to the latest stable releases. This is separate from the general Dart/Flutter dependency update workflow.
 
 ## Scope
 
@@ -25,6 +25,11 @@ Update the bridge's OpenCode, Codex, and Cursor CLI targets to the latest stable
   `bridge/sesori_plugin_cursor/test/runtime/cursor_runtime_manifest_test.dart`
 - Cursor availability tests:
   `bridge/sesori_plugin_cursor/test/cursor_plugin_descriptor_availability_test.dart`
+- OMP managed runtime, PATH minimum, direct assets, and per-platform checksums:
+  `bridge/sesori_plugin_omp/lib/src/runtime/omp_runtime_manifest.dart`
+- OMP runtime and lifecycle tests:
+  `bridge/sesori_plugin_omp/test/omp_runtime_manifest_test.dart`
+  `bridge/sesori_plugin_omp/test/omp_plugin_descriptor_test.dart`
 
 Read `bridge/AGENTS.md` before editing. Never hand-edit generated files.
 
@@ -33,9 +38,11 @@ Read `bridge/AGENTS.md` before editing. Never hand-edit generated files.
 - Update OpenCode's `bundledVersion` to the latest stable `anomalyco/opencode` GitHub release.
 - Update Codex's `bundledVersion` to the latest stable `openai/codex` GitHub release.
 - Update Cursor's bundled runtime to the current build advertised by the official installer at `https://cursor.com/install`.
+- Update OMP's bundled runtime to the latest stable `can1357/oh-my-pi` GitHub release only after its ACP v1 probe passes.
 - Do not raise OpenCode's `minPathVersion` unless the user gives a specific minimum or bridge code requires a newer API. If it changes, keep `opencode_v1_surface.json` metadata aligned.
 - Do not raise Codex's `minPathVersion` unless bridge code requires a newer app-server capability or the user explicitly requests it.
 - Do not raise Cursor's `minPathVersion` unless bridge behavior requires a newer capability or the user explicitly requests it.
+- Do not raise OMP's `minPathVersion` unless bridge behavior requires a newer ACP capability or the user explicitly requests it.
 - Ignore prereleases. Confirm GitHub's `latest` release and the corresponding npm package version agree for OpenCode and Codex when npm is available.
 
 ## Discover Releases
@@ -112,6 +119,16 @@ Cursor ships a `dist-package/` directory whose `cursor-agent` entry binary loads
 
 Because the digests are self-computed, a silently re-published asset fails checksum verification at install time with a clear message. That is intended: re-pin rather than relaxing verification.
 
+### OMP
+
+```bash
+gh api repos/can1357/oh-my-pi/releases/latest --jq '{tag: .tag_name, prerelease: .prerelease, assets: [.assets[] | select(.name == "omp-darwin-arm64" or .name == "omp-darwin-x64" or .name == "omp-linux-arm64" or .name == "omp-linux-x64" or .name == "omp-linux-musl-arm64" or .name == "omp-linux-musl-x64" or .name == "omp-windows-x64.exe" or .name == "SHA256SUMS.txt") | {name, digest}]}'
+```
+
+Require exactly seven bare executable assets plus `SHA256SUMS.txt`: macOS arm64/x64, Linux glibc arm64/x64, Linux musl arm64/x64, and Windows x64. OMP publishes no Windows arm64 executable. Confirm each executable digest against both GitHub's `sha256:` digest and `SHA256SUMS.txt`; never model these raw files as archives.
+
+Before changing the pin, run the official candidate in an isolated temporary cwd/profile and verify `omp/<version>`, ACP v1 `initialize`, `authenticate(agent)`, `session/list`, `session/new`, `session/load`, and persisted cleanup. Preserve normal OMP environment/profile and approval policy. Stop if any protocol check regresses.
+
 ## Edit
 
 1. Update OpenCode's bundled version and all six matching SHA-256 values.
@@ -119,9 +136,10 @@ Because the digests are self-computed, a silently re-published asset fails check
 3. Update Codex's bundled version, release-version documentation, and all six matching SHA-256 values.
 4. Preserve the Codex minimum unless a concrete requirement says otherwise.
 5. Update `CursorRuntimeManifest`'s `_bundledVersion` to the official current build and refresh all four computed SHA-256 values. Preserve its minimum unless a concrete requirement says otherwise.
-6. Update hard-coded version URLs, version assertions, and recent-version fixtures in the three manifest/availability tests.
-7. Search the affected plugin packages for the replaced target versions. Update only references that describe the current pin; preserve historical comments and protocol-shape observations tied to older versions.
-8. Run `dart format` on changed Dart files.
+6. Update `OmpRuntimeManifest` only after the isolated ACP probe passes; refresh all seven SHA-256 values and preserve glibc/musl and unsupported Windows arm64 mapping.
+7. Update hard-coded version URLs, version assertions, and recent-version fixtures in all manifest/availability tests.
+8. Search the affected plugin packages for the replaced target versions. Update only references that describe the current pin; preserve historical comments and protocol-shape observations tied to older versions.
+9. Run `dart format` on changed Dart files.
 
 Use `apply_patch` for manual edits.
 
@@ -133,6 +151,7 @@ Run the plugin suites independently; they may run in parallel:
 (cd bridge/sesori_plugin_opencode && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_codex && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_cursor && dart test && dart analyze --fatal-infos)
+(cd bridge/sesori_plugin_omp && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_runtime && dart test && dart analyze --fatal-infos)
 git diff --check
 ```
@@ -153,6 +172,7 @@ Before finishing, report:
 - whether OpenCode or Codex compatibility floors changed and why
 - whether all twelve GitHub asset digests were refreshed
 - Cursor's installer-advertised build, and whether its four managed-runtime digests were recomputed
+- OMP's release, seven verified bare-executable digests, and ACP probe result
 - test and analyzer results
 
 Do not commit, push, or create a PR unless the user asks.
