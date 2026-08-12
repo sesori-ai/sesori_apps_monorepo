@@ -302,6 +302,50 @@ void main() {
     expect(requests, 5);
   });
 
+  test("coalescing separates metadata that affects validation and output", () async {
+    final response = Completer<ApiResponse<SessionAttachmentResponse>>();
+    var requests = 0;
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: any(named: "rendition"),
+      ),
+    ).thenAnswer((_) {
+      requests++;
+      return response.future;
+    });
+
+    final first = repository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    final differentFilename = repository.load(
+      sessionId: "session-1",
+      attachment: _stored.copyWith(filename: "other.png"),
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    final differentLength = repository.load(
+      sessionId: "session-1",
+      attachment: _stored.copyWith(byteLength: 9),
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    final differentMime = repository.load(
+      sessionId: "session-1",
+      attachment: _stored.copyWith(mime: "image/gif"),
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+
+    expect(requests, 4);
+    response.complete(
+      ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+    await Future.wait([first, differentFilename, differentLength, differentMime]);
+  });
+
   test("validates stored MIME, base64, byte length, bounds, and raster signature", () async {
     final responses = <SessionAttachmentResponse>[
       SessionAttachmentResponse(mime: "image/jpeg", base64: base64Encode(_pngBytes), byteLength: 8),

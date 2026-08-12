@@ -105,6 +105,56 @@ void main() {
     expect(failed.stackTrace, same(stackTrace));
   });
 
+  test("load intents do not duplicate in-flight preview or an already loaded original", () async {
+    final preview = Completer<MessageImageLoadResult>();
+    var previewRequests = 0;
+    var originalRequests = 0;
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer((_) {
+      previewRequests++;
+      return preview.future;
+    });
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer((_) async {
+      originalRequests++;
+      return MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(const [2]),
+        mime: "image/png",
+        actionFilename: "image.png",
+        originalUri: null,
+      );
+    });
+    final cubit = MessageImageCubit(repository: repository, sessionId: "session-1", attachment: _stored);
+    addTearDown(cubit.close);
+
+    await cubit.loadPreview();
+    expect(previewRequests, 1);
+    preview.complete(
+      MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(const [1]),
+        mime: "image/png",
+        actionFilename: "image.png",
+        originalUri: null,
+      ),
+    );
+    await cubit.stream.firstWhere((state) => state.preview is MessageImagePreviewLoaded);
+
+    await cubit.loadOriginal();
+    await cubit.retryOriginal();
+    expect(originalRequests, 1);
+    expect(cubit.state.original, isA<MessageImageOriginalLoaded>());
+  });
+
   test("retry intents reload independent state machines", () async {
     var previewRequests = 0;
     var originalRequests = 0;

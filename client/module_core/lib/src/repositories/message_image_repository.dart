@@ -15,6 +15,9 @@ typedef _StoredRequestScope = ({
   String sessionId,
   String attachmentId,
   SessionAttachmentRendition rendition,
+  String mime,
+  String? filename,
+  int byteLength,
 });
 
 Uint8List? _tryDecodeBase64Image(String base64Data) {
@@ -250,6 +253,9 @@ class MessageImageRepository {
       sessionId: sessionId,
       attachmentId: attachment.attachmentId,
       rendition: rendition,
+      mime: attachment.mime,
+      filename: attachment.filename,
+      byteLength: attachment.byteLength,
     );
     final active = _activeStoredLoads[scope];
     if (active != null) return active;

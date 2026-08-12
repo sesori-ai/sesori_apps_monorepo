@@ -35,7 +35,7 @@ class MessageImageCubit extends Cubit<MessageImageState> {
   }
 
   Future<void> loadPreview() async {
-    if (!_repository.canLoad(attachment: _attachment)) return;
+    if (!_repository.canLoad(attachment: _attachment) || state.preview is MessageImagePreviewLoading) return;
     emit(MessageImageState(preview: const MessageImagePreviewLoading(), original: state.original));
     await _loadPreview();
   }
@@ -43,7 +43,11 @@ class MessageImageCubit extends Cubit<MessageImageState> {
   Future<void> retryPreview() => loadPreview();
 
   Future<void> loadOriginal() async {
-    if (!_repository.canLoadOriginal(attachment: _attachment) || state.original is MessageImageOriginalLoading) return;
+    if (!_repository.canLoadOriginal(attachment: _attachment) ||
+        state.original is MessageImageOriginalLoading ||
+        state.original is MessageImageOriginalLoaded) {
+      return;
+    }
     final generation = ++_originalGeneration;
     emit(MessageImageState(preview: state.preview, original: const MessageImageOriginalLoading()));
     final result = await _repository.load(

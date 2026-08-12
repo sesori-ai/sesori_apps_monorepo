@@ -608,7 +608,10 @@ baseline is intentionally raised in a separate task.
 - Merge in numeric order. A successor may target its immediate predecessor, but
   each PR must remain independently buildable and safe at its own base.
 - Target no more than 1,500 changed lines per PR, including generated output and
-  tests. Update this plan before opening a step that cannot fit coherently.
+  tests. Update this plan before opening a step that cannot fit coherently. Step
+  7 is the documented exception: 1,906 changed lines keep the typed transport,
+  account/bridge/session scope, sensitive-response handling, generated DI, and
+  security/cross-layer regression coverage reviewable as one coherent seam.
 - Generated Freezed/JSON/DI files change only through their generators.
 - The capability remains disabled in production client requests until Step 10,
   after bridge fetch, compatibility, cache, presentation, and viewer behavior

@@ -24,7 +24,7 @@ class FilePartWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      key: ValueKey(attachment),
+      key: ValueKey((sessionId, attachment)),
       create: (_) => MessageImageCubit(
         repository: getIt<MessageImageRepository>(),
         sessionId: sessionId,
