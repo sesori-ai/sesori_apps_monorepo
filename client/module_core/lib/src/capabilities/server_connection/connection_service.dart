@@ -354,13 +354,14 @@ class ConnectionService {
         health = _lastHealth ?? defaultHealth;
       } else {
         final response = await relayClient.sendRequest(
-          RelayRequest(
+          request: RelayRequest(
             id: _nextRelayRequestId(),
             method: "GET",
             path: ApiPaths.health,
             headers: {},
             body: null,
           ),
+          timeout: const Duration(seconds: 30),
         );
 
         if (response.status < 200 || response.status >= 300 || response.body == null) {

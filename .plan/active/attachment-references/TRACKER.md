@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 6 PR open
-- **Current step:** 6/11
-- **Implementation base:** `origin/main` at `ec479cef`
+- **Series state:** Step 7 PR open
+- **Current step:** 7/11
+- **Implementation base:** `origin/main` at `3ae9dd43`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854)
-- **Next action:** Finish Step 6 review and CI, then merge and resume Step 7
+- **Current PR:** [#864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864)
+- **Next action:** Monitor Step 7 while implementing Step 8 locally
 
 ## Plan Review
 
@@ -36,8 +36,8 @@
 | [x] | 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) merged |
 | [x] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | [PR #843](https://github.com/sesori-ai/sesori_apps_monorepo/pull/843) merged |
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
-| [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) open |
-| [ ] | 7/11 | `⚙️ [attachment-references] feat(client): load stored image renditions [step 7/11]` | 850-1,350 | Pending |
+| [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
+| [ ] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) open |
 | [ ] | 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Pending |
 | [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
 | [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
@@ -157,6 +157,26 @@
   lines), below the 900-1,450 estimate; `git diff --check` passes. The initial
   implementation was committed as `29235b47`, pushed, and opened as
   [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854).
+  CI passed 16/16 and the PR squash-merged as `abac4e99`.
+- Step 7 (local): Added typed thumbnail/original attachment requests with a
+  two-minute relay timeout, source-free sensitive response failures, scoped
+  in-flight coalescing, MIME/base64/size/signature validation, and independent
+  preview/original Cubit state. Stored requests use account, bridge,
+  message-owned session, attachment, and rendition identity; both history and
+  SSE delivery remain inline. Module-core fatal analysis and all 1,089 tests
+  pass; mobile fatal analysis and 64 focused transport/session-detail tests
+  pass; desktop fatal analysis passes. Architecture implementation review
+  approved after fixes for message-owned session authority, transcoded
+  thumbnail MIME, non-success body redaction, and the generic timeout seam.
+  Targeted DI generation produced the correct registration but the generator
+  command exits non-zero on unrelated pre-existing product-analytics enum
+  parsing errors. Against `origin/main` at `3ae9dd43`, the current diff has
+  1,544 additions and 362 deletions across 30 files (1,906 changed lines),
+  within the revised 1,500-2,000 target; `git diff --check` passes. Actual
+  cross-layer identity, transport, state, and security work raised Step 7 from
+  moderate to complex.
+  Committed as `f8c5a3b5`, pushed, and opened as
+  [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864).
 
 ## Findings And Plan Deltas
 

@@ -608,7 +608,10 @@ baseline is intentionally raised in a separate task.
 - Merge in numeric order. A successor may target its immediate predecessor, but
   each PR must remain independently buildable and safe at its own base.
 - Target no more than 1,500 changed lines per PR, including generated output and
-  tests. Update this plan before opening a step that cannot fit coherently.
+  tests. Update this plan before opening a step that cannot fit coherently. Step
+  7 is the documented exception: 1,906 changed lines keep the typed transport,
+  account/bridge/session scope, sensitive-response handling, generated DI, and
+  security/cross-layer regression coverage reviewable as one coherent seam.
 - Generated Freezed/JSON/DI files change only through their generators.
 - The capability remains disabled in production client requests until Step 10,
   after bridge fetch, compatibility, cache, presentation, and viewer behavior
@@ -629,7 +632,7 @@ baseline is intentionally raised in a separate task.
 | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Capability-aware active/archive projection and legacy budget preservation. |
 | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Awaited materialization, dual event shapes, subscriber/orphan delivery mode, SSE memory/compatibility coverage. |
 | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | OpenCode, Codex, ACP, Cursor, and Claude output limits move to 20 MB each/50 MB aggregate while legacy projection stays 5 MiB. |
-| 7/11 | `⚙️ [attachment-references] feat(client): load stored image renditions [step 7/11]` | 850-1,350 | Typed API/repository/state support, validation, timeout, request coalescing, but delivery mode remains inline. |
+| 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | Typed API/repository/state support, validation, timeout, request coalescing, but delivery mode remains inline. |
 | 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Platform cache boundary/adapter, scoped atomic storage/pruning/cleanup, Cubit integration, tests. |
 | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Square/grid/overlay/loading/error presentation for existing and reference-capable attachment widgets; capability remains disabled. |
 | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Thumbnail-first viewer, original retry/actions, enable history/SSE reference mode, end-to-end compatibility tests. |

@@ -457,17 +457,16 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
             // Full-row control: drop the package's bubble/alignment/
             // gesture wrapper and render our cards bare, exactly as the
             // previous ListView did.
-            chatMessageBuilder:
-                (
-                  context,
-                  message,
-                  index,
-                  animation,
-                  child, {
-                  bool? isRemoved,
-                  required bool isSentByMe,
-                  chat_core.MessageGroupStatus? groupStatus,
-                }) => child,
+            chatMessageBuilder: (
+              context,
+              message,
+              index,
+              animation,
+              child, {
+              bool? isRemoved,
+              required bool isSentByMe,
+              chat_core.MessageGroupStatus? groupStatus,
+            }) => child,
             customMessageBuilder:
                 (
                   context,

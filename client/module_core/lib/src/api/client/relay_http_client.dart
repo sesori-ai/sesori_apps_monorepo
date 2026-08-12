@@ -12,6 +12,9 @@ import "../../logging/logging.dart";
 
 @lazySingleton
 class RelayHttpApiClient {
+  static const Duration _defaultRequestTimeout = Duration(seconds: 30);
+  static const String _sensitiveParsingErrorMarker = "Sensitive response omitted";
+
   final ConnectionService _connectionService;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
@@ -36,6 +39,8 @@ class RelayHttpApiClient {
           fromJson: fromJson,
           queryParameters: queryParameters,
           extraHeaders: headers,
+          timeout: _defaultRequestTimeout,
+          sensitiveResponse: false,
         ),
       );
     }
@@ -63,6 +68,35 @@ class RelayHttpApiClient {
           queryParameters: queryParameters,
           body: body,
           extraHeaders: headers,
+          timeout: _defaultRequestTimeout,
+          sensitiveResponse: false,
+        ),
+      );
+    }
+    return _relayDisconnectedResponse();
+  }
+
+  Future<ApiResponse<T>> postWithTimeout<T>(
+    String path, {
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
+    // ignore: no_slop_linter/prefer_specific_type
+    required Object body,
+    required Duration timeout,
+  }) async {
+    final relayClient = _connectionService.relayClient;
+    if (relayClient != null && relayClient.isConnected) {
+      return _mapAuthErrors(
+        await _sendViaRelay(
+          relayClient: relayClient,
+          method: HttpMethod.post,
+          path: path,
+          fromJson: fromJson,
+          queryParameters: null,
+          body: body,
+          extraHeaders: null,
+          timeout: timeout,
+          sensitiveResponse: true,
         ),
       );
     }
@@ -90,6 +124,8 @@ class RelayHttpApiClient {
           queryParameters: queryParameters,
           body: body,
           extraHeaders: headers,
+          timeout: _defaultRequestTimeout,
+          sensitiveResponse: false,
         ),
       );
     }
@@ -117,6 +153,8 @@ class RelayHttpApiClient {
           queryParameters: queryParameters,
           body: body,
           extraHeaders: headers,
+          timeout: _defaultRequestTimeout,
+          sensitiveResponse: false,
         ),
       );
     }
@@ -141,6 +179,8 @@ class RelayHttpApiClient {
     // ignore: no_slop_linter/prefer_specific_type
     Object? body,
     Map<String, String>? extraHeaders,
+    required Duration timeout,
+    required bool sensitiveResponse,
   }) async {
     final requestId = _nextRelayRequestId();
     final fullPath = Uri(path: path, queryParameters: queryParameters).toString();
@@ -157,20 +197,21 @@ class RelayHttpApiClient {
 
     try {
       final response = await relayClient.sendRequest(
-        RelayRequest(
+        request: RelayRequest(
           id: requestId,
           method: method.dioName,
           path: fullPath,
           headers: headers,
           body: bodyString,
         ),
+        timeout: timeout,
       );
 
       if (response.status < 200 || response.status >= 300) {
         return ApiResponse.error(
           ApiError.nonSuccessCode(
             errorCode: response.status,
-            rawErrorString: response.body,
+            rawErrorString: sensitiveResponse ? null : response.body,
           ),
         );
       }
@@ -184,6 +225,14 @@ class RelayHttpApiClient {
         final json = jsonDecodeMap(responseBody);
         return ApiResponse.success(fromJson(json));
       } catch (error, stackTrace) {
+        if (sensitiveResponse) {
+          loge(
+            "Failed to parse sensitive relay response JSON (${error.runtimeType.toString()}: ${_sourceFreeErrorMessage(error)})",
+            null,
+            stackTrace,
+          );
+          return ApiResponse.error(ApiError.jsonParsing(_sensitiveParsingErrorMarker));
+        }
         loge("Failed to parse relay response JSON", error, stackTrace);
         return ApiResponse.error(ApiError.jsonParsing(responseBody));
       }
@@ -202,6 +251,13 @@ class RelayHttpApiClient {
 
   ApiResponse<T> _relayDisconnectedResponse<T>() {
     return ApiResponse.error(ApiError.dartHttpClient(Exception("Relay is not connected")));
+  }
+
+  String _sourceFreeErrorMessage(Object error) {
+    if (error case FormatException(:final offset)) {
+      return "Invalid JSON syntax or shape; offset=${offset?.toString() ?? 'unknown'}";
+    }
+    return "Response DTO conversion failed";
   }
 
   String _nextRelayRequestId() {

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
@@ -85,7 +86,8 @@ class ToolPartWidget extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    for (final attachment in state.attachments) FilePartWidget(attachment: attachment),
+                    for (final attachment in state.attachments)
+                      FilePartWidget(sessionId: part.sessionID, attachment: attachment),
                   ],
                 ),
               ),

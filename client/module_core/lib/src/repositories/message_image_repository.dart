@@ -3,9 +3,21 @@ import "dart:isolate";
 import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
+import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/message_image_api.dart";
+import "../api/session_api.dart";
+
+typedef _StoredRequestScope = ({
+  String accountId,
+  String bridgeId,
+  String sessionId,
+  String attachmentId,
+  SessionAttachmentRendition rendition,
+});
+
+final _strictBase64 = RegExp(r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
 
 Uint8List? _tryDecodeBase64Image(String base64Data) {
   try {
@@ -13,6 +25,13 @@ Uint8List? _tryDecodeBase64Image(String base64Data) {
   } on FormatException {
     return null;
   }
+}
+
+Uint8List? _tryDecodeStrictBase64Image(String base64Data) {
+  if (base64Data.length.isOdd || base64Data.length % 4 != 0 || !_strictBase64.hasMatch(base64Data)) {
+    return null;
+  }
+  return _tryDecodeBase64Image(base64Data);
 }
 
 sealed class MessageImageLoadResult {
@@ -52,6 +71,32 @@ final class MessageImageLoadFailure extends MessageImageLoadResult {
   });
 }
 
+final class MessageImageAuthenticationRequiredException implements Exception {
+  const MessageImageAuthenticationRequiredException();
+
+  @override
+  String toString() => "Authenticated account required to load stored message image";
+}
+
+enum MessageImageRequestFailureKind { invalidResponse, network, rejected, unauthenticated, unknown }
+
+final class MessageImageRequestException implements Exception {
+  final MessageImageRequestFailureKind kind;
+  final int? statusCode;
+  // ignore: no_slop_linter/prefer_specific_type, preserves transport exception type
+  final Object? innerError;
+
+  const MessageImageRequestException({
+    required this.kind,
+    required this.statusCode,
+    required this.innerError,
+  });
+
+  @override
+  String toString() =>
+      "Stored message image request failed (${kind.toString()}${statusCode == null ? "" : ", HTTP $statusCode"})";
+}
+
 /// Layer-2 policy and mapping for renderable message image attachments.
 @lazySingleton
 class MessageImageRepository {
@@ -66,32 +111,62 @@ class MessageImageRepository {
   };
 
   final MessageImageApi _api;
+  final SessionApi _sessionApi;
+  final AuthSession _authSession;
+  final Map<_StoredRequestScope, Future<ApiResponse<SessionAttachmentResponse>>> _activeStoredLoads = {};
 
-  MessageImageRepository({required MessageImageApi api}) : _api = api;
+  MessageImageRepository({
+    required MessageImageApi api,
+    required SessionApi sessionApi,
+    required AuthSession authSession,
+  }) : _api = api,
+       _sessionApi = sessionApi,
+       _authSession = authSession;
 
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
-    MessageAttachmentInlineImage(:final mime) => _supportedRasterMimes.contains(_normalizedMime(mime: mime)),
+    MessageAttachmentInlineImage(:final mime) ||
+    MessageAttachmentStoredImage(:final mime) => _supportedRasterMimes.contains(_normalizedMime(mime: mime)),
     MessageAttachmentRemoteUrl(:final mime) =>
       _supportedRasterMimes.contains(_normalizedMime(mime: mime)) &&
           attachment.safeRemoteUri?.scheme.toLowerCase() == "https",
-    MessageAttachmentStoredImage() || MessageAttachmentMetadata() || MessageAttachmentUnknown() => false,
+    MessageAttachmentMetadata() || MessageAttachmentUnknown() => false,
   };
 
-  Future<MessageImageLoadResult> load({required MessageAttachment attachment}) async {
+  bool canLoadOriginal({required MessageAttachment attachment}) =>
+      attachment is MessageAttachmentStoredImage &&
+      attachment.byteLength >= 0 &&
+      attachment.byteLength <= maxTranscriptImageBytes &&
+      _supportedRasterMimes.contains(_normalizedMime(mime: attachment.mime));
+
+  Future<MessageImageLoadResult> load({
+    required String sessionId,
+    required MessageAttachment attachment,
+    required SessionAttachmentRendition rendition,
+  }) async {
+    if (sessionId.trim().isEmpty) return const MessageImageLoadRejected();
     if (!canLoad(attachment: attachment)) return const MessageImageLoadUnsupported();
     return switch (attachment) {
-      MessageAttachmentInlineImage(:final mime, :final base64, :final filename) => _loadInline(
-        mime: _normalizedMime(mime: mime),
-        base64Data: base64,
-        filename: filename,
+      MessageAttachmentInlineImage(:final mime, :final base64, :final filename)
+          when rendition == SessionAttachmentRendition.thumbnail =>
+        _loadInline(
+          mime: _normalizedMime(mime: mime),
+          base64Data: base64,
+          filename: filename,
+        ),
+      MessageAttachmentRemoteUrl(:final mime, :final filename) when rendition == SessionAttachmentRendition.thumbnail =>
+        _loadRemote(
+          mime: _normalizedMime(mime: mime),
+          uri: attachment.safeRemoteUri,
+          filename: filename,
+        ),
+      MessageAttachmentStoredImage() => _loadStored(
+        sessionId: sessionId,
+        attachment: attachment,
+        rendition: rendition,
       ),
-      MessageAttachmentRemoteUrl(:final mime, :final filename) => _loadRemote(
-        mime: _normalizedMime(mime: mime),
-        uri: attachment.safeRemoteUri,
-        filename: filename,
-      ),
+      MessageAttachmentInlineImage() ||
+      MessageAttachmentRemoteUrl() ||
       MessageAttachmentMetadata() ||
-      MessageAttachmentStoredImage() ||
       MessageAttachmentUnknown() => Future<MessageImageLoadResult>.value(const MessageImageLoadUnsupported()),
     };
   }
@@ -105,7 +180,7 @@ class MessageImageRepository {
       return const MessageImageLoadRejected();
     }
     try {
-      final bytes = await Isolate.run(() => _tryDecodeBase64Image(base64Data));
+      final bytes = await Isolate.run(() => _tryDecodeStrictBase64Image(base64Data));
       if (bytes == null ||
           bytes.length > maxInlineMessageAttachmentBytes ||
           !_hasExpectedSignature(bytes: bytes, mime: mime)) {
@@ -151,6 +226,150 @@ class MessageImageRepository {
         stackTrace: stackTrace,
       ),
     };
+  }
+
+  Future<MessageImageLoadResult> _loadStored({
+    required String sessionId,
+    required MessageAttachmentStoredImage attachment,
+    required SessionAttachmentRendition rendition,
+  }) async {
+    final accountId = switch (_authSession.currentState) {
+      AuthAuthenticated(:final user) => user.id,
+      AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
+    };
+    if (accountId == null) {
+      return MessageImageLoadFailure(
+        cause: const MessageImageAuthenticationRequiredException(),
+        stackTrace: StackTrace.current,
+      );
+    }
+    if (accountId.trim().isEmpty ||
+        attachment.bridgeId.trim().isEmpty ||
+        attachment.attachmentId.trim().isEmpty ||
+        attachment.byteLength < 0 ||
+        (rendition == SessionAttachmentRendition.original && attachment.byteLength > maxTranscriptImageBytes)) {
+      return const MessageImageLoadRejected();
+    }
+
+    final scope = (
+      accountId: accountId,
+      bridgeId: attachment.bridgeId,
+      sessionId: sessionId,
+      attachmentId: attachment.attachmentId,
+      rendition: rendition,
+    );
+    final active = _activeStoredLoads[scope];
+    final request =
+        active ??
+        _sessionApi.getAttachment(
+          sessionId: sessionId,
+          attachmentId: attachment.attachmentId,
+          rendition: rendition,
+        );
+    _activeStoredLoads[scope] = request;
+    try {
+      final response = await request;
+      return switch (response) {
+        SuccessResponse(:final data) => await _validateStoredResponse(
+          response: data,
+          attachment: attachment,
+          rendition: rendition,
+        ),
+        ErrorResponse(:final error) => _storedRequestFailure(error: error),
+      };
+    } on Object catch (cause, stackTrace) {
+      return MessageImageLoadFailure(
+        cause: MessageImageRequestException(
+          kind: MessageImageRequestFailureKind.unknown,
+          statusCode: null,
+          innerError: cause,
+        ),
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (identical(_activeStoredLoads[scope], request)) {
+        final _ = _activeStoredLoads.remove(scope);
+      }
+    }
+  }
+
+  Future<MessageImageLoadResult> _validateStoredResponse({
+    required SessionAttachmentResponse response,
+    required MessageAttachmentStoredImage attachment,
+    required SessionAttachmentRendition rendition,
+  }) async {
+    final mime = _normalizedMime(mime: response.mime);
+    final declaredMime = _normalizedMime(mime: attachment.mime);
+    final maxBytes = switch (rendition) {
+      SessionAttachmentRendition.thumbnail => maxInlineMessageAttachmentBytes,
+      SessionAttachmentRendition.original => maxTranscriptImageBytes,
+    };
+    final base64WithinLimit = switch (rendition) {
+      SessionAttachmentRendition.thumbnail => isInlineMessageAttachmentWithinSizeLimit(
+        base64Length: response.base64.length,
+      ),
+      SessionAttachmentRendition.original => isTranscriptImageBase64LengthWithinSizeLimit(
+        base64Length: response.base64.length,
+      ),
+    };
+    if ((rendition == SessionAttachmentRendition.original && mime != declaredMime) ||
+        !_supportedRasterMimes.contains(mime) ||
+        response.byteLength < 0 ||
+        response.byteLength > maxBytes ||
+        !base64WithinLimit) {
+      return const MessageImageLoadRejected();
+    }
+
+    final bytes = await Isolate.run(() => _tryDecodeStrictBase64Image(response.base64));
+    if (bytes == null ||
+        bytes.length != response.byteLength ||
+        bytes.length > maxBytes ||
+        (rendition == SessionAttachmentRendition.original && bytes.length != attachment.byteLength) ||
+        !_hasExpectedSignature(bytes: bytes, mime: mime)) {
+      return const MessageImageLoadRejected();
+    }
+    return MessageImageLoadSuccess(
+      bytes: bytes,
+      mime: mime,
+      actionFilename: _actionFilename(filename: attachment.filename, mime: mime),
+      originalUri: null,
+    );
+  }
+
+  MessageImageLoadFailure _storedRequestFailure({required ApiError error}) {
+    final cause = switch (error) {
+      DartHttpClientError(:final innerError) => MessageImageRequestException(
+        kind: MessageImageRequestFailureKind.network,
+        statusCode: null,
+        innerError: innerError,
+      ),
+      JsonParsingError() || EmptyResponseError() => MessageImageRequestException(
+        kind: MessageImageRequestFailureKind.invalidResponse,
+        statusCode: null,
+        innerError: error,
+      ),
+      NotAuthenticatedError() => MessageImageRequestException(
+        kind: MessageImageRequestFailureKind.unauthenticated,
+        statusCode: null,
+        innerError: error,
+      ),
+      NonSuccessCodeError(:final errorCode) => MessageImageRequestException(
+        kind: MessageImageRequestFailureKind.rejected,
+        statusCode: errorCode,
+        innerError: error,
+      ),
+      GenericError() => MessageImageRequestException(
+        kind: MessageImageRequestFailureKind.unknown,
+        statusCode: null,
+        innerError: error,
+      ),
+    };
+    final innerError = cause.innerError;
+    final stackTrace = switch (innerError) {
+      final Error error => error.stackTrace ?? StackTrace.current,
+      _ => error.stackTrace ?? StackTrace.current,
+    };
+    return MessageImageLoadFailure(cause: cause, stackTrace: stackTrace);
   }
 
   static String _normalizedMime({required String mime}) => mime.split(";").first.trim().toLowerCase();

@@ -20,6 +20,10 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockUrlLauncher extends Mock implements UrlLauncher;
 
+class _MockSessionApi extends Mock implements SessionApi;
+
+class _MockAuthSession extends Mock implements AuthSession;
+
 class _FakeImageSaver implements ImageSaver {
   Uint8List? savedBytes;
   String? savedFilename;
@@ -99,6 +103,8 @@ void main() {
   late _FakeImageSaver imageSaver;
   late _FakeImageClipboard imageClipboard;
   late _FakeImageSharer imageSharer;
+  late _MockSessionApi sessionApi;
+  late _MockAuthSession authSession;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -111,6 +117,9 @@ void main() {
     imageSaver = _FakeImageSaver();
     imageClipboard = _FakeImageClipboard();
     imageSharer = _FakeImageSharer();
+    sessionApi = _MockSessionApi();
+    authSession = _MockAuthSession();
+    when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
     when(() => urlLauncher.launch(any(), mode: any(named: "mode"))).thenAnswer((_) async => true);
     GetIt.instance.registerSingleton<UrlLauncher>(urlLauncher);
     GetIt.instance.registerSingleton<ImageSaver>(imageSaver);
@@ -121,6 +130,8 @@ void main() {
         api: MessageImageApi(
           client: MockClient((_) async => throw StateError("Unexpected remote image request")),
         ),
+        sessionApi: sessionApi,
+        authSession: authSession,
       ),
     );
   });
@@ -136,7 +147,11 @@ void main() {
       byteLength: 1024,
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text("preview.png"), findsOneWidget);
@@ -152,7 +167,11 @@ void main() {
       filename: "image.png",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _finishAsyncDecode(tester: tester);
 
     final image = tester.widget<Image>(find.byType(Image));
@@ -168,7 +187,11 @@ void main() {
       filename: "why-needed.png",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _finishAsyncDecode(tester: tester);
 
     final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
@@ -238,7 +261,9 @@ void main() {
               routes: [
                 GoRoute(
                   path: "chat",
-                  builder: (_, _) => const Scaffold(body: FilePartWidget(attachment: attachment)),
+                  builder: (_, _) => const Scaffold(
+                    body: FilePartWidget(sessionId: "session-1", attachment: attachment),
+                  ),
                 ),
               ],
             ),
@@ -287,7 +312,11 @@ void main() {
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
       filename: "image.png",
     );
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _openImageViewer(tester: tester);
     final viewer = find.byType(ImageAttachmentViewer);
     final initialCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
@@ -326,7 +355,11 @@ void main() {
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
       filename: "image.png",
     );
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _openImageViewer(tester: tester);
     final viewer = find.byType(ImageAttachmentViewer);
     final image = find.byKey(ImageAttachmentViewer.imageKey);
@@ -359,7 +392,11 @@ void main() {
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
       filename: "image.png",
     );
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _openImageViewer(tester: tester);
     final viewer = find.byType(ImageAttachmentViewer);
     final interactiveViewer = tester.widget<InteractiveViewer>(find.byType(InteractiveViewer));
@@ -387,7 +424,11 @@ void main() {
       filename: null,
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _finishAsyncDecode(tester: tester);
     final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
     await tester.runAsync(
@@ -458,7 +499,11 @@ void main() {
       filename: "report.pdf",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
 
     expect(find.byType(Image), findsNothing);
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
@@ -487,6 +532,8 @@ void main() {
             );
           }),
         ),
+        sessionApi: sessionApi,
+        authSession: authSession,
       ),
     );
     const attachment = MessageAttachment.remoteUrl(
@@ -495,7 +542,11 @@ void main() {
       filename: "image.png",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _finishAsyncDecode(tester: tester);
     await tester.pump();
 
@@ -516,6 +567,8 @@ void main() {
             ),
           ),
         ),
+        sessionApi: sessionApi,
+        authSession: authSession,
       ),
     );
     const attachment = MessageAttachment.remoteUrl(
@@ -524,7 +577,11 @@ void main() {
       filename: "corrupt.png",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _finishAsyncDecode(tester: tester);
     await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -541,7 +598,11 @@ void main() {
       filename: "report.pdf",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await tester.tap(find.text("report.pdf"), warnIfMissed: false);
 
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
@@ -553,7 +614,11 @@ void main() {
       filename: "unknown.bin",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
 
     expect(find.text("unknown.bin"), findsOneWidget);
     expect(find.text("application/octet-stream"), findsNothing);
@@ -566,7 +631,11 @@ void main() {
       filename: "broken.png",
     );
 
-    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
     await _finishAsyncDecode(tester: tester);
 
     expect(find.text("broken.png"), findsOneWidget);
@@ -600,7 +669,11 @@ void main() {
       attachment: null,
     );
 
-    await tester.pumpWidget(_app(child: const ToolPartWidget(part: part)));
+    await tester.pumpWidget(
+      _app(
+        child: const ToolPartWidget(part: part),
+      ),
+    );
 
     expect(find.text("screenshot.png"), findsOneWidget);
   });
@@ -633,7 +706,11 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(_app(child: const UserMessageCard(message: message)));
+    await tester.pumpWidget(
+      _app(
+        child: const UserMessageCard(message: message),
+      ),
+    );
 
     expect(find.text("notes.txt"), findsOneWidget);
   });

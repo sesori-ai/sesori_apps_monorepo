@@ -17,6 +17,8 @@ class SessionCleanupRejectedException implements Exception {
 
 @lazySingleton
 class SessionApi {
+  static const Duration _attachmentRequestTimeout = Duration(minutes: 2);
+
   final RelayHttpApiClient _client;
 
   SessionApi({required RelayHttpApiClient client}) : _client = client;
@@ -225,6 +227,23 @@ class SessionApi {
       "/session/detail",
       fromJson: Session.fromJson,
       body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
+  Future<ApiResponse<SessionAttachmentResponse>> getAttachment({
+    required String sessionId,
+    required String attachmentId,
+    required SessionAttachmentRendition rendition,
+  }) {
+    return _client.postWithTimeout(
+      "/session/attachment",
+      fromJson: SessionAttachmentResponse.fromJson,
+      body: SessionAttachmentRequest(
+        sessionId: sessionId,
+        attachmentId: attachmentId,
+        rendition: rendition,
+      ),
+      timeout: _attachmentRequestTimeout,
     );
   }
 
