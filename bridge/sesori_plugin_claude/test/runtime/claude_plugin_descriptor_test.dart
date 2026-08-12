@@ -16,7 +16,7 @@ void main() {
       expect(descriptor.id, "claude");
       expect(descriptor.displayName, "Claude Code");
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
-      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
+      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
@@ -236,7 +236,7 @@ void main() {
       );
       expect(plugin.currentStatus, const PluginReady());
       expect(processes.runInShellValues, [Platform.isWindows, Platform.isWindows]);
-      expect(processes.workingDirectories.every((directory) => directory != null), isTrue);
+      expect(processes.workingDirectories, everyElement(Directory.systemTemp.path));
       expect(processes.environments, everyElement(containsPair("HOME", "/Users/test")));
 
       liveProcess.completeExit(1);
@@ -275,6 +275,9 @@ final class _PluginHost implements PluginHost {
     "CLAUDE_CONFIG_DIR": "/tmp/claude-descriptor-test",
     "HOME": "/Users/test",
   };
+
+  @override
+  String get stateDirectory => Directory.systemTemp.path;
 
   @override
   ServerClock get clock => const ServerClock();

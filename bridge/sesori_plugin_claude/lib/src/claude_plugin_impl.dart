@@ -95,16 +95,17 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   );
 
   @override
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<List<PluginCommand>> getCommands({required String? projectId}) async =>
-      (await _catalogService.getCatalog(directory: projectId ?? _launchDirectory, refresh: false)).commands;
+      (await _catalogService.getCatalog(refresh: false)).commands;
 
   @override
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
     final catalog = await _catalogService.getCatalog(
-      directory: projectId,
       refresh: discoveryMode == PluginSessionOptionsDiscoveryMode.refresh,
     );
     return PluginSessionOptionsDiscoveryResult.observed(
@@ -295,8 +296,9 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   Future<void> abortSession({required String sessionId}) => _sessions.abort(sessionId: sessionId);
 
   @override
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<List<PluginAgent>> getAgents({required String projectId}) async =>
-      (await _catalogService.getCatalog(directory: projectId, refresh: false)).agents;
+      (await _catalogService.getCatalog(refresh: false)).agents;
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async =>
@@ -375,8 +377,9 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   Future<bool> healthCheck() async => !_disposed;
 
   @override
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      (await _catalogService.getCatalog(directory: projectId, refresh: false)).providers;
+      (await _catalogService.getCatalog(refresh: false)).providers;
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {

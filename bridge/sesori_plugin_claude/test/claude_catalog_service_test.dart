@@ -6,21 +6,14 @@ import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
 
-const _catalogSessionIds = [
-  "11111111-2222-4333-8444-555555555555",
-  "99999999-8888-4777-8666-555555555555",
-];
-
 void main() {
   group("ClaudeCatalogService", () {
     late List<FakeClaudeProcess> spawned;
     late List<ClaudeLaunchSpec> specs;
     late ClaudeSessionProcessRepository processes;
     late ClaudeCatalogService service;
-    var sessionIdIndex = 0;
 
     setUp(() {
-      sessionIdIndex = 0;
       spawned = [];
       specs = [];
       processes = ClaudeSessionProcessRepository(
@@ -28,12 +21,7 @@ void main() {
           final process = FakeClaudeProcess();
           specs.add(spec);
           spawned.add(process);
-          unawaited(
-            _answerCatalogControls(
-              process,
-              commandName: spec.workingDirectory == "/tmp/other-project" ? "other-review" : "review",
-            ),
-          );
+          unawaited(_answerCatalogControls(process, commandName: "review"));
           return process;
         },
         binaryPath: "claude",
@@ -42,7 +30,8 @@ void main() {
       service = ClaudeCatalogService(
         catalog: const ClaudeBackendCatalogRepository(),
         processes: processes,
-        generateSessionId: () => _catalogSessionIds[sessionIdIndex++],
+        probeSessionId: otherTestSessionId,
+        discoveryDirectory: "/tmp/claude-state",
       );
     });
 
@@ -53,53 +42,45 @@ void main() {
       }
     });
 
-    test("discovers in the selected directory and reaps the probe", () async {
-      final catalog = await service.getCatalog(directory: "/tmp/project", refresh: false);
+    test("discovers globally from the configured directory and reaps the probe", () async {
+      final catalog = await service.getCatalog(refresh: false);
 
       expect(catalog.providers.providers.single.models, hasLength(2));
-      expect(specs.single.workingDirectory, "/tmp/project");
+      expect(specs.single.workingDirectory, "/tmp/claude-state");
+      expect(_controlSubtypes(spawned.single), ["initialize"]);
       expect(spawned.single.killed, isTrue);
     });
 
-    test("serves a cached project catalog without another probe", () async {
-      await service.getCatalog(directory: "/tmp/project", refresh: false);
-      await service.getCatalog(directory: "/tmp/project/.", refresh: false);
+    test("serves the cached global catalog without another probe", () async {
+      await service.getCatalog(refresh: false);
+      await service.getCatalog(refresh: false);
 
       expect(spawned, hasLength(1));
     });
 
-    test("refreshes models through a new project probe while retaining commands", () async {
-      await service.getCatalog(directory: "/tmp/project", refresh: false);
-      final refreshed = await service.getCatalog(directory: "/tmp/project", refresh: true);
+    test("refreshes models through a new global probe while retaining commands", () async {
+      await service.getCatalog(refresh: false);
+      final refreshed = await service.getCatalog(refresh: true);
 
       expect(spawned, hasLength(2));
+      expect(specs.map((spec) => spec.workingDirectory), everyElement("/tmp/claude-state"));
       expect(_controlSubtypes(spawned.last), contains("list_models"));
       expect(refreshed.providers.providers.single.models.single.id, "new");
       expect(refreshed.commands.single.name, "review");
       expect(spawned.last.killed, isTrue);
     });
 
-    test("caches different project directories independently", () async {
-      final first = await service.getCatalog(directory: "/tmp/project", refresh: false);
-      final second = await service.getCatalog(directory: "/tmp/other-project", refresh: false);
-
-      expect(specs.map((spec) => spec.workingDirectory), ["/tmp/project", "/tmp/other-project"]);
-      expect(first.commands.single.name, "review");
-      expect(second.commands.single.name, "other-review");
-      expect(spawned.every((process) => process.killed), isTrue);
-    });
-
-    test("coalesces concurrent reads for one project", () async {
-      final first = service.getCatalog(directory: "/tmp/project", refresh: false);
-      final second = service.getCatalog(directory: "/tmp/project", refresh: false);
+    test("coalesces concurrent global reads", () async {
+      final first = service.getCatalog(refresh: false);
+      final second = service.getCatalog(refresh: false);
 
       expect(await first, same(await second));
       expect(spawned, hasLength(1));
     });
 
     test("queues an explicit refresh behind an in-flight reuse discovery", () async {
-      final reuse = service.getCatalog(directory: "/tmp/project", refresh: false);
-      final refresh = service.getCatalog(directory: "/tmp/project", refresh: true);
+      final reuse = service.getCatalog(refresh: false);
+      final refresh = service.getCatalog(refresh: true);
 
       await reuse;
       final refreshed = await refresh;
@@ -127,7 +108,8 @@ void main() {
       service = ClaudeCatalogService(
         catalog: const ClaudeBackendCatalogRepository(),
         processes: processes,
-        generateSessionId: () => otherTestSessionId,
+        probeSessionId: otherTestSessionId,
+        discoveryDirectory: "/tmp/claude-state",
       );
       await processes.ensureResident(
         sessionId: testSessionId,

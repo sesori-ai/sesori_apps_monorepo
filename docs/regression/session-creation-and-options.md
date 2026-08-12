@@ -10,9 +10,9 @@ variant, and worktree mode, and creating the session with its first input.
 
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
-- Project-scoped discovery runs in the resolved live project directory, never
-  the bridge process's launch directory. This keeps project-local slash commands
-  attributed to the project that the user selected.
+- Claude's plugin-scoped discovery runs in its host-created state directory,
+  never a selected project or the bridge process's launch directory. This keeps
+  its global option probe on a valid, stable path when projects move or disappear.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
