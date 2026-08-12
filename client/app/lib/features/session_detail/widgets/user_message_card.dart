@@ -24,7 +24,7 @@ class const UserMessageCard({super.key, required final MessageWithParts message}
     return UserMessageBubble(
       markdown: text.isEmpty ? null : text,
       attachments: [
-        for (final attachment in attachments) FilePartWidget(attachment: attachment),
+        for (final attachment in attachments) FilePartWidget(sessionId: message.info.sessionID, attachment: attachment),
       ],
       outlined: false,
       transitionDuration: Duration.zero,

@@ -154,6 +154,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
             child: widget.readOnly || loaded.isArchived
                 ? SessionDetailLoadedView.readOnly(
                     projectId: widget.projectId,
+                    sessionId: widget.sessionId,
                     state: loaded,
                     onShowPendingQuestions: _showPendingQuestions,
                     onShowPendingPermissions: _showPendingPermissions,

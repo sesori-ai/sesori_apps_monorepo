@@ -13,6 +13,8 @@ class const SessionCleanupRejectedException({required final SessionCleanupReject
 
 @lazySingleton
 class SessionApi({required final RelayHttpApiClient _client}) {
+  static const Duration _attachmentRequestTimeout = Duration(minutes: 2);
+
   Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
     return _client.post(
       "/agent",
@@ -217,6 +219,23 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       "/session/detail",
       fromJson: Session.fromJson,
       body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
+  Future<ApiResponse<SessionAttachmentResponse>> getAttachment({
+    required String sessionId,
+    required String attachmentId,
+    required SessionAttachmentRendition rendition,
+  }) {
+    return _client.postWithTimeout(
+      "/session/attachment",
+      fromJson: SessionAttachmentResponse.fromJson,
+      body: SessionAttachmentRequest(
+        sessionId: sessionId,
+        attachmentId: attachmentId,
+        rendition: rendition,
+      ),
+      timeout: _attachmentRequestTimeout,
     );
   }
 

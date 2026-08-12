@@ -90,7 +90,12 @@ void main() {
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => relayClient.didResume).thenReturn(false);
-      when(() => relayClient.sendRequest(any())).thenAnswer(
+      when(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => const RelayResponse(id: "r", status: 500, headers: {}, body: null),
       );
       when(relayClient.disconnect).thenAnswer((_) async {});

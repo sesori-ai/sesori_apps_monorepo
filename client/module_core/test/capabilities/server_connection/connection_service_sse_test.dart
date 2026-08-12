@@ -39,6 +39,7 @@ class _TestRelayClientFactory({required final RelayClient _client}) extends Rela
 
 void main() {
   setUpAll(() {
+    registerFallbackValue(Duration.zero);
     registerFallbackValue(StackTrace.empty);
     registerFallbackValue(
       const RelayRequest(
@@ -80,7 +81,12 @@ void main() {
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
-      when(() => relayClient.sendRequest(any())).thenAnswer(
+      when(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => RelayResponse(
           id: "health",
           status: 200,

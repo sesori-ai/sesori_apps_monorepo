@@ -15,9 +15,7 @@ import "session_detail_scaffold_sections.dart";
 
 class SessionDetailLoadedView extends StatefulWidget {
   final String? projectId;
-  // Session id, used as the composer draft key. Null in the read-only
-  // variant, which renders no prompt input.
-  final String? sessionId;
+  final String sessionId;
   final SessionDetailLoaded state;
   final bool readOnly;
   final VoidCallback onShowPendingQuestions;
@@ -26,11 +24,11 @@ class SessionDetailLoadedView extends StatefulWidget {
   const new readOnly({
     super.key,
     required this.projectId,
+    required this.sessionId,
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
-  }) : readOnly = true,
-       sessionId = null;
+  }) : readOnly = true;
 
   const new editable({
     super.key,

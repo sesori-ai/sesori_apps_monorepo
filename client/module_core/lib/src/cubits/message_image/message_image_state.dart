@@ -1,22 +1,49 @@
 import "dart:typed_data";
 
-sealed class const MessageImageState();
+final class const MessageImageState({
+  required final MessageImagePreviewState preview,
+  required final MessageImageOriginalState original,
+});
 
-final class const MessageImageLoading() extends MessageImageState;
+sealed class const MessageImagePreviewState();
 
-final class const MessageImageLoaded({
+final class const MessageImagePreviewLoading() extends MessageImagePreviewState;
+
+final class const MessageImagePreviewLoaded({
   required final Uint8List bytes,
   required final String mime,
   required final String actionFilename,
   required final Uri? originalUri,
-}) extends MessageImageState;
+}) extends MessageImagePreviewState;
 
-final class const MessageImageUnsupported() extends MessageImageState;
+final class const MessageImagePreviewUnsupported() extends MessageImagePreviewState;
 
-final class const MessageImageRejected() extends MessageImageState;
+final class const MessageImagePreviewRejected() extends MessageImagePreviewState;
 
-final class const MessageImageFailed({
+final class const MessageImagePreviewFailed({
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   required final Object cause,
   required final StackTrace stackTrace,
-}) extends MessageImageState;
+}) extends MessageImagePreviewState;
+
+sealed class const MessageImageOriginalState();
+
+final class const MessageImageOriginalAvailable() extends MessageImageOriginalState;
+
+final class const MessageImageOriginalUnavailable() extends MessageImageOriginalState;
+
+final class const MessageImageOriginalLoading() extends MessageImageOriginalState;
+
+final class const MessageImageOriginalLoaded({
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+}) extends MessageImageOriginalState;
+
+final class const MessageImageOriginalRejected() extends MessageImageOriginalState;
+
+final class const MessageImageOriginalFailed({
+  // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImageOriginalState;

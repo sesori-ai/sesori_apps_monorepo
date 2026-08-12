@@ -53,7 +53,6 @@ class RelayClient._({
   static const int _messageVersion = 0x01;
   static const Duration _handshakeTimeout = Duration(seconds: 15);
   static const Duration _channelCloseTimeout = Duration(seconds: 3);
-  static const Duration _requestTimeout = Duration(seconds: 30);
   int? _lastCloseCode;
   int? get lastCloseCode => _lastCloseCode;
 
@@ -363,7 +362,7 @@ class RelayClient._({
     _sessionEncryptor = _cryptoService.createSessionEncryptor(roomKeySecret);
   }
 
-  Future<RelayResponse> sendRequest(RelayRequest request) async {
+  Future<RelayResponse> sendRequest({required RelayRequest request, required Duration timeout}) async {
     if (!isConnected || _sessionEncryptor == null || _channel == null) {
       throw StateError("RelayClient is not connected");
     }
@@ -375,12 +374,12 @@ class RelayClient._({
       await _sendEncryptedMessage(request);
 
       return await completer.future.timeout(
-        _requestTimeout,
+        timeout,
         onTimeout: () {
           _pendingRequests.remove(request.id);
           throw TimeoutException(
             "Relay request timed out: ${request.method} ${request.path}",
-            _requestTimeout,
+            timeout,
           );
         },
       );

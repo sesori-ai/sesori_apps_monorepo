@@ -201,7 +201,12 @@ void main() {
 
       when(relayClient.connect).thenAnswer((_) async {});
       when(() => relayClient.didResume).thenReturn(false);
-      when(() => relayClient.sendRequest(any())).thenAnswer(
+      when(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => RelayResponse(
           id: "1",
           status: 200,
@@ -276,7 +281,12 @@ void main() {
 
       await service.connect(config);
 
-      verifyNever(() => relayClient.sendRequest(any()));
+      verifyNever(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      );
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
 
@@ -299,7 +309,12 @@ void main() {
       }
       // Fresh connect reports degraded access; resumed reconnect skips /health.
       when(() => initialClient.didResume).thenReturn(false);
-      when(() => initialClient.sendRequest(any())).thenAnswer(
+      when(
+        () => initialClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(degradedHealth.toJson()), headers: const {}),
       );
       when(() => resumedClient.didResume).thenReturn(true);
@@ -339,7 +354,12 @@ void main() {
       await pumpEventQueue();
 
       // The resumed reconnect never re-fetches /health ...
-      verifyNever(() => resumedClient.sendRequest(any()));
+      verifyNever(
+        () => resumedClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      );
       final resumedStatus = service.currentStatus;
       expect(resumedStatus, isA<ConnectionConnected>());
       // ... yet the degraded-access warning is preserved.
@@ -367,10 +387,20 @@ void main() {
       }
       // First bridge reports degraded access; the second is an older/different
       // bridge that returns an empty (unparseable) body.
-      when(() => degradedClient.sendRequest(any())).thenAnswer(
+      when(
+        () => degradedClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(degradedHealth.toJson()), headers: const {}),
       );
-      when(() => freshClient.sendRequest(any())).thenAnswer(
+      when(
+        () => freshClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
       );
 
@@ -421,7 +451,12 @@ void main() {
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => relayClient.didResume).thenReturn(false);
-      when(() => relayClient.sendRequest(any())).thenAnswer(
+      when(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
@@ -449,7 +484,12 @@ void main() {
 
       await service.connect(config);
 
-      verify(() => relayClient.sendRequest(any())).called(1);
+      verify(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).called(1);
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
 
@@ -466,7 +506,12 @@ void main() {
         when(() => relayClient.didResume).thenReturn(false);
         when(() => relayClient.isConnected).thenReturn(true);
         when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
-        when(() => relayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => relayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
         );
         when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
@@ -540,7 +585,12 @@ void main() {
       when(() => connectedClient.didResume).thenReturn(false);
       when(() => connectedClient.isConnected).thenReturn(true);
       when(() => connectedClient.connectionState).thenReturn(RelayClientConnectionState.connected);
-      when(() => connectedClient.sendRequest(any())).thenAnswer(
+      when(
+        () => connectedClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
       );
       when(() => connectedClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
@@ -639,7 +689,12 @@ void main() {
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
-      when(() => relayClient.sendRequest(any())).thenAnswer(
+      when(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
@@ -723,7 +778,12 @@ void main() {
         when(() => client.didResume).thenReturn(false);
         when(() => client.isConnected).thenReturn(true);
         when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
-        when(() => client.sendRequest(any())).thenAnswer(
+        when(
+          () => client.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
         );
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
@@ -782,7 +842,12 @@ void main() {
       firstConnect.complete();
       await pumpEventQueue();
 
-      verifyNever(() => firstReconnectClient.sendRequest(any()));
+      verifyNever(
+        () => firstReconnectClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      );
       expect(service.relayClient, same(secondReconnectClient));
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
@@ -800,7 +865,12 @@ void main() {
         when(() => client.didResume).thenReturn(false);
         when(() => client.isConnected).thenReturn(true);
         when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
-        when(() => client.sendRequest(any())).thenAnswer(
+        when(
+          () => client.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
         );
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
@@ -851,7 +921,12 @@ void main() {
       expect(service.currentStatus, const ConnectionStatus.connectionLost(config: config));
       expect(service.relayClient, isNull);
       verify(reconnectClient.disconnect).called(greaterThanOrEqualTo(1));
-      verifyNever(() => reconnectClient.sendRequest(any()));
+      verifyNever(
+        () => reconnectClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      );
     });
 
     test("connect with bridge absent parks in ConnectionBridgeOffline without health probe or SSE", () async {
@@ -890,7 +965,12 @@ void main() {
       expect(service.currentStatus, isA<ConnectionBridgeOffline>());
       expect(service.relayClient, same(relayClient));
       // No E2E session yet, so neither the health probe nor SSE should run.
-      verifyNever(() => relayClient.sendRequest(any()));
+      verifyNever(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      );
       verifyNever(() => relayClient.subscribeSse(any()));
     });
 
@@ -913,7 +993,12 @@ void main() {
       when(() => connectedClient.isConnected).thenReturn(true);
       when(() => connectedClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => connectedClient.didResume).thenReturn(false);
-      when(() => connectedClient.sendRequest(any())).thenAnswer(
+      when(
+        () => connectedClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
       );
       when(() => connectedClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
@@ -967,7 +1052,12 @@ void main() {
       when(() => initialClient.isConnected).thenReturn(true);
       when(() => initialClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => initialClient.didResume).thenReturn(false);
-      when(() => initialClient.sendRequest(any())).thenAnswer(
+      when(
+        () => initialClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
       );
       when(() => initialClient.subscribeSse(any())).thenAnswer((_) => initialSseController.stream);

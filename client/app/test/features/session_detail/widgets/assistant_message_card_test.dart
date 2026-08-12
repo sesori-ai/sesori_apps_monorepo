@@ -7,6 +7,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
@@ -16,6 +17,10 @@ import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.d
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
+class _MockSessionApi() extends Mock implements SessionApi;
+
+class _MockAuthSession() extends Mock implements AuthSession;
 
 class const _AssistantMessageCardHarness({
   super.key,
@@ -133,9 +138,13 @@ MessagePart _filePart({required String id}) {
 void main() {
   setUp(() async {
     await GetIt.instance.reset();
+    final authSession = _MockAuthSession();
+    when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
     GetIt.instance.registerSingleton<MessageImageRepository>(
       MessageImageRepository(
         api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+        sessionApi: _MockSessionApi(),
+        authSession: authSession,
       ),
     );
   });

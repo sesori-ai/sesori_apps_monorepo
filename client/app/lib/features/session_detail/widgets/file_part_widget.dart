@@ -12,16 +12,21 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/external_link.dart";
 import "image_attachment_viewer.dart";
 
-class const FilePartWidget({super.key, required final MessageAttachment attachment}) extends StatelessWidget {
+class const FilePartWidget({
+  super.key,
+  required final String sessionId,
+  required final MessageAttachment attachment,
+}) extends StatelessWidget {
   static const previewImageKey = ValueKey("filePartWidget.previewImage");
   static const previewTapTargetKey = ValueKey("filePartWidget.previewTapTarget");
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      key: ValueKey(attachment),
+      key: ValueKey((sessionId, attachment)),
       create: (_) => MessageImageCubit(
         repository: getIt<MessageImageRepository>(),
+        sessionId: sessionId,
         attachment: attachment,
       ),
       child: _FilePartContent(attachment: attachment),
@@ -35,9 +40,9 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
   @override
   Widget build(BuildContext context) {
     final state = context.watch<MessageImageCubit>().state;
-    return switch (state) {
-      MessageImageLoading() => _buildLoadingAttachment(context: context),
-      MessageImageLoaded(:final bytes, :final mime, :final actionFilename, :final originalUri) =>
+    return switch (state.preview) {
+      MessageImagePreviewLoading() => _buildLoadingAttachment(context: context),
+      MessageImagePreviewLoaded(:final bytes, :final mime, :final actionFilename, :final originalUri) =>
         _LoadedImageAttachment(
           bytes: bytes,
           mime: mime,
@@ -45,8 +50,8 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
           originalUri: originalUri,
           filename: _displayFilename(filename: _attachmentFilename),
         ),
-      MessageImageUnsupported() => _buildFallbackAttachment(context: context, imageLoadFailed: false),
-      MessageImageRejected() || MessageImageFailed() => _buildFallbackAttachment(
+      MessageImagePreviewUnsupported() => _buildFallbackAttachment(context: context, imageLoadFailed: false),
+      MessageImagePreviewRejected() || MessageImagePreviewFailed() => _buildFallbackAttachment(
         context: context,
         imageLoadFailed: true,
       ),

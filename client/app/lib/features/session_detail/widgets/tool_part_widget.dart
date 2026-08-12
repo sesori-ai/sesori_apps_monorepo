@@ -82,7 +82,8 @@ class const ToolPartWidget({super.key, required final MessagePart part}) extends
                 ),
                 child: Column(
                   children: [
-                    for (final attachment in state.attachments) FilePartWidget(attachment: attachment),
+                    for (final attachment in state.attachments)
+                      FilePartWidget(sessionId: part.sessionID, attachment: attachment),
                   ],
                 ),
               ),

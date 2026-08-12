@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -38,7 +40,12 @@ void main() {
 
       test("GET sends request via relay and returns parsed response", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(
             id: "req-1",
             status: 200,
@@ -53,7 +60,12 @@ void main() {
         // Assert
         expect(result, isA<SuccessResponse<String>>());
         expect((result as SuccessResponse<String>).data, equals("relay-result"));
-        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final captured = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: const Duration(seconds: 30),
+          ),
+        ).captured;
         final request = captured.first as RelayRequest;
         expect(request.method, equals("GET"));
         expect(request.path, contains("/session"));
@@ -61,7 +73,12 @@ void main() {
 
       test("POST sends request via relay and returns parsed response", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(
             id: "req-1",
             status: 200,
@@ -79,15 +96,138 @@ void main() {
 
         // Assert
         expect(result, isA<SuccessResponse<String>>());
-        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final captured = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: const Duration(seconds: 30),
+          ),
+        ).captured;
         final request = captured.first as RelayRequest;
         expect(request.method, equals("POST"));
         expect(request.path, contains("/session"));
       });
 
+      test("attachment POST uses its longer timeout", () async {
+        const timeout = Duration(minutes: 2);
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
+          (_) async => const RelayResponse(
+            id: "req-1",
+            status: 200,
+            headers: {},
+            body: '{"mime":"image/png","base64":"AQID","byteLength":3}',
+          ),
+        );
+
+        final result = await client.postWithTimeout<SessionAttachmentResponse>(
+          "/session/attachment",
+          fromJson: SessionAttachmentResponse.fromJson,
+          body: const SessionAttachmentRequest(
+            sessionId: "session-1",
+            attachmentId: "attachment-1",
+            rendition: SessionAttachmentRendition.original,
+          ),
+          timeout: timeout,
+        );
+
+        expect(result, isA<SuccessResponse<SessionAttachmentResponse>>());
+        final verification = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: timeout,
+          ),
+        )..called(1);
+        final request = verification.captured.single as RelayRequest;
+        expect(request.path, "/session/attachment");
+        expect(
+          SessionAttachmentRequest.fromJson(jsonDecodeMap(request.body!)),
+          const SessionAttachmentRequest(
+            sessionId: "session-1",
+            attachmentId: "attachment-1",
+            rendition: SessionAttachmentRendition.original,
+          ),
+        );
+      });
+
+      test("malformed attachment response redacts decrypted content", () async {
+        const secret = "secret-attachment-base64";
+        final logs = <String>[];
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
+          (_) async => const RelayResponse(
+            id: "req-1",
+            status: 200,
+            headers: {},
+            body: '{"mime":"image/png","base64":"secret-attachment-base64","byteLength":"invalid"}',
+          ),
+        );
+
+        final result = await runZoned(
+          () => client.postWithTimeout<SessionAttachmentResponse>(
+            "/session/attachment",
+            fromJson: SessionAttachmentResponse.fromJson,
+            body: const SessionAttachmentRequest(
+              sessionId: "session-1",
+              attachmentId: "attachment-1",
+              rendition: SessionAttachmentRendition.thumbnail,
+            ),
+            timeout: const Duration(minutes: 2),
+          ),
+          zoneSpecification: ZoneSpecification(
+            print: (_, _, _, line) => logs.add(line),
+          ),
+        );
+
+        final error = (result as ErrorResponse<SessionAttachmentResponse>).error as JsonParsingError;
+        expect(error.jsonString, "Sensitive response omitted");
+        expect(error.jsonString, isNot(contains(secret)));
+        expect(logs.join("\n"), isNot(contains(secret)));
+        expect(error.toString(), isNot(contains(secret)));
+      });
+
+      test("attachment error response redacts decrypted content", () async {
+        const secret = "secret-attachment-error";
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
+          (_) async => const RelayResponse(id: "req-1", status: 404, headers: {}, body: secret),
+        );
+
+        final result = await client.postWithTimeout<SessionAttachmentResponse>(
+          "/session/attachment",
+          fromJson: SessionAttachmentResponse.fromJson,
+          body: const SessionAttachmentRequest(
+            sessionId: "session-1",
+            attachmentId: "attachment-1",
+            rendition: SessionAttachmentRendition.thumbnail,
+          ),
+          timeout: const Duration(minutes: 2),
+        );
+
+        final error = (result as ErrorResponse<SessionAttachmentResponse>).error as NonSuccessCodeError;
+        expect(error.rawErrorString, isNull);
+        expect(error.toString(), isNot(contains(secret)));
+      });
+
       test("PATCH sends request via relay and returns parsed response", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(
             id: "req-1",
             status: 200,
@@ -105,7 +245,12 @@ void main() {
 
         // Assert
         expect(result, isA<SuccessResponse<String>>());
-        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final captured = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: const Duration(seconds: 30),
+          ),
+        ).captured;
         final request = captured.first as RelayRequest;
         expect(request.method, equals("PATCH"));
         expect(request.path, contains("/session/1"));
@@ -113,7 +258,12 @@ void main() {
 
       test("DELETE sends request via relay and returns parsed response", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(
             id: "req-1",
             status: 200,
@@ -130,7 +280,12 @@ void main() {
 
         // Assert
         expect(result, isA<SuccessResponse<String>>());
-        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final captured = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: const Duration(seconds: 30),
+          ),
+        ).captured;
         final request = captured.first as RelayRequest;
         expect(request.method, equals("DELETE"));
         expect(request.path, contains("/session/1"));
@@ -138,7 +293,12 @@ void main() {
 
       test("relay exception is mapped to GenericError", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenThrow(Exception("Relay transport failed"));
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenThrow(Exception("Relay transport failed"));
 
         // Act
         final result = await client.get<String>(
@@ -154,7 +314,12 @@ void main() {
 
       test("appends query parameters to the relay request path", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(id: "req-3", status: 200, headers: {}, body: "{}"),
         );
 
@@ -166,7 +331,12 @@ void main() {
         );
 
         // Assert
-        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final captured = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: const Duration(seconds: 30),
+          ),
+        ).captured;
         final request = captured.first as RelayRequest;
         final uri = Uri.parse(request.path);
         expect(uri.queryParameters["q"], equals("flutter"));
@@ -175,7 +345,12 @@ void main() {
 
       test("merges custom headers with request headers", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(id: "req-4", status: 200, headers: {}, body: "{}"),
         );
 
@@ -187,14 +362,24 @@ void main() {
         );
 
         // Assert
-        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final captured = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: const Duration(seconds: 30),
+          ),
+        ).captured;
         final request = captured.first as RelayRequest;
         expect(request.headers["x-project-id"], equals("/home/user/project"));
       });
 
       test("merges custom headers with content-type header for POST", () async {
         // Arrange
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(id: "req-5", status: 200, headers: {}, body: "{}"),
         );
 
@@ -207,7 +392,12 @@ void main() {
         );
 
         // Assert
-        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final captured = verify(
+          () => mockRelayClient.sendRequest(
+            request: captureAny(named: "request"),
+            timeout: const Duration(seconds: 30),
+          ),
+        ).captured;
         final request = captured.first as RelayRequest;
         expect(request.headers["x-project-id"], equals("/home/user/project"));
         expect(request.headers["content-type"], equals("application/json"));
@@ -313,7 +503,12 @@ void main() {
         when(() => mockConnectionService.relayClient).thenReturn(mockRelayClient);
         when(() => mockRelayClient.isConnected).thenReturn(true);
         when(() => mockConnectionService.activeDirectory).thenReturn(null);
-        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
           (_) async => const RelayResponse(
             id: "req-1",
             status: 401,

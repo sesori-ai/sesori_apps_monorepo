@@ -84,7 +84,11 @@ class const AssistantMessageCard({
       MessagePartType.stepStart => const SizedBox.shrink(),
       MessagePartType.stepFinish => const SizedBox.shrink(),
       MessagePartType.file => switch (part.attachment) {
-        final attachment? => FilePartWidget(key: ValueKey(part.id), attachment: attachment),
+        final attachment? => FilePartWidget(
+          key: ValueKey(part.id),
+          sessionId: part.sessionID,
+          attachment: attachment,
+        ),
         null => const SizedBox.shrink(),
       },
       MessagePartType.snapshot => const SizedBox.shrink(),
