@@ -258,11 +258,14 @@ class ChatHistoryRepository {
       if (byteLength is int && byteLength > 0) total += byteLength;
     }
 
-    if (json["attachment"] case final Map<String, dynamic> attachment) add(attachment);
-    if (json["state"] case final Map<String, dynamic> state) {
-      if (state["attachments"] case final List<dynamic> attachments) {
+    if (json["attachment"] case final Map<dynamic, dynamic> attachment) {
+      add(Map<String, dynamic>.from(attachment));
+    }
+    if (json["state"] case final Map<dynamic, dynamic> state) {
+      final typedState = Map<String, dynamic>.from(state);
+      if (typedState["attachments"] case final List<dynamic> attachments) {
         for (final attachment in attachments) {
-          if (attachment is Map<String, dynamic>) add(attachment);
+          if (attachment is Map<dynamic, dynamic>) add(Map<String, dynamic>.from(attachment));
         }
       }
     }
