@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
+import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
@@ -289,6 +290,57 @@ void main() {
         reason: "the released 5 MiB aggregate applies across the whole stored collection",
       );
       expect(second.storedReferencePart.attachment, isA<MessageAttachmentStoredImage>());
+    });
+
+    test("retention budgeting spans separately delivered image parts of one message", () async {
+      final history = createTestChatHistory();
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      for (var index = 0; index < 2; index++) {
+        await history.database
+            .into(history.database.historyPartsTable)
+            .insert(
+              HistoryPartsTableCompanion.insert(
+                sessionId: "ses_a",
+                messageId: "m1",
+                partId: "stored-$index",
+                orderIndex: index,
+                partJson: jsonEncode(
+                  _part(
+                      id: "stored-$index",
+                      attachment: const MessageAttachment.metadata(mime: "image/png", filename: null),
+                    ).toJson()
+                    ..["attachment"] = {
+                      "source": "stored_file",
+                      "mime": "image/png",
+                      "sha256": "${index + 1}" * 64,
+                      "byteLength": 20 * 1024 * 1024,
+                    },
+                ),
+                updatedAt: 1,
+              ),
+            );
+      }
+
+      final captured = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "overflow",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List(11 * 1024 * 1024)),
+            filename: "overflow.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
+
+      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(captured.storedReferencePart.attachment, isA<MessageAttachmentMetadata>());
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: ["m1"]);
+      expect(rows.last.partJson, isNot(contains("stored_file")));
     });
 
     test("a failed write returns unavailable and drops the synced marker", () async {

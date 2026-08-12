@@ -148,10 +148,11 @@ final class ClaudeContentMapper {
           yield _mapToolResult(toolUseId: toolUseId, content: content, isError: isError ?? false, state: state);
         }
       case ClaudeImageContentBlockDto(:final source):
-        if (!state.takeCandidate()) return;
-        yield ClaudeMappedImageContentBlock(
-          attachment: _mapImage(source: source, state: state),
-        );
+        yield state.takeCandidate()
+            ? ClaudeMappedImageContentBlock(
+                attachment: _mapImage(source: source, state: state),
+              )
+            : const ClaudeMappedUnsupportedContentBlock();
       case ClaudeRedactedThinkingContentBlockDto():
         yield const ClaudeMappedUnsupportedContentBlock();
       case ClaudeUnknownContentBlockDto():

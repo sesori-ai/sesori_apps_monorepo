@@ -205,8 +205,14 @@ void main() {
 
     test("reapplies count and byte limits when mapped batches merge", () {
       final seventeenMiB = base64Encode(Uint8List(17 * 1024 * 1024));
+      final oversized = base64Encode(Uint8List(maxTranscriptImageBytes + 1));
       final bounded = mapper.boundMappedAttachments(
         attachments: [
+          PluginMessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: oversized,
+            filename: "oversized.png",
+          ),
           PluginMessageAttachment.inlineImage(
             mime: "image/png",
             base64: seventeenMiB,
@@ -231,11 +237,12 @@ void main() {
       );
 
       expect(bounded, hasLength(4));
-      expect(bounded[0], isA<PluginMessageAttachmentInlineImage>());
+      expect(bounded[0], isA<PluginMessageAttachmentMetadata>());
       expect(bounded[1], isA<PluginMessageAttachmentInlineImage>());
-      expect(bounded[2], isA<PluginMessageAttachmentMetadata>());
+      expect(bounded[2], isA<PluginMessageAttachmentInlineImage>());
+      expect(bounded[3], isA<PluginMessageAttachmentMetadata>());
       expect(
-        (bounded[2] as PluginMessageAttachmentMetadata).filename,
+        (bounded[3] as PluginMessageAttachmentMetadata).filename,
         "third.png",
       );
     });

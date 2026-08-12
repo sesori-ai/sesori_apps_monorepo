@@ -8,7 +8,7 @@
 - **Implementation base:** `origin/main` at `ec479cef`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** [#854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854)
-- **Next action:** Open and monitor Step 6 while implementing Step 7 locally
+- **Next action:** Monitor Step 6 while implementing Step 7 locally
 
 ## Plan Review
 
@@ -149,7 +149,8 @@
   Orchestrator, and SSE tests pass. Architecture implementation review approved
   the shared constant boundary, plugin ownership, independent wire/prompt
   limits, and capture-fallback layering with no blockers. The implementation
-  diff has 314 additions and 125 deletions across 25 files; `git diff --check`
+  diff against `origin/main` at `ec479cef` has 314 additions and 125 deletions
+  across 25 files; `git diff --check`
   passes. Committed as `29235b47`, pushed, and opened as
   [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854).
 

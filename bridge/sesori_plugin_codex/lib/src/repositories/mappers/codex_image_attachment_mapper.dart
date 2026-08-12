@@ -116,7 +116,16 @@ final class CodexImageAttachmentMapper {
           :final filename,
         ):
           final decodedBytes = decodedBase64Length(base64Data: base64);
-          if (decodedBytes > remainingBytes) {
+          if (decodedBytes > maxTranscriptImageBytes) {
+            mapped = PluginMessageAttachment.metadata(
+              mime: mime,
+              filename: filename,
+            );
+            _warnOnce(
+              reason: _ImageDegradationReason.oversized,
+              warned: warned,
+            );
+          } else if (decodedBytes > remainingBytes) {
             mapped = PluginMessageAttachment.metadata(
               mime: mime,
               filename: filename,

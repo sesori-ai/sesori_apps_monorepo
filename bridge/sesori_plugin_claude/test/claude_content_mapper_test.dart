@@ -211,11 +211,13 @@ void main() {
     });
 
     test("bounds untrusted image MIME metadata", () {
-      final mapped = mapper
-          .map(
-            content: _image(data: "AA==", mime: "X" * 300),
-          )
-          .single as ClaudeMappedImageContentBlock;
+      final mapped =
+          mapper
+                  .map(
+                    content: _image(data: "AA==", mime: "X" * 300),
+                  )
+                  .single
+              as ClaudeMappedImageContentBlock;
 
       expect(mapped.attachment.mime, "x" * 255);
       expect(mapped.attachment, isA<PluginMessageAttachmentMetadata>());
@@ -236,13 +238,24 @@ void main() {
       expect((mapped[2] as ClaudeMappedImageContentBlock).attachment, isA<PluginMessageAttachmentMetadata>());
     });
 
-    test("drops image candidates after the bounded prefix", () {
-      final mapped = mapper.map(
-        content: [for (var index = 0; index < 5; index++) _image(data: "AA==")],
+    test("drops excess images without shifting or dropping later content", () {
+      final parts = mapper.mapParts(
+        sessionId: "session-1",
+        messageId: "message-1",
+        content: [
+          for (var index = 0; index < 5; index++) _image(data: "AA=="),
+          {"type": "text", "text": "after images"},
+        ],
       );
 
-      expect(mapped, hasLength(4));
-      expect(mapped, everyElement(isA<ClaudeMappedImageContentBlock>()));
+      expect(parts, hasLength(6));
+      expect(
+        parts.take(4),
+        everyElement(isA<PluginMessagePart>().having((part) => part.type, "type", PluginMessagePartType.file)),
+      );
+      expect(parts[4].type, PluginMessagePartType.unknown);
+      expect(parts[5].id, "message-1-block-5");
+      expect(parts[5].text, "after images");
     });
 
     test("absorbs redacted, future, and malformed blocks without exposing payloads", () {
