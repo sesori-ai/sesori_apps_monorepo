@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Steps 1-6 merged; Step 7 PR open
-- **Current step:** 7/8
-- **Implementation base:** Step 6 merge commit `b799ea48`
+- **Series state:** Steps 1-7 merged; Step 8 retirement in review
+- **Current step:** 8/8
+- **Implementation base:** Step 7 merge commit `61e9ed2d`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** [#841](https://github.com/sesori-ai/sesori_apps_monorepo/pull/841)
-- **Next action:** Monitor Step 7; complete live smoke with explicit user interaction
+- **Current PR:** Pending Step 8 publication
+- **Next action:** Merge Step 8 retirement
 
 ## Plan Review
 
@@ -32,8 +32,8 @@
 | [x] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) merged |
 | [x] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) merged |
 | [x] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | [PR #837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837) merged |
-| [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | [PR #841](https://github.com/sesori-ai/sesori_apps_monorepo/pull/841) open; live smoke pending user interaction |
-| [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | Pending |
+| [x] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | [PR #841](https://github.com/sesori-ai/sesori_apps_monorepo/pull/841) merged |
+| [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | This retirement PR |
 
 ## Locked Decisions
 
@@ -54,6 +54,26 @@
   harness implementations are excluded.
 
 ## Verification Log
+
+- Final merge record: Steps 1-7 merged in order through PRs
+  [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824),
+  [#827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827),
+  [#833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833),
+  [#834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834),
+  [#835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835),
+  [#837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837), and
+  [#841](https://github.com/sesori-ai/sesori_apps_monorepo/pull/841).
+  Their merge commits are `de244964`, `67310433`, `3af28a81`, `2bc60ae3`,
+  `e13b9a38`, `b799ea48`, and `61e9ed2d` respectively.
+- Final implementation evidence: Step 7 CI passed 11/11, Cubic approved, and
+  all review threads were resolved. The final focused mobile suite passed 31
+  tests and fatal-info analysis was clean. Earlier step-specific full suites,
+  analyses, compatibility checks, and architecture-review availability are
+  recorded below.
+- Remaining manual evidence: the real logged-out Codex authorization-to-session
+  smoke was not run. Local Codex was already authenticated, and a safe end-to-end
+  run required explicit provider interaction plus credential or bridge pairing
+  state changes. No user state was modified without approval.
 
 - Step 1: `git diff --check origin/main...HEAD` passes, and
   `git diff --numstat origin/main...HEAD` reports 739 additions and 0 deletions
