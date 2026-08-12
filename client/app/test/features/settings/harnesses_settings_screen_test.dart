@@ -497,6 +497,81 @@ void main() {
     expect(find.text("Authorization expired."), findsOneWidget);
   });
 
+  testWidgets("terminal failure before sheet attachment does not leave an empty sheet", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    authenticationTerminal.add((
+      pluginId: "codex",
+      progress: const PluginAuthenticationProgress.failed(message: "Authorization expired."),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log in to harness"), findsNothing);
+    expect(find.byKey(const Key("harness_authentication_error")), findsOneWidget);
+    expect(find.text("Authorization expired."), findsOneWidget);
+  });
+
+  testWidgets("cancellation disables browser launch and uncertain cancellation enables retry", (tester) async {
+    _useTallSurface(tester);
+    final cancelResult = Completer<PluginAuthenticationCancelResult>();
+    when(
+      () => service.cancelAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) => cancelResult.future);
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("harness_authentication_cancel")));
+    await tester.pump();
+    expect(
+      tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_open_browser"))).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_cancel"))).onPressed,
+      isNull,
+    );
+
+    cancelResult.complete(const PluginAuthenticationCancelResult.uncertain());
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_open_browser"))).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_cancel"))).onPressed,
+      isNotNull,
+    );
+  });
+
   testWidgets("setup-not-ready shows setup guidance and only meaningful eligibility controls", (tester) async {
     _useTallSurface(tester);
     final plugin = _managed.copyWith(

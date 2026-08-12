@@ -1040,6 +1040,11 @@ class _AuthenticationSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_authenticationChallenge(state: context.read<PluginManagementCubit>().state) == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? false)) context.pop();
+      });
+    }
     return BlocListener<PluginManagementCubit, PluginManagementState>(
       listenWhen: (previous, current) =>
           _authenticationChallenge(state: previous) != null && _authenticationChallenge(state: current) == null,
@@ -1117,18 +1122,22 @@ class _AuthenticationSheet extends StatelessWidget {
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.lg,
             fullWidth: true,
-            onPressed: context.read<PluginManagementCubit>().launchAuthenticationBrowser,
+            onPressed: challenge.cancelling ? null : context.read<PluginManagementCubit>().launchAuthenticationBrowser,
           ),
           const SizedBox(height: PregoSpacing.md),
           PregoButtonsSolid(
             key: const Key("harness_authentication_cancel"),
-            label: challenge.cancelling ? loc.harnessAuthenticationCancelling : loc.harnessAuthenticationCancel,
+            label: challenge.cancelling && !challenge.uncertain
+                ? loc.harnessAuthenticationCancelling
+                : loc.harnessAuthenticationCancel,
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.lg,
             type: PregoButtonsSolidType.destructive,
             fullWidth: true,
-            isLoading: challenge.cancelling,
-            onPressed: challenge.cancelling ? null : context.read<PluginManagementCubit>().cancelAuthentication,
+            isLoading: challenge.cancelling && !challenge.uncertain,
+            onPressed: challenge.cancelling && !challenge.uncertain
+                ? null
+                : context.read<PluginManagementCubit>().cancelAuthentication,
           ),
         ],
       ),
