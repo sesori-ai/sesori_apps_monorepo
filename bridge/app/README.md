@@ -128,7 +128,7 @@ Bridge core flags:
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
 | `--import-plugin` | *(none)* | Start an import for this eligible plugin after startup. Repeatable. |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
-| `--data-dir` | platform Sesori data directory | Override account-bound storage for tokens, bridge ID, database, and onboarding markers |
+| `--data-dir` | platform Sesori data directory | Override account-bound storage for tokens, bridge ID, database, and onboarding markers. Transcript attachment bytes remain in the shared platform attachment root. |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
 | `--log-level` | `info` | Minimum **diagnostic log** level (written to stderr): `verbose`, `debug`, `info`, `warning`, `error` |
 | `--version` | — | Print the bridge version and exit |
@@ -230,7 +230,15 @@ dart run bin/bridge.dart logout --data-dir /tmp/sesori-bridge-account-a
 
 The override isolates Sesori credentials, bridge identity, catalog database,
 and onboarding markers. Bridge settings in `~/.config/sesori`, managed plugin
-runtime state, and backend CLI credentials remain shared. Packaged native
+runtime state, backend CLI credentials, and transcript attachment bytes remain
+shared. Attachments use
+`~/Library/Application Support/Sesori Attachments` on macOS,
+`${XDG_DATA_HOME:-~/.local/share}/sesori-attachments` on Linux, and
+`%LOCALAPPDATA%\Sesori Attachments` on Windows. They may be referenced by more
+than one bridge database, so archiving or deleting a session does not remove
+them. The owner-only files contain decrypted user content; deleting the shared
+directory manually makes affected images unavailable without breaking
+transcript reads. Packaged native
 bridges still enforce the normal single-live-bridge rule; this workflow is for
 source-run test processes. A custom-directory logout deliberately does not stop
 any bridge process, so stop the corresponding source-run bridge first. Server

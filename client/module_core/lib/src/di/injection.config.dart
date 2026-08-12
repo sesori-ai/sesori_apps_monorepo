@@ -192,14 +192,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
     );
-    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
-      () => _i516.NotificationOpenDispatcher(
-        authSession: gh<_i442.AuthSession>(),
-        pushMessagingSource: gh<_i330.PushMessagingSource>(),
-        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
-        routeDispatcher: gh<_i951.RouteDispatcher>(),
-      ),
-    );
     gh.lazySingleton<_i198.ComposerDraftRepository>(
       () => _i198.ComposerDraftRepository(
         storage: gh<_i64.ComposerDraftStorage>(),
@@ -231,6 +223,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i197.ProductAnalyticsPreferenceStorage>(
       () => _i197.ProductAnalyticsPreferenceStorage(
         storage: gh<_i442.SecureStorage>(),
+      ),
+    );
+    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
+      () => _i516.NotificationOpenDispatcher(
+        authSession: gh<_i442.AuthSession>(),
+        pushMessagingSource: gh<_i330.PushMessagingSource>(),
+        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
+        routeDispatcher: gh<_i951.RouteDispatcher>(),
+        routeSource: gh<_i366.RouteSource>(),
       ),
     );
     gh.lazySingleton<_i205.BridgeRepository>(

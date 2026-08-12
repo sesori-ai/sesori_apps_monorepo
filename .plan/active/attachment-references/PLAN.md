@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `attachment-references`
-- **Status:** Step 1/11 - plan ready for review
+- **Status:** Step 3/11 - bridge rendition endpoint in review
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `944e07e7`
+- **Implementation base:** `origin/main` at `f91fee47`
 - **Delivery:** one plan PR, nine sequential implementation PRs, and one
   plan-retirement PR
 - **Related future work:** prompt-upload decisions are recorded separately in
@@ -50,9 +50,10 @@ viewer actions without making bridge content public or readable by the relay.
 9. Released compatibility is preserved in every direction: old apps receive
    the existing bounded inline/metadata shapes, and new apps continue to render
    inline images from old bridges.
-10. Archive, session deletion, history purge, and missing-spill behavior remain
-    correct without adding an attachment table, refcounting, or a new cleanup
-    lifecycle.
+10. Archive, session deletion, and history purge remove their data-directory-
+    local metadata without deleting attachment bytes shared with another bridge
+    database. Manually removed bytes degrade to metadata without adding an
+    attachment table, refcounting, or background cleanup lifecycle.
 11. HTTPS remote image attachments retain their current phone-fetched behavior;
     this work neither snapshots them on the bridge nor weakens their existing
     URL, redirect, MIME, signature, timeout, and size checks.
@@ -96,6 +97,26 @@ viewer actions without making bridge content public or readable by the relay.
   third-party origin and existing privacy behavior are not disguised as a
   bridge-owned attachment.
 
+### Bridge attachment persistence
+
+- Bridge-owned attachment bytes live outside `--data-dir` in one owner-only,
+  platform-native persistent root shared by bridge instances for the current OS
+  user: `~/Library/Application Support/Sesori Attachments` on macOS,
+  `${XDG_DATA_HOME:-~/.local/share}/sesori-attachments` on Linux, and
+  `%LOCALAPPDATA%\Sesori Attachments` on Windows.
+- A storage scope is the durable `(pluginId, backendSessionId)` binding, not the
+  database-local random `ses_...` id. Importing the same backend session into a
+  different data directory therefore reaches the same attachment files after
+  that database backfills the transcript and recreates its local references.
+- Account identity and `--data-dir` are intentionally absent from the disk
+  scope. Access still requires a session row with the matching durable backend
+  binding in the requesting bridge database.
+- Shared attachment bytes have manual lifetime. Archive, unarchive, local
+  history purge, and session deletion do not copy or delete them because another
+  bridge database may still reference the same scope. Removing the shared root
+  or one scoped directory is supported and degrades affected references to
+  metadata/404 until the backend supplies those bytes again.
+
 ## Explicitly Excluded
 
 - Prompt/composer upload references. See the separate considerations document.
@@ -131,7 +152,7 @@ viewer actions without making bridge content public or readable by the relay.
   encrypted frames and enforces a 64 MiB frame ceiling. It has no HTTP content
   proxy, binary body, streaming, or range primitive.
 
-### Existing storage already solves original persistence
+### Existing storage supplies the original-persistence primitive
 
 - `AttachmentSpillStorage` stores decoded originals under
   `history/attachments/<session>/<sha256>` with atomic, idempotent,
@@ -139,9 +160,11 @@ viewer actions without making bridge content public or readable by the relay.
 - `ChatHistoryRepository` currently converts `inline_image` to an internal
   `stored_file` reference before database/archive persistence, then reads and
   base64-encodes the original again on every history response.
-- Archive export copies the session spill directory before live purge. Session
-  deletion and archive deletion already remove their respective spill
-  directories.
+- Before Step 3's shared-root revision, archive export copied the session spill
+  directory before live purge, and session/archive deletion removed the
+  respective spill directories. Those data-directory-local lifecycle rules are
+  the behavior being replaced because independent databases cannot coordinate
+  deletion of shared files.
 - The completed internal-history plan explicitly identified an on-demand
   attachment route as the upgrade path. This work uses that path rather than
   replacing the history store.
@@ -222,10 +245,36 @@ content-safe.
 
 ### 2. Stored originals and one thumbnail rendition
 
-Continue using `AttachmentSpillStorage` for originals. Extend the same
-session-scoped directory with a versioned derived-thumbnail filename so archive
-copy and session purge automatically include it. Do not introduce a new table
-or independent retention policy.
+Continue using `AttachmentSpillStorage` for originals, but compose it over the
+platform-native shared attachment root rather than `--data-dir`. Its directory
+scope is derived from the stored session's required `pluginId` and
+`backendSessionId`, both encoded as path segments; the database-local session id
+continues to scope queues, history rows, archives, routes, and client caches but
+never disk identity. Extend that shared scope with a versioned
+derived-thumbnail filename. Do not introduce a new table, refcount, or garbage
+collector.
+
+The root resolver belongs in `sesori_bridge_foundation` beside
+`sesoriDataDirectory` and uses `resolveUserHomeDirectory`; it honors
+`XDG_DATA_HOME` on Linux and never reads `HOME`/`USERPROFILE` outside that
+foundation boundary. `AttachmentSpillStorage` owns encoded scope paths, atomic
+idempotent writes, and owner-only hardening. Two bridge processes writing the
+same backend session and digest converge on the same file.
+
+The shared root has one copy of each file per backend session scope. There is no
+live/archive attachment split: archive audit JSON retains the same internal
+content reference, while archive/history/session deletion removes only the
+requesting data directory's rows and audit files. Shared bytes remain available
+to another database and are removed only by the OS user. A new database does
+not infer message-to-attachment metadata by listing the root; its first normal
+backend transcript backfill recreates those local references and the
+content-addressed write reuses existing bytes.
+
+The previous data-directory-local spill layout was implementation-only and has
+no supported production compatibility requirement. Step 3 replaces it cleanly:
+there is no startup migration, fallback read, dual write, or sync-state repair.
+Files left by development/internal builds are ignored and may be removed with
+their old data directory.
 
 The thumbnail contract is fixed for this series:
 
@@ -243,34 +292,47 @@ Generate the thumbnail lazily on the first request and persist it atomically.
 The concrete bridge owners are:
 
 - `AttachmentThumbnailBuilder` in
-  `bridge/app/lib/src/bridge/repositories/builders/attachment_thumbnail_builder.dart`
+  `bridge/app/lib/src/bridge/repositories/attachment_thumbnail_builder.dart`
   is a pure, zero-collaborator Layer-2 transformation over the pure-Dart image
   codec, beside the attachment projection/mapping policy it implements. It runs
   off the main isolate, reads metadata first, rejects dimensions/pixel counts
   above its documented decode-memory ceiling, bakes orientation, crops, and
   encodes one rendition. It owns no files, cache decisions, or queue.
-- `ChatHistoryRepository` remains the Layer-2 aggregate owner of live/archive
-  attachment files. New methods store an original, read an original or derived
-  thumbnail from the live and archived spill roots, project a stored message's
-  attachment collection for capable/legacy delivery, and atomically persist a
-  generated thumbnail through the existing Layer-1 storage APIs.
-- `ChatHistoryService` requires `AttachmentThumbnailBuilder` and the existing
-  `BridgeIdProvider`; its attachment-read method enters the existing
-  per-session queue before live/archive selection, and it owns one coarse
-  generation lane inside that queue so a page of uncached previews cannot
-  launch many full-image decodes concurrently. It does not touch
-  `AttachmentSpillStorage` directly.
+- `AttachmentStorageScope` in
+  `bridge/app/lib/src/api/attachment_spill_storage.dart` is the required
+  Layer-1 value passed across the service/repository/storage seam. It carries
+  non-null `pluginId` and `backendSessionId`; only `AttachmentSpillStorage`
+  encodes those values into directory segments.
+- `ChatHistoryRepository` remains the Layer-2 aggregate owner of transcript
+  attachment references. New methods store/read an original or derived
+  thumbnail in the one shared spill root, project a stored message's attachment
+  collection for capable/legacy delivery, and atomically persist a generated
+  thumbnail through the existing Layer-1 storage API. Repository methods that
+  touch bytes require the durable attachment scope supplied by the service.
+- `ChatHistoryService` requires `AttachmentThumbnailBuilder`; its
+  attachment-read and attachment-persistence paths resolve the local session to
+  its durable plugin/backend binding inside the existing per-session queue. It
+  owns one coarse generation lane inside that queue so a page of uncached
+  previews cannot launch many full-image decodes concurrently. It does not
+  touch `AttachmentSpillStorage` directly.
 - `GetSessionAttachmentHandler` in
   `bridge/app/lib/src/bridge/routing/get_session_attachment_handler.dart`
   requires `ChatHistoryService` and maps typed route success/failure only.
 
+`StoredAttachmentLocation`, the second `AttachmentSpillStorage` dependency, and
+the `archivedAttachmentStorage` wiring in `Orchestrator` and
+`BridgeRuntimeRunner` become obsolete and are removed in Step 3. Transcript
+selection still distinguishes live database rows from archived audit JSON, but
+that state no longer parameterizes attachment byte access.
+
 The single service lane addresses an ordinary reachable flow with meaningful
 memory impact; no per-session or per-digest lock registry is needed. A rejected
-thumbnail does not delete or invalidate the original. Fetch tries the live
-spill root, then the archived spill root. Source selection, original read, and
-the final derived write remain inside the existing session queue. The thumbnail
-is persisted beside its source original, so archive and purge cannot interleave
-or cause generation to recreate a purged live root.
+thumbnail does not delete or invalidate the original. Fetch selects the live or
+archived transcript from durable session state, but both transcript states read
+the same durable attachment scope. Scope resolution, original read, and the
+final derived write remain inside the existing session queue. The thumbnail is
+persisted beside its source original; archive and purge do not mutate that
+shared scope.
 
 ### 3. History and archive projection
 
@@ -469,8 +531,9 @@ subscription because multiple app versions may use one bridge concurrently.
 
 - Relay E2E framing and room-key handling are unchanged.
 - Every fetch requires the owning `sessionId` plus a syntactically valid
-  attachment id. Storage resolution remains under the encoded session directory
-  and rejects path traversal.
+  attachment id. The bridge resolves that session row to its required plugin and
+  backend identity, then resolves storage under those encoded scope segments;
+  malformed identifiers cannot select another scope or traverse the root.
 - The first identifier implementation may reuse the content address inside the
   encrypted contract, but clients treat it as opaque and scope caches by bridge
   and session. Cross-session/public addressing is not provided.
@@ -500,7 +563,13 @@ Small directly caused cleanup is included:
 - capable history reads stop rehydrating and base64-encoding stored originals;
 - capable SSE queues stop retaining original bytes; and
 - client reference previews stop requiring a full-original decode before a chat
-  tile appears.
+  tile appears; and
+- the obsolete archived attachment root, archive-copy path, and delete-time
+  attachment-directory purge are removed because shared files cannot follow one
+  database's lifecycle; and
+- bridge operator documentation identifies the platform-native attachment root,
+  its manual lifetime, and the fact that deleting a session does not erase
+  those shared decrypted files.
 
 Compatibility prevents deleting these paths now:
 
@@ -519,14 +588,15 @@ baseline is intentionally raised in a separate task.
 |---|---|---|---|
 | Reference history images | Observed ordinary flow: every open/reload sends paged inline originals. | Repeated bandwidth, base64 work, and memory. | Implement. |
 | Reference live images | Observed ordinary flow: finalized part events and replay queues carry full snapshots. | Duplicate live/reconnect traffic and bridge queue memory. | Implement with per-subscriber shaping. |
-| Queue live capture and projection together | Archive and live activity can overlap for one session. | A post-copy spill could be purged before the emitted reference is usable. | One awaited service call reuses the existing per-session queue. |
+| Queue live capture and projection together | Archive and live activity can overlap for one session. | A reference could be emitted before its shared spill write completes. | One awaited service call reuses the existing per-session queue. |
 | Project the complete legacy collection | ACP assistant images arrive as separate part updates. | Per-event shaping could exceed the released 5 MiB aggregate behavior. | Query bounded stored sibling parts; no mutable accounting registry. |
 | Serialize thumbnail generation | Ordinary page can request several uncached previews together. | Concurrent full decodes can spike bridge memory. | One coarse lane, no keyed lock registry. |
-| Persist one bridge thumbnail | Multiple devices/cache eviction can request the same derived image. | Repeated CPU-heavy decode. | One versioned sibling file, existing purge lifecycle. |
+| Persist one bridge thumbnail | Multiple devices/cache eviction can request the same derived image. | Repeated CPU-heavy decode. | One versioned sibling file in the shared backend-session scope. |
 | Chunk/resume transfers | Theoretical benefit for this bounded image-only scope; no observed failed 20 MB attachment flow. | A failed transfer retries the complete image. | Accept and defer. |
 | Gallery swiping | Convenience only; current viewer already opens every image. | User closes viewer to choose another tile. | Accept and defer. |
 | Document/video support | No current ordinary production byte source. | Metadata tiles remain non-openable. | Accept and defer. |
-| New attachment table/refcount | Existing session-scoped content files and purge already own lifetime. | No cross-session dedup or independent lookup metadata. | Accept and avoid. |
+| Shared attachment cleanup/refcount | Independent bridge databases can reference the same backend-session scope but cannot atomically enumerate each other's references. | Automatic deletion by one database can break another. | Keep manual lifetime; accept retained orphan bytes and avoid coordination machinery. |
+| Global content dedup | The requested reuse boundary is one backend session; a globally addressed file would need an additional per-session authorization membership check. | Identical bytes in different sessions remain duplicated. | Accept and keep storage session-scoped. |
 
 ## Delivery Rules
 
@@ -555,7 +625,7 @@ baseline is intentionally raised in a separate task.
 |---|---|---:|---|
 | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | Active plan/tracker and upload considerations only. |
 | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | Shared variant, rendition models, delivery mode defaults, generated code, exhaustive compile-safe consumers. No peer enables references. |
-| 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Versioned thumbnail storage/builder, session-queued live/archive lookup, typed fetch handler, decode/size/security tests. |
+| 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | Shared backend-session storage, versioned thumbnail builder, session-queued rendition lookup, typed fetch handler, and decode/size/security tests. |
 | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Capability-aware active/archive projection and legacy budget preservation. |
 | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Awaited materialization, dual event shapes, subscriber/orphan delivery mode, SSE memory/compatibility coverage. |
 | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | OpenCode, Codex, ACP, Cursor, and Claude output limits move to 20 MB each/50 MB aggregate while legacy projection stays 5 MiB. |
@@ -597,17 +667,23 @@ the documented defaults.
 - Add zero-collaborator `AttachmentThumbnailBuilder` beside bridge repository
   mapping/building policy with the pure-Dart thumbnail dependency and bounded,
   off-main-isolate decoding.
-- Extend spill storage for versioned derived thumbnails using existing atomic
-  write, archive-copy, hardening, and purge conventions.
-- Add live-then-archive original/thumbnail methods to
-  `ChatHistoryRepository`; extend
-  `ChatHistoryService(repository, builder, bridgeIdProvider)` with session-queued
-  rendition selection and the single generation lane; and
+- Move spill storage to the platform-native shared attachment root, key its
+  owner-hardened scope by plugin/backend session identity, retain files across
+  archive/history/session deletion, and add versioned derived thumbnails using
+  the existing atomic content-addressed write conventions.
+- Add durable-scope original/thumbnail methods to `ChatHistoryRepository`; extend
+  `ChatHistoryService(repository, builder)` with session-queued rendition
+  selection and the single generation lane; and
   register `GetSessionAttachmentHandler(chatHistoryService)` for
   `POST /session/attachment`.
-- Cover original/thumbnail success, first-frame behavior, transparency,
-  orientation, concurrent generation, corrupt/oversized input, missing files,
-  archive lookup, generation racing purge, traversal rejection, and response bounds.
+- Cover platform root resolution, cross-data-directory reuse, scope isolation,
+  manual deletion degradation, original/thumbnail success, first-frame
+  behavior, transparency, orientation, concurrent generation,
+  corrupt/oversized input, archived-session lookup, traversal rejection, and
+  response bounds.
+- Remove `StoredAttachmentLocation`, archived spill DI/composition, archive
+  copy, and delete-time spill purge. Do not migrate or fall back to the
+  development/internal data-directory layout.
 - Run bridge app focused/full tests, fatal analysis, build/codegen as required,
   and architecture implementation review.
 
@@ -618,6 +694,8 @@ retrieve one E2E-ready rendition from an existing spill file.
 
 - Thread delivery mode through handler, service, active page, and archived page
   reads.
+- Inject the existing `BridgeIdProvider` into `ChatHistoryService` when history
+  projection first needs to stamp required bridge identity.
 - Project internal `stored_file` to `stored_image` without reading originals for
   capable requests.
 - Preserve legacy inline collection budgets and metadata degradation.

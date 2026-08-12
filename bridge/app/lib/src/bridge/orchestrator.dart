@@ -50,6 +50,7 @@ import "../routing/get_plugins_handler.dart";
 import "../routing/get_pull_request_refresh_settings_handler.dart";
 import "../routing/patch_bridge_settings_handler.dart";
 import "../routing/patch_plugin_idle_timeout_handler.dart";
+import "../routing/plugin_authentication_handlers.dart";
 import "../routing/post_plugin_lifecycle_command_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
@@ -69,6 +70,7 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
+import "repositories/attachment_thumbnail_builder.dart";
 import "repositories/chat_history_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
@@ -103,6 +105,7 @@ import "routing/get_current_project_handler.dart";
 import "routing/get_project_questions_handler.dart";
 import "routing/get_projects_handler.dart";
 import "routing/get_providers_handler.dart";
+import "routing/get_session_attachment_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
@@ -184,7 +187,6 @@ class Orchestrator {
   final ChatHistoryDatabase _chatHistoryDatabase;
   final AttachmentSpillStorage _attachmentSpillStorage;
   final ArchivedSessionStorage _archivedSessionStorage;
-  final AttachmentSpillStorage _archivedAttachmentStorage;
   final http.Client _httpClient;
   final ProcessRunner _processRunner;
   final AccessTokenProvider _accessTokenProvider;
@@ -208,7 +210,6 @@ class Orchestrator {
     required ChatHistoryDatabase chatHistoryDatabase,
     required AttachmentSpillStorage attachmentSpillStorage,
     required ArchivedSessionStorage archivedSessionStorage,
-    required AttachmentSpillStorage archivedAttachmentStorage,
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required AccessTokenProvider accessTokenProvider,
@@ -231,7 +232,6 @@ class Orchestrator {
        _chatHistoryDatabase = chatHistoryDatabase,
        _attachmentSpillStorage = attachmentSpillStorage,
        _archivedSessionStorage = archivedSessionStorage,
-       _archivedAttachmentStorage = archivedAttachmentStorage,
        _httpClient = httpClient,
        _processRunner = processRunner,
        _accessTokenProvider = accessTokenProvider,
@@ -474,9 +474,9 @@ class Orchestrator {
         chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
         attachmentSpillStorage: _attachmentSpillStorage,
         archivedSessionStorage: _archivedSessionStorage,
-        archivedAttachmentStorage: _archivedAttachmentStorage,
       ),
       sessionRepository: sessionRepository,
+      attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
     );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
@@ -558,6 +558,8 @@ class Orchestrator {
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
+        PostPluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
+        DeletePluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         GetBridgeSettingsHandler(settingsRepository: _bridgeSettingsRepository),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
@@ -582,6 +584,7 @@ class Orchestrator {
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
         ),
+        GetSessionAttachmentHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
           sessionRepository: sessionRepository,
@@ -654,6 +657,7 @@ class Orchestrator {
       catalogImportProgress: catalogImportService.progress,
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
       pluginInstallProgress: _pluginLifecycleService.installProgress,
+      pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -805,6 +809,7 @@ class OrchestratorSession {
     required Stream<CatalogImportProgress> catalogImportProgress,
     required Stream<String> pluginManagementSnapshotTokens,
     required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
+    required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
     required StreamController<int> bytesSentController,
     required StreamController<SesoriSseEvent> localWireEventsController,
     required FailureReporter failureReporter,
@@ -899,6 +904,16 @@ class OrchestratorSession {
           );
         })
         .addTo(_subscriptions);
+    pluginAuthenticationProgress
+        .listen((update) {
+          _enqueueWireEvent(
+            SesoriSseEvent.pluginAuthenticationProgress(
+              pluginId: update.pluginId,
+              progress: update.progress,
+            ),
+          );
+        })
+        .addTo(_subscriptions);
     _sessionPromptService.promptDefaultsChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -933,9 +948,7 @@ class OrchestratorSession {
       return Future.error(StateError("OrchestratorSession has already started"), StackTrace.current);
     }
 
-    _sessionAbortService.abortStartedSessions
-        .listen(_completionListener.markSessionAbortPending)
-        .addTo(_subscriptions);
+    _sessionAbortService.abortStartedSessions.listen(_completionListener.markSessionAbortPending).addTo(_subscriptions);
     _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
     _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
     _completionListener.start();

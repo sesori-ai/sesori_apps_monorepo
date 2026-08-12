@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Step 1 PR open
-- **Current step:** 1/8
-- **Implementation base:** `origin/main` at `3708d348`
+- **Series state:** Step 5 PR open
+- **Current step:** 5/8 in review
+- **Implementation base:** Step 4 merge commit `2bc60ae3`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Current PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
-- **Next action:** Monitor Step 1 review/CI and begin Step 2 locally
+- **Current PR:** [#835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835)
+- **Next action:** Monitor Step 5 review/CI and implement Step 6 locally
 
 ## Plan Review
 
@@ -26,11 +26,11 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) open |
-| [ ] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | Pending |
-| [ ] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | Pending |
-| [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Pending |
-| [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Pending |
+| [x] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) merged |
+| [x] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827) merged |
+| [x] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) merged |
+| [x] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) merged |
+| [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) open |
 | [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | Pending |
 | [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Pending |
 | [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | Pending |
@@ -61,6 +61,46 @@
   suites were run because this step changes documentation only. Committed as
   `e4213ff2`, pushed, and opened as
   [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824).
+- Step 2: `dart test` passes all 348 Codex plugin tests. Focused runtime,
+  setup, stdio transport, and typed account API tests pass, and
+  `dart analyze --fatal-infos` reports no issues.
+  `git diff --check origin/main...HEAD` passes, and
+  `git diff --numstat origin/main...HEAD` reports 2,478 additions and 169 deletions.
+  The required architecture implementation review could not run because the
+  review sub-agent failed twice before reading code with an internal task-store
+  schema error (`no such column: replacement_seq`). Committed as `3d71e4cf`,
+  rebased onto `origin/main`, pushed, and opened as
+  [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827).
+- Step 3: `dart test` passes all 152 plugin-interface tests and all 357 Codex
+  plugin tests. `dart analyze --fatal-infos` reports no issues in both packages,
+  `git diff --check origin/main...HEAD` passes, and
+  `git diff --numstat origin/main...HEAD` reports 850 additions and 27 deletions.
+  The required architecture implementation
+  review could not run because the review sub-agent failed before reading code
+  with the internal task-store schema error `no such column: replacement_seq`.
+  Committed as `36ec1eca`, pushed, and opened as
+  [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833).
+- Step 4: Full `sesori_shared` tests pass (389 tests), focused client SSE
+  classification tests pass, and fatal-info analysis reports no issues in
+  `sesori_shared`, bridge app, client core, desktop core, mobile app, or desktop
+  app. The required architecture implementation review could not run because
+  the review sub-agent failed before reading code with the internal task-store
+  schema error `no such column: replacement_seq`. `git diff --check
+  origin/main...HEAD` passes, and `git diff --numstat origin/main...HEAD` reports 976
+  additions and 25 deletions. Committed as `0b418a3a`, pushed, and opened as
+  [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834).
+- Step 5 local: Full bridge app tests pass (2,542 tests), full Codex tests pass
+  (361 tests), and full plugin-interface tests pass (152 tests). Fatal-info
+  analysis reports no issues in all three packages. The required architecture
+  implementation review could not run because the review sub-agent failed
+  before reading code with the internal task-store schema error `no such
+  column: replacement_seq`. Post-rebase focused tests pass (123 bridge app,
+  14 Codex descriptor, and plugin-interface authentication tests), fatal-info
+  analysis remains clean, `git diff --check origin/main...HEAD` passes, and
+  `git diff --numstat origin/main...HEAD` reports 844 additions and 73
+  deletions. The lower-than-estimated size reflects reuse of existing lifecycle
+  ownership rather than introducing a parallel coordinator. Pushed and opened
+  as [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835).
 
 ## Findings And Plan Deltas
 
@@ -77,6 +117,43 @@
   only.
 - **2026-08-11 - Architecture review:** Added explicit Codex Client/API/
   Repository/Service layers and changed terminal progress to sealed variants.
-- **2026-08-11 - Cleanup:** Reuse one Codex runtime resolver and replace
+- **2026-08-11 - Cleanup:** Reuse one Codex runtime selection service and replace
   local-terminal-only setup guidance; retain login-status inspection and
   compatibility behavior.
+- **2026-08-11 - Step 2 started:** Created local branch
+  `codex-mobile-login-primitives` from the Step 1 branch. Confirmed the runtime
+  selection service must preserve explicit/PATH/desktop/managed precedence and
+  setup failure classifications; the new stdio client will be a second
+  transport behind the typed Codex App Server API rather than changing the
+  normal WebSocket runtime.
+- **2026-08-11 - Step 2 implementation:** Added one shared executable selection
+  decision for setup/startup/authentication, a secret-safe stdio JSONL App
+  Server transport with bounded child cleanup, and typed account start/cancel/
+  completion API models. Existing WebSocket generation behavior remains
+  unchanged and no bridge or client capability is exposed yet.
+- **2026-08-11 - Step 3 started:** Created local branch
+  `codex-mobile-login-device-authentication` from the Step 2 PR branch. It
+  remains local until Step 2 merges.
+- **2026-08-12 - Step 3 implementation:** Added the optional descriptor
+  capability and safe sealed events, then composed Codex Client/API/Repository/
+  Service ownership with private login-ID correlation, HTTPS validation,
+  abort-driven upstream cancellation, sanitized remote failures, and awaited
+  child cleanup. No route or client capability is exposed yet.
+- **2026-08-12 - Step 4 started:** Created local branch
+  `codex-mobile-login-shared-contracts` from the Step 3 PR branch. It remains
+  local until Step 3 merges.
+- **2026-08-12 - Step 3 merged:** Rebased Step 4 onto merge commit `3af28a81`
+  after PR #833 merged with cancellation-precedence review fixes.
+- **2026-08-12 - Step 4 implementation:** Added backend-neutral authentication
+  capability/state metadata, typed device-code challenge, sealed terminal
+  progress, typed conflicts, and one global progress SSE event. Challenge data
+  remains request-scoped and absent from management snapshots and SSE.
+- **2026-08-12 - Step 5 started:** Created local branch
+  `codex-mobile-login-bridge-authentication` while Step 4 remains in review.
+- **2026-08-12 - Step 5 implementation:** Extended the existing runtime,
+  repository, lifecycle service, explicit router, and Orchestrator ownership
+  seams with start-or-join authentication, typed conflicts, cancellation,
+  authoritative setup reinspection/start, terminal SSE, and awaited shutdown
+  settlement. The successor remains local until Step 4 merges.
+- **2026-08-12 - Step 4 merged:** Rebased Step 5 onto merge commit `2bc60ae3`
+  after PR #834 merged with fail-closed future-progress compatibility.

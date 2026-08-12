@@ -102,6 +102,24 @@ const _$PluginInstallPhaseEnumMap = {
   PluginInstallPhase.unknown: 'unknown',
 };
 
+SesoriPluginAuthenticationProgress _$SesoriPluginAuthenticationProgressFromJson(
+  Map json,
+) => SesoriPluginAuthenticationProgress(
+  pluginId: json['pluginId'] as String,
+  progress: PluginAuthenticationProgress.fromJson(
+    Map<String, dynamic>.from(json['progress'] as Map),
+  ),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$SesoriPluginAuthenticationProgressToJson(
+  SesoriPluginAuthenticationProgress instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'progress': instance.progress.toJson(),
+  'type': instance.$type,
+};
+
 SesoriCommandCatalogUpdated _$SesoriCommandCatalogUpdatedFromJson(Map json) =>
     SesoriCommandCatalogUpdated(
       pluginId: json['pluginId'] as String,

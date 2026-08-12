@@ -71,7 +71,6 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     chatHistoryDatabase: testChatHistory.database,
     attachmentSpillStorage: testChatHistory.spillStorage,
     archivedSessionStorage: testChatHistory.archivedStorage,
-    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
     httpClient: httpClient,
     processRunner: ProcessRunner(),
     accessTokenProvider: FakeAccessTokenProvider(),
@@ -81,7 +80,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     restartService: effectiveRestartService,
     filesystemAccessOk: true,
     statusNotifier: null,
-        reconnectBackoff: ReconnectBackoffPolicy.standard,
+    reconnectBackoff: ReconnectBackoffPolicy.standard,
   ).create();
   final runtime = BridgeRuntime(
     database: db,

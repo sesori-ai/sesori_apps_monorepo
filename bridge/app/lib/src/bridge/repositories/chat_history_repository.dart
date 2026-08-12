@@ -40,6 +40,11 @@ typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
 /// capture never claims to be a complete transcript.
 typedef ChatHistorySyncState = ({int watermark, int backendActivityAt, int? syncedAt});
 
+typedef StoredAttachmentThumbnail = ({
+  Uint8List bytes,
+  AttachmentThumbnailFormat format,
+});
+
 /// Owns the stored representation of chat history: database rows, their JSON
 /// payloads, and the attachment spill files those payloads reference.
 class ChatHistoryRepository {
@@ -47,18 +52,50 @@ class ChatHistoryRepository {
     required ChatHistoryDao chatHistoryDao,
     required AttachmentSpillStorage attachmentSpillStorage,
     required ArchivedSessionStorage archivedSessionStorage,
-    required AttachmentSpillStorage archivedAttachmentStorage,
   }) : _chatHistoryDao = chatHistoryDao,
        _attachmentSpillStorage = attachmentSpillStorage,
-       _archivedSessionStorage = archivedSessionStorage,
-       _archivedAttachmentStorage = archivedAttachmentStorage;
+       _archivedSessionStorage = archivedSessionStorage;
 
   static const _archiveSchemaVersion = 1;
 
   final ChatHistoryDao _chatHistoryDao;
   final AttachmentSpillStorage _attachmentSpillStorage;
   final ArchivedSessionStorage _archivedSessionStorage;
-  final AttachmentSpillStorage _archivedAttachmentStorage;
+
+  Future<Uint8List?> readStoredAttachment({
+    required AttachmentStorageScope storageScope,
+    required String attachmentId,
+  }) async {
+    if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
+    return _attachmentSpillStorage.read(scope: storageScope, digest: attachmentId);
+  }
+
+  Future<StoredAttachmentThumbnail?> readStoredAttachmentThumbnail({
+    required AttachmentStorageScope storageScope,
+    required String attachmentId,
+  }) async {
+    if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
+    final thumbnail = await _attachmentSpillStorage.readThumbnail(
+      scope: storageScope,
+      digest: attachmentId,
+    );
+    return thumbnail == null ? null : (bytes: thumbnail.bytes, format: thumbnail.format);
+  }
+
+  Future<bool> writeStoredAttachmentThumbnail({
+    required AttachmentStorageScope storageScope,
+    required String attachmentId,
+    required AttachmentThumbnailFormat format,
+    required Uint8List bytes,
+  }) {
+    if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return Future.value(false);
+    return _attachmentSpillStorage.writeThumbnail(
+      scope: storageScope,
+      digest: attachmentId,
+      format: format,
+      bytes: bytes,
+    );
+  }
 
   Future<ChatHistorySyncState?> getSyncState({required String sessionId}) async {
     final row = await _chatHistoryDao.getSyncState(sessionId: sessionId);
@@ -71,6 +108,7 @@ class ChatHistoryRepository {
   /// rehydrated from their spill files.
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,
+    required AttachmentStorageScope storageScope,
     int? limit,
     int? before,
   }) async {
@@ -87,7 +125,7 @@ class ChatHistoryRepository {
     for (final row in partRows) {
       partsByMessage
           .putIfAbsent(row.messageId, () => [])
-          .add(await _rehydratePart(sessionId: sessionId, partJson: row.partJson));
+          .add(await _rehydratePart(storageScope: storageScope, partJson: row.partJson));
     }
     final messages = [
       for (final row in messageRows)
@@ -128,6 +166,7 @@ class ChatHistoryRepository {
   /// Stores one part, spilling any inline attachment bytes to disk first.
   Future<void> upsertPart({
     required String sessionId,
+    required AttachmentStorageScope storageScope,
     required MessagePart part,
     required int updatedAt,
   }) async {
@@ -145,7 +184,7 @@ class ChatHistoryRepository {
         messageId: part.messageID,
         partId: part.id,
         orderIndex: orderIndex,
-        partJson: await _encodePart(sessionId: sessionId, part: part),
+        partJson: await _encodePart(storageScope: storageScope, part: part),
         updatedAt: updatedAt,
       ),
     );
@@ -171,6 +210,7 @@ class ChatHistoryRepository {
   /// no captured message is lost to a backfill that raced it.
   Future<void> replaceSessionMessages({
     required String sessionId,
+    required AttachmentStorageScope storageScope,
     required List<MessageWithParts> messages,
     required int watermark,
     required int backendActivityAt,
@@ -205,7 +245,7 @@ class ChatHistoryRepository {
             messageId: message.info.id,
             partId: part.id,
             orderIndex: index,
-            partJson: await _encodePart(sessionId: sessionId, part: part),
+            partJson: await _encodePart(storageScope: storageScope, part: part),
             updatedAt: syncedAt,
           ),
         );
@@ -249,12 +289,8 @@ class ChatHistoryRepository {
 
   Future<Set<String>> getStoredSessionIds() => _chatHistoryDao.getStoredSessionIds();
 
-  /// Writes the session's audit file and copies its attachment bytes beside
-  /// it, leaving the live store untouched.
-  ///
-  /// The spill files are copied rather than moved so a crash before the
-  /// archive flip leaves the still-active session's attachments intact; the
-  /// live copies are removed later by the post-flip purge.
+  /// Writes the session's audit file. Its attachment references continue to
+  /// address the shared backend-session scope; archiving does not copy bytes.
   Future<void> exportSession({
     required StoredSession session,
     required String? title,
@@ -270,7 +306,7 @@ class ChatHistoryRepository {
     final partsByMessage = <String, List<Map<String, dynamic>>>{};
     for (final row in partRows) {
       // Stored (spilled) form, kept verbatim: the audit file references the
-      // archived spill directory and never carries base64.
+      // shared spill scope and never carries base64.
       partsByMessage.putIfAbsent(row.messageId, () => []).add(jsonDecodeMap(row.partJson));
     }
 
@@ -305,19 +341,14 @@ class ChatHistoryRepository {
       ],
     );
 
-    // Bytes first: an audit file that references a missing spill file would
-    // render degraded, while orphan bytes are harmless.
-    await _attachmentSpillStorage.copySession(
-      sessionId: session.id,
-      destinationDirectoryPath: _archivedAttachmentStorage.sessionDirectoryPath(sessionId: session.id),
-    );
     await _archivedSessionStorage.write(sessionId: session.id, contents: jsonEncode(file.toJson()));
   }
 
   /// The archived transcript for [sessionId], or null when no audit file
-  /// exists. Attachments are rehydrated from the archived spill directory.
+  /// exists. Attachments are rehydrated from the shared backend-session scope.
   Future<ChatHistoryPage?> getArchivedSessionMessages({
     required String sessionId,
+    required AttachmentStorageScope storageScope,
     int? limit,
     int? before,
   }) async {
@@ -371,9 +402,7 @@ class ChatHistoryRepository {
             for (final entry in ordered)
               if (entry.seq < before) entry,
           ];
-    final page = limit == null || eligible.length <= limit
-        ? eligible
-        : eligible.sublist(eligible.length - limit);
+    final page = limit == null || eligible.length <= limit ? eligible : eligible.sublist(eligible.length - limit);
     return (
       messages: [
         for (final entry in page)
@@ -382,9 +411,8 @@ class ChatHistoryRepository {
             parts: [
               for (final part in entry.parts)
                 await _rehydratePart(
-                  sessionId: sessionId,
+                  storageScope: storageScope,
                   partJson: jsonEncode(part),
-                  storage: _archivedAttachmentStorage,
                 ),
             ],
           ),
@@ -395,41 +423,25 @@ class ChatHistoryRepository {
     );
   }
 
-  Future<bool> hasArchive({required String sessionId}) =>
-      _archivedSessionStorage.exists(sessionId: sessionId);
+  Future<bool> hasArchive({required String sessionId}) => _archivedSessionStorage.exists(sessionId: sessionId);
 
   Future<Set<String>> getArchivedSessionIds() => _archivedSessionStorage.listArchivedSessionIds();
 
-  /// Drops every trace of [sessionIds] from the store.
-  ///
-  /// Rows go first so a failure between the two steps leaves orphan bytes
-  /// (harmless, removed by the next purge) rather than rows referencing spill
-  /// files that no longer exist. Deleting a session family is one transaction
-  /// and one vacuum pass, not one of each per descendant.
+  /// Drops data-directory-local history for [sessionIds]. Shared attachment
+  /// bytes have manual lifetime because another bridge database may reference
+  /// the same backend-session scope.
   Future<void> purgeSessions({
     required List<String> sessionIds,
     bool includeArchive = false,
   }) async {
     if (sessionIds.isEmpty) return;
     await _chatHistoryDao.deleteSessionRows(sessionIds: sessionIds);
-    // Every session is attempted even if one directory refuses to go, so a
-    // single failure cannot strand the rest of the family's bytes on disk.
-    // The first failure is reported once the rest of the work is done.
     Object? firstError;
     StackTrace? firstStackTrace;
-    for (final sessionId in sessionIds) {
-      try {
-        await _attachmentSpillStorage.deleteSession(sessionId: sessionId);
-      } on Object catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
-      }
-    }
     if (includeArchive) {
       for (final sessionId in sessionIds) {
         try {
           await _archivedSessionStorage.delete(sessionId: sessionId);
-          await _archivedAttachmentStorage.deleteSession(sessionId: sessionId);
         } on Object catch (error, stackTrace) {
           firstError ??= error;
           firstStackTrace ??= stackTrace;
@@ -446,17 +458,26 @@ class ChatHistoryRepository {
   /// The reference is a bridge-internal attachment source that exists only
   /// inside `chat_history.db`; [_rehydratePart] turns it back into the inline
   /// variant before anything can reach the wire.
-  Future<String> _encodePart({required String sessionId, required MessagePart part}) async {
+  Future<String> _encodePart({
+    required AttachmentStorageScope storageScope,
+    required MessagePart part,
+  }) async {
     final json = part.toJson();
     if (json["attachment"] case final Map<String, dynamic> attachment) {
-      json["attachment"] = await _spillAttachment(sessionId: sessionId, attachment: attachment);
+      json["attachment"] = await _spillAttachment(
+        storageScope: storageScope,
+        attachment: attachment,
+      );
     }
     if (json["state"] case final Map<String, dynamic> state) {
       if (state["attachments"] case final List<dynamic> attachments) {
         state["attachments"] = [
           for (final attachment in attachments)
             if (attachment is Map<String, dynamic>)
-              await _spillAttachment(sessionId: sessionId, attachment: attachment)
+              await _spillAttachment(
+                storageScope: storageScope,
+                attachment: attachment,
+              )
             else
               attachment,
         ];
@@ -466,7 +487,7 @@ class ChatHistoryRepository {
   }
 
   Future<Map<String, dynamic>> _spillAttachment({
-    required String sessionId,
+    required AttachmentStorageScope storageScope,
     required Map<String, dynamic> attachment,
   }) async {
     if (attachment["source"] != "inline_image") return attachment;
@@ -486,21 +507,19 @@ class ChatHistoryRepository {
       "source": "stored_file",
       "mime": attachment["mime"],
       "filename": attachment["filename"],
-      "sha256": await _attachmentSpillStorage.write(sessionId: sessionId, bytes: bytes),
+      "sha256": await _attachmentSpillStorage.write(scope: storageScope, bytes: bytes),
     };
   }
 
   Future<MessagePart> _rehydratePart({
-    required String sessionId,
+    required AttachmentStorageScope storageScope,
     required String partJson,
-    AttachmentSpillStorage? storage,
   }) async {
     final json = jsonDecodeMap(partJson);
     if (json["attachment"] case final Map<String, dynamic> attachment) {
       json["attachment"] = await _rehydrateAttachment(
-        sessionId: sessionId,
+        storageScope: storageScope,
         attachment: attachment,
-        storage: storage ?? _attachmentSpillStorage,
       );
     }
     if (json["state"] case final Map<String, dynamic> state) {
@@ -509,9 +528,8 @@ class ChatHistoryRepository {
           for (final attachment in attachments)
             if (attachment is Map<String, dynamic>)
               await _rehydrateAttachment(
-                sessionId: sessionId,
+                storageScope: storageScope,
                 attachment: attachment,
-                storage: storage ?? _attachmentSpillStorage,
               )
             else
               attachment,
@@ -522,13 +540,12 @@ class ChatHistoryRepository {
   }
 
   Future<Map<String, dynamic>> _rehydrateAttachment({
-    required String sessionId,
+    required AttachmentStorageScope storageScope,
     required Map<String, dynamic> attachment,
-    required AttachmentSpillStorage storage,
   }) async {
     if (attachment["source"] != "stored_file") return attachment;
     final digest = attachment["sha256"];
-    final bytes = digest is String ? await storage.read(sessionId: sessionId, digest: digest) : null;
+    final bytes = digest is String ? await _attachmentSpillStorage.read(scope: storageScope, digest: digest) : null;
     // A missing spill file degrades the slot instead of failing the read.
     if (bytes == null) {
       return {"source": "metadata", "mime": attachment["mime"], "filename": attachment["filename"]};

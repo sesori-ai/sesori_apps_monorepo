@@ -829,6 +829,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriCatalogImportProgress() ||
       SesoriPluginManagementChanged() ||
       SesoriPluginInstallProgress() ||
+      SesoriPluginAuthenticationProgress() ||
       SesoriSessionsUpdated() ||
       SesoriSessionDeleted() ||
       SesoriSessionDiff() ||
@@ -912,6 +913,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriCatalogImportProgress() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
+            SesoriPluginAuthenticationProgress() ||
             SesoriSessionsUpdated() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||

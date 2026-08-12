@@ -24,6 +24,15 @@ idle suspension, the management snapshot, and lifecycle commands.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
+- Interactive authentication is optional per descriptor. A capable harness owns its
+  backend process and credentials, exposes only a safe challenge and sanitized terminal
+  state, cancels cooperatively, and settles process cleanup before the operation ends.
+- Shared management metadata advertises authentication independently and reports idle,
+  in-progress, or fail-closed unknown state. Device-code challenges remain request-scoped;
+  only sealed completed, failed, or cancelled progress enters the global SSE stream.
+- The bridge exposes explicit plugin-scoped start and cancel routes. Duplicate starts join
+  the active operation, management commands conflict while it runs, cancellation settles
+  upstream cleanup, and setup reinspection remains authoritative before normal startup.
 
 ## Regression Levels
 
@@ -32,7 +41,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
 | L2 Routine | Demand-driven start of a ready harness, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Headless bridge; representative harness for start, every registered harness for listing and ordering. |
 | L3 Release | The management surface as rendered: per-harness setup, runtime and work state, capability-appropriate controls, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
-| L4 Extended | Busy conflict with force confirmation and cancellation, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
+| L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Live plugin and client end to end as each entry requires. |
 
 ## Exploration Guidance
@@ -50,6 +59,9 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
   snapshot tokens that miss real changes.
 - A control offered for an undeclared capability, a supported control missing, a busy
   harness accepting a safe command, or idle suspension on a resident or busy harness.
+- A missing authentication state from an older bridge decoding as anything but idle, a
+  future state or conflict reason failing open, challenge data entering snapshots/SSE, or
+  a failed progress payload without its required sanitized message.
 - One failing harness taking down the rest of the bridge, or an empty picker
   instead of the explicit no-harness state when none is usable.
 
@@ -57,8 +69,9 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 
 - The harness set comes from the current registry; unregistered in-development harnesses
   are out of scope, and no lifecycle path installs a runtime.
-- Backend authentication happens on the bridge machine and ends this scope, and a forced
-  disable leaves work interrupted.
+- Backend authentication and credential persistence happen on the bridge machine; client
+  orchestration and presentation remain outside this document until their planned steps
+  land. A forced disable leaves work interrupted.
 - Idle windows are minutes-order, so observing a real elapse belongs at L4 or above.
 
 ## Sources

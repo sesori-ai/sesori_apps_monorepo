@@ -251,9 +251,9 @@ class SessionLifecycleService {
       sessionId: storedSession.id,
       archivedAt: archivedAt,
     );
-    // After the flip: the audit file is durable, so the live rows and spill
-    // files are now redundant. A failure here leaves duplicate data that the
-    // startup reconcile removes.
+    // After the flip: the audit file is durable, so the live rows are now
+    // redundant. Shared attachment bytes remain outside this lifecycle. A
+    // failure here leaves duplicate rows that startup reconciliation removes.
     try {
       await _chatHistoryService.purgeSessionHistory(sessionId: storedSession.id);
     } on Object catch (error, stackTrace) {

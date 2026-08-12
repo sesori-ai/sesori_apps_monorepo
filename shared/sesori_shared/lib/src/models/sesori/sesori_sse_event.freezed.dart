@@ -43,6 +43,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriPluginInstallProgress.fromJson(
             json
           );
+                case 'plugin.authentication.progress':
+          return SesoriPluginAuthenticationProgress.fromJson(
+            json
+          );
                 case 'command.catalog.updated':
           return SesoriCommandCatalogUpdated.fromJson(
             json
@@ -673,6 +677,81 @@ as String,phase: null == phase ? _self.phase : phase // ignore: cast_nullable_to
 as PluginInstallPhase,percent: freezed == percent ? _self.percent : percent // ignore: cast_nullable_to_non_nullable
 as int?,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriPluginAuthenticationProgress implements SesoriSseEvent {
+  const SesoriPluginAuthenticationProgress({required this.pluginId, required this.progress, final  String? $type}): $type = $type ?? 'plugin.authentication.progress';
+  factory SesoriPluginAuthenticationProgress.fromJson(Map<String, dynamic> json) => _$SesoriPluginAuthenticationProgressFromJson(json);
+
+ final  String pluginId;
+ final  PluginAuthenticationProgress progress;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriPluginAuthenticationProgressCopyWith<SesoriPluginAuthenticationProgress> get copyWith => _$SesoriPluginAuthenticationProgressCopyWithImpl<SesoriPluginAuthenticationProgress>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriPluginAuthenticationProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginAuthenticationProgress&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.progress, progress) || other.progress == progress));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,progress);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.pluginAuthenticationProgress(pluginId: $pluginId, progress: $progress)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriPluginAuthenticationProgressCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriPluginAuthenticationProgressCopyWith(SesoriPluginAuthenticationProgress value, $Res Function(SesoriPluginAuthenticationProgress) _then) = _$SesoriPluginAuthenticationProgressCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, PluginAuthenticationProgress progress
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriPluginAuthenticationProgressCopyWithImpl<$Res>
+    implements $SesoriPluginAuthenticationProgressCopyWith<$Res> {
+  _$SesoriPluginAuthenticationProgressCopyWithImpl(this._self, this._then);
+
+  final SesoriPluginAuthenticationProgress _self;
+  final $Res Function(SesoriPluginAuthenticationProgress) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? progress = null,}) {
+  return _then(SesoriPluginAuthenticationProgress(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationProgress,
   ));
 }
 

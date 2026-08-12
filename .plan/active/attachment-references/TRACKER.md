@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 2 PR open
-- **Current step:** 2/11
-- **Implementation base:** `origin/main` at `3803df12`
+- **Series state:** Step 3 PR open
+- **Current step:** 3/11
+- **Implementation base:** `origin/main` at `f91fee47`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812)
-- **Next action:** Monitor Step 2 review/CI and begin Step 3 locally
+- **Current PR:** [#818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818)
+- **Next action:** Wait for PR #818 to merge while completing Step 4 locally
 
 ## Plan Review
 
@@ -32,8 +32,8 @@
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
 | [x] | 1/11 | `🌱 [attachment-references] docs: plan lazy transcript attachments [step 1/11]` | 650-1,100 | [PR #807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807) merged |
-| [ ] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812) open |
-| [ ] | 3/11 | `⚙️ [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 900-1,400 | Pending |
+| [x] | 2/11 | `🚧 [attachment-references] feat(protocol): describe stored transcript images [step 2/11]` | 750-1,100 | [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812) merged |
+| [ ] | 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) open |
 | [ ] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | Pending |
 | [ ] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Pending |
 | [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | Pending |
@@ -52,7 +52,10 @@
 - One bounded JSON/base64 image is transferred per request; no chunks, ranges,
   resume, or determinate progress.
 - Bridge thumbnails are fixed square first-frame renditions and are persisted
-  under the existing session spill lifecycle.
+  with originals in the OS user's shared attachment root.
+- Shared attachment directories are keyed by plugin/backend session identity,
+  independent of account and `--data-dir`; archive/history/session deletion
+  retains them for other bridge databases, and cleanup is manual.
 - The app persists thumbnails only; full originals remain temporary.
 - Chat uses center-cropped square grids with metadata overlays and stable retry
   states.
@@ -78,8 +81,29 @@
   Shared full tests, focused bridge/client tests, and source analysis across
   shared, bridge, mobile, module_core, and desktop pass. Architecture
   implementation review approved the contract and compatibility boundaries.
-  Committed as `9753d350`, pushed, and opened as
-  [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812).
+  Committed as `9753d350`, pushed, opened as
+  [PR #812](https://github.com/sesori-ai/sesori_apps_monorepo/pull/812), and
+  merged as `f91fee47`.
+- Step 3: Added bounded off-isolate thumbnail generation, one global decode
+  lane, and the typed `POST /session/attachment` handler, then revised storage
+  to one platform-native owner-only root keyed by durable plugin/backend session
+  identity. Independent bridge databases reuse content-addressed bytes; archive,
+  history purge, and session deletion retain shared files for manual cleanup.
+  The obsolete live/archive spill split and its DI/copy/purge paths are removed.
+  `dart analyze --fatal-infos` passes in the bridge app and foundation package;
+  all 2,553 bridge-app tests and all 71 foundation tests pass. Focused coverage
+  includes platform roots, separate-store reuse, scope isolation/traversal,
+  archive access, retained bytes after purge, manual-deletion degradation,
+  thumbnail bounds, and the typed route. Architecture implementation review
+  approved the revised dependency, privacy, concurrency, and lifecycle seams
+  with no blockers. The considerable shared-persistence revision raised Step 3
+  from moderate/900-1,400 to complex/1,800-2,300 changed lines. Against the
+  current `origin/main`, the final PR diff has 1,907 additions and 343 deletions
+  across 34 files (2,250 changed lines), within that revised target;
+  `git diff --check origin/main...HEAD` passes.
+  Implementation began in `865e0334`, synchronized with `origin/main` in
+  `aa94152d`, and is open as
+  [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818).
 
 ## Findings And Plan Deltas
 
@@ -115,3 +139,22 @@
   identity/account scope explicit, made cache cleanup mobile-activated and
   disposable, and required source-free diagnostics. Declined suggestions that
   added machinery only to already-safe or self-healing failure paths.
+- **2026-08-11 - Shared bridge attachment storage:** Import identity tracing
+  confirmed that each new database allocates a fresh random local session id for
+  the same `(pluginId, backendSessionId)`, so moving the old local-id layout alone
+  would duplicate bytes. The user selected a platform-native root shared across
+  accounts/data directories, durable backend-session disk scope, and manual-only
+  file lifetime. Step 3 now owns this revision before its PR returns to review;
+  Step 4 remains preserved locally.
+- **2026-08-11 - No internal-layout migration:** The user explicitly rejected
+  backward-compatibility work for the barely exercised development/internal
+  spill layout. The shared root replaces it without migration, fallback reads,
+  dual writes, or sync-state repair; old files are ignored.
+- **2026-08-11 - Shared-root architecture review:** The considerable plan
+  revision's only blocking finding requested old-layout migration. The user's
+  explicit no-internal-compatibility decision superseded that finding, so it was
+  not re-reviewed or implemented. The subsequent architecture implementation
+  review approved the clean replacement with no blockers.
+- **2026-08-11 - Relative XDG review fix:** Relative `XDG_DATA_HOME` values now
+  fall back to the absolute home-based root, preventing attachment originals
+  from being written beneath the bridge's process working directory.

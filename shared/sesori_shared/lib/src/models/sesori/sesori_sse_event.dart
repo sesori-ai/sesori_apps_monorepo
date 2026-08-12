@@ -68,6 +68,14 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String? message,
   }) = SesoriPluginInstallProgress;
 
+  /// Terminal progress for one plugin authentication operation. Challenges are
+  /// request-scoped and never enter SSE replay or persistence.
+  @FreezedUnionValue("plugin.authentication.progress")
+  const factory SesoriSseEvent.pluginAuthenticationProgress({
+    required String pluginId,
+    required PluginAuthenticationProgress progress,
+  }) = SesoriPluginAuthenticationProgress;
+
   /// Invalidates the process-wide slash-command catalog for one plugin.
   @FreezedUnionValue("command.catalog.updated")
   const factory SesoriSseEvent.commandCatalogUpdated({
