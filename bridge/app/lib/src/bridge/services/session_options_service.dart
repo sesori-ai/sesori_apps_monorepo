@@ -118,14 +118,6 @@ class SessionOptionsService {
     if (outcome case SessionOptionsRefreshFailedRetained(:final failure)) {
       final concurrentlyAvailable = await _readValid(key: resolved.key);
       if (concurrentlyAvailable != null && await _isCurrentResolution(resolved: resolved)) {
-        final message =
-            "Dynamic session options discovery failed for plugin ${resolved.key.pluginId}; using concurrently published cache";
-        switch (failure) {
-          case SessionOptionsKnownRefreshFailure():
-            Log.w(message);
-          case SessionOptionsCaughtRefreshFailure(:final cause, :final causeStackTrace):
-            Log.w(message, cause, causeStackTrace);
-        }
         return SessionOptionsAvailable(response: concurrentlyAvailable.response);
       }
       return SessionOptionsRefreshFailedUnavailable(failure: failure);

@@ -396,10 +396,20 @@ void main() {
       };
       final service = _service(repository: repository, now: now);
 
-      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+      late SessionOptionsOutcome outcome;
+      final output = await _captureLogOutput(
+        level: LogLevel.debug,
+        action: () async {
+          outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+        },
+      );
 
       expect(outcome, isA<SessionOptionsAvailable>());
       expect((outcome as SessionOptionsAvailable).response, _response(marker: "concurrent"));
+      expect(
+        RegExp("session options discovery failed for plugin plugin-1", caseSensitive: false).allMatches(output),
+        hasLength(1),
+      );
     });
 
     test("failed dynamic capture without a cache returns unavailable", () async {
