@@ -77,6 +77,9 @@ class _ChatInputModeOption extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: prego.colors.bgSurface3,
                     borderRadius: BorderRadius.circular(PregoRadius.lg),
+                  ),
+                  foregroundDecoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(PregoRadius.lg),
                     border: Border.all(
                       color: isSelected ? prego.colors.borderBrand : Colors.transparent,
                       width: _selectionRingWidth,
