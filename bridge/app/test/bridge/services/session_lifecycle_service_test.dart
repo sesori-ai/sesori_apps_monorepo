@@ -243,7 +243,7 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
     });
 
-    test("dirty worktree with force checks its branch and succeeds", () async {
+    test("dirty worktree with force skips safety check and succeeds", () async {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [UnstagedChanges()],
       );
@@ -260,7 +260,7 @@ void main() {
       );
 
       expect(result, isA<CleanupSuccess>());
-      expect(worktreeService.checkCallCount, equals(1));
+      expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
     });

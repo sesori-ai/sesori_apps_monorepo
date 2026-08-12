@@ -105,18 +105,16 @@ class SessionLifecycleService {
       }
     }
 
-    if (deleteWorktree) {
+    if (deleteWorktree && !force) {
       final safety = await _worktreeService.checkWorktreeSafety(
         worktreePath: worktreePath,
       );
-      if (!force) {
-        if (safety case WorktreeUnsafe(:final issues)) {
-          return CleanupRejected(
-            rejection: SessionCleanupRejection(
-              issues: _mapSafetyIssues(issues: issues),
-            ),
-          );
-        }
+      if (safety case WorktreeUnsafe(:final issues)) {
+        return CleanupRejected(
+          rejection: SessionCleanupRejection(
+            issues: _mapSafetyIssues(issues: issues),
+          ),
+        );
       }
     }
 

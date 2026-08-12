@@ -447,7 +447,7 @@ void main() {
         fragment: null,
       );
 
-      expect(worktreeService.checkCallCount, equals(1));
+      expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
     });

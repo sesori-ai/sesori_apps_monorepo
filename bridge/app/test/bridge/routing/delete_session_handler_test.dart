@@ -355,12 +355,12 @@ void main() {
       );
 
       expect(response, isA<SuccessEmptyResponse>());
-      expect(worktreeService.checkCallCount, equals(1));
+      expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
       expect(plugin.lastDeleteSessionId, equals("s6"));
       expect(await db.sessionDao.getSession(sessionId: "s6"), isNull);
-      expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete"]));
+      expect(operationLog, equals(["removeWorktree", "pluginDelete"]));
     });
 
     test("7) null worktreePath: skips git ops", () async {
