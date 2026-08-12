@@ -112,7 +112,7 @@
   review sub-agent failed before reading code with the internal task-store
   schema error `no such column: replacement_seq`. `git diff --check
   origin/main...HEAD` passes and the final production/test/doc scope contains
-  2,100 additions and 29 deletions. The overage above the 1,500-line target is
+  2,101 additions and 29 deletions. The overage above the 1,500-line target is
   primarily generated Freezed presentation state plus focused API, repository,
   service, and cubit race coverage added for the security-sensitive cross-layer
   flow and review-discovered response-ordering cases.

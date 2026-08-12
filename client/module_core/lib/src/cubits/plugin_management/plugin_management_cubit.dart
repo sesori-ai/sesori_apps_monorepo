@@ -111,7 +111,13 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     }
     if (isClosed) return;
     final latest = state;
-    if (launched || generation != _authenticationGeneration || latest is! PluginManagementReady) return;
+    if (launched ||
+        generation != _authenticationGeneration ||
+        latest is! PluginManagementReady ||
+        (latest.authentication is! PluginAuthenticationPresentationChallenge &&
+            latest.authentication is! PluginAuthenticationPresentationBrowserLaunchFailedState)) {
+      return;
+    }
     final latestChallenge = _authenticationChallengeData(latest.authentication);
     if (latestChallenge?.pluginId != challenge.pluginId) return;
     emit(
@@ -140,7 +146,16 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
       ),
     );
     final result = await _service.cancelAuthentication(pluginId: challenge.pluginId);
-    if (isClosed || generation != _authenticationGeneration) return;
+    final latestAuthentication = switch (state) {
+      PluginManagementReady(:final authentication) => authentication,
+      PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
+    };
+    if (isClosed ||
+        generation != _authenticationGeneration ||
+        latestAuthentication is! PluginAuthenticationPresentationCancelling ||
+        latestAuthentication.pluginId != challenge.pluginId) {
+      return;
+    }
     switch (result) {
       case PluginAuthenticationCancelSuccess():
         break;

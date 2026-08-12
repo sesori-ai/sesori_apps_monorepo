@@ -204,6 +204,33 @@ void main() {
     );
   });
 
+  test("a browser failure cannot overwrite cancellation", () async {
+    final launch = Completer<bool>();
+    when(
+      () => urlLauncher.launch(any(), mode: any(named: "mode")),
+    ).thenAnswer((_) => launch.future);
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await _settle();
+    await cubit.startAuthentication(pluginId: "codex");
+    final launching = cubit.launchAuthenticationBrowser();
+    final cancelling = cubit.cancelAuthentication();
+    launch.complete(false);
+    await launching;
+
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      isA<PluginAuthenticationPresentationCancelling>(),
+    );
+    authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.cancelled()));
+    await cancelling;
+  });
+
   test("a stale same-plugin start response cannot overwrite a newer attempt", () async {
     final first = Completer<PluginAuthenticationStartResult>();
     var call = 0;
@@ -293,6 +320,29 @@ void main() {
       (cubit.state as PluginManagementReady).authentication,
       const PluginAuthenticationPresentationState.idle(),
     );
+  });
+
+  test("a cancellation response cannot resurrect state after snapshot reset", () async {
+    final cancel = Completer<PluginAuthenticationCancelResult>();
+    when(
+      () => service.cancelAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) => cancel.future);
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await _settle();
+    await cubit.startAuthentication(pluginId: "codex");
+    final cancelling = cubit.cancelAuthentication();
+    snapshots.add(const PluginManagementLoadResult.loading());
+    await _settle();
+    cancel.complete(const PluginAuthenticationCancelResult.uncertain());
+    await cancelling;
+
+    expect(cubit.state, const PluginManagementState.loading());
   });
 
   test("delegates refresh and retains a published refresh error with the ready snapshot", () async {
