@@ -24,6 +24,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
+- Interactive authentication is optional per descriptor. A capable harness owns its
+  backend process and credentials, exposes only a safe challenge and sanitized terminal
+  state, cancels cooperatively, and settles process cleanup before the operation ends.
 
 ## Regression Levels
 
@@ -57,8 +60,9 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 
 - The harness set comes from the current registry; unregistered in-development harnesses
   are out of scope, and no lifecycle path installs a runtime.
-- Backend authentication happens on the bridge machine and ends this scope, and a forced
-  disable leaves work interrupted.
+- Backend authentication and credential persistence happen on the bridge machine; the
+  released management route and client presentation remain outside this document until
+  their planned steps land. A forced disable leaves work interrupted.
 - Idle windows are minutes-order, so observing a real elapse belongs at L4 or above.
 
 ## Sources

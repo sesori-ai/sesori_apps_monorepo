@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
+import "../api/codex_app_server_api.dart";
 import "../api/codex_rollout_api.dart";
 import "../api/codex_tool_outcome_storage.dart";
 import "../api/parsers/codex_command_execution_parser.dart";
@@ -17,12 +18,15 @@ import "../codex_config_reader.dart";
 import "../codex_event_mapper.dart";
 import "../codex_metadata_repository.dart";
 import "../codex_plugin_impl.dart";
+import "../codex_stdio_app_server_client.dart";
+import "../repositories/codex_authentication_repository.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
 import "../repositories/codex_tool_lifecycle_tracker.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_image_attachment_mapper.dart";
 import "../repositories/mappers/codex_rollout_tool_mapper.dart";
+import "../services/codex_authentication_service.dart";
 import "../services/codex_rollout_tailer.dart";
 import "../services/codex_session_service.dart";
 import "codex_bridge_plugin.dart";
@@ -126,7 +130,7 @@ CodexManagedApi _defaultBuildApi({
 ///
 /// The optional constructor parameters are test seams; the registered
 /// descriptor is `const CodexPluginDescriptor()`.
-class CodexPluginDescriptor extends BridgePluginDescriptor {
+class CodexPluginDescriptor extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
   const CodexPluginDescriptor({
     CodexManagedApiFactory? buildApi,
     Iterable<int>? candidatePorts,
@@ -378,6 +382,51 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       maxCapturedOutputCharactersPerStream: null,
       desktopAppCliCandidates: _desktopAppCliCandidates,
     ).provision(host: host);
+  }
+
+  @override
+  Stream<PluginAuthenticationEvent> authenticate({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal aborted,
+  }) async* {
+    final selection =
+        await CodexRuntimeSelectionService(
+          processes: processes,
+          versionProbeTimeout: _versionProbeTimeout,
+          maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+          desktopAppCliCandidates: _desktopAppCliCandidates,
+        ).select(
+          config: config,
+          environment: environment,
+          stateDirectory: stateDirectory,
+          aborted: aborted,
+        );
+    if (selection case CodexRuntimeNotSelected()) {
+      yield const PluginAuthenticationFailed(
+        message: "No supported Codex runtime is available for login.",
+      );
+      return;
+    }
+
+    final client = CodexStdioAppServerClient(
+      processes: processes,
+      executable: (selection as CodexRuntimeSelected).binaryPath,
+      environment: environment,
+      shutdownTimeout: codexGracefulShutdownWait,
+    );
+    final api = CodexAppServerApi(client: client);
+    yield* CodexAuthenticationService(
+      client: client,
+      repository: CodexAuthenticationRepository(
+        appServerApi: api,
+        requestTimeout: _versionProbeTimeout,
+      ),
+      aborted: aborted,
+      requestTimeout: _versionProbeTimeout,
+    ).authenticate();
   }
 
   String _normalizedStatusOutput(CommandResult result) {

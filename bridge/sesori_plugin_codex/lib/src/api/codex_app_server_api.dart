@@ -24,13 +24,16 @@ class CodexAppServerApi {
         ),
       );
 
-  Future<CodexDeviceLoginStartResponseDto> startDeviceLogin() async {
+  Future<CodexDeviceLoginStartResponseDto> startDeviceLogin({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     const params = CodexDeviceLoginStartParamsDto(
       type: CodexAccountLoginType.chatgptDeviceCode,
     );
     final result = await _client.request(
       method: "account/login/start",
       params: params.toJson(),
+      timeout: timeout,
     );
     return _decodeAccountResponse(
       result: result,
@@ -41,10 +44,12 @@ class CodexAppServerApi {
 
   Future<CodexAccountLoginCancelResponseDto> cancelLogin({
     required String loginId,
+    Duration timeout = const Duration(seconds: 30),
   }) async {
     final result = await _client.request(
       method: "account/login/cancel",
       params: CodexAccountLoginCancelParamsDto(loginId: loginId).toJson(),
+      timeout: timeout,
     );
     return _decodeAccountResponse(
       result: result,

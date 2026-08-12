@@ -16,6 +16,10 @@ void main() {
     test("declares project-scoped session options", () {
       expect(const CodexPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(const CodexPluginDescriptor().supportsPromptAttachments, isTrue);
+      expect(
+        const CodexPluginDescriptor(),
+        isA<InteractivePluginAuthenticationDescriptor>(),
+      );
     });
 
     test("advertises install without an explicit binary override", () {
@@ -139,14 +143,15 @@ void main() {
         ],
       );
 
-      final result = await const CodexPluginDescriptor(
-        desktopAppCliCandidates: [appCli],
-      ).inspectSetup(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-        stateDirectory: stateDirectory,
-      );
+      final result =
+          await const CodexPluginDescriptor(
+            desktopAppCliCandidates: [appCli],
+          ).inspectSetup(
+            config: config,
+            processes: processes,
+            environment: const <String, String>{},
+            stateDirectory: stateDirectory,
+          );
 
       expect(result, const PluginSetupReady());
       expect(processes.spawnedExecutables, ["codex", appCli, appCli]);
@@ -177,14 +182,15 @@ void main() {
         ],
       );
 
-      final result = await const CodexPluginDescriptor(
-        desktopAppCliCandidates: [appCli],
-      ).inspectSetup(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-        stateDirectory: stateDirectory,
-      );
+      final result =
+          await const CodexPluginDescriptor(
+            desktopAppCliCandidates: [appCli],
+          ).inspectSetup(
+            config: config,
+            processes: processes,
+            environment: const <String, String>{},
+            stateDirectory: stateDirectory,
+          );
 
       expect(result, const PluginSetupReady());
       expect(processes.spawnedExecutables, ["codex", appCli, managedBinaryPath, managedBinaryPath]);
