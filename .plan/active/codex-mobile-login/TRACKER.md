@@ -89,6 +89,12 @@
   origin/main...HEAD` passes, and `git diff --numstat origin/main...HEAD` reports 976
   additions and 25 deletions. Committed as `0b418a3a`, pushed, and opened as
   [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834).
+- Step 5 local: Full bridge app tests pass (2,542 tests), full Codex tests pass
+  (361 tests), and full plugin-interface tests pass (152 tests). Fatal-info
+  analysis reports no issues in all three packages. The required architecture
+  implementation review could not run because the review sub-agent failed
+  before reading code with the internal task-store schema error `no such
+  column: replacement_seq`.
 
 ## Findings And Plan Deltas
 
@@ -136,3 +142,10 @@
   capability/state metadata, typed device-code challenge, sealed terminal
   progress, typed conflicts, and one global progress SSE event. Challenge data
   remains request-scoped and absent from management snapshots and SSE.
+- **2026-08-12 - Step 5 started:** Created local branch
+  `codex-mobile-login-bridge-authentication` while Step 4 remains in review.
+- **2026-08-12 - Step 5 implementation:** Extended the existing runtime,
+  repository, lifecycle service, explicit router, and Orchestrator ownership
+  seams with start-or-join authentication, typed conflicts, cancellation,
+  authoritative setup reinspection/start, terminal SSE, and awaited shutdown
+  settlement. The successor remains local until Step 4 merges.

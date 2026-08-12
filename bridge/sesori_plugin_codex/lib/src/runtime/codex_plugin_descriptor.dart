@@ -215,6 +215,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor implements Interactiv
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
     return {
       ...super.managementCapabilities(config: config),
+      PluginControlCapability.authentication,
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
     };
   }
