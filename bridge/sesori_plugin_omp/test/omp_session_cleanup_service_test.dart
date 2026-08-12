@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:omp_plugin/src/api/omp_acp_api.dart";
 import "package:omp_plugin/src/repositories/omp_session_cleanup_repository.dart";
 import "package:omp_plugin/src/services/omp_session_cleanup_service.dart";
 import "package:test/test.dart";
@@ -102,6 +103,20 @@ void main() {
       throwsStateError,
     );
   });
+
+  test("cleanup repository rejects a cancelled delete command", () async {
+    final repository = OmpSessionCleanupRepository(
+      api: _CancelledDeleteAcpApi(),
+    );
+
+    expect(
+      repository.delete(
+        sessionId: "target",
+        timeout: const Duration(seconds: 1),
+      ),
+      throwsStateError,
+    );
+  });
 }
 
 OmpSessionCleanupService _service({required _FakeCleanupRepository repository, required int maxPages}) =>
@@ -175,4 +190,16 @@ class _FakeCleanupRepository implements OmpSessionCleanupRepository {
 
   @override
   Future<void> dispose() async {}
+}
+
+class _CancelledDeleteAcpApi implements OmpAcpApi {
+  @override
+  Future<AcpPromptResult> prompt({
+    required String sessionId,
+    required String text,
+    required Duration timeout,
+  }) async => const AcpPromptResult(stopReason: AcpStopReason.cancelled);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
