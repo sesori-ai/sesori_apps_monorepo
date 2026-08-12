@@ -53,6 +53,7 @@ void main() {
       catalogService: _FakeCatalogService(catalog),
       tracker: tracker,
       repository: OmpCatalogRepository(api: _UnusedAcpApi()),
+      configurationTracker: AcpSessionConfigurationTracker(),
       launchDirectory: "/repo",
     );
     configRepository = _FakeConfigRepository();
@@ -73,12 +74,16 @@ void main() {
       _result(model: "custom/team/model-v2", mode: "plan", thinking: "off"),
       _result(model: "custom/team/model-v2", mode: "plan", thinking: "high"),
     ]);
+    service.captureSessionConfig(
+      _result(model: "other/model", mode: "default", thinking: "off"),
+      sessionId: "session",
+      fromNewSession: false,
+    );
 
     await service.applyTurnSelection(
       configRepository: configRepository,
       sessionId: "session",
       projectId: "/repo",
-      liveSnapshot: _snapshot(model: "other/model", mode: "default", thinking: "off"),
       model: (providerID: "custom", modelID: "custom/team/model-v2"),
       variant: const PluginSessionVariant(id: "high"),
       agent: "Plan",
@@ -95,13 +100,17 @@ void main() {
     configRepository.results.add(
       _result(model: "other/model", mode: "default", thinking: "off"),
     );
+    service.captureSessionConfig(
+      _result(model: "other/model", mode: "default", thinking: "off"),
+      sessionId: "session",
+      fromNewSession: false,
+    );
 
     expect(
       service.applyTurnSelection(
         configRepository: configRepository,
         sessionId: "session",
         projectId: "/repo",
-        liveSnapshot: _snapshot(model: "other/model", mode: "default", thinking: "off"),
         model: (providerID: "custom", modelID: "custom/team/model-v2"),
         variant: null,
         agent: null,
@@ -137,6 +146,7 @@ void main() {
       catalogService: catalogService,
       tracker: tracker,
       repository: OmpCatalogRepository(api: _UnusedAcpApi()),
+      configurationTracker: AcpSessionConfigurationTracker(),
       launchDirectory: "/repo",
     );
 
@@ -192,11 +202,6 @@ AcpNewSessionResult _result({required String model, required String mode, requir
         },
       ],
       raw: const {},
-    );
-
-OmpSessionConfigSnapshot _snapshot({required String model, required String mode, required String thinking}) =>
-    OmpCatalogRepository(api: _UnusedAcpApi()).mapSessionResult(
-      result: _result(model: model, mode: mode, thinking: thinking),
     );
 
 class _FakeConfigRepository implements AcpSessionConfigRepository {

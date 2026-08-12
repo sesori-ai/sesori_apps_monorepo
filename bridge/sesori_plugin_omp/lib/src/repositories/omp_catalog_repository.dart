@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginCommand;
 
@@ -10,7 +12,8 @@ class OmpCatalogRepository {
 
   final OmpAcpApi _api;
   AcpCommandTracker? _commandTracker;
-  AcpCommandListener? _commandListener;
+  StreamSubscription<AcpNotification>? _commandSubscription;
+  Completer<void>? _commandSnapshot;
 
   List<PluginCommand> get commands => _commandTracker?.commands ?? const [];
   bool get hasCommandSnapshot => _commandTracker?.hasSnapshot ?? false;
@@ -22,10 +25,12 @@ class OmpCatalogRepository {
     }
     final tracker = AcpCommandTracker();
     _commandTracker = tracker;
-    _commandListener = AcpCommandListener(
-      notifications: _api.notifications,
-      tracker: tracker,
-    );
+    final snapshot = Completer<void>();
+    _commandSnapshot = snapshot;
+    _commandSubscription = _api.notifications.listen((notification) {
+      tracker.consume(notification);
+      if (tracker.hasSnapshot && !snapshot.isCompleted) snapshot.complete();
+    });
   }
 
   Future<OmpCatalogSession> createSession({required String cwd, required Duration timeout}) async {
@@ -54,13 +59,19 @@ class OmpCatalogRepository {
   Future<void> closeSession({required String sessionId, required Duration timeout}) =>
       _api.closeSession(sessionId: sessionId, timeout: timeout);
 
+  Future<void> waitForCommandSnapshot({required Duration timeout}) async {
+    if (hasCommandSnapshot) return;
+    await _commandSnapshot?.future.timeout(timeout);
+  }
+
   Future<void> settle() async {
     try {
-      await _commandListener?.dispose();
+      await _commandSubscription?.cancel();
     } on Object catch (error, stack) {
       Log.w("[omp] failed to stop catalog command listener", error, stack);
     }
-    _commandListener = null;
+    _commandSubscription = null;
+    _commandSnapshot = null;
     _commandTracker = null;
     await _api.settle();
   }

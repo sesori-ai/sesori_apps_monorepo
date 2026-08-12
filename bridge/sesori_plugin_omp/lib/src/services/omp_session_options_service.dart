@@ -1,4 +1,5 @@
-import "package:acp_plugin/acp_plugin.dart" show AcpSessionConfigRepository;
+import "package:acp_plugin/acp_plugin.dart"
+    show AcpNewSessionResult, AcpSessionConfigRepository, AcpSessionConfigurationTracker;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -13,16 +14,39 @@ class OmpSessionOptionsService {
     required OmpCatalogService catalogService,
     required OmpCatalogTracker tracker,
     required OmpCatalogRepository repository,
+    required AcpSessionConfigurationTracker configurationTracker,
     required String launchDirectory,
   }) : _catalogService = catalogService,
        _tracker = tracker,
        _repository = repository,
+       _configurationTracker = configurationTracker,
        _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   final OmpCatalogService _catalogService;
   final OmpCatalogTracker _tracker;
   final OmpCatalogRepository _repository;
+  final AcpSessionConfigurationTracker _configurationTracker;
   final String _launchDirectory;
+  final Map<String, OmpSessionConfigSnapshot> _sessionConfigs = {};
+
+  void captureSessionConfig(
+    AcpNewSessionResult result, {
+    required String? sessionId,
+    required bool fromNewSession,
+  }) {
+    final snapshot = _repository.mapSessionResult(result: result);
+    if (sessionId != null) _sessionConfigs[sessionId] = snapshot;
+    final modelValue = snapshot.currentModelValue;
+    if (fromNewSession && modelValue != null) {
+      _configurationTracker.setProcessDefaults(
+        modelId: modelValue,
+        providerId: _providerId(modelValue),
+      );
+    }
+    if (sessionId != null && modelValue != null) {
+      _setSessionConfiguration(sessionId: sessionId, modelValue: modelValue);
+    }
+  }
 
   Future<OmpOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
@@ -61,16 +85,15 @@ class OmpSessionOptionsService {
     required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required String projectId,
-    required OmpSessionConfigSnapshot? liveSnapshot,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {
     if (model == null && variant == null && (agent == null || agent.isEmpty)) {
-      return liveSnapshot;
+      return _sessionConfigs[sessionId];
     }
     final catalog = _tracker.snapshotFor(projectId: projectId);
-    var current = liveSnapshot;
+    var current = _sessionConfigs[sessionId];
     final requestedModel = model?.modelID;
     if (requestedModel != null && requestedModel.isNotEmpty) {
       final configId = current?.modelConfigId ?? catalog?.modelConfigId;
@@ -123,8 +146,19 @@ class OmpSessionOptionsService {
         value: requestedVariant,
       );
     }
+    if (current != null) {
+      _sessionConfigs[sessionId] = current;
+      final modelValue = current.currentModelValue;
+      if (modelValue != null) {
+        _setSessionConfiguration(sessionId: sessionId, modelValue: modelValue);
+      }
+    }
     return current;
   }
+
+  void forgetSession({required String sessionId}) => _sessionConfigs.remove(sessionId);
+
+  void resetConnection() => _sessionConfigs.clear();
 
   Future<OmpSessionConfigSnapshot> _writeAndVerify({
     required AcpSessionConfigRepository configRepository,
@@ -237,5 +271,18 @@ class OmpSessionOptionsService {
   String _scope(String? projectId) {
     final trimmed = projectId?.trim();
     return trimmed == null || trimmed.isEmpty ? _launchDirectory : normalizeProjectDirectory(directory: trimmed);
+  }
+
+  void _setSessionConfiguration({required String sessionId, required String modelValue}) {
+    _configurationTracker.setSessionOverride(
+      sessionId: sessionId,
+      modelId: modelValue,
+      providerId: _providerId(modelValue),
+    );
+  }
+
+  static String _providerId(String modelValue) {
+    final separator = modelValue.indexOf("/");
+    return separator > 0 ? modelValue.substring(0, separator) : "omp";
   }
 }

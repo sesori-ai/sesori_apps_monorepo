@@ -13,18 +13,15 @@ class OmpCatalogService {
     required OmpCatalogRepository repository,
     required OmpCatalogTracker tracker,
     required Duration totalTimeout,
-    required Duration commandBootstrapDelay,
     required int maxModels,
   }) : _repository = repository,
        _tracker = tracker,
        _totalTimeout = totalTimeout,
-       _commandBootstrapDelay = commandBootstrapDelay,
        _maxModels = maxModels;
 
   final OmpCatalogRepository _repository;
   final OmpCatalogTracker _tracker;
   final Duration _totalTimeout;
-  final Duration _commandBootstrapDelay;
   final int _maxModels;
   final Map<String, Future<OmpCatalogDiscoveryResult>> _inFlight = {};
   Future<void> _leaseTail = Future.value();
@@ -103,7 +100,7 @@ class OmpCatalogService {
           Log.w("[omp] model-specific catalog discovery failed; continuing", error, stack);
         }
       }
-      await Future<void>.delayed(_commandBootstrapDelay).timeout(_remaining(stopwatch));
+      await _repository.waitForCommandSnapshot(timeout: _remaining(stopwatch));
       final complete = thinkingByModel.length == initial.models.length && _repository.hasCommandSnapshot;
       final catalog = OmpProjectCatalog(
         modelConfigId: initial.modelConfigId,

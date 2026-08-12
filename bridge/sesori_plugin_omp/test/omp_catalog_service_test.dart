@@ -35,7 +35,6 @@ void main() {
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      commandBootstrapDelay: Duration.zero,
       maxModels: 8,
     );
 
@@ -70,7 +69,6 @@ void main() {
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      commandBootstrapDelay: Duration.zero,
       maxModels: 8,
     );
 
@@ -87,6 +85,27 @@ void main() {
     expect(repository.openedCwds, ["/alpha", "/beta"]);
   });
 
+  test("waits for delayed command bootstrap before committing the catalog", () async {
+    final repository = _FakeCatalogRepository(
+      created: _result(sessionId: "probe", model: "one/model", thinking: const ["off"]),
+      selections: {
+        "one/model": _result(sessionId: "probe", model: "one/model", thinking: const ["off"]),
+        "other/model": _result(sessionId: "probe", model: "other/model", thinking: const ["off"]),
+      },
+    )..commandSnapshotDelay = const Duration(milliseconds: 75);
+    final service = OmpCatalogService(
+      repository: repository,
+      tracker: OmpCatalogTracker(),
+      totalTimeout: const Duration(seconds: 2),
+      maxModels: 8,
+    );
+
+    final catalog = (await service.ensureCatalog(projectId: "/project") as OmpCatalogObserved).catalog;
+
+    expect(repository.commandWaited, isTrue);
+    expect(catalog.commands.single.name, "review");
+  });
+
   test("no-model discovery fails without replacing the last good snapshot", () async {
     final repository = _FakeCatalogRepository(
       created: _result(sessionId: "probe", model: "one/model", thinking: const ["off"]),
@@ -100,7 +119,6 @@ void main() {
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      commandBootstrapDelay: Duration.zero,
       maxModels: 8,
     );
     final good = (await service.ensureCatalog(projectId: "/project") as OmpCatalogObserved).catalog;
@@ -128,7 +146,6 @@ void main() {
       repository: repository,
       tracker: OmpCatalogTracker(),
       totalTimeout: const Duration(seconds: 2),
-      commandBootstrapDelay: Duration.zero,
       maxModels: 8,
     );
 
@@ -192,6 +209,8 @@ class _FakeCatalogRepository implements OmpCatalogRepository {
   final List<String> closedSessionIds = [];
   final Set<String> failedModels = {};
   String commandName = "review";
+  Duration commandSnapshotDelay = Duration.zero;
+  bool commandWaited = false;
   int settleCount = 0;
 
   @override
@@ -206,6 +225,12 @@ class _FakeCatalogRepository implements OmpCatalogRepository {
 
   @override
   bool get hasCommandSnapshot => true;
+
+  @override
+  Future<void> waitForCommandSnapshot({required Duration timeout}) async {
+    await Future<void>.delayed(commandSnapshotDelay).timeout(timeout);
+    commandWaited = true;
+  }
 
   @override
   Future<AcpInitializeResult> open({required String cwd, required Duration timeout}) async {

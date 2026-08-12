@@ -42,13 +42,13 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
       repository: catalogRepository,
       tracker: catalogTracker,
       totalTimeout: const Duration(seconds: 20),
-      commandBootstrapDelay: const Duration(milliseconds: 50),
       maxModels: 24,
     );
     final ompSessionOptionsService = OmpSessionOptionsService(
       catalogService: catalogService,
       tracker: catalogTracker,
       repository: catalogRepository,
+      configurationTracker: configurationTracker,
       launchDirectory: cwd,
     );
     final cleanupService = OmpSessionCleanupService(
@@ -84,10 +84,8 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
         pluginId: OmpPluginIdentity.id,
         agentDisplayName: OmpPluginIdentity.displayName,
       ),
-      catalogRepository: catalogRepository,
       catalogService: catalogService,
       ompSessionOptionsService: ompSessionOptionsService,
-      configurationTracker: configurationTracker,
       cleanupService: cleanupService,
       processFactory: processFactory,
     );
@@ -100,28 +98,21 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     required super.eventMapper,
     required super.commandTracker,
     required super.sessionOptionsService,
-    required OmpCatalogRepository catalogRepository,
     required OmpCatalogService catalogService,
     required OmpSessionOptionsService ompSessionOptionsService,
-    required AcpSessionConfigurationTracker configurationTracker,
     required OmpSessionCleanupService cleanupService,
     super.processFactory,
-  }) : _catalogRepository = catalogRepository,
-       _catalogService = catalogService,
+  }) : _catalogService = catalogService,
        _ompSessionOptionsService = ompSessionOptionsService,
-       _configurationTracker = configurationTracker,
        _cleanupService = cleanupService,
        super(
          id: OmpPluginIdentity.id,
          agentDisplayName: OmpPluginIdentity.displayName,
        );
 
-  final OmpCatalogRepository _catalogRepository;
   final OmpCatalogService _catalogService;
   final OmpSessionOptionsService _ompSessionOptionsService;
-  final AcpSessionConfigurationTracker _configurationTracker;
   final OmpSessionCleanupService _cleanupService;
-  final Map<String, OmpSessionConfigSnapshot> _sessionConfigs = {};
 
   @override
   String get clientName => "sesori-bridge";
@@ -152,24 +143,11 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     AcpNewSessionResult result, {
     String? sessionId,
     bool fromNewSession = false,
-  }) {
-    final snapshot = _catalogRepository.mapSessionResult(result: result);
-    if (sessionId != null) _sessionConfigs[sessionId] = snapshot;
-    final modelValue = snapshot.currentModelValue;
-    if (fromNewSession && modelValue != null) {
-      _configurationTracker.setProcessDefaults(
-        modelId: modelValue,
-        providerId: _providerId(modelValue),
-      );
-    }
-    if (sessionId != null && modelValue != null) {
-      _configurationTracker.setSessionOverride(
-        sessionId: sessionId,
-        modelId: modelValue,
-        providerId: _providerId(modelValue),
-      );
-    }
-  }
+  }) => _ompSessionOptionsService.captureSessionConfig(
+    result,
+    sessionId: sessionId,
+    fromNewSession: fromNewSession,
+  );
 
   @override
   Future<void> applyTurnSelection({
@@ -179,26 +157,14 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {
-    final snapshot = await _ompSessionOptionsService.applyTurnSelection(
+    await _ompSessionOptionsService.applyTurnSelection(
       configRepository: configRepository,
       sessionId: sessionId,
       projectId: directoryForSession(sessionId),
-      liveSnapshot: _sessionConfigs[sessionId],
       model: model,
       variant: variant,
       agent: agent,
     );
-    if (snapshot != null) {
-      _sessionConfigs[sessionId] = snapshot;
-      final modelValue = snapshot.currentModelValue;
-      if (modelValue != null) {
-        _configurationTracker.setSessionOverride(
-          sessionId: sessionId,
-          modelId: modelValue,
-          providerId: _providerId(modelValue),
-        );
-      }
-    }
   }
 
   @override
@@ -239,11 +205,11 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   @override
   Future<void> deleteSession(String sessionId) async {
     await super.deleteSession(sessionId);
-    _sessionConfigs.remove(sessionId);
+    _ompSessionOptionsService.forgetSession(sessionId: sessionId);
   }
 
   @override
-  void onConnectionReset() => _sessionConfigs.clear();
+  void onConnectionReset() => _ompSessionOptionsService.resetConnection();
 
   @override
   Iterable<BridgeSseEvent> mapPromptFailure({
@@ -274,11 +240,6 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     message: "Open OMP locally, run /login, then retry.",
     variant: "warning",
   );
-
-  static String _providerId(String modelValue) {
-    final separator = modelValue.indexOf("/");
-    return separator > 0 ? modelValue.substring(0, separator) : OmpPluginIdentity.id;
-  }
 
   static bool _isMissingModel(Object error) {
     if (error is! AcpRpcException || error.code != -32603) return false;
