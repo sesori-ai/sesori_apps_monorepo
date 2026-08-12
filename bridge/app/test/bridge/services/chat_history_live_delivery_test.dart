@@ -343,6 +343,55 @@ void main() {
       expect(rows.last.partJson, isNot(contains("stored_file")));
     });
 
+    test("updating an earlier image accounts for later stored siblings", () async {
+      final history = createTestChatHistory();
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      for (var index = 0; index < 3; index++) {
+        await history.database
+            .into(history.database.historyPartsTable)
+            .insert(
+              HistoryPartsTableCompanion.insert(
+                sessionId: "ses_a",
+                messageId: "m1",
+                partId: "stored-$index",
+                orderIndex: index,
+                partJson: jsonEncode(
+                  _part(
+                      id: "stored-$index",
+                      attachment: const MessageAttachment.metadata(mime: "image/png", filename: null),
+                    ).toJson()
+                    ..["attachment"] = {
+                      "source": "stored_file",
+                      "mime": "image/png",
+                      "sha256": "${index + 1}" * 64,
+                      "byteLength": 20 * 1024 * 1024,
+                    },
+                ),
+                updatedAt: 1,
+              ),
+            );
+      }
+
+      final captured = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "stored-0",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List(20 * 1024 * 1024)),
+            filename: "updated.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
+
+      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(captured.storedReferencePart.attachment, isA<MessageAttachmentMetadata>());
+    });
+
     test("a failed write returns unavailable and drops the synced marker", () async {
       final history = createTestChatHistory(sessionRepository: _BackfillingSessionRepository());
       // A synced session makes the cleared marker observable rather than

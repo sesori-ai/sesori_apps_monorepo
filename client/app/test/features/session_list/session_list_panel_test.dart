@@ -16,7 +16,7 @@ import "package:theme_prego/module_prego.dart";
 /// width, wrapping it one glyph per line and overflowing the row across and
 /// down. The header now collapses the labelled button to an icon when narrow
 /// and ellipsizes the title, so it must lay out cleanly at split-pane widths.
-class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
+class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit;
 
 void main() {
   late _MockSessionListCubit cubit;

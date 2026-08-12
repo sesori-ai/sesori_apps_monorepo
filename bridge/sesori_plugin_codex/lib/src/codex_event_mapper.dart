@@ -572,10 +572,11 @@ class CodexEventMapper {
   /// `changes` are `{path, kind, diff}` entries).
   String? _fileChangeTitle(Object? changes) {
     if (changes is! List || changes.isEmpty) return null;
-    final paths = <String>[
-      for (final c in changes)
-        if (_asMap(c)?["path"] case final String p) p,
-    ];
+    final paths = <String>[];
+    for (final change in changes) {
+      final Object? path = _asMap(change)?["path"];
+      if (path is String) paths.add(path);
+    }
     if (paths.isEmpty) return "${changes.length} file change(s)";
     final shown = paths.take(3).join(", ");
     return paths.length > 3 ? "$shown +${paths.length - 3} more" : shown;

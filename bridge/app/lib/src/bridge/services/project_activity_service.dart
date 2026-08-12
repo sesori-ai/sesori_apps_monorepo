@@ -176,7 +176,7 @@ class ProjectActivityService {
       return Future<T>.error(StateError("ProjectActivityService is disposed"));
     }
     final result = _writeTail.then((_) => operation());
-    _writeTail = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    _writeTail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return result;
   }
 

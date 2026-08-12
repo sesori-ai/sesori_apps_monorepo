@@ -578,7 +578,7 @@ class SessionOptionsService {
 
         tail = predecessor.then(
           (_) => startReuse(),
-          onError: (Object _, StackTrace __) => startReuse(),
+          onError: (Object _, StackTrace _) => startReuse(),
         );
         existing
           ..reuseTail = tail
@@ -599,7 +599,7 @@ class SessionOptionsService {
 
       tail = predecessor.then(
         (_) => startForced(),
-        onError: (Object _, StackTrace __) => startForced(),
+        onError: (Object _, StackTrace _) => startForced(),
       );
       existing.forcedTail = tail;
       _removeAfterCompletion(key: key, coordinator: existing, future: tail);
@@ -629,7 +629,7 @@ class SessionOptionsService {
       }
     }
 
-    unawaited(future.then<void>((_) => remove(), onError: (Object _, StackTrace __) => remove()));
+    unawaited(future.then<void>((_) => remove(), onError: (Object _, StackTrace _) => remove()));
   }
 }
 

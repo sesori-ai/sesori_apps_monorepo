@@ -22,13 +22,13 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
+class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService;
 
-class MockPluginRepository extends Mock implements PluginRepository {}
+class MockPluginRepository extends Mock implements PluginRepository;
 
-class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
+class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository;
 
-class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
+class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit;
 
 AgentInfo _testAgent({required String name, required String description, required String? variant}) {
   return AgentInfo(

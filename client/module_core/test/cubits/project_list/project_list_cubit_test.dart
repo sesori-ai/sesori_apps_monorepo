@@ -49,7 +49,7 @@ const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
   health: _connectionHealth,
 );
 
-class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService;
 
 void main() {
   setUpAll(() {

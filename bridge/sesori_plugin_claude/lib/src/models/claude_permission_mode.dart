@@ -30,7 +30,7 @@ enum ClaudePermissionMode {
   /// default when no mode is passed.
   auto(cliValue: "auto", controlValue: "auto");
 
-  const ClaudePermissionMode({required this.cliValue, required this.controlValue});
+  ClaudePermissionMode({required this.cliValue, required this.controlValue});
 
   /// Spelling accepted by the `--permission-mode` command-line flag.
   final String cliValue;

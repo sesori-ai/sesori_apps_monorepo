@@ -5,7 +5,7 @@ import "package:sesori_dart_core/src/cubits/splash/splash_state.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:test/test.dart";
 
-class _MockAuthSession extends Mock implements AuthSession {}
+class _MockAuthSession extends Mock implements AuthSession;
 
 void main() {
   group("SplashCubit", () {

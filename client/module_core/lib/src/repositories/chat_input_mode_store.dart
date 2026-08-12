@@ -9,7 +9,7 @@ enum ChatInputMode {
   voiceFirst(storageValue: "voice_first"),
   textFirst(storageValue: "text_first");
 
-  const ChatInputMode({required this.storageValue});
+  ChatInputMode({required this.storageValue});
 
   /// The persisted spelling of this mode. Pinned here rather than derived from
   /// the enum name so renaming a case cannot orphan a stored preference.

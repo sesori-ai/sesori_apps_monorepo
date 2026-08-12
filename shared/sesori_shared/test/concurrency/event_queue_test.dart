@@ -452,7 +452,7 @@ void main() {
             }
             processed.add(e);
           },
-          onError: (_, __) {},
+          onError: (_, _) {},
         );
 
         queue.enqueue("flaky");
@@ -507,7 +507,7 @@ void main() {
             if (e == "bad") throw Exception("bad");
             processed.add(e);
           },
-          onError: (_, __) {},
+          onError: (_, _) {},
         );
 
         queue.enqueue("bad");
@@ -536,7 +536,7 @@ void main() {
             }
             processed.add(e);
           },
-          onError: (_, __) {},
+          onError: (_, _) {},
         );
 
         queue.enqueue("first");

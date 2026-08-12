@@ -4,7 +4,7 @@ import "package:sesori_dart_core/src/api/bridge_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpApiClient {}
+class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpApiClient;
 
 /// A `GET /auth/bridges` payload with one registered bridge.
 const _bridgesPayload = <String, dynamic>{

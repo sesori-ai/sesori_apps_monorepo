@@ -72,7 +72,7 @@ class MessageQueue<T, OUT> {
         return;
       }
       _isSending = true;
-      final (data: nextMessage, completer: completer) = _messages.removeFirst();
+      final (data: nextMessage, : completer) = _messages.removeFirst();
 
       try {
         final inFlightTimeout = this.inFlightTimeout;

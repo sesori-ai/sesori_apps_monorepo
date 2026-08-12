@@ -71,6 +71,7 @@ linter:
     - document_ignores
     - empty_catches
     - empty_constructor_bodies
+    - empty_container_bodies
     - empty_statements
     - eol_at_end_of_file
     - exhaustive_cases
@@ -96,10 +97,12 @@ linter:
     - no_adjacent_strings_in_list
     - no_default_cases
     - no_duplicate_case_values
+    - no_dynamic_casts
     - no_leading_underscores_for_library_prefixes
     - no_leading_underscores_for_local_identifiers
     - no_literal_bool_comparisons
     - no_logic_in_create_state
+    - no_raw_types
     - no_runtimeType_toString
     - no_self_assignments
     - no_wildcard_variable_uses
@@ -165,6 +168,8 @@ linter:
     - remove_deprecations_in_breaking_versions
     - require_trailing_commas
     - secure_pubspec_urls
+    - simple_directive_paths
+    - simplify_variable_pattern
     - sized_box_for_whitespace
     - sized_box_shrink_expand
     - slash_for_doc_comments
@@ -183,12 +188,13 @@ linter:
     - type_init_formals
     - type_literal_in_constant_pattern
     - unawaited_futures
-    # - unintended_html_in_doc_comment
+    - unintended_html_in_doc_comment
     # - unnecessary_async
     - unnecessary_await_in_return
     - unnecessary_brace_in_string_interps
     - unnecessary_breaks
     - unnecessary_const
+    - unnecessary_const_in_enum_constructor
     - unnecessary_constructor_name
     # - unnecessary_final
     - unnecessary_getters_setters
@@ -212,7 +218,7 @@ linter:
     - unnecessary_this
     - unnecessary_to_list_in_spreads
     - unnecessary_unawaited
-    # - unnecessary_underscores
+    - unnecessary_underscores
     - unreachable_from_main
     - unrelated_type_equality_checks
     # - unsafe_variance

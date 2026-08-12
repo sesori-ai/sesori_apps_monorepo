@@ -14,7 +14,7 @@ enum HttpMethod {
 
   final String dioName;
 
-  const HttpMethod(this.dioName);
+  HttpMethod(this.dioName);
 }
 
 abstract class SafeApiClient {

@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 6 PR open
-- **Current step:** 6/11
-- **Implementation base:** `origin/main` at `ec479cef`
+- **Series state:** Step 7 implementation in progress
+- **Current step:** 7/11
+- **Implementation base:** `origin/main` at `abac4e99`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854)
-- **Next action:** Monitor Step 6 while implementing Step 7 locally
+- **Current PR:** None
+- **Next action:** Implement and verify Step 7, then open its PR
 
 ## Plan Review
 
@@ -36,7 +36,7 @@
 | [x] | 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) merged |
 | [x] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | [PR #843](https://github.com/sesori-ai/sesori_apps_monorepo/pull/843) merged |
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
-| [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) open |
+| [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
 | [ ] | 7/11 | `⚙️ [attachment-references] feat(client): load stored image renditions [step 7/11]` | 850-1,350 | Pending |
 | [ ] | 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Pending |
 | [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
@@ -148,11 +148,16 @@
   Claude (213), and OMP (30); 45 focused bridge app projection, rendition,
   Orchestrator, and SSE tests pass. Architecture implementation review approved
   the shared constant boundary, plugin ownership, independent wire/prompt
-  limits, and capture-fallback layering with no blockers. The implementation
-  diff against `origin/main` at `ec479cef` has 314 additions and 125 deletions
-  across 25 files; `git diff --check`
-  passes. Committed as `29235b47`, pushed, and opened as
+  limits, and capture-fallback layering with no blockers. Review fixes preserve
+  Claude block indexes, enforce Codex's per-image cap after batch merging, and
+  enforce the aggregate retention budget across every stored sibling when a
+  live part is appended or updated. Fatal bridge-app analysis and 37 focused
+  history tests pass after the latest fix. Against merge base `ec479cef`, the
+  current diff has 557 additions and 147 deletions across 28 files (704 changed
+  lines), below the 900-1,450 estimate; `git diff --check` passes. The initial
+  implementation was committed as `29235b47`, pushed, and opened as
   [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854).
+  CI passed 16/16 and the PR squash-merged as `abac4e99`.
 
 ## Findings And Plan Deltas
 

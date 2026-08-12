@@ -15,17 +15,17 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockPermissionRepository extends Mock implements PermissionRepository {}
+class MockPermissionRepository extends Mock implements PermissionRepository;
 
-class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService {}
+class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService;
 
-class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService {}
+class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService;
 
-class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
+class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService;
 
-class MockPluginRepository extends Mock implements PluginRepository {}
+class MockPluginRepository extends Mock implements PluginRepository;
 
-class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
+class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository;
 
 class AdaptiveSessionRouterTestHarness {
   late final MockProjectRepository projectRepository;

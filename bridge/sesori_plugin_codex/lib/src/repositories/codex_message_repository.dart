@@ -197,7 +197,7 @@ class CodexMessageRepository {
           final model = context.model;
           if (model != null && model.isNotEmpty) currentModel = model;
           continue;
-        case CodexRolloutCompactedLineDto(timestamp: final timestamp):
+        case CodexRolloutCompactedLineDto(: final timestamp):
           messageCounter += 1;
           final messageId = "codex-compaction-$messageCounter";
           messages.add(
@@ -542,7 +542,7 @@ enum _GeneratedContextTag {
   environmentContext("environment_context"),
   turnAborted("turn_aborted");
 
-  const _GeneratedContextTag(this.wireName);
+  _GeneratedContextTag(this.wireName);
 
   final String wireName;
 

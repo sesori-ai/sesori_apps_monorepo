@@ -7,7 +7,7 @@ import "../repositories/mappers/git_diff_output_mapper.dart";
 import "../repositories/session_diff_repository.dart";
 import "../repositories/session_repository.dart";
 
-class SessionDiffSessionNotFoundException implements Exception {}
+class SessionDiffSessionNotFoundException implements Exception;
 
 class BaseBranchUnreachableException implements Exception {
   final String message;
@@ -27,7 +27,7 @@ class GitDiffQueryException implements Exception {
   String toString() => message;
 }
 
-sealed class _DiffFileReadResult {}
+sealed class _DiffFileReadResult;
 
 class _DiffFileContent extends _DiffFileReadResult {
   final String content;
@@ -35,11 +35,11 @@ class _DiffFileContent extends _DiffFileReadResult {
   _DiffFileContent({required this.content});
 }
 
-class _DiffFileBinary extends _DiffFileReadResult {}
+class _DiffFileBinary extends _DiffFileReadResult;
 
-class _DiffFileTooLarge extends _DiffFileReadResult {}
+class _DiffFileTooLarge extends _DiffFileReadResult;
 
-class _DiffFileReadFailure extends _DiffFileReadResult {}
+class _DiffFileReadFailure extends _DiffFileReadResult;
 
 class SessionDiffService {
   static const _maxFileContentBytes = 200 * 1024;

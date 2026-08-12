@@ -9,7 +9,7 @@ enum AnsiColor {
   blue("\x1B[94m"),
   gray("\x1B[90m");
 
-  const AnsiColor(this.code);
+  AnsiColor(this.code);
 
   /// The escape sequence that activates this color.
   final String code;

@@ -308,7 +308,8 @@ class AcpStdioClient {
             ),
           );
         } else {
-          completer.complete(map["result"]);
+          final Object? result = map["result"];
+          completer.complete(result);
         }
         return;
       }

@@ -8,7 +8,7 @@ enum PiAssistantStopReason {
   aborted("aborted"),
   deferred("deferred");
 
-  const PiAssistantStopReason(this.wireValue);
+  PiAssistantStopReason(this.wireValue);
 
   final String wireValue;
 

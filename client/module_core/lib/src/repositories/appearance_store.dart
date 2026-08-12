@@ -9,7 +9,7 @@ enum AppearanceMode {
   dark(storageValue: "dark"),
   system(storageValue: "system");
 
-  const AppearanceMode({required this.storageValue});
+  AppearanceMode({required this.storageValue});
 
   /// The persisted spelling of this mode. Pinned here rather than derived from
   /// the enum name so renaming a case cannot orphan a stored preference.

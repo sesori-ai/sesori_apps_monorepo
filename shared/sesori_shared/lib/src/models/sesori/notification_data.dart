@@ -60,7 +60,7 @@ enum NotificationCategory {
   final String description;
   final NotificationImportance importance;
 
-  const NotificationCategory({
+  NotificationCategory({
     required this.id,
     required this.displayName,
     required this.description,

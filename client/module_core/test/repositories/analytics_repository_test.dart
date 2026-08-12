@@ -6,7 +6,7 @@ import "package:test/test.dart";
 
 const _userKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-class _MockAnalyticsApi extends Mock implements AnalyticsApi {}
+class _MockAnalyticsApi extends Mock implements AnalyticsApi;
 
 void main() {
   late _MockAnalyticsApi api;

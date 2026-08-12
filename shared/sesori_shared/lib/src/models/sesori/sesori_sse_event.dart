@@ -19,7 +19,7 @@ part "sesori_sse_event.g.dart";
 /// Use [ConnectionService.sessionEvents] to obtain a filtered stream already
 /// typed as [SesoriSessionEvent], enabling exhaustive switching over only
 /// the events that can ever be received for a given session.
-sealed class SesoriSessionEvent {}
+sealed class SesoriSessionEvent;
 
 /// Typed representation of all known SSE event payloads.
 ///

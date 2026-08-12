@@ -59,8 +59,8 @@ class NotificationRegistrationService {
   }
 
   Future<void> _enqueueSync(Future<void> Function() operation) {
-    final next = _syncQueue.catchError((Object _, StackTrace __) {}).then((_) => operation());
-    _syncQueue = next.catchError((Object _, StackTrace __) {});
+    final next = _syncQueue.catchError((Object _, StackTrace _) {}).then((_) => operation());
+    _syncQueue = next.catchError((Object _, StackTrace _) {});
     return next;
   }
 

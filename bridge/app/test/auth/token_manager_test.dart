@@ -35,7 +35,7 @@ void main() {
       final refreshStarted = Completer<void>();
       final refreshCompleted = Completer<void>();
       final server = await _RefreshTestServer.start(
-        onRequest: (_, __) {
+        onRequest: (_, _) {
           if (!refreshStarted.isCompleted) {
             refreshStarted.complete();
           }

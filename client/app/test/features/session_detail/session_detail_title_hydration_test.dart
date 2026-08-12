@@ -15,13 +15,13 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService {}
+class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService;
 
-class MockSessionRepository extends Mock implements SessionRepository {}
+class MockSessionRepository extends Mock implements SessionRepository;
 
-class MockPermissionRepository extends Mock implements PermissionRepository {}
+class MockPermissionRepository extends Mock implements PermissionRepository;
 
-class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
+class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService;
 
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
