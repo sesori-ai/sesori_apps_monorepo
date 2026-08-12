@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 6 ready for review
+- **Series state:** Step 6 PR open
 - **Current step:** 6/11
 - **Implementation base:** `origin/main` at `ec479cef`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** Pending
+- **Current PR:** [#854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854)
 - **Next action:** Open and monitor Step 6 while implementing Step 7 locally
 
 ## Plan Review
@@ -36,7 +36,7 @@
 | [x] | 3/11 | `🚧 [attachment-references] feat(bridge): serve stored image renditions [step 3/11]` | 1,800-2,300 | [PR #818](https://github.com/sesori-ai/sesori_apps_monorepo/pull/818) merged |
 | [x] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | [PR #843](https://github.com/sesori-ai/sesori_apps_monorepo/pull/843) merged |
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
-| [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | Ready for review |
+| [ ] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) open |
 | [ ] | 7/11 | `⚙️ [attachment-references] feat(client): load stored image renditions [step 7/11]` | 850-1,350 | Pending |
 | [ ] | 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Pending |
 | [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
@@ -150,7 +150,8 @@
   the shared constant boundary, plugin ownership, independent wire/prompt
   limits, and capture-fallback layering with no blockers. The implementation
   diff has 314 additions and 125 deletions across 25 files; `git diff --check`
-  passes.
+  passes. Committed as `29235b47`, pushed, and opened as
+  [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854).
 
 ## Findings And Plan Deltas
 
