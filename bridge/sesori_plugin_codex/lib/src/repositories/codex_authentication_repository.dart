@@ -48,7 +48,10 @@ class CodexAuthenticationRepository {
     _completion = completion;
     _completionSubscription = _appServerApi.accountLoginCompletions.listen(
       (event) {
-        if (event.loginId != _loginId || completion.isCompleted) return;
+        final loginId = _loginId;
+        if (loginId == null || event.loginId != loginId || completion.isCompleted) {
+          return;
+        }
         if (event.success) {
           completion.complete();
         } else {

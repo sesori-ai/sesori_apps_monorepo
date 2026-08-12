@@ -117,6 +117,28 @@ void main() {
       expect(repository.disposed, isTrue);
       expect(client.disposed, isTrue);
     });
+
+    test("settles with failure when the child exits after challenge", () async {
+      final client = _FakeStdioClient();
+      final repository = _FakeAuthenticationRepository();
+      final service = CodexAuthenticationService(
+        client: client,
+        repository: repository,
+        aborted: StartAbortSignal.never,
+        requestTimeout: const Duration(seconds: 2),
+      );
+      final events = service.authenticate().toList();
+      await repository.started;
+      await Future<void>.delayed(Duration.zero);
+
+      client.exit(7);
+
+      final result = await events.timeout(const Duration(milliseconds: 100));
+      expect(result.first, isA<PluginAuthenticationDeviceCodeChallenge>());
+      expect(result.last, isA<PluginAuthenticationFailed>());
+      expect(repository.disposed, isTrue);
+      expect(client.disposed, isTrue);
+    });
   });
 }
 
@@ -164,6 +186,7 @@ class _FakeStdioClient implements CodexStdioAppServerClient {
   _FakeStdioClient({this.connectError});
 
   final Object? connectError;
+  final Completer<int> _exit = Completer<int>();
   bool disposed = false;
 
   @override
@@ -187,11 +210,13 @@ class _FakeStdioClient implements CodexStdioAppServerClient {
     disposed = true;
   }
 
+  void exit(int code) => _exit.complete(code);
+
   @override
   Stream<CodexServerNotification> get notifications => const Stream.empty();
 
   @override
-  Future<int> get processExit => Completer<int>().future;
+  Future<int> get processExit => _exit.future;
 
   @override
   Future<dynamic> request({

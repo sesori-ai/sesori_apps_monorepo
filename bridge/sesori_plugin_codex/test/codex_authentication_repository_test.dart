@@ -8,13 +8,20 @@ import "package:test/test.dart";
 void main() {
   group("CodexAuthenticationRepository", () {
     test("retains the login id and ignores unrelated completions", () async {
-      final transport = _AuthenticationTransport();
+      final startResponse = Completer<void>();
+      final transport = _AuthenticationTransport(
+        startResponse: startResponse.future,
+      );
       final repository = CodexAuthenticationRepository(
         appServerApi: CodexAppServerApi(client: transport),
         requestTimeout: const Duration(seconds: 2),
       );
 
-      final challenge = await repository.start();
+      final challengeFuture = repository.start();
+      await _eventLoop();
+      transport.complete(loginId: null, success: true);
+      startResponse.complete();
+      final challenge = await challengeFuture;
       expect(challenge.verificationUri, Uri.https("auth.example", "/device"));
       expect(challenge.userCode, "PRIVATE-CODE");
 
@@ -100,9 +107,11 @@ Future<void> _eventLoop() => Future<void>.delayed(Duration.zero);
 class _AuthenticationTransport implements CodexAppServerTransport {
   _AuthenticationTransport({
     this.verificationUrl = "https://auth.example/device",
+    this.startResponse,
   });
 
   final String verificationUrl;
+  final Future<void>? startResponse;
   final StreamController<CodexServerNotification> _notifications =
       StreamController<CodexServerNotification>.broadcast();
   final List<String> cancelLoginIds = <String>[];
@@ -119,6 +128,7 @@ class _AuthenticationTransport implements CodexAppServerTransport {
   }) async {
     timeouts.add(timeout);
     if (method == "account/login/start") {
+      await startResponse;
       return {
         "type": "chatgptDeviceCode",
         "loginId": "private-login",
@@ -131,7 +141,7 @@ class _AuthenticationTransport implements CodexAppServerTransport {
   }
 
   void complete({
-    required String loginId,
+    required String? loginId,
     required bool success,
     String? error,
   }) {

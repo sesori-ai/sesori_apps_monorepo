@@ -36,7 +36,19 @@ class CodexAuthenticationService {
         verificationUri: challenge.verificationUri,
         userCode: challenge.userCode,
       );
-      await _abortable(_repository.waitForCompletion());
+      await _abortable(
+        Future.any<void>([
+          _repository.waitForCompletion(),
+          _client.processExit.then<void>((exitCode) {
+            throw CodexAuthenticationException(
+              message: "Codex App Server exited during device login",
+              cause: StateError(
+                "Codex App Server exited with code $exitCode",
+              ),
+            );
+          }),
+        ]),
+      );
       yield const PluginAuthenticationCompleted();
     } on PluginStartAbortedException {
       rethrow;
