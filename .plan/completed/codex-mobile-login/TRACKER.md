@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Steps 1-7 merged; Step 8 retirement in review
+- **Series state:** Complete; all eight steps merged and plan retired
 - **Current step:** 8/8
 - **Implementation base:** Step 7 merge commit `61e9ed2d`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
 - **Current PR:** [#847](https://github.com/sesori-ai/sesori_apps_monorepo/pull/847)
-- **Next action:** Merge Step 8 retirement
+- **Next action:** None; plan is retired
 
 ## Plan Review
 
@@ -33,7 +33,7 @@
 | [x] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) merged |
 | [x] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | [PR #837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837) merged |
 | [x] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | [PR #841](https://github.com/sesori-ai/sesori_apps_monorepo/pull/841) merged |
-| [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | [PR #847](https://github.com/sesori-ai/sesori_apps_monorepo/pull/847) open |
+| [x] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | [PR #847](https://github.com/sesori-ai/sesori_apps_monorepo/pull/847) retirement |
 
 ## Locked Decisions
 
