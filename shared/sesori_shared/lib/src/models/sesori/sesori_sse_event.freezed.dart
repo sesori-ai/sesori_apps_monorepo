@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'sesori_sse_event.dart';
@@ -9,6 +9,7 @@ part of 'sesori_sse_event.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 SesoriSseEvent _$SesoriSseEventFromJson(
@@ -272,7 +273,7 @@ $SesoriSseEventCopyWith(SesoriSseEvent _, $Res Function(SesoriSseEvent) __);
 @JsonSerializable()
 
 class SesoriServerConnected implements SesoriSseEvent {
-  const SesoriServerConnected({final  String? $type}): $type = $type ?? 'server.connected';
+  const SesoriServerConnected({ String? $type}): $type = $type ?? 'server.connected';
   factory SesoriServerConnected.fromJson(Map<String, dynamic> json) => _$SesoriServerConnectedFromJson(json);
 
 
@@ -311,7 +312,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriServerHeartbeat implements SesoriSseEvent {
-  const SesoriServerHeartbeat({final  String? $type}): $type = $type ?? 'server.heartbeat';
+  const SesoriServerHeartbeat({ String? $type}): $type = $type ?? 'server.heartbeat';
   factory SesoriServerHeartbeat.fromJson(Map<String, dynamic> json) => _$SesoriServerHeartbeatFromJson(json);
 
 
@@ -350,7 +351,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriServerInstanceDisposed implements SesoriSseEvent {
-  const SesoriServerInstanceDisposed({this.directory, final  String? $type}): $type = $type ?? 'server.instance.disposed';
+  const SesoriServerInstanceDisposed({this.directory,  String? $type}): $type = $type ?? 'server.instance.disposed';
   factory SesoriServerInstanceDisposed.fromJson(Map<String, dynamic> json) => _$SesoriServerInstanceDisposedFromJson(json);
 
  final  String? directory;
@@ -423,7 +424,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriGlobalDisposed implements SesoriSseEvent {
-  const SesoriGlobalDisposed({final  String? $type}): $type = $type ?? 'global.disposed';
+  const SesoriGlobalDisposed({ String? $type}): $type = $type ?? 'global.disposed';
   factory SesoriGlobalDisposed.fromJson(Map<String, dynamic> json) => _$SesoriGlobalDisposedFromJson(json);
 
 
@@ -462,7 +463,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriCatalogImportProgress implements SesoriSseEvent {
-  const SesoriCatalogImportProgress({required this.progress, final  String? $type}): $type = $type ?? 'catalog.import.progress';
+  const SesoriCatalogImportProgress({required this.progress,  String? $type}): $type = $type ?? 'catalog.import.progress';
   factory SesoriCatalogImportProgress.fromJson(Map<String, dynamic> json) => _$SesoriCatalogImportProgressFromJson(json);
 
  final  CatalogImportProgress progress;
@@ -535,7 +536,7 @@ as CatalogImportProgress,
 @JsonSerializable()
 
 class SesoriPluginManagementChanged implements SesoriSseEvent {
-  const SesoriPluginManagementChanged({required this.snapshotToken, final  String? $type}): $type = $type ?? 'plugin.management.changed';
+  const SesoriPluginManagementChanged({required this.snapshotToken,  String? $type}): $type = $type ?? 'plugin.management.changed';
   factory SesoriPluginManagementChanged.fromJson(Map<String, dynamic> json) => _$SesoriPluginManagementChangedFromJson(json);
 
  final  String snapshotToken;
@@ -608,7 +609,7 @@ as String,
 @JsonSerializable()
 
 class SesoriPluginInstallProgress implements SesoriSseEvent {
-  const SesoriPluginInstallProgress({required this.pluginId, @JsonKey(unknownEnumValue: PluginInstallPhase.unknown) required this.phase, required this.percent, required this.message, final  String? $type}): $type = $type ?? 'plugin.install.progress';
+  const SesoriPluginInstallProgress({required this.pluginId, @JsonKey(unknownEnumValue: PluginInstallPhase.unknown) required this.phase, required this.percent, required this.message,  String? $type}): $type = $type ?? 'plugin.install.progress';
   factory SesoriPluginInstallProgress.fromJson(Map<String, dynamic> json) => _$SesoriPluginInstallProgressFromJson(json);
 
  final  String pluginId;
@@ -687,7 +688,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriPluginAuthenticationProgress implements SesoriSseEvent {
-  const SesoriPluginAuthenticationProgress({required this.pluginId, required this.progress, final  String? $type}): $type = $type ?? 'plugin.authentication.progress';
+  const SesoriPluginAuthenticationProgress({required this.pluginId, required this.progress,  String? $type}): $type = $type ?? 'plugin.authentication.progress';
   factory SesoriPluginAuthenticationProgress.fromJson(Map<String, dynamic> json) => _$SesoriPluginAuthenticationProgressFromJson(json);
 
  final  String pluginId;
@@ -762,7 +763,7 @@ as PluginAuthenticationProgress,
 @JsonSerializable()
 
 class SesoriCommandCatalogUpdated implements SesoriSseEvent {
-  const SesoriCommandCatalogUpdated({required this.pluginId, final  String? $type}): $type = $type ?? 'command.catalog.updated';
+  const SesoriCommandCatalogUpdated({required this.pluginId,  String? $type}): $type = $type ?? 'command.catalog.updated';
   factory SesoriCommandCatalogUpdated.fromJson(Map<String, dynamic> json) => _$SesoriCommandCatalogUpdatedFromJson(json);
 
  final  String pluginId;
@@ -835,7 +836,7 @@ as String,
 @JsonSerializable()
 
 class SesoriSessionCreated implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionCreated({required this.info, final  String? $type}): $type = $type ?? 'session.created';
+  const SesoriSessionCreated({required this.info,  String? $type}): $type = $type ?? 'session.created';
   factory SesoriSessionCreated.fromJson(Map<String, dynamic> json) => _$SesoriSessionCreatedFromJson(json);
 
  final  Session info;
@@ -917,7 +918,7 @@ $SessionCopyWith<$Res> get info {
 @JsonSerializable()
 
 class SesoriSessionUpdated implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionUpdated({required this.info, final  String? $type}): $type = $type ?? 'session.updated';
+  const SesoriSessionUpdated({required this.info,  String? $type}): $type = $type ?? 'session.updated';
   factory SesoriSessionUpdated.fromJson(Map<String, dynamic> json) => _$SesoriSessionUpdatedFromJson(json);
 
  final  Session info;
@@ -999,7 +1000,7 @@ $SessionCopyWith<$Res> get info {
 @JsonSerializable()
 
 class SesoriSessionDeleted implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionDeleted({required this.info, final  String? $type}): $type = $type ?? 'session.deleted';
+  const SesoriSessionDeleted({required this.info,  String? $type}): $type = $type ?? 'session.deleted';
   factory SesoriSessionDeleted.fromJson(Map<String, dynamic> json) => _$SesoriSessionDeletedFromJson(json);
 
  final  Session info;
@@ -1081,7 +1082,7 @@ $SessionCopyWith<$Res> get info {
 @JsonSerializable()
 
 class SesoriSessionDiff implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionDiff({required this.sessionID, final  String? $type}): $type = $type ?? 'session.diff';
+  const SesoriSessionDiff({required this.sessionID,  String? $type}): $type = $type ?? 'session.diff';
   factory SesoriSessionDiff.fromJson(Map<String, dynamic> json) => _$SesoriSessionDiffFromJson(json);
 
  final  String sessionID;
@@ -1154,7 +1155,7 @@ as String,
 @JsonSerializable()
 
 class SesoriSessionError implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionError({required this.sessionID, final  String? $type}): $type = $type ?? 'session.error';
+  const SesoriSessionError({required this.sessionID,  String? $type}): $type = $type ?? 'session.error';
   factory SesoriSessionError.fromJson(Map<String, dynamic> json) => _$SesoriSessionErrorFromJson(json);
 
  final  String? sessionID;
@@ -1227,7 +1228,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriSessionCompacted implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionCompacted({required this.sessionID, final  String? $type}): $type = $type ?? 'session.compacted';
+  const SesoriSessionCompacted({required this.sessionID,  String? $type}): $type = $type ?? 'session.compacted';
   factory SesoriSessionCompacted.fromJson(Map<String, dynamic> json) => _$SesoriSessionCompactedFromJson(json);
 
  final  String sessionID;
@@ -1300,7 +1301,7 @@ as String,
 @JsonSerializable()
 
 class SesoriSessionPromptDefaultsChanged implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionPromptDefaultsChanged({required this.sessionID, required this.promptDefaults, final  String? $type}): $type = $type ?? 'session.prompt_defaults_changed';
+  const SesoriSessionPromptDefaultsChanged({required this.sessionID, required this.promptDefaults,  String? $type}): $type = $type ?? 'session.prompt_defaults_changed';
   factory SesoriSessionPromptDefaultsChanged.fromJson(Map<String, dynamic> json) => _$SesoriSessionPromptDefaultsChangedFromJson(json);
 
  final  String sessionID;
@@ -1384,7 +1385,7 @@ $SessionPromptDefaultsCopyWith<$Res> get promptDefaults {
 @JsonSerializable()
 
 class SesoriSessionStatus implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionStatus({required this.sessionID, required this.status, final  String? $type}): $type = $type ?? 'session.status';
+  const SesoriSessionStatus({required this.sessionID, required this.status,  String? $type}): $type = $type ?? 'session.status';
   factory SesoriSessionStatus.fromJson(Map<String, dynamic> json) => _$SesoriSessionStatusFromJson(json);
 
  final  String sessionID;
@@ -1468,7 +1469,7 @@ $SessionStatusCopyWith<$Res> get status {
 @JsonSerializable()
 
 class SesoriCommandExecuted implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriCommandExecuted({required this.name, required this.sessionID, required this.arguments, required this.messageID, final  String? $type}): $type = $type ?? 'command.executed';
+  const SesoriCommandExecuted({required this.name, required this.sessionID, required this.arguments, required this.messageID,  String? $type}): $type = $type ?? 'command.executed';
   factory SesoriCommandExecuted.fromJson(Map<String, dynamic> json) => _$SesoriCommandExecutedFromJson(json);
 
  final  String name;
@@ -1547,7 +1548,7 @@ as String,
 @JsonSerializable()
 
 class SesoriMessageUpdated implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriMessageUpdated({required this.info, final  String? $type}): $type = $type ?? 'message.updated';
+  const SesoriMessageUpdated({required this.info,  String? $type}): $type = $type ?? 'message.updated';
   factory SesoriMessageUpdated.fromJson(Map<String, dynamic> json) => _$SesoriMessageUpdatedFromJson(json);
 
  final  Message info;
@@ -1629,7 +1630,7 @@ $MessageCopyWith<$Res> get info {
 @JsonSerializable()
 
 class SesoriMessageRemoved implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriMessageRemoved({required this.sessionID, required this.messageID, final  String? $type}): $type = $type ?? 'message.removed';
+  const SesoriMessageRemoved({required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'message.removed';
   factory SesoriMessageRemoved.fromJson(Map<String, dynamic> json) => _$SesoriMessageRemovedFromJson(json);
 
  final  String sessionID;
@@ -1704,7 +1705,7 @@ as String,
 @JsonSerializable()
 
 class SesoriMessagePartUpdated implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriMessagePartUpdated({required this.part, final  String? $type}): $type = $type ?? 'message.part.updated';
+  const SesoriMessagePartUpdated({required this.part,  String? $type}): $type = $type ?? 'message.part.updated';
   factory SesoriMessagePartUpdated.fromJson(Map<String, dynamic> json) => _$SesoriMessagePartUpdatedFromJson(json);
 
  final  MessagePart part;
@@ -1786,7 +1787,7 @@ $MessagePartCopyWith<$Res> get part {
 @JsonSerializable()
 
 class SesoriMessagePartDelta implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriMessagePartDelta({required this.sessionID, required this.messageID, required this.partID, required this.field, required this.delta, final  String? $type}): $type = $type ?? 'message.part.delta';
+  const SesoriMessagePartDelta({required this.sessionID, required this.messageID, required this.partID, required this.field, required this.delta,  String? $type}): $type = $type ?? 'message.part.delta';
   factory SesoriMessagePartDelta.fromJson(Map<String, dynamic> json) => _$SesoriMessagePartDeltaFromJson(json);
 
  final  String sessionID;
@@ -1867,7 +1868,7 @@ as String,
 @JsonSerializable()
 
 class SesoriMessagePartRemoved implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriMessagePartRemoved({required this.sessionID, required this.messageID, required this.partID, final  String? $type}): $type = $type ?? 'message.part.removed';
+  const SesoriMessagePartRemoved({required this.sessionID, required this.messageID, required this.partID,  String? $type}): $type = $type ?? 'message.part.removed';
   factory SesoriMessagePartRemoved.fromJson(Map<String, dynamic> json) => _$SesoriMessagePartRemovedFromJson(json);
 
  final  String sessionID;
@@ -1944,7 +1945,7 @@ as String,
 @JsonSerializable()
 
 class SesoriPtyCreated implements SesoriSseEvent {
-  const SesoriPtyCreated({final  String? $type}): $type = $type ?? 'pty.created';
+  const SesoriPtyCreated({ String? $type}): $type = $type ?? 'pty.created';
   factory SesoriPtyCreated.fromJson(Map<String, dynamic> json) => _$SesoriPtyCreatedFromJson(json);
 
 
@@ -1983,7 +1984,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriPtyUpdated implements SesoriSseEvent {
-  const SesoriPtyUpdated({final  String? $type}): $type = $type ?? 'pty.updated';
+  const SesoriPtyUpdated({ String? $type}): $type = $type ?? 'pty.updated';
   factory SesoriPtyUpdated.fromJson(Map<String, dynamic> json) => _$SesoriPtyUpdatedFromJson(json);
 
 
@@ -2022,7 +2023,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriPtyExited implements SesoriSseEvent {
-  const SesoriPtyExited({required this.id, required this.exitCode, final  String? $type}): $type = $type ?? 'pty.exited';
+  const SesoriPtyExited({required this.id, required this.exitCode,  String? $type}): $type = $type ?? 'pty.exited';
   factory SesoriPtyExited.fromJson(Map<String, dynamic> json) => _$SesoriPtyExitedFromJson(json);
 
  final  String? id;
@@ -2097,7 +2098,7 @@ as int?,
 @JsonSerializable()
 
 class SesoriPtyDeleted implements SesoriSseEvent {
-  const SesoriPtyDeleted({this.id, final  String? $type}): $type = $type ?? 'pty.deleted';
+  const SesoriPtyDeleted({this.id,  String? $type}): $type = $type ?? 'pty.deleted';
   factory SesoriPtyDeleted.fromJson(Map<String, dynamic> json) => _$SesoriPtyDeletedFromJson(json);
 
  final  String? id;
@@ -2170,7 +2171,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, this.allowAlways = true, final  String? $type}): $type = $type ?? 'permission.asked';
+  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, this.allowAlways = true,  String? $type}): $type = $type ?? 'permission.asked';
   factory SesoriPermissionAsked.fromJson(Map<String, dynamic> json) => _$SesoriPermissionAskedFromJson(json);
 
  final  String requestID;
@@ -2181,8 +2182,6 @@ class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
  final  String? displaySessionId;
  final  String tool;
  final  String description;
-// COMPATIBILITY 2026-08-10 (v1.8.0): Older bridges omit this capability;
-// remove the default after the minimum supported bridge sends it.
 @JsonKey() final  bool allowAlways;
 
 @JsonKey(name: 'type')
@@ -2258,7 +2257,7 @@ as bool,
 @JsonSerializable()
 
 class SesoriPermissionReplied implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionReplied({required this.requestID, required this.sessionID, required this.displaySessionId, required this.reply, final  String? $type}): $type = $type ?? 'permission.replied';
+  const SesoriPermissionReplied({required this.requestID, required this.sessionID, required this.displaySessionId, required this.reply,  String? $type}): $type = $type ?? 'permission.replied';
   factory SesoriPermissionReplied.fromJson(Map<String, dynamic> json) => _$SesoriPermissionRepliedFromJson(json);
 
  final  String requestID;
@@ -2339,7 +2338,7 @@ as String,
 @JsonSerializable()
 
 class SesoriPermissionUpdated implements SesoriSseEvent {
-  const SesoriPermissionUpdated({final  String? $type}): $type = $type ?? 'permission.updated';
+  const SesoriPermissionUpdated({ String? $type}): $type = $type ?? 'permission.updated';
   factory SesoriPermissionUpdated.fromJson(Map<String, dynamic> json) => _$SesoriPermissionUpdatedFromJson(json);
 
 
@@ -2378,7 +2377,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriQuestionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionAsked({required this.id, required this.sessionID, required this.displaySessionId, required final  List<QuestionInfo> questions, final  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
+  const SesoriQuestionAsked({required this.id, required this.sessionID, required this.displaySessionId, required  List<QuestionInfo> questions,  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
   factory SesoriQuestionAsked.fromJson(Map<String, dynamic> json) => _$SesoriQuestionAskedFromJson(json);
 
  final  String id;
@@ -2466,7 +2465,7 @@ as List<QuestionInfo>,
 @JsonSerializable()
 
 class SesoriQuestionReplied implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionReplied({required this.requestID, required this.sessionID, required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.replied';
+  const SesoriQuestionReplied({required this.requestID, required this.sessionID, required this.displaySessionId,  String? $type}): $type = $type ?? 'question.replied';
   factory SesoriQuestionReplied.fromJson(Map<String, dynamic> json) => _$SesoriQuestionRepliedFromJson(json);
 
  final  String requestID;
@@ -2545,7 +2544,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriQuestionRejected implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionRejected({required this.requestID, required this.sessionID, required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.rejected';
+  const SesoriQuestionRejected({required this.requestID, required this.sessionID, required this.displaySessionId,  String? $type}): $type = $type ?? 'question.rejected';
   factory SesoriQuestionRejected.fromJson(Map<String, dynamic> json) => _$SesoriQuestionRejectedFromJson(json);
 
  final  String requestID;
@@ -2624,7 +2623,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriTodoUpdated implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriTodoUpdated({required this.sessionID, final  String? $type}): $type = $type ?? 'todo.updated';
+  const SesoriTodoUpdated({required this.sessionID,  String? $type}): $type = $type ?? 'todo.updated';
   factory SesoriTodoUpdated.fromJson(Map<String, dynamic> json) => _$SesoriTodoUpdatedFromJson(json);
 
  final  String sessionID;
@@ -2697,7 +2696,7 @@ as String,
 @JsonSerializable()
 
 class SesoriProjectsSummary implements SesoriSseEvent {
-  const SesoriProjectsSummary({required final  List<ProjectActivitySummary> projects, final  String? $type}): _projects = projects,$type = $type ?? 'projects.summary';
+  const SesoriProjectsSummary({required  List<ProjectActivitySummary> projects,  String? $type}): _projects = projects,$type = $type ?? 'projects.summary';
   factory SesoriProjectsSummary.fromJson(Map<String, dynamic> json) => _$SesoriProjectsSummaryFromJson(json);
 
  final  List<ProjectActivitySummary> _projects;
@@ -2776,10 +2775,9 @@ as List<ProjectActivitySummary>,
 @JsonSerializable()
 
 class SesoriProjectUpdated implements SesoriSseEvent {
-  const SesoriProjectUpdated({required this.projectID, required this.updatedAt, final  String? $type}): $type = $type ?? 'project.updated';
+  const SesoriProjectUpdated({required this.projectID, required this.updatedAt,  String? $type}): $type = $type ?? 'project.updated';
   factory SesoriProjectUpdated.fromJson(Map<String, dynamic> json) => _$SesoriProjectUpdatedFromJson(json);
 
-// COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges emit no payload. Require both fields and remove fallbacks.
  final  String? projectID;
  final  int? updatedAt;
 
@@ -2852,7 +2850,7 @@ as int?,
 @JsonSerializable()
 
 class SesoriVcsBranchUpdated implements SesoriSseEvent {
-  const SesoriVcsBranchUpdated({final  String? $type}): $type = $type ?? 'vcs.branch.updated';
+  const SesoriVcsBranchUpdated({ String? $type}): $type = $type ?? 'vcs.branch.updated';
   factory SesoriVcsBranchUpdated.fromJson(Map<String, dynamic> json) => _$SesoriVcsBranchUpdatedFromJson(json);
 
 
@@ -2891,7 +2889,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriSessionsUpdated implements SesoriSseEvent {
-  const SesoriSessionsUpdated({required this.projectID, final  String? $type}): $type = $type ?? 'sessions.updated';
+  const SesoriSessionsUpdated({required this.projectID,  String? $type}): $type = $type ?? 'sessions.updated';
   factory SesoriSessionsUpdated.fromJson(Map<String, dynamic> json) => _$SesoriSessionsUpdatedFromJson(json);
 
  final  String projectID;
@@ -2964,7 +2962,7 @@ as String,
 @JsonSerializable()
 
 class SesoriSessionUnseenChanged implements SesoriSseEvent {
-  const SesoriSessionUnseenChanged({required this.projectID, required this.sessionId, required this.unseen, required this.projectHasUnseenChanges, final  String? $type}): $type = $type ?? 'session.unseen_changed';
+  const SesoriSessionUnseenChanged({required this.projectID, required this.sessionId, required this.unseen, required this.projectHasUnseenChanges,  String? $type}): $type = $type ?? 'session.unseen_changed';
   factory SesoriSessionUnseenChanged.fromJson(Map<String, dynamic> json) => _$SesoriSessionUnseenChangedFromJson(json);
 
  final  String projectID;
@@ -3043,7 +3041,7 @@ as bool,
 @JsonSerializable()
 
 class SesoriFileEdited implements SesoriSseEvent {
-  const SesoriFileEdited({this.file, final  String? $type}): $type = $type ?? 'file.edited';
+  const SesoriFileEdited({this.file,  String? $type}): $type = $type ?? 'file.edited';
   factory SesoriFileEdited.fromJson(Map<String, dynamic> json) => _$SesoriFileEditedFromJson(json);
 
  final  String? file;
@@ -3116,7 +3114,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriFileWatcherUpdated implements SesoriSseEvent {
-  const SesoriFileWatcherUpdated({required this.file, required this.event, final  String? $type}): $type = $type ?? 'file.watcher.updated';
+  const SesoriFileWatcherUpdated({required this.file, required this.event,  String? $type}): $type = $type ?? 'file.watcher.updated';
   factory SesoriFileWatcherUpdated.fromJson(Map<String, dynamic> json) => _$SesoriFileWatcherUpdatedFromJson(json);
 
  final  String? file;
@@ -3191,7 +3189,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriLspUpdated implements SesoriSseEvent {
-  const SesoriLspUpdated({final  String? $type}): $type = $type ?? 'lsp.updated';
+  const SesoriLspUpdated({ String? $type}): $type = $type ?? 'lsp.updated';
   factory SesoriLspUpdated.fromJson(Map<String, dynamic> json) => _$SesoriLspUpdatedFromJson(json);
 
 
@@ -3230,7 +3228,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriLspClientDiagnostics implements SesoriSseEvent {
-  const SesoriLspClientDiagnostics({required this.serverID, required this.path, final  String? $type}): $type = $type ?? 'lsp.client.diagnostics';
+  const SesoriLspClientDiagnostics({required this.serverID, required this.path,  String? $type}): $type = $type ?? 'lsp.client.diagnostics';
   factory SesoriLspClientDiagnostics.fromJson(Map<String, dynamic> json) => _$SesoriLspClientDiagnosticsFromJson(json);
 
  final  String? serverID;
@@ -3305,7 +3303,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriMcpToolsChanged implements SesoriSseEvent {
-  const SesoriMcpToolsChanged({final  String? $type}): $type = $type ?? 'mcp.tools.changed';
+  const SesoriMcpToolsChanged({ String? $type}): $type = $type ?? 'mcp.tools.changed';
   factory SesoriMcpToolsChanged.fromJson(Map<String, dynamic> json) => _$SesoriMcpToolsChangedFromJson(json);
 
 
@@ -3344,7 +3342,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriMcpBrowserOpenFailed implements SesoriSseEvent {
-  const SesoriMcpBrowserOpenFailed({final  String? $type}): $type = $type ?? 'mcp.browser.open.failed';
+  const SesoriMcpBrowserOpenFailed({ String? $type}): $type = $type ?? 'mcp.browser.open.failed';
   factory SesoriMcpBrowserOpenFailed.fromJson(Map<String, dynamic> json) => _$SesoriMcpBrowserOpenFailedFromJson(json);
 
 
@@ -3383,7 +3381,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriInstallationUpdated implements SesoriSseEvent {
-  const SesoriInstallationUpdated({this.version, final  String? $type}): $type = $type ?? 'installation.updated';
+  const SesoriInstallationUpdated({this.version,  String? $type}): $type = $type ?? 'installation.updated';
   factory SesoriInstallationUpdated.fromJson(Map<String, dynamic> json) => _$SesoriInstallationUpdatedFromJson(json);
 
  final  String? version;
@@ -3456,7 +3454,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriInstallationUpdateAvailable implements SesoriSseEvent {
-  const SesoriInstallationUpdateAvailable({this.version, final  String? $type}): $type = $type ?? 'installation.update-available';
+  const SesoriInstallationUpdateAvailable({this.version,  String? $type}): $type = $type ?? 'installation.update-available';
   factory SesoriInstallationUpdateAvailable.fromJson(Map<String, dynamic> json) => _$SesoriInstallationUpdateAvailableFromJson(json);
 
  final  String? version;
@@ -3529,7 +3527,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriWorkspaceReady implements SesoriSseEvent {
-  const SesoriWorkspaceReady({this.name, final  String? $type}): $type = $type ?? 'workspace.ready';
+  const SesoriWorkspaceReady({this.name,  String? $type}): $type = $type ?? 'workspace.ready';
   factory SesoriWorkspaceReady.fromJson(Map<String, dynamic> json) => _$SesoriWorkspaceReadyFromJson(json);
 
  final  String? name;
@@ -3602,7 +3600,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriWorkspaceFailed implements SesoriSseEvent {
-  const SesoriWorkspaceFailed({this.message, final  String? $type}): $type = $type ?? 'workspace.failed';
+  const SesoriWorkspaceFailed({this.message,  String? $type}): $type = $type ?? 'workspace.failed';
   factory SesoriWorkspaceFailed.fromJson(Map<String, dynamic> json) => _$SesoriWorkspaceFailedFromJson(json);
 
  final  String? message;
@@ -3675,7 +3673,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriTuiToastShow implements SesoriSseEvent {
-  const SesoriTuiToastShow({required this.title, required this.message, required this.variant, final  String? $type}): $type = $type ?? 'tui.toast.show';
+  const SesoriTuiToastShow({required this.title, required this.message, required this.variant,  String? $type}): $type = $type ?? 'tui.toast.show';
   factory SesoriTuiToastShow.fromJson(Map<String, dynamic> json) => _$SesoriTuiToastShowFromJson(json);
 
  final  String? title;
@@ -3752,7 +3750,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriWorktreeReady implements SesoriSseEvent {
-  const SesoriWorktreeReady({final  String? $type}): $type = $type ?? 'worktree.ready';
+  const SesoriWorktreeReady({ String? $type}): $type = $type ?? 'worktree.ready';
   factory SesoriWorktreeReady.fromJson(Map<String, dynamic> json) => _$SesoriWorktreeReadyFromJson(json);
 
 
@@ -3791,7 +3789,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriWorktreeFailed implements SesoriSseEvent {
-  const SesoriWorktreeFailed({final  String? $type}): $type = $type ?? 'worktree.failed';
+  const SesoriWorktreeFailed({ String? $type}): $type = $type ?? 'worktree.failed';
   factory SesoriWorktreeFailed.fromJson(Map<String, dynamic> json) => _$SesoriWorktreeFailedFromJson(json);
 
 

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'archived_session_file_dto.dart';
@@ -9,6 +9,7 @@ part of 'archived_session_file_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$ArchivedSessionFileDtoCopyWithImpl<$Res>
 /// Create a copy of ArchivedSessionFileDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? schemaVersion = null,Object? archivedAt = null,Object? completeness = null,Object? session = null,Object? messages = null,}) {
-  return _then(_self.copyWith(
+  return _then(ArchivedSessionFileDto(
 schemaVersion: null == schemaVersion ? _self.schemaVersion : schemaVersion // ignore: cast_nullable_to_non_nullable
 as int,archivedAt: null == archivedAt ? _self.archivedAt : archivedAt // ignore: cast_nullable_to_non_nullable
 as int,completeness: null == completeness ? _self.completeness : completeness // ignore: cast_nullable_to_non_nullable
@@ -93,7 +94,7 @@ $ArchivedSessionSnapshotDtoCopyWith<$Res> get session {
 @JsonSerializable()
 
 class _ArchivedSessionFileDto implements ArchivedSessionFileDto {
-  const _ArchivedSessionFileDto({required this.schemaVersion, required this.archivedAt, required this.completeness, required this.session, required final  List<ArchivedMessageDto> messages}): _messages = messages;
+  const _ArchivedSessionFileDto({required this.schemaVersion, required this.archivedAt, required this.completeness, required this.session, required  List<ArchivedMessageDto> messages}): _messages = messages;
   factory _ArchivedSessionFileDto.fromJson(Map<String, dynamic> json) => _$ArchivedSessionFileDtoFromJson(json);
 
 @override final  int schemaVersion;
@@ -236,7 +237,7 @@ class _$ArchivedSessionSnapshotDtoCopyWithImpl<$Res>
 /// Create a copy of ArchivedSessionSnapshotDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? backendSessionId = null,Object? pluginId = null,Object? projectId = null,Object? parentSessionId = freezed,Object? directory = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? title = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
-  return _then(_self.copyWith(
+  return _then(ArchivedSessionSnapshotDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,backendSessionId: null == backendSessionId ? _self.backendSessionId : backendSessionId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
@@ -420,7 +421,7 @@ class _$ArchivedMessageDtoCopyWithImpl<$Res>
 /// Create a copy of ArchivedMessageDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? seq = null,Object? info = null,Object? parts = null,}) {
-  return _then(_self.copyWith(
+  return _then(ArchivedMessageDto(
 seq: null == seq ? _self.seq : seq // ignore: cast_nullable_to_non_nullable
 as int,info: null == info ? _self.info : info // ignore: cast_nullable_to_non_nullable
 as Message,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
@@ -445,7 +446,7 @@ $MessageCopyWith<$Res> get info {
 @JsonSerializable()
 
 class _ArchivedMessageDto implements ArchivedMessageDto {
-  const _ArchivedMessageDto({required this.seq, required this.info, required final  List<Map<String, dynamic>> parts}): _parts = parts;
+  const _ArchivedMessageDto({required this.seq, required this.info, required  List<Map<String, dynamic>> parts}): _parts = parts;
   factory _ArchivedMessageDto.fromJson(Map<String, dynamic> json) => _$ArchivedMessageDtoFromJson(json);
 
 @override final  int seq;

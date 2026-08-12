@@ -34,7 +34,7 @@ import 'dart:io';
 const String _ignoreLabel = 'ignore-for-release';
 const Set<String> _excludedAuthors = {'dependabot', 'dependabot[bot]'};
 
-void main(final List<String> args) async {
+void main(List<String> args) async {
   final options = _parseArgs(args: args);
   final token = Platform.environment['GITHUB_TOKEN'] ?? Platform.environment['GH_TOKEN'];
   if (token == null || token.isEmpty) {

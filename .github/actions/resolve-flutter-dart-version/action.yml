@@ -1,0 +1,41 @@
+name: 'Resolve Flutter Dart Version'
+description: 'Resolve the exact Dart SDK bundled with the Flutter pin in .tool-versions'
+
+outputs:
+  version:
+    description: 'Bundled Dart SDK version'
+    value: ${{ steps.resolve.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve pinned Dart version
+      id: resolve
+      shell: bash
+      run: |
+        set -euo pipefail
+        TOOL_SPEC=$(awk '$1 == "flutter" {print $2}' .tool-versions)
+        if [[ -z "$TOOL_SPEC" ]]; then
+          echo "::error::No flutter entry found in .tool-versions"
+          exit 1
+        fi
+        if [[ "$TOOL_SPEC" == *-* ]]; then
+          FLUTTER_VERSION="${TOOL_SPEC%-*}"
+          CHANNEL="${TOOL_SPEC##*-}"
+        else
+          FLUTTER_VERSION="$TOOL_SPEC"
+          CHANNEL="stable"
+        fi
+        DART_VERSION=$(curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json \
+          | jq -r --arg v "$FLUTTER_VERSION" --arg c "$CHANNEL" \
+              '[.releases[] | select(.version == $v and .channel == $c)][0].dart_sdk_version // empty
+               | if test("\\(build [^)]+\\)")
+                 then capture("\\(build (?<version>[^)]+)\\)").version
+                 else split(" ")[0]
+                 end')
+        if [[ -z "$DART_VERSION" ]]; then
+          echo "::error::Could not resolve the Dart SDK bundled with Flutter ${TOOL_SPEC} from the Flutter releases manifest."
+          exit 1
+        fi
+        echo "Flutter ${TOOL_SPEC} bundles Dart ${DART_VERSION}"
+        echo "version=${DART_VERSION}" >> "$GITHUB_OUTPUT"

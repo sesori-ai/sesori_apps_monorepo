@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_pending_question.dart';
@@ -9,6 +9,7 @@ part of 'plugin_pending_question.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -65,7 +66,7 @@ class _$PluginQuestionOptionCopyWithImpl<$Res>
 /// Create a copy of PluginQuestionOption
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? label = null,Object? description = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginQuestionOption(
 label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,
@@ -201,7 +202,7 @@ class _$PluginQuestionInfoCopyWithImpl<$Res>
 /// Create a copy of PluginQuestionInfo
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? question = null,Object? header = null,Object? options = null,Object? multiple = null,Object? custom = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginQuestionInfo(
 question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as String,header: null == header ? _self.header : header // ignore: cast_nullable_to_non_nullable
 as String,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
@@ -219,7 +220,7 @@ as bool,
 @JsonSerializable(createFactory: false)
 
 class _PluginQuestionInfo implements PluginQuestionInfo {
-  const _PluginQuestionInfo({required this.question, required this.header, required final  List<PluginQuestionOption> options, required this.multiple, required this.custom}): _options = options;
+  const _PluginQuestionInfo({required this.question, required this.header, required  List<PluginQuestionOption> options, required this.multiple, required this.custom}): _options = options;
   
 
 @override final  String question;
@@ -354,7 +355,7 @@ class _$PluginPendingQuestionCopyWithImpl<$Res>
 /// Create a copy of PluginPendingQuestion
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? questions = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginPendingQuestion(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
@@ -371,7 +372,7 @@ as List<PluginQuestionInfo>,
 @JsonSerializable(createFactory: false)
 
 class _PluginPendingQuestion implements PluginPendingQuestion {
-  const _PluginPendingQuestion({required this.id, required this.sessionID, required this.displaySessionId, required final  List<PluginQuestionInfo> questions}): _questions = questions;
+  const _PluginPendingQuestion({required this.id, required this.sessionID, required this.displaySessionId, required  List<PluginQuestionInfo> questions}): _questions = questions;
   
 
 @override final  String id;

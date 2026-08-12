@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'pull_requests_table.dart';
@@ -9,6 +9,7 @@ part of 'pull_requests_table.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -63,7 +64,7 @@ class _$PullRequestDtoCopyWithImpl<$Res>
 /// Create a copy of PullRequestDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? githubRepositoryIdentity = null,Object? githubLogin = null,Object? prNumber = null,Object? branchName = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = null,Object? reviewDecision = null,Object? checkStatus = null,Object? lastCheckedAt = null,Object? createdAt = null,}) {
-  return _then(_self.copyWith(
+  return _then(PullRequestDto(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,githubRepositoryIdentity: null == githubRepositoryIdentity ? _self.githubRepositoryIdentity : githubRepositoryIdentity // ignore: cast_nullable_to_non_nullable
 as String,githubLogin: null == githubLogin ? _self.githubLogin : githubLogin // ignore: cast_nullable_to_non_nullable

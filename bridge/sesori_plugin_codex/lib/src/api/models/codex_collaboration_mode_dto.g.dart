@@ -17,6 +17,6 @@ Map<String, dynamic> _$CodexCollaborationModeSettingsDtoToJson(
   _CodexCollaborationModeSettingsDto instance,
 ) => <String, dynamic>{
   'model': instance.model,
-  'reasoning_effort': instance.reasoningEffort,
-  'developer_instructions': instance.developerInstructions,
+  'reasoning_effort': ?instance.reasoningEffort,
+  'developer_instructions': ?instance.developerInstructions,
 };

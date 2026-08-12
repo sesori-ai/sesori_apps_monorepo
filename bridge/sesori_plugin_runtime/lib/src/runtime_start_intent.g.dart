@@ -6,7 +6,7 @@ part of 'runtime_start_intent.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_RuntimeStartIntent _$RuntimeStartIntentFromJson(Map<String, dynamic> json) =>
+_RuntimeStartIntent _$RuntimeStartIntentFromJson(Map json) =>
     _RuntimeStartIntent(
       ownerSessionId: json['ownerSessionId'] as String,
       port: (json['port'] as num).toInt(),
@@ -20,6 +20,6 @@ Map<String, dynamic> _$RuntimeStartIntentToJson(_RuntimeStartIntent instance) =>
       'ownerSessionId': instance.ownerSessionId,
       'port': instance.port,
       'bridgePid': instance.bridgePid,
-      'bridgeStartMarker': instance.bridgeStartMarker,
+      'bridgeStartMarker': ?instance.bridgeStartMarker,
       'recordedAt': instance.recordedAt.toIso8601String(),
     };

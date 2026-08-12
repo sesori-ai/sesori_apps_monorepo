@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'session_status.dart';
@@ -9,15 +9,14 @@ part of 'session_status.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$SessionStatusResponse {
 
-// key is session id, value is status
- Map<String, SessionStatus> get statuses;// COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
- List<String> get unavailablePluginIds;
+ Map<String, SessionStatus> get statuses; List<String> get unavailablePluginIds;
 /// Create a copy of SessionStatusResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -68,7 +67,7 @@ class _$SessionStatusResponseCopyWithImpl<$Res>
 /// Create a copy of SessionStatusResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? statuses = null,Object? unavailablePluginIds = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionStatusResponse(
 statuses: null == statuses ? _self.statuses : statuses // ignore: cast_nullable_to_non_nullable
 as Map<String, SessionStatus>,unavailablePluginIds: null == unavailablePluginIds ? _self.unavailablePluginIds : unavailablePluginIds // ignore: cast_nullable_to_non_nullable
 as List<String>,
@@ -83,21 +82,17 @@ as List<String>,
 @JsonSerializable()
 
 class _SessionStatusResponse implements SessionStatusResponse {
-  const _SessionStatusResponse({required final  Map<String, SessionStatus> statuses, final  List<String> unavailablePluginIds = const <String>[]}): _statuses = statuses,_unavailablePluginIds = unavailablePluginIds;
+  const _SessionStatusResponse({required  Map<String, SessionStatus> statuses,  List<String> unavailablePluginIds = const <String>[]}): _statuses = statuses,_unavailablePluginIds = unavailablePluginIds;
   factory _SessionStatusResponse.fromJson(Map<String, dynamic> json) => _$SessionStatusResponseFromJson(json);
 
-// key is session id, value is status
  final  Map<String, SessionStatus> _statuses;
-// key is session id, value is status
 @override Map<String, SessionStatus> get statuses {
   if (_statuses is EqualUnmodifiableMapView) return _statuses;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_statuses);
 }
 
-// COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
  final  List<String> _unavailablePluginIds;
-// COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
 @override@JsonKey() List<String> get unavailablePluginIds {
   if (_unavailablePluginIds is EqualUnmodifiableListView) return _unavailablePluginIds;
   // ignore: implicit_dynamic_type
@@ -231,7 +226,7 @@ $SessionStatusCopyWith(SessionStatus _, $Res Function(SessionStatus) __);
 @JsonSerializable()
 
 class SessionStatusIdle implements SessionStatus {
-  const SessionStatusIdle({final  String? $type}): $type = $type ?? 'idle';
+  const SessionStatusIdle({ String? $type}): $type = $type ?? 'idle';
   factory SessionStatusIdle.fromJson(Map<String, dynamic> json) => _$SessionStatusIdleFromJson(json);
 
 
@@ -270,7 +265,7 @@ String toString() {
 @JsonSerializable()
 
 class SessionStatusBusy implements SessionStatus {
-  const SessionStatusBusy({final  String? $type}): $type = $type ?? 'busy';
+  const SessionStatusBusy({ String? $type}): $type = $type ?? 'busy';
   factory SessionStatusBusy.fromJson(Map<String, dynamic> json) => _$SessionStatusBusyFromJson(json);
 
 
@@ -309,7 +304,7 @@ String toString() {
 @JsonSerializable()
 
 class SessionStatusRetry implements SessionStatus {
-  const SessionStatusRetry({required this.attempt, required this.message, required this.next, final  String? $type}): $type = $type ?? 'retry';
+  const SessionStatusRetry({required this.attempt, required this.message, required this.next,  String? $type}): $type = $type ?? 'retry';
   factory SessionStatusRetry.fromJson(Map<String, dynamic> json) => _$SessionStatusRetryFromJson(json);
 
  final  int attempt;

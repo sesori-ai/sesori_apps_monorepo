@@ -5,7 +5,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.13.0-0
 
 dependencies:
   bloc: ^9.2.1
@@ -32,7 +32,7 @@ dev_dependencies:
     path: "../../shared/no_slop_linter"
   bloc_test: ^10.0.0
   build_runner: any
-  freezed: ^3.2.5
+  freezed: 4.0.0-dev.3
   injectable_generator: ^3.0.2
   json_serializable: ^6.14.0
   mocktail: ^1.0.5

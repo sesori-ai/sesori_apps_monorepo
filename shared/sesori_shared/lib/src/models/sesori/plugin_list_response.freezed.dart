@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_list_response.dart';
@@ -9,18 +9,14 @@ part of 'plugin_list_response.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$PluginMetadata {
 
- String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;// COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
-// per-plugin capability. Unknown plugins stay disabled; the client
-// repository narrowly restores released legacy OpenCode support from the
-// enclosing response's legacy capability signal. Remove @Default and that
-// mapping once those bridges are unsupported.
- bool get supportsPromptAttachments;
+ String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint; bool get supportsPromptAttachments;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -71,7 +67,7 @@ class _$PluginMetadataCopyWithImpl<$Res>
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? supportsPromptAttachments = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
@@ -98,11 +94,6 @@ class _PluginMetadata implements PluginMetadata {
 @override final  bool isDefault;
 @override@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) final  PluginLifecycleState state;
 @override final  String? actionHint;
-// COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
-// per-plugin capability. Unknown plugins stay disabled; the client
-// repository narrowly restores released legacy OpenCode support from the
-// enclosing response's legacy capability signal. Remove @Default and that
-// mapping once those bridges are unsupported.
 @override@JsonKey() final  bool supportsPromptAttachments;
 
 /// Create a copy of PluginMetadata
@@ -174,13 +165,7 @@ as bool,
 /// @nodoc
 mixin _$PluginListResponse {
 
- List<PluginMetadata> get plugins;// COMPATIBILITY 2026-07-26 (v1.7.0): Bridges predating per-bridge harness
-// preferences omit the ID; null disables preference recall. Remove the
-// nullable path once those bridges are unsupported.
- String? get bridgeId;// COMPATIBILITY 2026-07-30 (v1.8.0): Old bridges omit this capability,
-// which means session options are unsupported. Remove @Default and require
-// supportsSessionOptions once those bridges are unsupported.
- bool get supportsSessionOptions;
+ List<PluginMetadata> get plugins; String? get bridgeId; bool get supportsSessionOptions;
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -231,7 +216,7 @@ class _$PluginListResponseCopyWithImpl<$Res>
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginListResponse(
 plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,supportsSessionOptions: null == supportsSessionOptions ? _self.supportsSessionOptions : supportsSessionOptions // ignore: cast_nullable_to_non_nullable
@@ -247,7 +232,7 @@ as bool,
 @JsonSerializable()
 
 class _PluginListResponse implements PluginListResponse {
-  const _PluginListResponse({required final  List<PluginMetadata> plugins, required this.bridgeId, this.supportsSessionOptions = false}): _plugins = plugins;
+  const _PluginListResponse({required  List<PluginMetadata> plugins, required this.bridgeId, this.supportsSessionOptions = false}): _plugins = plugins;
   factory _PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
 
  final  List<PluginMetadata> _plugins;
@@ -257,13 +242,7 @@ class _PluginListResponse implements PluginListResponse {
   return EqualUnmodifiableListView(_plugins);
 }
 
-// COMPATIBILITY 2026-07-26 (v1.7.0): Bridges predating per-bridge harness
-// preferences omit the ID; null disables preference recall. Remove the
-// nullable path once those bridges are unsupported.
 @override final  String? bridgeId;
-// COMPATIBILITY 2026-07-30 (v1.8.0): Old bridges omit this capability,
-// which means session options are unsupported. Remove @Default and require
-// supportsSessionOptions once those bridges are unsupported.
 @override@JsonKey() final  bool supportsSessionOptions;
 
 /// Create a copy of PluginListResponse

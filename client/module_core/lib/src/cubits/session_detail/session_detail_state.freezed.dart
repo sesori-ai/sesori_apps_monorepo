@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'session_detail_state.dart';
@@ -9,6 +9,7 @@ part of 'session_detail_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -78,7 +79,7 @@ String toString() {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required this.olderMessagesCursor, this.isLoadingOlderMessages = false, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required final  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.pluginId, required this.supportsPromptAttachments, required this.agent, required this.assistantAgentModel, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required final  List<QueuedSessionSubmission> queuedMessages, required this.sendingSubmission, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, required this.isRefreshing, final  List<SessionVariant> availableVariants = const [], required this.retryErrorMessage}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const SessionDetailLoaded({required  List<MessageWithParts> messages, required this.olderMessagesCursor, this.isLoadingOlderMessages = false, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.pluginId, required this.supportsPromptAttachments, required this.agent, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required  List<QueuedSessionSubmission> queuedMessages, required this.sendingSubmission, required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, required this.isRefreshing,  List<SessionVariant> availableVariants = const [], required this.retryErrorMessage}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<MessageWithParts> _messages;
@@ -118,18 +119,12 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_pendingPermissions);
 }
 
-// Session title — updated reactively via SSE `session.updated` events.
  final  String? sessionTitle;
-// The harness running this session, or null when it could not be resolved.
  final  String? pluginId;
-// Null when the plugin metadata lookup could not resolve the capability.
  final  bool? supportsPromptAttachments;
-// Agent/model from the latest assistant message.
  final  String? agent;
  final  AgentModel? assistantAgentModel;
-// Background tasks (child sessions).
  final  List<Session> _children;
-// Background tasks (child sessions).
  List<Session> get children {
   if (_children is EqualUnmodifiableListView) return _children;
   // ignore: implicit_dynamic_type
@@ -143,24 +138,17 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableMapView(_childStatuses);
 }
 
-// Whether this session is a root (main) session. `true` = root,
-// `false` = child, `null` = unknown (metadata lookup failed).
  final  bool? isRootSession;
  final  bool isArchived;
-// Queued messages (waiting to be sent when connection is restored).
  final  List<QueuedSessionSubmission> _queuedMessages;
-// Queued messages (waiting to be sent when connection is restored).
  List<QueuedSessionSubmission> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_queuedMessages);
 }
 
-// Submission currently awaiting bridge acceptance.
  final  QueuedSessionSubmission? sendingSubmission;
-// Available agents and providers for selection.
  final  List<AgentInfo> _availableAgents;
-// Available agents and providers for selection.
  List<AgentInfo> get availableAgents {
   if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
   // ignore: implicit_dynamic_type
@@ -181,7 +169,6 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_availableCommands);
 }
 
-// Currently selected agent and model (pre-populated from defaults, never null once loaded).
  final  String selectedAgent;
  final  AgentModel? selectedAgentModel;
  final  CommandInfo? stagedCommand;
@@ -193,7 +180,6 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
-// Transient retry error message from the AI provider (e.g. "Provider is overloaded").
  final  String? retryErrorMessage;
 
 /// Create a copy of SessionDetailState

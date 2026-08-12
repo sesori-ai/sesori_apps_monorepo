@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'base_branch_response.dart';
@@ -9,23 +9,14 @@ part of 'base_branch_response.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$BaseBranchResponse {
 
- String? get baseBranch;// Forge-style repository slug (`org/repo`) parsed from the project's git
-// remote by the bridge. Null when the project has no usable remote (not a
-// git repository, no remotes, or a local filesystem remote) — and absent
-// from payloads of bridges that predate the field, which decodes to the
-// same null.
- String? get repoSlug;// Hostname the git remote points at (`github.com`), lowercased, without
-// user info or port — lets clients recognise the hosting provider without
-// re-parsing remote URLs. Non-null exactly when [repoSlug] is non-null;
-// absent from payloads of bridges that predate the field, which decodes
-// to null.
- String? get repoHost;
+ String? get baseBranch; String? get repoSlug; String? get repoHost;
 /// Create a copy of BaseBranchResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -76,7 +67,7 @@ class _$BaseBranchResponseCopyWithImpl<$Res>
 /// Create a copy of BaseBranchResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? baseBranch = freezed,Object? repoSlug = freezed,Object? repoHost = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(BaseBranchResponse(
 baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
 as String?,repoSlug: freezed == repoSlug ? _self.repoSlug : repoSlug // ignore: cast_nullable_to_non_nullable
 as String?,repoHost: freezed == repoHost ? _self.repoHost : repoHost // ignore: cast_nullable_to_non_nullable
@@ -96,17 +87,7 @@ class _BaseBranchResponse implements BaseBranchResponse {
   factory _BaseBranchResponse.fromJson(Map<String, dynamic> json) => _$BaseBranchResponseFromJson(json);
 
 @override final  String? baseBranch;
-// Forge-style repository slug (`org/repo`) parsed from the project's git
-// remote by the bridge. Null when the project has no usable remote (not a
-// git repository, no remotes, or a local filesystem remote) — and absent
-// from payloads of bridges that predate the field, which decodes to the
-// same null.
 @override final  String? repoSlug;
-// Hostname the git remote points at (`github.com`), lowercased, without
-// user info or port — lets clients recognise the hosting provider without
-// re-parsing remote URLs. Non-null exactly when [repoSlug] is non-null;
-// absent from payloads of bridges that predate the field, which decodes
-// to null.
 @override final  String? repoHost;
 
 /// Create a copy of BaseBranchResponse

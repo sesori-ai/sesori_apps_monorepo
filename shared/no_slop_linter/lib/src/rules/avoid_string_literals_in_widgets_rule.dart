@@ -59,16 +59,17 @@ class _Visitor extends SimpleAstVisitor<void> {
 
     final firstArg = args.first;
 
-    if (firstArg is NamedExpression) return;
+    if (firstArg is NamedArgument) return;
 
-    if (firstArg is SimpleStringLiteral) {
-      if (firstArg.value.isEmpty) return;
-      if (firstArg.value.length == 1) return;
-      rule.reportAtNode(firstArg);
+    final expression = firstArg.argumentExpression;
+    if (expression is SimpleStringLiteral) {
+      if (expression.value.isEmpty) return;
+      if (expression.value.length == 1) return;
+      rule.reportAtNode(expression);
     }
 
-    if (firstArg is AdjacentStrings) {
-      rule.reportAtNode(firstArg);
+    if (expression is AdjacentStrings) {
+      rule.reportAtNode(expression);
     }
   }
 }

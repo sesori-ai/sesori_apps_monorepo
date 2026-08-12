@@ -68,8 +68,8 @@ class _Visitor extends SimpleAstVisitor<void> {
   bool _isPassedToEdgeInsetsParameter(InstanceCreationExpression node) {
     final parent = node.parent;
 
-    if (parent is NamedExpression) {
-      final element = parent.element;
+    if (parent is NamedArgument) {
+      final element = parent.correspondingParameter;
       if (element != null) {
         final typeName = element.type.toString().replaceAll('?', '');
         return typeName == 'EdgeInsets';

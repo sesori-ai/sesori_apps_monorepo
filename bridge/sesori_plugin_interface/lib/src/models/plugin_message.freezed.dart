@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_message.dart';
@@ -9,6 +9,7 @@ part of 'plugin_message.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -65,7 +66,7 @@ class _$PluginMessageWithPartsCopyWithImpl<$Res>
 /// Create a copy of PluginMessageWithParts
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? info = null,Object? parts = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginMessageWithParts(
 info: null == info ? _self.info : info // ignore: cast_nullable_to_non_nullable
 as PluginMessage,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PluginMessagePart>,
@@ -89,7 +90,7 @@ $PluginMessageCopyWith<$Res> get info {
 @JsonSerializable(createFactory: false)
 
 class _PluginMessageWithParts implements PluginMessageWithParts {
-  const _PluginMessageWithParts({required this.info, required final  List<PluginMessagePart> parts}): _parts = parts;
+  const _PluginMessageWithParts({required this.info, required  List<PluginMessagePart> parts}): _parts = parts;
   
 
 @override final  PluginMessage info;
@@ -174,13 +175,7 @@ $PluginMessageCopyWith<$Res> get info {
 /// @nodoc
 mixin _$PluginMessagePart {
 
- String get id; String get sessionID; String get messageID; PluginMessagePartType get type;// text / reasoning
- String? get text;// tool
- String? get tool; PluginToolState? get state;// subtask
- String? get prompt; String? get description; String? get agent;// agent
- String? get agentName;// retry
- int? get attempt; String? get retryError;// file
- PluginMessageAttachment? get attachment;
+ String get id; String get sessionID; String get messageID; PluginMessagePartType get type; String? get text; String? get tool; PluginToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError; PluginMessageAttachment? get attachment;
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -231,7 +226,7 @@ class _$PluginMessagePartCopyWithImpl<$Res>
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginMessagePart(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
@@ -289,21 +284,15 @@ class _PluginMessagePart implements PluginMessagePart {
 @override final  String sessionID;
 @override final  String messageID;
 @override final  PluginMessagePartType type;
-// text / reasoning
 @override final  String? text;
-// tool
 @override final  String? tool;
 @override final  PluginToolState? state;
-// subtask
 @override final  String? prompt;
 @override final  String? description;
 @override final  String? agent;
-// agent
 @override final  String? agentName;
-// retry
 @override final  int? attempt;
 @override final  String? retryError;
-// file
 @override final  PluginMessageAttachment? attachment;
 
 /// Create a copy of PluginMessagePart
@@ -468,7 +457,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginMessageAttachmentInlineImage implements PluginMessageAttachment {
-  const PluginMessageAttachmentInlineImage({required this.mime, required this.base64, required this.filename, final  String? $type}): $type = $type ?? 'inline_image';
+  const PluginMessageAttachmentInlineImage({required this.mime, required this.base64, required this.filename,  String? $type}): $type = $type ?? 'inline_image';
   
 
 @override final  String mime;
@@ -541,7 +530,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginMessageAttachmentRemoteUrl implements PluginMessageAttachment {
-  const PluginMessageAttachmentRemoteUrl({required this.mime, required this.url, required this.filename, final  String? $type}): $type = $type ?? 'remote_url';
+  const PluginMessageAttachmentRemoteUrl({required this.mime, required this.url, required this.filename,  String? $type}): $type = $type ?? 'remote_url';
   
 
 @override final  String mime;
@@ -614,7 +603,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginMessageAttachmentMetadata implements PluginMessageAttachment {
-  const PluginMessageAttachmentMetadata({required this.mime, required this.filename, final  String? $type}): $type = $type ?? 'metadata';
+  const PluginMessageAttachmentMetadata({required this.mime, required this.filename,  String? $type}): $type = $type ?? 'metadata';
   
 
 @override final  String mime;
@@ -735,7 +724,7 @@ class _$PluginToolStateCopyWithImpl<$Res>
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as PluginToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
@@ -753,7 +742,7 @@ as List<PluginMessageAttachment>,
 @JsonSerializable(createFactory: false)
 
 class _PluginToolState implements PluginToolState {
-  const _PluginToolState({required this.status, required this.title, required this.output, required this.error, required final  List<PluginMessageAttachment> attachments}): _attachments = attachments;
+  const _PluginToolState({required this.status, required this.title, required this.output, required this.error, required  List<PluginMessageAttachment> attachments}): _attachments = attachments;
   
 
 @override final  PluginToolStatus status;
@@ -915,7 +904,7 @@ $PluginMessageTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class PluginMessageUser implements PluginMessage {
-  const PluginMessageUser({required this.id, required this.sessionID, required this.agent, required this.time, final  String? $type}): $type = $type ?? 'user';
+  const PluginMessageUser({required this.id, required this.sessionID, required this.agent, required this.time,  String? $type}): $type = $type ?? 'user';
   
 
 @override final  String id;
@@ -1006,7 +995,7 @@ $PluginMessageTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class PluginMessageAssistant implements PluginMessage {
-  const PluginMessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.time, final  String? $type}): $type = $type ?? 'assistant';
+  const PluginMessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.time,  String? $type}): $type = $type ?? 'assistant';
   
 
 @override final  String id;
@@ -1101,7 +1090,7 @@ $PluginMessageTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class PluginMessageError implements PluginMessage {
-  const PluginMessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.errorName, required this.errorMessage, required this.time, final  String? $type}): $type = $type ?? 'error';
+  const PluginMessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.errorName, required this.errorMessage, required this.time,  String? $type}): $type = $type ?? 'error';
   
 
 @override final  String id;
@@ -1250,7 +1239,7 @@ class _$PluginMessageTimeCopyWithImpl<$Res>
 /// Create a copy of PluginMessageTime
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? completed = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginMessageTime(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,completed: freezed == completed ? _self.completed : completed // ignore: cast_nullable_to_non_nullable
 as int?,
