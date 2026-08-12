@@ -28,6 +28,10 @@ variant, and worktree mode, and creating the session with its first input.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.
+- OMP discovers modes, commands, providers/models, and model-specific thinking
+  levels in a project-scoped scratch session. Model values remain exact even
+  when the model ID contains slashes, and the configured pre-sweep model remains
+  the default. A rejected or partially applied selection fails before prompting.
 
 ## Regression Levels
 
@@ -64,6 +68,7 @@ collision-prone, or non-git projects.
 
 - Bridge: `bridge/app/lib/src/bridge/services/` (session creation, options,
   worktree), the create-session and options handlers, and their tests
+- OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
 - Contract:
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
 - Client: `client/module_core/lib/src/services/new_session_options_service.dart`

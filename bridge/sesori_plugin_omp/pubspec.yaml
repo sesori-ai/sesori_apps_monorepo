@@ -9,6 +9,8 @@ environment:
 dependencies:
   acp_plugin:
     path: ../sesori_plugin_acp
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
 

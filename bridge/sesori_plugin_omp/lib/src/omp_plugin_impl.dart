@@ -3,21 +3,71 @@ import "dart:io" show Directory;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/omp_acp_api.dart";
+import "models/omp_catalog_models.dart";
 import "omp_binary.dart";
 import "omp_identity.dart";
+import "repositories/omp_catalog_repository.dart";
+import "repositories/omp_session_cleanup_repository.dart";
+import "services/omp_catalog_service.dart";
+import "services/omp_session_cleanup_service.dart";
+import "services/omp_session_options_service.dart";
+import "trackers/omp_catalog_tracker.dart";
 
-class OmpPlugin extends AcpPlugin {
+class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   factory OmpPlugin({
     String binaryPath = OmpBinary.defaultBinary,
     String? launchDirectory,
+    String? scratchDirectory,
     required AcpProcessFactory processFactory,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
+    final launchSpec = OmpBinary.launchSpec(
+      binary: binaryPath,
+      cwd: cwd,
+      sessionDirectory: null,
+    );
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final catalogApi = OmpAcpApi(
+      binaryPath: binaryPath,
+      processFactory: processFactory,
+      logTag: "${OmpPluginIdentity.id}-catalog",
+      isolateSessionHistory: true,
+      scratchParent: scratchDirectory,
+    );
+    final catalogRepository = OmpCatalogRepository(api: catalogApi);
+    final catalogTracker = OmpCatalogTracker();
+    final catalogService = OmpCatalogService(
+      repository: catalogRepository,
+      tracker: catalogTracker,
+      totalTimeout: const Duration(seconds: 20),
+      commandBootstrapDelay: const Duration(milliseconds: 50),
+      maxModels: 24,
+    );
+    final ompSessionOptionsService = OmpSessionOptionsService(
+      catalogService: catalogService,
+      tracker: catalogTracker,
+      repository: catalogRepository,
+      launchDirectory: cwd,
+    );
+    final cleanupService = OmpSessionCleanupService(
+      repository: OmpSessionCleanupRepository(
+        api: OmpAcpApi(
+          binaryPath: binaryPath,
+          processFactory: processFactory,
+          logTag: "${OmpPluginIdentity.id}-cleanup",
+          isolateSessionHistory: false,
+          scratchParent: scratchDirectory,
+        ),
+      ),
+      launchDirectory: cwd,
+      totalTimeout: const Duration(seconds: 20),
+      maxPages: 50,
+    );
     const contentMapper = AcpContentMapper();
     return OmpPlugin._(
-      launchSpec: OmpBinary.launchSpec(binary: binaryPath, cwd: cwd),
+      launchSpec: launchSpec,
       launchDirectory: cwd,
       contentMapper: contentMapper,
       eventMapper: AcpEventMapper(
@@ -34,6 +84,11 @@ class OmpPlugin extends AcpPlugin {
         pluginId: OmpPluginIdentity.id,
         agentDisplayName: OmpPluginIdentity.displayName,
       ),
+      catalogRepository: catalogRepository,
+      catalogService: catalogService,
+      ompSessionOptionsService: ompSessionOptionsService,
+      configurationTracker: configurationTracker,
+      cleanupService: cleanupService,
       processFactory: processFactory,
     );
   }
@@ -45,11 +100,28 @@ class OmpPlugin extends AcpPlugin {
     required super.eventMapper,
     required super.commandTracker,
     required super.sessionOptionsService,
+    required OmpCatalogRepository catalogRepository,
+    required OmpCatalogService catalogService,
+    required OmpSessionOptionsService ompSessionOptionsService,
+    required AcpSessionConfigurationTracker configurationTracker,
+    required OmpSessionCleanupService cleanupService,
     super.processFactory,
-  }) : super(
+  }) : _catalogRepository = catalogRepository,
+       _catalogService = catalogService,
+       _ompSessionOptionsService = ompSessionOptionsService,
+       _configurationTracker = configurationTracker,
+       _cleanupService = cleanupService,
+       super(
          id: OmpPluginIdentity.id,
          agentDisplayName: OmpPluginIdentity.displayName,
        );
+
+  final OmpCatalogRepository _catalogRepository;
+  final OmpCatalogService _catalogService;
+  final OmpSessionOptionsService _ompSessionOptionsService;
+  final AcpSessionConfigurationTracker _configurationTracker;
+  final OmpSessionCleanupService _cleanupService;
+  final Map<String, OmpSessionConfigSnapshot> _sessionConfigs = {};
 
   @override
   String get clientName => "sesori-bridge";
@@ -76,18 +148,130 @@ class OmpPlugin extends AcpPlugin {
   Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
 
   @override
+  void captureSessionConfig(
+    AcpNewSessionResult result, {
+    String? sessionId,
+    bool fromNewSession = false,
+  }) {
+    final snapshot = _catalogRepository.mapSessionResult(result: result);
+    if (sessionId != null) _sessionConfigs[sessionId] = snapshot;
+    final modelValue = snapshot.currentModelValue;
+    if (fromNewSession && modelValue != null) {
+      _configurationTracker.setProcessDefaults(
+        modelId: modelValue,
+        providerId: _providerId(modelValue),
+      );
+    }
+    if (sessionId != null && modelValue != null) {
+      _configurationTracker.setSessionOverride(
+        sessionId: sessionId,
+        modelId: modelValue,
+        providerId: _providerId(modelValue),
+      );
+    }
+  }
+
+  @override
+  Future<void> applyTurnSelection({
+    required AcpSessionConfigRepository configRepository,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async {
+    final snapshot = await _ompSessionOptionsService.applyTurnSelection(
+      configRepository: configRepository,
+      sessionId: sessionId,
+      projectId: directoryForSession(sessionId),
+      liveSnapshot: _sessionConfigs[sessionId],
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
+    if (snapshot != null) {
+      _sessionConfigs[sessionId] = snapshot;
+      final modelValue = snapshot.currentModelValue;
+      if (modelValue != null) {
+        _configurationTracker.setSessionOverride(
+          sessionId: sessionId,
+          modelId: modelValue,
+          providerId: _providerId(modelValue),
+        );
+      }
+    }
+  }
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) async {
+    final result = await _ompSessionOptionsService.getSessionOptions(
+      projectId: projectId,
+      discoveryMode: discoveryMode,
+    );
+    if (result is PluginSessionOptionsDiscoveryFailed) emitEvent(_missingModelToast);
+    return result;
+  }
+
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) =>
+      _ompSessionOptionsService.listCommands(projectId: projectId);
+
+  @override
+  Future<List<PluginAgent>> getAgents({required String projectId}) =>
+      _ompSessionOptionsService.listAgents(projectId: projectId);
+
+  @override
+  Future<PluginProvidersResult> getProviders({required String projectId}) =>
+      _ompSessionOptionsService.listProviders(projectId: projectId);
+
+  @override
+  Future<void> deletePersistedSession({required String backendSessionId}) =>
+      _cleanupService.deletePersistedSession(backendSessionId: backendSessionId);
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    await super.deleteSession(sessionId);
+    _sessionConfigs.remove(sessionId);
+  }
+
+  @override
+  void onConnectionReset() => _sessionConfigs.clear();
+
+  @override
   Iterable<BridgeSseEvent> mapPromptFailure({
     required String sessionId,
     required Object error,
   }) {
     if (!_isMissingModel(error)) return const [];
-    return const [
-      BridgeSseTuiToastShow(
-        title: "Oh My Pi needs a model",
-        message: "Open OMP locally, run /login, then retry this turn.",
-        variant: "warning",
-      ),
-    ];
+    return const [_missingModelToast];
+  }
+
+  @override
+  Future<void> dispose() async {
+    try {
+      await _catalogService.dispose();
+    } on Object catch (error, stack) {
+      Log.w("[omp] failed to dispose catalog service", error, stack);
+    }
+    try {
+      await _cleanupService.dispose();
+    } on Object catch (error, stack) {
+      Log.w("[omp] failed to dispose cleanup service", error, stack);
+    }
+    await super.dispose();
+  }
+
+  static const BridgeSseTuiToastShow _missingModelToast = BridgeSseTuiToastShow(
+    title: "Oh My Pi needs a model",
+    message: "Open OMP locally, run /login, then retry.",
+    variant: "warning",
+  );
+
+  static String _providerId(String modelValue) {
+    final separator = modelValue.indexOf("/");
+    return separator > 0 ? modelValue.substring(0, separator) : OmpPluginIdentity.id;
   }
 
   static bool _isMissingModel(Object error) {
