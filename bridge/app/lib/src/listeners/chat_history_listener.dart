@@ -58,8 +58,6 @@ class ChatHistoryListener {
         sessionId: sessionID,
         messageId: messageID,
       ),
-      BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID) =>
-        _chatHistoryService.capturePartRemoved(sessionId: sessionID, messageId: messageID, partId: partID),
       _ => Future<void>.value(),
     };
   }

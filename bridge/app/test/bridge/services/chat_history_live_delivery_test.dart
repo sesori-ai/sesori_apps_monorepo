@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:typed_data";
 
@@ -81,6 +82,7 @@ void main() {
 
       final captured = await history.service.capturePartForDelivery(
         sessionId: "ses_a",
+        shouldCapture: () => true,
         part: _part(
           id: "p1",
           attachment: MessageAttachment.inlineImage(
@@ -119,6 +121,7 @@ void main() {
 
       await history.service.capturePartForDelivery(
         sessionId: "ses_a",
+        shouldCapture: () => true,
         part: _part(
           id: "p1",
           attachment: MessageAttachment.inlineImage(
@@ -136,6 +139,49 @@ void main() {
       expect(state.backendActivityAt, greaterThan(0));
     });
 
+    test("does not persist when the source becomes stale while queued", () async {
+      final history = createTestChatHistory();
+      final blocker = Completer<void>();
+      final blockingRepository = _BlockingWriteRepository(
+        blocker: blocker,
+        chatHistoryDao: history.database.chatHistoryDao,
+        attachmentSpillStorage: history.spillStorage,
+        archivedSessionStorage: history.archivedStorage,
+      );
+      final service = ChatHistoryService(
+        chatHistoryRepository: blockingRepository,
+        sessionRepository: _BackfillingSessionRepository(),
+        attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+        bridgeIdProvider: const _BridgeIdProvider("br_test1234"),
+      );
+      var current = true;
+      final precedingCapture = service.capturePart(
+        sessionId: "ses_a",
+        part: _part(id: "blocker"),
+      );
+      await blockingRepository.blocked;
+
+      final capture = service.capturePartForDelivery(
+        sessionId: "ses_a",
+        part: _part(
+          id: "stale",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List.fromList([1, 2, 3])),
+            filename: "stale.png",
+          ),
+        ),
+        shouldCapture: () => current,
+      );
+      current = false;
+      blocker.complete();
+
+      await precedingCapture;
+      expect(await capture, isA<CapturedPartUnavailable>());
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
+      expect(rows.map((row) => row.partId), equals(["blocker"]));
+    });
+
     test("legacy budgeting spans separately delivered image parts of one message", () async {
       final history = createTestChatHistory();
       final firstBytes = Uint8List(3 * 1024 * 1024);
@@ -145,32 +191,30 @@ void main() {
         message: _message(id: "m1"),
       );
 
-      final first =
-          await history.service.capturePartForDelivery(
-                sessionId: "ses_a",
-                part: _part(
-                  id: "first",
-                  attachment: MessageAttachment.inlineImage(
-                    mime: "image/png",
-                    base64: base64Encode(firstBytes),
-                    filename: "first.png",
-                  ),
-                ),
-              )
-              as CapturedPartShapes;
-      final second =
-          await history.service.capturePartForDelivery(
-                sessionId: "ses_a",
-                part: _part(
-                  id: "second",
-                  attachment: MessageAttachment.inlineImage(
-                    mime: "image/png",
-                    base64: base64Encode(secondBytes),
-                    filename: "second.png",
-                  ),
-                ),
-              )
-              as CapturedPartShapes;
+      final first = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "first",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(firstBytes),
+            filename: "first.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
+      final second = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "second",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(secondBytes),
+            filename: "second.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
 
       expect(first.inlinePart.attachment, isA<MessageAttachmentInlineImage>());
       expect(
@@ -200,6 +244,7 @@ void main() {
 
       final captured = await service.capturePartForDelivery(
         sessionId: "ses_a",
+        shouldCapture: () => true,
         part: _part(
           id: "p1",
           attachment: MessageAttachment.inlineImage(
@@ -264,6 +309,39 @@ class _FailingWriteRepository extends ChatHistoryRepository {
     required MessagePart part,
     required int updatedAt,
   }) => Future.error(StateError("attachment spill failed"));
+}
+
+class _BlockingWriteRepository extends ChatHistoryRepository {
+  _BlockingWriteRepository({
+    required this.blocker,
+    required super.chatHistoryDao,
+    required super.attachmentSpillStorage,
+    required super.archivedSessionStorage,
+  });
+
+  final Completer<void> blocker;
+  final Completer<void> _blocked = Completer<void>();
+
+  Future<void> get blocked => _blocked.future;
+
+  @override
+  Future<void> upsertPart({
+    required String sessionId,
+    required AttachmentStorageScope storageScope,
+    required MessagePart part,
+    required int updatedAt,
+  }) async {
+    if (part.id == "blocker") {
+      _blocked.complete();
+      await blocker.future;
+    }
+    await super.upsertPart(
+      sessionId: sessionId,
+      storageScope: storageScope,
+      part: part,
+      updatedAt: updatedAt,
+    );
+  }
 }
 
 class _BackfillingSessionRepository implements SessionRepository {

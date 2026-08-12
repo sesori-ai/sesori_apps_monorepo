@@ -359,13 +359,16 @@ class ChatHistoryService {
   Future<CapturedPartDelivery> capturePartForDelivery({
     required String sessionId,
     required MessagePart part,
+    required bool Function() shouldCapture,
   }) {
     final observedAt = DateTime.now().millisecondsSinceEpoch;
     return _enqueueRead(
       sessionId: sessionId,
       read: () async {
         try {
+          if (!shouldCapture()) return const CapturedPartUnavailable();
           final storageScope = await _requireStorageScope(sessionId: sessionId);
+          if (!shouldCapture()) return const CapturedPartUnavailable();
           await _chatHistoryRepository.upsertPart(
             sessionId: sessionId,
             storageScope: storageScope,

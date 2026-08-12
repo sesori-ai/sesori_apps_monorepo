@@ -1531,8 +1531,22 @@ class OrchestratorSession {
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
       final SseEventDelivery? delivery;
       if (event is BridgeSseMessagePartUpdated) {
-        delivery = await _captureAndShapePart(part: event.part);
+        delivery = await _captureAndShapePart(
+          part: event.part,
+          shouldCapture: () => _isCurrentSource(
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          ),
+        );
       } else {
+        if (event case BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID)) {
+          await _chatHistoryService.capturePartRemoved(
+            sessionId: sessionID,
+            messageId: messageID,
+            partId: partID,
+          );
+        }
         final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event: event, pluginId: pluginId);
         delivery = sesoriEvent == null ? null : SseEventDelivery.uniform(event: sesoriEvent);
       }
@@ -1596,7 +1610,11 @@ class OrchestratorSession {
   /// ones: the parts of one message must enter the session queue in the order
   /// the plugin emitted them, and only this path observes that order once an
   /// image part has to be awaited.
-  Future<SseEventDelivery?> _captureAndShapePart({required PluginMessagePart part}) async {
+  Future<SseEventDelivery?> _captureAndShapePart({
+    required PluginMessagePart part,
+    required bool Function() shouldCapture,
+  }) async {
+    if (part.type == PluginMessagePartType.unknown) return null;
     final sharedPart = _mapper.mapMessagePart(part: part);
     final visible = _mapper.isMessagePartVisible(part: part);
     if (!_chatHistoryService.requiresAwaitedAttachmentCapture(part: sharedPart)) {
@@ -1611,6 +1629,7 @@ class OrchestratorSession {
     final captured = await _chatHistoryService.capturePartForDelivery(
       sessionId: sharedPart.sessionID,
       part: sharedPart,
+      shouldCapture: shouldCapture,
     );
     if (!visible) return null;
     return switch (captured) {

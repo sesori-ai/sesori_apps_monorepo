@@ -126,6 +126,71 @@ void main() {
     );
   });
 
+  test("an unknown part is dropped without interrupting later plugin events", () async {
+    final harness = await _LiveAttachmentHarness.create();
+    addTearDown(harness.close);
+
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(id: "p_unknown", type: PluginMessagePartType.unknown),
+      ),
+    );
+    final delivered = harness.nextMessagePartUpdated(partId: "p_text");
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(id: "p_text", text: "visible"),
+      ),
+    );
+    await delivered;
+
+    await _waitFor(
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      reason: "the later visible part to be stored",
+    );
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    expect(rows.map((row) => row.partId), equals(["p_text"]));
+    expect(harness.deliveredPartIds, isNot(contains("p_unknown")));
+  });
+
+  test("a part removal stays ordered after an immediately preceding update", () async {
+    final harness = await _LiveAttachmentHarness.create();
+    addTearDown(harness.close);
+
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(
+          id: "p_removed",
+          attachment: PluginMessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List.fromList([1, 2, 3])),
+            filename: "shot.png",
+          ),
+        ),
+      ),
+    );
+    harness.plugin.emitEvent(
+      const BridgeSseMessagePartRemoved(
+        sessionID: _backendSessionId,
+        messageID: "m1",
+        partID: "p_removed",
+      ),
+    );
+    final delivered = harness.nextMessagePartUpdated(partId: "p_after");
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(id: "p_after", text: "after removal"),
+      ),
+    );
+    await delivered;
+
+    await _waitFor(
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      reason: "the part after the removal to be stored",
+    );
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    expect(rows.map((row) => row.partId), equals(["p_after"]));
+  });
+
   test("a stale generation stops the part before capture and delivery", () async {
     final harness = await _LiveAttachmentHarness.create();
     addTearDown(harness.close);
