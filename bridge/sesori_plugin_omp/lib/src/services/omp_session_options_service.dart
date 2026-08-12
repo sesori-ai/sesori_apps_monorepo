@@ -24,32 +24,37 @@ class OmpSessionOptionsService {
   final OmpCatalogRepository _repository;
   final String _launchDirectory;
 
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+  Future<OmpOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
     final scope = _scope(projectId);
-    final catalog = switch (discoveryMode) {
+    final result = switch (discoveryMode) {
       PluginSessionOptionsDiscoveryMode.reuse => await _catalogService.ensureCatalog(projectId: scope),
       PluginSessionOptionsDiscoveryMode.refresh => await _catalogService.refreshCatalog(projectId: scope),
     };
-    if (catalog == null) return const PluginSessionOptionsDiscoveryResult.failed();
-    return PluginSessionOptionsDiscoveryResult.observed(options: _options(catalog));
+    return switch (result) {
+      OmpCatalogObserved(:final catalog) => OmpOptionsObserved(options: _options(catalog)),
+      OmpCatalogNoModels() => const OmpOptionsNoModels(),
+      OmpCatalogDiscoveryFailed() => const OmpOptionsDiscoveryFailed(),
+    };
   }
 
   Future<List<PluginCommand>> listCommands({required String? projectId}) async {
-    final catalog = await _catalogService.ensureCatalog(projectId: _scope(projectId));
-    return catalog?.commands ?? const [];
+    final result = await _catalogService.ensureCatalog(projectId: _scope(projectId));
+    return result is OmpCatalogObserved ? result.catalog.commands : const [];
   }
 
   Future<List<PluginAgent>> listAgents({required String projectId}) async {
-    final catalog = await _catalogService.ensureCatalog(projectId: _scope(projectId));
-    return catalog == null ? const [] : _agents(catalog);
+    final result = await _catalogService.ensureCatalog(projectId: _scope(projectId));
+    return result is OmpCatalogObserved ? _agents(result.catalog) : const [];
   }
 
   Future<PluginProvidersResult> listProviders({required String projectId}) async {
-    final catalog = await _catalogService.ensureCatalog(projectId: _scope(projectId));
-    return PluginProvidersResult(providers: catalog == null ? const [] : _providers(catalog));
+    final result = await _catalogService.ensureCatalog(projectId: _scope(projectId));
+    return PluginProvidersResult(
+      providers: result is OmpCatalogObserved ? _providers(result.catalog) : const [],
+    );
   }
 
   Future<OmpSessionConfigSnapshot?> applyTurnSelection({

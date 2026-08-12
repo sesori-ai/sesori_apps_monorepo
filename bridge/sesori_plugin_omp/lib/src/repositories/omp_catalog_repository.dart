@@ -1,5 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginCommand;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginCommand;
 
 import "../api/omp_acp_api.dart";
 import "../models/omp_catalog_models.dart";
@@ -55,7 +55,11 @@ class OmpCatalogRepository {
       _api.closeSession(sessionId: sessionId, timeout: timeout);
 
   Future<void> settle() async {
-    await _commandListener?.dispose();
+    try {
+      await _commandListener?.dispose();
+    } on Object catch (error, stack) {
+      Log.w("[omp] failed to stop catalog command listener", error, stack);
+    }
     _commandListener = null;
     _commandTracker = null;
     await _api.settle();
@@ -92,10 +96,14 @@ class OmpCatalogRepository {
     required String category,
     required String id,
   }) {
+    Map<String, dynamic>? categoryFallback;
     for (final config in result.configOptions) {
-      if (config["category"] == category || config["id"] == id) return config;
+      if (config["id"] == id) return config;
+      if (categoryFallback == null && config["category"] == category) {
+        categoryFallback = config;
+      }
     }
-    return null;
+    return categoryFallback;
   }
 
   static String? _configId(Map<String, dynamic>? config) {

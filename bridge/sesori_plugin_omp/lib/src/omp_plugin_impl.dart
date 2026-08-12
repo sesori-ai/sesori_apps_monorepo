@@ -210,8 +210,14 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
       projectId: projectId,
       discoveryMode: discoveryMode,
     );
-    if (result is PluginSessionOptionsDiscoveryFailed) emitEvent(_missingModelToast);
-    return result;
+    return switch (result) {
+      OmpOptionsObserved(:final options) => PluginSessionOptionsDiscoveryResult.observed(options: options),
+      OmpOptionsNoModels() => () {
+        emitEvent(_missingModelToast);
+        return const PluginSessionOptionsDiscoveryResult.failed();
+      }(),
+      OmpOptionsDiscoveryFailed() => const PluginSessionOptionsDiscoveryResult.failed(),
+    };
   }
 
   @override

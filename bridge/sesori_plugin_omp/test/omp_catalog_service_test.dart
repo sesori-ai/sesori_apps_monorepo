@@ -39,10 +39,10 @@ void main() {
       maxModels: 8,
     );
 
-    final catalog = await service.ensureCatalog(projectId: "/project");
+    final outcome = await service.ensureCatalog(projectId: "/project");
+    final catalog = (outcome as OmpCatalogObserved).catalog;
 
-    expect(catalog, isNotNull);
-    expect(catalog!.defaultModelValue, "custom/team/model-v2");
+    expect(catalog.defaultModelValue, "custom/team/model-v2");
     expect(catalog.models.first.providerId, "custom");
     expect(catalog.models.first.modelId, "team/model-v2");
     expect(catalog.thinkingByModel["custom/team/model-v2"]!.variants, ["off", "high"]);
@@ -75,15 +75,15 @@ void main() {
     );
 
     repository.commandName = "alpha";
-    final alpha = await service.ensureCatalog(projectId: "/alpha");
+    final alpha = (await service.ensureCatalog(projectId: "/alpha") as OmpCatalogObserved).catalog;
     repository.commandName = "beta";
-    final beta = await service.ensureCatalog(projectId: "/beta");
+    final beta = (await service.ensureCatalog(projectId: "/beta") as OmpCatalogObserved).catalog;
     repository.commandName = "changed";
-    final reused = await service.ensureCatalog(projectId: "/alpha");
+    final reused = (await service.ensureCatalog(projectId: "/alpha") as OmpCatalogObserved).catalog;
 
-    expect(alpha!.commands.single.name, "alpha");
-    expect(beta!.commands.single.name, "beta");
-    expect(reused!.commands.single.name, "alpha");
+    expect(alpha.commands.single.name, "alpha");
+    expect(beta.commands.single.name, "beta");
+    expect(reused.commands.single.name, "alpha");
     expect(repository.openedCwds, ["/alpha", "/beta"]);
   });
 
@@ -103,7 +103,7 @@ void main() {
       commandBootstrapDelay: Duration.zero,
       maxModels: 8,
     );
-    final good = await service.ensureCatalog(projectId: "/project");
+    final good = (await service.ensureCatalog(projectId: "/project") as OmpCatalogObserved).catalog;
     repository.created = const AcpNewSessionResult(
       sessionId: "empty",
       modes: [],
@@ -111,9 +111,34 @@ void main() {
       raw: {},
     );
 
-    expect(await service.refreshCatalog(projectId: "/project"), isNull);
+    expect(await service.refreshCatalog(projectId: "/project"), isA<OmpCatalogNoModels>());
     expect(tracker.snapshotFor(projectId: "/project"), same(good));
     expect(repository.settleCount, 2);
+  });
+
+  test("one model hydration failure preserves a partial catalog", () async {
+    final repository = _FakeCatalogRepository(
+      created: _result(sessionId: "probe", model: "one/model", thinking: const ["off"]),
+      selections: {
+        "one/model": _result(sessionId: "probe", model: "one/model", thinking: const ["off"]),
+        "other/model": _result(sessionId: "probe", model: "other/model", thinking: const ["high"]),
+      },
+    )..failedModels.add("custom/team/model-v2");
+    final service = OmpCatalogService(
+      repository: repository,
+      tracker: OmpCatalogTracker(),
+      totalTimeout: const Duration(seconds: 2),
+      commandBootstrapDelay: Duration.zero,
+      maxModels: 8,
+    );
+
+    final outcome = await service.ensureCatalog(projectId: "/project");
+    final catalog = (outcome as OmpCatalogObserved).catalog;
+
+    expect(catalog.completeness, PluginSessionOptionsCompleteness.partial);
+    expect(catalog.models, hasLength(3));
+    expect(catalog.thinkingByModel, isNot(contains("custom/team/model-v2")));
+    expect(catalog.thinkingByModel["other/model"]!.variants, ["high"]);
   });
 }
 
@@ -165,6 +190,7 @@ class _FakeCatalogRepository implements OmpCatalogRepository {
   final List<String> openedCwds = [];
   final List<String> selectedModels = [];
   final List<String> closedSessionIds = [];
+  final Set<String> failedModels = {};
   String commandName = "review";
   int settleCount = 0;
 
@@ -224,6 +250,7 @@ class _FakeCatalogRepository implements OmpCatalogRepository {
     required Duration timeout,
   }) async {
     selectedModels.add(modelValue);
+    if (failedModels.contains(modelValue)) throw StateError("model unavailable");
     return mapSessionResult(
       result: selections[modelValue] ?? _result(sessionId: sessionId, model: modelValue, thinking: const ["off"]),
     );

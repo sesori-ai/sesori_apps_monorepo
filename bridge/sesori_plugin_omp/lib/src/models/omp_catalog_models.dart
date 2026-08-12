@@ -89,3 +89,39 @@ class OmpProjectCatalog {
   final List<PluginCommand> commands;
   final PluginSessionOptionsCompleteness completeness;
 }
+
+sealed class OmpCatalogDiscoveryResult {
+  const OmpCatalogDiscoveryResult();
+}
+
+final class OmpCatalogObserved extends OmpCatalogDiscoveryResult {
+  const OmpCatalogObserved({required this.catalog});
+
+  final OmpProjectCatalog catalog;
+}
+
+final class OmpCatalogNoModels extends OmpCatalogDiscoveryResult {
+  const OmpCatalogNoModels();
+}
+
+final class OmpCatalogDiscoveryFailed extends OmpCatalogDiscoveryResult {
+  const OmpCatalogDiscoveryFailed();
+}
+
+sealed class OmpOptionsDiscoveryResult {
+  const OmpOptionsDiscoveryResult();
+}
+
+final class OmpOptionsObserved extends OmpOptionsDiscoveryResult {
+  const OmpOptionsObserved({required this.options});
+
+  final PluginSessionOptions options;
+}
+
+final class OmpOptionsNoModels extends OmpOptionsDiscoveryResult {
+  const OmpOptionsNoModels();
+}
+
+final class OmpOptionsDiscoveryFailed extends OmpOptionsDiscoveryResult {
+  const OmpOptionsDiscoveryFailed();
+}

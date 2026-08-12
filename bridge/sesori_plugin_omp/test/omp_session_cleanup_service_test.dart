@@ -62,6 +62,46 @@ void main() {
       "settle",
     ]);
   });
+
+  test("listed session without cwd resumes through an isolated scratch cwd", () async {
+    final repository = _FakeCleanupRepository(
+      pages: [
+        OmpCleanupPage(
+          sessions: const [OmpCleanupSession(sessionId: "target", cwd: null)],
+          nextCursor: null,
+        ),
+      ],
+    );
+
+    await _service(repository: repository, maxPages: 5).deletePersistedSession(backendSessionId: "target");
+
+    expect(repository.operations, [
+      "open:/launch",
+      "list:null",
+      "scratch:create",
+      "resume:target:/scratch/omp-cleanup-test",
+      "delete:target",
+      "close:target",
+      "scratch:delete",
+      "settle",
+    ]);
+  });
+
+  test("non-success delete command remains observable", () async {
+    final repository = _FakeCleanupRepository(
+      pages: [
+        OmpCleanupPage(
+          sessions: const [OmpCleanupSession(sessionId: "target", cwd: "/project")],
+          nextCursor: null,
+        ),
+      ],
+    )..deleteError = StateError("deletion cancelled");
+
+    expect(
+      _service(repository: repository, maxPages: 5).deletePersistedSession(backendSessionId: "target"),
+      throwsStateError,
+    );
+  });
 }
 
 OmpSessionCleanupService _service({required _FakeCleanupRepository repository, required int maxPages}) =>
@@ -77,6 +117,7 @@ class _FakeCleanupRepository implements OmpSessionCleanupRepository {
 
   final List<OmpCleanupPage> pages;
   final List<Object> operations = [];
+  Object? deleteError;
 
   @override
   Future<AcpInitializeResult> open({required String cwd, required Duration timeout}) async {
@@ -107,6 +148,8 @@ class _FakeCleanupRepository implements OmpSessionCleanupRepository {
   @override
   Future<void> delete({required String sessionId, required Duration timeout}) async {
     operations.add("delete:$sessionId");
+    final error = deleteError;
+    if (error != null) throw error;
   }
 
   @override

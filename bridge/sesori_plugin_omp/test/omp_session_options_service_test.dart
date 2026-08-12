@@ -109,6 +109,53 @@ void main() {
       throwsA(isA<PluginOperationException>()),
     );
   });
+
+  test("thinking mapping prefers the exact config id over another thought-level option", () {
+    final result = _result(model: "other/model", mode: "default", thinking: "off");
+    final configs = result.configOptions;
+    configs.insert(2, {
+      "id": "effort",
+      "category": "thought_level",
+      "currentValue": "medium",
+      "options": const [
+        {"value": "low", "name": "Low"},
+        {"value": "medium", "name": "Medium"},
+      ],
+    });
+
+    final snapshot = OmpCatalogRepository(api: _UnusedAcpApi()).mapSessionResult(result: result);
+
+    expect(snapshot.thinking!.configId, "thinking");
+    expect(snapshot.thinking!.variants, ["off", "high"]);
+  });
+
+  test("keeps no-model discovery distinct from generic failure", () async {
+    final catalogService = _FakeCatalogService(
+      tracker.snapshotFor(projectId: "/repo")!,
+    )..result = const OmpCatalogNoModels();
+    final optionsService = OmpSessionOptionsService(
+      catalogService: catalogService,
+      tracker: tracker,
+      repository: OmpCatalogRepository(api: _UnusedAcpApi()),
+      launchDirectory: "/repo",
+    );
+
+    expect(
+      await optionsService.getSessionOptions(
+        projectId: "/repo",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      ),
+      isA<OmpOptionsNoModels>(),
+    );
+    catalogService.result = const OmpCatalogDiscoveryFailed();
+    expect(
+      await optionsService.getSessionOptions(
+        projectId: "/repo",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      ),
+      isA<OmpOptionsDiscoveryFailed>(),
+    );
+  });
 }
 
 AcpNewSessionResult _result({required String model, required String mode, required String thinking}) =>
@@ -168,15 +215,16 @@ class _FakeConfigRepository implements AcpSessionConfigRepository {
 }
 
 class _FakeCatalogService implements OmpCatalogService {
-  _FakeCatalogService(this.catalog);
+  _FakeCatalogService(this.catalog) : result = OmpCatalogObserved(catalog: catalog);
 
   final OmpProjectCatalog catalog;
+  OmpCatalogDiscoveryResult result;
 
   @override
-  Future<OmpProjectCatalog?> ensureCatalog({required String projectId}) async => catalog;
+  Future<OmpCatalogDiscoveryResult> ensureCatalog({required String projectId}) async => result;
 
   @override
-  Future<OmpProjectCatalog?> refreshCatalog({required String projectId}) async => catalog;
+  Future<OmpCatalogDiscoveryResult> refreshCatalog({required String projectId}) async => result;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

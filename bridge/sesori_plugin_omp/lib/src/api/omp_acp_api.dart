@@ -43,6 +43,12 @@ class OmpAcpApi {
     if (_client != null) throw StateError("OMP ACP lease is already open");
     final stopwatch = Stopwatch()..start();
     final sessionDirectory = _isolateSessionHistory ? await _createScratch(prefix: "omp-catalog-") : null;
+    if (_disposed) {
+      if (sessionDirectory != null) {
+        await deleteScratchDirectory(directory: sessionDirectory);
+      }
+      throw StateError("OmpAcpApi is disposed");
+    }
     _sessionDirectory = sessionDirectory;
     final client = AcpStdioClient(
       launchSpec: OmpBinary.launchSpec(

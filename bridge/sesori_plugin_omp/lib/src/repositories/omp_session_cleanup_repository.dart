@@ -1,5 +1,7 @@
 import "dart:io" show Directory;
 
+import "package:acp_plugin/acp_plugin.dart" show AcpStopReason;
+
 import "../api/omp_acp_api.dart";
 
 class OmpCleanupSession {
@@ -57,7 +59,10 @@ class OmpSessionCleanupRepository {
   }
 
   Future<void> delete({required String sessionId, required Duration timeout}) async {
-    await _api.prompt(sessionId: sessionId, text: "/session delete", timeout: timeout);
+    final result = await _api.prompt(sessionId: sessionId, text: "/session delete", timeout: timeout);
+    if (result.stopReason != AcpStopReason.endTurn) {
+      throw StateError("OMP did not complete persisted session deletion");
+    }
   }
 
   Future<void> close({required String sessionId, required Duration timeout}) =>

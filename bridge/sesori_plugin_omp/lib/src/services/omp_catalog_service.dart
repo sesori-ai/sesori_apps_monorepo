@@ -26,25 +26,25 @@ class OmpCatalogService {
   final Duration _totalTimeout;
   final Duration _commandBootstrapDelay;
   final int _maxModels;
-  final Map<String, Future<OmpProjectCatalog?>> _inFlight = {};
+  final Map<String, Future<OmpCatalogDiscoveryResult>> _inFlight = {};
   Future<void> _leaseTail = Future.value();
 
-  Future<OmpProjectCatalog?> ensureCatalog({required String projectId}) {
+  Future<OmpCatalogDiscoveryResult> ensureCatalog({required String projectId}) {
     final scope = normalizeProjectDirectory(directory: projectId);
     final existing = _tracker.snapshotFor(projectId: scope);
-    if (existing != null) return Future.value(existing);
+    if (existing != null) return Future.value(OmpCatalogObserved(catalog: existing));
     return _coalescedProbe(projectId: scope);
   }
 
-  Future<OmpProjectCatalog?> refreshCatalog({required String projectId}) =>
+  Future<OmpCatalogDiscoveryResult> refreshCatalog({required String projectId}) =>
       _coalescedProbe(projectId: normalizeProjectDirectory(directory: projectId));
 
   Future<void> dispose() => _repository.dispose();
 
-  Future<OmpProjectCatalog?> _coalescedProbe({required String projectId}) {
+  Future<OmpCatalogDiscoveryResult> _coalescedProbe({required String projectId}) {
     final pending = _inFlight[projectId];
     if (pending != null) return pending;
-    late final Future<OmpProjectCatalog?> operation;
+    late final Future<OmpCatalogDiscoveryResult> operation;
     operation = _serializedProbe(projectId: projectId).whenComplete(() {
       if (identical(_inFlight[projectId], operation)) _inFlight.remove(projectId);
     });
@@ -52,7 +52,7 @@ class OmpCatalogService {
     return operation;
   }
 
-  Future<OmpProjectCatalog?> _serializedProbe({required String projectId}) async {
+  Future<OmpCatalogDiscoveryResult> _serializedProbe({required String projectId}) async {
     final previous = _leaseTail;
     final released = Completer<void>();
     _leaseTail = released.future;
@@ -64,7 +64,7 @@ class OmpCatalogService {
     }
   }
 
-  Future<OmpProjectCatalog?> _probe({required String projectId}) async {
+  Future<OmpCatalogDiscoveryResult> _probe({required String projectId}) async {
     final stopwatch = Stopwatch()..start();
     String? sessionId;
     try {
@@ -80,22 +80,28 @@ class OmpCatalogService {
       if (sessionId.isEmpty) throw StateError("OMP catalog session/new omitted sessionId");
       final initial = created.snapshot;
       if (initial.models.isEmpty || initial.modelConfigId == null) {
-        return null;
+        return const OmpCatalogNoModels();
       }
 
       final thinkingByModel = <String, OmpThinkingOptions>{};
       for (final model in initial.models.take(_maxModels)) {
-        final snapshot = await _repository.selectModel(
-          sessionId: sessionId,
-          configId: initial.modelConfigId!,
-          modelValue: model.value,
-          timeout: _remaining(stopwatch),
-        );
-        if (snapshot.currentModelValue != model.value) {
-          throw StateError("OMP catalog model selection was only partially applied");
+        try {
+          final snapshot = await _repository.selectModel(
+            sessionId: sessionId,
+            configId: initial.modelConfigId!,
+            modelValue: model.value,
+            timeout: _remaining(stopwatch),
+          );
+          if (snapshot.currentModelValue != model.value) {
+            throw StateError("OMP catalog model selection was only partially applied");
+          }
+          final thinking = snapshot.thinking;
+          if (thinking != null) thinkingByModel[model.value] = thinking;
+        } on TimeoutException {
+          rethrow;
+        } on Object catch (error, stack) {
+          Log.w("[omp] model-specific catalog discovery failed; continuing", error, stack);
         }
-        final thinking = snapshot.thinking;
-        if (thinking != null) thinkingByModel[model.value] = thinking;
       }
       await Future<void>.delayed(_commandBootstrapDelay).timeout(_remaining(stopwatch));
       final complete = thinkingByModel.length == initial.models.length && _repository.hasCommandSnapshot;
@@ -111,13 +117,13 @@ class OmpCatalogService {
         completeness: complete ? PluginSessionOptionsCompleteness.complete : PluginSessionOptionsCompleteness.partial,
       );
       _tracker.replace(projectId: projectId, catalog: catalog);
-      return catalog;
+      return OmpCatalogObserved(catalog: catalog);
     } on TimeoutException catch (error, stack) {
       Log.w("[omp] catalog probe timed out", error, stack);
-      return null;
+      return const OmpCatalogDiscoveryFailed();
     } on Object catch (error, stack) {
       Log.w("[omp] catalog probe failed", error, stack);
-      return null;
+      return const OmpCatalogDiscoveryFailed();
     } finally {
       if (sessionId != null) {
         try {

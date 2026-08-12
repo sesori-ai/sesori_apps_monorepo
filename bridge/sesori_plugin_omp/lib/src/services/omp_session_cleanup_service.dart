@@ -39,9 +39,10 @@ class OmpSessionCleanupService {
         for (final session in result.sessions) {
           if (session.sessionId != backendSessionId) continue;
           final cwd = session.cwd;
+          fallbackDirectory = cwd == null || cwd.trim().isEmpty ? await _repository.createScratchDirectory() : null;
           await _deleteResident(
             sessionId: backendSessionId,
-            cwd: cwd == null || cwd.trim().isEmpty ? _launchDirectory : cwd,
+            cwd: fallbackDirectory ?? cwd!,
             stopwatch: stopwatch,
           );
           return;
