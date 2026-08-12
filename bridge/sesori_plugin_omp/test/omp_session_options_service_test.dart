@@ -12,9 +12,11 @@ void main() {
   late OmpCatalogTracker tracker;
   late OmpSessionOptionsService service;
   late _FakeConfigRepository configRepository;
+  late AcpSessionConfigurationTracker configurationTracker;
 
   setUp(() {
     tracker = OmpCatalogTracker();
+    configurationTracker = AcpSessionConfigurationTracker();
     final catalog = OmpProjectCatalog(
       modelConfigId: "model",
       models: const [
@@ -53,7 +55,7 @@ void main() {
       catalogService: _FakeCatalogService(catalog),
       tracker: tracker,
       repository: OmpCatalogRepository(api: _UnusedAcpApi()),
-      configurationTracker: AcpSessionConfigurationTracker(),
+      configurationTracker: configurationTracker,
       launchDirectory: "/repo",
     );
     configRepository = _FakeConfigRepository();
@@ -66,6 +68,35 @@ void main() {
     expect(providers.providers.first.defaultModelID, "custom/team/model-v2");
     expect(providers.providers.first.models.single.id, "custom/team/model-v2");
     expect(providers.providers.first.models.single.variants, ["off", "high"]);
+  });
+
+  test("new sessions and reconnect clear stale shared configuration", () {
+    configurationTracker.setProcessDefaults(
+      modelId: "old/model",
+      providerId: "old",
+    );
+    configurationTracker.setSessionOverride(
+      sessionId: "old-session",
+      modelId: "old/model",
+      providerId: "old",
+    );
+    service.captureSessionConfig(
+      const AcpNewSessionResult(
+        sessionId: "new-session",
+        modes: [],
+        configOptions: [],
+        raw: {},
+      ),
+      sessionId: "new-session",
+      fromNewSession: true,
+    );
+
+    expect(configurationTracker.processDefaults.modelId, isNull);
+    service.resetConnection();
+    expect(
+      configurationTracker.snapshotForSession(sessionId: "old-session").modelId,
+      isNull,
+    );
   });
 
   test("writes model, mode, and model-specific thinking exactly", () async {

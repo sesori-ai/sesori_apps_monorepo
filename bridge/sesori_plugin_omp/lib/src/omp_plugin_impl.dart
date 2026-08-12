@@ -160,7 +160,7 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     await _ompSessionOptionsService.applyTurnSelection(
       configRepository: configRepository,
       sessionId: sessionId,
-      projectId: directoryForSession(sessionId),
+      projectId: directoryForSession(sessionId: sessionId),
       model: model,
       variant: variant,
       agent: agent,
@@ -225,12 +225,12 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     try {
       await _catalogService.dispose();
     } on Object catch (error, stack) {
-      Log.w("[omp] failed to dispose catalog service", error, stack);
+      Log.w("[${OmpPluginIdentity.id}] failed to dispose catalog service", error, stack);
     }
     try {
       await _cleanupService.dispose();
     } on Object catch (error, stack) {
-      Log.w("[omp] failed to dispose cleanup service", error, stack);
+      Log.w("[${OmpPluginIdentity.id}] failed to dispose cleanup service", error, stack);
     }
     await super.dispose();
   }

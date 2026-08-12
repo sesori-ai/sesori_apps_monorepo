@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "../omp_identity.dart";
 import "../repositories/omp_session_cleanup_repository.dart";
 
 /// Finds and deletes OMP-owned persisted session artifacts through ACP.
@@ -63,7 +64,7 @@ class OmpSessionCleanupService {
         try {
           await _repository.deleteScratchDirectory();
         } on Object catch (error, stack) {
-          Log.w("[omp] failed to remove cleanup scratch directory", error, stack);
+          Log.w("[${OmpPluginIdentity.id}] failed to remove cleanup scratch directory", error, stack);
         }
       }
       await _repository.settle();

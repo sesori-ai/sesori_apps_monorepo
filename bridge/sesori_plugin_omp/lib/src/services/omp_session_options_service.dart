@@ -37,10 +37,10 @@ class OmpSessionOptionsService {
     final snapshot = _repository.mapSessionResult(result: result);
     if (sessionId != null) _sessionConfigs[sessionId] = snapshot;
     final modelValue = snapshot.currentModelValue;
-    if (fromNewSession && modelValue != null) {
+    if (fromNewSession) {
       _configurationTracker.setProcessDefaults(
         modelId: modelValue,
-        providerId: _providerId(modelValue),
+        providerId: modelValue == null ? null : _providerId(modelValue),
       );
     }
     if (sessionId != null && modelValue != null) {
@@ -158,7 +158,10 @@ class OmpSessionOptionsService {
 
   void forgetSession({required String sessionId}) => _sessionConfigs.remove(sessionId);
 
-  void resetConnection() => _sessionConfigs.clear();
+  void resetConnection() {
+    _sessionConfigs.clear();
+    _configurationTracker.clear();
+  }
 
   Future<OmpSessionConfigSnapshot> _writeAndVerify({
     required AcpSessionConfigRepository configRepository,

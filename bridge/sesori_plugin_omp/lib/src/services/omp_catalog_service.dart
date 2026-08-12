@@ -4,6 +4,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSessionOptionsCompleteness;
 
 import "../models/omp_catalog_models.dart";
+import "../omp_identity.dart";
 import "../repositories/omp_catalog_repository.dart";
 import "../trackers/omp_catalog_tracker.dart";
 
@@ -97,13 +98,13 @@ class OmpCatalogService {
         } on TimeoutException {
           rethrow;
         } on Object catch (error, stack) {
-          Log.w("[omp] model-specific catalog discovery failed; continuing", error, stack);
+          Log.w("[${OmpPluginIdentity.id}] model-specific catalog discovery failed; continuing", error, stack);
         }
       }
       await _repository.waitForCommandSnapshot(timeout: _remaining(stopwatch));
       final complete = thinkingByModel.length == initial.models.length && _repository.hasCommandSnapshot;
       final catalog = OmpProjectCatalog(
-        modelConfigId: initial.modelConfigId,
+        modelConfigId: initial.modelConfigId!,
         models: initial.models,
         defaultModelValue: initial.currentModelValue,
         modeConfigId: initial.modeConfigId,
@@ -116,10 +117,10 @@ class OmpCatalogService {
       _tracker.replace(projectId: projectId, catalog: catalog);
       return OmpCatalogObserved(catalog: catalog);
     } on TimeoutException catch (error, stack) {
-      Log.w("[omp] catalog probe timed out", error, stack);
+      Log.w("[${OmpPluginIdentity.id}] catalog probe timed out", error, stack);
       return const OmpCatalogDiscoveryFailed();
     } on Object catch (error, stack) {
-      Log.w("[omp] catalog probe failed", error, stack);
+      Log.w("[${OmpPluginIdentity.id}] catalog probe failed", error, stack);
       return const OmpCatalogDiscoveryFailed();
     } finally {
       if (sessionId != null) {
@@ -129,7 +130,7 @@ class OmpCatalogService {
             timeout: _remainingOrMinimum(stopwatch),
           );
         } on Object catch (error, stack) {
-          Log.w("[omp] failed to close catalog session", error, stack);
+          Log.w("[${OmpPluginIdentity.id}] failed to close catalog session", error, stack);
         }
       }
       await _repository.settle();

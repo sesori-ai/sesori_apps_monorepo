@@ -79,7 +79,7 @@ class OmpProjectCatalog {
        thinkingByModel = Map.unmodifiable(thinkingByModel),
        commands = List.unmodifiable(commands);
 
-  final String? modelConfigId;
+  final String modelConfigId;
   final List<OmpCatalogModel> models;
   final String? defaultModelValue;
   final String? modeConfigId;

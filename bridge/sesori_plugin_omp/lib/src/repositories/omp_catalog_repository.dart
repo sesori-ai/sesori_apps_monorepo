@@ -5,6 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 
 import "../api/omp_acp_api.dart";
 import "../models/omp_catalog_models.dart";
+import "../omp_identity.dart";
 
 /// Layer-2 mapping and access for OMP catalog discovery.
 class OmpCatalogRepository {
@@ -68,7 +69,7 @@ class OmpCatalogRepository {
     try {
       await _commandSubscription?.cancel();
     } on Object catch (error, stack) {
-      Log.w("[omp] failed to stop catalog command listener", error, stack);
+      Log.w("[${OmpPluginIdentity.id}] failed to stop catalog command listener", error, stack);
     }
     _commandSubscription = null;
     _commandSnapshot = null;

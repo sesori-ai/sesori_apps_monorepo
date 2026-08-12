@@ -279,7 +279,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   /// Returns the normalized directory already attributed to [sessionId].
   /// Unknown sessions use the plugin's launch directory.
-  String directoryForSession(String sessionId) => _sessionDirectories[sessionId] ?? launchDirectory;
+  String directoryForSession({required String sessionId}) => _sessionDirectories[sessionId] ?? launchDirectory;
 
   /// The single handler for agent-originated notifications: replay suppression,
   /// then mapping through [eventMapper] into the event buffer. Also the forward
@@ -966,7 +966,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         method: AcpMethods.sessionLoad,
         params: {
           "sessionId": sessionId,
-          "cwd": directoryForSession(sessionId),
+          "cwd": directoryForSession(sessionId: sessionId),
           "mcpServers": const <Object?>[],
         },
         timeout: const Duration(minutes: 2),
@@ -1014,7 +1014,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         method: AcpMethods.sessionResume,
         params: {
           "sessionId": sessionId,
-          "cwd": directoryForSession(sessionId),
+          "cwd": directoryForSession(sessionId: sessionId),
           "mcpServers": const <Object?>[],
         },
         timeout: const Duration(minutes: 2),
@@ -1312,7 +1312,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }) async {
     // ACP has no standard rename; honour the contract optimistically so any
     // local UI cache stays consistent. The mobile DB is authoritative.
-    final directory = directoryForSession(sessionId);
+    final directory = directoryForSession(sessionId: sessionId);
     return PluginSession(
       id: sessionId,
       projectID: directory,
@@ -1463,7 +1463,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           method: AcpMethods.sessionLoad,
           params: {
             "sessionId": sessionId,
-            "cwd": directoryForSession(sessionId),
+            "cwd": directoryForSession(sessionId: sessionId),
             "mcpServers": const <Object?>[],
           },
           timeout: const Duration(minutes: 2),
@@ -1599,7 +1599,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // this plugin's worktree sessions itself via its stored attribution rows.
     final target = normalizeProjectDirectory(directory: projectId);
     final sessionIds = _sessionStatuses.keys
-        .where((sessionId) => directoryForSession(sessionId) == target)
+        .where((sessionId) => directoryForSession(sessionId: sessionId) == target)
         .toList(growable: false);
     return registry.pendingForProject(sessionIds);
   }
@@ -1653,7 +1653,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       final running = (_turnStates[sessionId]?.pending ?? 0) > 0;
       final awaiting = registry?.hasPendingInput(sessionId) ?? false;
       if (!running && !awaiting) continue;
-      (byProject[directoryForSession(sessionId)] ??= []).add(
+      (byProject[directoryForSession(sessionId: sessionId)] ??= []).add(
         PluginActiveSession(
           id: sessionId,
           mainAgentRunning: running,
