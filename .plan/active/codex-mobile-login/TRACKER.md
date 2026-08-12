@@ -126,12 +126,12 @@
   Codex authorization-to-session smoke remains pending because it requires a
   live bridge and provider interaction; no code or account data will be recorded.
   `git diff --check origin/main...HEAD` passes, and `git diff --numstat
-  origin/main...HEAD` reports 751 additions and 22 deletions for the initial
+  origin/main...HEAD` reports 931 additions and 26 deletions for the final
   Step 7 scope, within the 750-1,350 target. The architecture review sub-agent
   again failed before reading code with `no such column: replacement_seq`;
   this step adds presentation and backend-owned guidance only, with no new
   dependency ownership, wire contract, or persistence boundary.
-  Post-rebase focused checks still pass (27 mobile widget tests and 14 Codex
+  Post-rebase focused checks still pass (31 mobile widget tests and 14 Codex
   descriptor setup tests), with fatal-info analysis clean in both packages.
   A simulator and installed Sesori app are available, but local Codex is already
   logged in; a true logged-out smoke would require changing credentials or
