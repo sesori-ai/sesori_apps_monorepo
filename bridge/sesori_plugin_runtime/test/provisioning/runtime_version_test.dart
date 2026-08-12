@@ -23,6 +23,15 @@ void main() {
       expect(first, second);
       expect(first.hashCode, second.hashCode);
     });
+
+    test("equal numeric prerelease identifiers have equal hashes", () {
+      final first = SemanticRuntimeVersion.parse(value: "1.18.11-1");
+      final second = SemanticRuntimeVersion.parse(value: "1.18.11-01");
+
+      expect(first.compareTo(second), isZero);
+      expect(first, second);
+      expect(first.hashCode, second.hashCode);
+    });
   });
 
   group("CalendarRuntimeVersion", () {

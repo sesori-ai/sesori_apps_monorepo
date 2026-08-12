@@ -62,7 +62,11 @@ final class SemanticRuntimeVersion extends RuntimeVersion {
     version.major,
     version.minor,
     version.patch,
-    Object.hashAll(version.prereleaseIdentifiers),
+    Object.hashAll(
+      version.prereleaseIdentifiers.map(
+        (identifier) => int.tryParse(identifier) ?? identifier,
+      ),
+    ),
   );
 }
 
