@@ -10,7 +10,6 @@ import "../../../core/widgets/agent_model_buttons.dart";
 import "../../../core/widgets/composer_surface_style.dart";
 import "background_tasks_bar.dart";
 import "prompt_input.dart";
-import "queued_message_bubble.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
 
@@ -209,13 +208,11 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                         childStatuses: state.childStatuses,
                       ),
                     ),
-                  if (state.sendingSubmission case final sendingSubmission?)
-                    QueuedMessageBubble(
-                      submission: sendingSubmission,
-                      presentation: const QueuedMessageBubblePresentation.sending(),
+                  if (state.sendingSubmission != null || state.queuedMessages.isNotEmpty)
+                    SessionDetailQueuedMessagesSection(
+                      sendingSubmission: state.sendingSubmission,
+                      messages: state.queuedMessages,
                     ),
-                  if (state.queuedMessages.isNotEmpty)
-                    SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
                   if (editableSessionId != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
