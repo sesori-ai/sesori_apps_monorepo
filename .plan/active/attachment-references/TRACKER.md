@@ -8,7 +8,7 @@
 - **Implementation base:** `origin/main` at `ec479cef`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** [#854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854)
-- **Next action:** Monitor Step 6 while implementing Step 7 locally
+- **Next action:** Finish Step 6 review and CI, then merge and resume Step 7
 
 ## Plan Review
 
@@ -148,10 +148,14 @@
   Claude (213), and OMP (30); 45 focused bridge app projection, rendition,
   Orchestrator, and SSE tests pass. Architecture implementation review approved
   the shared constant boundary, plugin ownership, independent wire/prompt
-  limits, and capture-fallback layering with no blockers. The implementation
-  diff against `origin/main` at `ec479cef` has 314 additions and 125 deletions
-  across 25 files; `git diff --check`
-  passes. Committed as `29235b47`, pushed, and opened as
+  limits, and capture-fallback layering with no blockers. Review fixes preserve
+  Claude block indexes, enforce Codex's per-image cap after batch merging, and
+  enforce the aggregate retention budget across every stored sibling when a
+  live part is appended or updated. Fatal bridge-app analysis and 37 focused
+  history tests pass after the latest fix. Against merge base `ec479cef`, the
+  current diff has 557 additions and 147 deletions across 28 files (704 changed
+  lines), below the 900-1,450 estimate; `git diff --check` passes. The initial
+  implementation was committed as `29235b47`, pushed, and opened as
   [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854).
 
 ## Findings And Plan Deltas

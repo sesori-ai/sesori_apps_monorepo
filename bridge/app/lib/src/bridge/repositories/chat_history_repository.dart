@@ -218,7 +218,7 @@ class ChatHistoryRepository {
     final rows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: [part.messageID]);
     var remainingBytes = maxTranscriptImageCollectionBytes;
     for (final row in rows) {
-      if (row.orderIndex >= orderIndex) break;
+      if (row.orderIndex == orderIndex) continue;
       remainingBytes -= _storedImageBytes(partJson: row.partJson);
     }
 
