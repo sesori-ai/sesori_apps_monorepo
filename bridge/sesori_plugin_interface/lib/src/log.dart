@@ -44,10 +44,10 @@ class Log {
   static void e(String message, [Object? error, StackTrace? st]) => _write(LogLevel.error, message, error, st);
 
   static void _write(
-    final LogLevel msgLevel,
-    final String rawMessage,
-    final Object? error,
-    final StackTrace? st,
+    LogLevel msgLevel,
+    String rawMessage,
+    Object? error,
+    StackTrace? st,
   ) {
     if (msgLevel.index < level.index) return;
 

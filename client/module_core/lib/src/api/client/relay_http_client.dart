@@ -48,7 +48,7 @@ class RelayHttpApiClient {
     // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     // ignore: no_slop_linter/prefer_specific_type
-    required final Object? body,
+    required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -75,7 +75,7 @@ class RelayHttpApiClient {
     // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     // ignore: no_slop_linter/prefer_specific_type
-    required final Object? body,
+    required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
   }) async {

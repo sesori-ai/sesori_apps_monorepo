@@ -5,13 +5,13 @@ version: 0.0.1
 publish_to: "none"
 
 environment:
-  sdk: ">=3.11.0 <4.0.0"
+  sdk: ">=3.13.0-0 <4.0.0"
 
 dependencies:
-  analysis_server_plugin: ">=0.3.5 <0.4.0" # 0.3.5 works with analyzer 10.0.0
-  _fe_analyzer_shared: ">=93.0.0 <99.0.0"
-  analyzer: ">=10.0.0 <13.0.0"
-  analyzer_plugin: ^0.14.0
+  analysis_server_plugin: ">=0.3.15 <0.3.19"
+  _fe_analyzer_shared: ">=100.0.0 <104.0.0"
+  analyzer: ">=13.0.0 <14.0.0"
+  analyzer_plugin: ">=0.14.9 <0.14.13"
 
 dev_dependencies:
   analyzer_testing: ^0.2.1

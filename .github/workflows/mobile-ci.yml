@@ -15,6 +15,7 @@ on:
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/**'
+      - '.tool-versions'
   pull_request:
     paths:
       - 'client/app/**'
@@ -26,6 +27,7 @@ on:
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/**'
+      - '.tool-versions'
 
 jobs:
   test:
@@ -36,17 +38,25 @@ jobs:
       - name: Read Flutter version from .tool-versions
         shell: bash
         run: |
-          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
-          if [ -z "$FLUTTER_VERSION" ]; then
+          TOOL_SPEC=$(awk '$1 == "flutter" { print $2 }' .tool-versions)
+          if [ -z "$TOOL_SPEC" ]; then
             echo "Unable to find a Flutter version in .tool-versions" >&2
             exit 1
           fi
+          if [[ "$TOOL_SPEC" == *-* ]]; then
+            FLUTTER_VERSION="${TOOL_SPEC%-*}"
+            FLUTTER_CHANNEL="${TOOL_SPEC##*-}"
+          else
+            FLUTTER_VERSION="$TOOL_SPEC"
+            FLUTTER_CHANNEL="stable"
+          fi
           echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
+          echo "FLUTTER_CHANNEL=$FLUTTER_CHANNEL" >> "$GITHUB_ENV"
 
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
+          channel: ${{ env.FLUTTER_CHANNEL }}
 
       - name: Get dependencies (workspace)
         run: dart pub get

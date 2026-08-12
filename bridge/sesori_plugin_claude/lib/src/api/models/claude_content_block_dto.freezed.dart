@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'claude_content_block_dto.dart';
@@ -9,6 +9,7 @@ part of 'claude_content_block_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 ClaudeContentBlockDto _$ClaudeContentBlockDtoFromJson(
@@ -79,7 +80,7 @@ $ClaudeContentBlockDtoCopyWith(ClaudeContentBlockDto _, $Res Function(ClaudeCont
 @JsonSerializable(createToJson: false)
 
 class ClaudeTextContentBlockDto implements ClaudeContentBlockDto {
-  const ClaudeTextContentBlockDto({@JsonKey(fromJson: _stringOrNull) required this.text, final  String? $type}): $type = $type ?? 'text';
+  const ClaudeTextContentBlockDto({@JsonKey(fromJson: _stringOrNull) required this.text,  String? $type}): $type = $type ?? 'text';
   factory ClaudeTextContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeTextContentBlockDtoFromJson(json);
 
 @JsonKey(fromJson: _stringOrNull) final  String? text;
@@ -145,7 +146,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class ClaudeThinkingContentBlockDto implements ClaudeContentBlockDto {
-  const ClaudeThinkingContentBlockDto({@JsonKey(fromJson: _stringOrNull) required this.thinking, @JsonKey(fromJson: _stringOrNull) required this.signature, final  String? $type}): $type = $type ?? 'thinking';
+  const ClaudeThinkingContentBlockDto({@JsonKey(fromJson: _stringOrNull) required this.thinking, @JsonKey(fromJson: _stringOrNull) required this.signature,  String? $type}): $type = $type ?? 'thinking';
   factory ClaudeThinkingContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeThinkingContentBlockDtoFromJson(json);
 
 @JsonKey(fromJson: _stringOrNull) final  String? thinking;
@@ -213,7 +214,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class ClaudeRedactedThinkingContentBlockDto implements ClaudeContentBlockDto {
-  const ClaudeRedactedThinkingContentBlockDto({final  String? $type}): $type = $type ?? 'redacted_thinking';
+  const ClaudeRedactedThinkingContentBlockDto({ String? $type}): $type = $type ?? 'redacted_thinking';
   factory ClaudeRedactedThinkingContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeRedactedThinkingContentBlockDtoFromJson(json);
 
 
@@ -245,7 +246,7 @@ int get hashCode => runtimeType.hashCode;
 @JsonSerializable(createToJson: false)
 
 class ClaudeToolUseContentBlockDto implements ClaudeContentBlockDto {
-  const ClaudeToolUseContentBlockDto({@JsonKey(fromJson: _stringOrNull) required this.id, @JsonKey(fromJson: _stringOrNull) required this.name, required this.input, final  String? $type}): $type = $type ?? 'tool_use';
+  const ClaudeToolUseContentBlockDto({@JsonKey(fromJson: _stringOrNull) required this.id, @JsonKey(fromJson: _stringOrNull) required this.name, required this.input,  String? $type}): $type = $type ?? 'tool_use';
   factory ClaudeToolUseContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeToolUseContentBlockDtoFromJson(json);
 
 @JsonKey(fromJson: _stringOrNull) final  String? id;
@@ -314,7 +315,7 @@ as String?,input: freezed == input ? _self.input : input ,
 @JsonSerializable(createToJson: false)
 
 class ClaudeToolResultContentBlockDto implements ClaudeContentBlockDto {
-  const ClaudeToolResultContentBlockDto({@JsonKey(name: "tool_use_id", fromJson: _stringOrNull) required this.toolUseId, required this.content, @JsonKey(name: "is_error", fromJson: _boolOrNull) required this.isError, final  String? $type}): $type = $type ?? 'tool_result';
+  const ClaudeToolResultContentBlockDto({@JsonKey(name: "tool_use_id", fromJson: _stringOrNull) required this.toolUseId, required this.content, @JsonKey(name: "is_error", fromJson: _boolOrNull) required this.isError,  String? $type}): $type = $type ?? 'tool_result';
   factory ClaudeToolResultContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeToolResultContentBlockDtoFromJson(json);
 
 @JsonKey(name: "tool_use_id", fromJson: _stringOrNull) final  String? toolUseId;
@@ -383,7 +384,7 @@ as bool?,
 @JsonSerializable(createToJson: false)
 
 class ClaudeImageContentBlockDto implements ClaudeContentBlockDto {
-  const ClaudeImageContentBlockDto({@JsonKey(fromJson: _imageSourceOrNull) required this.source, final  String? $type}): $type = $type ?? 'image';
+  const ClaudeImageContentBlockDto({@JsonKey(fromJson: _imageSourceOrNull) required this.source,  String? $type}): $type = $type ?? 'image';
   factory ClaudeImageContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeImageContentBlockDtoFromJson(json);
 
 @JsonKey(fromJson: _imageSourceOrNull) final  ClaudeImageSourceDto? source;
@@ -461,7 +462,7 @@ $ClaudeImageSourceDtoCopyWith<$Res>? get source {
 @JsonSerializable(createToJson: false)
 
 class ClaudeUnknownContentBlockDto implements ClaudeContentBlockDto {
-  const ClaudeUnknownContentBlockDto({final  String? $type}): $type = $type ?? 'unknown';
+  const ClaudeUnknownContentBlockDto({ String? $type}): $type = $type ?? 'unknown';
   factory ClaudeUnknownContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeUnknownContentBlockDtoFromJson(json);
 
 
@@ -538,7 +539,7 @@ class _$ClaudeImageSourceDtoCopyWithImpl<$Res>
 /// Create a copy of ClaudeImageSourceDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? type = freezed,Object? mediaType = freezed,Object? data = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(ClaudeImageSourceDto(
 type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String?,mediaType: freezed == mediaType ? _self.mediaType : mediaType // ignore: cast_nullable_to_non_nullable
 as String?,data: freezed == data ? _self.data : data // ignore: cast_nullable_to_non_nullable

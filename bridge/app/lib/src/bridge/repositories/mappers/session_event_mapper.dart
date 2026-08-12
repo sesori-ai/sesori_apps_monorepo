@@ -24,6 +24,7 @@ class SessionEventMapper {
       BridgeSseSessionsUpdated(:final sessionID) ||
       BridgeSseSessionDiff(:final sessionID) ||
       BridgeSseSessionCompacted(:final sessionID) ||
+      BridgeSseSessionPromptDefaultsChanged(:final sessionID) ||
       BridgeSseSessionStatus(:final sessionID) ||
       BridgeSseSessionIdle(:final sessionID) ||
       BridgeSseCommandExecuted(:final sessionID) ||
@@ -131,6 +132,18 @@ class SessionEventMapper {
       },
       BridgeSseSessionCompacted(:final sessionID) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseSessionCompacted(sessionID: sessionId),
+        null => null,
+      },
+      BridgeSseSessionPromptDefaultsChanged(
+        :final sessionID,
+        :final agent,
+        :final model,
+      ) => switch (mapped(sessionID)) {
+        final sessionId? => BridgeSseSessionPromptDefaultsChanged(
+          sessionID: sessionId,
+          agent: agent,
+          model: model,
+        ),
         null => null,
       },
       BridgeSseSessionStatus(:final sessionID, :final status) => switch (mapped(sessionID)) {

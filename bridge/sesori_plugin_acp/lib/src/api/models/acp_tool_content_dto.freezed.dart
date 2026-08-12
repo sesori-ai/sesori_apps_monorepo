@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'acp_tool_content_dto.dart';
@@ -9,6 +9,7 @@ part of 'acp_tool_content_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 AcpToolContentDto _$AcpToolContentDtoFromJson(
@@ -71,7 +72,7 @@ $AcpToolContentDtoCopyWith(AcpToolContentDto _, $Res Function(AcpToolContentDto)
 @JsonSerializable(createToJson: false)
 
 class AcpStandardToolContentDto implements AcpToolContentDto {
-  const AcpStandardToolContentDto({required this.content, final  String? $type}): $type = $type ?? 'content';
+  const AcpStandardToolContentDto({required this.content,  String? $type}): $type = $type ?? 'content';
   factory AcpStandardToolContentDto.fromJson(Map<String, dynamic> json) => _$AcpStandardToolContentDtoFromJson(json);
 
  final  AcpContentBlockDto content;
@@ -150,7 +151,7 @@ $AcpContentBlockDtoCopyWith<$Res> get content {
 @JsonSerializable(createToJson: false)
 
 class AcpDiffToolContentDto implements AcpToolContentDto {
-  const AcpDiffToolContentDto({required this.path, required this.oldText, required this.newText, final  String? $type}): $type = $type ?? 'diff';
+  const AcpDiffToolContentDto({required this.path, required this.oldText, required this.newText,  String? $type}): $type = $type ?? 'diff';
   factory AcpDiffToolContentDto.fromJson(Map<String, dynamic> json) => _$AcpDiffToolContentDtoFromJson(json);
 
  final  String path;
@@ -224,7 +225,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class AcpTerminalToolContentDto implements AcpToolContentDto {
-  const AcpTerminalToolContentDto({required this.terminalId, final  String? $type}): $type = $type ?? 'terminal';
+  const AcpTerminalToolContentDto({required this.terminalId,  String? $type}): $type = $type ?? 'terminal';
   factory AcpTerminalToolContentDto.fromJson(Map<String, dynamic> json) => _$AcpTerminalToolContentDtoFromJson(json);
 
  final  String terminalId;
@@ -294,7 +295,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class AcpUnknownToolContentDto implements AcpToolContentDto {
-  const AcpUnknownToolContentDto({final  String? $type}): $type = $type ?? 'unknown';
+  const AcpUnknownToolContentDto({ String? $type}): $type = $type ?? 'unknown';
   factory AcpUnknownToolContentDto.fromJson(Map<String, dynamic> json) => _$AcpUnknownToolContentDtoFromJson(json);
 
 

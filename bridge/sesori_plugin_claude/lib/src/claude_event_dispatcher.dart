@@ -18,10 +18,14 @@ final class ClaudeEventDispatcher {
   final Map<String, String> _messageIds = {};
   final Map<String, String> _announcedMessageIds = {};
   final Map<String, String> _models = {};
+  final Map<String, Set<int>> _streamedBlocks = {};
+  final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
+  final Map<String, Set<String>> _streamedMessageIds = {};
 
   void beginTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
+    _clearStreamedMessages(sessionId: sessionId);
     _tools.beginTurn(sessionId: sessionId);
   }
 
@@ -29,7 +33,17 @@ final class ClaudeEventDispatcher {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
     _models.remove(sessionId);
+    _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
+  }
+
+  void _clearStreamedMessages({required String sessionId}) {
+    final messageIds = _streamedMessageIds.remove(sessionId);
+    if (messageIds == null) return;
+    for (final messageId in messageIds) {
+      _streamedBlocks.remove(messageId);
+      _completedStreamedParts.remove(messageId);
+    }
   }
 
   PluginSessionStatus? retryStatus({
@@ -89,8 +103,9 @@ final class ClaudeEventDispatcher {
     final rawMessage = _mapOrNull(message.event["message"]);
     final messageId = _nonEmptyString(rawMessage?["id"]);
     if (messageId == null) return const [];
-    final model = _nonEmptyString(rawMessage?["model"]);
+    final model = _realModel(model: _nonEmptyString(rawMessage?["model"]));
     _messageIds[sessionId] = messageId;
+    _streamedMessageIds.putIfAbsent(sessionId, () => <String>{}).add(messageId);
     if (model != null) _models[sessionId] = model;
     return const [];
   }
@@ -105,6 +120,7 @@ final class ClaudeEventDispatcher {
     final blocks = _content.map(content: message.contentBlock);
     if (blocks.length != 1) return const [];
     final block = blocks.single;
+    _streamedBlocks.putIfAbsent(messageId, () => <int>{}).add(index);
     final part = switch (block) {
       ClaudeMappedTextContentBlock() => _textPart(
         sessionId: sessionId,
@@ -196,13 +212,14 @@ final class ClaudeEventDispatcher {
     final index = message.blockIndex;
     if (messageId == null || index == null) return const [];
     final tool = _tools.stopInput(sessionId: sessionId, messageId: messageId, blockIndex: index);
-    return tool == null
-        ? const []
-        : [
-            BridgeSseMessagePartUpdated(
-              part: _toolPart(sessionId: sessionId, tool: tool),
-            ),
-          ];
+    final completed = _completedStreamedParts[messageId]?.remove(index);
+    return [
+      if (tool != null)
+        BridgeSseMessagePartUpdated(
+          part: _toolPart(sessionId: sessionId, tool: tool),
+        ),
+      if (tool == null && completed != null) BridgeSseMessagePartUpdated(part: completed),
+    ];
   }
 
   List<BridgeSseEvent> _mapAssistant({
@@ -212,8 +229,9 @@ final class ClaudeEventDispatcher {
     final messageId = _nonEmptyString(message.messageId);
     if (messageId == null) return const [];
     _messageIds[sessionId] = messageId;
-    if (_nonEmptyString(message.model) case final model?) _models[sessionId] = model;
+    if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
+    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
     final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
     if (!parts.any((part) => part.type.isVisible)) return const [];
     _announcedMessageIds[sessionId] = messageId;
@@ -241,7 +259,11 @@ final class ClaudeEventDispatcher {
         ),
         _ => parts[index],
       };
-      events.add(BridgeSseMessagePartUpdated(part: part));
+      if (_streamedBlocks[messageId]?.contains(index) ?? false) {
+        _completedStreamedParts.putIfAbsent(messageId, () => <int, PluginMessagePart>{})[index] = part;
+      } else {
+        events.add(BridgeSseMessagePartUpdated(part: part));
+      }
     }
     return events;
   }
@@ -251,6 +273,7 @@ final class ClaudeEventDispatcher {
     required ClaudeUserMessage message,
   }) {
     final mapped = _content.map(content: message.message["content"]);
+    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();
     if (results.isNotEmpty) {
       final events = <BridgeSseEvent>[];
@@ -404,6 +427,18 @@ PluginMessagePart _toolPart({required String sessionId, required ClaudeTrackedTo
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;
 
 String? _nonEmptyString(Object? value) => value is String && value.isNotEmpty ? value : null;
+
+String? _realModel({required String? model}) {
+  final normalized = _nonEmptyString(model);
+  return normalized == "<synthetic>" ? null : normalized;
+}
+
+bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
+  (block) => block is ClaudeMappedTextContentBlock &&
+      (block.text.contains("<local-command-stdout>") ||
+          block.text.contains("<local-command-caveat>") ||
+          block.text.contains("<command-name>")),
+);
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);

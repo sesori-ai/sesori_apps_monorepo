@@ -40,7 +40,7 @@ import 'package:sesori_dart_core/src/api/storage/notification_preferences_device
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
-    as _i895;
+    as _i896;
 import 'package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart'
     as _i369;
 import 'package:sesori_dart_core/src/capabilities/session/session_service.dart'
@@ -65,7 +65,7 @@ import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
 import 'package:sesori_dart_core/src/repositories/bridge_settings_repository.dart'
-    as _i101;
+    as _i102;
 import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
     as _i901;
 import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
@@ -166,8 +166,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i895.DefaultModelSelector>(
       () => const _i895.DefaultModelSelector(),
     );
-    gh.lazySingleton<_i895.RoomKeyStorage>(
-      () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
+    gh.lazySingleton<_i896.RoomKeyStorage>(
+      () => _i896.RoomKeyStorage(gh<_i442.SecureStorage>()),
     );
     gh.lazySingleton<_i384.BridgeApi>(
       () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -247,7 +247,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i369.ConnectionService>(
       () => _i369.ConnectionService(
         gh<_i553.RelayCryptoService>(),
-        gh<_i895.RoomKeyStorage>(),
+        gh<_i896.RoomKeyStorage>(),
         gh<_i442.AuthTokenProvider>(),
         gh<_i442.AuthSession>(),
         gh<_i903.LifecycleSource>(),
@@ -383,8 +383,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i271.ProjectViewRepository>(
       () => _i271.ProjectViewRepository(api: gh<_i210.ProjectViewApi>()),
     );
-    gh.lazySingleton<_i101.BridgeSettingsRepository>(
-      () => _i101.BridgeSettingsRepository(
+    gh.lazySingleton<_i102.BridgeSettingsRepository>(
+      () => _i102.BridgeSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
       ),
     );
@@ -465,7 +465,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i1033.BridgeSettingsService>(
       () => _i1033.BridgeSettingsService(
-        repository: gh<_i101.BridgeSettingsRepository>(),
+        repository: gh<_i102.BridgeSettingsRepository>(),
       ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(

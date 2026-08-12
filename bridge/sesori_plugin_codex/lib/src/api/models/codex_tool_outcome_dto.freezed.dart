@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_tool_outcome_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_tool_outcome_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$CodexToolOutcomeFileDtoCopyWithImpl<$Res>
 /// Create a copy of CodexToolOutcomeFileDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? schemaVersion = null,Object? errors = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexToolOutcomeFileDto(
 schemaVersion: null == schemaVersion ? _self.schemaVersion : schemaVersion // ignore: cast_nullable_to_non_nullable
 as int,errors: null == errors ? _self.errors : errors // ignore: cast_nullable_to_non_nullable
 as List<CodexStoredToolErrorDto>,
@@ -81,7 +82,7 @@ as List<CodexStoredToolErrorDto>,
 @JsonSerializable()
 
 class _CodexToolOutcomeFileDto implements CodexToolOutcomeFileDto {
-  const _CodexToolOutcomeFileDto({required this.schemaVersion, required final  List<CodexStoredToolErrorDto> errors}): _errors = errors;
+  const _CodexToolOutcomeFileDto({required this.schemaVersion, required  List<CodexStoredToolErrorDto> errors}): _errors = errors;
   factory _CodexToolOutcomeFileDto.fromJson(Map<String, dynamic> json) => _$CodexToolOutcomeFileDtoFromJson(json);
 
 @override final  int schemaVersion;
@@ -209,7 +210,7 @@ class _$CodexStoredToolErrorDtoCopyWithImpl<$Res>
 /// Create a copy of CodexStoredToolErrorDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? callId = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexStoredToolErrorDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String,

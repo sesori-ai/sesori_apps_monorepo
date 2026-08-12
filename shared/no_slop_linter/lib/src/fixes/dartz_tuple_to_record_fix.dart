@@ -64,7 +64,7 @@ class DartzTupleToRecordFix extends ResolvedCorrectionProducer {
 
   /// Builds a record literal string from constructor arguments.
   /// e.g., ['hello', 42] -> "('hello', 42)"
-  String _buildRecordLiteral(NodeList<Expression> args) {
+  String _buildRecordLiteral(NodeList<Argument> args) {
     final values = args.map((a) => a.toSource()).join(', ');
     return '($values)';
   }

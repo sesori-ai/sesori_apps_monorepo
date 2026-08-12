@@ -49,6 +49,39 @@ void main() {
       await harness.waitForIdle();
 
       expect(_userFrames(process), hasLength(1));
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("next turn resumes in a fresh process after abort", () async {
+      harness.enqueue("first", model: "haiku");
+      final first = await harness.firstProcess;
+      await waitForFrame(first, "user");
+
+      final abort = harness.service.abort(sessionId: testSessionId);
+      final interrupt = await _waitForControlSubtype(first, "interrupt");
+      first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      await harness.waitForIdle();
+
+      harness.enqueue("second", model: "haiku");
+      final second = await harness.processAt(1);
+      await waitForFrame(second, "user");
+
+      expect(harness.specs.last.launch, isA<ClaudeResumedSession>());
+      expect(_userText(second, 0), "second");
+    });
+
+    test("abort tears down the process when interrupt fails", () async {
+      await harness.dispose();
+      harness = _ServiceHarness(failInterrupt: true);
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      await harness.service.abort(sessionId: testSessionId);
+      await harness.waitForIdle();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
 
     test("interruptActiveWork aborts and waits for active sessions within its budget", () async {
@@ -195,7 +228,7 @@ void main() {
 }
 
 final class _ServiceHarness {
-  _ServiceHarness({this.stdinCloseCompletes = true}) {
+  _ServiceHarness({this.stdinCloseCompletes = true, this.failInterrupt = false}) {
     repository = ClaudeSessionProcessRepository(
       processFactory: _spawn,
       binaryPath: "claude",
@@ -220,6 +253,7 @@ final class _ServiceHarness {
   final List<BridgeSseEvent> events = [];
   final _ControlledClock clock = _ControlledClock();
   final bool stdinCloseCompletes;
+  final bool failInterrupt;
   late final ClaudeSessionProcessRepository repository;
   late final ClaudeApprovalRegistry approvals;
   late final ClaudeSessionService service;
@@ -234,6 +268,10 @@ final class _ServiceHarness {
     unawaited(() async {
       final request = await waitForFrame(process, "control_request");
       process.emitControlResponse(requestId: request["request_id"]! as String, payload: sampleHandshake);
+      if (failInterrupt) {
+        final interrupt = await _waitForControlSubtype(process, "interrupt");
+        process.emitControlError(requestId: interrupt["request_id"]! as String, error: "interrupt failed");
+      }
     }());
     return process;
   }

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_provider.dart';
@@ -9,6 +9,7 @@ part of 'plugin_provider.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -65,7 +66,7 @@ class _$PluginModelCopyWithImpl<$Res>
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? variants = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,variants: null == variants ? _self.variants : variants // ignore: cast_nullable_to_non_nullable
@@ -84,7 +85,7 @@ as DateTime?,
 @JsonSerializable(createFactory: false)
 
 class _PluginModel implements PluginModel {
-  const _PluginModel({required this.id, required this.name, required final  List<String> variants, this.family, this.isAvailable = true, this.releaseDate}): _variants = variants;
+  const _PluginModel({required this.id, required this.name, required  List<String> variants, this.family, this.isAvailable = true, this.releaseDate}): _variants = variants;
   
 
 @override final  String id;
@@ -237,7 +238,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderAnthropic implements PluginProvider {
-  const PluginProviderAnthropic({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'anthropic';
+  const PluginProviderAnthropic({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'anthropic';
   
 
 @override final  String id;
@@ -324,7 +325,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderOpenAI implements PluginProvider {
-  const PluginProviderOpenAI({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'openAI';
+  const PluginProviderOpenAI({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'openAI';
   
 
 @override final  String id;
@@ -411,7 +412,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderGoogle implements PluginProvider {
-  const PluginProviderGoogle({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'google';
+  const PluginProviderGoogle({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'google';
   
 
 @override final  String id;
@@ -498,7 +499,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderMistral implements PluginProvider {
-  const PluginProviderMistral({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'mistral';
+  const PluginProviderMistral({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'mistral';
   
 
 @override final  String id;
@@ -585,7 +586,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderGroq implements PluginProvider {
-  const PluginProviderGroq({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'groq';
+  const PluginProviderGroq({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'groq';
   
 
 @override final  String id;
@@ -672,7 +673,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderXAI implements PluginProvider {
-  const PluginProviderXAI({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'xAI';
+  const PluginProviderXAI({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'xAI';
   
 
 @override final  String id;
@@ -759,7 +760,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderDeepseek implements PluginProvider {
-  const PluginProviderDeepseek({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'deepseek';
+  const PluginProviderDeepseek({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'deepseek';
   
 
 @override final  String id;
@@ -846,7 +847,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderAmazonBedrock implements PluginProvider {
-  const PluginProviderAmazonBedrock({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'amazonBedrock';
+  const PluginProviderAmazonBedrock({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'amazonBedrock';
   
 
 @override final  String id;
@@ -933,7 +934,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderAzure implements PluginProvider {
-  const PluginProviderAzure({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'azure';
+  const PluginProviderAzure({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'azure';
   
 
 @override final  String id;
@@ -1020,7 +1021,7 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class PluginProviderCustom implements PluginProvider {
-  const PluginProviderCustom({required this.id, required this.name, required this.authType, required final  List<PluginModel> models, required this.defaultModelID, final  String? $type}): _models = models,$type = $type ?? 'custom';
+  const PluginProviderCustom({required this.id, required this.name, required this.authType, required  List<PluginModel> models, required this.defaultModelID,  String? $type}): _models = models,$type = $type ?? 'custom';
   
 
 @override final  String id;
@@ -1157,7 +1158,7 @@ class _$PluginProvidersResultCopyWithImpl<$Res>
 /// Create a copy of PluginProvidersResult
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? providers = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginProvidersResult(
 providers: null == providers ? _self.providers : providers // ignore: cast_nullable_to_non_nullable
 as List<PluginProvider>,
   ));
@@ -1171,7 +1172,7 @@ as List<PluginProvider>,
 @JsonSerializable(createFactory: false)
 
 class _PluginProvidersResult implements PluginProvidersResult {
-  const _PluginProvidersResult({required final  List<PluginProvider> providers}): _providers = providers;
+  const _PluginProvidersResult({required  List<PluginProvider> providers}): _providers = providers;
   
 
  final  List<PluginProvider> _providers;

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'filesystem_suggestion.dart';
@@ -9,6 +9,7 @@ part of 'filesystem_suggestion.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$FilesystemSuggestionsRequestCopyWithImpl<$Res>
 /// Create a copy of FilesystemSuggestionsRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? maxResults = null,Object? prefix = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(FilesystemSuggestionsRequest(
 maxResults: null == maxResults ? _self.maxResults : maxResults // ignore: cast_nullable_to_non_nullable
 as int,prefix: freezed == prefix ? _self.prefix : prefix // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -203,7 +204,7 @@ class _$FilesystemSuggestionsCopyWithImpl<$Res>
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,Object? path = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(FilesystemSuggestions(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<FilesystemSuggestion>,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -218,7 +219,7 @@ as String?,
 @JsonSerializable()
 
 class _FilesystemSuggestions implements FilesystemSuggestions {
-  const _FilesystemSuggestions({required final  List<FilesystemSuggestion> data, required this.path}): _data = data;
+  const _FilesystemSuggestions({required  List<FilesystemSuggestion> data, required this.path}): _data = data;
   factory _FilesystemSuggestions.fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionsFromJson(json);
 
  final  List<FilesystemSuggestion> _data;
@@ -346,7 +347,7 @@ class _$FilesystemSuggestionCopyWithImpl<$Res>
 /// Create a copy of FilesystemSuggestion
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? name = null,Object? isGitRepo = null,}) {
-  return _then(_self.copyWith(
+  return _then(FilesystemSuggestion(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,isGitRepo: null == isGitRepo ? _self.isGitRepo : isGitRepo // ignore: cast_nullable_to_non_nullable
@@ -486,7 +487,7 @@ class _$FilesystemCreateDirectoryRequestCopyWithImpl<$Res>
 /// Create a copy of FilesystemCreateDirectoryRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? parentPath = null,Object? name = null,}) {
-  return _then(_self.copyWith(
+  return _then(FilesystemCreateDirectoryRequest(
 parentPath: null == parentPath ? _self.parentPath : parentPath // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,

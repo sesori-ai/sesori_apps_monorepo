@@ -355,6 +355,16 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+    // The bridge answers these with an opaque error code rather than an
+    // exception, so without this the screen renders a failure no log explains.
+    if (result case NewSessionOptionsLoadFailureUnavailable() ||
+        NewSessionOptionsRefreshFailureUnavailable() ||
+        NewSessionOptionsFailureUnavailable()) {
+      logw(
+        "New session: options unavailable for plugin $pluginId "
+        "(source: ${source.name}, mode: ${mode.name}, result: ${result.runtimeType.toString()})",
+      );
+    }
     final options = switch (result) {
       NewSessionOptionsLoaded(:final options, :final source) => NewSessionOptionsAvailableState(
         options: options,

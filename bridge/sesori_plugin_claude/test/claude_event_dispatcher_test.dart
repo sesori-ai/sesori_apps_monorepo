@@ -103,6 +103,98 @@ void main() {
       expect(complete, isEmpty);
     });
 
+    test("does not finalize streamed text before Claude closes its block", () {
+      _startMessage(mapper, messageId: "msg-stream");
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 0,
+            "content_block": {"type": "text", "text": ""},
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _stream(
+          "content_block_delta",
+          event: {
+            "index": 0,
+            "delta": {"type": "text_delta", "text": "answer"},
+          },
+        ),
+      );
+
+      final complete = _map(
+        mapper,
+        _assistant(
+          id: "msg-stream",
+          content: const [
+            {"type": "text", "text": "answer"},
+          ],
+        ),
+      );
+      final stopped = _map(
+        mapper,
+        _stream("content_block_stop", event: const {"index": 0}),
+      );
+
+      expect(complete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      expect(stopped.whereType<BridgeSseMessagePartUpdated>().single.part.text, "answer");
+
+      mapper.beginTurn(sessionId: "session-1");
+      final replayed = _map(
+        mapper,
+        _assistant(
+          id: "msg-stream",
+          content: const [
+            {"type": "text", "text": "next answer"},
+          ],
+        ),
+      );
+      expect(replayed.whereType<BridgeSseMessagePartUpdated>().single.part.text, "next answer");
+    });
+
+    test("hides local command records and keeps the last real model", () {
+      _startMessage(mapper, messageId: "msg-real", model: "claude-opus-5");
+      _startMessage(mapper, messageId: "msg-command", model: "<synthetic>");
+      final assistant = _map(
+        mapper,
+        _assistant(
+          id: "msg-command",
+          model: "<synthetic>",
+          content: const [
+            {"type": "text", "text": "<local-command-stdout>Set model to haiku</local-command-stdout>"},
+          ],
+        ),
+      );
+      final user = _map(
+        mapper,
+        _user(
+          uuid: "user-command",
+          content: const [
+            {"type": "text", "text": "<command-name>/model</command-name>"},
+          ],
+        ),
+      );
+      final error = _map(
+        mapper,
+        {
+          "type": "result",
+          "subtype": "success",
+          "session_id": "session-1",
+          "uuid": "result-error",
+          "is_error": true,
+          "terminal_reason": "api_error",
+        },
+      ).single as BridgeSseMessageUpdated;
+
+      expect(assistant, isEmpty);
+      expect(user, isEmpty);
+      expect((shared.Message.fromJson(error.info) as shared.MessageError).modelID, "claude-opus-5");
+    });
+
     test("maps tool input and completion with one diff signal", () {
       _startMessage(mapper, messageId: "msg-tool");
       final started = _map(
@@ -174,6 +266,46 @@ void main() {
       expect(terminal.state?.output, "done");
       expect(duplicate.whereType<BridgeSseSessionDiff>(), isEmpty);
       expect(duplicate.whereType<BridgeSseMessagePartUpdated>().single.part.state, terminal.state);
+    });
+
+    test("emits one finalized snapshot when a streamed tool block stops", () {
+      _startMessage(mapper, messageId: "msg-tool-stop");
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 0,
+            "content_block": {
+              "type": "tool_use",
+              "id": "toolu-stop",
+              "name": "Read",
+              "input": <String, Object?>{},
+            },
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _assistant(
+          id: "msg-tool-stop",
+          content: const [
+            {
+              "type": "tool_use",
+              "id": "toolu-stop",
+              "name": "Read",
+              "input": {"file_path": "a.dart"},
+            },
+          ],
+        ),
+      );
+
+      final stopped = _map(
+        mapper,
+        _stream("content_block_stop", event: const {"index": 0}),
+      );
+
+      expect(stopped.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
     });
 
     test("emits todo staleness only when TodoWrite reaches a terminal result", () {

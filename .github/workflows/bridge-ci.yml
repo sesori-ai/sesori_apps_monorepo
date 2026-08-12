@@ -6,13 +6,27 @@ on:
     paths:
       - 'bridge/**'
       - 'shared/**'
+      - '.tool-versions'
   pull_request:
     paths:
       - 'bridge/**'
       - 'shared/**'
+      - '.tool-versions'
 
 jobs:
+  toolchain:
+    runs-on: ubuntu-latest
+    outputs:
+      dart-version: ${{ steps.dart-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve pinned Dart version
+        id: dart-version
+        uses: ./.github/actions/resolve-flutter-dart-version
+
   test:
+    needs: toolchain
     runs-on: ubuntu-latest
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
@@ -20,6 +34,8 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ needs.toolchain.outputs.dart-version }}
 
       - uses: actions/cache@v5
         with:
@@ -119,6 +135,7 @@ jobs:
         working-directory: bridge/sesori_plugin_pi
 
   build-smoke:
+    needs: toolchain
     runs-on: ubuntu-latest
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
@@ -126,6 +143,8 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ needs.toolchain.outputs.dart-version }}
 
       - uses: actions/cache@v5
         with:

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'register_token_request.dart';
@@ -9,15 +9,14 @@ part of 'register_token_request.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$RegisterTokenRequest {
 
- String get token; DevicePlatform get platform;// Omitted rather than sent as null: the server treats deviceId as optional,
-// which accepts an absent key but rejects an explicit null with a 400.
-@JsonKey(includeIfNull: false) String? get deviceId;
+ String get token; DevicePlatform get platform; String? get deviceId;
 /// Create a copy of RegisterTokenRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -50,7 +49,7 @@ abstract mixin class $RegisterTokenRequestCopyWith<$Res>  {
   factory $RegisterTokenRequestCopyWith(RegisterTokenRequest value, $Res Function(RegisterTokenRequest) _then) = _$RegisterTokenRequestCopyWithImpl;
 @useResult
 $Res call({
- String token, DevicePlatform platform,@JsonKey(includeIfNull: false) String? deviceId
+ String token, DevicePlatform platform, String? deviceId
 });
 
 
@@ -68,7 +67,7 @@ class _$RegisterTokenRequestCopyWithImpl<$Res>
 /// Create a copy of RegisterTokenRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? token = null,Object? platform = null,Object? deviceId = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(RegisterTokenRequest(
 token: null == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
 as DevicePlatform,deviceId: freezed == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
@@ -84,14 +83,12 @@ as String?,
 @JsonSerializable()
 
 class _RegisterTokenRequest implements RegisterTokenRequest {
-  const _RegisterTokenRequest({required this.token, required this.platform, @JsonKey(includeIfNull: false) required this.deviceId});
+  const _RegisterTokenRequest({required this.token, required this.platform, required this.deviceId});
   factory _RegisterTokenRequest.fromJson(Map<String, dynamic> json) => _$RegisterTokenRequestFromJson(json);
 
 @override final  String token;
 @override final  DevicePlatform platform;
-// Omitted rather than sent as null: the server treats deviceId as optional,
-// which accepts an absent key but rejects an explicit null with a 400.
-@override@JsonKey(includeIfNull: false) final  String? deviceId;
+@override final  String? deviceId;
 
 /// Create a copy of RegisterTokenRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -126,7 +123,7 @@ abstract mixin class _$RegisterTokenRequestCopyWith<$Res> implements $RegisterTo
   factory _$RegisterTokenRequestCopyWith(_RegisterTokenRequest value, $Res Function(_RegisterTokenRequest) _then) = __$RegisterTokenRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String token, DevicePlatform platform,@JsonKey(includeIfNull: false) String? deviceId
+ String token, DevicePlatform platform, String? deviceId
 });
 
 

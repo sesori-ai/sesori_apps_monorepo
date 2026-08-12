@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'health_response.dart';
@@ -9,18 +9,14 @@ part of 'health_response.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$HealthResponse {
 
- bool get healthy; String get version;// Whether the bridge detected degraded host filesystem access at startup
-// (e.g. macOS Full Disk Access not granted), so the phone can proactively
-// warn the user. Nullable for backward compatibility: an older bridge that
-// never sends it decodes to null and is treated as "not degraded".
-// COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
- bool? get filesystemAccessDegraded;
+ bool get healthy; String get version; bool? get filesystemAccessDegraded;
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -71,7 +67,7 @@ class _$HealthResponseCopyWithImpl<$Res>
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(HealthResponse(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,filesystemAccessDegraded: freezed == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
@@ -92,11 +88,6 @@ class _HealthResponse implements HealthResponse {
 
 @override final  bool healthy;
 @override final  String version;
-// Whether the bridge detected degraded host filesystem access at startup
-// (e.g. macOS Full Disk Access not granted), so the phone can proactively
-// warn the user. Nullable for backward compatibility: an older bridge that
-// never sends it decodes to null and is treated as "not degraded".
-// COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
 @override final  bool? filesystemAccessDegraded;
 
 /// Create a copy of HealthResponse

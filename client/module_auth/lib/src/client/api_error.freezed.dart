@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'api_error.dart';
@@ -9,6 +9,7 @@ part of 'api_error.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 ApiError _$ApiErrorFromJson(
@@ -86,7 +87,7 @@ $ApiErrorCopyWith(ApiError _, $Res Function(ApiError) __);
 @JsonSerializable(createToJson: false)
 
 class JsonParsingError extends ApiError {
-   JsonParsingError(this.jsonString, {final  String? $type}): $type = $type ?? 'jsonParsing',super._();
+   JsonParsingError(this.jsonString, { String? $type}): $type = $type ?? 'jsonParsing',super._();
   factory JsonParsingError.fromJson(Map<String, dynamic> json) => _$JsonParsingErrorFromJson(json);
 
  final  String jsonString;
@@ -156,7 +157,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class DartHttpClientError extends ApiError {
-   DartHttpClientError(this.innerError, {final  String? $type}): $type = $type ?? 'dartHttpClient',super._();
+   DartHttpClientError(this.innerError, { String? $type}): $type = $type ?? 'dartHttpClient',super._();
   factory DartHttpClientError.fromJson(Map<String, dynamic> json) => _$DartHttpClientErrorFromJson(json);
 
  final  Object innerError;
@@ -225,7 +226,7 @@ null == innerError ? _self.innerError : innerError ,
 @JsonSerializable(createToJson: false)
 
 class GenericError extends ApiError {
-   GenericError({final  String? $type}): $type = $type ?? 'generic',super._();
+   GenericError({ String? $type}): $type = $type ?? 'generic',super._();
   factory GenericError.fromJson(Map<String, dynamic> json) => _$GenericErrorFromJson(json);
 
 
@@ -261,7 +262,7 @@ String toString() {
 @JsonSerializable(createToJson: false)
 
 class NotAuthenticatedError extends ApiError {
-   NotAuthenticatedError({final  String? $type}): $type = $type ?? 'notAuthenticated',super._();
+   NotAuthenticatedError({ String? $type}): $type = $type ?? 'notAuthenticated',super._();
   factory NotAuthenticatedError.fromJson(Map<String, dynamic> json) => _$NotAuthenticatedErrorFromJson(json);
 
 
@@ -297,7 +298,7 @@ String toString() {
 @JsonSerializable(createToJson: false)
 
 class NonSuccessCodeError extends ApiError {
-   NonSuccessCodeError({required this.errorCode, required this.rawErrorString, final  String? $type}): $type = $type ?? 'nonSuccessCode',super._();
+   NonSuccessCodeError({required this.errorCode, required this.rawErrorString,  String? $type}): $type = $type ?? 'nonSuccessCode',super._();
   factory NonSuccessCodeError.fromJson(Map<String, dynamic> json) => _$NonSuccessCodeErrorFromJson(json);
 
  final  int errorCode;
@@ -369,7 +370,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class EmptyResponseError extends ApiError {
-   EmptyResponseError({final  String? $type}): $type = $type ?? 'emptyResponse',super._();
+   EmptyResponseError({ String? $type}): $type = $type ?? 'emptyResponse',super._();
   factory EmptyResponseError.fromJson(Map<String, dynamic> json) => _$EmptyResponseErrorFromJson(json);
 
 

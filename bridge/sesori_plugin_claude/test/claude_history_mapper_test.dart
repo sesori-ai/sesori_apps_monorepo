@@ -30,6 +30,13 @@ void main() {
         records: [
           _messageRecord(
             type: "user",
+            uuid: "model-command-user",
+            content: const [
+              {"type": "text", "text": "<command-name>/model</command-name>"},
+            ],
+          ),
+          _messageRecord(
+            type: "user",
             uuid: "user-uuid",
             timestamp: "2026-08-09T10:00:00Z",
             content: [
@@ -198,6 +205,34 @@ IMPORTANT: Do NOT create new worktrees.
             ],
           ),
           {"type": "future-record", "sessionId": _sessionId},
+        ],
+      );
+
+      expect(
+        mapper.map(
+          sessionId: _sessionId,
+          records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        ),
+        isEmpty,
+      );
+    });
+
+    test("skips internal local command records", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "assistant",
+            uuid: "model-command",
+            messageId: "synthetic-message",
+            model: "<synthetic>",
+            content: const [
+              {
+                "type": "text",
+                "text": "<local-command-stdout>Set model to haiku</local-command-stdout>",
+              },
+            ],
+          ),
         ],
       );
 

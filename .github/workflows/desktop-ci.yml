@@ -31,6 +31,7 @@ jobs:
     outputs:
       desktop: ${{ steps.filter.outputs.desktop }}
       flutter-version: ${{ steps.flutter-version.outputs.version }}
+      flutter-channel: ${{ steps.flutter-version.outputs.channel }}
     steps:
       - uses: actions/checkout@v6
 
@@ -40,12 +41,20 @@ jobs:
         id: flutter-version
         shell: bash
         run: |
-          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
-          if [ -z "$FLUTTER_VERSION" ]; then
+          TOOL_SPEC=$(awk '$1 == "flutter" { print $2 }' .tool-versions)
+          if [ -z "$TOOL_SPEC" ]; then
             echo "Unable to find a Flutter version in .tool-versions" >&2
             exit 1
           fi
+          if [[ "$TOOL_SPEC" == *-* ]]; then
+            FLUTTER_VERSION="${TOOL_SPEC%-*}"
+            FLUTTER_CHANNEL="${TOOL_SPEC##*-}"
+          else
+            FLUTTER_VERSION="$TOOL_SPEC"
+            FLUTTER_CHANNEL="stable"
+          fi
           echo "version=$FLUTTER_VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$FLUTTER_CHANNEL" >> "$GITHUB_OUTPUT"
 
       # The desktop-relevant set: the two desktop packages, the shared client
       # packages the desktop build consumes (a shared change can break the
@@ -89,7 +98,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ needs.changes.outputs.flutter-version }}
-          channel: stable
+          channel: ${{ needs.changes.outputs.flutter-channel }}
           cache: true
 
       - name: Get dependencies (workspace)
@@ -132,7 +141,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ needs.changes.outputs.flutter-version }}
-          channel: stable
+          channel: ${{ needs.changes.outputs.flutter-channel }}
           cache: true
 
       - name: Install Linux desktop build dependencies

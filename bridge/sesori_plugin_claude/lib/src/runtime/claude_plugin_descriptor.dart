@@ -214,6 +214,8 @@ final class ClaudePluginDescriptor extends BridgePluginDescriptor {
       catalogService: ClaudeCatalogService(
         catalog: const ClaudeBackendCatalogRepository(),
         processes: processes,
+        probeSessionId: _generateUuidV4(),
+        discoveryDirectory: host.stateDirectory,
       ),
       approvals: approvals,
       eventDispatcher: ClaudeEventDispatcher(
