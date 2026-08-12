@@ -111,7 +111,24 @@ function stopHeartbeat(heartbeatProcess) {
   }
 }
 
+// A lock whose owner process is still running is never stale, however far the
+// heartbeat has lagged. Spawning the detached heartbeat is not instantaneous, so
+// on a loaded machine a mtime-only check can evict a live holder and let two
+// bootstraps install concurrently.
+function ownerIsAlive(lockPath) {
+  try {
+    var owner = JSON.parse(fs.readFileSync(ownerPath(lockPath), "utf8"));
+    return typeof owner.pid === "number" && processIsAlive(owner.pid);
+  } catch (_) {
+    // Missing or half-written owner file: fall back to the heartbeat mtime.
+    return false;
+  }
+}
+
 function lockIsStale(lockPath) {
+  if (ownerIsAlive(lockPath)) {
+    return false;
+  }
   var targetPaths = [heartbeatPath(lockPath), ownerPath(lockPath), lockPath];
   for (var i = 0; i < targetPaths.length; i++) {
     try {
