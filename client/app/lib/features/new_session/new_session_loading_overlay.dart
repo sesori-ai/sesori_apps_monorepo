@@ -111,20 +111,24 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                 color: prego.colors.bgBrandSolid,
               ),
               const SizedBox(height: 24),
-              if (reducedMotion) Text(
-                      message,
-                      key: const Key("new_session_loading_message"),
-                      style: prego.textTheme.textSm.regular.copyWith(
-                        color: prego.colors.textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ) else AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 500),
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
+              if (reducedMotion)
+                Text(
+                  message,
+                  key: const Key("new_session_loading_message"),
+                  style: prego.textTheme.textSm.regular.copyWith(
+                    color: prego.colors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                )
+              else
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position:
+                            Tween<Offset>(
                               begin: const Offset(0, 0.4),
                               end: Offset.zero,
                             ).animate(
@@ -133,19 +137,19 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                                 curve: Curves.easeOutCubic,
                               ),
                             ),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Text(
-                        message,
-                        key: ValueKey<String>(message),
-                        style: prego.textTheme.textSm.regular.copyWith(
-                          color: prego.colors.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
+                        child: child,
                       ),
+                    );
+                  },
+                  child: Text(
+                    message,
+                    key: ValueKey<String>(message),
+                    style: prego.textTheme.textSm.regular.copyWith(
+                      color: prego.colors.textPrimary,
                     ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
             ],
           ),
         ),

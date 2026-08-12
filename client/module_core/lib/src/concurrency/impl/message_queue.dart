@@ -46,8 +46,7 @@ class MessageQueue<T, OUT> {
     this.inFlightTimeout,
     Completer<void>? isReady,
   }) : _isReady = isReady ?? (Completer()..complete()) {
-    // ignore: readiness future intentionally fire-and-forget
-    _isReady.future.then((value) => _checkAndSendNext());
+    unawaited(_isReady.future.then((value) => _checkAndSendNext()));
   }
 
   Future<OUT> enqueueMessage(T message) {

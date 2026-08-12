@@ -76,7 +76,6 @@ class SseEventMapper {
         status: _asMap(status.toJson()),
       ),
       // COMPATIBILITY 2026-05-18 (v0.7.0): Older OpenCode runtimes emit session.idle. Remove this branch and manifest variant when those runtimes are unsupported.
-      // ignore: forwards legacy idle event for backward compatibility
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
       SseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) => BridgeSseCommandExecuted(
         name: name,
