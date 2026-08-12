@@ -9,6 +9,9 @@ sealed class RegisterTokenRequest with _$RegisterTokenRequest {
   const factory RegisterTokenRequest({
     required String token,
     required DevicePlatform platform,
+    // Omitted rather than sent as null: the server treats deviceId as optional,
+    // which accepts an absent key but rejects an explicit null with a 400.
+    @JsonKey(includeIfNull: false) required String? deviceId,
   }) = _RegisterTokenRequest;
 
   factory RegisterTokenRequest.fromJson(Map<String, dynamic> json) => _$RegisterTokenRequestFromJson(json);
