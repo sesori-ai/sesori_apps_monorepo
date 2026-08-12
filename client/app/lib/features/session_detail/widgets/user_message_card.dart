@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "file_part_widget.dart";
 
 class UserMessageCard extends StatelessWidget {
@@ -37,7 +38,10 @@ class UserMessageCard extends StatelessWidget {
           crossAxisAlignment: .end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (attachments.isNotEmpty) ...attachments.map((attachment) => FilePartWidget(attachment: attachment)),
+            if (attachments.isNotEmpty)
+              ...attachments.map(
+                (attachment) => FilePartWidget(sessionId: message.info.sessionID, attachment: attachment),
+              ),
             if (text.isNotEmpty)
               SelectionArea(
                 child: Text(

@@ -93,7 +93,12 @@ void main() {
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => relayClient.didResume).thenReturn(false);
-      when(() => relayClient.sendRequest(any())).thenAnswer(
+      when(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
         (_) async => const RelayResponse(id: "r", status: 500, headers: {}, body: null),
       );
       when(relayClient.disconnect).thenAnswer((_) async {});
@@ -112,7 +117,9 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(
+          user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u"),
+        ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -140,7 +147,9 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(
+          user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u"),
+        ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -166,7 +175,9 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(
+          user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u"),
+        ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 

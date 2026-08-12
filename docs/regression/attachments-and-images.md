@@ -23,6 +23,11 @@ content the transcript renders live and after reload.
 - A remote attachment image auto-loads only over HTTPS with declared type, size,
   timeout, and content-signature checks; anything else needs an explicit user
   action.
+- Stored thumbnails and originals use the typed attachment route with a longer
+  request timeout, validate declared MIME, decoded size, and raster signature,
+  and coalesce only concurrent requests with the same account, bridge, session,
+  attachment, and rendition scope. Malformed sensitive response content never
+  appears in parsing errors or diagnostics.
 - Live streaming and history replay converge: same image, same message and part
   identity, same position relative to text and tool output. The viewer offers
   copy, share, and save on the original, and an unknown shape degrades safely.
@@ -47,7 +52,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, and unknown-variant behavior holds in its owning suites; history projection and live event shaping preserve inline defaults and return stored references only when requested. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, and sensitive-response redaction behavior holds in its owning suites; history projection and live event shaping preserve inline defaults and return stored references only when requested. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin, generated and tool-output images displayed, text/image/text order preserved live and after reload, viewer copy/share/save. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
@@ -71,6 +76,9 @@ live, after paging back, or after a reopen, and vary the plugin.
 - An over-budget or unsupported image breaks the message instead of degrading.
 - A remote attachment image is fetched without the scheme, type, size, and
   signature checks.
+- A stored rendition crosses account, bridge, or session scope; concurrent
+  duplicate requests are not coalesced; or decrypted image/base64 content
+  appears in an error or diagnostic.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 
@@ -85,10 +93,10 @@ live, after paging back, or after a reopen, and vary the plugin.
   covered by the remote-attachment guarantee.
 - Cursor path-only generated images are read locally inside its plugin and
   delivered as bounded attachments; the host path still never crosses the wire.
-- Lazy stored-image delivery remains unfinished in product clients. The bridge
-  supports explicit stored-reference history reads, live events, and on-demand
-  renditions, while normal clients still request inline delivery on both
-  surfaces.
+- Stored-image fetching exists in the client data layer, but normal history and
+  live subscriptions still request inline delivery. Persistent thumbnail cache,
+  square-grid presentation, viewer original loading, and activation follow in
+  later steps.
 
 ## Sources
 

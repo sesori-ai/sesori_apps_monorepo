@@ -59,6 +59,7 @@ import "user_message_card.dart";
 /// detached snapshot, and the follow/chat controller lifecycles.
 class SessionDetailMessageList extends StatefulWidget {
   final String? projectId;
+  final String sessionId;
   final List<MessageWithParts> messages;
   final Map<String, String> streamingText;
   final List<Session> children;
@@ -86,6 +87,7 @@ class SessionDetailMessageList extends StatefulWidget {
   const SessionDetailMessageList({
     super.key,
     required this.projectId,
+    required this.sessionId,
     required this.messages,
     required this.streamingText,
     required this.children,
@@ -457,17 +459,16 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
             // Full-row control: drop the package's bubble/alignment/
             // gesture wrapper and render our cards bare, exactly as the
             // previous ListView did.
-            chatMessageBuilder:
-                (
-                  context,
-                  message,
-                  index,
-                  animation,
-                  child, {
-                  bool? isRemoved,
-                  required bool isSentByMe,
-                  chat_core.MessageGroupStatus? groupStatus,
-                }) => child,
+            chatMessageBuilder: (
+              context,
+              message,
+              index,
+              animation,
+              child, {
+              bool? isRemoved,
+              required bool isSentByMe,
+              chat_core.MessageGroupStatus? groupStatus,
+            }) => child,
             customMessageBuilder:
                 (
                   context,

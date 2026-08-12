@@ -13,6 +13,8 @@ import "package:test/test.dart";
 class MockRelayHttpApiClient extends Mock implements RelayHttpApiClient;
 
 void main() {
+  setUpAll(() => registerFallbackValue(Duration.zero));
+
   late MockRelayHttpApiClient client;
   late SessionApi api;
 
@@ -278,6 +280,45 @@ void main() {
           "/command",
           fromJson: any(named: "fromJson"),
           body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
+        ),
+      ).called(1);
+    });
+
+    test("getAttachment posts a typed rendition request with the attachment timeout", () async {
+      const expected = SessionAttachmentResponse(mime: "image/png", base64: "AQID", byteLength: 3);
+      when(
+        () => client.postWithTimeout<SessionAttachmentResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer((invocation) async {
+        final parser =
+            invocation.namedArguments[#fromJson]!
+                as SessionAttachmentResponse Function(
+                  Map<String, dynamic>,
+                );
+        return ApiResponse.success(parser(expected.toJson()));
+      });
+
+      final response = await api.getAttachment(
+        sessionId: "session-1",
+        attachmentId: "attachment-1",
+        rendition: SessionAttachmentRendition.thumbnail,
+      );
+
+      expect((response as SuccessResponse<SessionAttachmentResponse>).data, expected);
+      verify(
+        () => client.postWithTimeout<SessionAttachmentResponse>(
+          "/session/attachment",
+          fromJson: any(named: "fromJson"),
+          body: const SessionAttachmentRequest(
+            sessionId: "session-1",
+            attachmentId: "attachment-1",
+            rendition: SessionAttachmentRendition.thumbnail,
+          ),
+          timeout: const Duration(minutes: 2),
         ),
       ).called(1);
     });
