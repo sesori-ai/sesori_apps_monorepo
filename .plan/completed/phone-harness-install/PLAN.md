@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `phone-harness-install`
-- **Status:** active
+- **Status:** completed
 - **Related history:** `.plan/completed/setup-aware-plugin-management` built the
   management transport, snapshots, tokens, and lifecycle commands this plan
   extends.
