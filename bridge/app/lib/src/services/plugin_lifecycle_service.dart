@@ -391,7 +391,8 @@ class PluginLifecycleService {
       );
     }
 
-    final authentication = _ActivePluginAuthentication();
+    final operation = _lifecycleRepository.authenticate(pluginId: pluginId);
+    final authentication = _ActivePluginAuthentication(operation: operation);
     _activePluginAuthentications[pluginId] = authentication;
     _publishManagementIfChanged();
     unawaited(_executeAuthentication(pluginId: pluginId, authentication: authentication));
@@ -420,7 +421,7 @@ class PluginLifecycleService {
       );
     }
     final active = _activePluginAuthentications[pluginId];
-    active?.abort?.call();
+    active?.operation.abort();
     if (active != null) await active.settled.future;
     return const SuccessEmptyResponse();
   }
@@ -431,10 +432,8 @@ class PluginLifecycleService {
   }) async {
     PluginAuthenticationProgress progress;
     try {
-      final operation = _lifecycleRepository.authenticate(pluginId: pluginId);
-      authentication.abort = operation.abort;
       PluginAuthenticationProgress? terminal;
-      await for (final event in operation.events) {
+      await for (final event in authentication.operation.events) {
         terminal = switch (event) {
           PluginAuthenticationDeviceCodeChallenge(:final verificationUri, :final userCode) => () {
             if (verificationUri.scheme != "https") {
@@ -451,7 +450,12 @@ class PluginLifecycleService {
             return terminal;
           }(),
           PluginAuthenticationCompleted() => const PluginAuthenticationProgress.completed(),
-          PluginAuthenticationFailed(:final message) => PluginAuthenticationProgress.failed(message: message),
+          PluginAuthenticationFailed(:final message) => () {
+            Log.w('Plugin "$pluginId" authentication failed: $message');
+            return const PluginAuthenticationProgress.failed(
+              message: "Authentication failed. Check the bridge logs for details.",
+            );
+          }(),
         };
       }
       progress = terminal ?? const PluginAuthenticationProgress.failed(message: "Authentication ended unexpectedly.");
@@ -473,9 +477,11 @@ class PluginLifecycleService {
       }
     } on Object catch (error, stackTrace) {
       Log.w('Plugin "$pluginId" setup inspection after authentication failed', error, stackTrace);
-      progress = const PluginAuthenticationProgress.failed(
-        message: "Authentication finished, but setup could not be verified.",
-      );
+      if (progress is! PluginAuthenticationCancelledProgress) {
+        progress = const PluginAuthenticationProgress.failed(
+          message: "Authentication finished, but setup could not be verified.",
+        );
+      }
     }
     if (identical(_activePluginAuthentications[pluginId], authentication)) {
       _activePluginAuthentications.remove(pluginId);
@@ -1270,7 +1276,7 @@ class PluginLifecycleService {
       firstStackTrace ??= stackTrace;
     }
     for (final authentication in _activePluginAuthentications.values) {
-      authentication.abort?.call();
+      authentication.operation.abort();
     }
     try {
       await Future.wait([
@@ -1504,7 +1510,9 @@ class _ActivePluginCommand {
 }
 
 class _ActivePluginAuthentication {
+  _ActivePluginAuthentication({required this.operation});
+
+  final PluginRuntimeAuthenticationOperation operation;
   final Completer<PluginAuthenticationChallengeResponse> challenge = Completer<PluginAuthenticationChallengeResponse>();
   final Completer<void> settled = Completer<void>();
-  void Function()? abort;
 }

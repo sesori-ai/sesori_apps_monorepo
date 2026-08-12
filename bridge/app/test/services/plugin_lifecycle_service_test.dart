@@ -93,6 +93,75 @@ void main() {
     expect(service.managementSnapshot.plugins.single.authenticationState, PluginAuthenticationState.idle);
   });
 
+  test("authentication cancellation remains cancelled when setup inspection fails", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..inspectionError = StateError("inspection failed");
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final progress = <PluginAuthenticationProgressUpdate>[];
+    service.authenticationProgress.listen(progress.add);
+    final started = service.authenticate(pluginId: "one");
+
+    final cancelled = service.cancelAuthentication(pluginId: "one");
+    await expectLater(started, throwsA(isA<PluginAuthenticationChallengeUnavailableException>()));
+    await cancelled;
+
+    expect(repository.authenticationAborted, isTrue);
+    expect(progress.single.progress, const PluginAuthenticationProgress.cancelled());
+  });
+
+  test("authentication plugin failure message is replaced before wire progress", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final progress = <PluginAuthenticationProgressUpdate>[];
+    service.authenticationProgress.listen(progress.add);
+    final started = service.authenticate(pluginId: "one");
+    repository.authenticationEvents
+      ..add(
+        PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        ),
+      )
+      ..add(const PluginAuthenticationFailed(message: "private workspace policy detail"));
+    await started;
+    await repository.authenticationEvents.close();
+    while (progress.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(
+      progress.single.progress,
+      const PluginAuthenticationProgress.failed(
+        message: "Authentication failed. Check the bridge logs for details.",
+      ),
+    );
+  });
+
   test("authentication completion fails when authoritative setup stays blocked", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
@@ -2456,6 +2525,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
       StreamController<PluginAuthenticationEvent>();
   int authenticationCalls = 0;
   bool authenticationAborted = false;
+  Object? inspectionError;
 
   @override
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) {
@@ -2511,6 +2581,8 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
   }) async {
     inspectCalls++;
     await inspectionGate?.future;
+    final currentInspectionError = inspectionError;
+    if (currentInspectionError != null) throw currentInspectionError;
     _current = _copySnapshot(
       setup: inspectionResult,
       accessGate: _current.accessGate,
