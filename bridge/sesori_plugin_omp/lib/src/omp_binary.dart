@@ -6,9 +6,13 @@ abstract final class OmpBinary {
   static AcpLaunchSpec launchSpec({
     required String binary,
     required String cwd,
+    required String? sessionDirectory,
   }) => AcpLaunchSpec(
     command: binary,
-    args: const ["acp"],
+    args: [
+      "acp",
+      if (sessionDirectory != null) ...["--session-dir", sessionDirectory],
+    ],
     cwd: cwd,
   );
 }

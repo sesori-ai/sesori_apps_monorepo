@@ -36,7 +36,17 @@ const _activeAnalyticsState = ProductAnalyticsState(
 );
 
 const _emptyState = SessionDetailState.loaded(
-  messages: [],
+  messages: [
+    MessageWithParts(
+      info: Message.user(
+        id: "empty-user-envelope",
+        sessionID: "session-1",
+        agent: null,
+        time: null,
+      ),
+      parts: [],
+    ),
+  ],
   olderMessagesCursor: null,
   streamingText: {},
   sessionStatus: SessionStatus.idle(),
@@ -52,6 +62,7 @@ const _emptyState = SessionDetailState.loaded(
   isRootSession: true,
   isArchived: false,
   queuedMessages: [],
+  sendingSubmission: null,
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],
@@ -79,6 +90,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   isRootSession: true,
   isArchived: false,
   queuedMessages: [],
+  sendingSubmission: null,
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],

@@ -94,7 +94,9 @@ class SessionDetailQueuedMessagesSection extends StatelessWidget {
         for (var i = 0; i < messages.length; i++)
           QueuedMessageBubble(
             submission: messages[i],
-            onCancel: () => context.read<SessionDetailCubit>().cancelQueuedMessage(i),
+            presentation: QueuedMessageBubblePresentation.pending(
+              onCancel: () => context.read<SessionDetailCubit>().cancelQueuedMessage(i),
+            ),
           ),
       ],
     );

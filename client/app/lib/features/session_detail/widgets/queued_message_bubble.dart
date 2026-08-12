@@ -4,20 +4,39 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
+sealed class QueuedMessageBubblePresentation {
+  const QueuedMessageBubblePresentation();
+
+  const factory QueuedMessageBubblePresentation.sending() = SendingMessageBubblePresentation;
+  const factory QueuedMessageBubblePresentation.pending({required VoidCallback onCancel}) =
+      PendingMessageBubblePresentation;
+}
+
+final class SendingMessageBubblePresentation extends QueuedMessageBubblePresentation {
+  const SendingMessageBubblePresentation();
+}
+
+final class PendingMessageBubblePresentation extends QueuedMessageBubblePresentation {
+  final VoidCallback onCancel;
+
+  const PendingMessageBubblePresentation({required this.onCancel});
+}
+
 class QueuedMessageBubble extends StatelessWidget {
   final QueuedSessionSubmission submission;
-  final VoidCallback onCancel;
+  final QueuedMessageBubblePresentation presentation;
 
   const QueuedMessageBubble({
     super.key,
     required this.submission,
-    required this.onCancel,
+    required this.presentation,
   });
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    final isSending = presentation is SendingMessageBubblePresentation;
 
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(horizontal: 16, vertical: 4),
@@ -47,14 +66,27 @@ class QueuedMessageBubble extends StatelessWidget {
                         Row(
                           mainAxisSize: .min,
                           children: [
-                            Icon(
-                              submission.isCommand ? Icons.terminal : Icons.schedule,
-                              size: 14,
-                              color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.7),
-                            ),
+                            if (isSending)
+                              SizedBox.square(
+                                dimension: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.7),
+                                ),
+                              )
+                            else
+                              Icon(
+                                submission.isCommand ? Icons.terminal : Icons.schedule,
+                                size: 14,
+                                color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.7),
+                              ),
                             const SizedBox(width: 4),
                             Text(
-                              submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+                              isSending
+                                  ? loc.sessionDetailSendingMessage
+                                  : submission.isCommand
+                                  ? loc.sessionDetailQueuedCommand
+                                  : loc.sessionDetailQueuedMessage,
                               style: prego.textTheme.textXs.medium.copyWith(
                                 color: prego.colors.fgSuccessPrimary.withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w600,
@@ -73,26 +105,27 @@ class QueuedMessageBubble extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 6),
-                    child: Row(
-                      mainAxisSize: .min,
-                      children: [
-                        TextButton.icon(
-                          onPressed: onCancel,
-                          icon: const Icon(Icons.close, size: 14),
-                          label: Text(loc.sessionDetailCancelQueued),
-                          style: TextButton.styleFrom(
-                            foregroundColor: prego.colors.borderPrimary,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            minimumSize: .zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            textStyle: prego.textTheme.textXs.medium,
+                  if (presentation case PendingMessageBubblePresentation(:final onCancel))
+                    Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 6),
+                      child: Row(
+                        mainAxisSize: .min,
+                        children: [
+                          TextButton.icon(
+                            onPressed: onCancel,
+                            icon: const Icon(Icons.close, size: 14),
+                            label: Text(loc.sessionDetailCancelQueued),
+                            style: TextButton.styleFrom(
+                              foregroundColor: prego.colors.borderPrimary,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              minimumSize: .zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              textStyle: prego.textTheme.textXs.medium,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

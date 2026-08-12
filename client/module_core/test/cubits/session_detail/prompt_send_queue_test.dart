@@ -3,17 +3,83 @@ import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submis
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:test/test.dart";
 
-const _first = QueuedSessionSubmission.text(attachments: [], text: "first", inputMode: ComposerInputMode.typed);
-const _second = QueuedSessionSubmission.text(attachments: [], text: "second", inputMode: ComposerInputMode.typed);
-const _same = QueuedSessionSubmission.text(attachments: [], text: "same", inputMode: ComposerInputMode.typed);
-const _other = QueuedSessionSubmission.text(attachments: [], text: "other", inputMode: ComposerInputMode.typed);
-const _a = QueuedSessionSubmission.text(attachments: [], text: "a", inputMode: ComposerInputMode.typed);
-const _b = QueuedSessionSubmission.text(attachments: [], text: "b", inputMode: ComposerInputMode.typed);
-const _c = QueuedSessionSubmission.text(attachments: [], text: "c", inputMode: ComposerInputMode.typed);
-const _existing = QueuedSessionSubmission.text(attachments: [], text: "existing", inputMode: ComposerInputMode.typed);
-const _retried = QueuedSessionSubmission.text(attachments: [], text: "retried", inputMode: ComposerInputMode.typed);
-const _msg1 = QueuedSessionSubmission.text(attachments: [], text: "msg1", inputMode: ComposerInputMode.typed);
-const _msg2 = QueuedSessionSubmission.text(attachments: [], text: "msg2", inputMode: ComposerInputMode.typed);
+const _first = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "first",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _second = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "second",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _same = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "same",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _other = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "other",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _a = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "a",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _b = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "b",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _c = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "c",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _existing = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "existing",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _retried = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "retried",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _msg1 = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "msg1",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
+const _msg2 = QueuedSessionSubmission.text(
+  attachments: [],
+  text: "msg2",
+  inputMode: ComposerInputMode.typed,
+  agent: "coder",
+  agentModel: null,
+);
 
 void main() {
   group("PromptSendQueue", () {
@@ -45,20 +111,47 @@ void main() {
       expect(queue.items.map((e) => e.displayText), ["same", "other"]);
     });
 
-    test("dequeue removes from the front", () {
+    test("beginSend moves the front submission into the active slot", () {
       queue.enqueue(_a);
       queue.enqueue(_b);
-      expect(queue.dequeue()?.displayText, "a");
+      expect(queue.beginSend()?.displayText, "a");
+      expect(queue.active?.displayText, "a");
+      expect(queue.items.map((e) => e.displayText), ["b"]);
+      expect(queue.isSending, isTrue);
+    });
+
+    test("beginSend returns null when empty", () {
+      expect(queue.beginSend(), isNull);
+    });
+
+    test("beginSend returns null while another submission is active", () {
+      queue.enqueue(_a);
+      queue.enqueue(_b);
+      queue.beginSend();
+
+      expect(queue.beginSend(), isNull);
+      expect(queue.active?.displayText, "a");
       expect(queue.items.map((e) => e.displayText), ["b"]);
     });
 
-    test("dequeue returns null when empty", () {
-      expect(queue.dequeue(), isNull);
+    test("completeSend clears the active submission", () {
+      queue.enqueue(_a);
+      queue.beginSend();
+
+      queue.completeSend();
+
+      expect(queue.active, isNull);
+      expect(queue.isSending, isFalse);
     });
 
-    test("requeue inserts at the front", () {
+    test("failSend restores the active submission at the front", () {
+      queue.enqueue(_retried);
       queue.enqueue(_existing);
-      queue.requeue(_retried);
+      queue.beginSend();
+
+      queue.failSend();
+
+      expect(queue.active, isNull);
       expect(queue.items.map((e) => e.displayText), ["retried", "existing"]);
     });
 
@@ -92,21 +185,31 @@ void main() {
       expect(() => items.add(_b), throwsUnsupportedError);
     });
 
-    test("full cycle: enqueue, dequeue, requeue, dequeue", () {
+    test("cancelling a pending item does not include the active submission in its index", () {
+      queue.enqueue(_a);
+      queue.enqueue(_b);
+      queue.enqueue(_c);
+      queue.beginSend();
+
+      expect(queue.cancel(0)?.displayText, "b");
+      expect(queue.active?.displayText, "a");
+      expect(queue.items.map((e) => e.displayText), ["c"]);
+    });
+
+    test("full cycle: enqueue, begin, fail, begin, complete", () {
       queue.enqueue(_msg1);
       queue.enqueue(_msg2);
 
-      // Dequeue first — simulate send.
-      final sent = queue.dequeue();
+      final sent = queue.beginSend();
       expect(sent?.displayText, "msg1");
 
-      // Simulate failure — requeue.
-      queue.requeue(sent!);
+      queue.failSend();
       expect(queue.items.map((e) => e.displayText), ["msg1", "msg2"]);
 
-      // Retry succeeds.
-      expect(queue.dequeue()?.displayText, "msg1");
+      expect(queue.beginSend()?.displayText, "msg1");
+      queue.completeSend();
       expect(queue.items.map((e) => e.displayText), ["msg2"]);
+      expect(queue.active, isNull);
     });
   });
 }

@@ -539,7 +539,7 @@ void main() {
     expect(appearance.state, AppearanceMode.dark);
   });
 
-  testWidgets("tapping a chat input tile switches and persists the mode", (tester) async {
+  testWidgets("Default input appears above Appearance and persists a new selection", (tester) async {
     _useTallSurface(tester);
     final store = _MockChatInputModeStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
@@ -548,15 +548,21 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance, chatInputMode: chatInputMode));
     await tester.pumpAndSettle();
 
-    expect(find.text("Chat input"), findsOneWidget);
-    await tester.tap(find.text("Text first"));
+    expect(find.text("Default input"), findsOneWidget);
+    expect(find.text("Voice"), findsOneWidget);
+    expect(find.text("Chat input"), findsNothing);
+    expect(
+      tester.getTopLeft(find.text("Default input")).dy,
+      lessThan(tester.getTopLeft(find.text("Appearance")).dy),
+    );
+    await tester.tap(find.text("Text"));
     await tester.pumpAndSettle();
 
     expect(chatInputMode.state, ChatInputMode.textFirst);
     verify(() => store.write(mode: ChatInputMode.textFirst)).called(1);
   });
 
-  testWidgets("the chat input tiles announce as one mutually exclusive choice", (tester) async {
+  testWidgets("the default input choices announce as one mutually exclusive choice", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
@@ -565,9 +571,9 @@ void main() {
 
     // Voice-first is the app default, so it is the checked tile.
     expect(
-      tester.getSemantics(find.text("Voice first")),
+      tester.getSemantics(find.text("Voice")),
       matchesSemantics(
-        label: "Voice first",
+        label: "Voice",
         isInMutuallyExclusiveGroup: true,
         hasCheckedState: true,
         isChecked: true,
@@ -575,9 +581,9 @@ void main() {
       ),
     );
     expect(
-      tester.getSemantics(find.text("Text first")),
+      tester.getSemantics(find.text("Text")),
       matchesSemantics(
-        label: "Text first",
+        label: "Text",
         isInMutuallyExclusiveGroup: true,
         hasCheckedState: true,
         hasTapAction: true,
@@ -585,6 +591,20 @@ void main() {
     );
 
     handle.dispose();
+  });
+
+  testWidgets("the default input choices grow for accessibility text", (tester) async {
+    tester.view.physicalSize = const Size(402, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Voice"), findsOneWidget);
+    expect(find.text("Text"), findsOneWidget);
   });
 
   testWidgets("the theme tiles announce as one mutually exclusive choice", (tester) async {

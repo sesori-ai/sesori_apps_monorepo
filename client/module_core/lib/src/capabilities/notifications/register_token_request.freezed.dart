@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RegisterTokenRequest {
 
- String get token; DevicePlatform get platform;
+ String get token; DevicePlatform get platform; String? get deviceId;
 /// Create a copy of RegisterTokenRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $RegisterTokenRequestCopyWith<RegisterTokenRequest> get copyWith => _$RegisterTo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterTokenRequest&&(identical(other.token, token) || other.token == token)&&(identical(other.platform, platform) || other.platform == platform));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterTokenRequest&&(identical(other.token, token) || other.token == token)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,token,platform);
+int get hashCode => Object.hash(runtimeType,token,platform,deviceId);
 
 @override
 String toString() {
-  return 'RegisterTokenRequest(token: $token, platform: $platform)';
+  return 'RegisterTokenRequest(token: $token, platform: $platform, deviceId: $deviceId)';
 }
 
 
@@ -49,7 +49,7 @@ abstract mixin class $RegisterTokenRequestCopyWith<$Res>  {
   factory $RegisterTokenRequestCopyWith(RegisterTokenRequest value, $Res Function(RegisterTokenRequest) _then) = _$RegisterTokenRequestCopyWithImpl;
 @useResult
 $Res call({
- String token, DevicePlatform platform
+ String token, DevicePlatform platform, String? deviceId
 });
 
 
@@ -66,11 +66,12 @@ class _$RegisterTokenRequestCopyWithImpl<$Res>
 
 /// Create a copy of RegisterTokenRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? token = null,Object? platform = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? token = null,Object? platform = null,Object? deviceId = freezed,}) {
   return _then(RegisterTokenRequest(
 token: null == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
-as DevicePlatform,
+as DevicePlatform,deviceId: freezed == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -82,11 +83,12 @@ as DevicePlatform,
 @JsonSerializable()
 
 class _RegisterTokenRequest implements RegisterTokenRequest {
-  const _RegisterTokenRequest({required this.token, required this.platform});
+  const _RegisterTokenRequest({required this.token, required this.platform, required this.deviceId});
   factory _RegisterTokenRequest.fromJson(Map<String, dynamic> json) => _$RegisterTokenRequestFromJson(json);
 
 @override final  String token;
 @override final  DevicePlatform platform;
+@override final  String? deviceId;
 
 /// Create a copy of RegisterTokenRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -101,16 +103,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterTokenRequest&&(identical(other.token, token) || other.token == token)&&(identical(other.platform, platform) || other.platform == platform));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterTokenRequest&&(identical(other.token, token) || other.token == token)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,token,platform);
+int get hashCode => Object.hash(runtimeType,token,platform,deviceId);
 
 @override
 String toString() {
-  return 'RegisterTokenRequest(token: $token, platform: $platform)';
+  return 'RegisterTokenRequest(token: $token, platform: $platform, deviceId: $deviceId)';
 }
 
 
@@ -121,7 +123,7 @@ abstract mixin class _$RegisterTokenRequestCopyWith<$Res> implements $RegisterTo
   factory _$RegisterTokenRequestCopyWith(_RegisterTokenRequest value, $Res Function(_RegisterTokenRequest) _then) = __$RegisterTokenRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String token, DevicePlatform platform
+ String token, DevicePlatform platform, String? deviceId
 });
 
 
@@ -138,11 +140,12 @@ class __$RegisterTokenRequestCopyWithImpl<$Res>
 
 /// Create a copy of RegisterTokenRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? token = null,Object? platform = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? token = null,Object? platform = null,Object? deviceId = freezed,}) {
   return _then(_RegisterTokenRequest(
 token: null == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
-as DevicePlatform,
+as DevicePlatform,deviceId: freezed == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
