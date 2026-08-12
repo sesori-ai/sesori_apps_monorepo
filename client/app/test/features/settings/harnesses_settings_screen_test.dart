@@ -572,6 +572,45 @@ void main() {
     );
   });
 
+  testWidgets("dismissing during cancellation preserves terminal settlement", (tester) async {
+    _useTallSurface(tester);
+    final cancelResult = Completer<PluginAuthenticationCancelResult>();
+    when(
+      () => service.cancelAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) => cancelResult.future);
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_authentication_cancel")));
+    await tester.pump();
+
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    authenticationTerminal.add((
+      pluginId: "codex",
+      progress: const PluginAuthenticationProgress.failed(message: "Cancellation failed."),
+    ));
+    cancelResult.complete(const PluginAuthenticationCancelResult.success());
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log in to harness"), findsNothing);
+    expect(find.byKey(const Key("harness_authentication_error")), findsOneWidget);
+    expect(find.text("Cancellation failed."), findsOneWidget);
+  });
+
   testWidgets("setup-not-ready shows setup guidance and only meaningful eligibility controls", (tester) async {
     _useTallSurface(tester);
     final plugin = _managed.copyWith(

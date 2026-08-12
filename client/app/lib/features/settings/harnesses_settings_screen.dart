@@ -1018,7 +1018,14 @@ Future<void> _showAuthenticationSheet({
       child: const _AuthenticationSheet(),
     ),
   );
-  if (!cubit.isClosed && _authenticationChallenge(state: cubit.state) != null) {
+  final authentication = switch (cubit.state) {
+    PluginManagementReady(:final authentication) => authentication,
+    PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
+  };
+  if (!cubit.isClosed &&
+      _authenticationChallenge(state: cubit.state) != null &&
+      authentication is! PluginAuthenticationPresentationCancelling &&
+      authentication is! PluginAuthenticationPresentationCancellingUncertain) {
     cubit.dismissAuthentication();
   }
 }
