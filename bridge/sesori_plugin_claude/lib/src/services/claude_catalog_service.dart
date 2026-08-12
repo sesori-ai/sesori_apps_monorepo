@@ -37,7 +37,7 @@ final class ClaudeCatalogService {
       Log.d("[claude] queued global session options refresh");
       final queued = inFlight.future.then(
         (_) => _fetchCatalog(refresh: true),
-        onError: (Object _, StackTrace __) => _fetchCatalog(refresh: true),
+        onError: (Object _, StackTrace _) => _fetchCatalog(refresh: true),
       );
       return _trackFetch(refresh: true, future: queued);
     }

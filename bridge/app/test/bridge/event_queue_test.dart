@@ -85,7 +85,7 @@ void main() {
             if (identical(event, bad)) throw Exception("fail");
             dequeued.add(event);
           },
-          onError: (_, __) {},
+          onError: (_, _) {},
         );
 
         queue.enqueue(good);

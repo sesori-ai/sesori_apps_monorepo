@@ -31,7 +31,7 @@ void main() {
 
     test("does not claim to prevent lid-close sleep", () {
       final api = MacOSWakeLockApi(
-        processStarter: (_, __) async => _FakeProcess(),
+        processStarter: (_, _) async => _FakeProcess(),
       );
       expect(api.preventsLidCloseSleep, isFalse);
     });

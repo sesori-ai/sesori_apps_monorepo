@@ -38,7 +38,7 @@ void main() {
 
     test("claims to prevent lid-close sleep", () {
       final api = LinuxWakeLockApi(
-        processStarter: (_, __) async => _FakeProcess(),
+        processStarter: (_, _) async => _FakeProcess(),
       );
       expect(api.preventsLidCloseSleep, isTrue);
     });

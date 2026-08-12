@@ -205,7 +205,7 @@ class SessionOperationDispatcher {
 
   void _track<T>({required Completer<T> result}) {
     late final Future<void> settlement;
-    settlement = result.future.then<void>((_) {}, onError: (Object _, StackTrace __) {}).whenComplete(() {
+    settlement = result.future.then<void>((_) {}, onError: (Object _, StackTrace _) {}).whenComplete(() {
       _inFlightSettlements.remove(settlement);
     });
     _inFlightSettlements.add(settlement);
@@ -213,7 +213,7 @@ class SessionOperationDispatcher {
 
   void _trackPlugin<T>({required Completer<T> result, required String pluginId}) {
     late final Future<void> settlement;
-    settlement = result.future.then<void>((_) {}, onError: (Object _, StackTrace __) {}).whenComplete(() {
+    settlement = result.future.then<void>((_) {}, onError: (Object _, StackTrace _) {}).whenComplete(() {
       final settlements = _pluginSettlements[pluginId];
       settlements?.remove(settlement);
       if (settlements?.isEmpty ?? false) _pluginSettlements.remove(pluginId);

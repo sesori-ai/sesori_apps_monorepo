@@ -834,7 +834,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final result = _processTurnTail.then((_) => operation());
     _processTurnTail = result.then<void>(
       (_) {},
-      onError: (Object _, StackTrace __) {},
+      onError: (Object _, StackTrace _) {},
     );
     return result;
   }

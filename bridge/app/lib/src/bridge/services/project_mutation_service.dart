@@ -86,7 +86,7 @@ class ProjectMutationService {
 
   Future<T> _enqueue<T>(Future<T> Function() workflow) {
     final result = _tail.then((_) => workflow());
-    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return result;
   }
 }
