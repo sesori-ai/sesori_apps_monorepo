@@ -86,7 +86,7 @@
   app. The required architecture implementation review could not run because
   the review sub-agent failed before reading code with the internal task-store
   schema error `no such column: replacement_seq`. `git diff --check
-  origin/main...HEAD` passes, and `git diff --numstat origin/main...HEAD` reports 905
+  origin/main...HEAD` passes, and `git diff --numstat origin/main...HEAD` reports 976
   additions and 25 deletions. Committed as `0b418a3a`, pushed, and opened as
   [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834).
 
