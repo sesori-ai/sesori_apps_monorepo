@@ -11,7 +11,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/support_links.dart";
-import "package:sesori_mobile/features/settings/default_input_settings_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -69,13 +68,6 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
       GoRoute(
         path: "/settings/harnesses",
         builder: (context, state) => const Scaffold(body: Text("harnesses-route")),
-      ),
-      GoRoute(
-        path: "/settings/default-input",
-        builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
-          value: StubConnectionOverlayCubit(),
-          child: const DefaultInputSettingsScreen(),
-        ),
       ),
     ],
   );
@@ -547,7 +539,7 @@ void main() {
     expect(appearance.state, AppearanceMode.dark);
   });
 
-  testWidgets("Default input opens its page and persists a new selection", (tester) async {
+  testWidgets("Default input appears above Appearance and persists a new selection", (tester) async {
     _useTallSurface(tester);
     final store = _MockChatInputModeStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
@@ -559,10 +551,10 @@ void main() {
     expect(find.text("Default input"), findsOneWidget);
     expect(find.text("Voice"), findsOneWidget);
     expect(find.text("Chat input"), findsNothing);
-    await tester.tap(find.text("Default input"));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Choose how you talk to Sesori by default:"), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text("Default input")).dy,
+      lessThan(tester.getTopLeft(find.text("Appearance")).dy),
+    );
     await tester.tap(find.text("Text"));
     await tester.pumpAndSettle();
 
@@ -573,8 +565,6 @@ void main() {
   testWidgets("the default input choices announce as one mutually exclusive choice", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text("Default input"));
     await tester.pumpAndSettle();
 
     final handle = tester.ensureSemantics();
@@ -611,8 +601,6 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
     await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text("Default input"));
     await tester.pumpAndSettle();
 
     expect(find.text("Voice"), findsOneWidget);

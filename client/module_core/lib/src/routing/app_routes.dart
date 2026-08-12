@@ -43,7 +43,6 @@ enum AppRouteDef {
   settings("/settings"),
   settingsNotifications("/settings/notifications"),
   settingsHarnesses("/settings/harnesses"),
-  settingsDefaultInput("/settings/default-input"),
   settingsProfile("/settings/profile"),
   sessions("/projects/:$projectIdPathParam/sessions"),
   newSession("/projects/:$projectIdPathParam/sessions/new"),
@@ -90,7 +89,6 @@ sealed class AppRoute {
   const factory AppRoute.settingsHarnesses({
     required HarnessSettingsPresentation presentation,
   }) = AppRouteSettingsHarnesses;
-  const factory AppRoute.settingsDefaultInput() = AppRouteSettingsDefaultInput;
   const factory AppRoute.settingsProfile() = AppRouteSettingsProfile;
   const factory AppRoute.sessions({
     required String projectId,
@@ -130,7 +128,6 @@ sealed class AppRoute {
       AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
       AppRouteDef.settingsHarnesses => AppRouteSettingsHarnesses.fromParams(queryParams: queryParams),
-      AppRouteDef.settingsDefaultInput => const AppRoute.settingsDefaultInput(),
       AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
@@ -232,16 +229,6 @@ class AppRouteSettingsProfile extends AppRoute {
 
   @override
   AppRouteDef get def => AppRouteDef.settingsProfile;
-
-  @override
-  String buildPath() => def.path;
-}
-
-class AppRouteSettingsDefaultInput extends AppRoute {
-  const AppRouteSettingsDefaultInput();
-
-  @override
-  AppRouteDef get def => AppRouteDef.settingsDefaultInput;
 
   @override
   String buildPath() => def.path;

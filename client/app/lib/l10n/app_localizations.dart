@@ -1117,12 +1117,6 @@ abstract class AppLocalizations {
   /// **'Default input'**
   String get settingsDefaultInputTitle;
 
-  /// Introduction above the default input choices
-  ///
-  /// In en, this message translates to:
-  /// **'Choose how you talk to Sesori by default:'**
-  String get settingsDefaultInputDescription;
-
   /// Default input option that leads with voice dictation
   ///
   /// In en, this message translates to:

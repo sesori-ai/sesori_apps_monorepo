@@ -266,7 +266,6 @@ class ProjectViewingService with Disposable {
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
       AppRouteDef.settingsHarnesses ||
-      AppRouteDef.settingsDefaultInput ||
       AppRouteDef.settingsProfile ||
       null => null,
     };

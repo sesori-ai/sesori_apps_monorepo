@@ -325,10 +325,6 @@
   "@settingsDefaultInputTitle": {
     "description": "Settings entry and page title for choosing the default session composer input"
   },
-  "settingsDefaultInputDescription": "Choose how you talk to Sesori by default:",
-  "@settingsDefaultInputDescription": {
-    "description": "Introduction above the default input choices"
-  },
   "settingsDefaultInputVoice": "Voice",
   "@settingsDefaultInputVoice": {
     "description": "Default input option that leads with voice dictation"

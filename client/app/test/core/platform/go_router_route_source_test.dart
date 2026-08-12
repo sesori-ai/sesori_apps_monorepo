@@ -155,7 +155,6 @@ void main() {
       AppRouteDef.settings: "/settings",
       AppRouteDef.settingsNotifications: "/settings/notifications",
       AppRouteDef.settingsHarnesses: "/settings/harnesses",
-      AppRouteDef.settingsDefaultInput: "/settings/default-input",
       AppRouteDef.settingsProfile: "/settings/profile",
       AppRouteDef.sessions: "/projects/p1/sessions",
       AppRouteDef.newSession: "/projects/p1/sessions/new",
