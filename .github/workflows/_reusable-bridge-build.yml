@@ -123,8 +123,11 @@ jobs:
           fi
           DART_VERSION=$(curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json \
             | jq -r --arg v "$FLUTTER_VERSION" --arg c "$CHANNEL" \
-                '[.releases[] | select(.version == $v and .channel == $c)][0].dart_sdk_version // empty' \
-            | awk '{print $1}')
+                '[.releases[] | select(.version == $v and .channel == $c)][0].dart_sdk_version // empty
+                 | if test("\\(build [^)]+\\)")
+                   then capture("\\(build (?<version>[^)]+)\\)").version
+                   else split(" ")[0]
+                   end')
           if [[ -z "$DART_VERSION" ]]; then
             echo "::error::Could not resolve the Dart SDK bundled with Flutter ${TOOL_SPEC} from the Flutter releases manifest."
             exit 1
