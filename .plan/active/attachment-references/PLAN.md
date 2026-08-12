@@ -710,8 +710,9 @@ receive lightweight references in history pages.
 ### Step 5/11 - Live references
 
 - Add `ChatHistoryService.requiresAwaitedAttachmentCapture(part:)` as the one
-  predicate used by `ChatHistoryListener` and Orchestrator; the listener skips
-  only those inline-image parts and retains its path for all others.
+  predicate the Orchestrator uses to await only inline-image parts. Route every
+  finalized part capture through the Orchestrator so plugin event order remains
+  storage order; the listener retains message, removal, and invalidation capture.
 - Add one awaited `ChatHistoryService.capturePartForDelivery` call that joins the
   per-session queue, persists once, and returns typed reference/legacy shapes.
 - Produce reference and legacy-safe event shapes without a new event type.

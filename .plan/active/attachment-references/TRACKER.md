@@ -169,3 +169,7 @@
 - **2026-08-11 - Relative XDG review fix:** Relative `XDG_DATA_HOME` values now
   fall back to the absolute home-based root, preventing attachment originals
   from being written beneath the bridge's process working directory.
+- **2026-08-12 - Live part ordering:** The user approved routing every finalized
+  part capture through the Orchestrator. Splitting ordinary parts through the
+  listener and awaited image parts through the Orchestrator could let a later
+  ACP text part enter the history queue first and reverse persisted part order.
