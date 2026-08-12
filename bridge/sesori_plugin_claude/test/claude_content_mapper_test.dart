@@ -5,7 +5,7 @@ import "dart:typed_data";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";
 
 void main() {
@@ -194,7 +194,7 @@ void main() {
     });
 
     test("degrades malformed, unsupported, and oversized images to metadata", () {
-      final oversized = base64Encode(Uint8List(maxInlineMessageAttachmentBytes + 1));
+      final oversized = base64Encode(Uint8List(maxTranscriptImageBytes + 1));
       final mapped = mapper.map(
         content: [
           _image(data: "not base64"),
@@ -222,16 +222,27 @@ void main() {
     });
 
     test("enforces the image budget across one mapped message", () {
-      final image = base64Encode(Uint8List(3 * 1024 * 1024));
+      final image = base64Encode(Uint8List(17 * 1024 * 1024));
       final mapped = mapper.map(
         content: [
+          _image(data: image),
           _image(data: image),
           _image(data: image),
         ],
       );
 
       expect((mapped[0] as ClaudeMappedImageContentBlock).attachment, isA<PluginMessageAttachmentInlineImage>());
-      expect((mapped[1] as ClaudeMappedImageContentBlock).attachment, isA<PluginMessageAttachmentMetadata>());
+      expect((mapped[1] as ClaudeMappedImageContentBlock).attachment, isA<PluginMessageAttachmentInlineImage>());
+      expect((mapped[2] as ClaudeMappedImageContentBlock).attachment, isA<PluginMessageAttachmentMetadata>());
+    });
+
+    test("drops image candidates after the bounded prefix", () {
+      final mapped = mapper.map(
+        content: [for (var index = 0; index < 5; index++) _image(data: "AA==")],
+      );
+
+      expect(mapped, hasLength(4));
+      expect(mapped, everyElement(isA<ClaudeMappedImageContentBlock>()));
     });
 
     test("absorbs redacted, future, and malformed blocks without exposing payloads", () {

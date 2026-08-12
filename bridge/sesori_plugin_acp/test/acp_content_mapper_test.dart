@@ -4,7 +4,7 @@ import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";
 
 void main() {
@@ -86,7 +86,7 @@ void main() {
     });
 
     test("degrades invalid, unsupported, and oversized images to metadata", () {
-      final oversized = base64Encode(Uint8List(maxInlineMessageAttachmentBytes + 1));
+      final oversized = base64Encode(Uint8List(maxTranscriptImageBytes + 1));
       final mapped = mapper.map(
         content: [
           {

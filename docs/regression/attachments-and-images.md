@@ -16,9 +16,10 @@ content the transcript renders live and after reload.
   backend-produced images into a client-safe attachment; host paths never cross
   that boundary.
 - Only bounded raster types are displayable, under per-collection count and
-  decoded-byte budgets. Over-budget, unsupported, or malformed candidates degrade
-  to bounded metadata instead of failing the message; later ones are dropped
-  rather than partially rendered.
+  decoded-byte budgets. Backend transcript output retains up to 20 MiB per image,
+  50 MiB aggregate, and four candidates per logical collection. Over-budget,
+  unsupported, or malformed candidates degrade to bounded metadata instead of
+  failing the message; later ones are dropped rather than partially rendered.
 - A remote attachment image auto-loads only over HTTPS with declared type, size,
   timeout, and content-signature checks; anything else needs an explicit user
   action.
@@ -29,6 +30,10 @@ content the transcript renders live and after reload.
   explicitly requests stored references receives bridge-scoped image metadata
   in the same part and tool-attachment order, including after archive; a missing
   stored file degrades to metadata instead of failing the transcript.
+- The retained transcript limits do not raise the released inline-wire budget:
+  old delivery still has one 5 MiB aggregate budget and degrades larger retained
+  images to metadata, while stored-reference delivery preserves their original
+  size for on-demand fetch.
 - Live message-part events follow the same rule per SSE subscription. A
   subscription that asked for inline delivery keeps the released shape, and one
   that asked for stored references receives metadata for bridge-owned images in
@@ -36,7 +41,7 @@ content the transcript renders live and after reload.
   event to a subscription of the other kind. A part carrying bridge-owned image
   bytes is persisted before its live event is delivered, so a delivered
   reference is always fetchable; if that write fails, every subscriber receives
-  the inline shape rather than a dangling identifier.
+  bounded metadata rather than a dangling identifier or oversized inline frame.
 
 ## Regression Levels
 

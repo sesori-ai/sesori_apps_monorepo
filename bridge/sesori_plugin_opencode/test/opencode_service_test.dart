@@ -2243,7 +2243,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
         .map(
           const PluginModelMapper(
             messagePartMapper: MessagePartMapper(),
-            maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes,
+            maxTranscriptAttachmentBytes: maxInlineMessageAttachmentBytes,
           ).mapMessageWithParts,
         )
         .toList();

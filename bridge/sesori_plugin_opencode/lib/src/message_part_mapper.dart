@@ -2,7 +2,12 @@ import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
-    show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
+    show
+        decodedBase64Length,
+        isTranscriptImageBase64LengthWithinSizeLimit,
+        maxTranscriptImageBytes,
+        maxTranscriptImageCandidates,
+        maxTranscriptImageCollectionBytes;
 
 import "models/openapi/agent_part.g.dart";
 import "models/openapi/compaction_part.g.dart";
@@ -32,7 +37,6 @@ class MessagePartMapper {
   static const int _maxDataUrlHeaderCharacters = 256;
   static const int _maxRemoteUrlCharacters = 4096;
   static const int _maxMimeCharacters = 255;
-  static const int _maxToolAttachmentCount = 4;
   static const Map<String, Set<String>> _supportedInlineRasterExtensions = {
     "image/bmp": {"bmp"},
     "image/gif": {"gif"},
@@ -50,7 +54,7 @@ class MessagePartMapper {
   PluginMessagePart mapPart(Part raw) {
     final part = _mapPart(raw);
     if (part.attachment == null && (part.state?.attachments.isEmpty ?? true)) return part;
-    return applyAttachmentBudget(parts: [part], maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes).single;
+    return applyAttachmentBudget(parts: [part], maxAttachmentBytes: maxTranscriptImageCollectionBytes).single;
   }
 
   PluginMessagePart _mapPart(Part raw) => switch (raw) {
@@ -151,9 +155,9 @@ class MessagePartMapper {
 
   List<PluginMessagePart> applyAttachmentBudget({
     required List<PluginMessagePart> parts,
-    required int maxInlineAttachmentBytes,
+    required int maxAttachmentBytes,
   }) {
-    var remainingBytes = maxInlineAttachmentBytes;
+    var remainingBytes = maxAttachmentBytes;
     var didLogOverflow = false;
 
     PluginMessageAttachment bound({required PluginMessageAttachment attachment}) {
@@ -164,7 +168,7 @@ class MessagePartMapper {
           return attachment;
         }
         if (!didLogOverflow) {
-          Log.w("OpenCode message attachments exceed the aggregate transport limit; forwarding metadata only");
+          Log.w("OpenCode message attachments exceed the aggregate retention limit; forwarding metadata only");
           didLogOverflow = true;
         }
         return PluginMessageAttachment.metadata(mime: mime, filename: filename);
@@ -282,8 +286,8 @@ class MessagePartMapper {
     }
 
     final encodedLength = raw.url.length - separator - 1;
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: encodedLength)) {
-      Log.w("OpenCode inline image attachment exceeds the transport limit; forwarding metadata only");
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: encodedLength)) {
+      Log.w("OpenCode transcript image attachment exceeds the retention limit; forwarding metadata only");
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
 
@@ -292,8 +296,9 @@ class MessagePartMapper {
       Log.w("OpenCode returned an invalid base64 image attachment; forwarding metadata only");
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: normalized.length)) {
-      Log.w("OpenCode inline image attachment exceeds the transport limit; forwarding metadata only");
+    if (!isTranscriptImageBase64LengthWithinSizeLimit(base64Length: normalized.length) ||
+        decodedBase64Length(base64Data: normalized) > maxTranscriptImageBytes) {
+      Log.w("OpenCode transcript image attachment exceeds the retention limit; forwarding metadata only");
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
     return PluginMessageAttachment.inlineImage(mime: mime, base64: normalized, filename: filename);
@@ -388,14 +393,14 @@ class MessagePartMapper {
     required String? title,
   }) {
     final rawAttachments = attachments ?? const <FilePart>[];
-    if (rawAttachments.length > _maxToolAttachmentCount) {
+    if (rawAttachments.length > maxTranscriptImageCandidates) {
       Log.w("OpenCode tool returned too many attachments; forwarding only the bounded prefix");
     }
     final titleFilename = rawAttachments.length == 1
         ? _filenameFromToolTitle(title: title, mime: rawAttachments.single.mime)
         : null;
     return rawAttachments
-        .take(_maxToolAttachmentCount)
+        .take(maxTranscriptImageCandidates)
         .map((attachment) => _mapAttachment(raw: attachment, fallbackFilename: titleFilename))
         .toList(growable: false);
   }

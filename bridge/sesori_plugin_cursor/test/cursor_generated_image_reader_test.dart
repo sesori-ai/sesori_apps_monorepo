@@ -3,7 +3,7 @@ import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";
 
 void main() {
@@ -36,9 +36,9 @@ void main() {
       expect(attachment.base64, isNotEmpty);
     });
 
-    test("returns metadata when the source exceeds the inline transport limit", () async {
+    test("returns metadata when the source exceeds the transcript image limit", () async {
       final file = tempFile("cursor-generated-image-large");
-      file.writeAsBytesSync(Uint8List(maxInlineMessageAttachmentBytes + 1));
+      file.writeAsBytesSync(Uint8List(maxTranscriptImageBytes + 1));
 
       final blocks = reader.read(path: file.path);
       expect(blocks.single, isA<AcpMappedMetadataImageContentBlock>());
@@ -80,20 +80,14 @@ void main() {
       expect(block.attachment.mime, "image/png", reason: "mime falls back to the extension hint");
     });
 
-    test("returns metadata when base64 expansion of a limit-sized file exceeds the transport bound", () {
+    test("accepts a signed image at the decoded transcript limit", () {
       final file = tempFile("cursor-generated-image-limit");
-      // Raw bytes at the inline limit: valid PNG signature, but the base64
-      // payload is ~4/3 larger and crosses the encoded transport bound.
-      final bytes = Uint8List(maxInlineMessageAttachmentBytes);
+      final bytes = Uint8List(maxTranscriptImageBytes);
       bytes.setRange(0, 8, const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
       file.writeAsBytesSync(bytes);
 
       final blocks = reader.read(path: file.path);
-      expect(blocks.single, isA<AcpMappedMetadataImageContentBlock>());
-      expect(
-        (blocks.single as AcpMappedMetadataImageContentBlock).reason,
-        AcpImageDegradationReason.oversized,
-      );
+      expect(blocks.single, isA<AcpMappedInlineImageContentBlock>());
     });
   });
 }

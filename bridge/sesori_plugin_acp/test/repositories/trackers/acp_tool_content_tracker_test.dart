@@ -3,7 +3,7 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/src/repositories/trackers/acp_tool_content_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCollectionBytes;
 import "package:test/test.dart";
 
 void main() {
@@ -89,7 +89,7 @@ void main() {
             imageCandidates: [
               _inline(
                 filename: "one.png",
-                decodedBytes: maxInlineMessageAttachmentBytes,
+                decodedBytes: maxTranscriptImageCollectionBytes,
               ),
               _inline(filename: "two.png", decodedBytes: 1),
               _metadata(),

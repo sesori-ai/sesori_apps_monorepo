@@ -4,7 +4,7 @@ import "dart:typed_data";
 
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";
 
 void main() {
@@ -170,22 +170,22 @@ void main() {
     });
 
     test("enforces individual and aggregate decoded byte limits", () {
-      final threeMiB = base64Encode(Uint8List(3 * 1024 * 1024));
-      final tooLarge = base64Encode(Uint8List(maxInlineMessageAttachmentBytes + 1));
+      final seventeenMiB = base64Encode(Uint8List(17 * 1024 * 1024));
+      final tooLarge = base64Encode(Uint8List(maxTranscriptImageBytes + 1));
       final attachments = mapper.map(
         candidates: [
           CodexImageAttachmentCandidate.base64(
-            data: threeMiB,
+            data: seventeenMiB,
             mime: "image/png",
             filenameHint: null,
           ),
           CodexImageAttachmentCandidate.base64(
-            data: threeMiB,
+            data: seventeenMiB,
             mime: "image/png",
             filenameHint: null,
           ),
-          const CodexImageAttachmentCandidate.base64(
-            data: "AA==",
+          CodexImageAttachmentCandidate.base64(
+            data: seventeenMiB,
             mime: "image/png",
             filenameHint: null,
           ),
@@ -198,24 +198,29 @@ void main() {
       );
 
       expect(attachments[0], isA<PluginMessageAttachmentInlineImage>());
-      expect(attachments[1], isA<PluginMessageAttachmentMetadata>());
-      expect(attachments[2], isA<PluginMessageAttachmentInlineImage>());
+      expect(attachments[1], isA<PluginMessageAttachmentInlineImage>());
+      expect(attachments[2], isA<PluginMessageAttachmentMetadata>());
       expect(attachments[3], isA<PluginMessageAttachmentMetadata>());
     });
 
     test("reapplies count and byte limits when mapped batches merge", () {
-      final threeMiB = base64Encode(Uint8List(3 * 1024 * 1024));
+      final seventeenMiB = base64Encode(Uint8List(17 * 1024 * 1024));
       final bounded = mapper.boundMappedAttachments(
         attachments: [
           PluginMessageAttachment.inlineImage(
             mime: "image/png",
-            base64: threeMiB,
+            base64: seventeenMiB,
             filename: "first.png",
           ),
           PluginMessageAttachment.inlineImage(
             mime: "image/png",
-            base64: threeMiB,
+            base64: seventeenMiB,
             filename: "second.png",
+          ),
+          PluginMessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: seventeenMiB,
+            filename: "third.png",
           ),
           for (var index = 0; index < 4; index++)
             PluginMessageAttachment.metadata(
@@ -227,10 +232,11 @@ void main() {
 
       expect(bounded, hasLength(4));
       expect(bounded[0], isA<PluginMessageAttachmentInlineImage>());
-      expect(bounded[1], isA<PluginMessageAttachmentMetadata>());
+      expect(bounded[1], isA<PluginMessageAttachmentInlineImage>());
+      expect(bounded[2], isA<PluginMessageAttachmentMetadata>());
       expect(
-        (bounded[1] as PluginMessageAttachmentMetadata).filename,
-        "second.png",
+        (bounded[2] as PluginMessageAttachmentMetadata).filename,
+        "third.png",
       );
     });
 

@@ -3,7 +3,7 @@ import "dart:io" as io;
 
 import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show Harness, maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show Harness, maxTranscriptImageCollectionBytes;
 
 import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
@@ -41,7 +41,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final SseEventMapper _mapper = SseEventMapper(assistantMessageMapper: _assistantMessageMapper);
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
-    maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes,
+    maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
     assistantMessageMapper: _assistantMessageMapper,
   );
   late final SseConnection _sseConnection;

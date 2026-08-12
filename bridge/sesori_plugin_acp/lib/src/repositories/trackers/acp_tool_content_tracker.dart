@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCollectionBytes;
 
 import "../mappers/acp_content_mapper.dart";
 
@@ -84,7 +84,7 @@ final class AcpToolContentTracker {
           :final attachment,
           :final decodedBytes,
         ):
-          if (decodedImageBytes + decodedBytes > maxInlineMessageAttachmentBytes) {
+          if (decodedImageBytes + decodedBytes > maxTranscriptImageCollectionBytes) {
             _warnOnce(
               reason: _AcpToolContentWarning.aggregateOverflow,
               warned: warned,
@@ -134,7 +134,7 @@ final class AcpToolContentTracker {
         _AcpToolContentWarning.unsupported => "[acp] unsupported tool image attachment; forwarding metadata only",
         _AcpToolContentWarning.oversized => "[acp] oversized tool image attachment; forwarding metadata only",
         _AcpToolContentWarning.aggregateOverflow =>
-          "[acp] tool image attachments exceed the aggregate transport limit; forwarding metadata only",
+          "[acp] tool image attachments exceed the aggregate retention limit; forwarding metadata only",
         _AcpToolContentWarning.countOverflow =>
           "[acp] tool image attachment collection exceeds the count limit; dropping excess candidates",
       },

@@ -12,8 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginProvidersResult,
         PluginSession,
         PluginSessionVariant;
-import "package:sesori_shared/sesori_shared.dart"
-    show StringExtensions, maxInlineMessageAttachmentBytes, wait2;
+import "package:sesori_shared/sesori_shared.dart" show StringExtensions, maxTranscriptImageCollectionBytes, wait2;
 
 import "message_part_mapper.dart";
 import "models/openapi/command.g.dart";
@@ -69,7 +68,7 @@ class OpenCodeRepository {
   final OpenCodeApi _api;
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
-    maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes,
+    maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
   );
 
   OpenCodeRepository(this._api);

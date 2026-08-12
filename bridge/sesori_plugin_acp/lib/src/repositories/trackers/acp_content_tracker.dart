@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCandidates, maxTranscriptImageCollectionBytes;
 
 import "../mappers/acp_content_mapper.dart";
 
@@ -52,8 +52,6 @@ enum AcpContentComposition {
 /// Owns ordered text/image segmentation and bounded image budgets for one
 /// logical ACP assistant message.
 final class AcpContentTracker {
-  static const int _maxImageCandidates = 4;
-
   final Set<_AcpContentWarning> _warned = {};
   final AcpContentMappingScope mappingScope = AcpContentMappingScope();
   int _textPartCount = 0;
@@ -85,11 +83,11 @@ final class AcpContentTracker {
           _composition = AcpContentComposition.mixed;
           _activeTextPartIdSuffix = null;
           final imageIndex = ++_imageCandidateCount;
-          if (imageIndex > _maxImageCandidates) {
+          if (imageIndex > maxTranscriptImageCandidates) {
             _warnOnce(reason: _AcpContentWarning.countOverflow);
             continue;
           }
-          if (_decodedImageBytes + decodedBytes > maxInlineMessageAttachmentBytes) {
+          if (_decodedImageBytes + decodedBytes > maxTranscriptImageCollectionBytes) {
             _warnOnce(reason: _AcpContentWarning.aggregateOverflow);
             mutations.add(
               AcpImageMutation(
@@ -113,7 +111,7 @@ final class AcpContentTracker {
           _composition = AcpContentComposition.mixed;
           _activeTextPartIdSuffix = null;
           final imageIndex = ++_imageCandidateCount;
-          if (imageIndex > _maxImageCandidates) {
+          if (imageIndex > maxTranscriptImageCandidates) {
             _warnOnce(reason: _AcpContentWarning.countOverflow);
             continue;
           }
@@ -157,7 +155,7 @@ final class AcpContentTracker {
         _AcpContentWarning.unsupported => "[acp] unsupported image attachment; forwarding metadata only",
         _AcpContentWarning.oversized => "[acp] oversized image attachment; forwarding metadata only",
         _AcpContentWarning.aggregateOverflow =>
-          "[acp] image attachments exceed the aggregate transport limit; forwarding metadata only",
+          "[acp] image attachments exceed the aggregate retention limit; forwarding metadata only",
         _AcpContentWarning.countOverflow =>
           "[acp] image attachment collection exceeds the count limit; dropping excess candidates",
       },

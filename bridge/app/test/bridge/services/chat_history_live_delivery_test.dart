@@ -116,6 +116,30 @@ void main() {
       );
     });
 
+    test("retains a larger original while keeping the legacy live shape bounded", () async {
+      final history = createTestChatHistory();
+      final bytes = Uint8List(maxInlineMessageAttachmentBytes + 1);
+
+      final captured = await history.service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "large",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(bytes),
+            filename: "large.png",
+          ),
+        ),
+      ) as CapturedPartShapes;
+
+      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(
+        captured.storedReferencePart.attachment,
+        isA<MessageAttachmentStoredImage>().having((image) => image.byteLength, "byteLength", bytes.length),
+      );
+    });
+
     test("advances the same freshness marks as ordinary capture", () async {
       final history = createTestChatHistory();
 
@@ -303,6 +327,35 @@ void main() {
         (await history.database.chatHistoryDao.getParts(sessionId: "ses_a")).map((row) => row.partId),
         isNot(contains("p1")),
       );
+    });
+
+    test("a failed large-image write returns a bounded metadata fallback", () async {
+      final history = createTestChatHistory();
+      final service = ChatHistoryService(
+        chatHistoryRepository: _FailingWriteRepository(
+          chatHistoryDao: history.database.chatHistoryDao,
+          attachmentSpillStorage: history.spillStorage,
+          archivedSessionStorage: history.archivedStorage,
+        ),
+        sessionRepository: _BackfillingSessionRepository(),
+        attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+        bridgeIdProvider: const _BridgeIdProvider("br_test1234"),
+      );
+
+      final captured = await service.capturePartForDelivery(
+        sessionId: "ses_a",
+        shouldCapture: () => true,
+        part: _part(
+          id: "large",
+          attachment: MessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: base64Encode(Uint8List(maxInlineMessageAttachmentBytes + 1)),
+            filename: "large.png",
+          ),
+        ),
+      ) as CapturedPartUnavailable;
+
+      expect(captured.inlineFallbackPart.attachment, isA<MessageAttachmentMetadata>());
     });
   });
 }
