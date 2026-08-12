@@ -71,6 +71,19 @@ void main() {
       expect(_userText(second, 0), "second");
     });
 
+    test("abort tears down the process when interrupt fails", () async {
+      await harness.dispose();
+      harness = _ServiceHarness(failInterrupt: true);
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      await harness.service.abort(sessionId: testSessionId);
+      await harness.waitForIdle();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
     test("interruptActiveWork aborts and waits for active sessions within its budget", () async {
       harness.enqueue("first");
       final process = await harness.firstProcess;
@@ -215,7 +228,7 @@ void main() {
 }
 
 final class _ServiceHarness {
-  _ServiceHarness({this.stdinCloseCompletes = true}) {
+  _ServiceHarness({this.stdinCloseCompletes = true, this.failInterrupt = false}) {
     repository = ClaudeSessionProcessRepository(
       processFactory: _spawn,
       binaryPath: "claude",
@@ -240,6 +253,7 @@ final class _ServiceHarness {
   final List<BridgeSseEvent> events = [];
   final _ControlledClock clock = _ControlledClock();
   final bool stdinCloseCompletes;
+  final bool failInterrupt;
   late final ClaudeSessionProcessRepository repository;
   late final ClaudeApprovalRegistry approvals;
   late final ClaudeSessionService service;
@@ -254,6 +268,10 @@ final class _ServiceHarness {
     unawaited(() async {
       final request = await waitForFrame(process, "control_request");
       process.emitControlResponse(requestId: request["request_id"]! as String, payload: sampleHandshake);
+      if (failInterrupt) {
+        final interrupt = await _waitForControlSubtype(process, "interrupt");
+        process.emitControlError(requestId: interrupt["request_id"]! as String, error: "interrupt failed");
+      }
     }());
     return process;
   }

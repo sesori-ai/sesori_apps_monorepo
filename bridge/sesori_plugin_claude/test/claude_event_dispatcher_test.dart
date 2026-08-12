@@ -268,6 +268,46 @@ void main() {
       expect(duplicate.whereType<BridgeSseMessagePartUpdated>().single.part.state, terminal.state);
     });
 
+    test("emits one finalized snapshot when a streamed tool block stops", () {
+      _startMessage(mapper, messageId: "msg-tool-stop");
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 0,
+            "content_block": {
+              "type": "tool_use",
+              "id": "toolu-stop",
+              "name": "Read",
+              "input": <String, Object?>{},
+            },
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _assistant(
+          id: "msg-tool-stop",
+          content: const [
+            {
+              "type": "tool_use",
+              "id": "toolu-stop",
+              "name": "Read",
+              "input": {"file_path": "a.dart"},
+            },
+          ],
+        ),
+      );
+
+      final stopped = _map(
+        mapper,
+        _stream("content_block_stop", event: const {"index": 0}),
+      );
+
+      expect(stopped.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
+    });
+
     test("emits todo staleness only when TodoWrite reaches a terminal result", () {
       _startMessage(mapper, messageId: "msg-todo");
       _map(

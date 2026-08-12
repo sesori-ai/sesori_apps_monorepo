@@ -53,10 +53,15 @@ queue, turn length, and client count.
 - A slash command holds the client request open for the whole run, or a slow
   plugin blocks unrelated sessions, other plugins, or relay traffic.
 - Streaming stalls, duplicates parts, or the session never returns to idle.
-- Prompt defaults regress, or a defaults-write failure fails the send.
+- Internal backend command records or synthetic model attribution appear in
+  the conversation or replayed history.
+- Prompt defaults regress, an approved plan exit does not restore Default
+  across clients and restart, or a defaults-write failure fails the send.
 - A send succeeds against an archived session, an aborted turn triggers a
   completion notification, or queued sends reorder, vanish, or resend while the
   session-detail cubit remains alive.
+- Recovery or interruption artifacts from an aborted turn appear in the next
+  user turn.
 
 ## Known Limitations
 

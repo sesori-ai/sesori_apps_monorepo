@@ -218,7 +218,7 @@ final class ClaudeEventDispatcher {
         BridgeSseMessagePartUpdated(
           part: _toolPart(sessionId: sessionId, tool: tool),
         ),
-      if (completed != null) BridgeSseMessagePartUpdated(part: completed),
+      if (tool == null && completed != null) BridgeSseMessagePartUpdated(part: completed),
     ];
   }
 
