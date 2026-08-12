@@ -1,10 +1,13 @@
 import "dart:io";
 
 import "package:drift/native.dart";
+import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/api/archived_session_storage.dart";
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
+import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
 import "package:test/test.dart";
@@ -13,7 +16,6 @@ typedef TestChatHistory = ({
   ChatHistoryDatabase database,
   AttachmentSpillStorage spillStorage,
   ArchivedSessionStorage archivedStorage,
-  AttachmentSpillStorage archivedSpillStorage,
   ChatHistoryRepository repository,
   ChatHistoryService service,
   Directory directory,
@@ -26,23 +28,23 @@ typedef TestChatHistory = ({
 ///
 /// [sessionRepository] is only needed by backfill; tests that never backfill
 /// can leave it null and get a repository that fails loudly if asked.
-TestChatHistory createTestChatHistory({SessionRepository? sessionRepository}) {
+TestChatHistory createTestChatHistory({
+  SessionRepository? sessionRepository,
+  AttachmentThumbnailBuilder attachmentThumbnailBuilder = const AttachmentThumbnailBuilder(),
+  int? storedSessionArchivedAt,
+}) {
   final directory = Directory.systemTemp.createTempSync("sesori_chat_history_test");
   final database = ChatHistoryDatabase(NativeDatabase.memory());
   final spillStorage = AttachmentSpillStorage(
-    directoryPath: attachmentSpillDirectoryPath(dataDirectory: directory.path),
+    directoryPath: path.join(directory.path, "attachments"),
   );
   final archivedStorage = ArchivedSessionStorage(
     directoryPath: archiveDirectoryPath(dataDirectory: directory.path),
-  );
-  final archivedSpillStorage = AttachmentSpillStorage(
-    directoryPath: archivedAttachmentDirectoryPath(dataDirectory: directory.path),
   );
   final repository = ChatHistoryRepository(
     chatHistoryDao: database.chatHistoryDao,
     attachmentSpillStorage: spillStorage,
     archivedSessionStorage: archivedStorage,
-    archivedAttachmentStorage: archivedSpillStorage,
   );
   addTearDown(() async {
     await database.close();
@@ -52,19 +54,42 @@ TestChatHistory createTestChatHistory({SessionRepository? sessionRepository}) {
     database: database,
     spillStorage: spillStorage,
     archivedStorage: archivedStorage,
-    archivedSpillStorage: archivedSpillStorage,
     repository: repository,
     service: ChatHistoryService(
       chatHistoryRepository: repository,
-      sessionRepository: sessionRepository ?? _UnusedSessionRepository(),
+      sessionRepository: sessionRepository ?? _UnusedSessionRepository(archivedAt: storedSessionArchivedAt),
+      attachmentThumbnailBuilder: attachmentThumbnailBuilder,
     ),
     directory: directory,
   );
 }
 
+AttachmentStorageScope testAttachmentStorageScope({required String sessionId}) =>
+    AttachmentStorageScope(pluginId: "opencode", backendSessionId: sessionId);
+
 /// Fails on any call: a test that reaches the plugin path should have supplied
 /// its own repository instead of silently backfilling from nothing.
 class _UnusedSessionRepository implements SessionRepository {
+  _UnusedSessionRepository({required this.archivedAt});
+
+  final int? archivedAt;
+
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
+    id: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "opencode",
+    projectId: "project-1",
+    parentSessionId: null,
+    directory: "/tmp/project-1",
+    worktreePath: null,
+    branchName: null,
+    isDedicated: false,
+    archivedAt: archivedAt,
+    baseBranch: null,
+    baseCommit: null,
+  );
+
   @override
   dynamic noSuchMethod(Invocation invocation) {
     throw UnsupportedError(

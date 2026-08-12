@@ -7,7 +7,14 @@ import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, DownloadProgress, OsVersionFormatter, PlatformOs;
+    show
+        ArchiveExtractor,
+        BinaryDownloadClient,
+        ChecksumValidator,
+        DownloadProgress,
+        OsVersionFormatter,
+        PlatformOs,
+        sesoriAttachmentsDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Console,
@@ -812,15 +819,10 @@ class BridgeRuntimeRunner {
         dataDirectory: options.dataDirectory,
       );
       final attachmentSpillStorage = AttachmentSpillStorage(
-        directoryPath: attachmentSpillDirectoryPath(
-          dataDirectory: options.dataDirectory,
-        ),
+        directoryPath: sesoriAttachmentsDirectory(),
       )..ensureDirectory();
       final archivedSessionStorage = ArchivedSessionStorage(
         directoryPath: archiveDirectoryPath(dataDirectory: options.dataDirectory),
-      )..ensureDirectory();
-      final archivedAttachmentStorage = AttachmentSpillStorage(
-        directoryPath: archivedAttachmentDirectoryPath(dataDirectory: options.dataDirectory),
       )..ensureDirectory();
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
@@ -840,7 +842,6 @@ class BridgeRuntimeRunner {
         chatHistoryDatabase: chatHistoryDatabase,
         attachmentSpillStorage: attachmentSpillStorage,
         archivedSessionStorage: archivedSessionStorage,
-        archivedAttachmentStorage: archivedAttachmentStorage,
         httpClient: httpClient,
         processRunner: processRunner,
         accessTokenProvider: accessTokenProvider,

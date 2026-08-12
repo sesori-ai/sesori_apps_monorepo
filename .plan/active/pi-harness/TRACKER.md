@@ -3,14 +3,15 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `ca550a7b`
-- **Series state:** Step 4/21 plan revision in progress
-- **Current step:** 4/21, expand the plan to Oh My Pi
+- **Implementation base:** `origin/main` at `82351fc2`
+- **Series state:** Step 5/21 ACP form and close support in progress
+- **Current step:** 5/21, bridge ACP form elicitations
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
 - **Step 4 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/829
-- **Next action:** address Step 4 review feedback and monitor it to merge
+- **Step 5 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/832
+- **Next action:** monitor Step 5 review and CI to merge
 
 ## Locked Decisions
 
@@ -41,8 +42,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 1/21 | `🌱 [pi-harness] docs: plan Pi harness support [step 1/21]` | 1,400-1,500 (recorded overage) | Merged as PR #811; title normalized |
 | [x] | 2/21 | `⚙️ [pi-harness] feat(pi): scaffold the protocol package [step 2/21]` | 900-1,300 | Merged as PR #819; title normalized |
 | [x] | 3/21 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/21]` | 1,200-1,500 (recorded overage) | Merged as PR #820; title normalized |
-| [ ] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Open as PR #829 |
-| [ ] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 | Not started |
+| [x] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Merged as PR #829 |
+| [ ] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 | Open as PR #832 |
 | [ ] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Not started |
 | [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 | Not started |
 | [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Blocked on runtime dependency |
@@ -165,6 +166,31 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
 - Diff: +1,327/-378 = 1,705 changed lines; generated lines: 0; tests run: 0.
 - Dart/Flutter suites: not run for this documentation-only step.
+
+### Step 5/21
+
+- Added standard ACP form elicitation for string, string-enum, and boolean
+  properties with typed accept, decline, cancel, privacy-safe unsupported
+  handling, and capability opt-in; URL elicitation and terminal auth stay absent.
+- Added the connection-scoped session-config repository, opt-in process-wide
+  prompt lane, fail-closed selection policy with bound empty-session recovery,
+  and privacy-safe post-dispatch failure hook. Cursor keeps existing defaults.
+- Added capability-aware `session/close`: active target work is cancelled and
+  awaited before close, while queued work behind another process-wide turn does
+  not block deletion. Timeout preserves retryable local state.
+- Updated Cursor consumers in lockstep and regression contracts for forms and
+  close-capable deletion.
+- `dart analyze --fatal-infos` from `bridge/sesori_plugin_acp/` and
+  `bridge/sesori_plugin_cursor/`: pass.
+- `dart test` from `bridge/sesori_plugin_acp/`: pass, 237 tests.
+- `dart test` from `bridge/sesori_plugin_cursor/`: pass, 126 tests.
+- Architecture implementation review rejected three duplicated connection/lane
+  ownership and target-settlement gaps; all were corrected. Second review:
+  approved with no findings.
+- No database, persisted-data, client/bridge wire-contract, or client-UI change. Existing
+  Cursor selection and elicitation advertisement remain unchanged.
+- `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
+- Diff: +1,201/-98 = 1,299 changed lines; generated lines: 0; tests run: 363.
 
 ## Findings And Plan Deltas
 

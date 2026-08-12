@@ -142,6 +142,50 @@ void main() {
       const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "codex", idleTimeoutMins: 45).toJson(),
     );
   });
+
+  test("POST and DELETE /plugin/:id/authentication use typed models", () async {
+    when(
+      () => client.post<PluginAuthenticationChallengeResponse>(
+        any(),
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson =
+          invocation.namedArguments[#fromJson] as PluginAuthenticationChallengeResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(
+        fromJson({
+          "type": "deviceCode",
+          "verificationUrl": "https://auth.example/device",
+          "userCode": "ABCD-EFGH",
+        }),
+      );
+    });
+    when(
+      () => client.delete<SuccessEmptyResponse>(any(), fromJson: any(named: "fromJson")),
+    ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
+
+    final started = await api.startAuthentication(pluginId: "codex/dev");
+    final cancelled = await api.cancelAuthentication(pluginId: "codex/dev");
+
+    expect(started, isA<SuccessResponse<PluginAuthenticationChallengeResponse>>());
+    expect(cancelled, isA<SuccessResponse<SuccessEmptyResponse>>());
+    final start = verify(
+      () => client.post<PluginAuthenticationChallengeResponse>(
+        captureAny(),
+        body: captureAny(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).captured;
+    expect(start[0], "/plugin/codex%2Fdev/authentication");
+    expect(start[1], const SuccessEmptyResponse().toJson());
+    verify(
+      () => client.delete<SuccessEmptyResponse>(
+        "/plugin/codex%2Fdev/authentication",
+        fromJson: any(named: "fromJson"),
+      ),
+    ).called(1);
+  });
 }
 
 const _managementJson = {

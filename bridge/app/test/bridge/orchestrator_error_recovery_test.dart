@@ -78,8 +78,7 @@ void main() {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
-    archivedSessionStorage: testChatHistory.archivedStorage,
-    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
+      archivedSessionStorage: testChatHistory.archivedStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -89,7 +88,7 @@ void main() {
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       statusNotifier: null,
-        reconnectBackoff: ReconnectBackoffPolicy.standard,
+      reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final running = await startTestOrchestratorSession(session: composition.session);
     final runFuture = running.stopped;
@@ -158,8 +157,7 @@ void main() {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
-    archivedSessionStorage: testChatHistory.archivedStorage,
-    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
+      archivedSessionStorage: testChatHistory.archivedStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -169,7 +167,7 @@ void main() {
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       statusNotifier: null,
-        reconnectBackoff: ReconnectBackoffPolicy.standard,
+      reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create().session;
 
     final startFuture = session.start();
@@ -217,8 +215,7 @@ void main() {
         database: database,
         chatHistoryDatabase: testChatHistory.database,
         attachmentSpillStorage: testChatHistory.spillStorage,
-    archivedSessionStorage: testChatHistory.archivedStorage,
-    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
+        archivedSessionStorage: testChatHistory.archivedStorage,
         httpClient: httpClient,
         processRunner: ProcessRunner(),
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -345,8 +342,7 @@ class _TestHarness {
       database: database,
       chatHistoryDatabase: testChatHistory.database,
       attachmentSpillStorage: testChatHistory.spillStorage,
-    archivedSessionStorage: testChatHistory.archivedStorage,
-    archivedAttachmentStorage: testChatHistory.archivedSpillStorage,
+      archivedSessionStorage: testChatHistory.archivedStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -356,7 +352,7 @@ class _TestHarness {
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       statusNotifier: null,
-        reconnectBackoff: ReconnectBackoffPolicy.standard,
+      reconnectBackoff: ReconnectBackoffPolicy.standard,
     );
 
     final session = orchestrator.create().session;

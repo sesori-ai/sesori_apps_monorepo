@@ -26,7 +26,10 @@ class HarnessesSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => PluginManagementCubit(service: getIt<PluginManagementService>()),
+      create: (_) => PluginManagementCubit(
+        service: getIt<PluginManagementService>(),
+        urlLauncher: getIt<UrlLauncher>(),
+      ),
       child: _HarnessesSettingsBody(presentation: presentation),
     );
   }

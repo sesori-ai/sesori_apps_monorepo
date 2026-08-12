@@ -24,10 +24,9 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
     super.idGenerator,
     super.activeSessionResolver,
   }) : super(
-         respond: (id, result) =>
-             client.respondToServerRequest(id: id, result: result),
-         respondError: (id, code, message) => client
-             .respondToServerRequestWithError(id: id, code: code, message: message),
+         respond: (id, result) => client.respondToServerRequest(id: id, result: result),
+         respondError: (id, code, message) =>
+             client.respondToServerRequestWithError(id: id, code: code, message: message),
        );
 
   @override
@@ -130,6 +129,7 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       sessionId: sessionId,
       questions: pluginQuestions,
       replyBuilder: (answers) => _buildAskReply(metas, answers),
+      resolutionBuilder: null,
     );
     emit(
       BridgeSseQuestionAsked(
@@ -151,9 +151,7 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
     final out = <Map<String, dynamic>>[];
     for (var i = 0; i < metas.length; i++) {
       final selectedLabels = i < answers.length ? answers[i] : const <String>[];
-      final ids = selectedLabels
-          .map((label) => metas[i].labelToId[label] ?? label)
-          .toList(growable: false);
+      final ids = selectedLabels.map((label) => metas[i].labelToId[label] ?? label).toList(growable: false);
       out.add({"id": metas[i].id, "selectedOptionIds": ids});
     }
     return {"questions": out};
@@ -174,9 +172,7 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       return;
     }
     final name = _str(params["name"]) ?? "Plan";
-    final overview = _str(params["overview"]) ??
-        _str(params["plan"]) ??
-        "Review the proposed plan.";
+    final overview = _str(params["overview"]) ?? _str(params["plan"]) ?? "Review the proposed plan.";
 
     final questions = [
       PluginQuestionInfo(
@@ -198,10 +194,10 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       sessionId: sessionId,
       questions: questions,
       replyBuilder: (answers) {
-        final accepted = answers.isNotEmpty &&
-            answers.first.any((a) => a.toLowerCase() == "accept");
+        final accepted = answers.isNotEmpty && answers.first.any((a) => a.toLowerCase() == "accept");
         return {"accepted": accepted};
       },
+      resolutionBuilder: null,
     );
     emit(
       BridgeSseQuestionAsked(

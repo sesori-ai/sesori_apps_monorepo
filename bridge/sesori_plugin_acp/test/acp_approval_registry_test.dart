@@ -195,6 +195,7 @@ void main() {
           PluginQuestionInfo(question: "Pick", header: "H", options: [], multiple: false, custom: false),
         ],
         replyBuilder: (answers) => null,
+        resolutionBuilder: null,
       );
       responds.clear();
       errors.clear();
@@ -224,6 +225,7 @@ void main() {
           PluginQuestionInfo(question: "q", header: "h", options: [], multiple: false, custom: false),
         ],
         replyBuilder: (answers) => null,
+        resolutionBuilder: null,
       );
       responds.clear();
       errors.clear();
@@ -287,6 +289,7 @@ void main() {
           ),
         ],
         replyBuilder: (answers) => {"selected": answers.first.first},
+        resolutionBuilder: null,
       );
 
       expect(registry.pendingForSession("s1"), hasLength(1));

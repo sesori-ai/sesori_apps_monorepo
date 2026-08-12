@@ -8,9 +8,6 @@ import "data_directory_hardening.dart";
 
 String archiveDirectoryPath({required String dataDirectory}) => path.join(dataDirectory, "archive");
 
-String archivedAttachmentDirectoryPath({required String dataDirectory}) =>
-    path.join(dataDirectory, "archive", "attachments");
-
 /// Raw file boundary for archived session audit files.
 ///
 /// Each write creates a **new, generation-stamped file** and only then removes

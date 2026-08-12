@@ -63,6 +63,53 @@ sealed class PluginManagementActionState with _$PluginManagementActionState {
 }
 
 @Freezed()
+sealed class PluginAuthenticationPresentationError with _$PluginAuthenticationPresentationError {
+  const factory PluginAuthenticationPresentationError.notFound() = PluginAuthenticationPresentationNotFound;
+  const factory PluginAuthenticationPresentationError.unsupported() = PluginAuthenticationPresentationUnsupported;
+  const factory PluginAuthenticationPresentationError.conflict({
+    required PluginAuthenticationConflict conflict,
+  }) = PluginAuthenticationPresentationConflict;
+  const factory PluginAuthenticationPresentationError.uncertain() = PluginAuthenticationPresentationUncertain;
+  const factory PluginAuthenticationPresentationError.invalidChallenge() =
+      PluginAuthenticationPresentationInvalidChallenge;
+  const factory PluginAuthenticationPresentationError.remote({required String message}) =
+      PluginAuthenticationPresentationRemoteError;
+  const factory PluginAuthenticationPresentationError.request({required ApiError error}) =
+      PluginAuthenticationPresentationRequestError;
+}
+
+@Freezed()
+sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPresentationState {
+  const factory PluginAuthenticationPresentationState.idle() = PluginAuthenticationPresentationIdle;
+  const factory PluginAuthenticationPresentationState.starting({required String pluginId}) =
+      PluginAuthenticationPresentationStarting;
+  const factory PluginAuthenticationPresentationState.challenge({
+    required String pluginId,
+    required Uri verificationUri,
+    required String userCode,
+  }) = PluginAuthenticationPresentationChallenge;
+  const factory PluginAuthenticationPresentationState.browserLaunchFailed({
+    required String pluginId,
+    required Uri verificationUri,
+    required String userCode,
+  }) = PluginAuthenticationPresentationBrowserLaunchFailedState;
+  const factory PluginAuthenticationPresentationState.cancelling({
+    required String pluginId,
+    required Uri verificationUri,
+    required String userCode,
+  }) = PluginAuthenticationPresentationCancelling;
+  const factory PluginAuthenticationPresentationState.cancellingUncertain({
+    required String pluginId,
+    required Uri verificationUri,
+    required String userCode,
+  }) = PluginAuthenticationPresentationCancellingUncertain;
+  const factory PluginAuthenticationPresentationState.failed({
+    required String? pluginId,
+    required PluginAuthenticationPresentationError error,
+  }) = PluginAuthenticationPresentationFailed;
+}
+
+@Freezed()
 sealed class PluginManagementState with _$PluginManagementState {
   const factory PluginManagementState.loading() = PluginManagementLoading;
 
@@ -74,6 +121,7 @@ sealed class PluginManagementState with _$PluginManagementState {
     required PluginManagementResponse response,
     required PluginManagementRefreshState refresh,
     required PluginManagementActionState action,
+    required PluginAuthenticationPresentationState authentication,
 
     /// In-flight managed runtime installs, keyed by plugin id.
     required Map<String, PluginInstallProgress> installs,

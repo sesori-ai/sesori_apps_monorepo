@@ -48,6 +48,8 @@ typedef PluginInstallProgressUpdate = ({
   String? message,
 });
 
+typedef PluginAuthenticationProgressUpdate = ({String pluginId, PluginAuthenticationProgress progress});
+
 class PluginIdleTimerScheduler {
   const PluginIdleTimerScheduler();
 
@@ -88,11 +90,14 @@ class PluginLifecycleService {
   final StreamController<String> _managementSnapshotTokenController = StreamController<String>.broadcast(sync: true);
   final StreamController<PluginInstallProgressUpdate> _installProgressController =
       StreamController<PluginInstallProgressUpdate>.broadcast(sync: true);
+  final StreamController<PluginAuthenticationProgressUpdate> _authenticationProgressController =
+      StreamController<PluginAuthenticationProgressUpdate>.broadcast(sync: true);
   final Map<String, DateTime> _lastInstallDownloadEmit = {};
   StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
   Future<void> _settingsMutationTail = Future<void>.value();
   final Map<String, _ActivePluginCommand> _activePluginCommands = {};
+  final Map<String, _ActivePluginAuthentication> _activePluginAuthentications = {};
   final Set<String> _deferredReadyPluginIds = {};
   final Map<String, ({Duration duration, Timer timer})> _idleTimers = {};
   _PluginManagementSnapshot? _lastPublishedManagementSnapshot;
@@ -316,6 +321,15 @@ class PluginLifecycleService {
         ),
       );
     }
+    if (_activePluginAuthentications.containsKey(pluginId)) {
+      throw PluginManagementConflictException(
+        PluginLifecycleConflict(
+          pluginId: pluginId,
+          reasons: const [PluginLifecycleConflictReason.transitioning],
+          current: _managementRowForPluginId(pluginId),
+        ),
+      );
+    }
 
     final command = _ActivePluginCommand(request: request);
     _activePluginCommands[pluginId] = command;
@@ -332,6 +346,174 @@ class PluginLifecycleService {
   }
 
   Stream<PluginInstallProgressUpdate> get installProgress => _installProgressController.stream;
+
+  Stream<PluginAuthenticationProgressUpdate> get authenticationProgress => _authenticationProgressController.stream;
+
+  Future<PluginAuthenticationChallengeResponse> authenticate({required String pluginId}) {
+    final knownPluginIds = _knownPluginIds;
+    if (knownPluginIds == null || _setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    if (!knownPluginIds.contains(pluginId)) {
+      throw PluginManagementPluginNotFoundException(pluginId);
+    }
+    _requireBridgeId();
+    final active = _activePluginAuthentications[pluginId];
+    if (active != null) return active.challenge.future;
+    if (!_supportsManagementCapability(
+      pluginId: pluginId,
+      capability: PluginControlCapability.authentication,
+    )) {
+      throw PluginAuthenticationConflictException(
+        PluginAuthenticationConflict(
+          pluginId: pluginId,
+          reasons: const [PluginAuthenticationConflictReason.unsupported],
+          current: _managementRowForPluginId(pluginId),
+        ),
+      );
+    }
+    if (_activePluginCommands.containsKey(pluginId)) {
+      throw PluginAuthenticationConflictException(
+        PluginAuthenticationConflict(
+          pluginId: pluginId,
+          reasons: const [PluginAuthenticationConflictReason.inFlight],
+          current: _managementRowForPluginId(pluginId),
+        ),
+      );
+    }
+    if (_setupById![pluginId] is! PluginSetupAuthenticationRequired) {
+      throw PluginAuthenticationConflictException(
+        PluginAuthenticationConflict(
+          pluginId: pluginId,
+          reasons: const [PluginAuthenticationConflictReason.setupNotRequired],
+          current: _managementRowForPluginId(pluginId),
+        ),
+      );
+    }
+
+    final operation = _lifecycleRepository.authenticate(pluginId: pluginId);
+    final authentication = _ActivePluginAuthentication(operation: operation);
+    _activePluginAuthentications[pluginId] = authentication;
+    _publishManagementIfChanged();
+    unawaited(_executeAuthentication(pluginId: pluginId, authentication: authentication));
+    return authentication.challenge.future;
+  }
+
+  Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
+    final knownPluginIds = _knownPluginIds;
+    if (knownPluginIds == null || _setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    if (!knownPluginIds.contains(pluginId)) {
+      throw PluginManagementPluginNotFoundException(pluginId);
+    }
+    _requireBridgeId();
+    if (!_supportsManagementCapability(
+      pluginId: pluginId,
+      capability: PluginControlCapability.authentication,
+    )) {
+      throw PluginAuthenticationConflictException(
+        PluginAuthenticationConflict(
+          pluginId: pluginId,
+          reasons: const [PluginAuthenticationConflictReason.unsupported],
+          current: _managementRowForPluginId(pluginId),
+        ),
+      );
+    }
+    final active = _activePluginAuthentications[pluginId];
+    active?.operation.abort();
+    if (active != null) await active.settled.future;
+    return const SuccessEmptyResponse();
+  }
+
+  Future<void> _executeAuthentication({
+    required String pluginId,
+    required _ActivePluginAuthentication authentication,
+  }) async {
+    PluginAuthenticationProgress progress;
+    try {
+      PluginAuthenticationProgress? terminal;
+      await for (final event in authentication.operation.events) {
+        terminal = switch (event) {
+          PluginAuthenticationDeviceCodeChallenge(:final verificationUri, :final userCode) => () {
+            if (verificationUri.scheme != "https") {
+              throw StateError("Plugin authentication returned a non-HTTPS verification URL.");
+            }
+            if (!authentication.challenge.isCompleted) {
+              authentication.challenge.complete(
+                PluginAuthenticationChallengeResponse.deviceCode(
+                  verificationUrl: verificationUri.toString(),
+                  userCode: userCode,
+                ),
+              );
+            }
+            return terminal;
+          }(),
+          PluginAuthenticationCompleted() => const PluginAuthenticationProgress.completed(),
+          PluginAuthenticationFailed(:final message) => () {
+            Log.w('Plugin "$pluginId" authentication failed: $message');
+            return const PluginAuthenticationProgress.failed(
+              message: "Authentication failed. Check the bridge logs for details.",
+            );
+          }(),
+        };
+      }
+      progress = terminal ?? const PluginAuthenticationProgress.failed(message: "Authentication ended unexpectedly.");
+    } on PluginStartAbortedException {
+      progress = const PluginAuthenticationProgress.cancelled();
+    } on Object catch (error, stackTrace) {
+      Log.w('Plugin "$pluginId" authentication failed', error, stackTrace);
+      progress = const PluginAuthenticationProgress.failed(
+        message: "Authentication failed. Check the bridge logs for details.",
+      );
+    }
+
+    try {
+      final setup = await _inspectAfterAuthentication(pluginId: pluginId);
+      if (progress is PluginAuthenticationCompletedProgress && setup is! PluginSetupReady) {
+        progress = const PluginAuthenticationProgress.failed(
+          message: "Authentication finished, but the harness still requires setup.",
+        );
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w('Plugin "$pluginId" setup inspection after authentication failed', error, stackTrace);
+      if (progress is! PluginAuthenticationCancelledProgress) {
+        progress = const PluginAuthenticationProgress.failed(
+          message: "Authentication finished, but setup could not be verified.",
+        );
+      }
+    }
+    if (identical(_activePluginAuthentications[pluginId], authentication)) {
+      _activePluginAuthentications.remove(pluginId);
+    }
+    if (!authentication.challenge.isCompleted) {
+      authentication.challenge.completeError(
+        const PluginAuthenticationChallengeUnavailableException(),
+      );
+    }
+    if (!_authenticationProgressController.isClosed) {
+      _authenticationProgressController.add((pluginId: pluginId, progress: progress));
+    }
+    _publishManagementIfChanged();
+    authentication.settled.complete();
+  }
+
+  Future<PluginSetupStatus> _inspectAfterAuthentication({required String pluginId}) async {
+    final inspected = await _lifecycleRepository.inspect(
+      pluginIds: {pluginId},
+      markUnselectedNotInspected: false,
+    );
+    final setup = inspected[pluginId];
+    if (setup == null) throw StateError('Plugin "$pluginId" inspection returned no result.');
+    _applyInspectedSetup(pluginId: pluginId, setup: setup);
+    if (setup is PluginSetupReady && _requireEligiblePluginIds().contains(pluginId)) {
+      _handleRuntimeCommandResult(
+        pluginId: pluginId,
+        result: await _lifecycleRepository.start(pluginId: pluginId),
+      );
+    }
+    return setup;
+  }
 
   Future<void> _executeInstall({
     required String pluginId,
@@ -682,6 +864,11 @@ class PluginLifecycleService {
     if (setup == null) {
       throw PluginManagementCommandFailedException('Plugin "$pluginId" inspection returned no result.');
     }
+    _applyInspectedSetup(pluginId: pluginId, setup: setup);
+    return setup;
+  }
+
+  void _applyInspectedSetup({required String pluginId, required PluginSetupStatus setup}) {
     _setupById = Map<String, PluginSetupStatus>.unmodifiable({..._requireSetupById(), pluginId: setup});
     if (_requireEligiblePluginIds().contains(pluginId) && setup is PluginSetupReady) {
       _startAllowedPluginIds.add(pluginId);
@@ -690,7 +877,6 @@ class PluginLifecycleService {
     }
     _applyAccess();
     _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
-    return setup;
   }
 
   Future<void> _persistPluginDisabled({required String pluginId, required bool disabled}) {
@@ -904,6 +1090,9 @@ class PluginLifecycleService {
       setup: setup,
       runtimeState: _mapRuntimeState(snapshot.state),
       workState: _mapWorkState(snapshot.workState),
+      authenticationState: _activePluginAuthentications.containsKey(plugin.id)
+          ? PluginAuthenticationState.inProgress
+          : PluginAuthenticationState.idle,
       idleTimeoutMins: _effectiveIdleTimeoutMins(plugin.id),
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       managementCapabilities: {
@@ -920,6 +1109,7 @@ class PluginLifecycleService {
         PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
         PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
         PluginControlCapability.install => PluginManagementCapability.install,
+        PluginControlCapability.authentication => PluginManagementCapability.authentication,
       };
 
   Set<String> _pluginIdsSupporting({required PluginControlCapability capability}) {
@@ -1081,6 +1271,23 @@ class PluginLifecycleService {
     }
     try {
       await _installProgressController.close();
+    } on Object catch (error, stackTrace) {
+      firstError ??= error;
+      firstStackTrace ??= stackTrace;
+    }
+    for (final authentication in _activePluginAuthentications.values) {
+      authentication.operation.abort();
+    }
+    try {
+      await Future.wait([
+        for (final authentication in _activePluginAuthentications.values) authentication.settled.future,
+      ]);
+    } on Object catch (error, stackTrace) {
+      firstError ??= error;
+      firstStackTrace ??= stackTrace;
+    }
+    try {
+      await _authenticationProgressController.close();
     } on Object catch (error, stackTrace) {
       firstError ??= error;
       firstStackTrace ??= stackTrace;
@@ -1272,6 +1479,16 @@ class PluginManagementConflictException implements Exception {
   final PluginLifecycleConflict conflict;
 }
 
+class PluginAuthenticationConflictException implements Exception {
+  const PluginAuthenticationConflictException(this.conflict);
+
+  final PluginAuthenticationConflict conflict;
+}
+
+class PluginAuthenticationChallengeUnavailableException implements Exception {
+  const PluginAuthenticationChallengeUnavailableException();
+}
+
 class PluginManagementCommandFailedException implements Exception {
   const PluginManagementCommandFailedException(this.message);
 
@@ -1290,4 +1507,12 @@ class _ActivePluginCommand {
 
   final PluginLifecycleCommandRequest request;
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
+}
+
+class _ActivePluginAuthentication {
+  _ActivePluginAuthentication({required this.operation});
+
+  final PluginRuntimeAuthenticationOperation operation;
+  final Completer<PluginAuthenticationChallengeResponse> challenge = Completer<PluginAuthenticationChallengeResponse>();
+  final Completer<void> settled = Completer<void>();
 }

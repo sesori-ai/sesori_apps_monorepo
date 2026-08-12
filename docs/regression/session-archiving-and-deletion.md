@@ -22,6 +22,10 @@ entirely along with its transcript and, optionally, its worktree and branch.
   reconciliation. Worktree and branch cleanup happens only when requested;
   unsafe cleanup (unstaged changes, branch mismatch, shared worktree) is refused
   with its issues and proceeds only on a forced retry.
+- For a backend that advertises session close, deleting an active session first
+  cancels its turn and pending input, waits within a bounded deadline for that
+  session to settle, then closes it before local plugin state is removed. A
+  timeout or close failure remains observable and leaves local state retryable.
 - Cleanup safety rejection happens before mutation. Once cleanup starts, a later
   visible failure can leave an earlier requested step complete, such as a removed
   worktree with its branch still present; retry can finish the residue. The session
@@ -35,7 +39,7 @@ entirely along with its transcript and, optionally, its worktree and branch.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
-| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything. |
+| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree/branch cleanup, refusals presented to the user. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
@@ -57,6 +61,8 @@ branches that remain after the asserted cleanup behavior.
   record, or a partial export is recorded as complete.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
+- A close-capable backend is closed while its prompt is still settling, emits
+  late events after local removal, or reports timeout/close failure as success.
 - Unsafe cleanup proceeds without a forced retry, a refusal omits the blocking
   issues, partial cleanup is reported as success or deletes the session, a
   concurrent mutation interleaves, or a client presents archiving as reversible.

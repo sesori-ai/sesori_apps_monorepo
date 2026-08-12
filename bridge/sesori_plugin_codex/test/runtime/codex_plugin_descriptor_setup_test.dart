@@ -32,6 +32,7 @@ void main() {
           PluginControlCapability.lifecycle,
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
+          PluginControlCapability.authentication,
           PluginControlCapability.install,
         },
       );
@@ -46,6 +47,7 @@ void main() {
           PluginControlCapability.lifecycle,
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
+          PluginControlCapability.authentication,
         },
       );
     });

@@ -1,6 +1,7 @@
 import "dart:io";
 import "dart:typed_data";
 
+import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:test/test.dart";
@@ -50,18 +51,24 @@ void main() {
             ),
           );
       await history.spillStorage.write(
-        sessionId: sessionId,
+        scope: testAttachmentStorageScope(sessionId: sessionId),
         bytes: Uint8List.fromList([1, 2, 3]),
       );
     }
 
-    test("removes only the purged session's rows and spill files", () async {
+    test("removes only local rows and retains shared spill files", () async {
       await seedSession(sessionId: "ses_a");
       await seedSession(sessionId: "ses_b");
-      final spillRoot = Directory(
-        attachmentSpillDirectoryPath(dataDirectory: history.directory.path),
+      final firstScope = Directory(
+        history.spillStorage.scopeDirectoryPath(
+          scope: testAttachmentStorageScope(sessionId: "ses_a"),
+        ),
       );
-      expect(spillRoot.listSync(), hasLength(2));
+      final secondScope = Directory(
+        history.spillStorage.scopeDirectoryPath(
+          scope: testAttachmentStorageScope(sessionId: "ses_b"),
+        ),
+      );
 
       await history.service.purgeSessionHistory(sessionId: "ses_a");
 
@@ -78,7 +85,8 @@ void main() {
         (await database.select(database.historySyncStateTable).get()).map((row) => row.sessionId),
         const ["ses_b"],
       );
-      expect(spillRoot.listSync(), hasLength(1));
+      expect(firstScope.existsSync(), isTrue);
+      expect(secondScope.existsSync(), isTrue);
     });
 
     test("purging an unknown session is a no-op", () async {
@@ -113,10 +121,16 @@ void main() {
         (await database.select(database.historyMessagesTable).get()).map((row) => row.sessionId),
         const ["ses_other"],
       );
-      final spillRoot = Directory(
-        attachmentSpillDirectoryPath(dataDirectory: history.directory.path),
-      );
-      expect(spillRoot.listSync(), hasLength(1));
+      for (final sessionId in ["ses_root", "ses_child", "ses_other"]) {
+        expect(
+          Directory(
+            history.spillStorage.scopeDirectoryPath(
+              scope: testAttachmentStorageScope(sessionId: sessionId),
+            ),
+          ).existsSync(),
+          isTrue,
+        );
+      }
     });
 
     test("a family larger than SQLite's bind-variable limit still purges", () async {
@@ -157,23 +171,74 @@ void main() {
 
     test("reading a malformed digest is refused instead of escaping the directory", () async {
       expect(
-        () => history.spillStorage.read(sessionId: "ses_a", digest: "../../../etc/passwd"),
+        () => history.spillStorage.read(
+          scope: testAttachmentStorageScope(sessionId: "ses_a"),
+          digest: "../../../etc/passwd",
+        ),
         throwsArgumentError,
       );
     });
 
-    test("identical attachment bytes are stored once per session", () async {
+    test("identical attachment bytes are stored once per backend session", () async {
       final bytes = Uint8List.fromList([9, 9, 9]);
-      final first = await history.spillStorage.write(sessionId: "ses_a", bytes: bytes);
-      final second = await history.spillStorage.write(sessionId: "ses_a", bytes: bytes);
+      final scope = testAttachmentStorageScope(sessionId: "ses_a");
+      final first = await history.spillStorage.write(scope: scope, bytes: bytes);
+      final second = await history.spillStorage.write(scope: scope, bytes: bytes);
 
       expect(first, second);
-      final spillRoot = Directory(
-        attachmentSpillDirectoryPath(dataDirectory: history.directory.path),
+      final scopeDirectory = Directory(history.spillStorage.scopeDirectoryPath(scope: scope));
+      expect(scopeDirectory.listSync(), hasLength(1));
+      expect(await history.spillStorage.read(scope: scope, digest: first), bytes);
+      expect(await history.spillStorage.read(scope: scope, digest: "0" * 64), isNull);
+    });
+
+    test("separate bridge stores reuse one durable backend-session scope", () async {
+      final root = path.join(history.directory.path, "shared-attachments");
+      final firstStore = AttachmentSpillStorage(directoryPath: root)..ensureDirectory();
+      final secondStore = AttachmentSpillStorage(directoryPath: root)..ensureDirectory();
+      const firstScope = AttachmentStorageScope(
+        pluginId: "opencode",
+        backendSessionId: "backend-session-1",
       );
-      expect(spillRoot.listSync().single, isA<Directory>());
-      expect(await history.spillStorage.read(sessionId: "ses_a", digest: first), bytes);
-      expect(await history.spillStorage.read(sessionId: "ses_a", digest: "0" * 64), isNull);
+      const secondScope = AttachmentStorageScope(
+        pluginId: "opencode",
+        backendSessionId: "backend-session-1",
+      );
+      final bytes = Uint8List.fromList([7, 8, 9]);
+
+      final firstDigest = await firstStore.write(scope: firstScope, bytes: bytes);
+      final secondDigest = await secondStore.write(scope: secondScope, bytes: bytes);
+
+      expect(secondDigest, firstDigest);
+      expect(
+        Directory(firstStore.scopeDirectoryPath(scope: firstScope)).listSync(),
+        hasLength(1),
+      );
+      expect(await secondStore.read(scope: secondScope, digest: firstDigest), bytes);
+    });
+
+    test("the same digest in another backend-session scope is isolated", () async {
+      final bytes = Uint8List.fromList([4, 5, 6]);
+      final firstScope = testAttachmentStorageScope(sessionId: "ses_a");
+      final digest = await history.spillStorage.write(scope: firstScope, bytes: bytes);
+      final otherScope = testAttachmentStorageScope(sessionId: "ses_b");
+
+      expect(await history.spillStorage.read(scope: otherScope, digest: digest), isNull);
+    });
+
+    test("plugin and backend identifiers cannot traverse the shared root", () async {
+      final root = path.join(history.directory.path, "traversal-attachments");
+      final storage = AttachmentSpillStorage(directoryPath: root)..ensureDirectory();
+      const scope = AttachmentStorageScope(
+        pluginId: "../../plugin",
+        backendSessionId: "../backend/session",
+      );
+      final bytes = Uint8List.fromList([1, 3, 5]);
+
+      final digest = await storage.write(scope: scope, bytes: bytes);
+
+      expect(path.isWithin(root, storage.scopeDirectoryPath(scope: scope)), isTrue);
+      expect(await storage.read(scope: scope, digest: digest), bytes);
     });
   });
 }

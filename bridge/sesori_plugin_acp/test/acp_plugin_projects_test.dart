@@ -735,7 +735,7 @@ void main() {
     test("a broken history replay surfaces as a typed failure, not an empty thread", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
-      final failingPlugin = AcpPlugin(
+      final failingPlugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
@@ -844,6 +844,7 @@ void main() {
           sessionId: session.id,
           questions: const [question],
           replyBuilder: (answers) => null,
+          resolutionBuilder: null,
         );
       }
 
@@ -862,7 +863,7 @@ Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
 /// [AcpPlugin] that captures the approval registry built at connect so tests
 /// can register pending questions directly (the base registry only creates
 /// questions through harness extension handlers).
-class _RegistryCapturingAcpPlugin extends AcpPlugin {
+class _RegistryCapturingAcpPlugin extends TestAcpPlugin {
   _RegistryCapturingAcpPlugin({
     required super.id,
     required super.agentDisplayName,
