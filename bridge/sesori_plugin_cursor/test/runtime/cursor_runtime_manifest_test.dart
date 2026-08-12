@@ -23,9 +23,11 @@ void main() {
           target: PlatformTarget(os: os, arch: arch),
         );
         expect(asset, isNotNull, reason: "$os/$arch must be published");
-        expect(asset!.layout, RuntimeAssetLayout.packageDirectory);
-        expect(asset.format, ArchiveFormat.tarGz);
-        expect(asset.archiveBinaryName, "cursor-agent");
+        expect(asset, isA<ArchiveRuntimeAsset>());
+        final archiveAsset = asset! as ArchiveRuntimeAsset;
+        expect(archiveAsset.layout, RuntimeArchiveLayout.packageDirectory);
+        expect(archiveAsset.format, ArchiveFormat.tarGz);
+        expect(archiveAsset.archiveBinaryName, "cursor-agent");
         expect(asset.sha256, matches(RegExp(r"^[0-9a-f]{64}$")));
       }
     }

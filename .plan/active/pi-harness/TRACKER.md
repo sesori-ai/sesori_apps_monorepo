@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `ec290e14`
-- **Series state:** Step 6/21 merged; Step 7/21 in review
-- **Current step:** 7/21, expose OMP options and persisted cleanup
+- **Implementation base:** `origin/main` at `3ae9dd43e`
+- **Series state:** Step 7/21 merged; Step 8/21 ready for review
+- **Current step:** 8/21, install direct binary runtime assets
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -13,7 +13,8 @@
 - **Step 5 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/832
 - **Step 6 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/838
 - **Step 7 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/846
-- **Next action:** monitor Step 7; Step 8 remains blocked on its runtime dependency
+- **Prerequisite PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/857
+- **Next action:** finish Step 8 verification and raise its standalone PR
 
 ## Locked Decisions
 
@@ -29,11 +30,10 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 
 ## External Dependencies
 
-- Pi Step 17 strictly requires `RuntimeAssetLayout.packageDirectory`; the local
-  `phone-harness-install-cursor` branch at `6054d7cd` also generalizes
-  `RuntimeVersion`. Do not duplicate or cherry-pick those primitives.
-- OMP Step 8 builds direct-binary assets on the merged package-directory/runtime
-  variant model rather than creating a parallel installer.
+- PR #857 merged archive package-directory placement and generalized
+  `RuntimeVersion`; Steps 8 and 17 consume those shared primitives.
+- OMP Step 8 builds direct-binary assets into the existing verified installer
+  rather than creating a parallel installer.
 - Joint Step 18 waits for any outstanding Claude activation ownership and
   preserves every merged identity, registry, package, CI, and brand entry.
 
@@ -47,8 +47,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Merged as PR #829 |
 | [x] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 (recorded overage) | Merged as PR #832 |
 | [x] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Merged as PR #838 |
-| [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 (recorded overage) | In review as PR #846 |
-| [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Blocked on runtime dependency |
+| [x] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 (recorded overage) | Merged as PR #846 |
+| [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Ready for review; dependency merged as PR #857 |
 | [ ] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Blocked on Step 8 |
 | [ ] | 10/21 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 | Not started |
 | [ ] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 | Not started |
@@ -57,7 +57,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 | Not started |
 | [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Not started |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 | Not started |
-| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Blocked on package-directory runtime support |
+| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
 | [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
 | [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 | Not started |
 | [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Not started |
@@ -244,6 +244,27 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Recorded overage: the planned catalog/options and persisted-cleanup layers,
   isolated ACP lifecycle, and focused tests form one coherent Step 7 boundary;
   splitting would publish an incomplete plugin contract.
+
+### Step 8/21
+
+- Modeled runtime release artifacts as sealed archive and direct-binary variants;
+  archive-only format, member, and layout fields no longer create impossible
+  direct-binary states.
+- Extended the existing verified installer to place bare executables without
+  extraction while preserving checksum verification, atomic rename, Unix chmod,
+  sentinel-last adoption, managed version probing, and stale-version sweeping.
+- Migrated OpenCode, Codex, and Cursor archive manifests and tests in lockstep.
+- Direct-binary tests cover placement, no extraction, Unix chmod through the
+  shared path, Windows `.exe` naming, checksum failure, cancellation, stale
+  staging cleanup, probe, and sweep; archive binary/package behavior remains covered.
+- `dart test` and `dart analyze --fatal-infos` from `sesori_plugin_runtime`,
+  `sesori_plugin_opencode`, `sesori_plugin_codex`, and `sesori_plugin_cursor`: pass
+  (130 + 421 + 361 + 134 = 1,046 tests).
+- Architecture implementation review: approved with no findings.
+- No user-visible, database, persisted-data, client/bridge wire-contract, or
+  client-UI change; OMP remains app-invisible until Step 18.
+- `git diff --check`: pass.
+- Diff: +238/-113 = 351 changed lines; generated lines: 0; tests run: 1,046.
 
 ## Findings And Plan Deltas
 

@@ -8,7 +8,7 @@ import "runtime_version.dart";
 /// Most runtimes ship a single self-contained executable ([singleBinary]).
 /// Cursor ships a `dist-package/` tree whose entry binary loads sibling files,
 /// so the whole directory must be kept together ([packageDirectory]).
-enum RuntimeAssetLayout { singleBinary, packageDirectory }
+enum RuntimeArchiveLayout { singleBinary, packageDirectory }
 
 /// One platform's pinned release archive for a managed runtime: the asset name,
 /// its container [format], the SHA-256 the download is verified against, the
@@ -21,25 +21,38 @@ enum RuntimeAssetLayout { singleBinary, packageDirectory }
 /// that must be normalized to a plain `codex`. For publishers whose archive
 /// member already matches the canonical name (e.g. OpenCode's `opencode`), the
 /// two are equal.
-final class RuntimeAsset {
+sealed class RuntimeAsset {
   const RuntimeAsset({
     required this.assetName,
-    required this.format,
     required this.sha256,
+  });
+
+  final String assetName;
+  final String sha256;
+}
+
+final class ArchiveRuntimeAsset extends RuntimeAsset {
+  const ArchiveRuntimeAsset({
+    required super.assetName,
+    required this.format,
+    required super.sha256,
     required this.archiveBinaryName,
     required this.layout,
   });
 
-  final String assetName;
   final ArchiveFormat format;
-  final String sha256;
 
   /// The entry executable's name inside the extracted archive. For
-  /// [RuntimeAssetLayout.packageDirectory] it names the binary within the
+  /// [RuntimeArchiveLayout.packageDirectory] it names the binary within the
   /// placed tree; its siblings travel with it.
   final String archiveBinaryName;
 
-  final RuntimeAssetLayout layout;
+  final RuntimeArchiveLayout layout;
+}
+
+/// A runtime published as a bare executable with no archive container.
+final class DirectBinaryRuntimeAsset extends RuntimeAsset {
+  const DirectBinaryRuntimeAsset({required super.assetName, required super.sha256});
 }
 
 /// The harness-specific seam of the shared runtime-provisioning system: the

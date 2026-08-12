@@ -34,9 +34,8 @@ void main() {
     });
 
     test("darwin/linux ship .tar.gz, windows ships .exe.zip", () {
-      RuntimeAsset asset(PlatformOs os, PlatformArch arch) => manifest.assetFor(
-        target: PlatformTarget(os: os, arch: arch),
-      )!;
+      ArchiveRuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
+          manifest.assetFor(target: PlatformTarget(os: os, arch: arch))! as ArchiveRuntimeAsset;
 
       expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.tarGz);
       expect(asset(PlatformOs.macos, PlatformArch.arm64).assetName, endsWith(".tar.gz"));
@@ -52,26 +51,26 @@ void main() {
 
     test("archive member is the target-triple name (asset name minus extension)", () {
       expect(
-        manifest
+        (manifest
             .assetFor(
               target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-            )!
+            )! as ArchiveRuntimeAsset)
             .archiveBinaryName,
         "codex-aarch64-apple-darwin",
       );
       expect(
-        manifest
+        (manifest
             .assetFor(
               target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
-            )!
+            )! as ArchiveRuntimeAsset)
             .archiveBinaryName,
         "codex-x86_64-unknown-linux-musl",
       );
       expect(
-        manifest
+        (manifest
             .assetFor(
               target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
-            )!
+            )! as ArchiveRuntimeAsset)
             .archiveBinaryName,
         "codex-x86_64-pc-windows-msvc.exe",
       );
