@@ -9,7 +9,7 @@ part "projects_dao.g.dart";
 class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   /// Returns every stored project row.
   Future<List<ProjectDto>> getAllProjects() async {
-    return select(projectsTable).get();
+    return await select(projectsTable).get();
   }
 
   /// Upserts the supplied rows without applying merge or import policy.
@@ -22,7 +22,7 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
 
   /// Returns the stored row for [projectId], or null when none exists.
   Future<ProjectDto?> getProject({required String projectId}) async {
-    return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
+    return await (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
   }
 
   Future<List<ProjectDto>> getCatalogProjects() {

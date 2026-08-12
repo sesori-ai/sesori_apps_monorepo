@@ -18,30 +18,14 @@ import '../repositories/update_log_repository.dart';
 /// interrupted (crashed) apply, surfaces a prior failure, sweeps residue, and
 /// clears the record. Fast and local — it never touches the network.
 class UpdateReconciliationService({
-    required UpdateAttemptRepository attemptRepository,
-    required UpdateLogRepository logRepository,
-    required UpdateInstallationRepository installationRepository,
-    required UpdateMessageFormatter messageFormatter,
-    required UpdateLock updateLock,
-    required String currentVersion,
-    required String installRoot,
-  }) {
-  this : _attemptRepository = attemptRepository,
-       _logRepository = logRepository,
-       _installationRepository = installationRepository,
-       _messageFormatter = messageFormatter,
-       _updateLock = updateLock,
-       _currentVersion = currentVersion,
-       _installRoot = installRoot;
-
-  final UpdateAttemptRepository _attemptRepository;
-  final UpdateLogRepository _logRepository;
-  final UpdateInstallationRepository _installationRepository;
-  final UpdateMessageFormatter _messageFormatter;
-  final UpdateLock _updateLock;
-  final String _currentVersion;
-  final String _installRoot;
-
+  required final UpdateAttemptRepository _attemptRepository,
+  required final UpdateLogRepository _logRepository,
+  required final UpdateInstallationRepository _installationRepository,
+  required final UpdateMessageFormatter _messageFormatter,
+  required final UpdateLock _updateLock,
+  required final String _currentVersion,
+  required final String _installRoot,
+}) {
   /// Sink for a fully-rendered output line. Defaults to writing to the process
   /// streams directly (stdout for status, stderr for failures) — never gated by
   /// `--log-level`, matching the branded `sesori-bridge update` path.
@@ -75,7 +59,9 @@ class UpdateReconciliationService({
               // distinctly so reconciliation does not mask it as "held by another
               // process"; the apply path surfaces full guidance when an update is
               // actually attempted.
-              logWarning('Skipping update reconciliation — the update lock is not accessible (check ownership of .update.lock).');
+              logWarning(
+                'Skipping update reconciliation — the update lock is not accessible (check ownership of .update.lock).',
+              );
             case LockAcquireResult.acquired:
               break; // never delivered to onLockRejected
           }

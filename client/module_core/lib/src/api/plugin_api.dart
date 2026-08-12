@@ -5,11 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
-class PluginApi({required RelayHttpApiClient client}) {
-  final RelayHttpApiClient _client;
-
-  this : _client = client;
-
+class PluginApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<PluginListResponse>> listPlugins() {
     return _client.get("/plugin", fromJson: PluginListResponse.fromJson);
   }

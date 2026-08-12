@@ -3,13 +3,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/pull_request_refresh_settings_service.dart";
 
-class GetPullRequestRefreshSettingsHandler({required PullRequestRefreshSettingsService settingsService}) extends GetRequestHandler<PullRequestRefreshSettingsResponse> {
+class GetPullRequestRefreshSettingsHandler({required final PullRequestRefreshSettingsService _settingsService})
+    extends GetRequestHandler<PullRequestRefreshSettingsResponse> {
   // COMPATIBILITY 2026-08-10 (v1.8.0): Released clients read this route. Remove after the minimum client uses GET /settings.
-  this
-    : _settingsService = settingsService,
-      super("/settings/pull-request-refresh");
-
-  final PullRequestRefreshSettingsService _settingsService;
+  this : super("/settings/pull-request-refresh");
 
   @override
   Future<PullRequestRefreshSettingsResponse> handle(

@@ -5,21 +5,11 @@ import "acp_session_configuration_tracker.dart";
 
 /// Builds the process-scoped session options exposed by an ACP plugin.
 class AcpSessionOptionsService({
-    required AcpSessionConfigurationTracker configurationTracker,
-    required AcpCommandTracker commandTracker,
-    required String pluginId,
-    required String agentDisplayName,
-  }) {
-  this : _configurationTracker = configurationTracker,
-       _commandTracker = commandTracker,
-       _pluginId = pluginId,
-       _agentDisplayName = agentDisplayName;
-
-  final AcpSessionConfigurationTracker _configurationTracker;
-  final AcpCommandTracker _commandTracker;
-  final String _pluginId;
-  final String _agentDisplayName;
-
+  required final AcpSessionConfigurationTracker _configurationTracker,
+  required final AcpCommandTracker _commandTracker,
+  required final String _pluginId,
+  required final String _agentDisplayName,
+}) {
   PluginSessionOptions getSessionOptions() {
     final defaults = _configurationTracker.processDefaults;
     final modelId = defaults.modelId;

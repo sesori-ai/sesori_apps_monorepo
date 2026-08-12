@@ -16,10 +16,7 @@ Future<void> _writeJsonFile({
   await File(path).writeAsString('$formatted\n');
 }
 
-class _FixtureApp({required this.rootPath, required this.oldVersion}) {
-  final String rootPath;
-  final String oldVersion;
-
+class _FixtureApp({required final String rootPath, required final String oldVersion}) {
   String get newVersion => '9.8.7';
 
   String get wrapperPackagePath => p.join(rootPath, 'npm', 'sesori-bridge', 'package.json');

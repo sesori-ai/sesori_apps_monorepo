@@ -512,7 +512,7 @@ class _FakeStartupMutexRepository() implements StartupMutexRepository {
     operations.add("mutex.acquire");
     final shouldReject = rejectSequence?.removeAt(0) ?? rejectLock;
     if (shouldReject) {
-      return onLockRejected(
+      return await onLockRejected(
         rejection ??
             const StartupLockRejection(
               lock: null,
@@ -521,7 +521,7 @@ class _FakeStartupMutexRepository() implements StartupMutexRepository {
             ),
       );
     }
-    return onLockAcquired();
+    return await onLockAcquired();
   }
 }
 

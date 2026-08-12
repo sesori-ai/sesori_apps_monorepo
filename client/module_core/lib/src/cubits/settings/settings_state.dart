@@ -8,7 +8,7 @@ enum SettingsLogoutStatus() { idle, inProgress, success, failure }
 
 @Freezed()
 sealed class SettingsState with _$SettingsState {
-  const factory SettingsState({
+  const factory({
     /// The account this device is signed in as, or `null` when there is no
     /// authenticated session. Driven reactively by the auth state stream.
     required AuthUser? account,

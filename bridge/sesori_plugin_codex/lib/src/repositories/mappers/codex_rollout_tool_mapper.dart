@@ -8,26 +8,17 @@ import "../../api/models/codex_rollout_dto.dart";
 import "codex_image_attachment_mapper.dart";
 
 class const CodexRolloutToolCall({
-    required this.id,
-    required this.turnId,
-    required this.tool,
-    required this.title,
-  }) {
-  final String id;
-  final String? turnId;
-  final String tool;
-  final String? title;
-}
+  required final String id,
+  required final String? turnId,
+  required final String tool,
+  required final String? title,
+});
 
 sealed class const CodexRolloutToolResult({
-    required this.callId,
-    required this.output,
-    required this.attachments,
-  }) {
-  final String callId;
-  final String? output;
-  final List<PluginMessageAttachment> attachments;
-
+  required final String callId,
+  required final String? output,
+  required final List<PluginMessageAttachment> attachments,
+}) {
   PluginToolStatus get status => switch (this) {
     CodexRolloutToolRunningResult() => PluginToolStatus.running,
     CodexRolloutToolCompletedResult() => PluginToolStatus.completed,
@@ -36,54 +27,42 @@ sealed class const CodexRolloutToolResult({
 }
 
 final class const CodexRolloutToolRunningResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-    required this.cellIds,
-  }) extends CodexRolloutToolResult {
-  final List<String> cellIds;
-}
+  required super.callId,
+  required super.output,
+  required super.attachments,
+  required final List<String> cellIds,
+}) extends CodexRolloutToolResult;
 
 final class const CodexRolloutToolCompletedResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-  }) extends CodexRolloutToolResult;
+  required super.callId,
+  required super.output,
+  required super.attachments,
+}) extends CodexRolloutToolResult;
 
 final class const CodexRolloutToolErrorResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-  }) extends CodexRolloutToolResult;
+  required super.callId,
+  required super.output,
+  required super.attachments,
+}) extends CodexRolloutToolResult;
 
 final class const CodexRolloutToolErrorWithRunningCellsResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-    required this.cellIds,
-  }) extends CodexRolloutToolResult {
-  final List<String> cellIds;
-}
+  required super.callId,
+  required super.output,
+  required super.attachments,
+  required final List<String> cellIds,
+}) extends CodexRolloutToolResult;
 
 class const CodexRolloutWaitCall({
-    required this.callId,
-    required this.turnId,
-    required this.cellId,
-  }) {
-  final String callId;
-  final String? turnId;
-  final String cellId;
-}
+  required final String callId,
+  required final String? turnId,
+  required final String cellId,
+});
 
 class const CodexRolloutImageGeneration({
-    required this.id,
-    required this.status,
-    required this.attachments,
-  }) {
-  final String? id;
-  final PluginToolStatus status;
-  final List<PluginMessageAttachment> attachments;
-}
+  required final String? id,
+  required final PluginToolStatus status,
+  required final List<PluginMessageAttachment> attachments,
+});
 
 /// Pure normalization shared by live rollout enrichment and history replay.
 ///
@@ -92,12 +71,8 @@ class const CodexRolloutImageGeneration({
 /// prevents the live and reload paths from independently inventing titles,
 /// raw result classifications, or attachment extraction.
 class const CodexRolloutToolMapper({
-    required CodexImageAttachmentMapper imageAttachmentMapper,
-  }) {
-  this : _imageAttachmentMapper = imageAttachmentMapper;
-
-  final CodexImageAttachmentMapper _imageAttachmentMapper;
-
+  required final CodexImageAttachmentMapper _imageAttachmentMapper,
+}) {
   /// Whether this persisted function call has a matching stable
   /// `commandExecution` item.
   bool isCommandExecutionCall({
@@ -119,10 +94,12 @@ class const CodexRolloutToolMapper({
   bool isSingleCodeModeCommandExecutionCall({
     required CodexRolloutResponseItemDto payload,
   }) {
-    if (payload case CodexRolloutCustomToolCallDto(
-      :final name,
-      :final input,
-    ) when name.toLowerCase() == "exec") {
+    if (payload
+        case CodexRolloutCustomToolCallDto(
+          :final name,
+          :final input,
+        )
+        when name.toLowerCase() == "exec") {
       return _hasSingleCodeModeCommandInvocation(input);
     }
     return false;
@@ -131,10 +108,12 @@ class const CodexRolloutToolMapper({
   String? codeModeFileChangePatch({
     required CodexRolloutResponseItemDto payload,
   }) {
-    if (payload case CodexRolloutCustomToolCallDto(
-      :final name,
-      :final input,
-    ) when name.toLowerCase() == "exec") {
+    if (payload
+        case CodexRolloutCustomToolCallDto(
+          :final name,
+          :final input,
+        )
+        when name.toLowerCase() == "exec") {
       return _codeModeFileChangePatch(input: input);
     }
     return null;
@@ -300,12 +279,14 @@ class const CodexRolloutToolMapper({
   CodexRolloutWaitCall? mapWaitCall({
     required CodexRolloutResponseItemDto payload,
   }) {
-    if (payload case CodexRolloutFunctionCallDto(
-      :final callId,
-      :final name,
-      :final arguments,
-      :final metadata,
-    ) when name.toLowerCase() == "wait") {
+    if (payload
+        case CodexRolloutFunctionCallDto(
+          :final callId,
+          :final name,
+          :final arguments,
+          :final metadata,
+        )
+        when name.toLowerCase() == "wait") {
       final cellId = _tryDecodeToolArguments(raw: arguments)?.cellId;
       final usefulCallId = _usefulText(callId);
       final usefulCellId = _usefulText(cellId?.toString());

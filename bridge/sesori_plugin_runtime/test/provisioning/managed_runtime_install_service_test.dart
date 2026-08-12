@@ -6,9 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class const _StubManifest({required this.hasAsset}) implements RuntimeManifest {
-  final bool hasAsset;
-
+class const _StubManifest({required final bool hasAsset}) implements RuntimeManifest {
   static const RuntimeAsset _asset = RuntimeAsset(
     assetName: "opencode-test.zip",
     format: ArchiveFormat.zip,
@@ -49,8 +47,7 @@ class const _StubManifest({required this.hasAsset}) implements RuntimeManifest {
   }
 }
 
-class _FakeValidator({required this.managedVersion}) implements RuntimeVersionValidator {
-  final SemanticVersion? managedVersion;
+class _FakeValidator({required final SemanticVersion? managedVersion}) implements RuntimeVersionValidator {
   final List<String> detectedExecutables = [];
 
   @override
@@ -74,9 +71,7 @@ class const _FakeDownloadClient() implements BinaryDownloadClient {
   }
 }
 
-class const _FakeChecksumValidator({required this.valid}) implements ChecksumValidator {
-  final bool valid;
-
+class const _FakeChecksumValidator({required final bool valid}) implements ChecksumValidator {
   @override
   Future<bool> verify({required String filePath, required String expectedHash}) async => valid;
 
@@ -143,7 +138,8 @@ void main() {
   }
 
   Future<List<RuntimeProvisionProgress>> install(ManagedRuntimeInstallService service) {
-    return service        .install(environment: const {}, stateDirectory: stateDir.path, startAborted: StartAbortSignal.never)
+    return service
+        .install(environment: const {}, stateDirectory: stateDir.path, startAborted: StartAbortSignal.never)
         .toList();
   }
 

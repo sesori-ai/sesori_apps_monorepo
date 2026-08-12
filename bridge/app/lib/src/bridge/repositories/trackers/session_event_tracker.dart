@@ -2,47 +2,36 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 sealed class const PendingTrackedEvent({
-    required this.pluginId,
-    required this.generation,
-    required this.event,
-    required this.projectionUpdatedAt,
-  }) {
-  final String pluginId;
-  final int generation;
-  final BridgeSseEvent event;
-  final int projectionUpdatedAt;
-
+  required final String pluginId,
+  required final int generation,
+  required final BridgeSseEvent event,
+  required final int projectionUpdatedAt,
+}) {
   String get backendSessionId;
 }
 
 final class const PendingSessionEvent({
-    required super.pluginId,
-    required super.generation,
-    required super.event,
-    required this.session,
-    required super.projectionUpdatedAt,
-  }) extends PendingTrackedEvent {
-  final Session session;
-
+  required super.pluginId,
+  required super.generation,
+  required super.event,
+  required final Session session,
+  required super.projectionUpdatedAt,
+}) extends PendingTrackedEvent {
   @override
   String get backendSessionId => session.id;
 }
 
 final class const PendingTranslationEvent({
-    required super.pluginId,
-    required super.generation,
-    required super.event,
-    required this.backendSessionId,
-    required super.projectionUpdatedAt,
-  }) extends PendingTrackedEvent {
-  @override
-  final String backendSessionId;
-}
+  required super.pluginId,
+  required super.generation,
+  required super.event,
+  @override required final String backendSessionId,
+  required super.projectionUpdatedAt,
+}) extends PendingTrackedEvent;
 
-class SessionEventTracker({required this.maxPendingEntriesPerPlugin}) {
+class SessionEventTracker({required final int maxPendingEntriesPerPlugin}) {
   static const defaultMaxPendingEntries = 1024;
 
-  final int maxPendingEntriesPerPlugin;
   final Map<String, List<PendingTrackedEvent>> _insertionOrderByPlugin = {};
   final Map<({String pluginId, String backendSessionId}), PendingSessionEvent> _sessions = {};
   final Map<({String pluginId, String backendParentId}), List<PendingSessionEvent>> _children = {};

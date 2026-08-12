@@ -260,15 +260,11 @@ void main() {
 Future<void> _eventLoop() => Future<void>.delayed(Duration.zero);
 
 class _FakeHostProcessService(
-    this.process, {
-    this.exitOnForceSignal = false,
-    List<_FakeProcess> additionalProcesses = const [],
-  }) implements HostProcessService {
-  this : _spawnProcesses = [process, ...additionalProcesses];
-
-  final _FakeProcess process;
-  final List<_FakeProcess> _spawnProcesses;
-  final bool exitOnForceSignal;
+  final _FakeProcess process, {
+  final bool exitOnForceSignal = false,
+  List<_FakeProcess> additionalProcesses = const [],
+}) implements HostProcessService {
+  final List<_FakeProcess> _spawnProcesses = [process, ...additionalProcesses];
   String? executable;
   List<String>? arguments;
   Map<String, String>? environment;
@@ -323,7 +319,7 @@ class _FakeHostProcessService(
   );
 }
 
-class _FakeProcess({required this.autoExitOnStdinClose}) implements SpawnedProcess {
+class _FakeProcess({required final bool autoExitOnStdinClose}) implements SpawnedProcess {
   this {
     _stdinController = StreamController<List<int>>(
       onListen: () {},
@@ -347,7 +343,6 @@ class _FakeProcess({required this.autoExitOnStdinClose}) implements SpawnedProce
 
   static int _nextPid = 100;
 
-  final bool autoExitOnStdinClose;
   final StreamController<List<int>> stdoutController = StreamController<List<int>>();
   final StreamController<List<int>> stderrController = StreamController<List<int>>();
   final StreamController<void> _frameChanged = StreamController<void>.broadcast();

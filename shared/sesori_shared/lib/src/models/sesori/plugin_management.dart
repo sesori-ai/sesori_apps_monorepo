@@ -60,7 +60,7 @@ enum PluginAuthenticationChallengeType() { deviceCode }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginManagementMetadata with _$PluginManagementMetadata {
-  const factory PluginManagementMetadata({
+  const factory({
     required PluginSetupMetadata setup,
     @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required PluginRuntimeState runtimeState,
     @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required PluginManagementWorkState workState,
@@ -77,19 +77,19 @@ sealed class PluginManagementMetadata with _$PluginManagementMetadata {
     required String? actionHint,
   }) = _PluginManagementMetadata;
 
-  factory PluginManagementMetadata.fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
 }
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
 sealed class PluginAuthenticationChallengeResponse with _$PluginAuthenticationChallengeResponse {
   @FreezedUnionValue("deviceCode")
-  const factory PluginAuthenticationChallengeResponse.deviceCode({
+  const factory deviceCode({
     @Default(PluginAuthenticationChallengeType.deviceCode) PluginAuthenticationChallengeType type,
     required String verificationUrl,
     required String userCode,
   }) = PluginAuthenticationDeviceCodeChallengeResponse;
 
-  factory PluginAuthenticationChallengeResponse.fromJson(
+  factory fromJson(
     Map<String, dynamic> json,
   ) {
     if (json["type"] != "deviceCode") {
@@ -108,25 +108,25 @@ sealed class PluginAuthenticationChallengeResponse with _$PluginAuthenticationCh
 )
 sealed class PluginAuthenticationProgress with _$PluginAuthenticationProgress {
   @FreezedUnionValue("completed")
-  const factory PluginAuthenticationProgress.completed() = PluginAuthenticationCompletedProgress;
+  const factory completed() = PluginAuthenticationCompletedProgress;
 
   @FreezedUnionValue("failed")
-  const factory PluginAuthenticationProgress.failed({
+  const factory failed({
     required String message,
   }) = PluginAuthenticationFailedProgress;
 
   @FreezedUnionValue("cancelled")
-  const factory PluginAuthenticationProgress.cancelled() = PluginAuthenticationCancelledProgress;
+  const factory cancelled() = PluginAuthenticationCancelledProgress;
 
-  const factory PluginAuthenticationProgress.unknown() = PluginAuthenticationUnknownProgress;
+  const factory unknown() = PluginAuthenticationUnknownProgress;
 
-  factory PluginAuthenticationProgress.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$PluginAuthenticationProgressFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginManagementResponse with _$PluginManagementResponse {
-  const factory PluginManagementResponse({
+  const factory({
     // COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
     // omit snapshotToken; null means that peer cannot identify snapshot changes.
     // Make non-null when those bridge versions are unsupported.
@@ -140,26 +140,26 @@ sealed class PluginManagementResponse with _$PluginManagementResponse {
     required List<PluginManagementMetadata> plugins,
   }) = _PluginManagementResponse;
 
-  factory PluginManagementResponse.fromJson(Map<String, dynamic> json) => _$PluginManagementResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginManagementResponseFromJson(json);
 }
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
 sealed class PluginLifecycleCommandRequest with _$PluginLifecycleCommandRequest {
   @FreezedUnionValue("enable")
-  const factory PluginLifecycleCommandRequest.enable() = PluginLifecycleEnableRequest;
+  const factory enable() = PluginLifecycleEnableRequest;
 
   @FreezedUnionValue("disable")
-  const factory PluginLifecycleCommandRequest.disable({
+  const factory disable({
     required PluginStopMode mode,
   }) = PluginLifecycleDisableRequest;
 
   @FreezedUnionValue("restart")
-  const factory PluginLifecycleCommandRequest.restart({
+  const factory restart({
     required PluginStopMode mode,
   }) = PluginLifecycleRestartRequest;
 
   @FreezedUnionValue("refresh")
-  const factory PluginLifecycleCommandRequest.refresh() = PluginLifecycleRefreshRequest;
+  const factory refresh() = PluginLifecycleRefreshRequest;
 
   /// Installs the plugin's pinned managed runtime, then enables, re-inspects,
   /// and starts the plugin when ready. Accepted immediately; progress streams
@@ -167,31 +167,31 @@ sealed class PluginLifecycleCommandRequest with _$PluginLifecycleCommandRequest 
   /// the management snapshot. Only valid for plugins advertising
   /// [PluginManagementCapability.install].
   @FreezedUnionValue("install")
-  const factory PluginLifecycleCommandRequest.install() = PluginLifecycleInstallRequest;
+  const factory install() = PluginLifecycleInstallRequest;
 
-  factory PluginLifecycleCommandRequest.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$PluginLifecycleCommandRequestFromJson(json);
 }
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
 sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateRequest {
   @FreezedUnionValue("applyAll")
-  const factory PluginIdleTimeoutUpdateRequest.applyAll({
+  const factory applyAll({
     @JsonKey(fromJson: _strictIntFromJson) required int idleTimeoutMins,
   }) = PluginIdleTimeoutApplyAllRequest;
 
   @FreezedUnionValue("setOverride")
-  const factory PluginIdleTimeoutUpdateRequest.setOverride({
+  const factory setOverride({
     required String pluginId,
     @JsonKey(fromJson: _strictIntFromJson) required int idleTimeoutMins,
   }) = PluginIdleTimeoutSetOverrideRequest;
 
   @FreezedUnionValue("clearOverride")
-  const factory PluginIdleTimeoutUpdateRequest.clearOverride({
+  const factory clearOverride({
     required String pluginId,
   }) = PluginIdleTimeoutClearOverrideRequest;
 
-  factory PluginIdleTimeoutUpdateRequest.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$PluginIdleTimeoutUpdateRequestFromJson(json);
 }
 
@@ -202,25 +202,25 @@ int _strictIntFromJson(num value) {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginLifecycleConflict with _$PluginLifecycleConflict {
-  const factory PluginLifecycleConflict({
+  const factory({
     required String pluginId,
     @JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown)
     required List<PluginLifecycleConflictReason> reasons,
     required PluginManagementMetadata current,
   }) = _PluginLifecycleConflict;
 
-  factory PluginLifecycleConflict.fromJson(Map<String, dynamic> json) => _$PluginLifecycleConflictFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginLifecycleConflictFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginAuthenticationConflict with _$PluginAuthenticationConflict {
-  const factory PluginAuthenticationConflict({
+  const factory({
     required String pluginId,
     @JsonKey(unknownEnumValue: PluginAuthenticationConflictReason.unknown)
     required List<PluginAuthenticationConflictReason> reasons,
     required PluginManagementMetadata current,
   }) = _PluginAuthenticationConflict;
 
-  factory PluginAuthenticationConflict.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$PluginAuthenticationConflictFromJson(json);
 }

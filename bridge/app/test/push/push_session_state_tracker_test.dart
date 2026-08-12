@@ -1663,9 +1663,7 @@ void main() {
 }
 
 class _FakeClock({required DateTime initial}) {
-  DateTime _current;
-
-  this : _current = initial;
+  DateTime _current = initial;
 
   DateTime now() {
     return _current;

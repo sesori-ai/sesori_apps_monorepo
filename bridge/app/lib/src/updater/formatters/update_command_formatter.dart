@@ -9,15 +9,9 @@ import 'update_output_formatter.dart';
 /// [_errFormatter] for stderr). Pure: [format] returns strings and performs no
 /// IO — the command does the writing.
 class UpdateCommandFormatter({
-    required UpdateOutputFormatter outFormatter,
-    required UpdateOutputFormatter errFormatter,
-  }) {
-  this : _outFormatter = outFormatter,
-       _errFormatter = errFormatter;
-
-  final UpdateOutputFormatter _outFormatter;
-  final UpdateOutputFormatter _errFormatter;
-
+  required final UpdateOutputFormatter _outFormatter,
+  required final UpdateOutputFormatter _errFormatter,
+}) {
   List<RenderedLine> format({required ExplicitUpdateOutcome outcome}) {
     switch (outcome) {
       case ExplicitUpdateApplied():
@@ -87,20 +81,30 @@ class UpdateCommandFormatter({
 
   UpdateOutputFormatter _output({required bool isError}) => isError ? _errFormatter : _outFormatter;
 
-  RenderedLine _success(String text, {required bool isError}) =>
-      RenderedLine(isError: isError, text: _output(isError: isError).success(text));
+  RenderedLine _success(String text, {required bool isError}) => RenderedLine(
+    isError: isError,
+    text: _output(isError: isError).success(text),
+  );
 
-  RenderedLine _warn(String text, {required bool isError}) =>
-      RenderedLine(isError: isError, text: _output(isError: isError).warn(text));
+  RenderedLine _warn(String text, {required bool isError}) => RenderedLine(
+    isError: isError,
+    text: _output(isError: isError).warn(text),
+  );
 
-  RenderedLine _error(String text, {required bool isError}) =>
-      RenderedLine(isError: isError, text: _output(isError: isError).error(text));
+  RenderedLine _error(String text, {required bool isError}) => RenderedLine(
+    isError: isError,
+    text: _output(isError: isError).error(text),
+  );
 
-  RenderedLine _note(String text, {required bool isError}) =>
-      RenderedLine(isError: isError, text: _output(isError: isError).note(text));
+  RenderedLine _note(String text, {required bool isError}) => RenderedLine(
+    isError: isError,
+    text: _output(isError: isError).note(text),
+  );
 
-  RenderedLine _dimLine(String text, {required bool isError}) =>
-      RenderedLine(isError: isError, text: _output(isError: isError).dim(text));
+  RenderedLine _dimLine(String text, {required bool isError}) => RenderedLine(
+    isError: isError,
+    text: _output(isError: isError).dim(text),
+  );
 
   String _command(String text, {required bool isError}) => _output(isError: isError).command(text);
 }

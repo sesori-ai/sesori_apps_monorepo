@@ -10,11 +10,11 @@ part "register_bridge_request.g.dart";
 /// registration with that id.
 @Freezed(fromJson: true, toJson: true)
 sealed class RegisterBridgeRequest with _$RegisterBridgeRequest {
-  const factory RegisterBridgeRequest({
+  const factory({
     required String name,
     required String platform,
     @JsonKey(includeIfNull: false) required String? bridgeId,
   }) = _RegisterBridgeRequest;
 
-  factory RegisterBridgeRequest.fromJson(Map<String, dynamic> json) => _$RegisterBridgeRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$RegisterBridgeRequestFromJson(json);
 }

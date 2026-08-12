@@ -549,8 +549,8 @@ Future<void> _insertSession({
   );
 }
 
-class _FakeWorktreeService({required AppDatabase database, required this.operationLog}) extends WorktreeService {
-  final List<String> operationLog;
+class _FakeWorktreeService({required AppDatabase database, required final List<String> operationLog})
+    extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
@@ -653,9 +653,7 @@ class _NoopProcessRunner() implements ProcessRunner {
   }
 }
 
-class _TrackingFakeBridgePlugin({required this.operationLog}) extends FakeBridgePlugin {
-  final List<String> operationLog;
-
+class _TrackingFakeBridgePlugin({required final List<String> operationLog}) extends FakeBridgePlugin {
   @override
   Future<void> deleteSession(String sessionId) async {
     operationLog.add("pluginDelete");

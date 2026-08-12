@@ -6,17 +6,11 @@ import "dart:async";
 /// isolating all mutable streaming state from the cubit. Call [dispose]
 /// when the owning cubit closes.
 class StreamingTextBuffer({
-    required void Function() onFlush,
-    Duration throttle = const Duration(milliseconds: 50),
-  }) {
-  final void Function() _onFlush;
-  final Duration _throttle;
-
+  required final void Function() _onFlush,
+  final Duration _throttle = const Duration(milliseconds: 50),
+}) {
   final Map<String, StringBuffer> _buffers = {};
   Timer? _timer;
-
-  this : _onFlush = onFlush,
-       _throttle = throttle;
 
   /// Append a text delta for [partId], scheduling a throttled flush.
   void appendDelta({required String partId, required String delta}) {

@@ -20,29 +20,21 @@ enum DownloadFailureKind() { network, failed }
 /// cannot complete. Carries a neutral [kind] so each consumer maps it to its own
 /// result type at its boundary rather than the client knowing about them.
 class const DownloadException({
-    required this.kind,
-    required this.message,
-    this.statusCode,
+    required final DownloadFailureKind kind,
+    required final String message,
+    final int? statusCode,
   }) implements Exception {
-  final DownloadFailureKind kind;
-  final String message;
-  final int? statusCode;
-
   @override
   String toString() => "DownloadException(${kind.name}, status: $statusCode): $message";
 }
 
 /// A byte-progress update emitted while a download streams to disk.
 class const DownloadProgress({
-    required this.receivedBytes,
-    required this.totalBytes,
-  }) {
-  final int receivedBytes;
-
-  /// Total expected bytes from `Content-Length`, or `null` when the server did
+    required final int receivedBytes,
+    /// Total expected bytes from `Content-Length`, or `null` when the server did
   /// not advertise a length (progress is then indeterminate).
-  final int? totalBytes;
-
+  required final int? totalBytes,
+  }) {
   /// Fraction in `[0, 1]`, or `null` when the total size is unknown.
   double? get fraction {
     final int? total = totalBytes;
@@ -60,17 +52,10 @@ class const DownloadProgress({
 /// per body chunk, completes when the file is fully written, and raises a
 /// [DownloadException] (carrying a neutral [DownloadFailureKind]) on failure.
 class BinaryDownloadClient({
-    required http.Client httpClient,
-    Duration requestTimeout = _kDownloadRequestTimeout,
-    Duration streamInactivityTimeout = _kDownloadInactivityTimeout,
+    required final http.Client _httpClient,
+    final Duration _requestTimeout = _kDownloadRequestTimeout,
+    final Duration _streamInactivityTimeout = _kDownloadInactivityTimeout,
   }) {
-  final http.Client _httpClient;
-  final Duration _requestTimeout;
-  final Duration _streamInactivityTimeout;
-
-  this : _httpClient = httpClient,
-       _requestTimeout = requestTimeout,
-       _streamInactivityTimeout = streamInactivityTimeout;
 
   Stream<DownloadProgress> download({
     required String url,

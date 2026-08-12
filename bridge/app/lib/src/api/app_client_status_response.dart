@@ -5,7 +5,7 @@ part "app_client_status_response.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class AppClientStatusResponse with _$AppClientStatusResponse {
-  const factory AppClientStatusResponse({required bool registered}) = _AppClientStatusResponse;
+  const factory({required bool registered}) = _AppClientStatusResponse;
 
-  factory AppClientStatusResponse.fromJson(Map<String, dynamic> json) => _$AppClientStatusResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AppClientStatusResponseFromJson(json);
 }

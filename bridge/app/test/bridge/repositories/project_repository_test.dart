@@ -1236,7 +1236,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   @override
   Future<List<PluginProject>> getProjects() async {
     getProjectsCallCount++;
-    if (getProjectsFuture case final future?) return future;
+    if (getProjectsFuture case final future?) return await future;
     final err = getProjectsError;
     if (err != null) throw err;
     return projectsResult;
@@ -1376,9 +1376,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 /// [BridgeDerivedProjectsPluginApi.listAllSessions], mirroring how Codex/ACP
 /// plugins are shaped — it has no project members at all, so the bridge
 /// derivation path is what's exercised.
-class _FakeDerivedPlugin(this.sessions) implements BridgeDerivedProjectsPluginApi {
-  List<PluginSession> sessions;
-
+class _FakeDerivedPlugin(var List<PluginSession> sessions) implements BridgeDerivedProjectsPluginApi {
   /// Points at a session directory used by the tests so the launch-folder seed
   /// doesn't introduce an extra project the assertions don't expect.
   String launchDir = "/tmp/proj/alpha";

@@ -225,11 +225,9 @@ class _ThrowingPositionApi() extends CodexRolloutApi {
 }
 
 class _FixedCatalogRepository({
-    required super.rolloutApi,
-    required this.path,
-  }) extends CodexCatalogRepository {
-  final String path;
-
+  required super.rolloutApi,
+  required final String path,
+}) extends CodexCatalogRepository {
   @override
   String? findRolloutPath({required String sessionId}) => path;
 }

@@ -21,15 +21,10 @@ abstract interface class InteractivePluginAuthenticationDescriptor() {
 sealed class const PluginAuthenticationEvent();
 
 final class const PluginAuthenticationDeviceCodeChallenge({
-    required this.verificationUri,
-    required this.userCode,
-  }) extends PluginAuthenticationEvent {
-  final Uri verificationUri;
-  final String userCode;
-}
+  required final Uri verificationUri,
+  required final String userCode,
+}) extends PluginAuthenticationEvent;
 
 final class const PluginAuthenticationCompleted() extends PluginAuthenticationEvent;
 
-final class const PluginAuthenticationFailed({required this.message}) extends PluginAuthenticationEvent {
-  final String message;
-}
+final class const PluginAuthenticationFailed({required final String message}) extends PluginAuthenticationEvent;

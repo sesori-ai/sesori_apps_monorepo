@@ -5,15 +5,9 @@ import '../api/platform_update_api.dart';
 /// in-place applier plus the version manifest the npm bootstrap reads. Exposes
 /// the swap/sweep/record operations the apply/reconcile services depend on.
 class UpdateInstallationRepository({
-    required PlatformUpdateApi platformUpdateApi,
-    required ManagedRuntimeManifestApi manifestApi,
-  }) {
-  this : _platformUpdateApi = platformUpdateApi,
-       _manifestApi = manifestApi;
-
-  final PlatformUpdateApi _platformUpdateApi;
-  final ManagedRuntimeManifestApi _manifestApi;
-
+  required final PlatformUpdateApi _platformUpdateApi,
+  required final ManagedRuntimeManifestApi _manifestApi,
+}) {
   /// Whether the platform applier supports a second in-place apply in the same
   /// session before a restart activates the first (see [PlatformUpdateApi]).
   bool get supportsInSessionChaining => _platformUpdateApi.supportsInSessionChaining;

@@ -6,7 +6,7 @@ import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:test/test.dart';
 
-class _RecordingProcessRunner({required this.exitCode, this.stdout = ''}) implements ProcessRunner {
+class _RecordingProcessRunner({required final int exitCode, final String stdout = ''}) implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -16,8 +16,6 @@ class _RecordingProcessRunner({required this.exitCode, this.stdout = ''}) implem
     throw UnimplementedError();
   }
 
-  final int exitCode;
-  final String stdout;
   String? lastExecutable;
   List<String>? lastArguments;
 
@@ -38,11 +36,12 @@ class _RecordingProcessRunner({required this.exitCode, this.stdout = ''}) implem
 /// A lock file whose exclusive `create` succeeds but whose `writeAsString`
 /// fails, so the owner record is never written. Records whether `delete` was
 /// called, to verify the empty lock file is cleaned up on a write failure.
-class _WriteFailingFile({this.contentAfterFailedWrite = ''}) implements File {
+class _WriteFailingFile({
   /// What `readAsString` returns during cleanup. Empty means the empty file we
   /// created is still there; non-empty simulates another acquirer having reaped
   /// it and written its own owner-stamped lock at the same path.
-  final String contentAfterFailedWrite;
+  final String contentAfterFailedWrite = '',
+}) implements File {
   bool deleted = false;
 
   @override

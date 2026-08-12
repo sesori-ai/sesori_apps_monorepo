@@ -542,13 +542,10 @@ LoginOAuthService _createOAuthService({
 
 BrowserOpenability _alwaysOpenableBrowser() => BrowserOpenability.yes;
 
-class _MockLoginEmailApi._(this._response, this._errorStatus) implements LoginEmailApi {
+class _MockLoginEmailApi._(final AuthResponse _response, final int? _errorStatus) implements LoginEmailApi {
   @override
   final String authBackendUrl = 'http://test';
-  final AuthResponse _response;
-  final int? _errorStatus;
-
-  factory _MockLoginEmailApi() {
+  factory() {
     return _MockLoginEmailApi._(
       AuthResponse(
         accessToken: 'test-access-token',
@@ -564,7 +561,7 @@ class _MockLoginEmailApi._(this._response, this._errorStatus) implements LoginEm
     );
   }
 
-  factory _MockLoginEmailApi.unauthorized() => _MockLoginEmailApi._(
+  factory unauthorized() => _MockLoginEmailApi._(
     AuthResponse(
       accessToken: '',
       refreshToken: '',
@@ -573,7 +570,7 @@ class _MockLoginEmailApi._(this._response, this._errorStatus) implements LoginEm
     401,
   );
 
-  factory _MockLoginEmailApi.rateLimited() => _MockLoginEmailApi._(
+  factory rateLimited() => _MockLoginEmailApi._(
     AuthResponse(
       accessToken: '',
       refreshToken: '',
@@ -582,7 +579,7 @@ class _MockLoginEmailApi._(this._response, this._errorStatus) implements LoginEm
     429,
   );
 
-  factory _MockLoginEmailApi.emptyTokens() => _MockLoginEmailApi._(
+  factory emptyTokens() => _MockLoginEmailApi._(
     AuthResponse(
       accessToken: '',
       refreshToken: '',
@@ -609,37 +606,27 @@ class _MockLoginEmailApi._(this._response, this._errorStatus) implements LoginEm
 }
 
 class _OAuthRequestRecord({
-    required this.method,
-    required this.path,
-    required this.queryParameters,
-    required this.sessionToken,
-    required this.contentType,
-    required this.body,
-  }) {
-  final String method;
-  final String path;
-  final Map<String, String> queryParameters;
-  final String? sessionToken;
-  final String? contentType;
-  final Map<String, dynamic>? body;
-}
+    required final String method,
+    required final String path,
+    required final Map<String, String> queryParameters,
+    required final String? sessionToken,
+    required final String? contentType,
+    required final Map<String, dynamic>? body,
+  });
 
 class _OAuthLongPollTestServer._({
-    required HttpServer server,
-    required this.authUrl,
+    required final HttpServer _server,
+    required final String authUrl,
     required List<AuthSessionStatusResponse> statusResponses,
   }) {
-  final HttpServer _server;
-  final String authUrl;
-  final List<AuthSessionStatusResponse> _statusResponses;
+  final List<AuthSessionStatusResponse> _statusResponses = List.of(statusResponses);
   final http.Client client = http.Client();
   final List<_OAuthRequestRecord> initRequests = [];
   final List<_OAuthRequestRecord> statusRequests = [];
   final List<_OAuthRequestRecord> ackRequests = [];
   final List<String> unexpectedPaths = [];
 
-  this : _server = server,
-       _statusResponses = List.of(statusResponses) {
+  this{
     _listen();
   }
 
@@ -726,19 +713,13 @@ class _OAuthLongPollTestServer._({
 enum _PasswordLoginResultType() { success, failure }
 
 class _PasswordLoginResult._({
-    required this.type,
-    this.accessToken,
-    this.refreshToken,
-    this.username,
-    this.statusCode,
+    required final _PasswordLoginResultType type,
+    final String? accessToken,
+    final String? refreshToken,
+    final String? username,
+    final int? statusCode,
   }) {
-  final _PasswordLoginResultType type;
-  final String? accessToken;
-  final String? refreshToken;
-  final String? username;
-  final int? statusCode;
-
-  factory _PasswordLoginResult.success({
+  factory success({
     required String accessToken,
     required String refreshToken,
     required String username,
@@ -751,7 +732,7 @@ class _PasswordLoginResult._({
     );
   }
 
-  factory _PasswordLoginResult.failure(int statusCode) {
+  factory failure(int statusCode) {
     return _PasswordLoginResult._(
       type: _PasswordLoginResultType.failure,
       statusCode: statusCode,
@@ -759,8 +740,7 @@ class _PasswordLoginResult._({
   }
 }
 
-class _PasswordLoginTestServer._(this._server) {
-  final HttpServer _server;
+class _PasswordLoginTestServer._(final HttpServer _server) {
   Map<String, dynamic>? _lastLoginRequest;
   Future<_PasswordLoginResult> Function(String email, String password)? onLoginRequest;
 
@@ -830,9 +810,7 @@ class _PasswordLoginTestServer._(this._server) {
 }
 
 /// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
-class _CapturingStdout(this.lines) implements Stdout {
-  final List<String> lines;
-
+class _CapturingStdout(final List<String> lines) implements Stdout {
   @override
   void writeln([Object? object = '']) {
     lines.add(object.toString());

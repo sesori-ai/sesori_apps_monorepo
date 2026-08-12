@@ -11,11 +11,7 @@ import 'platform_update_api.dart';
 /// memory-mapped by the running process, so the swap renames the binary and the
 /// `lib/` directory wholesale, keeping the displaced originals as `.rollback`
 /// siblings until the swap succeeds.
-class PosixUpdateApi({required ProcessRunner processRunner}) implements PlatformUpdateApi {
-  this : _processRunner = processRunner;
-
-  final ProcessRunner _processRunner;
-
+class PosixUpdateApi({required final ProcessRunner _processRunner}) implements PlatformUpdateApi {
   static const String _binaryName = 'sesori-bridge';
   static const String _binaryBackupName = '.sesori-bridge.rollback';
   static const String _libBackupName = '.lib.rollback';

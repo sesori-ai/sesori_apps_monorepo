@@ -24,10 +24,9 @@ import "../logging/logging.dart";
 /// before fetching; seeds skip projects whose last update is newer.
 @lazySingleton
 class SessionUnseenTracker(
-    ConnectionService connectionService, {
-    required FailureReporter failureReporter,
-  }) with Disposable {
-  final FailureReporter _failureReporter;
+  ConnectionService connectionService, {
+  required final FailureReporter _failureReporter,
+}) with Disposable {
   late final StreamSubscription<SseEvent> _subscription;
 
   // project ID -> whether the project has any unseen session.
@@ -40,7 +39,7 @@ class SessionUnseenTracker(
   // project ID -> tick of its last live/local update.
   final Map<String, int> _projectTick = {};
 
-  this : _failureReporter = failureReporter {
+  this {
     _subscription = connectionService.events.listen(_handleEvent);
   }
 
@@ -112,13 +111,12 @@ class SessionUnseenTracker(
 
   void _handleEvent(SseEvent event) {
     try {
-      if (event.data
-          case SesoriSessionUnseenChanged(
-            :final projectID,
-            :final sessionId,
-            :final unseen,
-            :final projectHasUnseenChanges,
-          )) {
+      if (event.data case SesoriSessionUnseenChanged(
+        :final projectID,
+        :final sessionId,
+        :final unseen,
+        :final projectHasUnseenChanges,
+      )) {
         // A late event can race disposal (the subscription cancel is not
         // awaited); adding to a closed subject would throw and be reported as
         // a false-positive failure.

@@ -12,11 +12,9 @@ import "routed_request.dart";
 /// converted to a `502` response so callers never have to deal with routing
 /// failures.
 class RequestRouter({
-    required List<RequestHandlerBase> handlers,
-  }) {
-  final List<RequestHandlerBase> _handlers;
-
-  this : _handlers = List<RequestHandlerBase>.unmodifiable(handlers);
+  required List<RequestHandlerBase> handlers,
+}) {
+  final List<RequestHandlerBase> _handlers = List<RequestHandlerBase>.unmodifiable(handlers);
 
   /// Selects a route synchronously and returns its asynchronous completion.
   PendingRoutedRequest route({required RelayRequest request}) {

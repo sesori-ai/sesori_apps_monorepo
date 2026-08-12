@@ -7,12 +7,10 @@ import "request_handler.dart";
 ///
 /// Accepts a JSON body matching [SetBaseBranchRequest]. Both [projectId] and
 /// [baseBranch] are required non-empty strings.
-class SetBaseBranchHandler({required ProjectRepository projectRepository}) extends BodyRequestHandler<SetBaseBranchRequest, SuccessEmptyResponse> {
-  final ProjectRepository _projectRepository;
-
+class SetBaseBranchHandler({required final ProjectRepository _projectRepository})
+    extends BodyRequestHandler<SetBaseBranchRequest, SuccessEmptyResponse> {
   this
-    : _projectRepository = projectRepository,
-      super(
+    : super(
         HttpMethod.put,
         "/project/base-branch",
         fromJson: SetBaseBranchRequest.fromJson,

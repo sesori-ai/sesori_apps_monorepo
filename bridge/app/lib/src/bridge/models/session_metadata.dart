@@ -5,11 +5,11 @@ part "session_metadata.g.dart";
 
 @freezed
 sealed class SessionMetadata with _$SessionMetadata {
-  const factory SessionMetadata({
+  const factory({
     required String title,
     required String branchName,
     required String worktreeName,
   }) = _SessionMetadata;
 
-  factory SessionMetadata.fromJson(Map<String, dynamic> json) => _$SessionMetadataFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionMetadataFromJson(json);
 }

@@ -10,21 +10,11 @@ import "models/stored_session.dart";
 import "models/verified_github_login.dart";
 
 class PullRequestRepository({
-    required AppDatabase database,
-    required PullRequestDao pullRequestDao,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-  }) {
-  final AppDatabase _database;
-  final PullRequestDao _pullRequestDao;
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-
-  this : _database = database,
-       _pullRequestDao = pullRequestDao,
-       _projectsDao = projectsDao,
-       _sessionDao = sessionDao;
-
+  required final AppDatabase _database,
+  required final PullRequestDao _pullRequestDao,
+  required final ProjectsDao _projectsDao,
+  required final SessionDao _sessionDao,
+}) {
   Future<Set<String>> applyResolvedTargets({
     required Map<String, List<StoredSession>> sessionsByProject,
     required Map<String, PullRequestDirectoryTarget> targetsByDirectory,
@@ -186,7 +176,7 @@ class PullRequestRepository({
             createdAt: pullRequest.createdAt.millisecondsSinceEpoch,
           ),
     ];
-    return _database.transaction<PullRequestReplacementOutcome>(() async {
+    return await _database.transaction<PullRequestReplacementOutcome>(() async {
       final project = await _projectsDao.getProject(projectId: projectId);
       final currentSessions = await _sessionDao.getSessionsByProject(projectId: projectId);
       if (project?.prCacheGithubLogin != verifiedGithubLogin.login ||
@@ -266,10 +256,12 @@ class PullRequestRepository({
     return {
       for (final session in sessions)
         if (session.parentSessionId == null)
-          if ((session.currentGithubRepositoryIdentity, session.currentBranchName) case (
-            final repositoryIdentity?,
-            final branchName?,
-          ) when repositoryIdentity.isNotEmpty && branchName.isNotEmpty)
+          if ((session.currentGithubRepositoryIdentity, session.currentBranchName)
+              case (
+                final repositoryIdentity?,
+                final branchName?,
+              )
+              when repositoryIdentity.isNotEmpty && branchName.isNotEmpty)
             (
               githubRepositoryIdentity: repositoryIdentity,
               branchName: branchName,

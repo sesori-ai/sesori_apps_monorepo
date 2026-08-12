@@ -50,9 +50,7 @@ ProductAnalyticsPreferenceRecord _recordWithRevision({
 );
 
 class _FakeAuthSession({required AuthState initialState}) extends Mock implements AuthSession {
-  final BehaviorSubject<AuthState> states;
-
-  this : states = BehaviorSubject.seeded(initialState);
+  final BehaviorSubject<AuthState> states = BehaviorSubject.seeded(initialState);
 
   @override
   ValueStream<AuthState> get authStateStream => states.stream;
@@ -94,7 +92,7 @@ class _FakePreferenceRepository() extends Mock implements ProductAnalyticsPrefer
     loadCalls.add(userId);
     if (throwOnLoad) throw StateError("storage unavailable");
     final handler = loadHandlers[userId];
-    if (handler != null) return handler();
+    if (handler != null) return await handler();
     return localByUser[userId];
   }
 
@@ -131,9 +129,9 @@ class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepositor
     required String userKey,
   }) async {
     calls.add((envelope: envelope, userKey: userKey));
-    if (deliveryFutures.isNotEmpty) return deliveryFutures.removeFirst();
+    if (deliveryFutures.isNotEmpty) return await deliveryFutures.removeFirst();
     final completer = deliveryCompleter;
-    if (completer != null) return completer.future;
+    if (completer != null) return await completer.future;
     final queuedResults = results;
     return queuedResults == null || queuedResults.isEmpty ? result : queuedResults.removeFirst();
   }

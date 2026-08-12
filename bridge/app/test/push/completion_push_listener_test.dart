@@ -177,16 +177,11 @@ void main() {
 }
 
 class _Harness({
-    required this.tracker,
-    required this.notifier,
-    required this.listener,
-    required this.dispatcher,
-  }) {
-  final PushSessionStateTracker tracker;
-  final CompletionNotifier notifier;
-  final CompletionPushListener listener;
-  final _FakePushDispatcher dispatcher;
-
+  required final PushSessionStateTracker tracker,
+  required final CompletionNotifier notifier,
+  required final CompletionPushListener listener,
+  required final _FakePushDispatcher dispatcher,
+}) {
   void emitCompletion({required String rootSessionId}) {
     listener.handleSseEvent(
       SesoriSseEvent.sessionCreated(info: _session(id: rootSessionId)),

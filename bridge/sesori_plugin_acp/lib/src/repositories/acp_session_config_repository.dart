@@ -2,11 +2,7 @@ import "../acp_protocol.dart";
 import "../acp_stdio_client.dart";
 
 /// Connection-scoped access to standard ACP session configuration writes.
-class AcpSessionConfigRepository({required AcpStdioClient client}) {
-  this : _client = client;
-
-  final AcpStdioClient _client;
-
+class AcpSessionConfigRepository({required final AcpStdioClient _client}) {
   Future<AcpNewSessionResult?> setConfigOption({
     required String sessionId,
     required String configId,

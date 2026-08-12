@@ -11,7 +11,7 @@ enum PluginAgentMode() {
   unknown,
 }
 
-enum PluginAgentVariant(this.safeName) {
+enum PluginAgentVariant(final String safeName) {
   none("none"),
   minimal("minimal"),
   low("low"),
@@ -19,8 +19,6 @@ enum PluginAgentVariant(this.safeName) {
   high("high"),
   xhigh("xhigh")
   ;
-
-  final String safeName;
 
   /// Parses a raw string into a [PluginAgentVariant], or returns `null`
   /// if the value doesn't match any known variant.
@@ -37,7 +35,7 @@ enum PluginAgentVariant(this.safeName) {
 
 @freezed
 sealed class PluginAgentModel with _$PluginAgentModel {
-  const factory PluginAgentModel({
+  const factory({
     required String modelID,
     required String providerID,
     required String? variant,
@@ -46,7 +44,7 @@ sealed class PluginAgentModel with _$PluginAgentModel {
 
 @freezed
 sealed class PluginAgent with _$PluginAgent {
-  const factory PluginAgent({
+  const factory({
     required String name,
     required String? description,
     required PluginAgentModel? model,

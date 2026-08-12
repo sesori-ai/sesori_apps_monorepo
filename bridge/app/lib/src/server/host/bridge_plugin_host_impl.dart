@@ -35,16 +35,16 @@ import "bridge_host_process_service.dart";
 /// over the shared instance instead — `RuntimeFileApi.updateFile`'s mutual
 /// exclusion is only guaranteed within one instance per directory.
 class BridgePluginHostImpl({
-    required this.config,
-    required this.stateDirectory,
-    required this.environment,
-    required this.clock,
-    required this.startAborted,
-    required this.bridge,
-    required this.processes,
-    required this.ports,
-    required this.store,
-  }) implements PluginHost {
+  @override required final PluginConfig config,
+  @override required final String stateDirectory,
+  @override required final Map<String, String> environment,
+  @override required final ServerClock clock,
+  @override required final StartAbortSignal startAborted,
+  @override required final BridgeHostInfo bridge,
+  @override required final HostProcessService processes,
+  @override required final HostPortService ports,
+  @override required final HostJsonStore store,
+}) implements PluginHost {
   static Future<BridgePluginHostImpl> create({
     required PluginConfig config,
     required String stateDirectory,
@@ -93,36 +93,9 @@ class BridgePluginHostImpl({
     );
   }
 
-  @override
-  final PluginConfig config;
-
-  @override
-  final String stateDirectory;
-
   /// Set by the bridge runner from `ensureRuntime`'s [ProvisionReady] result,
   /// after the host is built and before `start()` runs; `null` when the plugin
   /// did no provisioning or it failed.
   @override
   String? provisionedRuntimePath;
-
-  @override
-  final Map<String, String> environment;
-
-  @override
-  final ServerClock clock;
-
-  @override
-  final StartAbortSignal startAborted;
-
-  @override
-  final BridgeHostInfo bridge;
-
-  @override
-  final HostProcessService processes;
-
-  @override
-  final HostPortService ports;
-
-  @override
-  final HostJsonStore store;
 }

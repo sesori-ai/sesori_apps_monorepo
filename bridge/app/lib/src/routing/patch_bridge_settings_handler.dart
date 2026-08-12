@@ -7,19 +7,15 @@ import "../services/pull_request_refresh_settings_service.dart";
 import "../services/yolo_settings_service.dart";
 
 class PatchBridgeSettingsHandler({
-    required PullRequestRefreshSettingsService pullRequestRefreshSettingsService,
-    required YoloSettingsService yoloSettingsService,
-  }) extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
-  this : _pullRequestRefreshSettingsService = pullRequestRefreshSettingsService,
-       _yoloSettingsService = yoloSettingsService,
-       super(
-         HttpMethod.patch,
-         "/settings",
-         fromJson: BridgeSettingUpdate.fromJson,
-       );
-
-  final PullRequestRefreshSettingsService _pullRequestRefreshSettingsService;
-  final YoloSettingsService _yoloSettingsService;
+  required final PullRequestRefreshSettingsService _pullRequestRefreshSettingsService,
+  required final YoloSettingsService _yoloSettingsService,
+}) extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
+  this
+    : super(
+        HttpMethod.patch,
+        "/settings",
+        fromJson: BridgeSettingUpdate.fromJson,
+      );
 
   @override
   Future<BridgeSettingUpdate> handle(

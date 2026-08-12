@@ -11,15 +11,11 @@ import "package:test/test.dart";
 // ── Fakes ────────────────────────────────────────────────────────────────────
 
 class _FakeTokenRefresher({
-    required String token,
-    String? forceRefreshedToken,
-  }) implements TokenRefresher {
-  final String _token;
-  final String _forceRefreshedToken;
+  required final String _token,
+  String? forceRefreshedToken,
+}) implements TokenRefresher {
+  final String _forceRefreshedToken = forceRefreshedToken ?? _token;
   int forceRefreshCallCount = 0;
-
-  this : _token = token,
-       _forceRefreshedToken = forceRefreshedToken ?? token;
 
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {

@@ -8,17 +8,13 @@ import "../../repositories/message_image_repository.dart";
 import "message_image_state.dart";
 
 class MessageImageCubit({
-    required MessageImageRepository repository,
-    required MessageAttachment attachment,
-  }) extends Cubit<MessageImageState> {
-  final MessageImageRepository _repository;
-  final MessageAttachment _attachment;
-
-  this : _repository = repository,
-       _attachment = attachment,
-       super(
-         repository.canLoad(attachment: attachment) ? const MessageImageLoading() : const MessageImageUnsupported(),
-       ) {
+  required final MessageImageRepository _repository,
+  required final MessageAttachment _attachment,
+}) extends Cubit<MessageImageState> {
+  this
+    : super(
+        _repository.canLoad(attachment: _attachment) ? const MessageImageLoading() : const MessageImageUnsupported(),
+      ) {
     if (state is MessageImageLoading) unawaited(_load());
   }
 

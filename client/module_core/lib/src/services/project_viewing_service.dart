@@ -36,22 +36,21 @@ class ProjectViewPaneClaim();
 /// session-view declarations, whose mark-seen side effect has different rules.
 @lazySingleton
 class ProjectViewingService({
-    required ProjectViewRepository viewRepository,
-    required LifecycleSource lifecycleSource,
-    required ConnectionService connectionService,
-    required RouteSource routeSource,
-  }) with Disposable {
-  final ProjectViewRepository _viewRepository;
+  required final ProjectViewRepository _viewRepository,
+  required LifecycleSource lifecycleSource,
+  required ConnectionService connectionService,
+  required RouteSource routeSource,
+}) with Disposable {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   _ProjectViewClaimState? _listClaim;
   _ProjectViewClaimState? _detailClaim;
-  AppRouteDef? _route;
+  AppRouteDef? _route = routeSource.currentRoute;
   String? _detailTransitionProjectId;
   ProjectViewPaneClaim? _latestWideListPaneClaim;
   ProjectViewPaneClaim? _visibleWideListPaneClaim;
-  bool _backgrounded;
-  bool _wasConnected;
+  bool _backgrounded = _isBackgroundState(state: lifecycleSource.lifecycleState);
+  bool _wasConnected = connectionService.currentStatus is ConnectionConnected;
   bool _disposed = false;
 
   String? _declaredProjectId;
@@ -61,10 +60,7 @@ class ProjectViewingService({
   Future<void> _sendTail = Future<void>.value();
   Future<void>? _disposeFuture;
 
-  this : _viewRepository = viewRepository,
-       _route = routeSource.currentRoute,
-       _backgrounded = _isBackgroundState(state: lifecycleSource.lifecycleState),
-       _wasConnected = connectionService.currentStatus is ConnectionConnected {
+  this {
     _subscriptions
       ..add(
         routeSource.currentRouteStream.distinct().listen(
@@ -322,13 +318,13 @@ class ProjectViewingService({
   }
 }
 
-sealed class const _ProjectViewClaimState({required this.claim, required this.projectId}) {
-  final ProjectViewClaim claim;
-  final String projectId;
-}
+sealed class const _ProjectViewClaimState({required final ProjectViewClaim claim, required final String projectId});
 
-final class const _ProjectViewClaimPending({required super.claim, required super.projectId}) extends _ProjectViewClaimState;
+final class const _ProjectViewClaimPending({required super.claim, required super.projectId})
+    extends _ProjectViewClaimState;
 
-final class const _ProjectViewClaimReady({required super.claim, required super.projectId}) extends _ProjectViewClaimState;
+final class const _ProjectViewClaimReady({required super.claim, required super.projectId})
+    extends _ProjectViewClaimState;
 
-final class const _ProjectViewClaimFailed({required super.claim, required super.projectId}) extends _ProjectViewClaimState;
+final class const _ProjectViewClaimFailed({required super.claim, required super.projectId})
+    extends _ProjectViewClaimState;

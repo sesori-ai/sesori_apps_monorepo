@@ -14,11 +14,7 @@ import "models/claude_transcript_record.dart";
 /// Holds no peer repository: everything it needs comes from its Layer-1
 /// transcript API, and any composition with the process catalog happens a layer
 /// up.
-class ClaudeTranscriptCatalogRepository({required ClaudeTranscriptApi transcriptApi}) {
-  this : _transcriptApi = transcriptApi;
-
-  final ClaudeTranscriptApi _transcriptApi;
-
+class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _transcriptApi}) {
   /// Builds the catalog synchronously.
   ///
   /// Public and overridable so tests can bypass the isolate; call

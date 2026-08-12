@@ -202,16 +202,11 @@ class const _SettingsBody() extends StatelessWidget {
 /// A support-channel row. The destinations are apps of their own (mail client,
 /// Discord, X), so they hand off externally rather than opening in-app.
 class const _SupportRow({
-    required this.icon,
-    required this.title,
-    required this.url,
-    this.isLast = false,
-  }) extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String url;
-  final bool isLast;
-
+  required final IconData icon,
+  required final String title,
+  required final String url,
+  final bool isLast = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRow(
@@ -229,16 +224,11 @@ class const _SupportRow({
 /// A legal-document row. The backend serves these documents as markdown, so
 /// they open in a bottom sheet instead of handing off to a web page.
 class const _LegalRow({
-    required this.icon,
-    required this.title,
-    required this.document,
-    this.isLast = false,
-  }) extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final LegalDocument document;
-  final bool isLast;
-
+  required final IconData icon,
+  required final String title,
+  required final LegalDocument document,
+  final bool isLast = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRow(

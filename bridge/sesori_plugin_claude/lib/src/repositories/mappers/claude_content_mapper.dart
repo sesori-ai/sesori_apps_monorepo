@@ -8,35 +8,25 @@ import "../../api/models/claude_content_block_dto.dart";
 
 sealed class const ClaudeMappedContentBlock();
 
-final class const ClaudeMappedTextContentBlock({required this.text}) extends ClaudeMappedContentBlock {
-  final String text;
-}
+final class const ClaudeMappedTextContentBlock({required final String text}) extends ClaudeMappedContentBlock;
 
-final class const ClaudeMappedThinkingContentBlock({required this.thinking}) extends ClaudeMappedContentBlock {
-  final String thinking;
-}
+final class const ClaudeMappedThinkingContentBlock({required final String thinking}) extends ClaudeMappedContentBlock;
 
-final class const ClaudeMappedToolUseContentBlock({required this.id, required this.name, required this.input}) extends ClaudeMappedContentBlock {
-  final String id;
-  final String name;
-  final Object? input;
-}
+final class const ClaudeMappedToolUseContentBlock({
+  required final String id,
+  required final String name,
+  required final Object? input,
+}) extends ClaudeMappedContentBlock;
 
 final class const ClaudeMappedToolResultContentBlock({
-    required this.toolUseId,
-    required this.output,
-    required this.isError,
-    required this.attachments,
-  }) extends ClaudeMappedContentBlock {
-  final String toolUseId;
-  final String? output;
-  final bool isError;
-  final List<PluginMessageAttachment> attachments;
-}
+  required final String toolUseId,
+  required final String? output,
+  required final bool isError,
+  required final List<PluginMessageAttachment> attachments,
+}) extends ClaudeMappedContentBlock;
 
-final class const ClaudeMappedImageContentBlock({required this.attachment}) extends ClaudeMappedContentBlock {
-  final PluginMessageAttachment attachment;
-}
+final class const ClaudeMappedImageContentBlock({required final PluginMessageAttachment attachment})
+    extends ClaudeMappedContentBlock;
 
 final class const ClaudeMappedUnsupportedContentBlock() extends ClaudeMappedContentBlock;
 

@@ -1,10 +1,7 @@
 import '../api/wake_lock_client.dart';
 
-class WakeLockRepository({required WakeLockClient client}) {
-  final WakeLockClient _client;
+class WakeLockRepository({required final WakeLockClient _client}) {
   bool _isEnabled = false;
-
-  this : _client = client;
 
   bool get isEnabled => _isEnabled;
 

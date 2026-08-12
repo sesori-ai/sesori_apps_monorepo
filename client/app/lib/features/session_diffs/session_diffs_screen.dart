@@ -6,13 +6,10 @@ import "../../core/di/injection.dart";
 import "session_diffs_body.dart";
 
 class const SessionDiffsScreen({
-    super.key,
-    required this.projectId,
-    required this.sessionId,
-  }) extends StatelessWidget {
-  final String projectId;
-  final String sessionId;
-
+  super.key,
+  required final String projectId,
+  required final String sessionId,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(

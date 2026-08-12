@@ -4,12 +4,8 @@ import "../repositories/session_repository.dart";
 
 /// Retries physical cleanup for permanently tombstoned backend sessions.
 class DeletedSessionStorageCleanupService({
-    required SessionRepository sessionRepository,
-  }) {
-  this : _sessionRepository = sessionRepository;
-
-  final SessionRepository _sessionRepository;
-
+  required final SessionRepository _sessionRepository,
+}) {
   Future<void> reconcile() async {
     try {
       await _reconcile();

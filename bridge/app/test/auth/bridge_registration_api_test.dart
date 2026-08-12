@@ -108,21 +108,13 @@ BridgeRegistrationApi _createApi(_BridgesTestServer server) {
 }
 
 class const _RecordedRequest({
-    required this.method,
-    required this.path,
-    required this.authorization,
-    required this.body,
-  }) {
-  final String method;
-  final String path;
-  final String? authorization;
-  final String body;
-}
+  required final String method,
+  required final String path,
+  required final String? authorization,
+  required final String body,
+});
 
-class _BridgesTestServer._(this._server, this._statusCode) {
-  final HttpServer _server;
-  final int _statusCode;
-
+class _BridgesTestServer._(final HttpServer _server, final int _statusCode) {
   final List<_RecordedRequest> requests = [];
 
   static Future<_BridgesTestServer> start({required int statusCode}) async {

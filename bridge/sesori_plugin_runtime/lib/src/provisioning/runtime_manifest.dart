@@ -12,16 +12,11 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 /// member already matches the canonical name (e.g. OpenCode's `opencode`), the
 /// two are equal.
 final class const RuntimeAsset({
-    required this.assetName,
-    required this.format,
-    required this.sha256,
-    required this.archiveBinaryName,
-  }) {
-  final String assetName;
-  final ArchiveFormat format;
-  final String sha256;
-  final String archiveBinaryName;
-}
+  required final String assetName,
+  required final ArchiveFormat format,
+  required final String sha256,
+  required final String archiveBinaryName,
+});
 
 /// The harness-specific seam of the shared runtime-provisioning system: the
 /// pinned facts a [ManagedRuntimeProvisionService] needs to decide which binary

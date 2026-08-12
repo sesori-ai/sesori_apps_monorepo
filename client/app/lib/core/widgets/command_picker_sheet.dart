@@ -12,11 +12,9 @@ import "../../l10n/app_localizations.dart";
 import "../extensions/build_context_x.dart";
 
 class const CommandPickerSheet({
-    super.key,
-    required this.commands,
-  }) extends StatefulWidget {
-  final List<CommandInfo> commands;
-
+  super.key,
+  required final List<CommandInfo> commands,
+}) extends StatefulWidget {
   static Future<CommandInfo?> show(
     BuildContext context, {
     required List<CommandInfo> commands,

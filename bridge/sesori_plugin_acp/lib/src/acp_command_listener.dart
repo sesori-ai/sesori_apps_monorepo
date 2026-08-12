@@ -5,12 +5,10 @@ import "acp_stdio_client.dart";
 
 /// Owns one ACP command-advertisement subscription.
 class AcpCommandListener({
-    required Stream<AcpNotification> notifications,
-    required AcpCommandTracker tracker,
-  }) {
-  this : _subscription = notifications.listen(tracker.consume);
-
-  final StreamSubscription<AcpNotification> _subscription;
+  required Stream<AcpNotification> notifications,
+  required AcpCommandTracker tracker,
+}) {
+  final StreamSubscription<AcpNotification> _subscription = notifications.listen(tracker.consume);
 
   Future<void> dispose() => _subscription.cancel();
 }

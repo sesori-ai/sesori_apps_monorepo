@@ -13,14 +13,7 @@ const _kGithubApiBaseUrl = 'https://api.github.com/repos/sesori-ai/sesori_apps_m
 const _kGithubReleasesPerPage = 100;
 const _kGithubReleasesMaxPages = 1;
 
-class GitHubReleasesApi({required http.Client httpClient, required String? authToken}) {
-  final http.Client _httpClient;
-  final String? _authToken;
-
-  this
-    : _httpClient = httpClient,
-      _authToken = authToken;
-
+class GitHubReleasesApi({required final http.Client _httpClient, required final String? _authToken}) {
   Future<List<GitHubReleaseDto>> fetchReleases() async {
     final releases = <GitHubReleaseDto>[];
 
@@ -71,9 +64,7 @@ class GitHubReleasesApi({required http.Client httpClient, required String? authT
   Future<({http.Response response, bool authenticated})> _getWithOpportunisticAuth(Uri uri) async {
     final headers = _buildHeaders();
     final bool authenticated = headers.containsKey('Authorization');
-    final http.Response response = await _httpClient
-        .get(uri, headers: headers)
-        .timeout(const Duration(seconds: 5));
+    final http.Response response = await _httpClient.get(uri, headers: headers).timeout(const Duration(seconds: 5));
 
     if (!authenticated || !_isAuthRejection(response)) {
       return (response: response, authenticated: authenticated);
@@ -122,8 +113,7 @@ class GitHubReleasesApi({required http.Client httpClient, required String? authT
     if (response.statusCode != 403) {
       return false;
     }
-    return response.headers['x-ratelimit-remaining'] == '0' ||
-        response.headers.containsKey('retry-after');
+    return response.headers['x-ratelimit-remaining'] == '0' || response.headers.containsKey('retry-after');
   }
 
   /// Resolves when the caller may retry. `retry-after` (the explicit

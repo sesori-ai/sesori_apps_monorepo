@@ -11,13 +11,10 @@ import "../../../core/widgets/markdown_styles.dart";
 import "image_attachment_viewer.dart";
 
 class const TextPartWidget({
-    super.key,
-    required this.text,
-    this.isStreaming = false,
-  }) extends StatelessWidget {
-  final String text;
-  final bool isStreaming;
-
+  super.key,
+  required final String text,
+  final bool isStreaming = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (text.isEmpty) return const SizedBox.shrink();
@@ -43,13 +40,10 @@ class const TextPartWidget({
 }
 
 class const MarkdownMessageImage({
-    super.key,
-    required this.uri,
-    required this.semanticLabel,
-  }) extends StatefulWidget {
-  final Uri uri;
-  final String? semanticLabel;
-
+  super.key,
+  required final Uri uri,
+  required final String? semanticLabel,
+}) extends StatefulWidget {
   @override
   State<MarkdownMessageImage> createState() => _MarkdownMessageImageState();
 }

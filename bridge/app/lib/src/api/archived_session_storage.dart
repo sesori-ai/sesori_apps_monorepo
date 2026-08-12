@@ -20,11 +20,7 @@ String archiveDirectoryPath({required String dataDirectory}) => path.join(dataDi
 /// platform-specific rename fallback, and a displaced-copy slot that had to be
 /// settled on every code path. Making the filename carry the generation
 /// removes those states rather than coordinating them.
-class ArchivedSessionStorage({required String directoryPath}) {
-  this : _directoryPath = directoryPath;
-
-  final String _directoryPath;
-
+class ArchivedSessionStorage({required final String _directoryPath}) {
   /// Creates the archive root with its intended permissions, so a fresh data
   /// directory has the same shape (and mode) as one that has archived before.
   void ensureDirectory() => createHardenedDirectory(directoryPath: _directoryPath);
@@ -73,8 +69,7 @@ class ArchivedSessionStorage({required String directoryPath}) {
     return null;
   }
 
-  Future<bool> exists({required String sessionId}) async =>
-      (await _generationsFor(sessionId: sessionId)).isNotEmpty;
+  Future<bool> exists({required String sessionId}) async => (await _generationsFor(sessionId: sessionId)).isNotEmpty;
 
   /// Moves the newest generation aside instead of deleting it: it may be the
   /// only remaining copy of that transcript, and a human may still salvage it.

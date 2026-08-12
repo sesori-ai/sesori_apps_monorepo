@@ -10,26 +10,26 @@ part "acp_content_block_dto.g.dart";
   toJson: false,
 )
 sealed class AcpContentBlockDto with _$AcpContentBlockDto {
-  const factory AcpContentBlockDto.text({
+  const factory text({
     required String text,
   }) = AcpTextContentBlockDto;
 
-  const factory AcpContentBlockDto.image({
+  const factory image({
     required String data,
     required String mimeType,
     required String? uri,
   }) = AcpImageContentBlockDto;
 
   @FreezedUnionValue("audio")
-  const factory AcpContentBlockDto.unsupportedAudio() = AcpUnsupportedAudioContentBlockDto;
+  const factory unsupportedAudio() = AcpUnsupportedAudioContentBlockDto;
 
   @FreezedUnionValue("resource")
-  const factory AcpContentBlockDto.unsupportedResource() = AcpUnsupportedResourceContentBlockDto;
+  const factory unsupportedResource() = AcpUnsupportedResourceContentBlockDto;
 
   @FreezedUnionValue("resource_link")
-  const factory AcpContentBlockDto.unsupportedResourceLink() = AcpUnsupportedResourceLinkContentBlockDto;
+  const factory unsupportedResourceLink() = AcpUnsupportedResourceLinkContentBlockDto;
 
-  const factory AcpContentBlockDto.unknown() = AcpUnknownContentBlockDto;
+  const factory unknown() = AcpUnknownContentBlockDto;
 
-  factory AcpContentBlockDto.fromJson(Map<String, dynamic> json) => _$AcpContentBlockDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AcpContentBlockDtoFromJson(json);
 }

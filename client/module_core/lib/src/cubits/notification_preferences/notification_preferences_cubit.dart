@@ -7,17 +7,15 @@ import "../../logging/logging.dart";
 import "../../services/notification_preferences_service.dart";
 import "notification_preferences_state.dart";
 
-class NotificationPreferencesCubit({required NotificationPreferencesService service}) extends Cubit<NotificationPreferencesState> {
-  final NotificationPreferencesService _service;
+class NotificationPreferencesCubit({required final NotificationPreferencesService _service})
+    extends Cubit<NotificationPreferencesState> {
   late final StreamSubscription<NotificationPreferencesAccountStatus> _accountSubscription;
 
   NotificationPreferencesAccountStatus _accountStatus = NotificationPreferencesAccountStatus.unavailable;
   int _accountGeneration = 0;
   int _loadGeneration = 0;
 
-  this
-    : _service = service,
-      super(const NotificationPreferencesState.loading()) {
+  this : super(const NotificationPreferencesState.loading()) {
     _accountSubscription = _service.accountStatusStream.listen(
       // ignore: no_slop_linter/prefer_required_named_parameters, Stream callback
       (status) => _onAccountStatus(status: status),
@@ -124,6 +122,6 @@ class NotificationPreferencesCubit({required NotificationPreferencesService serv
   @override
   Future<void> close() async {
     await _accountSubscription.cancel();
-    return super.close();
+    return await super.close();
   }
 }

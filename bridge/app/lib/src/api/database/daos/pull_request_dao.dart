@@ -21,7 +21,7 @@ class PullRequestDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabas
   Future<List<PullRequestDto>> getPrsByProjectId({
     required String projectId,
   }) async {
-    return (select(pullRequestsTable)..where((t) => t.projectId.equals(projectId))).get();
+    return await (select(pullRequestsTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
   Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({

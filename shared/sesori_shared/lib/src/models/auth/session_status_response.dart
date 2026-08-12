@@ -8,25 +8,25 @@ part "session_status_response.g.dart";
 @Freezed(unionKey: "status", fromJson: true, toJson: true)
 sealed class AuthSessionStatusResponse with _$AuthSessionStatusResponse {
   @FreezedUnionValue("pending")
-  const factory AuthSessionStatusResponse.pending() = AuthSessionStatusResponsePending;
+  const factory pending() = AuthSessionStatusResponsePending;
 
   @FreezedUnionValue("complete")
-  const factory AuthSessionStatusResponse.complete({
+  const factory complete({
     required String accessToken,
     required String refreshToken,
     required AuthUser user,
   }) = AuthSessionStatusResponseComplete;
 
   @FreezedUnionValue("denied")
-  const factory AuthSessionStatusResponse.denied() = AuthSessionStatusResponseDenied;
+  const factory denied() = AuthSessionStatusResponseDenied;
 
   @FreezedUnionValue("expired")
-  const factory AuthSessionStatusResponse.expired() = AuthSessionStatusResponseExpired;
+  const factory expired() = AuthSessionStatusResponseExpired;
 
   @FreezedUnionValue("error")
-  const factory AuthSessionStatusResponse.error({
+  const factory error({
     required String message,
   }) = AuthSessionStatusResponseError;
 
-  factory AuthSessionStatusResponse.fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponseFromJson(json);
 }

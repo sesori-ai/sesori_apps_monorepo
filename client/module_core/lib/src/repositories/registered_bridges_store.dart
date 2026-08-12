@@ -30,20 +30,20 @@ import "../logging/logging.dart";
 /// signing in on the same device never inherits this one's answer.
 @lazySingleton
 class RegisteredBridgesStore({
-    required SecureStorage secureStorage,
-    required AuthSession authSession,
-  }) {
+  required SecureStorage secureStorage,
+  required AuthSession authSession,
+}) {
   static const _storageKey = "has_registered_bridges";
   static const _storedValue = "true";
 
-  final SecureStorage _storage;
+  final SecureStorage _storage = secureStorage;
   StreamSubscription<AuthState>? _authSubscription;
 
   /// In-memory mirror of the latch. `true` once the account is known to have a
   /// registered bridge; `false` means "not yet known" — never "no bridges".
   bool _knownRegistered = false;
 
-  this : _storage = secureStorage {
+  this {
     _authSubscription = authSession.authStateStream.listen((state) {
       // Logout: drop the latch so the next account starts from scratch.
       // clear() handles its own errors, so this stays fire-and-forget.

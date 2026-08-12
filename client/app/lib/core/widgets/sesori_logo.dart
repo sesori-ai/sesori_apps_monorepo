@@ -12,14 +12,16 @@ import "package:vector_graphics/vector_graphics.dart";
 /// The source SVG is a 151x177 frame holding a 120x120 squircle whose top-left
 /// corner sits at (15.333, 2.667) with a 30.667 corner radius; the leftover
 /// frame space is where the drop shadow extends.
-class const SesoriLogo({super.key, this.squareSize = _svgSquare}) extends StatelessWidget {
-  /// Shared [Hero] tag so the logo flies between screens that show it
-  /// (splash → login) during route transitions.
-  static const String heroTag = "sesori-logo";
+class const SesoriLogo({
+  super.key,
 
   /// Edge length of the rounded square, in logical pixels. Everything else
   /// (frame, shadow, bevel) scales relative to this.
-  final double squareSize;
+  final double squareSize = _svgSquare,
+}) extends StatelessWidget {
+  /// Shared [Hero] tag so the logo flies between screens that show it
+  /// (splash → login) during route transitions.
+  static const String heroTag = "sesori-logo";
 
   /// Rendered frame height for this [squareSize], including the shadow
   /// space the SVG frame reserves below the squircle.
@@ -98,10 +100,7 @@ class const SesoriLogo({super.key, this.squareSize = _svgSquare}) extends Statel
   }
 }
 
-class const _BevelPainter({required this.radius, required this.scale}) extends CustomPainter {
-  final double radius;
-  final double scale;
-
+class const _BevelPainter({required final double radius, required final double scale}) extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rrect = RRect.fromRectAndRadius(
@@ -112,10 +111,38 @@ class const _BevelPainter({required this.radius, required this.scale}) extends C
       ..save()
       ..clipRRect(rrect);
     // Inset shadows, drawn outer→inner to match the Figma layer order.
-    _inset(canvas, size: size, offset: Offset(3.3333 * scale, 3.3333 * scale), blur: 1.3333 * scale, spread: -4 * scale, color: const Color(0x99FFFFFF));
-    _inset(canvas, size: size, offset: Offset(-2 * scale, -2 * scale), blur: 2.6667 * scale, spread: -3 * scale, color: const Color(0x99FFFFFF));
-    _inset(canvas, size: size, offset: Offset(0, -3.3333 * scale), blur: 8.5333 * scale, spread: 0, color: const Color(0x40FFFFFF));
-    _inset(canvas, size: size, offset: Offset(0, 2.6667 * scale), blur: 2.6667 * scale, spread: 0, color: const Color(0x40FFFFFF));
+    _inset(
+      canvas,
+      size: size,
+      offset: Offset(3.3333 * scale, 3.3333 * scale),
+      blur: 1.3333 * scale,
+      spread: -4 * scale,
+      color: const Color(0x99FFFFFF),
+    );
+    _inset(
+      canvas,
+      size: size,
+      offset: Offset(-2 * scale, -2 * scale),
+      blur: 2.6667 * scale,
+      spread: -3 * scale,
+      color: const Color(0x99FFFFFF),
+    );
+    _inset(
+      canvas,
+      size: size,
+      offset: Offset(0, -3.3333 * scale),
+      blur: 8.5333 * scale,
+      spread: 0,
+      color: const Color(0x40FFFFFF),
+    );
+    _inset(
+      canvas,
+      size: size,
+      offset: Offset(0, 2.6667 * scale),
+      blur: 2.6667 * scale,
+      spread: 0,
+      color: const Color(0x40FFFFFF),
+    );
     canvas.restore();
   }
 
@@ -137,10 +164,8 @@ class const _BevelPainter({required this.radius, required this.scale}) extends C
     }
     final holeRect = (Offset.zero & size).deflate(spread).shift(offset);
     final holeRadius = (radius - spread).clamp(0.0, double.infinity);
-    final hole = Path()
-      ..addRRect(RRect.fromRectAndRadius(holeRect, Radius.circular(holeRadius)));
-    final field = Path()
-      ..addRect((Offset.zero & size).inflate(size.longestSide));
+    final hole = Path()..addRRect(RRect.fromRectAndRadius(holeRect, Radius.circular(holeRadius)));
+    final field = Path()..addRect((Offset.zero & size).inflate(size.longestSide));
     canvas.drawPath(
       Path.combine(PathOperation.difference, field, hole),
       paint,
@@ -148,6 +173,5 @@ class const _BevelPainter({required this.radius, required this.scale}) extends C
   }
 
   @override
-  bool shouldRepaint(_BevelPainter oldDelegate) =>
-      oldDelegate.radius != radius || oldDelegate.scale != scale;
+  bool shouldRepaint(_BevelPainter oldDelegate) => oldDelegate.radius != radius || oldDelegate.scale != scale;
 }

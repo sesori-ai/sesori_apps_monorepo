@@ -503,14 +503,8 @@ ProcessIdentity _identity({required int pid, required String? executablePath, re
   );
 }
 
-class _SpawnFakeHost({required HostProcessService processes, required Map<String, String> environment}) implements PluginHost {
-  this
-    : _processes = processes,
-      _environment = environment;
-
-  final HostProcessService _processes;
-  final Map<String, String> _environment;
-
+class _SpawnFakeHost({required final HostProcessService _processes, required final Map<String, String> _environment})
+    implements PluginHost {
   @override
   HostProcessService get processes => _processes;
 
@@ -565,10 +559,7 @@ class _RecordingHostProcessService() implements HostProcessService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeSpawnedProcess({required this.pid}) implements SpawnedProcess {
-  @override
-  final int pid;
-
+class _FakeSpawnedProcess({@override required final int pid}) implements SpawnedProcess {
   final Completer<int> _exit = Completer<int>();
 
   @override
@@ -603,10 +594,7 @@ class _FakeSpawnedProcess({required this.pid}) implements SpawnedProcess {
 /// assert the caller never runs two probes concurrently. Each probe yields to
 /// the event loop while "in flight", so any concurrent caller would observe an
 /// overlap.
-class _RecordingHostPortService({required Set<String> unbindableHosts}) implements HostPortService {
-  this : _unbindableHosts = unbindableHosts;
-
-  final Set<String> _unbindableHosts;
+class _RecordingHostPortService({required final Set<String> _unbindableHosts}) implements HostPortService {
   final List<String> probedHosts = <String>[];
   int _inFlight = 0;
   int maxConcurrentProbes = 0;

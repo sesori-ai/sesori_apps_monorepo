@@ -10,12 +10,8 @@ import "package:sesori_bridge/src/push/push_send_exception.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _FakeTokenRefreshManager(this._token, {String? forceRefreshToken}) implements TokenRefresher {
-  final String _token;
-  final String? _forceRefreshToken;
+class _FakeTokenRefreshManager(final String _token, {final String? _forceRefreshToken}) implements TokenRefresher {
   bool forceRefreshCalled = false;
-
-  this : _forceRefreshToken = forceRefreshToken;
 
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {

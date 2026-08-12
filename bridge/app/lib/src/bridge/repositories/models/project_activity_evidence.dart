@@ -2,13 +2,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 
 /// Uncombined activity timestamps reported for one project.
 class const ProjectActivityEvidence({
-    required this.pluginId,
-    required this.projectId,
-    required this.pluginActivity,
-    required this.sessionActivities,
-  }) {
-  final String pluginId;
-  final String projectId;
-  final PluginProjectActivity? pluginActivity;
-  final List<PluginSessionTime> sessionActivities;
-}
+  required final String pluginId,
+  required final String projectId,
+  required final PluginProjectActivity? pluginActivity,
+  required final List<PluginSessionTime> sessionActivities,
+});

@@ -22,12 +22,12 @@ class ConnectionBanner extends StatelessWidget {
   /// The bridge-offline banner: informational only. The relay connection stays
   /// alive and `ConnectionService` reconnects the moment the bridge is back, so
   /// there is no action to offer.
-  const ConnectionBanner({super.key}) : _onRetry = null;
+  const new({super.key}) : _onRetry = null;
 
   /// The connection-lost banner: the relay itself is unreachable and
   /// auto-reconnect has given up, so this variant carries a Retry action that
   /// re-triggers a relay reconnect via [onRetry].
-  const ConnectionBanner.connectionLost({super.key, required VoidCallback onRetry}) : _onRetry = onRetry;
+  const new connectionLost({super.key, required VoidCallback onRetry}) : _onRetry = onRetry;
 
   /// Reconnect callback for the connection-lost variant; `null` for the
   /// bridge-offline variant, which self-heals and offers no action. Its

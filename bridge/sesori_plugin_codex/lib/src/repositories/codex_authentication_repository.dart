@@ -4,34 +4,23 @@ import "../api/codex_app_server_api.dart";
 import "../api/models/codex_account_dto.dart";
 
 final class const CodexAuthenticationChallenge({
-    required this.verificationUri,
-    required this.userCode,
-  }) {
-  final Uri verificationUri;
-  final String userCode;
-}
+  required final Uri verificationUri,
+  required final String userCode,
+});
 
 final class const CodexAuthenticationException({
-    required this.message,
-    required this.cause,
-  }) implements Exception {
-  final String message;
-  final Object? cause;
-
+  required final String message,
+  required final Object? cause,
+}) implements Exception {
   @override
   String toString() => "CodexAuthenticationException: $message";
 }
 
 /// Owns Codex's private login identifier and completion correlation.
 class CodexAuthenticationRepository({
-    required CodexAppServerApi appServerApi,
-    required Duration requestTimeout,
-  }) {
-  this : _appServerApi = appServerApi,
-       _requestTimeout = requestTimeout;
-
-  final CodexAppServerApi _appServerApi;
-  final Duration _requestTimeout;
+  required final CodexAppServerApi _appServerApi,
+  required final Duration _requestTimeout,
+}) {
   StreamSubscription<CodexAccountLoginCompletedNotificationDto>? _completionSubscription;
   Completer<void>? _completion;
   String? _loginId;

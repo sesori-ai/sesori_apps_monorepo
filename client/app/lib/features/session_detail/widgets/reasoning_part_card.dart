@@ -6,17 +6,12 @@ import "../../../core/extensions/build_context_x.dart";
 import "reasoning_modal.dart";
 
 class const ReasoningPartCard({
-    super.key,
-    required this.text,
-    required this.isStreaming,
-    required this.partId,
-    required this.messageId,
-  }) extends StatefulWidget {
-  final String text;
-  final bool isStreaming;
-  final String partId;
-  final String messageId;
-
+  super.key,
+  required final String text,
+  required final bool isStreaming,
+  required final String partId,
+  required final String messageId,
+}) extends StatefulWidget {
   @override
   State<ReasoningPartCard> createState() => _ReasoningPartCardState();
 

@@ -10,15 +10,9 @@ import "models/product_analytics_preference_models.dart";
 
 @lazySingleton
 class ProductAnalyticsPreferenceRepository({
-    required ProductAnalyticsPreferenceApi api,
-    required ProductAnalyticsPreferenceStorage storage,
-  }) {
-  final ProductAnalyticsPreferenceApi _api;
-  final ProductAnalyticsPreferenceStorage _storage;
-
-  this : _api = api,
-       _storage = storage;
-
+  required final ProductAnalyticsPreferenceApi _api,
+  required final ProductAnalyticsPreferenceStorage _storage,
+}) {
   Future<LocalProductAnalyticsPreference?> loadLocal({required String userId}) async {
     // Keep unreadable values in place so every automatic read remains
     // fail-closed across retries and process restarts. The storage boundary's
@@ -45,7 +39,7 @@ class ProductAnalyticsPreferenceRepository({
 
   Future<ProductAnalyticsPreferenceRepositoryResult> fetch({required String userId}) async {
     final result = await _api.getPreference(userId: userId);
-    return switch (result) {
+    return await (switch (result) {
       ProductAnalyticsPreferenceApiSuccess(:final record) => _persistFetchedRecord(
         userId: userId,
         apiRecord: record,
@@ -53,7 +47,7 @@ class ProductAnalyticsPreferenceRepository({
       ProductAnalyticsPreferenceApiTimeout() => const ProductAnalyticsPreferenceTimedOut(),
       ProductAnalyticsPreferenceApiConflict() ||
       ProductAnalyticsPreferenceApiFailure() => const ProductAnalyticsPreferenceFailed(),
-    };
+    });
   }
 
   Future<ProductAnalyticsPreferenceRepositoryResult> reconcile({
@@ -107,7 +101,7 @@ class ProductAnalyticsPreferenceRepository({
       );
     }
 
-    return _putPending(userId: userId, pending: pending, pendingPersisted: pendingPersisted);
+    return await _putPending(userId: userId, pending: pending, pendingPersisted: pendingPersisted);
   }
 
   Future<ProductAnalyticsPreferenceRepositoryResult> _reconcilePendingEnable({
@@ -115,7 +109,7 @@ class ProductAnalyticsPreferenceRepository({
     required LocalProductAnalyticsPendingEnable pending,
   }) async {
     final result = await _api.getPreference(userId: userId);
-    return switch (result) {
+    return await (switch (result) {
       ProductAnalyticsPreferenceApiSuccess(:final record)
           when record.preference == ProductAnalyticsPreference.disabled && record.revision == pending.record.revision =>
         _putPending(userId: userId, pending: pending),
@@ -127,7 +121,7 @@ class ProductAnalyticsPreferenceRepository({
       ProductAnalyticsPreferenceApiTimeout() ||
       ProductAnalyticsPreferenceApiConflict() ||
       ProductAnalyticsPreferenceApiFailure() => ProductAnalyticsPreferencePendingSync(pending: pending),
-    };
+    });
   }
 
   Future<ProductAnalyticsPreferenceRepositoryResult> _putPending({
@@ -145,7 +139,7 @@ class ProductAnalyticsPreferenceRepository({
       expectedRevision: pending.record.revision,
       operationId: pending.operationId,
     );
-    return switch (result) {
+    return await (switch (result) {
       ProductAnalyticsPreferenceApiSuccess(:final record) => _persistResultForPending(
         userId: userId,
         apiRecord: record,
@@ -169,7 +163,7 @@ class ProductAnalyticsPreferenceRepository({
         pending: pending,
         pendingPersisted: pendingPersisted,
       ),
-    };
+    });
   }
 
   Future<ProductAnalyticsPreferenceRepositoryResult> _retryDisableAfterConflict({
@@ -186,7 +180,7 @@ class ProductAnalyticsPreferenceRepository({
         userKey: conflictRecord.userKey,
         operationId: operationId,
       );
-      return _persistResultForPending(
+      return await _persistResultForPending(
         userId: userId,
         apiRecord: conflictRecord,
         pending: pending,
@@ -219,7 +213,7 @@ class ProductAnalyticsPreferenceRepository({
     );
     switch (retry) {
       case ProductAnalyticsPreferenceApiSuccess(:final record):
-        return _persistResultForPending(
+        return await _persistResultForPending(
           userId: userId,
           apiRecord: record,
           pending: pending,
@@ -227,7 +221,7 @@ class ProductAnalyticsPreferenceRepository({
         );
       case ProductAnalyticsPreferenceApiConflict(:final record)
           when record.preference == ProductAnalyticsPreference.disabled:
-        return _persistResultForPending(
+        return await _persistResultForPending(
           userId: userId,
           apiRecord: record,
           pending: pending,
@@ -347,9 +341,7 @@ class ProductAnalyticsPreferenceRepository({
   }
 }
 
-final class const _ProductAnalyticsPreferenceStorageException({required this.innerError}) implements Exception {
-  final Object innerError;
-
+final class const _ProductAnalyticsPreferenceStorageException({required final Object innerError}) implements Exception {
   @override
   String toString() => "Product analytics preference storage operation failed";
 }

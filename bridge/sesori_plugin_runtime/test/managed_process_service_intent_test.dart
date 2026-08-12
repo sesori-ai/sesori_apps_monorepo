@@ -269,26 +269,16 @@ class _ProbePlan() {
 }
 
 class const _IntentRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.commandLine,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.status,
-  }) {
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String commandLine;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final String status;
-
+  required final String ownerSessionId,
+  required final int openCodePid,
+  required final String? openCodeStartMarker,
+  required final String openCodeExecutablePath,
+  required final String commandLine,
+  required final int port,
+  required final int bridgePid,
+  required final String? bridgeStartMarker,
+  required final String status,
+}) {
   _IntentRecord withStatus(String status) {
     return _IntentRecord(
       ownerSessionId: ownerSessionId,
@@ -440,14 +430,14 @@ class _FakeServerClock() implements ServerClock {
   DateTime now() => DateTime.utc(2026, 5, 15, 12, 30);
 }
 
-class _FakeSpawnedProcess({required ProcessIdentity identity, required bool exitImmediately}) implements SpawnedProcess {
-  this : _identity = identity {
+class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately})
+    implements SpawnedProcess {
+  this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);
     }
   }
 
-  final ProcessIdentity _identity;
   final Completer<int> _exitCodeCompleter = Completer<int>();
 
   @override

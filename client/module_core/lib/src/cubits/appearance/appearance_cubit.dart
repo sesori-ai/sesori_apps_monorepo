@@ -8,12 +8,9 @@ import "../../repositories/appearance_store.dart";
 /// theme from this state while the settings screen writes to it from far below.
 /// [initialMode] is the persisted choice, read before the first frame so a
 /// pinned theme never flashes the device one.
-class AppearanceCubit({required AppearanceStore store, required AppearanceMode initialMode}) extends Cubit<AppearanceMode> {
-  final AppearanceStore _store;
-
-  this
-    : _store = store,
-      super(initialMode);
+class AppearanceCubit({required final AppearanceStore _store, required AppearanceMode initialMode})
+    extends Cubit<AppearanceMode> {
+  this : super(initialMode);
 
   /// Switches to [mode] and persists it.
   Future<void> select({required AppearanceMode mode}) async {

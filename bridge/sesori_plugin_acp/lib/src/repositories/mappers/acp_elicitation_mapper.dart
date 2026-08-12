@@ -6,14 +6,9 @@ const String _suggestedTextLabel = "Use suggested text";
 sealed class const AcpElicitationForm();
 
 final class const AcpSupportedElicitationForm({
-    required this.questions,
-    required List<AcpElicitationField> fields,
-  }) extends AcpElicitationForm {
-  this : _fields = fields;
-
-  final List<PluginQuestionInfo> questions;
-  final List<AcpElicitationField> _fields;
-
+  required final List<PluginQuestionInfo> questions,
+  required final List<AcpElicitationField> _fields,
+}) extends AcpElicitationForm {
   Map<String, Object?> buildResponse({required List<List<String>> answers}) {
     final content = <String, Object?>{};
     for (var index = 0; index < _fields.length; index++) {
@@ -27,21 +22,17 @@ final class const AcpSupportedElicitationForm({
   }
 }
 
-final class const AcpUnsupportedElicitationForm({required this.reason}) extends AcpElicitationForm {
+final class const AcpUnsupportedElicitationForm({
   /// Privacy-safe structural reason. Never contains labels, defaults, or text.
-  final String reason;
-}
+  required final String reason,
+}) extends AcpElicitationForm;
 
-sealed class const AcpElicitationField({required this.key, required this.required}) {
-  final String key;
-  final bool required;
-
+sealed class const AcpElicitationField({required final String key, required final bool required}) {
   Object? encode({required List<String> selected});
 }
 
-final class const _StringField({required super.key, required super.required, required this.suggestedText}) extends AcpElicitationField {
-  final String? suggestedText;
-
+final class const _StringField({required super.key, required super.required, required final String? suggestedText})
+    extends AcpElicitationField {
   @override
   Object? encode({required List<String> selected}) {
     if (selected.isEmpty) return null;
@@ -63,9 +54,11 @@ final class const _BooleanField({required super.key, required super.required}) e
   }
 }
 
-final class const _EnumField({required super.key, required super.required, required this.valuesByLabel}) extends AcpElicitationField {
-  final Map<String, String> valuesByLabel;
-
+final class const _EnumField({
+  required super.key,
+  required super.required,
+  required final Map<String, String> valuesByLabel,
+}) extends AcpElicitationField {
   @override
   Object? encode({required List<String> selected}) => selected.isEmpty ? null : valuesByLabel[selected.first];
 }

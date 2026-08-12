@@ -1,11 +1,8 @@
 /// Immutable provider/model selection used for ACP message translation.
 class const AcpSessionConfigurationSnapshot({
-    required this.modelId,
-    required this.providerId,
-  }) {
-  final String? modelId;
-  final String? providerId;
-}
+  required final String? modelId,
+  required final String? providerId,
+});
 
 /// Owns process defaults and per-session ACP provider/model overrides.
 class AcpSessionConfigurationTracker() {

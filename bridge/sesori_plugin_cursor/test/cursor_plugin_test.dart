@@ -158,7 +158,7 @@ void main() {
         "authMethods": <Object?>[],
       });
       await respond("cursor/list_available_models", const {"models": <Object?>[]});
-      return future;
+      return await future;
     }
 
     test("id is cursor", () {

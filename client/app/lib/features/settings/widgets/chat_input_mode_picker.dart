@@ -42,16 +42,11 @@ class const ChatInputModePicker({super.key}) extends StatelessWidget {
 }
 
 class const _ChatInputModeOption({
-    required this.mode,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  }) extends StatelessWidget {
-  final ChatInputMode mode;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
+  required final ChatInputMode mode,
+  required final String label,
+  required final bool isSelected,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -116,10 +111,8 @@ class const _ChatInputModeOption({
   }
 }
 
-class const _ComposerPreview({required this.mode, required this.isSelected}) extends StatelessWidget {
-  final ChatInputMode mode;
-  final bool isSelected;
-
+class const _ComposerPreview({required final ChatInputMode mode, required final bool isSelected})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -156,10 +149,7 @@ class const _ComposerPreview({required this.mode, required this.isSelected}) ext
   }
 }
 
-class const _ComposerPill({required this.mode, required this.isSelected}) extends StatelessWidget {
-  final ChatInputMode mode;
-  final bool isSelected;
-
+class const _ComposerPill({required final ChatInputMode mode, required final bool isSelected}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -206,9 +196,7 @@ class const _ComposerPill({required this.mode, required this.isSelected}) extend
   }
 }
 
-class const _Waveform({required this.isSelected}) extends StatelessWidget {
-  final bool isSelected;
-
+class const _Waveform({required final bool isSelected}) extends StatelessWidget {
   static const _barHeights = <double>[
     6,
     6,
@@ -259,9 +247,7 @@ class const _Waveform({required this.isSelected}) extends StatelessWidget {
   }
 }
 
-class const _TextPreview({required this.isSelected}) extends StatelessWidget {
-  final bool isSelected;
-
+class const _TextPreview({required final bool isSelected}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

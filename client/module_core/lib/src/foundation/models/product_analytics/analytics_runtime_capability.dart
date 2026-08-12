@@ -6,8 +6,8 @@ enum AnalyticsRuntimeDisabledReason() {
 }
 
 sealed class const AnalyticsRuntimeCapability() {
-  const factory AnalyticsRuntimeCapability.enabled() = AnalyticsRuntimeEnabled;
-  const factory AnalyticsRuntimeCapability.disabled({required AnalyticsRuntimeDisabledReason reason}) =
+  const factory enabled() = AnalyticsRuntimeEnabled;
+  const factory disabled({required AnalyticsRuntimeDisabledReason reason}) =
       AnalyticsRuntimeDisabled;
 
   bool get isEnabled => this is AnalyticsRuntimeEnabled;
@@ -15,6 +15,4 @@ sealed class const AnalyticsRuntimeCapability() {
 
 final class const AnalyticsRuntimeEnabled() extends AnalyticsRuntimeCapability;
 
-final class const AnalyticsRuntimeDisabled({required this.reason}) extends AnalyticsRuntimeCapability {
-  final AnalyticsRuntimeDisabledReason reason;
-}
+final class const AnalyticsRuntimeDisabled({required final AnalyticsRuntimeDisabledReason reason}) extends AnalyticsRuntimeCapability;

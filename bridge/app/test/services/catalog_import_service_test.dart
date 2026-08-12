@@ -281,30 +281,23 @@ void main() {
 }
 
 class _FakeCatalogImportRepository({
-    required this.completion,
-    required this.hydrationGate,
-    required this.releaseImport,
-    required this.importError,
-    required Set<String>? eligiblePluginIds,
-    required Set<String>? importEligiblePluginIds,
-  }) implements CatalogImportRepository {
+  required final CatalogHydrationDto? completion,
+  required final Completer<CatalogHydrationDto?>? hydrationGate,
+  required final Completer<void>? releaseImport,
+  required final Object? importError,
+  required Set<String>? eligiblePluginIds,
+  required Set<String>? importEligiblePluginIds,
+}) implements CatalogImportRepository {
   @override
   Stream<List<SessionBackendActivity>> get backendActivity => const Stream.empty();
 
   @override
   Future<void> dispose() async {}
 
-  this : eligiblePluginIds = eligiblePluginIds ?? <String>{"selected"},
-       importEligiblePluginIds = importEligiblePluginIds ?? eligiblePluginIds ?? <String>{"selected"};
-
-  final CatalogHydrationDto? completion;
-  final Completer<CatalogHydrationDto?>? hydrationGate;
-  final Completer<void>? releaseImport;
-  final Object? importError;
   @override
-  final Set<String> eligiblePluginIds;
+  final Set<String> eligiblePluginIds = eligiblePluginIds ?? <String>{"selected"};
   @override
-  final Set<String> importEligiblePluginIds;
+  final Set<String> importEligiblePluginIds = importEligiblePluginIds ?? eligiblePluginIds ?? <String>{"selected"};
   final Completer<void> importStarted = Completer<void>();
 
   int hydrationReads = 0;
@@ -314,7 +307,7 @@ class _FakeCatalogImportRepository({
   @override
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async {
     hydrationReads++;
-    return hydrationGate == null ? completion : hydrationGate!.future;
+    return await (hydrationGate == null ? completion : hydrationGate!.future);
   }
 
   @override

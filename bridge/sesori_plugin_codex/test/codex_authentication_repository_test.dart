@@ -105,11 +105,9 @@ void main() {
 Future<void> _eventLoop() => Future<void>.delayed(Duration.zero);
 
 class _AuthenticationTransport({
-    this.verificationUrl = "https://auth.example/device",
-    this.startResponse,
-  }) implements CodexAppServerTransport {
-  final String verificationUrl;
-  final Future<void>? startResponse;
+  final String verificationUrl = "https://auth.example/device",
+  final Future<void>? startResponse,
+}) implements CodexAppServerTransport {
   final StreamController<CodexServerNotification> _notifications =
       StreamController<CodexServerNotification>.broadcast();
   final List<String> cancelLoginIds = <String>[];

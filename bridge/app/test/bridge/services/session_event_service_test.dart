@@ -1317,7 +1317,7 @@ class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
       _transactionEntered = null;
       _releaseTransaction = null;
     }
-    return super.isSessionTombstoned(
+    return await super.isSessionTombstoned(
       backendSessionId: backendSessionId,
       pluginId: pluginId,
     );

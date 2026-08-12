@@ -22,22 +22,12 @@ import "../services/control_unregister_service.dart";
 /// kill+respawn, not by message), and helper→GUI variants echoed back have no
 /// inbound meaning.
 class BridgeControlMessageDispatcher({
-    required ControlChannelClient client,
-    required ControlChannelTokenService tokenService,
-    required ControlPromptService promptService,
-    required ControlUnregisterService unregisterService,
-  }) {
-  final ControlChannelClient _client;
-  final ControlChannelTokenService _tokenService;
-  final ControlPromptService _promptService;
-  final ControlUnregisterService _unregisterService;
-
+  required final ControlChannelClient _client,
+  required final ControlChannelTokenService _tokenService,
+  required final ControlPromptService _promptService,
+  required final ControlUnregisterService _unregisterService,
+}) {
   StreamSubscription<String>? _subscription;
-
-  this  : _client = client,
-        _tokenService = tokenService,
-        _promptService = promptService,
-        _unregisterService = unregisterService;
 
   /// Subscribes to the client's inbound stream. Idempotent — a second call
   /// while already started does nothing.

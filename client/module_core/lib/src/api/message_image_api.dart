@@ -6,35 +6,24 @@ import "package:injectable/injectable.dart";
 
 sealed class const MessageImageApiResult();
 
-final class const MessageImageApiSuccess({required this.bytes}) extends MessageImageApiResult {
-  final Uint8List bytes;
-}
+final class const MessageImageApiSuccess({required final Uint8List bytes}) extends MessageImageApiResult;
 
-final class const MessageImageApiHttpFailure({required this.statusCode}) extends MessageImageApiResult {
-  final int statusCode;
-}
+final class const MessageImageApiHttpFailure({required final int statusCode}) extends MessageImageApiResult;
 
 final class const MessageImageApiTooLarge() extends MessageImageApiResult;
 
 final class const MessageImageApiInvalidRedirect() extends MessageImageApiResult;
 
 final class const MessageImageApiNetworkFailure({
-    required this.cause,
-    required this.stackTrace,
-  }) extends MessageImageApiResult {
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
-  final Object cause;
-  final StackTrace stackTrace;
-}
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImageApiResult;
 
 /// Layer-1 HTTP access for bounded remote message images.
 @lazySingleton
-class MessageImageApi({required http.Client client}) {
+class MessageImageApi({required final http.Client _client}) {
   static const _maxRedirects = 5;
-
-  final http.Client _client;
-
-  this : _client = client;
 
   Future<MessageImageApiResult> fetch({
     required Uri url,

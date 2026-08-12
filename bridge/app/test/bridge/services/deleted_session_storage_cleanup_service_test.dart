@@ -48,15 +48,11 @@ void main() {
 }
 
 class _FakeSessionRepository({
-    required this.cleanupPluginIds,
-    required this.tombstonesByPlugin,
-    required this.failingTombstoneReads,
-    required this.failingCleanups,
-  }) implements SessionRepository {
-  final List<String> cleanupPluginIds;
-  final Map<String, Set<String>> tombstonesByPlugin;
-  final Set<String> failingTombstoneReads;
-  final Set<String> failingCleanups;
+  required final List<String> cleanupPluginIds,
+  required final Map<String, Set<String>> tombstonesByPlugin,
+  required final Set<String> failingTombstoneReads,
+  required final Set<String> failingCleanups,
+}) implements SessionRepository {
   final List<String> tombstoneReadPluginIds = [];
   final List<({String pluginId, String backendSessionId})> cleanupCalls = [];
 

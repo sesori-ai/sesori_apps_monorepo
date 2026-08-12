@@ -19,15 +19,15 @@ void tapDownFeedback() => HapticFeedback.selectionClick();
 /// [_StateAwareBuilders]: `.stateAware` constructor — builders receive interaction state set.
 sealed class const _TappableBuilders();
 
-final class const _SimpleBuilders({required this.child, required this.containerBuilder}) extends _TappableBuilders {
-  final Widget child;
-  final Widget Function(Widget child) containerBuilder;
-}
+final class const _SimpleBuilders({
+  required final Widget child,
+  required final Widget Function(Widget child) containerBuilder,
+}) extends _TappableBuilders;
 
-final class const _StateAwareBuilders({required this.childBuilder, required this.containerBuilder}) extends _TappableBuilders {
-  final Widget Function({required Set<WidgetState> state}) childBuilder;
-  final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
-}
+final class const _StateAwareBuilders({
+  required final Widget Function({required Set<WidgetState> state}) childBuilder,
+  required final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder,
+}) extends _TappableBuilders;
 
 // ---------------------------------------------------------------------------
 // PregoTappable
@@ -55,7 +55,7 @@ class PregoTappable extends StatelessWidget {
   /// to [child]. Never use [Center]/[Align] inside [containerBuilder] — they
   /// loosen constraints and break the hit area. Apply alignment as part of
   /// the [child] builder instead.
-  PregoTappable({
+  new({
     super.key,
     required Widget child,
     required this.onTap,
@@ -72,7 +72,7 @@ class PregoTappable extends StatelessWidget {
   /// State-aware variant — builders receive a `Set<WidgetState>` so the
   /// component can apply its own interaction styling (bg colour changes on hover,
   /// underline, etc.) instead of relying on the default overlay.
-  PregoTappable.stateAware({
+  new stateAware({
     super.key,
     required Widget Function({required Set<WidgetState> state}) childBuilder,
     required Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder,
@@ -181,22 +181,14 @@ class PregoTappable extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class const _AndroidTappable({
-    required this.childBuilder,
-    required this.containerBuilder,
-    required this.onTap,
-    required this.color,
-    required this.borderRadius,
-    required this.useSuperellipse,
-    required this.overlayInset,
-  }) extends StatefulWidget {
-  final Widget Function({required Set<WidgetState> state}) childBuilder;
-  final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
-  final VoidCallback onTap;
-  final WidgetStateProperty<Color?> color;
-  final BorderRadius borderRadius;
-  final bool useSuperellipse;
-  final double overlayInset;
-
+  required final Widget Function({required Set<WidgetState> state}) childBuilder,
+  required final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder,
+  required final VoidCallback onTap,
+  required final WidgetStateProperty<Color?> color,
+  required final BorderRadius borderRadius,
+  required final bool useSuperellipse,
+  required final double overlayInset,
+}) extends StatefulWidget {
   @override
   State<_AndroidTappable> createState() => _AndroidTappableState();
 }
@@ -284,22 +276,14 @@ class _AndroidTappableState() extends State<_AndroidTappable> {
 // ---------------------------------------------------------------------------
 
 class const _WebTappable({
-    required this.childBuilder,
-    required this.containerBuilder,
-    required this.onTap,
-    required this.overlayColor,
-    required this.borderRadius,
-    required this.useSuperellipse,
-    required this.overlayInset,
-  }) extends StatefulWidget {
-  final Widget Function({required Set<WidgetState> state}) childBuilder;
-  final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
-  final VoidCallback onTap;
-  final WidgetStateProperty<Color?> overlayColor;
-  final BorderRadius borderRadius;
-  final bool useSuperellipse;
-  final double overlayInset;
-
+  required final Widget Function({required Set<WidgetState> state}) childBuilder,
+  required final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder,
+  required final VoidCallback onTap,
+  required final WidgetStateProperty<Color?> overlayColor,
+  required final BorderRadius borderRadius,
+  required final bool useSuperellipse,
+  required final double overlayInset,
+}) extends StatefulWidget {
   @override
   State<_WebTappable> createState() => _WebTappableState();
 }
@@ -428,9 +412,9 @@ class _WebTappableState() extends State<_WebTappable> {
 /// Newton's method on: `peak = 1 + 4s³ / (27(s+1)²)`.
 // ignore: prefer_const_constructors_in_immutables, the solved tension is not a constant expression
 class _OvershootCurve({required double peak}) extends Curve {
-  this : assert(peak > 1.0, 'peak must be > 1.0 for overshoot'), _s = _solveS(peak);
+  this : assert(peak > 1.0, 'peak must be > 1.0 for overshoot');
 
-  final double _s;
+  final double _s = _solveS(peak);
 
   /// Solves for the easeOutBack tension parameter that produces [peak].
   static double _solveS(double peak) {
@@ -538,27 +522,20 @@ mixin _ScalePulseMixin<T extends StatefulWidget> on State<T>, TickerProvider {
 }
 
 class const _IosTappable({
-    required this.childBuilder,
-    required this.containerBuilder,
-    required this.onTap,
-    required this.overlayColor,
-    required this.borderRadius,
-    required this.useSuperellipse,
-    required this.overlayInset,
-  }) extends StatefulWidget {
-  final Widget Function({required Set<WidgetState> state}) childBuilder;
-  final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
-  final VoidCallback onTap;
-  final WidgetStateProperty<Color?> overlayColor;
-  final BorderRadius borderRadius;
-  final bool useSuperellipse;
-  final double overlayInset;
-
+  required final Widget Function({required Set<WidgetState> state}) childBuilder,
+  required final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder,
+  required final VoidCallback onTap,
+  required final WidgetStateProperty<Color?> overlayColor,
+  required final BorderRadius borderRadius,
+  required final bool useSuperellipse,
+  required final double overlayInset,
+}) extends StatefulWidget {
   @override
   State<_IosTappable> createState() => _IosTappableState();
 }
 
-class _IosTappableState() extends State<_IosTappable>
+class _IosTappableState()
+    extends State<_IosTappable>
     with SingleTickerProviderStateMixin, _ScalePulseMixin<_IosTappable> {
   /// Border radius for the overlay, used to align it with the inner edge of the border when
   /// [PregoTappable.overlayInset] is set. Will be set in [initState] and [didUpdateWidget].

@@ -15,29 +15,20 @@ import "login_state.dart";
 
 enum _LoginAnalyticsOutcome() { open, terminal }
 
-final class _LoginAttempt({required this.provider}) {
-  final AuthProvider provider;
+final class _LoginAttempt({required final AuthProvider provider}) {
   _LoginAnalyticsOutcome analyticsOutcome = _LoginAnalyticsOutcome.open;
 }
 
 /// Opaque ownership token for one native Apple sign-in operation.
-final class AppleLoginAttempt._({required _LoginAttempt attempt}) {
-  final _LoginAttempt _attempt;
-  this : _attempt = attempt;
-}
+final class AppleLoginAttempt._({required final _LoginAttempt _attempt});
 
 class LoginCubit({
-    required OAuthFlowProvider oAuthFlowProvider,
-    required UrlLauncher urlLauncher,
-    required AuthSession authSession,
-    required LifecycleSource lifecycleSource,
-    required InstallationAnalyticsService installationAnalyticsService,
+    required final OAuthFlowProvider _oAuthFlowProvider,
+    required final UrlLauncher _urlLauncher,
+    required final AuthSession _authSession,
+    required final LifecycleSource _lifecycleSource,
+    required final InstallationAnalyticsService _installationAnalyticsService,
   }) extends Cubit<LoginState> {
-  final OAuthFlowProvider _oAuthFlowProvider;
-  final UrlLauncher _urlLauncher;
-  final AuthSession _authSession;
-  final LifecycleSource _lifecycleSource;
-  final InstallationAnalyticsService _installationAnalyticsService;
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
   _LoginAttempt? _loginAttempt;
   bool _isPolling = false;
@@ -54,12 +45,7 @@ class LoginCubit({
   /// app has already returned to the foreground before the Future completes.
   bool _didActivePollEnterBackground = false;
 
-  this : _oAuthFlowProvider = oAuthFlowProvider,
-       _urlLauncher = urlLauncher,
-       _authSession = authSession,
-       _lifecycleSource = lifecycleSource,
-       _installationAnalyticsService = installationAnalyticsService,
-       super(const LoginState.idle()) {
+  this : super(const LoginState.idle()) {
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((state) {
       switch (state) {
         case LifecycleState.paused:
@@ -83,7 +69,7 @@ class LoginCubit({
   Future<void> close() async {
     _loginAttempt = null;
     await _lifecycleSubscription?.cancel();
-    return super.close();
+    return await super.close();
   }
 
   Future<void> _onAppResumed() async {

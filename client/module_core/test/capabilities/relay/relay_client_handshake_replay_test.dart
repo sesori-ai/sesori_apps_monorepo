@@ -61,8 +61,7 @@ void main() {
 
 class _FakeWebSocket() {
   this
-    : _clientToServer = StreamController<Object?>.broadcast(),
-      _serverToClient = StreamController<Object?>.broadcast() {
+    : _clientToServer = StreamController<Object?>.broadcast(), _serverToClient = StreamController<Object?>.broadcast() {
     channel = _StubChannel(
       stream: _serverToClient.stream,
       sink: _SinkAdapter(_clientToServer),
@@ -82,13 +81,8 @@ class _FakeWebSocket() {
   }
 }
 
-class _StubChannel({required this.stream, required this.sink}) implements WebSocketChannel {
-  @override
-  final Stream<dynamic> stream;
-
-  @override
-  final WebSocketSink sink;
-
+class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
+    implements WebSocketChannel {
   @override
   int? get closeCode => null;
 
@@ -105,9 +99,7 @@ class _StubChannel({required this.stream, required this.sink}) implements WebSoc
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SinkAdapter(this._controller) implements WebSocketSink {
-  final StreamController<Object?> _controller;
-
+class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
   @override
   void add(Object? data) => _controller.add(data);
 

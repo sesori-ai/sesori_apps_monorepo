@@ -40,10 +40,7 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class const _BenchmarkConfiguration({required this.warmupCount, required this.sampleCount}) {
-  final int warmupCount;
-  final int sampleCount;
-
+class const _BenchmarkConfiguration({required final int warmupCount, required final int sampleCount}) {
   static _BenchmarkConfiguration parse({required List<String> arguments}) {
     final parser = ArgParser()
       ..addOption("warmup", defaultsTo: "$_defaultWarmupCount")
@@ -61,11 +58,7 @@ class const _BenchmarkConfiguration({required this.warmupCount, required this.sa
   }
 }
 
-class const _EventProjectionBenchmark({required _BenchmarkConfiguration configuration}) {
-  this : _configuration = configuration;
-
-  final _BenchmarkConfiguration _configuration;
-
+class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-event-projection-");

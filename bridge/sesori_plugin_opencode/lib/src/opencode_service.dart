@@ -24,10 +24,10 @@ import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, S
 import "../opencode_plugin.dart";
 
 class OpenCodeService(
-    this.repository,
-    this.tracker, {
-    Duration commandDispatchFastFailWindow = const Duration(seconds: 1),
-  }) {
+  final OpenCodeRepository repository,
+  final ActiveSessionTracker tracker, {
+  final Duration _commandDispatchFastFailWindow = const Duration(seconds: 1),
+}) {
   /// Name of the artificial slash command injected into [getCommands] so the
   /// mobile app can trigger OpenCode's manual compaction.
   ///
@@ -43,10 +43,6 @@ class OpenCodeService(
     source: PluginCommandSource.command,
     subtask: null,
   );
-
-  final OpenCodeRepository repository;
-  final ActiveSessionTracker tracker;
-  final Duration _commandDispatchFastFailWindow;
 
   /// Signals that service-owned tracker bookkeeping changed observable state
   /// and the consumer (the plugin) should resync work state and re-emit its
@@ -66,7 +62,7 @@ class OpenCodeService(
   /// (unknown command/session, missing model, server down) surface from
   /// localhost within milliseconds, so 1s is enough to catch them while keeping
   /// the phone's "accepted" feedback snappy.
-  this : _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
+  this;
 
   Future<List<PluginProject>> getProjects() async {
     final projects = await repository.getProjects();

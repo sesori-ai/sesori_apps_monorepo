@@ -6,10 +6,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
 /// A single rendered output line and where it belongs. [isError] lines go to
 /// stderr; the rest go to stdout. The [text] is already styled (color/glyphs
 /// applied or stripped) for its destination, so consumers only write it.
-class const RenderedLine({required this.isError, required this.text}) {
-  final bool isError;
-  final String text;
-}
+class const RenderedLine({required final bool isError, required final String text});
 
 /// Where users are sent to re-run the installer after an update failure. Shared
 /// by every updater output surface so the guidance URL stays in one place.
@@ -40,14 +37,10 @@ void writeRenderedLine(RenderedLine line) {
 /// inject it — the formatter retains only the two resolved booleans, never the
 /// raw [Stdout] or environment. Every builder returns a styled string; the
 /// formatter performs no IO.
-class const UpdateOutputFormatter({required bool color, required bool unicode}) {
-  this
-    : _color = color,
-      _unicode = unicode;
-
+class const UpdateOutputFormatter({required final bool _color, required final bool _unicode}) {
   /// Resolves color/glyph support for [out] under [environment] and captures
   /// only the two resulting booleans.
-  factory UpdateOutputFormatter.forStream({
+  factory forStream({
     required Stdout out,
     required Map<String, String> environment,
   }) {
@@ -56,9 +49,6 @@ class const UpdateOutputFormatter({required bool color, required bool unicode}) 
       unicode: TerminalGlyphValidator.isSupported(environment: environment),
     );
   }
-
-  final bool _color;
-  final bool _unicode;
 
   // ┌─ PALETTE ────────────────────────────────────────────────────────────────
   // │ 256-color codes matching the installer palette: brand blue #1472FF ≈ 39.

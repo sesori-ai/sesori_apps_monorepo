@@ -6,18 +6,18 @@ part "codex_turn_input_dto.g.dart";
 @Freezed(unionKey: "type", fromJson: false, toJson: true)
 sealed class CodexTurnInputDto with _$CodexTurnInputDto {
   @FreezedUnionValue("text")
-  const factory CodexTurnInputDto.text({
+  const factory text({
     required String text,
     @JsonKey(name: "text_elements") @Default(<Object?>[]) List<Object?> textElements,
   }) = CodexTurnTextInputDto;
 
   @FreezedUnionValue("localImage")
-  const factory CodexTurnInputDto.localImage({
+  const factory localImage({
     required String path,
   }) = CodexTurnLocalImageInputDto;
 
   @FreezedUnionValue("image")
-  const factory CodexTurnInputDto.image({
+  const factory image({
     required String url,
   }) = CodexTurnImageInputDto;
 }

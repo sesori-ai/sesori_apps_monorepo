@@ -19,11 +19,7 @@ final class const UnsupportedAttachmentImageError() implements Exception;
 /// is still enforced afterwards because animated/exotic formats can skip the
 /// downscale pass.
 @lazySingleton
-class ComposerImagePicker({required ImagePicker picker}) {
-  final ImagePicker _picker;
-
-  this : _picker = picker;
-
+class ComposerImagePicker({required final ImagePicker _picker}) {
   /// Longest-edge cap for picked images. Plenty for a model reading a
   /// screenshot or photo, and it keeps the base64 payload a relay frame
   /// carries per image in the low hundreds of kilobytes.

@@ -82,9 +82,7 @@ class const LoginView({super.key}) extends StatelessWidget {
   }
 }
 
-class const _LoginStatus({required this.state}) extends StatelessWidget {
-  final LoginState state;
-
+class const _LoginStatus({required final LoginState state}) extends StatelessWidget {
   static const String _authenticating = "Contacting Sesori…";
   static const String _polling = "Finish signing in using your browser…";
   static const String _timeout = "Sign-in timed out. Please try again.";
@@ -118,9 +116,7 @@ class const _LoginStatus({required this.state}) extends StatelessWidget {
   }
 }
 
-class const _StatusRow({required this.message}) extends StatelessWidget {
-  final String message;
-
+class const _StatusRow({required final String message}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(

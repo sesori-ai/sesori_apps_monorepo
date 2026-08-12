@@ -1046,7 +1046,6 @@ void main() {
       final inv = processRunner.invocations.first;
       expect(inv.arguments, equals(["branch", "-D", "--", "session-001"]));
     });
-
   });
 }
 
@@ -1063,14 +1062,10 @@ ProcessResult _fail({required int exitCode, String stderr = ""}) {
 }
 
 class const _Invocation({
-    required this.command,
-    required this.arguments,
-    required this.workingDirectory,
-  }) {
-  final String command;
-  final List<String> arguments;
-  final String? workingDirectory;
-}
+  required final String command,
+  required final List<String> arguments,
+  required final String? workingDirectory,
+});
 
 class _FakeProcessRunner() implements ProcessRunner {
   @override

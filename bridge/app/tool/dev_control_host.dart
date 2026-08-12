@@ -145,23 +145,15 @@ Future<Never> _flushAndExit(int code) async {
 /// speaks the real [ControlMessage] wire protocol so it stays on the exact
 /// GUI<->helper contract the desktop app will implement in Phase 2.
 class _DevControlHost({
-    required String bridgePath,
-    required List<String> bridgeArgs,
-    required String? token,
-    required bool denyToken,
-  }) {
-  this  : _bridgePath = bridgePath,
-        _bridgeArgs = bridgeArgs,
-        _token = token,
-        _denyToken = denyToken,
-        _secret = _generateSecret();
+  required final String _bridgePath,
+  required final List<String> _bridgeArgs,
+  required final String? _token,
+  required var bool _denyToken,
+}) {
+  this : _secret = _generateSecret();
 
-  final String _bridgePath;
-  final List<String> _bridgeArgs;
-  final String? _token;
   final String _secret;
 
-  bool _denyToken;
   final List<String> _pendingPrompts = <String>[];
 
   HttpServer? _server;
@@ -183,7 +175,10 @@ class _DevControlHost({
     );
 
     _printBanner(controlUrl);
-    stdin.transform(utf8.decoder).transform(const LineSplitter()).listen(
+    stdin
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(
           _onCommand,
           onError: (Object error, StackTrace stackTrace) => stderr.writeln("stdin error: $error"),
         );
@@ -217,11 +212,15 @@ class _DevControlHost({
     // Wire observation BEFORE handing off the secret, so a child that crashes
     // immediately (bad path, missing dependency) is still reported via its exit
     // code instead of being masked by a broken-pipe throw on the stdin write.
-    child.stdout.transform(utf8.decoder).listen(
+    child.stdout
+        .transform(utf8.decoder)
+        .listen(
           (chunk) => stdout.write(chunk),
           onError: (Object error, StackTrace stackTrace) => stderr.writeln("bridge stdout pipe error: $error"),
         );
-    child.stderr.transform(utf8.decoder).listen(
+    child.stderr
+        .transform(utf8.decoder)
+        .listen(
           (chunk) => stderr.write(chunk),
           onError: (Object error, StackTrace stackTrace) => stderr.writeln("bridge stderr pipe error: $error"),
         );
@@ -422,7 +421,9 @@ class _DevControlHost({
   /// fail, letting the dev watch its ADR-A9 grace-period exit. The harness stays
   /// alive so it can still print the child's exit code when it terminates.
   Future<void> _simulateGuiGone() async {
-    stdout.writeln("simulating GUI-gone: closing the control channel — the helper should exit after its ~5s grace (ADR A9)…");
+    stdout.writeln(
+      "simulating GUI-gone: closing the control channel — the helper should exit after its ~5s grace (ADR A9)…",
+    );
     final socket = _socket;
     _socket = null;
     await socket?.close();
@@ -476,7 +477,9 @@ class _DevControlHost({
   void _printBanner(String controlUrl) {
     stdout.writeln("Sesori dev control-host harness");
     stdout.writeln("control URL : $controlUrl (loopback WS; per-spawn secret via child stdin)");
-    final tokenState = _token == null ? "NONE (token_request -> null)" : "loaded from token.json / SESORI_DEV_CONTROL_TOKEN";
+    final tokenState = _token == null
+        ? "NONE (token_request -> null)"
+        : "loaded from token.json / SESORI_DEV_CONTROL_TOKEN";
     stdout.writeln("token       : $tokenState${_denyToken ? "  [deny ON]" : ""}");
     _printCommands();
   }

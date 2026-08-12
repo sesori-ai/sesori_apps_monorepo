@@ -483,30 +483,27 @@ class _ReadFailingToolOutcomeStorage() implements CodexToolOutcomeStorage {
   }) async {}
 }
 
-class _StubMetadataRepository({required this.defaults}) extends CodexMetadataRepository {
+class _StubMetadataRepository({required final CodexConfigDefaults defaults}) extends CodexMetadataRepository {
   this : super(configReader: CodexConfigReader(environment: const {}));
-
-  final CodexConfigDefaults defaults;
 
   @override
   CodexConfigDefaults readConfigDefaults() => defaults;
 }
 
 class _StubModelRepository({
-    this.catalog = const (
-      defaultModelID: null,
-      models: <PluginModel>[],
-    ),
-    this.error,
-  }) extends CodexModelRepository {
-  this : super(
-         appServerApi: CodexAppServerApi(
-           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
-         ),
-       );
+  final CodexModelCatalog catalog = const (
+    defaultModelID: null,
+    models: <PluginModel>[],
+  ),
+  final Object? error,
+}) extends CodexModelRepository {
+  this
+    : super(
+        appServerApi: CodexAppServerApi(
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+        ),
+      );
 
-  final CodexModelCatalog catalog;
-  final Object? error;
   int listCount = 0;
 
   @override
@@ -518,16 +515,14 @@ class _StubModelRepository({
   }
 }
 
-class _StubSkillRepository({this.commands = const [], this.error}) extends CodexSkillRepository {
+class _StubSkillRepository({var List<PluginCommand> commands = const [], final Object? error})
+    extends CodexSkillRepository {
   this
     : super(
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
         ),
       );
-
-  List<PluginCommand> commands;
-  final Object? error;
 
   @override
   Future<List<PluginCommand>> listCommands({required String cwd}) async {

@@ -9,9 +9,7 @@ import "../../core/extensions/build_context_x.dart";
 ///
 /// Rendered inside a `SliverFillRemaining(hasScrollBody: false)`, so the glyph
 /// is a fixed size — an unbounded illustration would inflate the scroll extent.
-class const SessionEmptyState({super.key, required this.projectName}) extends StatelessWidget {
-  final String? projectName;
-
+class const SessionEmptyState({super.key, required final String? projectName}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -105,9 +103,7 @@ class const _EmptyTerminalGlyph({super.key}) extends StatelessWidget {
   }
 }
 
-class const _WindowDot(this.color) extends StatelessWidget {
-  final Color color;
-
+class const _WindowDot(final Color color) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -119,9 +115,7 @@ class const _WindowDot(this.color) extends StatelessWidget {
 }
 
 /// The shell cursor: a static brand-blue bar with a soft glow.
-class const _CursorBar({required this.color}) extends StatelessWidget {
-  final Color color;
-
+class const _CursorBar({required final Color color}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -136,9 +130,7 @@ class const _CursorBar({required this.color}) extends StatelessWidget {
 }
 
 /// Non-interactive pill naming the project the first task will run in.
-class const _ProjectChip({required this.name}) extends StatelessWidget {
-  final String name;
-
+class const _ProjectChip({required final String name}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

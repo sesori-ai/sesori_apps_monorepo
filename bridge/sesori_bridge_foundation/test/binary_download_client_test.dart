@@ -95,9 +95,7 @@ void main() {
 
 /// Returns a 2xx [http.StreamedResponse] whose body stream immediately errors,
 /// simulating a connection reset after the response headers arrive.
-class _StreamErrorClient(this._streamError) extends http.BaseClient {
-  final Object _streamError;
-
+class _StreamErrorClient(final Object _streamError) extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final controller = StreamController<List<int>>();
@@ -109,9 +107,7 @@ class _StreamErrorClient(this._streamError) extends http.BaseClient {
 
 /// Throws from `send`, simulating a connection-phase transport failure (before
 /// any response headers arrive).
-class _SendErrorClient(this._sendError) extends http.BaseClient {
-  final Object _sendError;
-
+class _SendErrorClient(final Object _sendError) extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     throw _sendError;

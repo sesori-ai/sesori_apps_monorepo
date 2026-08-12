@@ -229,7 +229,7 @@ class _Fixture() {
       filesystemRepository: _MissingFilesystemRepository(),
       sessionOperationDispatcher: operations,
       archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
-        chatHistoryService: createTestChatHistory().service,
+      chatHistoryService: createTestChatHistory().service,
     );
     chatHistory = createTestChatHistory();
     deletions = SessionDeletionService(
@@ -413,19 +413,13 @@ class _FamilyRepository() implements SessionRepository {
 }
 
 class _SessionRecord({
-    required this.id,
-    required this.rootId,
-    required this.parentId,
-    required this.pluginId,
-  }) {
-  final String id;
-  final String rootId;
-  final String? parentId;
-  final String pluginId;
-  String? title;
+  required final String id,
+  required final String rootId,
+  required final String? parentId,
+  required final String pluginId,
+}) {
+  String? title = id;
   int? archivedAt;
-
-  this : title = id;
 
   StoredSession get stored => StoredSession(
     id: id,
@@ -478,7 +472,6 @@ class _FamilyWorktreeService() implements WorktreeService {
 
   @override
   Future<bool> branchExists({required String projectId, required String branchName}) async => false;
-
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

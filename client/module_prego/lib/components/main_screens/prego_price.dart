@@ -28,33 +28,21 @@ enum PregoPriceDirection() { up, down }
 /// ```
 class const PregoPrice({
     super.key,
-    required this.direction,
-    required this.percentageText,
-    required this.balanceChangeText,
-    required this.isBalanceHidden,
-    this.onToggleBalanceVisibility,
-    this.opacity = 1.0,
-  }) extends StatelessWidget {
-  /// Whether the price is trending up or down.
-  final PregoPriceDirection direction;
-
-  /// Formatted percentage text (e.g. `"5.2%"`).
-  final String percentageText;
-
-  /// Formatted absolute balance change text (e.g. `"+$1,250.00"`).
-  final String balanceChangeText;
-
-  /// Whether the balance values are currently hidden (discreet mode).
-  final bool isBalanceHidden;
-
-  /// Called when the eye toggle is tapped. When `null`, the eye button
+    /// Whether the price is trending up or down.
+  required final PregoPriceDirection direction,
+    /// Formatted percentage text (e.g. `"5.2%"`).
+  required final String percentageText,
+    /// Formatted absolute balance change text (e.g. `"+$1,250.00"`).
+  required final String balanceChangeText,
+    /// Whether the balance values are currently hidden (discreet mode).
+  required final bool isBalanceHidden,
+    /// Called when the eye toggle is tapped. When `null`, the eye button
   /// is not rendered and the component is non-interactive.
-  final VoidCallback? onToggleBalanceVisibility;
-
-  /// Overall opacity applied to all colors in the component.
+  final VoidCallback? onToggleBalanceVisibility,
+    /// Overall opacity applied to all colors in the component.
   /// Clamped to the range 0.0–1.0.
-  final double opacity;
-
+  final double opacity = 1.0,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -118,14 +106,10 @@ class const PregoPrice({
 /// ensuring the button is comfortable to tap without artificially
 /// clipping the parent row's height.
 class const _EyeToggleButton({
-    required this.isBalanceHidden,
-    required this.onTap,
-    required this.iconColor,
+    required final bool isBalanceHidden,
+    required final VoidCallback? onTap,
+    required final Color iconColor,
   }) extends StatelessWidget {
-  final bool isBalanceHidden;
-  final VoidCallback? onTap;
-  final Color iconColor;
-
   // Minimum dimension for the tap target — ensures a comfortable hit area.
   static const double _tapTargetSize = 36;
   static const double _iconSize = 12;

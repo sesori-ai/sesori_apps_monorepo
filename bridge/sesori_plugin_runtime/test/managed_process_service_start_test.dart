@@ -800,7 +800,6 @@ _TestRecord _buildRecord(RuntimeRecordDraft draft) {
 }
 
 class _Fakes({_RecordingClock? clock}) {
-  this : clock = clock ?? _FakeServerClock();
 
   final _FakeOwnershipRepository ownership = _FakeOwnershipRepository();
   final _FakeHostProcessService processes = _FakeHostProcessService();
@@ -815,7 +814,7 @@ class _Fakes({_RecordingClock? clock}) {
       capturedAt: DateTime.utc(2026, 5, 15, 12),
     ),
   );
-  final _RecordingClock clock;
+  final _RecordingClock clock = clock ?? _FakeServerClock();
   final _SpawnPlan spawn = _SpawnPlan();
   final _ProbePlan probe = _ProbePlan();
   final _BindablePlan bindable = _BindablePlan();
@@ -907,30 +906,18 @@ class _BindablePlan() {
 enum _TestStatus() { starting, ready, stopping }
 
 class const _TestRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.openCodeCommand,
-    required this.openCodeArgs,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.startedAt,
-    required this.status,
+    required final String ownerSessionId,
+    required final int openCodePid,
+    required final String? openCodeStartMarker,
+    required final String openCodeExecutablePath,
+    required final String openCodeCommand,
+    required final List<String> openCodeArgs,
+    required final int port,
+    required final int bridgePid,
+    required final String? bridgeStartMarker,
+    required final DateTime startedAt,
+    required final _TestStatus status,
   }) {
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String openCodeCommand;
-  final List<String> openCodeArgs;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final DateTime startedAt;
-  final _TestStatus status;
-
   _TestRecord copyWith({required _TestStatus status}) {
     return _TestRecord(
       ownerSessionId: ownerSessionId,
@@ -1067,13 +1054,10 @@ class _FakeHostProcessService() implements HostProcessService {
   }
 }
 
-class _FakeBridgeHostInfo({required ProcessIdentity identity}) implements BridgeHostInfo {
+class _FakeBridgeHostInfo({required final ProcessIdentity _identity}) implements BridgeHostInfo {
   @override
   List<ProcessIdentity> get terminatedBridgeIdentities => const [];
 
-  this : _identity = identity;
-
-  final ProcessIdentity _identity;
   final Map<int, List<bool>> liveBridgeResults = <int, List<bool>>{};
 
   @override
@@ -1110,9 +1094,8 @@ class _FakeServerClock() implements _RecordingClock {
 }
 
 class _AdvancingServerClock({DateTime? start}) implements _RecordingClock {
-  this : _now = start ?? DateTime.utc(2026, 5, 15, 12);
 
-  DateTime _now;
+  DateTime _now = start ?? DateTime.utc(2026, 5, 15, 12);
 
   @override
   final List<Duration> delays = <Duration>[];
@@ -1127,14 +1110,13 @@ class _AdvancingServerClock({DateTime? start}) implements _RecordingClock {
   DateTime now() => _now;
 }
 
-class _FakeSpawnedProcess({required ProcessIdentity identity, required bool exitImmediately}) implements SpawnedProcess {
-  this : _identity = identity {
+class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately}) implements SpawnedProcess {
+  this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);
     }
   }
 
-  final ProcessIdentity _identity;
   final Completer<int> _exitCodeCompleter = Completer<int>();
 
   @override

@@ -9,19 +9,15 @@ import "request_handler.dart";
 
 /// Handles `PATCH /session/update/archive` — updates archive status for a session.
 class UpdateSessionArchiveStatusHandler({
-    required SessionLifecycleService sessionLifecycleService,
-    required SessionUnseenService sessionUnseenService,
-  }) extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
-  final SessionLifecycleService _sessionLifecycleService;
-  final SessionUnseenService _sessionUnseenService;
-
-  this : _sessionLifecycleService = sessionLifecycleService,
-       _sessionUnseenService = sessionUnseenService,
-       super(
-         HttpMethod.patch,
-         "/session/update/archive",
-         fromJson: UpdateSessionArchiveRequest.fromJson,
-       );
+  required final SessionLifecycleService _sessionLifecycleService,
+  required final SessionUnseenService _sessionUnseenService,
+}) extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
+  this
+    : super(
+        HttpMethod.patch,
+        "/session/update/archive",
+        fromJson: UpdateSessionArchiveRequest.fromJson,
+      );
 
   @override
   Future<Session> handle(

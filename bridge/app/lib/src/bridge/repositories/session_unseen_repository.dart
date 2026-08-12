@@ -17,15 +17,9 @@ typedef UnseenRow = ({
 /// project-level aggregation decides that durable child rows do not contribute
 /// independently.
 class SessionUnseenRepository({
-    required SessionDao sessionDao,
-    required SessionUnseenCalculator calculator,
-  }) {
-  final SessionDao _sessionDao;
-  final SessionUnseenCalculator _calculator;
-
-  this : _sessionDao = sessionDao,
-       _calculator = calculator;
-
+  required final SessionDao _sessionDao,
+  required final SessionUnseenCalculator _calculator,
+}) {
   /// Returns the unseen timestamps + project id for [sessionId], or null when
   /// the session has no persisted row.
   Future<UnseenRow?> getUnseenRow({required String sessionId}) async {

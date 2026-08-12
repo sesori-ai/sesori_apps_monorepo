@@ -32,20 +32,16 @@ import "scroll_follow_tracker.dart";
 /// - The "Follow" button tap performs one explicit animated scroll to
 ///   the tail via [ScrollFollowTracker.animateToEdge].
 class const ReasoningModal({
-    super.key,
-    required this.partId,
-    required this.messageId,
-    required this.topInset,
-  }) extends StatefulWidget {
-  final String partId;
-  final String messageId;
+  super.key,
+  required final String partId,
+  required final String messageId,
 
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
-  final double topInset;
-
+  required final double topInset,
+}) extends StatefulWidget {
   /// Opens the reasoning modal as a bottom sheet, forwarding the presenting
   /// context's [SessionDetailCubit] into the sheet's own route.
   ///

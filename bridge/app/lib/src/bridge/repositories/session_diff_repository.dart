@@ -4,30 +4,22 @@ import "mappers/git_diff_output_mapper.dart";
 sealed class SessionDiffQueryResult();
 
 class SessionDiffQuerySuccess({
-    required this.baseRevision,
-    required this.entries,
-    required this.lineCountsByFile,
-  }) extends SessionDiffQueryResult {
-  final String baseRevision;
-  final List<SessionDiffEntry> entries;
-  final Map<String, SessionDiffLineCounts> lineCountsByFile;
-}
+    required final String baseRevision,
+    required final List<SessionDiffEntry> entries,
+    required final Map<String, SessionDiffLineCounts> lineCountsByFile,
+  }) extends SessionDiffQueryResult;
 
 class SessionDiffBaseUnreachable() extends SessionDiffQueryResult;
 
 class SessionDiffNoCommonAncestor() extends SessionDiffQueryResult;
 
-class SessionDiffQueryFailure({required this.message}) extends SessionDiffQueryResult {
-  final String message;
-}
+class SessionDiffQueryFailure({required final String message}) extends SessionDiffQueryResult;
 
 enum SessionDiffComparisonMode() { exactRevision, mergeBase }
 
 sealed class SessionDiffRevisionFileReadResult();
 
-class SessionDiffRevisionFileContent({required this.content}) extends SessionDiffRevisionFileReadResult {
-  final String content;
-}
+class SessionDiffRevisionFileContent({required final String content}) extends SessionDiffRevisionFileReadResult;
 
 class SessionDiffRevisionFileBinary() extends SessionDiffRevisionFileReadResult;
 
@@ -36,14 +28,9 @@ class SessionDiffRevisionFileTooLarge() extends SessionDiffRevisionFileReadResul
 class SessionDiffRevisionFileReadFailure() extends SessionDiffRevisionFileReadResult;
 
 class SessionDiffRepository({
-    required GitCliApi gitCliApi,
-    required GitDiffOutputMapper outputMapper,
+    required final GitCliApi _gitCliApi,
+    required final GitDiffOutputMapper _outputMapper,
   }) {
-  final GitCliApi _gitCliApi;
-  final GitDiffOutputMapper _outputMapper;
-
-  this : _gitCliApi = gitCliApi,
-       _outputMapper = outputMapper;
 
   Future<SessionDiffQueryResult> query({
     required String worktreePath,

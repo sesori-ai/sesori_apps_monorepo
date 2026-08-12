@@ -4,14 +4,11 @@ import "../auth/bridge_id_provider.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
-class GetPluginsHandler({required PluginLifecycleService lifecycleService, required BridgeIdProvider bridgeIdProvider}) extends GetRequestHandler<PluginListResponse> {
-  this
-    : _lifecycleService = lifecycleService,
-      _bridgeIdProvider = bridgeIdProvider,
-      super("/plugin");
-
-  final PluginLifecycleService _lifecycleService;
-  final BridgeIdProvider _bridgeIdProvider;
+class GetPluginsHandler({
+  required final PluginLifecycleService _lifecycleService,
+  required final BridgeIdProvider _bridgeIdProvider,
+}) extends GetRequestHandler<PluginListResponse> {
+  this : super("/plugin");
 
   @override
   Future<PluginListResponse> handle(

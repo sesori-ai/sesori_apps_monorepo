@@ -338,10 +338,10 @@ MessagePart _part({
 /// Fails the one write the delivery shapes depend on, the way a full or
 /// unwritable disk does.
 class _FailingWriteRepository({
-    required super.chatHistoryDao,
-    required super.attachmentSpillStorage,
-    required super.archivedSessionStorage,
-  }) extends ChatHistoryRepository {
+  required super.chatHistoryDao,
+  required super.attachmentSpillStorage,
+  required super.archivedSessionStorage,
+}) extends ChatHistoryRepository {
   @override
   Future<void> upsertPart({
     required String sessionId,
@@ -352,12 +352,11 @@ class _FailingWriteRepository({
 }
 
 class _BlockingWriteRepository({
-    required this.blocker,
-    required super.chatHistoryDao,
-    required super.attachmentSpillStorage,
-    required super.archivedSessionStorage,
-  }) extends ChatHistoryRepository {
-  final Completer<void> blocker;
+  required final Completer<void> blocker,
+  required super.chatHistoryDao,
+  required super.attachmentSpillStorage,
+  required super.archivedSessionStorage,
+}) extends ChatHistoryRepository {
   final Completer<void> _blocked = Completer<void>();
   int syncStateAdvances = 0;
 
@@ -427,7 +426,4 @@ class _BackfillingSessionRepository() implements SessionRepository {
       throw UnsupportedError("${invocation.memberName} is not part of this test");
 }
 
-class const _BridgeIdProvider(this.bridgeId) implements BridgeIdProvider {
-  @override
-  final String? bridgeId;
-}
+class const _BridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;

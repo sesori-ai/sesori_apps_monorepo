@@ -6,11 +6,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _FakeDownloadClient({this.exception}) implements BinaryDownloadClient {
+class _FakeDownloadClient({final DownloadException? exception}) implements BinaryDownloadClient {
   static const int _byteCount = 4;
   static const List<int> _bytes = [1, 2, 3, 4];
-  final DownloadException? exception;
-
   @override
   Stream<DownloadProgress> download({required String url, required String destinationPath}) async* {
     final ex = exception;
@@ -22,9 +20,7 @@ class _FakeDownloadClient({this.exception}) implements BinaryDownloadClient {
   }
 }
 
-class _FakeChecksumValidator({required this.valid}) implements ChecksumValidator {
-  final bool valid;
-
+class _FakeChecksumValidator({required final bool valid}) implements ChecksumValidator {
   @override
   Future<bool> verify({required String filePath, required String expectedHash}) async => valid;
 
@@ -32,9 +28,7 @@ class _FakeChecksumValidator({required this.valid}) implements ChecksumValidator
   Future<String> computeSha256({required String filePath}) async => "deadbeef";
 }
 
-class _FakeArchiveExtractor({required this.success}) implements ArchiveExtractor {
-  final bool success;
-
+class _FakeArchiveExtractor({required final bool success}) implements ArchiveExtractor {
   @override
   Future<ArchiveExtractionResult> extract({
     required String archivePath,
@@ -133,7 +127,10 @@ void main() {
     }
     // The download + staging scratch are cleaned up. The download carries the
     // archive's extension so PowerShell Expand-Archive accepts it on Windows.
-    expect(File(p.join(managedDir.path, ".sesori-runtime-download${_asset.format.fileExtension}")).existsSync(), isFalse);
+    expect(
+      File(p.join(managedDir.path, ".sesori-runtime-download${_asset.format.fileExtension}")).existsSync(),
+      isFalse,
+    );
     expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
   });
 
@@ -169,7 +166,9 @@ void main() {
   });
 
   test("maps a download failure to an install exception", () async {
-    final service = build(downloadError: const DownloadException(kind: DownloadFailureKind.network, message: "offline"));
+    final service = build(
+      downloadError: const DownloadException(kind: DownloadFailureKind.network, message: "offline"),
+    );
     await expectLater(install(service).drain<void>(), throwsA(isA<RuntimeInstallException>()));
   });
 

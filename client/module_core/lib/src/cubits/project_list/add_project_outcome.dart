@@ -18,9 +18,7 @@ enum OpenProjectOutcome() {
 sealed class const FilesystemSuggestionsOutcome();
 
 /// Suggestions were fetched successfully.
-class const FilesystemSuggestionsSuccess({required this.suggestions}) extends FilesystemSuggestionsOutcome {
-  final FilesystemSuggestions suggestions;
-}
+class const FilesystemSuggestionsSuccess({required final FilesystemSuggestions suggestions}) extends FilesystemSuggestionsOutcome;
 
 /// The bridge denied access to the directory (macOS permission / Full Disk Access).
 class const FilesystemSuggestionsPermissionDenied() extends FilesystemSuggestionsOutcome;
@@ -33,9 +31,7 @@ sealed class const CreateDirectoryOutcome();
 
 /// The folder was created; [directory] is the entry the bridge produced, so the
 /// browser can navigate straight into the host's own path for it.
-class const CreateDirectorySuccess({required this.directory}) extends CreateDirectoryOutcome {
-  final FilesystemSuggestion directory;
-}
+class const CreateDirectorySuccess({required final FilesystemSuggestion directory}) extends CreateDirectoryOutcome;
 
 /// A folder of that name is already there.
 class const CreateDirectoryAlreadyExists() extends CreateDirectoryOutcome;

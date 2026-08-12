@@ -36,14 +36,11 @@ enum ScrollFollowEdge() { min, max }
 ///   [ScrollFollowEdge.min] in case `reverse: true` sliver correction
 ///   leaves `pixels` even slightly off `0` after an append.
 class ScrollFollowTracker({
-    required this.edge,
-    double edgeTolerance = 20.0,
+    required final ScrollFollowEdge edge,
+    final double _edgeTolerance = 20.0,
   }) extends ChangeNotifier {
-  this : _edgeTolerance = edgeTolerance,
-       scrollController = ScrollController();
+  this : scrollController = ScrollController();
 
-  final ScrollFollowEdge edge;
-  final double _edgeTolerance;
   final ScrollController scrollController;
 
   bool _following = true;

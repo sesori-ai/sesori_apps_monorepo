@@ -9,5 +9,5 @@ part 'restart_bridge_response.g.dart';
 /// `sesori_shared`.
 @Freezed(toJson: true)
 sealed class RestartBridgeResponse with _$RestartBridgeResponse {
-  const factory RestartBridgeResponse({required bool restarting}) = _RestartBridgeResponse;
+  const factory({required bool restarting}) = _RestartBridgeResponse;
 }

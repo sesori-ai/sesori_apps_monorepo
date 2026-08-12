@@ -18,15 +18,12 @@ import "../../../core/extensions/build_context_x.dart";
 /// Driven by [progress] straight into the painter, so the drag scrubs colour
 /// without rebuilding the composer.
 class const VoiceCancelButton({
-    super.key,
-    required this.progress,
-    required this.onCancel,
-  }) extends StatelessWidget {
+  super.key,
+
   /// 0 → resting dashed ghost, 1 → solid destructive fill under the finger.
-  final ValueListenable<double> progress;
-
-  final VoidCallback onCancel;
-
+  required final ValueListenable<double> progress,
+  required final VoidCallback onCancel,
+}) extends StatelessWidget {
   /// Matches the 44pt footprint of the accordion pill it replaces.
   static const double _size = 44;
 
@@ -84,16 +81,11 @@ class const VoiceCancelButton({
 /// Paints the dashed resting ring, cross-fading into the solid destructive
 /// disc as [engaged] rises.
 class _CancelTargetPainter({
-    required this.engaged,
-    required this.dashColor,
-    required this.fillColor,
-    required this.ringColor,
-  }) extends CustomPainter {
-  final double engaged;
-  final Color dashColor;
-  final Color fillColor;
-  final Color ringColor;
-
+  required final double engaged,
+  required final Color dashColor,
+  required final Color fillColor,
+  required final Color ringColor,
+}) extends CustomPainter {
   static const double _dashStrokeWidth = 1;
   static const double _ringStrokeWidth = 2;
   static const int _dashCount = 16;

@@ -426,14 +426,10 @@ List<RouteBase> _buildAppRoutes({
 }
 
 class const _SessionListPane({
-    required this.projectId,
-    required this.projectName,
-    required this.selectedSessionId,
-  }) extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final String? selectedSessionId;
-
+  required final String projectId,
+  required final String? projectName,
+  required final String? selectedSessionId,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const actionDispatcher = SessionListActionDispatcher();

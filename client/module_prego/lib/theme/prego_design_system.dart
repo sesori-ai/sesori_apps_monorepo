@@ -27,15 +27,10 @@ import "primitives/prego_widths.g.dart";
 @immutable
 // ignore: prefer_const_constructors_in_immutables, shadows are computed from the selected colors
 final class PregoDesignSystem._({
-    required this.colors,
-    required this.textTheme,
-  }) extends ThemeExtension<PregoDesignSystem> {
-  this : shadows = PregoShadows(colors: colors);
-
   /// Semantic color values that adapt to light/dark mode.
-  final PregoColors colors;
-  final PregoTextTheme textTheme;
-
+  required final PregoColors colors,
+  required final PregoTextTheme textTheme,
+}) extends ThemeExtension<PregoDesignSystem> {
   /// Spacing constants.
   ///
   /// Access via static members: `PregoSpacing.md`, `PregoSpacing.lg`, etc.
@@ -58,7 +53,7 @@ final class PregoDesignSystem._({
   ///
   /// Each shadow level returns `List<BoxShadow>` with theme-aware colors.
   /// Usage: `context.prego.shadows.sm`
-  final PregoShadows shadows;
+  final PregoShadows shadows = PregoShadows(colors: colors);
 
   /// [PregoDesignSystem] for light mode.
   static final light = PregoDesignSystem._(colors: .light, textTheme: .light);

@@ -41,15 +41,9 @@ AcpProcessFactory hostProcessAcpFactory({
 /// the transport observes the actual termination through [exitCode], exactly as
 /// it does with a real `io.Process`.
 class HostProcessAcpHandle({
-    required SpawnedProcess process,
-    required HostProcessService processes,
-  }) implements AcpProcessHandle {
-  this : _process = process,
-       _processes = processes;
-
-  final SpawnedProcess _process;
-  final HostProcessService _processes;
-
+  required final SpawnedProcess _process,
+  required final HostProcessService _processes,
+}) implements AcpProcessHandle {
   @override
   Stream<List<int>> get stdout => _process.stdout;
 

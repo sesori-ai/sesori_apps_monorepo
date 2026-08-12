@@ -21,33 +21,15 @@ import '../repositories/update_log_repository.dart';
 /// what happened. Presentation lives with the caller — this service never writes
 /// to `Console`.
 class UpdateApplyService({
-    required UpdateInstallationRepository installationRepository,
-    required UpdateAttemptRepository attemptRepository,
-    required UpdateLogRepository logRepository,
-    required UpdateLock updateLock,
-    required FilesystemCleaner filesystemCleaner,
-    required Clock clock,
-    required String currentVersion,
-    required String installRoot,
-  }) {
-  this : _installationRepository = installationRepository,
-       _attemptRepository = attemptRepository,
-       _logRepository = logRepository,
-       _updateLock = updateLock,
-       _filesystemCleaner = filesystemCleaner,
-       _clock = clock,
-       _currentVersion = currentVersion,
-       _installRoot = installRoot;
-
-  final UpdateInstallationRepository _installationRepository;
-  final UpdateAttemptRepository _attemptRepository;
-  final UpdateLogRepository _logRepository;
-  final UpdateLock _updateLock;
-  final FilesystemCleaner _filesystemCleaner;
-  final Clock _clock;
-  final String _currentVersion;
-  final String _installRoot;
-
+  required final UpdateInstallationRepository _installationRepository,
+  required final UpdateAttemptRepository _attemptRepository,
+  required final UpdateLogRepository _logRepository,
+  required final UpdateLock _updateLock,
+  required final FilesystemCleaner _filesystemCleaner,
+  required final Clock _clock,
+  required final String _currentVersion,
+  required final String _installRoot,
+}) {
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
 

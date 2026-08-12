@@ -12,11 +12,9 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/external_link.dart";
 import "image_attachment_viewer.dart";
 
-class const FilePartWidget({super.key, required this.attachment}) extends StatelessWidget {
+class const FilePartWidget({super.key, required final MessageAttachment attachment}) extends StatelessWidget {
   static const previewImageKey = ValueKey("filePartWidget.previewImage");
   static const previewTapTargetKey = ValueKey("filePartWidget.previewTapTarget");
-
-  final MessageAttachment attachment;
 
   @override
   Widget build(BuildContext context) {
@@ -31,10 +29,8 @@ class const FilePartWidget({super.key, required this.attachment}) extends Statel
   }
 }
 
-class const _FilePartContent({required this.attachment}) extends StatelessWidget {
+class const _FilePartContent({required final MessageAttachment attachment}) extends StatelessWidget {
   static const _maxMetadataCharacters = 255;
-
-  final MessageAttachment attachment;
 
   @override
   Widget build(BuildContext context) {
@@ -191,18 +187,12 @@ class const _FilePartContent({required this.attachment}) extends StatelessWidget
 }
 
 class const _LoadedImageAttachment({
-    required this.bytes,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-    required this.filename,
-  }) extends StatefulWidget {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
-  final Uri? originalUri;
-  final String? filename;
-
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+  required final Uri? originalUri,
+  required final String? filename,
+}) extends StatefulWidget {
   @override
   State<_LoadedImageAttachment> createState() => _LoadedImageAttachmentState();
 }

@@ -19,5 +19,5 @@ Future<List<int>> unframe(List<int> data, {required SessionEncryptor encryptor})
       "Protocol version mismatch: expected 0x${protocolVersion.toRadixString(16).padLeft(2, "0")}, got 0x${data[0].toRadixString(16).padLeft(2, "0")}",
     );
   }
-  return encryptor.decrypt(data.sublist(1));
+  return await encryptor.decrypt(data.sublist(1));
 }

@@ -3,33 +3,20 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../bridge/runtime/plugin_runtime.dart";
 
 class const PluginLifecycleSnapshot({
-    required this.pluginId,
-    required this.projectOwnership,
-    required this.setup,
-    required this.accessGate,
-    required this.startAllowed,
-    required this.state,
-    required this.workState,
-    required this.leaseCount,
-    required this.transitionSettled,
-  }) {
-  final String pluginId;
-  final PluginProjectOwnership projectOwnership;
-  final PluginSetupStatus setup;
-  final PluginRuntimeAccessGate accessGate;
+  required final String pluginId,
+  required final PluginProjectOwnership projectOwnership,
+  required final PluginSetupStatus setup,
+  required final PluginRuntimeAccessGate accessGate,
+  required final bool startAllowed,
+  required final PluginRuntimeState state,
+  required final PluginWorkState workState,
+  required final int leaseCount,
+  required final bool transitionSettled,
+}) {
   bool get eligible => accessGate != PluginRuntimeAccessGate.disabled;
-  final bool startAllowed;
-  final PluginRuntimeState state;
-  final PluginWorkState workState;
-  final int leaseCount;
-  final bool transitionSettled;
 }
 
-class PluginLifecycleRepository({required PluginRuntime runtime}) {
-  this : _runtime = runtime;
-
-  final PluginRuntime _runtime;
-
+class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
   Future<Map<String, PluginSetupStatus>> inspect({
     required Set<String> pluginIds,
     required bool markUnselectedNotInspected,

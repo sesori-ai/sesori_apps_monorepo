@@ -10,23 +10,13 @@ import "omp_catalog_service.dart";
 
 /// Owns OMP's project-scoped options and exact turn-selection writes.
 class OmpSessionOptionsService({
-    required OmpCatalogService catalogService,
-    required OmpCatalogTracker tracker,
-    required OmpCatalogRepository repository,
-    required AcpSessionConfigurationTracker configurationTracker,
-    required String launchDirectory,
-  }) {
-  this : _catalogService = catalogService,
-       _tracker = tracker,
-       _repository = repository,
-       _configurationTracker = configurationTracker,
-       _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
-
-  final OmpCatalogService _catalogService;
-  final OmpCatalogTracker _tracker;
-  final OmpCatalogRepository _repository;
-  final AcpSessionConfigurationTracker _configurationTracker;
-  final String _launchDirectory;
+  required final OmpCatalogService _catalogService,
+  required final OmpCatalogTracker _tracker,
+  required final OmpCatalogRepository _repository,
+  required final AcpSessionConfigurationTracker _configurationTracker,
+  required String launchDirectory,
+}) {
+  final String _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
   final Map<String, OmpSessionConfigSnapshot> _sessionConfigs = {};
 
   void captureSessionConfig(

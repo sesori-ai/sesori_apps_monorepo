@@ -5,20 +5,12 @@ import '../api/process_id_lookup_api.dart';
 import '../api/system_process_api.dart';
 
 class BridgeInstanceRepository({
-    required ProcessIdLookupApi processIdLookupApi,
-    required SystemProcessApi processApi,
-    required ProcessUser? currentUser,
-  }) {
-  this : _processIdLookupApi = processIdLookupApi,
-       _processApi = processApi,
-       _currentUser = currentUser;
-
+  required final ProcessIdLookupApi _processIdLookupApi,
+  required final SystemProcessApi _processApi,
+  required final ProcessUser? _currentUser,
+}) {
   static const String _bridgeExecutableName = 'sesori-bridge';
   static const Set<String> _bridgeExecutableBasenames = <String>{'sesori-bridge', 'sesori-bridge.exe'};
-
-  final ProcessIdLookupApi _processIdLookupApi;
-  final SystemProcessApi _processApi;
-  final ProcessUser? _currentUser;
 
   Future<List<ProcessIdentity>> listLiveBridgeCandidates({required int currentPid}) async {
     final processIds = await _processIdLookupApi.listProcessIdsByExecutableName(

@@ -30,7 +30,7 @@ class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpA
   }) async {
     lastUrl = url;
     lastUserId = userId;
-    if (hangGet) return Completer<ApiResponse<T>>().future;
+    if (hangGet) return await Completer<ApiResponse<T>>().future;
     final error = getError;
     if (error != null) return ApiResponse.error(error);
     return ApiResponse.success(fromJson(getJson));
@@ -47,7 +47,7 @@ class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpA
     lastUrl = url;
     lastUserId = userId;
     lastBody = body;
-    if (hangPut) return Completer<ApiResponse<T>>().future;
+    if (hangPut) return await Completer<ApiResponse<T>>().future;
     final error = putError;
     if (error != null) return ApiResponse.error(error);
     return ApiResponse.success(fromJson(putJson));

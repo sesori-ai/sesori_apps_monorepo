@@ -1,11 +1,10 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "file_part_widget.dart";
 
-class const UserMessageCard({super.key, required this.message}) extends StatelessWidget {
-  final MessageWithParts message;
-
+class const UserMessageCard({super.key, required final MessageWithParts message}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

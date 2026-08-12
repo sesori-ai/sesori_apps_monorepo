@@ -495,32 +495,19 @@ Future<void> _waitFor(bool Function() condition, {required String reason}) async
 }
 
 class _RegistrationHarness._({
-    required this.plugin,
-    required this.bridgeIdStorage,
-    required this.session,
-    required this.startFuture,
-    required this.runFuture,
-    required this.relayServer,
-    required this.database,
-    required this.lifecycleService,
-    required this.httpClient,
-    required this.relayClient,
-    required this.restartService,
-    required this.restartDispatcher,
-  }) {
-  final FakeBridgePlugin plugin;
-  final FakeBridgeIdStorage bridgeIdStorage;
-  final OrchestratorSession session;
-  final Future<OrchestratorSessionStartResult> startFuture;
-  final Future<void> runFuture;
-  final _CountingRelayServer relayServer;
-  final AppDatabase database;
-  final PluginLifecycleService lifecycleService;
-  final http.Client httpClient;
-  final _RecordingRelayClient relayClient;
-  final _RecordingRestartService restartService;
-  final BridgeRestartDispatcher restartDispatcher;
-
+  required final FakeBridgePlugin plugin,
+  required final FakeBridgeIdStorage bridgeIdStorage,
+  required final OrchestratorSession session,
+  required final Future<OrchestratorSessionStartResult> startFuture,
+  required final Future<void> runFuture,
+  required final _CountingRelayServer relayServer,
+  required final AppDatabase database,
+  required final PluginLifecycleService lifecycleService,
+  required final http.Client httpClient,
+  required final _RecordingRelayClient relayClient,
+  required final _RecordingRestartService restartService,
+  required final BridgeRestartDispatcher restartDispatcher,
+}) {
   static Future<_RegistrationHarness> start({
     required FakeBridgeRegistrationRepository repository,
     Future<void>? connectReturnDelay,
@@ -621,16 +608,15 @@ class _RegistrationHarness._({
 }
 
 class _RecordingRelayClient({
-    required super.relayURL,
-    required super.accessTokenProvider,
-    required super.bridgeIdProvider,
-    required this.connectReturnDelay,
-  }) extends RelayClient {
+  required super.relayURL,
+  required super.accessTokenProvider,
+  required super.bridgeIdProvider,
+  required final Future<void>? connectReturnDelay,
+}) extends RelayClient {
   int sendCount = 0;
   int? lastConnId;
   bool failNextSend = false;
   bool staleNextSend = false;
-  final Future<void>? connectReturnDelay;
   final Completer<void> connectPromoted = Completer<void>();
   RelayConnection? promotedConnection;
   Future<void>? closeDelay;
@@ -654,7 +640,7 @@ class _RecordingRelayClient({
       closeStarted.complete();
     }
     await closeDelay;
-    return closeFuture;
+    return await closeFuture;
   }
 
   @override
@@ -683,8 +669,7 @@ class _RecordingRelayClient({
   }
 }
 
-class _RecordingRestartService({required this.relayClient}) implements BridgeRestartService {
-  final _RecordingRelayClient relayClient;
+class _RecordingRestartService({required final _RecordingRelayClient relayClient}) implements BridgeRestartService {
   bool restartable = false;
   int handoffCalls = 0;
   int? sendCountAtHandoff;
@@ -803,8 +788,7 @@ Future<String> _captureLogOutput(Future<void> Function() action) async {
 }
 
 /// A [TestRelayServer] that also counts how many clients ever connected.
-class _CountingRelayServer._(this._inner) {
-  final TestRelayServer _inner;
+class _CountingRelayServer._(final TestRelayServer _inner) {
   int connectedClientCount = 0;
 
   static Future<_CountingRelayServer> start() async {

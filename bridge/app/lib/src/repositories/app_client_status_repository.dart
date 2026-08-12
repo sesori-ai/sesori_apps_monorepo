@@ -6,16 +6,10 @@ final class const AppClientRegistered() extends AppClientStatusResult;
 
 final class const AppClientAbsent() extends AppClientStatusResult;
 
-final class const AppClientStatusUnavailable({required this.error, required this.stackTrace}) extends AppClientStatusResult {
-  final Object error;
-  final StackTrace stackTrace;
-}
+final class const AppClientStatusUnavailable({required final Object error, required final StackTrace stackTrace})
+    extends AppClientStatusResult;
 
-class AppClientStatusRepository({required SesoriServerApi api}) {
-  this : _api = api;
-
-  final SesoriServerApi _api;
-
+class AppClientStatusRepository({required final SesoriServerApi _api}) {
   Future<AppClientStatusResult> getStatus({required String accessToken}) async {
     try {
       final response = await _api.getAppClientStatus(accessToken: accessToken);

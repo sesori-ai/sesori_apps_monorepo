@@ -7,35 +7,23 @@ typedef PullRequestSelectionTarget = ({
 
 sealed class const PullRequestSelectionOutcome();
 
-final class const PullRequestSelectionCompleted({required this.selections}) extends PullRequestSelectionOutcome {
-  final List<PullRequestTargetSelection> selections;
-}
+final class const PullRequestSelectionCompleted({required final List<PullRequestTargetSelection> selections})
+    extends PullRequestSelectionOutcome;
 
 final class const PullRequestSelectionIdentityChanged() extends PullRequestSelectionOutcome;
 
-sealed class const PullRequestTargetSelection({required this.target}) {
-  final PullRequestSelectionTarget target;
-}
+sealed class const PullRequestTargetSelection({required final PullRequestSelectionTarget target});
 
 final class const PullRequestTargetSelected({
-    required super.target,
-    required this.number,
-    required this.url,
-    required this.title,
-    required this.createdAt,
-    required this.state,
-    required this.mergeableStatus,
-    required this.reviewDecision,
-    required this.checkStatus,
-  }) extends PullRequestTargetSelection {
-  final int number;
-  final String url;
-  final String title;
-  final DateTime createdAt;
-  final PrState state;
-  final PrMergeableStatus mergeableStatus;
-  final PrReviewDecision reviewDecision;
-  final PrCheckStatus checkStatus;
-}
+  required super.target,
+  required final int number,
+  required final String url,
+  required final String title,
+  required final DateTime createdAt,
+  required final PrState state,
+  required final PrMergeableStatus mergeableStatus,
+  required final PrReviewDecision reviewDecision,
+  required final PrCheckStatus checkStatus,
+}) extends PullRequestTargetSelection;
 
 final class const PullRequestTargetUnmatched({required super.target}) extends PullRequestTargetSelection;

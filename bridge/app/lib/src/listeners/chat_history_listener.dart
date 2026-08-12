@@ -18,18 +18,13 @@ import "../bridge/services/session_event_dispatcher.dart";
 /// here as well would let a later part enter the session queue ahead of an
 /// awaited image part and reverse persisted part order.
 class ChatHistoryListener({
-    required Stream<NormalizedSourcedBridgeEvent> source,
-    required ChatHistoryService chatHistoryService,
-  }) {
-  final Stream<NormalizedSourcedBridgeEvent> _source;
-  final ChatHistoryService _chatHistoryService;
+  required final Stream<NormalizedSourcedBridgeEvent> _source,
+  required final ChatHistoryService _chatHistoryService,
+}) {
   StreamSubscription<NormalizedSourcedBridgeEvent>? _subscription;
   final Set<Future<void>> _pendingCaptures = {};
   Future<void>? _disposeFuture;
   bool _disposed = false;
-
-  this : _source = source,
-       _chatHistoryService = chatHistoryService;
 
   void start() {
     if (_subscription != null || _disposed) return;

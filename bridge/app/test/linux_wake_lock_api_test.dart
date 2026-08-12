@@ -73,10 +73,7 @@ void main() {
   });
 }
 
-class _ProcessInvocation({required this.executable, required this.arguments}) {
-  final String executable;
-  final List<String> arguments;
-}
+class _ProcessInvocation({required final String executable, required final List<String> arguments});
 
 class _FakeProcess() implements Process {
   final List<ProcessSignal> killSignals = <ProcessSignal>[];

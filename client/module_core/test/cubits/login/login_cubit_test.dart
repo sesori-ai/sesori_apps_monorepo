@@ -277,7 +277,7 @@ void main() {
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) starts OAuth flow with AuthProvider.google",
         build: buildCubit,
-        act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
+        act: (cubit) async => await cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
           isA<LoginPolling>(),

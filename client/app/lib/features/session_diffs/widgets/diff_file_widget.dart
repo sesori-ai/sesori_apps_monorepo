@@ -8,15 +8,11 @@ import "../utils/diff_theme.dart";
 /// Renders a single file diff header with file name, +/- stats,
 /// status badge, and expand/collapse chevron.
 class const DiffFileWidget({
-    super.key,
-    required this.viewModel,
-    required this.isExpanded,
-    required this.onToggle,
-  }) extends StatelessWidget {
-  final DiffFileViewModel viewModel;
-  final bool isExpanded;
-  final VoidCallback onToggle;
-
+  super.key,
+  required final DiffFileViewModel viewModel,
+  required final bool isExpanded,
+  required final VoidCallback onToggle,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

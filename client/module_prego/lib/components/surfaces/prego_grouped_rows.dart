@@ -23,13 +23,12 @@ const double _leadingIconSize = 20.0;
 
 /// A solid rounded card hosting grouped settings rows (Figma "Grouped Rows").
 class const PregoGroupedRows({
-    super.key,
-    required this.children,
-  }) extends StatelessWidget {
+  super.key,
+
   /// The rows, typically [PregoGroupedRow]s. Mark the final row with
   /// [PregoGroupedRow.isLast] so it drops its bottom divider.
-  final List<Widget> children;
-
+  required final List<Widget> children,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -51,33 +50,24 @@ class const PregoGroupedRows({
 /// Rows compose a hairline divider below themselves aligned with the title
 /// column; set [isLast] on the final row of a [PregoGroupedRows] card.
 class const PregoGroupedRow({
-    super.key,
-    this.icon,
-    this.leading,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
-    this.isLast = false,
-  }) extends StatelessWidget {
+  super.key,
+
   /// Leading glyph rendered at 20px in the tertiary text colour. Ignored when
   /// [leading] is provided.
-  final IconData? icon;
+  final IconData? icon,
 
   /// Custom leading widget (e.g. an avatar). Takes precedence over [icon].
-  final Widget? leading;
-
-  final Widget title;
-  final Widget? subtitle;
+  final Widget? leading,
+  required final Widget title,
+  final Widget? subtitle,
 
   /// Trailing slot. Icon descendants default to 20px in the tertiary colour.
-  final Widget? trailing;
-
-  final VoidCallback? onTap;
+  final Widget? trailing,
+  final VoidCallback? onTap,
 
   /// Whether this is the last row in its card; suppresses the bottom divider.
-  final bool isLast;
-
+  final bool isLast = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

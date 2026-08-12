@@ -8,12 +8,10 @@ import "request_handler.dart";
 /// Accepts a JSON body with `{"projectId": "..."}`. The project ID may contain
 /// slashes (it can be a filesystem path), so it is passed in the body rather
 /// than as a URL path parameter.
-class HideProjectHandler({required ProjectMutationService projectMutationService}) extends BodyRequestHandler<ProjectIdRequest, SuccessEmptyResponse> {
-  final ProjectMutationService _projectMutationService;
-
+class HideProjectHandler({required final ProjectMutationService _projectMutationService})
+    extends BodyRequestHandler<ProjectIdRequest, SuccessEmptyResponse> {
   this
-    : _projectMutationService = projectMutationService,
-      super(
+    : super(
         HttpMethod.post,
         "/project/hide",
         fromJson: ProjectIdRequest.fromJson,

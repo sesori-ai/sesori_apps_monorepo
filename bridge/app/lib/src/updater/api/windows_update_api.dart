@@ -141,7 +141,4 @@ class const WindowsUpdateApi() implements PlatformUpdateApi {
 
 /// A single file rename performed during an apply, recorded so it can be
 /// reversed if a later step fails.
-class const _Move({required this.fromPath, required this.toPath}) {
-  final String fromPath;
-  final String toPath;
-}
+class const _Move({required final String fromPath, required final String toPath});

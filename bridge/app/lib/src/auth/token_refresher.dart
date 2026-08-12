@@ -11,8 +11,7 @@ abstract interface class TokenRefresher() {
 /// (e.g. the standalone auth-refresh endpoint being momentarily down while a
 /// valid cached token is still on hand), which callers may recover from by
 /// reconnecting with the cached token.
-class const ControlTokenUnavailableException(this.reason) implements Exception {
-  final String reason;
+class const ControlTokenUnavailableException(final String reason) implements Exception {
   @override
   String toString() => "ControlTokenUnavailableException: $reason";
 }

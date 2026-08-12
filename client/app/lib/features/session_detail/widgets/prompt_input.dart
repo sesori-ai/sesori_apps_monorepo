@@ -29,14 +29,9 @@ enum _VoiceState() { idle, recording, transcribing }
 enum _PasteImageResult() { noImage, handled, stale }
 
 final class _ComposerPasteAction({
-    required Future<_PasteImageResult> Function() pasteImage,
-    required TextEditingController controller,
+    required final Future<_PasteImageResult> Function() _pasteImage,
+    required final TextEditingController _controller,
   }) extends Action<PasteTextIntent> {
-  final Future<_PasteImageResult> Function() _pasteImage;
-  final TextEditingController _controller;
-
-  this : _pasteImage = pasteImage,
-       _controller = controller;
 
   @override
   Object? invoke(PasteTextIntent intent) {
@@ -90,54 +85,32 @@ typedef PromptSubmitCallback =
 
 class const PromptInput({
     super.key,
-    required this.isBusy,
-    required this.hasMessages,
-    required this.onSend,
-    required this.onVoiceTranscriptionCompleted,
-    required this.onDraftChanged,
-    required this.onDraftCleared,
-    required this.onAbort,
-    required this.surfaceStyleController,
-    required this.composerHeader,
-    required this.availableCommands,
-    required this.stagedCommand,
-    required this.onCommandSelected,
-    required this.onCommandCleared,
-    required this.attachmentsSupported,
-    required this.draftIdentity,
-    required this.initialDraft,
-    this.header,
-  }) extends StatefulWidget {
-  final bool isBusy;
-
-  /// Whether the session already has (or has queued) messages. Drives the
+    required final bool isBusy,
+    /// Whether the session already has (or has queued) messages. Drives the
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
   /// text-first mode, which prompt the compact pill invites.
-  final bool hasMessages;
-  final PromptSubmitCallback onSend;
-  final VoidCallback onVoiceTranscriptionCompleted;
-  final ValueChanged<ComposerDraft> onDraftChanged;
-  final VoidCallback onDraftCleared;
-  final VoidCallback onAbort;
-  final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController;
-  final Widget? composerHeader;
-  final List<CommandInfo> availableCommands;
-  final CommandInfo? stagedCommand;
-  final ValueChanged<CommandInfo> onCommandSelected;
-  final VoidCallback onCommandCleared;
-
-  /// Whether this composer offers image attachments. Null keeps already staged
+  required final bool hasMessages,
+    required final PromptSubmitCallback onSend,
+    required final VoidCallback onVoiceTranscriptionCompleted,
+    required final ValueChanged<ComposerDraft> onDraftChanged,
+    required final VoidCallback onDraftCleared,
+    required final VoidCallback onAbort,
+    required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
+    required final Widget? composerHeader,
+    required final List<CommandInfo> availableCommands,
+    required final CommandInfo? stagedCommand,
+    required final ValueChanged<CommandInfo> onCommandSelected,
+    required final VoidCallback onCommandCleared,
+    /// Whether this composer offers image attachments. Null keeps already staged
   /// images while current bridge capability is being resolved.
-  final bool? attachmentsSupported;
-
-  /// Optional widget rendered inside the composer, above the text-field row.
-  final Widget? header;
-
-  /// Stable identity used only to detect when this widget state is reused for
+  required final bool? attachmentsSupported,
+    /// Stable identity used only to detect when this widget state is reused for
   /// another composer. Persistence remains owned by the parent Cubit.
-  final String draftIdentity;
-  final ComposerDraft initialDraft;
-
+  required final String draftIdentity,
+    required final ComposerDraft initialDraft,
+    /// Optional widget rendered inside the composer, above the text-field row.
+  final Widget? header,
+  }) extends StatefulWidget {
   @override
   State<PromptInput> createState() => _PromptInputState();
 }

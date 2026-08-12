@@ -54,18 +54,10 @@ CursorPlugin _defaultBuildPlugin({
 /// The optional constructor parameters are test seams; the registered instance
 /// is `const CursorPluginDescriptor()`.
 class const CursorPluginDescriptor({
-    CursorPluginFactory? buildPlugin,
-    Duration connectBudget = const Duration(seconds: 15),
-    Duration versionProbeTimeout = const Duration(seconds: 10),
+    final CursorPluginFactory? _buildPlugin,
+    final Duration _connectBudget = const Duration(seconds: 15),
+    final Duration _versionProbeTimeout = const Duration(seconds: 10),
   }) extends BridgePluginDescriptor {
-  this : _buildPlugin = buildPlugin,
-       _connectBudget = connectBudget,
-       _versionProbeTimeout = versionProbeTimeout;
-
-  final CursorPluginFactory? _buildPlugin;
-  final Duration _connectBudget;
-  final Duration _versionProbeTimeout;
-
   /// Minimum Cursor CLI build the bridge supports. Earlier builds (e.g.
   /// `2026.05.28`) advertise the `acp` model picker and `session/load` but
   /// silently no-op model switching and history replay, so the experience is
@@ -320,11 +312,7 @@ enum _CursorRuntimeProbeState() { ready, missing, outdated, unknown, unrecognize
 /// A Cursor CLI calendar version (`YYYY.MM.DD`, the leading component of a
 /// build string like `2026.06.15-18-00-12-6f5a2cf`). Parsed once into a typed
 /// [Comparable] rather than comparing version strings ad hoc.
-class const _CalVer(this.year, this.month, this.day) implements Comparable<_CalVer> {
-  final int year;
-  final int month;
-  final int day;
-
+class const _CalVer(final int year, final int month, final int day) implements Comparable<_CalVer> {
   /// Parses the leading `YYYY.MM.DD` from a Cursor CLI version/build string,
   /// or null if it does not start with that shape (caller fails open).
   static _CalVer? tryParse(String raw) {

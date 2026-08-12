@@ -32,34 +32,29 @@ import "../prego_rolling_text.dart";
 /// )
 /// ```
 class const PregoTotalBalance({
-    super.key,
-    required this.currencySymbol,
-    required this.integerPart,
-    required this.fractionalPart,
-    required this.collapseProgress,
-    required this.direction,
-  }) extends StatelessWidget {
+  super.key,
+
   /// The currency symbol displayed before the integer part (e.g. `$`).
-  final String currencySymbol;
+  required final String currencySymbol,
 
   /// The whole-number portion of the balance (e.g. `25,310`).
-  final String integerPart;
+  required final String integerPart,
 
   /// The fractional/cents portion of the balance (e.g. `04`).
   /// Does NOT include the decimal separator — that is rendered separately.
-  final String fractionalPart;
+  required final String fractionalPart,
 
   /// Collapse progress for scroll-driven size transitions.
   /// - `0.0` = fully expanded (Display lg / Display xs)
   /// - `1.0` = fully collapsed (Display md / Text lg)
-  final double collapseProgress;
+  required final double collapseProgress,
 
   /// Direction for rolling text animation.
   /// - `.up` = balance increased
   /// - `.down` = balance decreased
   /// - `.perCharacter` = each character determines its own direction
-  final PregoRollingTextDirection direction;
-
+  required final PregoRollingTextDirection direction,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

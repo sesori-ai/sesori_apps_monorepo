@@ -4,11 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "file_save_client.dart";
 
-class DesktopFileImageSaver({required FileSaveClient fileSaveClient}) implements ImageSaver {
-  final FileSaveClient _fileSaveClient;
-
-  this : _fileSaveClient = fileSaveClient;
-
+class DesktopFileImageSaver({required final FileSaveClient _fileSaveClient}) implements ImageSaver {
   @override
   Future<ImageSaveResult> saveImage({
     required Uint8List bytes,

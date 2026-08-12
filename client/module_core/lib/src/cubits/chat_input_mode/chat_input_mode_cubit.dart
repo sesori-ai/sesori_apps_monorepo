@@ -8,16 +8,13 @@ import "../../repositories/chat_input_mode_store.dart";
 /// resolves its resting layout from this state while the settings screen
 /// writes to it from far below. [initialMode] is the persisted choice, read
 /// before the first frame alongside the appearance preference.
-class ChatInputModeCubit({required ChatInputModeStore store, required ChatInputMode initialMode}) extends Cubit<ChatInputMode> {
-  final ChatInputModeStore _store;
-
+class ChatInputModeCubit({required final ChatInputModeStore _store, required ChatInputMode initialMode})
+    extends Cubit<ChatInputMode> {
   /// Tail of the persistence chain. Writes append here so rapid re-selection
   /// cannot interleave them and leave an older choice persisted last.
   Future<void> _lastWrite = Future<void>.value();
 
-  this
-    : _store = store,
-      super(initialMode);
+  this : super(initialMode);
 
   /// Switches to [mode] and persists it. The app follows the emit
   /// immediately; persistence queues behind any write still in flight.

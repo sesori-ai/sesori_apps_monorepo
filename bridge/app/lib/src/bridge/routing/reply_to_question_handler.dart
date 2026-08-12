@@ -4,12 +4,10 @@ import "../services/pending_interaction_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /question/reply` — replies to a pending question.
-class ReplyToQuestionHandler({required PendingInteractionService pendingInteractionService}) extends BodyRequestHandler<ReplyToQuestionRequest, SuccessEmptyResponse> {
-  final PendingInteractionService _pendingInteractionService;
-
+class ReplyToQuestionHandler({required final PendingInteractionService _pendingInteractionService})
+    extends BodyRequestHandler<ReplyToQuestionRequest, SuccessEmptyResponse> {
   this
-    : _pendingInteractionService = pendingInteractionService,
-      super(
+    : super(
         HttpMethod.post,
         "/question/reply",
         fromJson: ReplyToQuestionRequest.fromJson,

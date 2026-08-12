@@ -6,14 +6,9 @@ import "../bridge/repositories/session_repository.dart";
 import "../bridge/services/session_options_service.dart";
 
 class SessionOptionsCreationRefreshListener({
-    required Stream<SessionBindingsCommitted> source,
-    required SessionOptionsService service,
-  }) {
-  this : _source = source,
-       _service = service;
-
-  final Stream<SessionBindingsCommitted> _source;
-  final SessionOptionsService _service;
+  required final Stream<SessionBindingsCommitted> _source,
+  required final SessionOptionsService _service,
+}) {
   final Set<Future<void>> _pending = {};
   StreamSubscription<SessionBindingsCommitted>? _subscription;
   Future<void>? _disposeFuture;

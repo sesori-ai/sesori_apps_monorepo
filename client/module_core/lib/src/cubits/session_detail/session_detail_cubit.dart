@@ -30,7 +30,7 @@ import "queued_session_submission.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
-enum _SessionRefreshTrigger(this.logValue) {
+enum _SessionRefreshTrigger(final String logValue) {
   commandExecuted("command_executed"),
   connectionReconnected("connection_reconnected"),
   lifecycleResumed("lifecycle_resumed"),
@@ -38,7 +38,6 @@ enum _SessionRefreshTrigger(this.logValue) {
   waitingForConnection("waiting_for_connection"),
   queuedEvent("queued_event");
 
-  final String logValue;
 }
 
 enum _SessionRefreshAction() { observed, ignored, queued, coalesced, started, completed }
@@ -46,48 +45,33 @@ enum _SessionRefreshAction() { observed, ignored, queued, coalesced, started, co
 enum _SessionRefreshResult() { applied, failed, waitingForConnection, staleConnection, closed }
 
 class SessionDetailCubit(
-    ConnectionService connectionService, {
-    required SessionDetailLoadService loadService,
+    final ConnectionService _connectionService, {
+    required final SessionDetailLoadService _loadService,
     required SessionRepository promptDispatcher,
-    required PermissionRepository permissionRepository,
-    required SessionViewingService sessionViewingService,
-    required ProjectViewingService projectViewingService,
-    required LifecycleSource lifecycleSource,
-    required ComposerDraftRepository composerDraftRepository,
-    required ProductAnalyticsService productAnalyticsService,
-    required String sessionId,
-    required String projectId,
-    required NotificationCanceller notificationCanceller,
-    required FailureReporter failureReporter,
-    this.eventRefreshMinInterval = const Duration(seconds: 5),
+    required final PermissionRepository _permissionRepository,
+    required final SessionViewingService _sessionViewingService,
+    required final ProjectViewingService _projectViewingService,
+    required final LifecycleSource _lifecycleSource,
+    required final ComposerDraftRepository _composerDraftRepository,
+    required final ProductAnalyticsService _productAnalyticsService,
+    required final String _sessionId,
+    required final String _projectId,
+    required final NotificationCanceller _notificationCanceller,
+    required final FailureReporter _failureReporter,
+    /// Cooldown between silent refreshes triggered by staleness events.
+  /// Overridable so tests can exercise the coalescing without real waits.
+  final Duration eventRefreshMinInterval = const Duration(seconds: 5),
   }) extends Cubit<SessionDetailState> {
-  final SessionDetailLoadService _loadService;
-
   /// Bumped whenever the transcript is replaced wholesale (a refresh or
   /// reload), so an older-page request that started before it can tell its
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
-  final SessionRepository _sessionRepository;
-  final ConnectionService _connectionService;
-  final PermissionRepository _permissionRepository;
-  final SessionViewingService _sessionViewingService;
-  final ProjectViewingService _projectViewingService;
-  final ProjectViewClaim _projectViewClaim;
-  final LifecycleSource _lifecycleSource;
-  final ComposerDraftRepository _composerDraftRepository;
-  final ProductAnalyticsService _productAnalyticsService;
+  final SessionRepository _sessionRepository = promptDispatcher;
+  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
   static const _defaultModelSelector = DefaultModelSelector();
-  final String _sessionId;
-  final String _projectId;
-  final NotificationCanceller _notificationCanceller;
-  final FailureReporter _failureReporter;
-  ComposerDraft _composerDraft;
+  ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final DeferredPartEventBuffer _deferredPartEvents = DeferredPartEventBuffer();
-
-  /// Cooldown between silent refreshes triggered by staleness events.
-  /// Overridable so tests can exercise the coalescing without real waits.
-  final Duration eventRefreshMinInterval;
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
@@ -140,22 +124,7 @@ class SessionDetailCubit(
   Stream<SesoriPermissionAsked> get permissionStream => _permissionStream.stream;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : _loadService = loadService,
-       _sessionRepository = promptDispatcher,
-       _connectionService = connectionService,
-       _permissionRepository = permissionRepository,
-       _sessionViewingService = sessionViewingService,
-       _projectViewingService = projectViewingService,
-       _projectViewClaim = projectViewingService.beginDetailClaim(projectId: projectId),
-       _lifecycleSource = lifecycleSource,
-       _composerDraftRepository = composerDraftRepository,
-       _productAnalyticsService = productAnalyticsService,
-       _sessionId = sessionId,
-       _projectId = projectId,
-       _notificationCanceller = notificationCanceller,
-       _failureReporter = failureReporter,
-       _composerDraft = composerDraftRepository.readForSession(sessionId: sessionId),
-       super(const SessionDetailState.loading()) {
+  this : super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     // Seed the connection state so the BehaviorSubject's immediate replay isn't
     // treated as a reconnect transition.

@@ -35,7 +35,7 @@ enum UpdateAttemptStatus() {
 /// pattern used by [CachedRelease]/`UpdateCacheApi`.
 @Freezed(fromJson: true, toJson: true)
 sealed class UpdateAttempt with _$UpdateAttempt {
-  const factory UpdateAttempt({
+  const factory({
     /// The version the bridge was running when the attempt started.
     required String fromVersion,
 
@@ -56,5 +56,5 @@ sealed class UpdateAttempt with _$UpdateAttempt {
     required String? reason,
   }) = _UpdateAttempt;
 
-  factory UpdateAttempt.fromJson(Map<String, dynamic> json) => _$UpdateAttemptFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$UpdateAttemptFromJson(json);
 }

@@ -14,21 +14,18 @@ import "prego_popover.dart";
 /// Use it for the "ⓘ" info affordances next to a label, where tapping should
 /// reveal a one-line explanation and tapping outside dismisses it.
 class const PregoInfoPopover({
-    super.key,
-    required this.triggerBuilder,
-    required this.message,
-    this.popoverWidth = 260,
-  }) extends StatelessWidget {
+  super.key,
+
   /// Builds the tappable trigger (e.g. an info icon). The provided callback
   /// opens the popover — wire it to the trigger's tap handler.
-  final PregoPopoverTriggerBuilder triggerBuilder;
+  required final PregoPopoverTriggerBuilder triggerBuilder,
 
   /// The explanatory text shown inside the popover.
-  final String message;
+  required final String message,
 
   /// Width of the open popover bubble.
-  final double popoverWidth;
-
+  final double popoverWidth = 260,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoPopover(

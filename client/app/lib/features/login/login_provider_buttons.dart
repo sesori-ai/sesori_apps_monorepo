@@ -9,26 +9,17 @@ enum LoginOption() { github, apple, google }
 
 class const LoginProviderButtons({
     super.key,
-    required this.isLoading,
-    required this.loadingOption,
-    required this.showApple,
-    required this.onGithubSelected,
-    required this.onAppleSelected,
-    required this.onGoogleSelected,
-    required this.onShowEmailForm,
-  }) extends StatelessWidget {
-  final bool isLoading;
-
-  /// Which option's button swaps its provider logo for the loading spinner
+    required final bool isLoading,
+    /// Which option's button swaps its provider logo for the loading spinner
   /// while [isLoading] is true. Null when the active flow was not started by
   /// one of these buttons (e.g. the email sheet).
-  final LoginOption? loadingOption;
-  final bool showApple;
-  final VoidCallback onGithubSelected;
-  final VoidCallback onAppleSelected;
-  final VoidCallback onGoogleSelected;
-  final VoidCallback onShowEmailForm;
-
+  required final LoginOption? loadingOption,
+    required final bool showApple,
+    required final VoidCallback onGithubSelected,
+    required final VoidCallback onAppleSelected,
+    required final VoidCallback onGoogleSelected,
+    required final VoidCallback onShowEmailForm,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

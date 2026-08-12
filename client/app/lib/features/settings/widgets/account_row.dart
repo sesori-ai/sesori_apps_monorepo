@@ -14,13 +14,10 @@ import "../../../core/extensions/build_context_x.dart";
 /// The account is sourced from `SettingsCubit` state (which subscribes to the
 /// auth stream), so it stays in sync as the session resolves on launch.
 class const AccountRow({
-    super.key,
-    required this.account,
-    required this.onTap,
-  }) extends StatelessWidget {
-  final AuthUser account;
-  final VoidCallback? onTap;
-
+  super.key,
+  required final AuthUser account,
+  required final VoidCallback? onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

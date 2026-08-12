@@ -57,23 +57,12 @@ class const PluginIdleTimerScheduler() {
 }
 
 class PluginLifecycleService({
-    required PluginLifecycleRepository lifecycleRepository,
-    required String preferredDefaultPluginId,
-    required BridgeSettingsRepository bridgeSettingsRepository,
-    required PluginIdleTimerScheduler idleTimerScheduler,
-    required BridgeIdProvider bridgeIdProvider,
-  }) {
-  this : _lifecycleRepository = lifecycleRepository,
-       _preferredDefaultPluginId = preferredDefaultPluginId,
-       _bridgeSettingsRepository = bridgeSettingsRepository,
-       _idleTimerScheduler = idleTimerScheduler,
-       _bridgeIdProvider = bridgeIdProvider;
-
-  final PluginLifecycleRepository _lifecycleRepository;
-  final String _preferredDefaultPluginId;
-  final BridgeSettingsRepository _bridgeSettingsRepository;
-  final PluginIdleTimerScheduler _idleTimerScheduler;
-  final BridgeIdProvider _bridgeIdProvider;
+  required final PluginLifecycleRepository _lifecycleRepository,
+  required final String _preferredDefaultPluginId,
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final PluginIdleTimerScheduler _idleTimerScheduler,
+  required final BridgeIdProvider _bridgeIdProvider,
+}) {
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   Map<String, PluginResidencyPolicy>? _residencyPolicyById;
@@ -1421,17 +1410,12 @@ class PluginLifecycleService({
 
 @immutable
 final class const _PluginManagementSnapshot({
-    required this.snapshotToken,
-    required this.defaultPluginId,
-    required this.defaultIdleTimeoutMins,
-    required this.plugins,
-  }) {
+  required final String? snapshotToken,
+  required final String? defaultPluginId,
+  required final int defaultIdleTimeoutMins,
+  required final List<PluginManagementMetadata> plugins,
+}) {
   static const _pluginsEquality = ListEquality<PluginManagementMetadata>();
-
-  final String? snapshotToken;
-  final String? defaultPluginId;
-  final int defaultIdleTimeoutMins;
-  final List<PluginManagementMetadata> plugins;
 
   _PluginManagementSnapshot withSnapshotToken({required String snapshotToken}) {
     return _PluginManagementSnapshot(
@@ -1463,36 +1447,26 @@ final class const _PluginManagementSnapshot({
   }
 }
 
-class const PluginManagementPluginNotFoundException(this.pluginId) implements Exception {
-  final String pluginId;
-}
+class const PluginManagementPluginNotFoundException(final String pluginId) implements Exception;
 
-class const PluginManagementConflictException(this.conflict) implements Exception {
-  final PluginLifecycleConflict conflict;
-}
+class const PluginManagementConflictException(final PluginLifecycleConflict conflict) implements Exception;
 
-class const PluginAuthenticationConflictException(this.conflict) implements Exception {
-  final PluginAuthenticationConflict conflict;
-}
+class const PluginAuthenticationConflictException(final PluginAuthenticationConflict conflict) implements Exception;
 
 class const PluginAuthenticationChallengeUnavailableException() implements Exception;
 
-class const PluginManagementCommandFailedException(this.message) implements Exception {
-  final String message;
-
+class const PluginManagementCommandFailedException(final String message) implements Exception {
   @override
   String toString() => message;
 }
 
 class const PluginManagementMutationOutcomeUncertainException() implements Exception;
 
-class _ActivePluginCommand({required this.request}) {
-  final PluginLifecycleCommandRequest request;
+class _ActivePluginCommand({required final PluginLifecycleCommandRequest request}) {
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }
 
-class _ActivePluginAuthentication({required this.operation}) {
-  final PluginRuntimeAuthenticationOperation operation;
+class _ActivePluginAuthentication({required final PluginRuntimeAuthenticationOperation operation}) {
   final Completer<PluginAuthenticationChallengeResponse> challenge = Completer<PluginAuthenticationChallengeResponse>();
   final Completer<void> settled = Completer<void>();
 }

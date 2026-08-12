@@ -10,14 +10,10 @@ import "mappers/cursor_catalog_mapper.dart";
 
 /// Layer-2 aggregation and mapping for Cursor catalog discovery.
 class CursorCatalogRepository({
-    required CursorCatalogProbeApi api,
-    required String launchScope,
-  }) {
-  this : _api = api,
-       _launchScope = normalizeProjectDirectory(directory: launchScope);
-
-  final CursorCatalogProbeApi _api;
-  final String _launchScope;
+  required final CursorCatalogProbeApi _api,
+  required String launchScope,
+}) {
+  final String _launchScope = normalizeProjectDirectory(directory: launchScope);
 
   Future<bool> open({required Duration timeout}) async {
     final result = await _api.open(timeout: timeout);

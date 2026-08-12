@@ -5,18 +5,18 @@ part "codex_turn_dto.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexTurnStartResponseDto with _$CodexTurnStartResponseDto {
-  const factory CodexTurnStartResponseDto({
+  const factory({
     required CodexTurnDto? turn,
   }) = _CodexTurnStartResponseDto;
 
-  factory CodexTurnStartResponseDto.fromJson(Map<String, dynamic> json) => _$CodexTurnStartResponseDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexTurnStartResponseDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexTurnDto with _$CodexTurnDto {
-  const factory CodexTurnDto({
+  const factory({
     required String? id,
   }) = _CodexTurnDto;
 
-  factory CodexTurnDto.fromJson(Map<String, dynamic> json) => _$CodexTurnDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexTurnDtoFromJson(json);
 }

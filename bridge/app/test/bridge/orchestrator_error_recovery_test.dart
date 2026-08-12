@@ -292,22 +292,14 @@ void main() {
 }
 
 class _TestHarness._({
-    required this.plugin,
-    required this.session,
-    required this.runFuture,
-    required this.relayServer,
-    required this.database,
-    required this.lifecycleService,
-    required this.httpClient,
-  }) {
-  final _ThrowingSummaryPlugin plugin;
-  final OrchestratorSession session;
-  final Future<void> runFuture;
-  final TestRelayServer relayServer;
-  final AppDatabase database;
-  final PluginLifecycleService lifecycleService;
-  final http.Client httpClient;
-
+  required final _ThrowingSummaryPlugin plugin,
+  required final OrchestratorSession session,
+  required final Future<void> runFuture,
+  required final TestRelayServer relayServer,
+  required final AppDatabase database,
+  required final PluginLifecycleService lifecycleService,
+  required final http.Client httpClient,
+}) {
   static Future<_TestHarness> start({
     required _ThrowingSummaryPlugin plugin,
   }) async {
@@ -573,16 +565,13 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   Future<void> dispose() async {}
 }
 
-class _ThrowingConnectRelayClient({required Future<void> connectGate}) extends RelayClient {
+class _ThrowingConnectRelayClient({required final Future<void> _connectGate}) extends RelayClient {
   this
-    : _connectGate = connectGate,
-      super(
+    : super(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
-
-  final Future<void> _connectGate;
 
   @override
   Future<RelayConnection> connect() async {

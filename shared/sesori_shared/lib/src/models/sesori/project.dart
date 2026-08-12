@@ -6,16 +6,16 @@ part "project.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class Projects with _$Projects {
-  const factory Projects({
+  const factory({
     required List<Project> data,
   }) = _Projects;
 
-  factory Projects.fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class Project with _$Project {
-  const factory Project({
+  const factory({
     required String id,
     required String? name,
     // Live directory of the project on disk — the directory backend operations
@@ -47,35 +47,35 @@ sealed class Project with _$Project {
     @Default(true) bool supportsDedicatedWorktrees,
   }) = _Project;
 
-  factory Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ProjectTime with _$ProjectTime {
-  const factory ProjectTime({
+  const factory({
     required int created,
     required int updated,
   }) = _ProjectTime;
 
-  factory ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ProjectIdRequest with _$ProjectIdRequest {
-  const factory ProjectIdRequest({
+  const factory({
     required String projectId,
   }) = _ProjectIdRequest;
 
-  factory ProjectIdRequest.fromJson(Map<String, dynamic> json) => _$ProjectIdRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ProjectIdRequestFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ProjectPathRequest with _$ProjectPathRequest {
-  const factory ProjectPathRequest({
+  const factory({
     required String path,
   }) = _ProjectPathRequest;
 
-  factory ProjectPathRequest.fromJson(Map<String, dynamic> json) => _$ProjectPathRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ProjectPathRequestFromJson(json);
 }
 
 @JsonEnum(fieldRename: FieldRename.snake)
@@ -87,11 +87,11 @@ enum OpenProjectGitAction() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class OpenProjectRequest with _$OpenProjectRequest {
-  const factory OpenProjectRequest({
+  const factory({
     required String path,
     // COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until those apps are unsupported.
     @Default(OpenProjectGitAction.openWithoutGit) OpenProjectGitAction gitAction,
   }) = _OpenProjectRequest;
 
-  factory OpenProjectRequest.fromJson(Map<String, dynamic> json) => _$OpenProjectRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$OpenProjectRequestFromJson(json);
 }

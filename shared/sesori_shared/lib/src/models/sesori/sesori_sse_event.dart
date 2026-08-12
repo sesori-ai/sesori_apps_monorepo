@@ -33,26 +33,26 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("server.connected")
-  const factory SesoriSseEvent.serverConnected() = SesoriServerConnected;
+  const factory serverConnected() = SesoriServerConnected;
 
   @FreezedUnionValue("server.heartbeat")
-  const factory SesoriSseEvent.serverHeartbeat() = SesoriServerHeartbeat;
+  const factory serverHeartbeat() = SesoriServerHeartbeat;
 
   @FreezedUnionValue("server.instance.disposed")
-  const factory SesoriSseEvent.serverInstanceDisposed({
+  const factory serverInstanceDisposed({
     String? directory,
   }) = SesoriServerInstanceDisposed;
 
   @FreezedUnionValue("global.disposed")
-  const factory SesoriSseEvent.globalDisposed() = SesoriGlobalDisposed;
+  const factory globalDisposed() = SesoriGlobalDisposed;
 
   @FreezedUnionValue("catalog.import.progress")
-  const factory SesoriSseEvent.catalogImportProgress({
+  const factory catalogImportProgress({
     required CatalogImportProgress progress,
   }) = SesoriCatalogImportProgress;
 
   @FreezedUnionValue("plugin.management.changed")
-  const factory SesoriSseEvent.pluginManagementChanged({
+  const factory pluginManagementChanged({
     required String snapshotToken,
   }) = SesoriPluginManagementChanged;
 
@@ -61,7 +61,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   /// known total; [message] carries a sanitized failure description only on
   /// [PluginInstallPhase.failed].
   @FreezedUnionValue("plugin.install.progress")
-  const factory SesoriSseEvent.pluginInstallProgress({
+  const factory pluginInstallProgress({
     required String pluginId,
     @JsonKey(unknownEnumValue: PluginInstallPhase.unknown) required PluginInstallPhase phase,
     required int? percent,
@@ -71,14 +71,14 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   /// Terminal progress for one plugin authentication operation. Challenges are
   /// request-scoped and never enter SSE replay or persistence.
   @FreezedUnionValue("plugin.authentication.progress")
-  const factory SesoriSseEvent.pluginAuthenticationProgress({
+  const factory pluginAuthenticationProgress({
     required String pluginId,
     required PluginAuthenticationProgress progress,
   }) = SesoriPluginAuthenticationProgress;
 
   /// Invalidates the process-wide slash-command catalog for one plugin.
   @FreezedUnionValue("command.catalog.updated")
-  const factory SesoriSseEvent.commandCatalogUpdated({
+  const factory commandCatalogUpdated({
     required String pluginId,
   }) = SesoriCommandCatalogUpdated;
 
@@ -88,57 +88,57 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("session.created")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionCreated({
+  const factory sessionCreated({
     required Session info,
   }) = SesoriSessionCreated;
 
   @FreezedUnionValue("session.updated")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionUpdated({
+  const factory sessionUpdated({
     required Session info,
   }) = SesoriSessionUpdated;
 
   @FreezedUnionValue("session.deleted")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionDeleted({
+  const factory sessionDeleted({
     required Session info,
   }) = SesoriSessionDeleted;
 
   @FreezedUnionValue("session.diff")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionDiff({
+  const factory sessionDiff({
     required String sessionID,
   }) = SesoriSessionDiff;
 
   @FreezedUnionValue("session.error")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionError({
+  const factory sessionError({
     required String? sessionID,
   }) = SesoriSessionError;
 
   @FreezedUnionValue("session.compacted")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionCompacted({
+  const factory sessionCompacted({
     required String sessionID,
   }) = SesoriSessionCompacted;
 
   @FreezedUnionValue("session.prompt_defaults_changed")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionPromptDefaultsChanged({
+  const factory sessionPromptDefaultsChanged({
     required String sessionID,
     required SessionPromptDefaults promptDefaults,
   }) = SesoriSessionPromptDefaultsChanged;
 
   @FreezedUnionValue("session.status")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionStatus({
+  const factory sessionStatus({
     required String sessionID,
     required SessionStatus status,
   }) = SesoriSessionStatus;
 
   @FreezedUnionValue("command.executed")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.commandExecuted({
+  const factory commandExecuted({
     required String name,
     required String sessionID,
     required String arguments,
@@ -151,26 +151,26 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("message.updated")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.messageUpdated({
+  const factory messageUpdated({
     required Message info,
   }) = SesoriMessageUpdated;
 
   @FreezedUnionValue("message.removed")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.messageRemoved({
+  const factory messageRemoved({
     required String sessionID,
     required String messageID,
   }) = SesoriMessageRemoved;
 
   @FreezedUnionValue("message.part.updated")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.messagePartUpdated({
+  const factory messagePartUpdated({
     required MessagePart part,
   }) = SesoriMessagePartUpdated;
 
   @FreezedUnionValue("message.part.delta")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.messagePartDelta({
+  const factory messagePartDelta({
     required String sessionID,
     required String messageID,
     required String partID,
@@ -180,7 +180,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("message.part.removed")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.messagePartRemoved({
+  const factory messagePartRemoved({
     required String sessionID,
     required String messageID,
     required String partID,
@@ -191,19 +191,19 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("pty.created")
-  const factory SesoriSseEvent.ptyCreated() = SesoriPtyCreated;
+  const factory ptyCreated() = SesoriPtyCreated;
 
   @FreezedUnionValue("pty.updated")
-  const factory SesoriSseEvent.ptyUpdated() = SesoriPtyUpdated;
+  const factory ptyUpdated() = SesoriPtyUpdated;
 
   @FreezedUnionValue("pty.exited")
-  const factory SesoriSseEvent.ptyExited({
+  const factory ptyExited({
     required String? id,
     required int? exitCode,
   }) = SesoriPtyExited;
 
   @FreezedUnionValue("pty.deleted")
-  const factory SesoriSseEvent.ptyDeleted({
+  const factory ptyDeleted({
     String? id,
   }) = SesoriPtyDeleted;
 
@@ -213,7 +213,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("permission.asked")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.permissionAsked({
+  const factory permissionAsked({
     required String requestID,
     required String sessionID,
 
@@ -230,7 +230,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("permission.replied")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.permissionReplied({
+  const factory permissionReplied({
     required String requestID,
     required String sessionID,
 
@@ -241,7 +241,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   }) = SesoriPermissionReplied;
 
   @FreezedUnionValue("permission.updated")
-  const factory SesoriSseEvent.permissionUpdated() = SesoriPermissionUpdated;
+  const factory permissionUpdated() = SesoriPermissionUpdated;
 
   // ---------------------------------------------------------------------------
   // Question
@@ -249,7 +249,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("question.asked")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.questionAsked({
+  const factory questionAsked({
     required String id,
     required String sessionID,
 
@@ -262,7 +262,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("question.replied")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.questionReplied({
+  const factory questionReplied({
     required String requestID,
     required String sessionID,
 
@@ -273,7 +273,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("question.rejected")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.questionRejected({
+  const factory questionRejected({
     required String requestID,
     required String sessionID,
 
@@ -288,7 +288,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("todo.updated")
   @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.todoUpdated({
+  const factory todoUpdated({
     required String sessionID,
   }) = SesoriTodoUpdated;
 
@@ -297,25 +297,25 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("projects.summary")
-  const factory SesoriSseEvent.projectsSummary({
+  const factory projectsSummary({
     required List<ProjectActivitySummary> projects,
   }) = SesoriProjectsSummary;
 
   @FreezedUnionValue("project.updated")
-  const factory SesoriSseEvent.projectUpdated({
+  const factory projectUpdated({
     // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges emit no payload. Require both fields and remove fallbacks.
     required String? projectID,
     required int? updatedAt,
   }) = SesoriProjectUpdated;
 
   @FreezedUnionValue("vcs.branch.updated")
-  const factory SesoriSseEvent.vcsBranchUpdated() = SesoriVcsBranchUpdated;
+  const factory vcsBranchUpdated() = SesoriVcsBranchUpdated;
 
   /// Notifies phones that PR data changed for sessions in this project.
   /// Unlike [sessionUpdated] (single session content change), this triggers
   /// a full session list re-fetch to pick up updated PR metadata.
   @FreezedUnionValue("sessions.updated")
-  const factory SesoriSseEvent.sessionsUpdated({
+  const factory sessionsUpdated({
     required String projectID,
   }) = SesoriSessionsUpdated;
 
@@ -325,7 +325,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   /// can both update without a re-fetch. Cross-cutting list event (NOT a
   /// [SesoriSessionEvent]).
   @FreezedUnionValue("session.unseen_changed")
-  const factory SesoriSseEvent.sessionUnseenChanged({
+  const factory sessionUnseenChanged({
     required String projectID,
     required String sessionId,
     required bool unseen,
@@ -337,12 +337,12 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("file.edited")
-  const factory SesoriSseEvent.fileEdited({
+  const factory fileEdited({
     String? file,
   }) = SesoriFileEdited;
 
   @FreezedUnionValue("file.watcher.updated")
-  const factory SesoriSseEvent.fileWatcherUpdated({
+  const factory fileWatcherUpdated({
     required String? file,
     required String? event,
   }) = SesoriFileWatcherUpdated;
@@ -352,10 +352,10 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("lsp.updated")
-  const factory SesoriSseEvent.lspUpdated() = SesoriLspUpdated;
+  const factory lspUpdated() = SesoriLspUpdated;
 
   @FreezedUnionValue("lsp.client.diagnostics")
-  const factory SesoriSseEvent.lspClientDiagnostics({
+  const factory lspClientDiagnostics({
     required String? serverID,
     required String? path,
   }) = SesoriLspClientDiagnostics;
@@ -365,22 +365,22 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("mcp.tools.changed")
-  const factory SesoriSseEvent.mcpToolsChanged() = SesoriMcpToolsChanged;
+  const factory mcpToolsChanged() = SesoriMcpToolsChanged;
 
   @FreezedUnionValue("mcp.browser.open.failed")
-  const factory SesoriSseEvent.mcpBrowserOpenFailed() = SesoriMcpBrowserOpenFailed;
+  const factory mcpBrowserOpenFailed() = SesoriMcpBrowserOpenFailed;
 
   // ---------------------------------------------------------------------------
   // Installation
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("installation.updated")
-  const factory SesoriSseEvent.installationUpdated({
+  const factory installationUpdated({
     String? version,
   }) = SesoriInstallationUpdated;
 
   @FreezedUnionValue("installation.update-available")
-  const factory SesoriSseEvent.installationUpdateAvailable({
+  const factory installationUpdateAvailable({
     String? version,
   }) = SesoriInstallationUpdateAvailable;
 
@@ -389,12 +389,12 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("workspace.ready")
-  const factory SesoriSseEvent.workspaceReady({
+  const factory workspaceReady({
     String? name,
   }) = SesoriWorkspaceReady;
 
   @FreezedUnionValue("workspace.failed")
-  const factory SesoriSseEvent.workspaceFailed({
+  const factory workspaceFailed({
     String? message,
   }) = SesoriWorkspaceFailed;
 
@@ -403,7 +403,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("tui.toast.show")
-  const factory SesoriSseEvent.tuiToastShow({
+  const factory tuiToastShow({
     required String? title,
     required String? message,
     required String? variant,
@@ -414,10 +414,10 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
 
   @FreezedUnionValue("worktree.ready")
-  const factory SesoriSseEvent.worktreeReady() = SesoriWorktreeReady;
+  const factory worktreeReady() = SesoriWorktreeReady;
 
   @FreezedUnionValue("worktree.failed")
-  const factory SesoriSseEvent.worktreeFailed() = SesoriWorktreeFailed;
+  const factory worktreeFailed() = SesoriWorktreeFailed;
 
-  factory SesoriSseEvent.fromJson(Map<String, dynamic> json) => _$SesoriSseEventFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SesoriSseEventFromJson(json);
 }

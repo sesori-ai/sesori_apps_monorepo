@@ -8,16 +8,14 @@ import "../../theme/prego_theme.dart";
 /// inside a hairline-bordered rounded rectangle, e.g. the auth-provider badge
 /// beside the account name in settings.
 class const PregoTag({
-    super.key,
-    this.icon,
-    required this.label,
-  }) extends StatelessWidget {
+  super.key,
+
   /// Optional leading glyph, rendered at 14px in the tertiary text colour.
-  final IconData? icon;
+  final IconData? icon,
 
   /// The tag caption.
-  final String label;
-
+  required final String label,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

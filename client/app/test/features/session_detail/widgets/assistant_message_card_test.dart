@@ -18,13 +18,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class const _AssistantMessageCardHarness({
-    super.key,
-    required this.message,
-    required this.streamingText,
-  }) extends StatefulWidget {
-  final MessageWithParts message;
-  final Map<String, String> streamingText;
-
+  super.key,
+  required final MessageWithParts message,
+  required final Map<String, String> streamingText,
+}) extends StatefulWidget {
   @override
   State<_AssistantMessageCardHarness> createState() => _AssistantMessageCardHarnessState();
 }

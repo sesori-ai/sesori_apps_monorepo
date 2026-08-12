@@ -4,9 +4,7 @@ sealed class const ProductAnalyticsPreferenceStatus();
 
 final class const ProductAnalyticsPreferenceUnknown() extends ProductAnalyticsPreferenceStatus;
 
-final class const ProductAnalyticsPreferenceKnown({required this.preference}) extends ProductAnalyticsPreferenceStatus {
-  final ProductAnalyticsPreference preference;
-}
+final class const ProductAnalyticsPreferenceKnown({required final ProductAnalyticsPreference preference}) extends ProductAnalyticsPreferenceStatus;
 
 sealed class const ProductAnalyticsSynchronizationStatus();
 
@@ -43,19 +41,13 @@ sealed class const ProductAnalyticsAvailability();
 
 final class const ProductAnalyticsActive() extends ProductAnalyticsAvailability;
 
-final class const ProductAnalyticsInactive({required this.reason}) extends ProductAnalyticsAvailability {
-  final ProductAnalyticsInactiveReason reason;
-}
+final class const ProductAnalyticsInactive({required final ProductAnalyticsInactiveReason reason}) extends ProductAnalyticsAvailability;
 
 final class const ProductAnalyticsState({
-    required this.preference,
-    required this.synchronization,
-    required this.availability,
+    required final ProductAnalyticsPreferenceStatus preference,
+    required final ProductAnalyticsSynchronizationStatus synchronization,
+    required final ProductAnalyticsAvailability availability,
   }) {
-  final ProductAnalyticsPreferenceStatus preference;
-  final ProductAnalyticsSynchronizationStatus synchronization;
-  final ProductAnalyticsAvailability availability;
-
   static const initial = ProductAnalyticsState(
     preference: ProductAnalyticsPreferenceUnknown(),
     synchronization: ProductAnalyticsNotSynchronized(),

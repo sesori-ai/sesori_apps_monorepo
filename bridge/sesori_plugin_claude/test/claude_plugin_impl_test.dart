@@ -458,7 +458,7 @@ void main() {
   });
 }
 
-final class _PluginHarness({this.failInitialize = false, bool failTranscriptDelete = false}) {
+final class _PluginHarness({final bool failInitialize = false, bool failTranscriptDelete = false}) {
   this {
     temporary = Directory.systemTemp.createTempSync("claude-plugin-test-");
     final eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
@@ -516,7 +516,6 @@ final class _PluginHarness({this.failInitialize = false, bool failTranscriptDele
   late final ClaudePlugin plugin;
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
-  final bool failInitialize;
   var _idIndex = 0;
 
   String _nextId() => _testIds[_idIndex++];

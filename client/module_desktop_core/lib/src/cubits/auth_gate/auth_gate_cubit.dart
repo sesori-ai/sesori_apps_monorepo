@@ -15,18 +15,14 @@ import "auth_gate_state.dart";
 /// transitions. Mid-login states do not flip the gate: the login surface owns
 /// its own progress UI.
 class AuthGateCubit(
-    AuthSession authSession, {
-    @visibleForTesting Duration signOutRestoreFence = const Duration(seconds: 5),
-  }) extends Cubit<AuthGateState> {
+  final AuthSession _authSession, {
+  @visibleForTesting final Duration _signOutRestoreFence = const Duration(seconds: 5),
+}) extends Cubit<AuthGateState> {
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : _authSession = authSession,
-       _signOutRestoreFence = signOutRestoreFence,
-       super(const AuthGateState.checking()) {
+  this : super(const AuthGateState.checking()) {
     unawaited(_restoreAndSubscribe());
   }
 
-  final AuthSession _authSession;
-  final Duration _signOutRestoreFence;
   StreamSubscription<AuthState>? _subscription;
   Future<void>? _backgroundRestore;
 
@@ -148,6 +144,6 @@ class AuthGateCubit(
   @override
   Future<void> close() async {
     await _subscription?.cancel();
-    return super.close();
+    return await super.close();
   }
 }

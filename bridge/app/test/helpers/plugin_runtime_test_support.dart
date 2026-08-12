@@ -36,26 +36,26 @@ PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> plugi
 }
 
 class TestPluginRuntime({
-    required Map<String, BridgePluginApi> plugins,
-    required Set<String>? eligiblePluginIds,
-  }) extends PluginRuntime {
-  this : _eligiblePluginIds = Set<String>.unmodifiable(eligiblePluginIds ?? plugins.keys),
-       _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
-       super(
-         registrations: const [],
-         generationFactory: const _UnusedGenerationFactory(),
-         setupProcesses: const _UnusedHostProcessService(),
-         environment: const {},
-         clock: const ServerClock(),
-         shutdownBudget: const Duration(seconds: 1),
-       );
+  required Map<String, BridgePluginApi> plugins,
+  required Set<String>? eligiblePluginIds,
+}) extends PluginRuntime {
+  this
+    : super(
+        registrations: const [],
+        generationFactory: const _UnusedGenerationFactory(),
+        setupProcesses: const _UnusedHostProcessService(),
+        environment: const {},
+        clock: const ServerClock(),
+        shutdownBudget: const Duration(seconds: 1),
+      );
 
-  final Map<String, BridgePluginApi> _plugins;
-  final Set<String> _eligiblePluginIds;
+  final Map<String, BridgePluginApi> _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins);
+  final Set<String> _eligiblePluginIds = Set<String>.unmodifiable(eligiblePluginIds ?? plugins.keys);
   final Map<String, PluginRuntimeState> _states = {};
   final Map<String, PluginRuntimeTransition> _transitions = {};
   final StreamController<List<PluginRuntimeSnapshot>> _snapshotChanges = StreamController.broadcast(sync: true);
   final StreamController<SourcedPluginRuntimeEvent> _runtimeEvents = StreamController.broadcast(sync: true);
+
   /// Plugin ids that are registered but not running, so `useIfActive` reports
   /// them as unavailable while `use` would start them.
   final Set<String> stoppedPluginIds = {};
@@ -268,7 +268,7 @@ class TestPluginRuntime({
     // backend" from "declined to start a stopped one".
     if (stoppedPluginIds.contains(pluginId)) return null;
     final plugin = _plugins[pluginId];
-    return plugin == null ? null : body(plugin, currentGeneration);
+    return await (plugin == null ? null : body(plugin, currentGeneration));
   }
 
   PluginRuntimeSnapshot _snapshotFor(BridgePluginApi plugin) {
@@ -317,10 +317,7 @@ class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   }) => throw UnsupportedError("test runtime is already active");
 }
 
-class const _TestDescriptor({required this.id}) extends BridgePluginDescriptor {
-  @override
-  final String id;
-
+class const _TestDescriptor({@override required final String id}) extends BridgePluginDescriptor {
   @override
   String get displayName => id;
 

@@ -42,58 +42,42 @@ import "services/codex_session_service.dart";
 ///
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin._({
-    required String serverUrl,
-    required String? capabilityToken,
-    required CodexAppServerClient Function()? clientFactory,
-    required CodexSessionService sessionService,
-    required CodexEventMapper eventMapper,
-    required CodexRolloutTailer rolloutTailer,
-    required CodexToolLifecycleTracker toolLifecycleTracker,
-    required CodexToolOutcomeRepository toolOutcomeRepository,
-    required CodexCommandExecutionParser commandExecutionParser,
-    required CodexFileChangeParser fileChangeParser,
-    required CodexImageBearingItemParser imageBearingItemParser,
-    required String projectCwd,
-    required void Function()? onConnected,
-    required void Function()? onDisconnected,
-    required Duration keepaliveInterval,
-  }) implements CodexManagedApi {
-  static final String pluginId = Harness.codex.name;
-  static const Duration _renameRetryDelay = Duration(milliseconds: 100);
-  static const Duration _renameRetryTimeout = Duration(seconds: 2);
-
-  final String _serverUrl;
-  // Passed to the default client built in [_createClient]; retained for future
-  // non-loopback (`--ws-auth`) support.
-  final String? _capabilityToken;
-  final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
-  final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
-  // Nullable: when the caller injects a factory (tests) we use it verbatim;
-  // otherwise [_ensureConnected] builds the default client itself so it can
-  // wire the client's disconnect signal into [_handleClientDisconnected].
-  final CodexAppServerClient Function()? _clientFactory;
-  final CodexSessionService _sessionService;
-  final CodexEventMapper _eventMapper;
-  final CodexRolloutTailer _rolloutTailer;
-  final CodexToolLifecycleTracker _toolLifecycleTracker;
-  final CodexToolOutcomeRepository _toolOutcomeRepository;
-  final CodexCommandExecutionParser _commandExecutionParser;
-  final CodexFileChangeParser _fileChangeParser;
-  final CodexImageBearingItemParser _imageBearingItemParser;
-  final String _projectCwd;
-  final Duration _keepaliveInterval;
+  required final String _serverUrl,
+  required final String? _capabilityToken,
+  required final CodexAppServerClient Function()? _clientFactory,
+  required final CodexSessionService _sessionService,
+  required final CodexEventMapper _eventMapper,
+  required final CodexRolloutTailer _rolloutTailer,
+  required final CodexToolLifecycleTracker _toolLifecycleTracker,
+  required final CodexToolOutcomeRepository _toolOutcomeRepository,
+  required final CodexCommandExecutionParser _commandExecutionParser,
+  required final CodexFileChangeParser _fileChangeParser,
+  required final CodexImageBearingItemParser _imageBearingItemParser,
+  required final String _projectCwd,
 
   /// Fires once the WebSocket transport has completed its `initialize`
   /// handshake; the runtime descriptor wires this into its status reporter.
   /// (The disconnect signal is wired directly into the app-server client by the
   /// default client factory below.)
-  final void Function()? _onConnected;
+  required final void Function()? _onConnected,
 
   /// Forwarded to the runtime descriptor's status reporter when the transport
   /// drops. Wrapped by [_handleClientDisconnected] so cached connection state
   /// is reset before the reporter is told.
-  final void Function()? _onDisconnected;
+  required final void Function()? _onDisconnected,
+  required final Duration _keepaliveInterval,
+}) implements CodexManagedApi {
+  static final String pluginId = Harness.codex.name;
+  static const Duration _renameRetryDelay = Duration(milliseconds: 100);
+  static const Duration _renameRetryTimeout = Duration(seconds: 2);
 
+  // Passed to the default client built in [_createClient]; retained for future
+  // non-loopback (`--ws-auth`) support.
+  final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
+  final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
+  // Nullable: when the caller injects a factory (tests) we use it verbatim;
+  // otherwise [_ensureConnected] builds the default client itself so it can
+  // wire the client's disconnect signal into [_handleClientDisconnected].
   CodexAppServerClient? _client;
   Future<bool>? _connectFuture;
   StreamSubscription<CodexServerNotification>? _notificationSubscription;
@@ -136,7 +120,7 @@ class CodexPlugin._({
   /// back to the launch cwd until the rollout appears on disk.
   final Map<String, String> _threadDirectory = {};
 
-  CodexPlugin.composed({
+  new composed({
     required String serverUrl,
     required String? capabilityToken,
     required CodexAppServerClient Function()? clientFactory,
@@ -170,22 +154,7 @@ class CodexPlugin._({
          keepaliveInterval: keepaliveInterval,
        );
 
-  this : _serverUrl = serverUrl,
-       _keepaliveInterval = keepaliveInterval,
-       _capabilityToken = capabilityToken,
-       _clientFactory = clientFactory,
-       _sessionService = sessionService,
-       _eventMapper = eventMapper,
-       _rolloutTailer = rolloutTailer,
-       _toolLifecycleTracker = toolLifecycleTracker,
-       _toolOutcomeRepository = toolOutcomeRepository,
-       _commandExecutionParser = commandExecutionParser,
-       _fileChangeParser = fileChangeParser,
-       _imageBearingItemParser = imageBearingItemParser,
-       _projectCwd = projectCwd,
-       _onConnected = onConnected,
-       _onDisconnected = onDisconnected,
-       _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
+  this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _rolloutSubscription = _rolloutTailer.appends.listen(
       _handleRolloutAppend,
     );
@@ -234,7 +203,7 @@ class CodexPlugin._({
         _client = null;
         _sessionService.detachAppServerRepositories();
         _connectFuture = null;
-        return Future<bool>.error(error);
+        return await Future<bool>.error(error);
       }
     }();
     _connectFuture = future.catchError((Object _) => false);
@@ -608,7 +577,7 @@ class CodexPlugin._({
   /// projects while discovery excludes new Codex Desktop projectless chats.
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
-      _sessionService.listAllSessions(knownDirectories: knownDirectories);
+      await _sessionService.listAllSessions(knownDirectories: knownDirectories);
 
   @override
   String get launchDirectory => _projectCwd;
@@ -625,7 +594,7 @@ class CodexPlugin._({
     String projectId, {
     int? start,
     int? limit,
-  }) async => _sessionService.getSessions(
+  }) async => await _sessionService.getSessions(
     projectId: projectId,
     start: start,
     limit: limit,
@@ -636,7 +605,7 @@ class CodexPlugin._({
     required String? projectId,
   }) async {
     await _connectedClient();
-    return _sessionService.getCommands(projectId: projectId);
+    return await _sessionService.getCommands(projectId: projectId);
   }
 
   @override
@@ -645,7 +614,7 @@ class CodexPlugin._({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
     await _connectedClient();
-    return _sessionService.getSessionOptions(projectId: projectId);
+    return await _sessionService.getSessionOptions(projectId: projectId);
   }
 
   @override

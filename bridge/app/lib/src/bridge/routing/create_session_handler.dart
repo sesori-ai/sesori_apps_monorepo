@@ -5,16 +5,14 @@ import "request_handler.dart";
 
 /// Handles `POST /session` — creates a session for a given project.
 class CreateSessionHandler({
-    required SessionCreationService sessionCreationService,
-  }) extends BodyRequestHandler<CreateSessionRequest, Session> {
-  final SessionCreationService _sessionCreationService;
-
-  this : _sessionCreationService = sessionCreationService,
-       super(
-         HttpMethod.post,
-         "/session/create",
-         fromJson: CreateSessionRequest.fromJson,
-       );
+  required final SessionCreationService _sessionCreationService,
+}) extends BodyRequestHandler<CreateSessionRequest, Session> {
+  this
+    : super(
+        HttpMethod.post,
+        "/session/create",
+        fromJson: CreateSessionRequest.fromJson,
+      );
 
   @override
   Future<Session> handle(
@@ -24,6 +22,6 @@ class CreateSessionHandler({
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    return _sessionCreationService.createSession(request: body);
+    return await _sessionCreationService.createSession(request: body);
   }
 }

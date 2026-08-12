@@ -9,19 +9,13 @@ import "../../core/di/injection.dart";
 import "widgets/session_detail_body.dart";
 
 class const SessionDetailScreen({
-    super.key,
-    required this.projectId,
-    required this.projectName,
-    required this.sessionId,
-    this.sessionTitle,
-    this.readOnly = false,
-  }) extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final String sessionId;
-  final String? sessionTitle;
-  final bool readOnly;
-
+  super.key,
+  required final String projectId,
+  required final String? projectName,
+  required final String sessionId,
+  final String? sessionTitle,
+  final bool readOnly = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -53,9 +47,7 @@ class const SessionDetailScreen({
   }
 }
 
-class const _SessionActivityAnalyticsOwner({required this.child}) extends StatefulWidget {
-  final Widget child;
-
+class const _SessionActivityAnalyticsOwner({required final Widget child}) extends StatefulWidget {
   @override
   State<_SessionActivityAnalyticsOwner> createState() => _SessionActivityAnalyticsOwnerState();
 }

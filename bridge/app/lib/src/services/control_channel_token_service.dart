@@ -42,13 +42,11 @@ import "../foundation/control_channel_client.dart";
 /// [handleTokenResponse] and [handleTokenUpdate]. The request-correlation state
 /// and the `token_request` send path stay here.
 class ControlChannelTokenService({
-    required ControlChannelClient client,
-    Duration requestTimeout = _defaultRequestTimeout,
-  }) implements AccessTokenProvider, TokenRefresher {
+  required final ControlChannelClient _client,
+  final Duration _requestTimeout = _defaultRequestTimeout,
+}) implements AccessTokenProvider, TokenRefresher {
   static const Duration _defaultRequestTimeout = Duration(seconds: 30);
 
-  final ControlChannelClient _client;
-  final Duration _requestTimeout;
   final BehaviorSubject<String> _tokenSubject = BehaviorSubject<String>();
   final Map<String, Completer<String?>> _pending = <String, Completer<String?>>{};
   // Monotonic sequence stamped on every write candidate at the moment it is
@@ -69,9 +67,6 @@ class ControlChannelTokenService({
   bool _invalidated = false;
   bool _disposed = false;
   Future<void>? _disposeFuture;
-
-  this  : _client = client,
-        _requestTimeout = requestTimeout;
 
   /// The most recently cached access token. Only valid after the first token is
   /// cached (the bootstrap [getAccessToken] the composition root awaits before

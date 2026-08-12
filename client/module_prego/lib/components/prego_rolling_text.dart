@@ -20,45 +20,28 @@ enum PregoRollingTextDirection() {
 }
 
 class const _CharAnimConfig({
-    required this.oldChar,
-    required this.newChar,
-    required this.interval,
-    required this.rollUp,
-  }) {
-  final String? oldChar;
-  final String? newChar;
-  final Interval interval;
-  final bool rollUp;
-}
+    required final String? oldChar,
+    required final String? newChar,
+    required final Interval interval,
+    required final bool rollUp,
+  });
 
 /// Per-character rolling text animation for Prego design language components.
 class const PregoRollingText({
     super.key,
-    required this.text,
-    required this.style,
-    required this.direction,
-    this.duration = const Duration(milliseconds: 450),
-    this.staggerSlideDelay = const Duration(milliseconds: 40),
-    this.curve = Curves.easeOut,
+    /// Text to display and animate.
+  required final String text,
+    /// Text style applied to all characters.
+  required final TextStyle style,
+    /// Character roll direction mode.
+  required final PregoRollingTextDirection direction,
+    /// Total cascade duration.
+  final Duration duration = const Duration(milliseconds: 450),
+    /// Delay between consecutive character starts.
+  final Duration staggerSlideDelay = const Duration(milliseconds: 40),
+    /// Easing curve used for character intervals.
+  final Curve curve = Curves.easeOut,
   }) extends StatefulWidget {
-  /// Text to display and animate.
-  final String text;
-
-  /// Text style applied to all characters.
-  final TextStyle style;
-
-  /// Character roll direction mode.
-  final PregoRollingTextDirection direction;
-
-  /// Total cascade duration.
-  final Duration duration;
-
-  /// Delay between consecutive character starts.
-  final Duration staggerSlideDelay;
-
-  /// Easing curve used for character intervals.
-  final Curve curve;
-
   @override
   State<PregoRollingText> createState() => _PregoRollingTextState();
 }

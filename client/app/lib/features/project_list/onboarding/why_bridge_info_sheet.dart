@@ -101,14 +101,10 @@ class const _WhyBridgeInfoSheet() extends StatelessWidget {
 /// One reassurance row: a leading icon and a title + subtitle. Merged into a
 /// single semantics node so the icon, title, and subtitle are read as one unit.
 class const _WhyFeatureRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  }) extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
+  required final IconData icon,
+  required final String title,
+  required final String subtitle,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -153,10 +149,7 @@ class const _WhyFeatureRow({
 /// as its answer expands. Announces its expanded/collapsed state to screen
 /// readers; wrapped in a [RepaintBoundary] so the expand animation (which sits
 /// behind the sheet's glass header) doesn't repaint the whole column.
-class const _WhyFaqItem({required this.question, required this.answer}) extends StatefulWidget {
-  final String question;
-  final String answer;
-
+class const _WhyFaqItem({required final String question, required final String answer}) extends StatefulWidget {
   @override
   State<_WhyFaqItem> createState() => _WhyFaqItemState();
 }

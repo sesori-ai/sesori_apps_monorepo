@@ -8,11 +8,11 @@ part "reply_to_permission_request.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ReplyToPermissionRequest with _$ReplyToPermissionRequest {
-  const factory ReplyToPermissionRequest({
+  const factory({
     required String requestId,
     required String sessionId,
     required PermissionReply reply,
   }) = _ReplyToPermissionRequest;
 
-  factory ReplyToPermissionRequest.fromJson(Map<String, dynamic> json) => _$ReplyToPermissionRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ReplyToPermissionRequestFromJson(json);
 }

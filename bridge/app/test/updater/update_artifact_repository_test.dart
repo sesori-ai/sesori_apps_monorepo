@@ -10,20 +10,13 @@ import 'package:sesori_bridge/src/updater/repositories/update_artifact_repositor
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
-class _FakeUpdateHttpClient({required Future<http.StreamedResponse> Function(http.BaseRequest request) handler}) extends http.BaseClient {
-  final Future<http.StreamedResponse> Function(http.BaseRequest request) _handler;
-
-  this
-    : _handler = handler;
-
+class _FakeUpdateHttpClient({required final Future<http.StreamedResponse> Function(http.BaseRequest request) _handler})
+    extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) => _handler(request);
 }
 
-class _FakeChecksumManifestApi({this.manifest, this.error}) implements ChecksumManifestApi {
-  final ChecksumManifest? manifest;
-  final Object? error;
-
+class _FakeChecksumManifestApi({final ChecksumManifest? manifest, final Object? error}) implements ChecksumManifestApi {
   @override
   Future<ChecksumManifest?> fetchManifest({required String url}) async {
     if (error != null) {
@@ -33,9 +26,7 @@ class _FakeChecksumManifestApi({this.manifest, this.error}) implements ChecksumM
   }
 }
 
-class _FakeChecksumValidator({required this.result, this.error}) implements ChecksumValidator {
-  final bool result;
-  final Object? error;
+class _FakeChecksumValidator({required final bool result, final Object? error}) implements ChecksumValidator {
   String? lastExpectedHash;
 
   @override

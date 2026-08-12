@@ -5,13 +5,10 @@ import "routed_request.dart";
 
 sealed class const RoutedRequestDispatchResult();
 
-final class const RoutedRequestAccepted({required this.pendingRequest}) extends RoutedRequestDispatchResult {
-  final PendingRoutedRequest pendingRequest;
-}
+final class const RoutedRequestAccepted({required final PendingRoutedRequest pendingRequest})
+    extends RoutedRequestDispatchResult;
 
-final class const RoutedRequestShutdownRejected({required this.requestId}) extends RoutedRequestDispatchResult {
-  final String requestId;
-
+final class const RoutedRequestShutdownRejected({required final String requestId}) extends RoutedRequestDispatchResult {
   RelayResponse get response => RelayResponse(
     id: requestId,
     status: 503,
@@ -21,14 +18,11 @@ final class const RoutedRequestShutdownRejected({required this.requestId}) exten
 }
 
 /// Owns route acceptance and the completion barrier shared by every transport.
-class RoutedRequestDispatcher({required RequestRouter router}) {
-  final RequestRouter _router;
+class RoutedRequestDispatcher({required final RequestRouter _router}) {
   final Set<Future<RoutedRequestOutcome>> _inFlightRoutes = <Future<RoutedRequestOutcome>>{};
 
   bool _accepting = true;
   Future<void>? _drainFuture;
-
-  this : _router = router;
 
   RoutedRequestDispatchResult dispatch({required RelayRequest request}) {
     if (!_accepting) {

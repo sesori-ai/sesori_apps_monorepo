@@ -4,12 +4,9 @@ import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmen
 import "../mappers/acp_content_mapper.dart";
 
 final class const AcpToolContentSnapshot({
-    required this.output,
-    required this.attachments,
-  }) {
-  final String? output;
-  final List<PluginMessageAttachment> attachments;
-}
+    required final String? output,
+    required final List<PluginMessageAttachment> attachments,
+  });
 
 /// Owns the normalized output and bounded attachment collection for one ACP
 /// tool call. Callers apply only mapper-produced mutations, so live and replay

@@ -5,17 +5,14 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
-class PatchPluginIdleTimeoutHandler({required PluginLifecycleService lifecycleService})
+class PatchPluginIdleTimeoutHandler({required final PluginLifecycleService _lifecycleService})
     extends BodyRequestHandler<PluginIdleTimeoutUpdateRequest, PluginManagementResponse> {
   this
-    : _lifecycleService = lifecycleService,
-      super(
+    : super(
         HttpMethod.patch,
         "/plugin/idle-timeout",
         fromJson: PluginIdleTimeoutUpdateRequest.fromJson,
       );
-
-  final PluginLifecycleService _lifecycleService;
 
   @override
   Future<PluginManagementResponse> handle(

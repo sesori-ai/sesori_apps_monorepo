@@ -17,25 +17,21 @@ import "pending_request_auto_dismiss.dart";
 /// Displays the tool name and description, and offers three actions:
 /// reject, allow once, or always allow.
 class const PermissionModal({
-    super.key,
-    required this.permission,
-    required this.onReply,
-    required this.topInset,
-  }) extends StatelessWidget {
-  final SesoriPermissionAsked permission;
-  final void Function({
+  super.key,
+  required final SesoriPermissionAsked permission,
+  required final void Function({
     required String requestId,
     required String sessionId,
     required PermissionReply reply,
   })
-  onReply;
+  onReply,
 
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
-  final double topInset;
-
+  required final double topInset,
+}) extends StatelessWidget {
   /// Opens the permission modal as a bottom sheet.
   ///
   /// Presents a [PregoBottomSheet] directly (not via [showPregoBottomSheet])

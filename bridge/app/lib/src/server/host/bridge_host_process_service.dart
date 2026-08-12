@@ -8,37 +8,22 @@ import "../repositories/process_repository.dart";
 /// Spawn seam for [BridgeHostProcessService]; production passes
 /// `io.Process.start`. Unlike `OpenCodeProcessStarter` it carries
 /// [workingDirectory], which the host contract requires.
-typedef HostProcessStarter =
-    Future<io.Process> Function(
-      String executable,
-      List<String> arguments, {
-      Map<String, String>? environment,
-      String? workingDirectory,
-      bool runInShell,
-    });
+typedef HostProcessStarter = Future<io.Process> Function(
+  String executable,
+  List<String> arguments, {
+  Map<String, String>? environment,
+  String? workingDirectory,
+  bool runInShell,
+});
 
 class BridgeHostProcessService({
-    required HostProcessStarter processStarter,
-    required ProcessRepository processRepository,
-    required ServerClock clock,
-    required ProcessUser? currentUser,
-    required bool isWindows,
-    required String platform,
-  }) implements HostProcessService {
-  this : _processStarter = processStarter,
-       _processRepository = processRepository,
-       _clock = clock,
-       _currentUser = currentUser,
-       _isWindows = isWindows,
-       _platform = platform;
-
-  final HostProcessStarter _processStarter;
-  final ProcessRepository _processRepository;
-  final ServerClock _clock;
-  final ProcessUser? _currentUser;
-  final bool _isWindows;
-  final String _platform;
-
+  required final HostProcessStarter _processStarter,
+  required final ProcessRepository _processRepository,
+  required final ServerClock _clock,
+  required final ProcessUser? _currentUser,
+  required final bool _isWindows,
+  required final String _platform,
+}) implements HostProcessService {
   @override
   Future<SpawnedProcess> spawn({
     required String executable,
@@ -131,8 +116,7 @@ class BridgeHostProcessService({
     // is the same pid we just spawned, so the listen/args suffix is unique.
     // Without it the ownership record keeps a null start marker that never
     // re-matches on a later cleanup, leaking the still-running child + its port.
-    return spawnCommandLine.isNotEmpty &&
-        inspectedCommandLine.endsWith(" $spawnCommandLine");
+    return spawnCommandLine.isNotEmpty && inspectedCommandLine.endsWith(" $spawnCommandLine");
   }
 
   bool _samePath(String? actual, String expected) {
@@ -172,16 +156,9 @@ class BridgeHostProcessService({
 }
 
 class _HostSpawnedProcess({
-    required io.Process process,
-    required this.identity,
-  }) implements SpawnedProcess {
-  this : _process = process;
-
-  final io.Process _process;
-
-  @override
-  final ProcessIdentity identity;
-
+  required final io.Process _process,
+  @override required final ProcessIdentity identity,
+}) implements SpawnedProcess {
   @override
   int get pid => _process.pid;
 

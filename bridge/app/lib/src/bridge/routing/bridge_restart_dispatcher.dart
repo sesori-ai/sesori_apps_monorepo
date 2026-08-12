@@ -8,10 +8,7 @@ import "routed_request.dart";
 enum BridgeShutdownRequest() { restart }
 
 /// Owns the single restart handoff shared by relay and debug route consumers.
-class BridgeRestartDispatcher({required BridgeRestartService restartService}) {
-  this : _restartService = restartService;
-
-  final BridgeRestartService _restartService;
+class BridgeRestartDispatcher({required final BridgeRestartService _restartService}) {
   final StreamController<BridgeShutdownRequest> _shutdownRequests = StreamController<BridgeShutdownRequest>.broadcast(
     sync: true,
   );

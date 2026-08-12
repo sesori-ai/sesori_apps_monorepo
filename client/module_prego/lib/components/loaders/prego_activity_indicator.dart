@@ -5,15 +5,13 @@ import "package:flutter/services.dart";
 
 /// A Prego activity indicator that animates outside Flutter where supported.
 class const PregoActivityIndicator({
-    super.key,
-    required this.color,
-  }) extends StatelessWidget {
+  super.key,
+  required final Color color,
+}) extends StatelessWidget {
   static const _nativeViewType = "sesori/native-activity-indicator";
   static const _defaultDimension = 36.0;
   static const _staticArcSweep = 0.75;
   static const _fallbackStrokeWidth = 2.0;
-
-  final Color color;
 
   @override
   Widget build(BuildContext context) {

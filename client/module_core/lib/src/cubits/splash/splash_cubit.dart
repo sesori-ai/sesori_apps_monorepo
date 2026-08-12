@@ -10,10 +10,8 @@ import "splash_state.dart";
 /// Splash stays intentionally lightweight: it never calls the auth server and
 /// never validates tokens over the network. Downstream screens and services
 /// own real connection/auth validation.
-class SplashCubit(AuthSession authSession) extends Cubit<SplashState> {
-  final AuthSession _authSession;
-
-  this : _authSession = authSession, super(const SplashState.initializing()) {
+class SplashCubit(final AuthSession _authSession) extends Cubit<SplashState> {
+  this : super(const SplashState.initializing()) {
     _resolveInitialRoute().catchError((Object err) {
       loge("Splash: local session check failed", err);
       if (isClosed) return;

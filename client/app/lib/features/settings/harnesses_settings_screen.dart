@@ -17,11 +17,12 @@ import "widgets/settings_section.dart";
 
 const double _contentTopPadding = 10.0;
 
-class const HarnessesSettingsScreen({super.key, required this.presentation}) extends StatelessWidget {
+class const HarnessesSettingsScreen({
+  super.key,
   /// How the page was raised, which decides how the user leaves it: a pushed
   /// page goes back, a modal one closes.
-  final HarnessSettingsPresentation presentation;
-
+  required final HarnessSettingsPresentation presentation,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -34,9 +35,7 @@ class const HarnessesSettingsScreen({super.key, required this.presentation}) ext
   }
 }
 
-class const _HarnessesSettingsBody({required this.presentation}) extends StatelessWidget {
-  final HarnessSettingsPresentation presentation;
-
+class const _HarnessesSettingsBody({required final HarnessSettingsPresentation presentation}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -240,9 +239,7 @@ class const _FailureView() extends StatelessWidget {
   }
 }
 
-class const _ReadyView({required this.state}) extends StatelessWidget {
-  final PluginManagementReady state;
-
+class const _ReadyView({required final PluginManagementReady state}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -359,16 +356,11 @@ class const _ReadyView({required this.state}) extends StatelessWidget {
 
 class const _MessageRow({
     super.key,
-    required this.title,
-    required this.description,
-    required this.dismissLabel,
-    required this.onDismiss,
+    required final String title,
+    required final String description,
+    required final String dismissLabel,
+    required final VoidCallback onDismiss,
   }) extends StatelessWidget {
-  final String title;
-  final String description;
-  final String dismissLabel;
-  final VoidCallback onDismiss;
-
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRows(
@@ -390,20 +382,13 @@ class const _MessageRow({
 }
 
 class const _HarnessControlCard({
-    required this.plugin,
-    required this.isDefault,
-    required this.action,
-    required this.authentication,
-    required this.install,
+    required final PluginManagementMetadata plugin,
+    required final bool isDefault,
+    required final PluginManagementActionState action,
+    required final PluginAuthenticationPresentationState authentication,
+    /// This harness' in-flight managed runtime install, when one is running.
+  required final PluginInstallProgress? install,
   }) extends StatelessWidget {
-  final PluginManagementMetadata plugin;
-  final bool isDefault;
-  final PluginManagementActionState action;
-  final PluginAuthenticationPresentationState authentication;
-
-  /// This harness' in-flight managed runtime install, when one is running.
-  final PluginInstallProgress? install;
-
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -660,11 +645,7 @@ class const _HarnessControlCard({
   }
 }
 
-class const _FactRow({required this.title, required this.value, required this.isLast}) extends StatelessWidget {
-  final String title;
-  final String value;
-  final bool isLast;
-
+class const _FactRow({required final String title, required final String value, required final bool isLast}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRow(
@@ -756,19 +737,13 @@ sealed class const _TimeoutResult();
 
 final class const _UseDefaultTimeoutResult() extends _TimeoutResult;
 
-final class const _ApplyTimeoutResult({required this.input}) extends _TimeoutResult {
-  final PluginManagementIdleTimeoutInput input;
-}
+final class const _ApplyTimeoutResult({required final PluginManagementIdleTimeoutInput input}) extends _TimeoutResult;
 
 class const _TimeoutSheet({
-    required this.allowUseDefault,
-    required this.initialChoice,
-    required this.initialMinutes,
+    required final bool allowUseDefault,
+    required final _TimeoutChoice initialChoice,
+    required final int initialMinutes,
   }) extends StatefulWidget {
-  final bool allowUseDefault;
-  final _TimeoutChoice initialChoice;
-  final int initialMinutes;
-
   @override
   State<_TimeoutSheet> createState() => _TimeoutSheetState();
 }

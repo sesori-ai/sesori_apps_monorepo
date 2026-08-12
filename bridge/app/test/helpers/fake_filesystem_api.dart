@@ -11,15 +11,9 @@ import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 /// directories whose existence probe raises a [FileSystemException] (a
 /// permission or other IO error), which the repository treats as present.
 class FakeFilesystemApi({
-    Set<String> missingPaths = const {},
-    Set<String> throwingPaths = const {},
-  }) implements FilesystemApi {
-  this : _missingPaths = missingPaths,
-       _throwingPaths = throwingPaths;
-
-  final Set<String> _missingPaths;
-  final Set<String> _throwingPaths;
-
+  final Set<String> _missingPaths = const {},
+  final Set<String> _throwingPaths = const {},
+}) implements FilesystemApi {
   @override
   bool directoryExists(String path) {
     if (_throwingPaths.contains(path)) {

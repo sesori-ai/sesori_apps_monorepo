@@ -5,43 +5,33 @@ import "default_model_selector.dart";
 /// A single selectable model row in the model picker, precomputed so the
 /// sheet can render without any per-frame sorting or grouping.
 class const ModelPickerModelEntry({
-    required this.modelID,
-    required this.displayName,
-    required this.family,
-    required this.searchText,
-    required this.visibleByDefault,
-  }) {
   /// Model identifier reported back when the entry is selected.
-  final String modelID;
+  required final String modelID,
 
   /// Display name with the upstream "(latest)" marker stripped.
-  final String displayName;
+  required final String displayName,
 
   /// Model family, shown as the tile subtitle when present.
-  final String? family;
+  required final String? family,
 
   /// Lowercase haystack (model name, family, id, provider name) matched
   /// against the lowercased search query with a plain `contains`.
-  final String searchText;
+  required final String searchText,
 
   /// Whether the entry is shown when the search query is empty — true for
   /// each family's representative and for the currently selected model.
-  final bool visibleByDefault;
-}
+  required final bool visibleByDefault,
+});
 
 /// One provider's section in the model picker.
 class const ModelPickerSection({
-    required this.providerID,
-    required this.providerName,
-    required this.models,
-  }) {
-  final String providerID;
-  final String providerName;
+  required final String providerID,
+  required final String providerName,
 
   /// Available models sorted by release date (newest first, undated last),
   /// ties broken by name.
-  final List<ModelPickerModelEntry> models;
-}
+  required final List<ModelPickerModelEntry> models,
+});
 
 /// Shapes raw [ProviderInfo] catalogs into the sections displayed by the
 /// model picker sheet.

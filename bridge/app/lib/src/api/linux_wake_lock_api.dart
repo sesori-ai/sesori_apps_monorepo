@@ -7,12 +7,8 @@ import "../bridge/foundation/process_starter.dart";
 import "wake_lock_client.dart";
 
 class LinuxWakeLockApi({
-    required ProcessStarter processStarter,
-  }) implements WakeLockClient {
-  this : _processStarter = processStarter;
-
-  final ProcessStarter _processStarter;
-
+  required final ProcessStarter _processStarter,
+}) implements WakeLockClient {
   Process? _process;
 
   @override

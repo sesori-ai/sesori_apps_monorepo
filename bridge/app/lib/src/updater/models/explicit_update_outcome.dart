@@ -20,58 +20,37 @@ enum UpdateAppliedKind() {
 
 /// A release was staged and applied; it activates on the next launch.
 final class const ExplicitUpdateApplied({
-    required this.fromVersion,
-    required this.toVersion,
-    required this.kind,
-    required this.track,
-  }) extends ExplicitUpdateOutcome {
-  final String? fromVersion;
-  final String toVersion;
-  final UpdateAppliedKind kind;
-  final ReleaseTrack track;
-}
+    required final String? fromVersion,
+    required final String toVersion,
+    required final UpdateAppliedKind kind,
+    required final ReleaseTrack track,
+  }) extends ExplicitUpdateOutcome;
 
 /// Already on the latest eligible release for the active track.
-final class const ExplicitUpdateAlreadyLatest({required this.version, required this.track}) extends ExplicitUpdateOutcome {
-  final String version;
-  final ReleaseTrack track;
-}
+final class const ExplicitUpdateAlreadyLatest({required final String version, required final ReleaseTrack track}) extends ExplicitUpdateOutcome;
 
 /// The running binary is not eligible for the active track and the latest
 /// eligible release is not newer, so a plain update can't help — suggests
 /// `--force` to switch onto the track.
 final class const ExplicitUpdateTrackMismatch({
-    required this.currentVersion,
-    required this.latestVersion,
-    required this.track,
-  }) extends ExplicitUpdateOutcome {
-  final String currentVersion;
-  final String latestVersion;
-  final ReleaseTrack track;
-}
+    required final String currentVersion,
+    required final String latestVersion,
+    required final ReleaseTrack track,
+  }) extends ExplicitUpdateOutcome;
 
 /// No release eligible for the active track was found to install.
-final class const ExplicitUpdateNoEligibleRelease({required this.track}) extends ExplicitUpdateOutcome {
-  final ReleaseTrack track;
-}
+final class const ExplicitUpdateNoEligibleRelease({required final ReleaseTrack track}) extends ExplicitUpdateOutcome;
 
 /// The command was run from a binary that is not the managed install (e.g. a
 /// dev build or an arbitrary path), so there is nothing to update in place.
-final class const ExplicitUpdateNotManaged({required this.executablePath}) extends ExplicitUpdateOutcome {
-  final String executablePath;
-}
+final class const ExplicitUpdateNotManaged({required final String executablePath}) extends ExplicitUpdateOutcome;
 
 /// The command was run directly from an npm-owned package payload.
-final class const ExplicitUpdateNpmDirect({required this.message}) extends ExplicitUpdateOutcome {
-  final String message;
-}
+final class const ExplicitUpdateNpmDirect({required final String message}) extends ExplicitUpdateOutcome;
 
 /// Another update is already in progress (the update lock is held).
 final class const ExplicitUpdateLockBusy() extends ExplicitUpdateOutcome;
 
 /// The update failed (network, rate limit, checksum, permission, swap, …).
 /// [logPath] points at the durable update log when one is available.
-final class const ExplicitUpdateFailed({required this.reason, required this.logPath}) extends ExplicitUpdateOutcome {
-  final String reason;
-  final String? logPath;
-}
+final class const ExplicitUpdateFailed({required final String reason, required final String? logPath}) extends ExplicitUpdateOutcome;

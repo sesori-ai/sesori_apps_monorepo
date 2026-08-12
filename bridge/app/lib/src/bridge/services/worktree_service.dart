@@ -16,11 +16,7 @@ const _worktreeDir = ".worktrees";
 /// directory before every git operation (a moved folder keeps its identity
 /// but git must run where the folder actually is), while database writes
 /// (base-branch override) stay keyed on the identifier.
-class WorktreeService({required WorktreeRepository worktreeRepository}) {
-  final WorktreeRepository _worktreeRepository;
-
-  this : _worktreeRepository = worktreeRepository;
-
+class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
   static final _random = Random.secure();
   static final _safeNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
 
@@ -164,7 +160,7 @@ class WorktreeService({required WorktreeRepository worktreeRepository}) {
   Future<String?> resolveHeadCommit({
     required String projectId,
   }) async {
-    return _worktreeRepository.resolveHeadCommit(
+    return await _worktreeRepository.resolveHeadCommit(
       projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
     );
   }
@@ -173,7 +169,7 @@ class WorktreeService({required WorktreeRepository worktreeRepository}) {
     required String worktreePath,
     required String expectedBranch,
   }) async {
-    return _worktreeRepository.checkWorktreeSafety(
+    return await _worktreeRepository.checkWorktreeSafety(
       worktreePath: worktreePath,
       expectedBranch: expectedBranch,
     );
@@ -192,7 +188,7 @@ class WorktreeService({required WorktreeRepository worktreeRepository}) {
     )) {
       return false;
     }
-    return _worktreeRepository.removeWorktree(
+    return await _worktreeRepository.removeWorktree(
       pluginId: pluginId,
       projectPath: projectPath,
       worktreePath: worktreePath,
@@ -205,7 +201,7 @@ class WorktreeService({required WorktreeRepository worktreeRepository}) {
     required String branchName,
     required bool force,
   }) async {
-    return _worktreeRepository.deleteBranch(
+    return await _worktreeRepository.deleteBranch(
       projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
       branchName: branchName,
       force: force,
@@ -216,7 +212,7 @@ class WorktreeService({required WorktreeRepository worktreeRepository}) {
     required String projectId,
     required String branchName,
   }) async {
-    return _worktreeRepository.branchExists(
+    return await _worktreeRepository.branchExists(
       projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
       branchName: branchName,
     );

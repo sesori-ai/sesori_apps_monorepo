@@ -8,17 +8,11 @@ import "../auth/token_refresher.dart";
 import "models/session_metadata.dart";
 
 class MetadataService({
-    required http.Client client,
-    required String baseUrl,
-    required TokenRefresher tokenRefresher,
-  }) {
-  final String _baseUrl;
-  final TokenRefresher _tokenRefresher;
-  final http.Client _client;
-
-  this : _client = client,
-       _baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
-       _tokenRefresher = tokenRefresher;
+  required final http.Client _client,
+  required String baseUrl,
+  required final TokenRefresher _tokenRefresher,
+}) {
+  final String _baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
 
   Future<SessionMetadata?> generate({required String firstMessage}) async {
     try {

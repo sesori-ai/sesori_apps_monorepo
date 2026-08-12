@@ -17,7 +17,7 @@ abstract class WakeLockClient {
   /// system from sleeping when the laptop lid is closed.
   bool get preventsLidCloseSleep;
 
-  factory WakeLockClient.forPlatform() => switch (true) {
+  factory forPlatform() => switch (true) {
     _ when Platform.isMacOS => MacOSWakeLockApi(processStarter: Process.start),
     _ when Platform.isLinux => LinuxWakeLockApi(processStarter: Process.start),
     _ when Platform.isWindows => WindowsWakeLockApi(

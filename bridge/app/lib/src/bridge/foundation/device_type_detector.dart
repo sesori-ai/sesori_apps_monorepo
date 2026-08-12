@@ -27,20 +27,13 @@ class DefaultPlatformChecker() implements PlatformChecker {
 /// Detects whether the current device is a laptop (as opposed to a desktop
 /// or server). Used to show platform-specific wake-lock limitations.
 class DeviceTypeDetector({
-    required ProcessRunner processRunner,
-    required PlatformChecker platformChecker,
-    @visibleForTesting String linuxPowerSupplyPath = "/sys/class/power_supply/",
-  }) {
-  final ProcessRunner _processRunner;
-  final PlatformChecker _platformChecker;
-  final String _linuxPowerSupplyPath;
+  required final ProcessRunner _processRunner,
+  required final PlatformChecker _platformChecker,
+  @visibleForTesting final String _linuxPowerSupplyPath = "/sys/class/power_supply/",
+}) {
   Future<bool>? _isLaptop;
 
-  this : _processRunner = processRunner,
-       _platformChecker = platformChecker,
-       _linuxPowerSupplyPath = linuxPowerSupplyPath;
-
-  Future<bool> isLaptop() async => _isLaptop ??= _computeIsLaptop();
+  Future<bool> isLaptop() async => await (_isLaptop ??= _computeIsLaptop());
 
   Future<bool> _computeIsLaptop() {
     if (_platformChecker.isMacOS) {

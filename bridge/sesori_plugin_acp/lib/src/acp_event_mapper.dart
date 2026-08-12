@@ -20,14 +20,13 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 /// [AcpEventMapper.classifyHaltNotice]) and it is surfaced as a
 /// [shared.Message.error] instead of quiet assistant text, giving the user an
 /// explicit "the turn did not run" signal.
-class const AcpHaltNotice({required this.errorName, required this.message}) {
+class const AcpHaltNotice({
   /// Short stable label for the halt class (e.g. "cursor_gate"), carried in
   /// the error message's `errorName`.
-  final String errorName;
-
+  required final String errorName,
   /// The user-facing notice text to show (the agent's own wording).
-  final String message;
-}
+  required final String message,
+});
 
 /// Translates ACP `session/update` notifications into bridge-neutral
 /// [BridgeSseEvent]s.
@@ -49,27 +48,16 @@ class const AcpHaltNotice({required this.errorName, required this.message}) {
 /// [mapExtension], which subclasses override.
 class AcpEventMapper({
     required String launchDirectory,
-    required this.agentId,
-    required this.pluginId,
-    required AcpSessionConfigurationTracker configurationTracker,
-    required AcpContentMapper contentMapper,
+    /// Agent name stamped on assistant messages (e.g. "cursor").
+  required final String agentId,
+    required final String pluginId,
+    required final AcpSessionConfigurationTracker _configurationTracker,
+    required final AcpContentMapper _contentMapper,
   }) {
-  this : _configurationTracker = configurationTracker,
-       _contentMapper = contentMapper,
-       launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
-
   /// The bridge launch directory (canonicalized) — the fallback project
   /// attribution for sessions whose own directory is not (yet) known. Matches
   /// the canonical project id the bridge derives for the same directory.
-  final String launchDirectory;
-
-  /// Agent name stamped on assistant messages (e.g. "cursor").
-  final String agentId;
-
-  final String pluginId;
-
-  final AcpSessionConfigurationTracker _configurationTracker;
-  final AcpContentMapper _contentMapper;
+  final String launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   /// The model/provider to stamp on [sessionId]'s assistant messages.
   String? modelForSession({required String sessionId}) =>
@@ -1065,34 +1053,22 @@ class _SessionSnapshot() {
 }
 
 class _TextPartAccumulator({
-    required this.partId,
-    required this.messageId,
-    required this.type,
+    required final String partId,
+    required final String messageId,
+    required final PluginMessagePartType type,
   }) {
-  final String partId;
-  final String messageId;
-  final PluginMessagePartType type;
   final StringBuffer text = StringBuffer();
 }
 
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
 class _LiveTool({
-    required this.tool,
-    required this.title,
-    required this.status,
-    required this.contentTracker,
-    required this.isFileMutation,
-    required this.diffEmitted,
-    required this.hasExplicitKind,
-    required this.hasExplicitStatus,
-  }) {
-  final String tool;
-  final String? title;
-  final PluginToolStatus status;
-  final AcpToolContentTracker contentTracker;
-  final bool isFileMutation;
-  bool diffEmitted;
-  final bool hasExplicitKind;
-  final bool hasExplicitStatus;
-}
+    required final String tool,
+    required final String? title,
+    required final PluginToolStatus status,
+    required final AcpToolContentTracker contentTracker,
+    required final bool isFileMutation,
+    required var bool diffEmitted,
+    required final bool hasExplicitKind,
+    required final bool hasExplicitStatus,
+  });

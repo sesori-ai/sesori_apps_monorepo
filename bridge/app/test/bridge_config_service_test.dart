@@ -63,13 +63,9 @@ void main() {
 }
 
 class _FakeBridgeSettingsRepository({
-    required this.configFilePath,
-    this.settings = const BridgeSettings(),
-  }) implements BridgeSettingsRepository {
-  @override
-  final String configFilePath;
-
-  BridgeSettings settings;
+  @override required final String configFilePath,
+  var BridgeSettings settings = const BridgeSettings(),
+}) implements BridgeSettingsRepository {
   int ensureConfigExistsCallCount = 0;
   final List<({String pluginId, bool disabled})> pluginUpdates = [];
 

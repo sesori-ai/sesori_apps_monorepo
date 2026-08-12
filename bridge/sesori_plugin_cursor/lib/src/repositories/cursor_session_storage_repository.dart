@@ -6,12 +6,8 @@ enum CursorSessionStorageEntryType() { missing, directory, nonDirectory }
 
 /// Layer-2 access to Cursor's persisted ACP session storage.
 class CursorSessionStorageRepository({
-    required CursorSessionStorageApi api,
+    required final CursorSessionStorageApi _api,
   }) {
-  this : _api = api;
-
-  final CursorSessionStorageApi _api;
-
   CursorSessionStorageEntryType entryType({required String path}) {
     final type = _api.entityType(path: path);
     if (type == FileSystemEntityType.notFound) {

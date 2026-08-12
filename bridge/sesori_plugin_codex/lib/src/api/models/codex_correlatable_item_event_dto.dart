@@ -7,39 +7,27 @@ enum CodexCorrelatableItemLifecycle() {
 }
 
 sealed class const CodexCorrelatableItemEventDto({
-    required this.lifecycle,
-    required this.threadId,
-    required this.turnId,
-    required this.itemId,
-  }) {
-  final CodexCorrelatableItemLifecycle lifecycle;
-  final String threadId;
-  final String? turnId;
-  final String itemId;
-}
+    required final CodexCorrelatableItemLifecycle lifecycle,
+    required final String threadId,
+    required final String? turnId,
+    required final String itemId,
+  });
 
 final class const CodexCommandExecutionEventDto({
     required super.lifecycle,
     required super.threadId,
     required super.turnId,
     required super.itemId,
-    required this.command,
-    required this.aggregatedOutput,
-    required this.status,
-    required this.exitCode,
-  }) extends CodexCorrelatableItemEventDto {
-  final String? command;
-  final String? aggregatedOutput;
-  final CodexCommandExecutionStatus status;
-  final int? exitCode;
-}
+    required final String? command,
+    required final String? aggregatedOutput,
+    required final CodexCommandExecutionStatus status,
+    required final int? exitCode,
+  }) extends CodexCorrelatableItemEventDto;
 
 final class const CodexFileChangeEventDto({
     required super.lifecycle,
     required super.threadId,
     required super.turnId,
     required super.itemId,
-    required this.status,
-  }) extends CodexCorrelatableItemEventDto {
-  final CodexFileChangeStatus status;
-}
+    required final CodexFileChangeStatus status,
+  }) extends CodexCorrelatableItemEventDto;

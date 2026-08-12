@@ -2777,17 +2777,13 @@ Future<ActiveSessionTracker> _coldStartedTracker({
 }
 
 class _FakeApi({
-    List<Project>? projects,
-    List<Session>? sessions,
-    Map<String, SessionStatus>? statuses,
-  }) implements OpenCodeApi {
-  final List<Project> _projects;
-  final List<Session> _sessions;
-  final Map<String, SessionStatus> _statuses;
-
-  this : _projects = projects ?? [],
-       _sessions = sessions ?? [],
-       _statuses = statuses ?? {};
+  List<Project>? projects,
+  List<Session>? sessions,
+  Map<String, SessionStatus>? statuses,
+}) implements OpenCodeApi {
+  final List<Project> _projects = projects ?? [];
+  final List<Session> _sessions = sessions ?? [];
+  final Map<String, SessionStatus> _statuses = statuses ?? {};
 
   @override
   Future<bool> healthCheck() async => true;
@@ -2947,6 +2943,6 @@ class _GatedStatusApi() extends _FakeApi {
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
     statusRequested.complete();
     await statusRelease.future;
-    return super.getSessionStatuses(directory: directory);
+    return await super.getSessionStatuses(directory: directory);
   }
 }

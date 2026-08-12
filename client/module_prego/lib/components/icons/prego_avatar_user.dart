@@ -20,12 +20,11 @@ const LinearGradient _backgroundGradient = LinearGradient(
 /// user glyph filled with the hero-avatar brand gradient. Used as the account
 /// image in settings while accounts have no custom avatar.
 class const PregoAvatarUser({
-    super.key,
-    this.size = 40,
-  }) extends StatelessWidget {
-  /// Width and height of the avatar square. The glyph scales at half of it.
-  final double size;
+  super.key,
 
+  /// Width and height of the avatar square. The glyph scales at half of it.
+  final double size = 40,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;

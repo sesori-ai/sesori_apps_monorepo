@@ -5,15 +5,11 @@ import "package:go_router/go_router.dart";
 
 /// Dismisses the current modal route when its request is no longer pending.
 class const PendingRequestAutoDismiss({
-    super.key,
-    required this.isPendingStream,
-    required this.isPending,
-    required this.child,
-  }) extends StatefulWidget {
-  final Stream<bool> isPendingStream;
-  final bool Function() isPending;
-  final Widget child;
-
+  super.key,
+  required final Stream<bool> isPendingStream,
+  required final bool Function() isPending,
+  required final Widget child,
+}) extends StatefulWidget {
   @override
   State<PendingRequestAutoDismiss> createState() => _PendingRequestAutoDismissState();
 }

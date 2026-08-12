@@ -13,14 +13,14 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
   final Future<void> _routerReady;
   Future<void> _pendingReplace = Future<void>.value();
 
-  GoRouterRouteDispatcher()
+  new()
     : _goRoute = appRouter.go,
       // ignore: no_slop_linter/avoid_raw_go_router
       _pushRoute = ((route) => appRouter.push<void>(route)),
       _routerReady = WidgetsBinding.instance.endOfFrame;
 
   @visibleForTesting
-  GoRouterRouteDispatcher.test({
+  new test({
     required void Function(String route) goRoute,
     required Future<void> Function(String route) pushRoute,
     Future<void>? routerReady,

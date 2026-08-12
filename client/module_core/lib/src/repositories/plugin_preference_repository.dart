@@ -3,11 +3,7 @@ import "package:injectable/injectable.dart";
 import "../api/plugin_preference_api.dart";
 
 @lazySingleton
-class PluginPreferenceRepository({required PluginPreferenceApi api}) {
-  final PluginPreferenceApi _api;
-
-  this : _api = api;
-
+class PluginPreferenceRepository({required final PluginPreferenceApi _api}) {
   Future<String?> readPluginId({required String bridgeId}) {
     return _api.readPluginId(bridgeId: bridgeId);
   }

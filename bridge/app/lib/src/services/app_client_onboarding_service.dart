@@ -7,15 +7,9 @@ import "../repositories/app_onboarding_state_repository.dart";
 enum AppClientOnboardingDecision() { skip, prompt }
 
 class AppClientOnboardingService({
-    required AppClientStatusRepository statusRepository,
-    required AppOnboardingStateRepository stateRepository,
+    required final AppClientStatusRepository _statusRepository,
+    required final AppOnboardingStateRepository _stateRepository,
   }) {
-  this : _statusRepository = statusRepository,
-       _stateRepository = stateRepository;
-
-  final AppClientStatusRepository _statusRepository;
-  final AppOnboardingStateRepository _stateRepository;
-
   Future<AppClientOnboardingDecision> prepare({
     required String accessToken,
     required String authBackendUrl,

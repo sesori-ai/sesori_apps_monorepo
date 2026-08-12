@@ -12,13 +12,9 @@ import "question_info_mapper.dart";
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
 /// This class is stateless — all methods are pure transformations.
-class SseEventMapper({AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper()}) {
-  this
-    : _assistantMessageMapper = assistantMessageMapper;
-
+class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
-  final AssistantMessageMapper _assistantMessageMapper;
 
   /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
   /// model carries — without a null-assertion (`!`). Known variants always

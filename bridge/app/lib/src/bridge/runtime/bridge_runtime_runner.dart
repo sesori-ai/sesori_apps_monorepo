@@ -131,7 +131,9 @@ import "runtime_provision_formatter.dart";
 /// The deliberate exit outcomes of a supervised bridge, each carrying the
 /// process exit [code] the desktop GUI supervisor keys its respawn policy on.
 /// Anything not represented here reads to the GUI as a crash (backoff respawn).
-enum SupervisedExitCode(this.code) {
+enum SupervisedExitCode(
+  /// The process exit code reported to the GUI supervisor.
+  final int code) {
   /// A phone-triggered restart handed off by exiting: the GUI must respawn.
   /// Distinct from a clean stop (0), a crash (other non-zero), and
   /// control-channel loss (1) so the GUI supervisor can tell an intentional
@@ -164,8 +166,6 @@ enum SupervisedExitCode(this.code) {
   /// clean stop even when the shutdown itself completes fine.
   controlChannelLost(1);
 
-  /// The process exit code reported to the GUI supervisor.
-  final int code;
 }
 
 enum _PhoneConnectionWaitOutcome() { connected, sessionStopped }

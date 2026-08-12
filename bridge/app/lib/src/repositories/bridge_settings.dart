@@ -11,13 +11,10 @@ enum SleepPreventionMode() {
 }
 
 class const PluginLifecycleSettings({
-    required this.idleTimeoutMins,
-    this.additionalProperties = const {},
+    required final int? idleTimeoutMins,
+    final Map<String, Object?> additionalProperties = const {},
   }) {
-  final int? idleTimeoutMins;
-  final Map<String, Object?> additionalProperties;
-
-  factory PluginLifecycleSettings.fromJson({
+  factory fromJson({
     required String entryName,
     required Map<String, dynamic> json,
   }) {
@@ -52,15 +49,11 @@ class const PluginLifecycleSettings({
 }
 
 class const BridgePluginSettings({
-    this.disabledPluginIds = const {},
-    this.defaults = const PluginLifecycleSettings(idleTimeoutMins: null),
-    this.settingsByPluginId = const {},
+    final Set<String> disabledPluginIds = const {},
+    final PluginLifecycleSettings defaults = const PluginLifecycleSettings(idleTimeoutMins: null),
+    final Map<String, PluginLifecycleSettings> settingsByPluginId = const {},
   }) {
-  final Set<String> disabledPluginIds;
-  final PluginLifecycleSettings defaults;
-  final Map<String, PluginLifecycleSettings> settingsByPluginId;
-
-  factory BridgePluginSettings.fromJson({required Object? rawValue}) {
+  factory fromJson({required Object? rawValue}) {
     if (rawValue is! Map || rawValue.keys.any((key) => key is! String)) {
       throw const PluginSettingsFormatException('"plugins" must be an object');
     }
@@ -170,28 +163,18 @@ class const BridgePluginSettings({
 }
 
 class const BridgeSettings({
-    this.sleepPrevention = SleepPreventionMode.always,
-    this.yolo = false,
-    this.plugins = const BridgePluginSettings(),
-    this.releaseTrack = ReleaseTrack.stable,
-    this.pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
-  }) {
-  final SleepPreventionMode sleepPrevention;
-
-  /// Automatically approves permission requests at the bridge without
+    final SleepPreventionMode sleepPrevention = SleepPreventionMode.always,
+    /// Automatically approves permission requests at the bridge without
   /// forwarding them to connected clients.
-  final bool yolo;
-
-  /// Plugin eligibility and lifecycle settings.
-  final BridgePluginSettings plugins;
-
-  /// Which release channel the auto-updater follows.
-  final ReleaseTrack releaseTrack;
-
-  /// Polling cadence while at least one client views a project.
-  final int pullRequestRefreshIntervalSeconds;
-
-  factory BridgeSettings.fromJson(Map<String, dynamic> json) {
+  final bool yolo = false,
+    /// Plugin eligibility and lifecycle settings.
+  final BridgePluginSettings plugins = const BridgePluginSettings(),
+    /// Which release channel the auto-updater follows.
+  final ReleaseTrack releaseTrack = ReleaseTrack.stable,
+    /// Polling cadence while at least one client views a project.
+  final int pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
+  }) {
+  factory fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
       sleepPrevention: _parseSleepPrevention(json['sleepPrevention']),
       yolo: json['yolo'] == true,
@@ -260,9 +243,7 @@ class const BridgeSettings({
 
 class const PluginSettingsFormatException(super.message) extends FormatException;
 
-class PluginIdleTimeoutFormatException({required this.entryName}) extends PluginSettingsFormatException {
-  final String entryName;
-
+class PluginIdleTimeoutFormatException({required final String entryName}) extends PluginSettingsFormatException {
   this
     : super('"plugins.$entryName.idleTimeoutMins" must be an integer');
 }

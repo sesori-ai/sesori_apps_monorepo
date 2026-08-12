@@ -109,7 +109,9 @@ class RecordingLocalNotificationClient() implements LocalNotificationClient {
   @override
   Future<void> cancelForSession({required String sessionId}) async {}
 
-  Future<void> dispose() async => _notificationOpenedController.close();
+  Future<void> dispose() async {
+    await _notificationOpenedController.close();
+  }
 
   @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async => null;
@@ -182,20 +184,13 @@ class FakePushMessagingSource() implements PushMessagingSource {
 
 @immutable
 class const ShownNotification({
-    required this.title,
-    required this.body,
-    required this.category,
-    required this.sessionId,
-    required this.projectId,
-    required this.sessionTitle,
-  }) {
-  final String title;
-  final String body;
-  final NotificationCategory category;
-  final String? sessionId;
-  final String? projectId;
-  final String? sessionTitle;
-
+  required final String title,
+  required final String body,
+  required final NotificationCategory category,
+  required final String? sessionId,
+  required final String? projectId,
+  required final String? sessionTitle,
+}) {
   @override
   bool operator ==(Object other) {
     return other is ShownNotification &&

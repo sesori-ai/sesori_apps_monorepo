@@ -3,14 +3,10 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 
 class const Invocation({
-    required this.executable,
-    required this.arguments,
-    required this.workingDirectory,
-  }) {
-  final String executable;
-  final List<String> arguments;
-  final String? workingDirectory;
-}
+  required final String executable,
+  required final List<String> arguments,
+  required final String? workingDirectory,
+});
 
 class FakeProcessRunner() implements ProcessRunner {
   @override

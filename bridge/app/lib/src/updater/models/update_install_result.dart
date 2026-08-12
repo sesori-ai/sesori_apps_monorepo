@@ -9,14 +9,10 @@ import 'update_result.dart';
 /// carries the cause.
 @immutable
 class const UpdateInstallResult({
-    required this.result,
-    required this.stagingPath,
-  }) {
-  final UpdateResult result;
-  final String? stagingPath;
+  required final UpdateResult result,
+  required final String? stagingPath,
+}) {
+  const new staged({required String stagingPath}) : this(result: UpdateResult.success, stagingPath: stagingPath);
 
-  const UpdateInstallResult.staged({required String stagingPath})
-    : this(result: UpdateResult.success, stagingPath: stagingPath);
-
-  const UpdateInstallResult.failed({required UpdateResult result}) : this(result: result, stagingPath: null);
+  const new failed({required UpdateResult result}) : this(result: result, stagingPath: null);
 }

@@ -966,19 +966,13 @@ class _FakeApiRecorder() {
 }
 
 class _FakeManagedApi({
-    required this.initializeError,
-    required this.onInitialize,
-    required this.neverCompleteInitialize,
-    required this.password,
-    required this.onConnected,
-    required this.onDisconnected,
-  }) implements OpenCodeManagedApi {
-  final Object? initializeError;
-  final void Function()? onInitialize;
-  final bool neverCompleteInitialize;
-  final String? password;
-  final void Function() onConnected;
-  final void Function() onDisconnected;
+  required final Object? initializeError,
+  required final void Function()? onInitialize,
+  required final bool neverCompleteInitialize,
+  required final String? password,
+  required final void Function() onConnected,
+  required final void Function() onDisconnected,
+}) implements OpenCodeManagedApi {
   bool initializeCalled = false;
   int disposeCount = 0;
 
@@ -996,7 +990,7 @@ class _FakeManagedApi({
     initializeCalled = true;
     onInitialize?.call();
     if (neverCompleteInitialize) {
-      return Completer<void>().future;
+      return await Completer<void>().future;
     }
     final error = initializeError;
     if (error != null) {
@@ -1025,10 +1019,7 @@ class _FakeManagedApi({
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeHost({required this.config}) implements PluginHost {
-  @override
-  final PluginConfig config;
-
+class _FakeHost({@override required final PluginConfig config}) implements PluginHost {
   @override
   final String stateDirectory = "/runtime";
 
@@ -1167,13 +1158,8 @@ class _FakeHostProcessService() implements HostProcessService {
   }
 }
 
-class _FakeSpawnedProcess({required this.pid, required String executablePath}) implements SpawnedProcess {
-  this : _executablePath = executablePath;
-
-  @override
-  final int pid;
-
-  final String _executablePath;
+class _FakeSpawnedProcess({@override required final int pid, required final String _executablePath})
+    implements SpawnedProcess {
   final Completer<int> _exit = Completer<int>();
 
   void completeExit([int code = 0]) {

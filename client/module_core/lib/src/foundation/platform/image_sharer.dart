@@ -1,16 +1,11 @@
 import "dart:typed_data";
 
 final class const ImageShareOrigin({
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-  }) {
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-}
+  required final double left,
+  required final double top,
+  required final double width,
+  required final double height,
+});
 
 /// Shares image bytes through the platform share surface.
 abstract interface class ImageSharer() {

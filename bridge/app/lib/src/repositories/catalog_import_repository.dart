@@ -24,27 +24,16 @@ import "project_catalog_identity_calculator.dart";
 typedef SessionBackendActivity = ({String sessionId, int activityAt});
 
 class CatalogImportRepository({
-    required PluginRuntime runtime,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required CatalogHydrationsDao catalogHydrationsDao,
-    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
+    required final PluginRuntime _runtime,
+    required final ProjectsDao _projectsDao,
+    required final SessionDao _sessionDao,
+    required final CatalogHydrationsDao _catalogHydrationsDao,
+    required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   }) {
-  this : _runtime = runtime,
-       _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _catalogHydrationsDao = catalogHydrationsDao,
-       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
-
   static const int projectionVersion = 1;
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
-  final PluginRuntime _runtime;
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-  final CatalogHydrationsDao _catalogHydrationsDao;
-  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
   final StreamController<List<SessionBackendActivity>> _backendActivityController =
       StreamController<List<SessionBackendActivity>>.broadcast(sync: true);
 
@@ -687,40 +676,22 @@ class CatalogImportRepository({
 enum _CatalogOperation() { importCatalog }
 
 class _ObservedProject({
-    required this.preferredId,
-    required this.path,
-    required this.displayName,
-    required this.createdAt,
-    required this.updatedAt,
-  }) {
-  final String preferredId;
-  final String path;
-  String? displayName;
-  int? createdAt;
-  int? updatedAt;
-}
+    required final String preferredId,
+    required final String path,
+    required var String? displayName,
+    required var int? createdAt,
+    required var int? updatedAt,
+  });
 
-class _ObservedSession({required this.session, required this.rootProjectPath}) {
-  final PluginSession session;
-  String? rootProjectPath;
-}
+class _ObservedSession({required final PluginSession session, required var String? rootProjectPath});
 
 class const _CatalogImportObservation({
-    required this.pluginId,
-    required this.generation,
-    required this.projectOwnership,
-    required this.importStartedAt,
-    required this.observedProjects,
-    required this.observedSessions,
-    required this.derivedLaunchDirectory,
-    required this.sessionsSeen,
-  }) {
-  final String pluginId;
-  final int generation;
-  final PluginProjectOwnership projectOwnership;
-  final int importStartedAt;
-  final Map<String, _ObservedProject> observedProjects;
-  final Map<String, _ObservedSession> observedSessions;
-  final String? derivedLaunchDirectory;
-  final int sessionsSeen;
-}
+    required final String pluginId,
+    required final int generation,
+    required final PluginProjectOwnership projectOwnership,
+    required final int importStartedAt,
+    required final Map<String, _ObservedProject> observedProjects,
+    required final Map<String, _ObservedSession> observedSessions,
+    required final String? derivedLaunchDirectory,
+    required final int sessionsSeen,
+  });

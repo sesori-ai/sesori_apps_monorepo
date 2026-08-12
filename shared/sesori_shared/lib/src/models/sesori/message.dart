@@ -23,14 +23,14 @@ part "message.g.dart";
 /// [MessageError].
 @Freezed(unionKey: "role", fromJson: true, toJson: true)
 sealed class const Message._() with _$Message {
-  const factory Message.user({
+  const factory user({
     required String id,
     required String sessionID,
     required String? agent,
     required MessageTime? time,
   }) = MessageUser;
 
-  const factory Message.assistant({
+  const factory assistant({
     required String id,
     required String sessionID,
     required String? agent,
@@ -39,7 +39,7 @@ sealed class const Message._() with _$Message {
     required MessageTime? time,
   }) = MessageAssistant;
 
-  const factory Message.error({
+  const factory error({
     required String id,
     required String sessionID,
     required String? agent,
@@ -50,7 +50,7 @@ sealed class const Message._() with _$Message {
     required MessageTime? time,
   }) = MessageError;
 
-  factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
 }
 
 /// Lifecycle timestamps for a [Message], in milliseconds since the Unix
@@ -62,10 +62,10 @@ sealed class const Message._() with _$Message {
 ///   `null` for user messages and in-flight assistant messages.
 @Freezed(fromJson: true, toJson: true)
 sealed class MessageTime with _$MessageTime {
-  const factory MessageTime({
+  const factory({
     required int created,
     required int? completed,
   }) = _MessageTime;
 
-  factory MessageTime.fromJson(Map<String, dynamic> json) => _$MessageTimeFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$MessageTimeFromJson(json);
 }

@@ -21,17 +21,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 ///
 /// Backend-neutral: the user-facing [_runtimeName] (the plugin's display name)
 /// is injected, so the bridge core never hard-codes a specific backend.
-class RuntimeProvisionFormatter({required bool interactive, required String runtimeName}) {
-  final bool _interactive;
-  final String _runtimeName;
-
+class RuntimeProvisionFormatter({required final bool _interactive, required final String _runtimeName}) {
   bool _barActive = false;
   bool _didWork = false;
   int _lastReportedPercent = -1;
-
-  this
-    : _interactive = interactive,
-      _runtimeName = runtimeName;
 
   static const int _barWidth = 24;
 

@@ -6,9 +6,7 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 /// Signed-in placeholder: bridge supervision controls land here with the
 /// tray/window slices.
-class const HomePlaceholder({required this.user, super.key}) extends StatelessWidget {
-  final AuthUser? user;
-
+class const HomePlaceholder({required final AuthUser? user, super.key}) extends StatelessWidget {
   static const String _signedIn = "Signed in";
   static const String _signedInAs = "Signed in as";
   static const String _placeholderNote = "Bridge controls are on their way.";

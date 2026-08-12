@@ -1,9 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-class SseEvent({required this.data, this.directory}) {
-  final SesoriSseEvent data;
-  final String? directory;
-
+class SseEvent({required final SesoriSseEvent data, final String? directory}) {
   /// The session this event belongs to, or null for non-session-scoped events.
   ///
   /// Computed lazily on first access. Use this to filter events by session

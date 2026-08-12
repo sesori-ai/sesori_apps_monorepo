@@ -13,30 +13,18 @@ import "app_routes.dart";
 
 @lazySingleton
 class NotificationOpenDispatcher({
-    required AuthSession authSession,
-    required PushMessagingSource pushMessagingSource,
-    required LocalNotificationClient localNotificationClient,
-    required RouteDispatcher routeDispatcher,
-    required RouteSource routeSource,
-  }) {
-  final AuthSession _authSession;
-  final PushMessagingSource _pushMessagingSource;
-  final LocalNotificationClient _localNotificationClient;
-  final RouteDispatcher _routeDispatcher;
-  final RouteSource _routeSource;
-
+  required final AuthSession _authSession,
+  required final PushMessagingSource _pushMessagingSource,
+  required final LocalNotificationClient _localNotificationClient,
+  required final RouteDispatcher _routeDispatcher,
+  required final RouteSource _routeSource,
+}) {
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<NotificationOpenRequest>? _pushOpenSubscription;
   StreamSubscription<NotificationOpenRequest>? _localOpenSubscription;
   NotificationOpenRequest? _pendingOpenRequest;
   bool _started = false;
   bool _disposed = false;
-
-  this : _authSession = authSession,
-       _pushMessagingSource = pushMessagingSource,
-       _localNotificationClient = localNotificationClient,
-       _routeDispatcher = routeDispatcher,
-       _routeSource = routeSource;
 
   Future<void> start() async {
     if (_disposed) {

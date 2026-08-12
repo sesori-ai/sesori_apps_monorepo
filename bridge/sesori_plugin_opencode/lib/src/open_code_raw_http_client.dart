@@ -51,17 +51,10 @@ enum _HttpMethod() { get, post, patch, delete }
 /// It also owns Basic-auth header computation and URI construction. It performs
 /// no JSON decoding or model mapping — that stays in [OpenCodeApi].
 class OpenCodeRawHttpClient({
-    required String serverURL,
-    required String? password,
-    required http.Client client,
+    required final String _serverURL,
+    required final String? _password,
+    required final http.Client _client,
   }) {
-  final String _serverURL;
-  final String? _password;
-  final http.Client _client;
-
-  this : _serverURL = serverURL,
-       _password = password,
-       _client = client;
 
   Map<String, String> get _authHeaders {
     final password = _password;
@@ -184,24 +177,19 @@ class OpenCodeRawHttpClient({
   }
 }
 
-class OpenCodeApiException(this.endpoint, this.statusCode, {String? responseBody}) implements Exception {
+class OpenCodeApiException(final String endpoint, final int statusCode, {String? responseBody}) implements Exception {
   static const _maxBodyLength = 500;
-
-  final String endpoint;
-  final int statusCode;
 
   /// Upstream response body, truncated to [_maxBodyLength] characters.
   /// OpenCode error bodies carry the actual failure reason (e.g.
   /// `{"name":"UnknownError","data":{...}}`), which is essential for
   /// diagnosing failures from logs.
-  final String? responseBody;
-
-  this
-    : responseBody = switch (responseBody) {
+  final String? responseBody = switch (responseBody) {
         null => null,
         final body when body.length > _maxBodyLength => "${body.substring(0, _maxBodyLength)}…",
         final body => body,
       };
+
 
   @override
   String toString() {

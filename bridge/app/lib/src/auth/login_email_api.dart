@@ -3,9 +3,7 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
-class LoginEmailApi({required this.authBackendUrl}) {
-  final String authBackendUrl;
-
+class LoginEmailApi({required final String authBackendUrl}) {
   Future<AuthResponse> loginWithEmail({required String email, required String password}) async {
     final base = authBackendUrl.endsWith("/") ? authBackendUrl.substring(0, authBackendUrl.length - 1) : authBackendUrl;
     final uri = Uri.parse("$base/${AuthProvider.email.apiAuthPath}");
@@ -30,32 +28,22 @@ abstract class EmailLoginException() implements Exception {
   String get message;
 }
 
-class EmailAuthApiException({required this.statusCode, required this.body}) implements EmailLoginException {
-  final int statusCode;
-  final String body;
-
+class EmailAuthApiException({required final int statusCode, required final String body})
+    implements EmailLoginException {
   @override
-  final String message;
-
-  this
-    : message = "EmailAuthApiException: status $statusCode | body $body";
+  final String message = "EmailAuthApiException: status $statusCode | body $body";
 
   @override
   String toString() => message;
 }
 
-class EmailLoginExceptionImpl(this.message) implements EmailLoginException {
-  @override
-  final String message;
-
+class EmailLoginExceptionImpl(@override final String message) implements EmailLoginException {
   @override
   String toString() => "EmailLoginException: $message";
 }
 
-class RateLimitException([this.message = "Rate limit exceeded. Please try again later."]) implements EmailLoginException {
-  @override
-  final String message;
-
+class RateLimitException([@override final String message = "Rate limit exceeded. Please try again later."])
+    implements EmailLoginException {
   @override
   String toString() => "RateLimitException: $message";
 }

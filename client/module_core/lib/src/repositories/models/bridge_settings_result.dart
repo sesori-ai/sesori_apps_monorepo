@@ -3,57 +3,49 @@ import "package:sesori_shared/sesori_shared.dart";
 
 sealed class const BridgeSettingsLoadResult();
 
-final class const BridgeSettingsLoadSupported({required this.response}) extends BridgeSettingsLoadResult {
-  final BridgeSettingsResponse response;
-}
+final class const BridgeSettingsLoadSupported({required final BridgeSettingsResponse response})
+    extends BridgeSettingsLoadResult;
 
-final class const BridgeSettingsLoadLegacyPartial({required this.pullRequestRefresh}) extends BridgeSettingsLoadResult {
-  final PullRequestRefreshSettingsResponse pullRequestRefresh;
-}
+final class const BridgeSettingsLoadLegacyPartial({
+  required final PullRequestRefreshSettingsResponse pullRequestRefresh,
+}) extends BridgeSettingsLoadResult;
 
 final class const BridgeSettingsLoadUnsupported() extends BridgeSettingsLoadResult;
 
-final class const BridgeSettingsLoadFailure({required this.error}) extends BridgeSettingsLoadResult {
-  final ApiError error;
-}
+final class const BridgeSettingsLoadFailure({required final ApiError error}) extends BridgeSettingsLoadResult;
 
 sealed class const PullRequestRefreshSettingsMutationResult();
 
-final class const PullRequestRefreshSettingsMutationCommitted({required this.response}) extends PullRequestRefreshSettingsMutationResult {
-  final PullRequestRefreshSettingsResponse response;
-}
+final class const PullRequestRefreshSettingsMutationCommitted({
+  required final PullRequestRefreshSettingsResponse response,
+}) extends PullRequestRefreshSettingsMutationResult;
 
 final class const PullRequestRefreshSettingsMutationUnsupported() extends PullRequestRefreshSettingsMutationResult;
 
-final class const PullRequestRefreshSettingsMutationRejected({required this.bounds}) extends PullRequestRefreshSettingsMutationResult {
-  final PullRequestRefreshSettingsBounds bounds;
-}
+final class const PullRequestRefreshSettingsMutationRejected({required final PullRequestRefreshSettingsBounds bounds})
+    extends PullRequestRefreshSettingsMutationResult;
 
 final class const PullRequestRefreshSettingsMutationUncertain() extends PullRequestRefreshSettingsMutationResult;
 
-final class const PullRequestRefreshSettingsMutationFailure({required this.error}) extends PullRequestRefreshSettingsMutationResult {
-  final ApiError error;
-}
+final class const PullRequestRefreshSettingsMutationFailure({required final ApiError error})
+    extends PullRequestRefreshSettingsMutationResult;
 
 sealed class const YoloSettingsMutationResult();
 
-final class const YoloSettingsMutationCommitted({required this.response}) extends YoloSettingsMutationResult {
-  final YoloSettingsResponse response;
-}
+final class const YoloSettingsMutationCommitted({required final YoloSettingsResponse response})
+    extends YoloSettingsMutationResult;
 
 final class const YoloSettingsMutationUnsupported() extends YoloSettingsMutationResult;
 
 final class const YoloSettingsMutationUncertain() extends YoloSettingsMutationResult;
 
-final class const YoloSettingsMutationFailure({required this.error}) extends YoloSettingsMutationResult {
-  final ApiError error;
-}
+final class const YoloSettingsMutationFailure({required final ApiError error}) extends YoloSettingsMutationResult;
 
 final class const PullRequestRefreshSettingsBounds._({
-    required this.minimumIntervalSeconds,
-    required this.maximumIntervalSeconds,
-  }) {
-  factory PullRequestRefreshSettingsBounds({
+  required final int minimumIntervalSeconds,
+  required final int maximumIntervalSeconds,
+}) {
+  factory({
     required int minimumIntervalSeconds,
     required int maximumIntervalSeconds,
   }) {
@@ -69,9 +61,6 @@ final class const PullRequestRefreshSettingsBounds._({
       maximumIntervalSeconds: maximumIntervalSeconds,
     );
   }
-
-  final int minimumIntervalSeconds;
-  final int maximumIntervalSeconds;
 
   bool includes({required int intervalSeconds}) {
     return intervalSeconds >= minimumIntervalSeconds && intervalSeconds <= maximumIntervalSeconds;

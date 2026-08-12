@@ -9,18 +9,14 @@ import "../../repositories/models/plugin_management_result.dart";
 import "../../services/plugin_management_service.dart";
 import "plugin_management_state.dart";
 
-class PluginManagementCubit({required PluginManagementService service, required UrlLauncher urlLauncher}) extends Cubit<PluginManagementState> {
-  this
-    : _service = service,
-      _urlLauncher = urlLauncher,
-      super(const PluginManagementState.loading()) {
-    _snapshotSubscription = service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot));
-    _installSubscription = service.installProgress.listen((installs) => _onInstallProgress(installs: installs));
-    _authenticationTerminalSubscription = service.authenticationTerminal.listen(_onAuthenticationTerminal);
+class PluginManagementCubit({required final PluginManagementService _service, required final UrlLauncher _urlLauncher})
+    extends Cubit<PluginManagementState> {
+  this : super(const PluginManagementState.loading()) {
+    _snapshotSubscription = _service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot));
+    _installSubscription = _service.installProgress.listen((installs) => _onInstallProgress(installs: installs));
+    _authenticationTerminalSubscription = _service.authenticationTerminal.listen(_onAuthenticationTerminal);
   }
 
-  final PluginManagementService _service;
-  final UrlLauncher _urlLauncher;
   late final StreamSubscription<PluginManagementLoadResult> _snapshotSubscription;
   late final StreamSubscription<Map<String, PluginInstallProgress>> _installSubscription;
   late final StreamSubscription<PluginAuthenticationTerminalUpdate> _authenticationTerminalSubscription;
@@ -543,7 +539,7 @@ class PluginManagementCubit({required PluginManagementService service, required 
     await _snapshotSubscription.cancel();
     await _installSubscription.cancel();
     await _authenticationTerminalSubscription.cancel();
-    return super.close();
+    return await super.close();
   }
 }
 

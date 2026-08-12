@@ -6,12 +6,9 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
-class PostPluginAuthenticationHandler({required PluginLifecycleService lifecycleService}) extends RequestHandlerBase {
-  this
-    : _lifecycleService = lifecycleService,
-      super(HttpMethod.post, "/plugin/:id/authentication");
-
-  final PluginLifecycleService _lifecycleService;
+class PostPluginAuthenticationHandler({required final PluginLifecycleService _lifecycleService})
+    extends RequestHandlerBase {
+  this : super(HttpMethod.post, "/plugin/:id/authentication");
 
   @override
   Future<RelayResponse> handleInternal(
@@ -42,12 +39,9 @@ class PostPluginAuthenticationHandler({required PluginLifecycleService lifecycle
   }
 }
 
-class DeletePluginAuthenticationHandler({required PluginLifecycleService lifecycleService}) extends RequestHandlerBase {
-  this
-    : _lifecycleService = lifecycleService,
-      super(HttpMethod.delete, "/plugin/:id/authentication");
-
-  final PluginLifecycleService _lifecycleService;
+class DeletePluginAuthenticationHandler({required final PluginLifecycleService _lifecycleService})
+    extends RequestHandlerBase {
+  this : super(HttpMethod.delete, "/plugin/:id/authentication");
 
   @override
   Future<RelayResponse> handleInternal(

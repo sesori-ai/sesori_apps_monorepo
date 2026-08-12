@@ -52,18 +52,12 @@ Future<void> main(List<String> arguments) async {
 }
 
 class const _BenchmarkConfiguration({
-    required this.projectCount,
-    required this.sessionCount,
-    required this.eventCount,
-    required this.warmupCount,
-    required this.readSampleCount,
-  }) {
-  final int projectCount;
-  final int sessionCount;
-  final int eventCount;
-  final int warmupCount;
-  final int readSampleCount;
-
+  required final int projectCount,
+  required final int sessionCount,
+  required final int eventCount,
+  required final int warmupCount,
+  required final int readSampleCount,
+}) {
   static _BenchmarkConfiguration parse({required List<String> arguments}) {
     final parser = ArgParser()
       ..addOption("projects", defaultsTo: "$_defaultProjectCount")
@@ -102,11 +96,7 @@ class const _BenchmarkConfiguration({
   }
 }
 
-class const _CatalogImportEventSoak({required _BenchmarkConfiguration configuration}) {
-  this : _configuration = configuration;
-
-  final _BenchmarkConfiguration _configuration;
-
+class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-catalog-import-event-soak-");
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
@@ -749,9 +739,7 @@ class const _CatalogImportEventSoak({required _BenchmarkConfiguration configurat
 }
 
 class _PeakRssSampler({required int initialRss}) {
-  this : _peakRss = initialRss;
-
-  int _peakRss;
+  int _peakRss = initialRss;
   Timer? _timer;
 
   int get peakRss => _peakRss;
@@ -825,14 +813,10 @@ class _SchedulingLagProbe() {
 }
 
 class _BenchmarkPlugin({
-    required this.launchDirectory,
-    required this.sessions,
-    required this.releaseEnumeration,
-  }) implements BridgeDerivedProjectsPluginApi {
-  @override
-  final String launchDirectory;
-  final List<PluginSession> sessions;
-  final Completer<void> releaseEnumeration;
+  @override required final String launchDirectory,
+  required final List<PluginSession> sessions,
+  required final Completer<void> releaseEnumeration,
+}) implements BridgeDerivedProjectsPluginApi {
   final Completer<void> enumerationStarted = Completer<void>();
   int? enumerationStartedAt;
   int enumerationCalls = 0;

@@ -223,8 +223,7 @@ class const _UnusedHostProcessService() implements HostProcessService {
   dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError("setup inspection is not benchmarked");
 }
 
-class _StartupProbe({required this.stopwatch}) {
-  final Stopwatch stopwatch;
+class _StartupProbe({required final Stopwatch stopwatch}) {
   final List<String> provisioningOrder = <String>[];
   final List<String> operations = <String>[];
   final List<String> stateDirectories = <String>[];
@@ -235,32 +234,18 @@ class _StartupProbe({required this.stopwatch}) {
 }
 
 class const _StartupSample({
-    required this.totalMicros,
-    required this.firstOperationalMicros,
-    required this.startMicros,
-    required this.maximumConcurrentStarts,
-    required this.mutexAcquisitionCount,
-    required this.singletonEnforcementCount,
-    required this.stateDirectories,
-    required this.provisioningOrder,
-  }) {
-  final int totalMicros;
-  final int firstOperationalMicros;
-  final Map<String, int> startMicros;
-  final int maximumConcurrentStarts;
-  final int mutexAcquisitionCount;
-  final int singletonEnforcementCount;
-  final List<String> stateDirectories;
-  final List<String> provisioningOrder;
-}
+  required final int totalMicros,
+  required final int firstOperationalMicros,
+  required final Map<String, int> startMicros,
+  required final int maximumConcurrentStarts,
+  required final int mutexAcquisitionCount,
+  required final int singletonEnforcementCount,
+  required final List<String> stateDirectories,
+  required final List<String> provisioningOrder,
+});
 
-class const _FakeDescriptor({required this.id, required _StartupProbe probe}) extends BridgePluginDescriptor {
-  this : _probe = probe;
-
-  @override
-  final String id;
-  final _StartupProbe _probe;
-
+class const _FakeDescriptor({@override required final String id, required final _StartupProbe _probe})
+    extends BridgePluginDescriptor {
   @override
   String get displayName => id;
 
@@ -297,11 +282,9 @@ class const _FakeDescriptor({required this.id, required _StartupProbe probe}) ex
 }
 
 class _FakePlugin({required String id}) implements BridgePlugin {
-  this
-    : _api = _FakePluginApi(id),
-      _statusController = StreamController<PluginStatus>()..add(const PluginReady());
+  this : _statusController = StreamController<PluginStatus>()..add(const PluginReady());
 
-  final _FakePluginApi _api;
+  final _FakePluginApi _api = _FakePluginApi(id);
   final StreamController<PluginStatus> _statusController;
   Future<void>? _shutdownFuture;
 
@@ -336,11 +319,8 @@ class _FakePlugin({required String id}) implements BridgePlugin {
   ]);
 }
 
-class _FakePluginApi(this.id) extends NativeProjectsPluginApi {
+class _FakePluginApi(@override final String id) extends NativeProjectsPluginApi {
   final StreamController<BridgeSseEvent> _eventsController = StreamController<BridgeSseEvent>();
-
-  @override
-  final String id;
 
   @override
   Stream<BridgeSseEvent> get events => _eventsController.stream;

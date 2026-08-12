@@ -6,28 +6,20 @@ import "package:sesori_shared/sesori_shared.dart";
 const Duration _requestTimeout = Duration(seconds: 15);
 
 /// Raised when an `/auth/bridges` request returns a non-success status.
-class BridgeRegistrationException({required this.statusCode, required String body}) implements Exception {
-  final int statusCode;
-  final String message;
-
-  this
-    : message = "BridgeRegistrationException: status $statusCode | body $body";
+class BridgeRegistrationException({required final int statusCode, required String body}) implements Exception {
+  final String message = "BridgeRegistrationException: status $statusCode | body $body";
 
   @override
   String toString() => message;
 }
 
 class BridgeRegistrationApi({
-    required String authBackendUrl,
-    required http.Client client,
-  }) {
-  final String _authBackendUrl;
-  final http.Client _client;
-
-  this : _authBackendUrl = authBackendUrl.endsWith("/")
-           ? authBackendUrl.substring(0, authBackendUrl.length - 1)
-           : authBackendUrl,
-       _client = client;
+  required String authBackendUrl,
+  required final http.Client _client,
+}) {
+  final String _authBackendUrl = authBackendUrl.endsWith("/")
+      ? authBackendUrl.substring(0, authBackendUrl.length - 1)
+      : authBackendUrl;
 
   /// Registers (or re-registers) this bridge via `POST /auth/bridges`.
   ///

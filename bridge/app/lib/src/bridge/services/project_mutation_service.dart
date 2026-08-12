@@ -7,9 +7,7 @@ import "project_initialization_service.dart";
 
 sealed class const OpenProjectOutcome();
 
-final class const OpenProjectSuccess({required this.project}) extends OpenProjectOutcome {
-  final Project project;
-}
+final class const OpenProjectSuccess({required final Project project}) extends OpenProjectOutcome;
 
 final class const OpenProjectDirectoryNotFound() extends OpenProjectOutcome;
 
@@ -19,27 +17,17 @@ final class const OpenProjectGitChoiceRequired() extends OpenProjectOutcome;
 
 /// Owns complete create, open, and hide workflows under one bridge-wide FIFO.
 class ProjectMutationService({
-    required FilesystemRepository filesystemRepository,
-    required ProjectInitializationService projectInitializationService,
-    required ProjectActivityService projectActivityService,
-    required ProjectRepository projectRepository,
-  }) {
-  final FilesystemRepository _filesystemRepository;
-  final ProjectInitializationService _projectInitializationService;
-  final ProjectActivityService _projectActivityService;
-  final ProjectRepository _projectRepository;
-
+  required final FilesystemRepository _filesystemRepository,
+  required final ProjectInitializationService _projectInitializationService,
+  required final ProjectActivityService _projectActivityService,
+  required final ProjectRepository _projectRepository,
+}) {
   Future<void> _tail = Future<void>.value();
-
-  this : _filesystemRepository = filesystemRepository,
-       _projectInitializationService = projectInitializationService,
-       _projectActivityService = projectActivityService,
-       _projectRepository = projectRepository;
 
   Future<Project> createProject({required String path}) {
     return _enqueue(() async {
       await _projectInitializationService.initializeProject(path: path);
-      return _projectActivityService.openProject(path: path);
+      return await _projectActivityService.openProject(path: path);
     });
   }
 

@@ -7,7 +7,7 @@ part "pull_request_info.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PullRequestInfo with _$PullRequestInfo {
-  const factory PullRequestInfo({
+  const factory({
     required int number,
     required String url,
     required String title,
@@ -17,5 +17,5 @@ sealed class PullRequestInfo with _$PullRequestInfo {
     @JsonKey(unknownEnumValue: PrCheckStatus.unknown) required PrCheckStatus checkStatus,
   }) = _PullRequestInfo;
 
-  factory PullRequestInfo.fromJson(Map<String, dynamic> json) => _$PullRequestInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PullRequestInfoFromJson(json);
 }

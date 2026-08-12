@@ -29,21 +29,15 @@ enum PregoNavLeadingTitleEmphasis() {
 /// button (when there is one) and bounded by the remaining bar width.
 class const PregoNavLeadingTitle({
     super.key,
-    required this.title,
-    required this.subtitle,
-    this.emphasis = PregoNavLeadingTitleEmphasis.muted,
-  }) extends StatelessWidget {
-  /// First line; styled per [emphasis].
-  final String title;
-
-  /// How much weight the title line carries. Defaults to
-  /// [PregoNavLeadingTitleEmphasis.muted].
-  final PregoNavLeadingTitleEmphasis emphasis;
-
-  /// Second line — a self-contained row widget such as [PregoNavSubtitle].
+    /// First line; styled per [emphasis].
+  required final String title,
+    /// Second line — a self-contained row widget such as [PregoNavSubtitle].
   /// Null renders the title on its own.
-  final Widget? subtitle;
-
+  required final Widget? subtitle,
+    /// How much weight the title line carries. Defaults to
+  /// [PregoNavLeadingTitleEmphasis.muted].
+  final PregoNavLeadingTitleEmphasis emphasis = PregoNavLeadingTitleEmphasis.muted,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

@@ -10,19 +10,18 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../routing/app_router.dart";
 
 @Singleton(as: RouteSource)
-class GoRouterRouteSource._({required GoRouterDelegate routerDelegate}) implements RouteSource, Disposable {
-  final GoRouterDelegate _routerDelegate;
-  final BehaviorSubject<AppRouteDef?> _currentRouteStream;
+class GoRouterRouteSource._({required final GoRouterDelegate _routerDelegate}) implements RouteSource, Disposable {
+  final BehaviorSubject<AppRouteDef?> _currentRouteStream = BehaviorSubject.seeded(
+    _matchRoute(_currentPath(_routerDelegate.currentConfiguration)),
+  );
 
-  GoRouterRouteSource() : this._(routerDelegate: appRouter.routerDelegate);
+  new() : this._(routerDelegate: appRouter.routerDelegate);
 
   @visibleForTesting
-  GoRouterRouteSource.test({required GoRouter router}) : this._(routerDelegate: router.routerDelegate);
+  new test({required GoRouter router}) : this._(routerDelegate: router.routerDelegate);
 
-  this
-    : _routerDelegate = routerDelegate,
-      _currentRouteStream = BehaviorSubject.seeded(_matchRoute(_currentPath(routerDelegate.currentConfiguration))) {
-    routerDelegate.addListener(_onRouteChanged);
+  this {
+    _routerDelegate.addListener(_onRouteChanged);
   }
 
   @override

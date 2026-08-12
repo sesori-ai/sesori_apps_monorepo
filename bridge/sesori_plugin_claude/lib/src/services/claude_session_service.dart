@@ -17,22 +17,15 @@ final class _SessionTurnState() {
 
 /// Serializes Claude turns and owns session work/idle lifecycle policy.
 final class ClaudeSessionService({
-    required ClaudeSessionProcessRepository processes,
-    required ClaudeApprovalRegistry approvals,
-    required ServerClock clock,
-    required Duration idleTimeout,
-  }) {
-  this : _processes = processes,
-       _approvals = approvals,
-       _clock = clock,
-       _idleTimeout = idleTimeout {
+  required final ClaudeSessionProcessRepository _processes,
+  required final ClaudeApprovalRegistry _approvals,
+  required final ServerClock _clock,
+  required final Duration _idleTimeout,
+}) {
+  this {
     _processEvents = _processes.events.listen(_handleProcessEvent);
   }
 
-  final ClaudeSessionProcessRepository _processes;
-  final ClaudeApprovalRegistry _approvals;
-  final ServerClock _clock;
-  final Duration _idleTimeout;
   final Map<String, _SessionTurnState> _turns = {};
   final Map<String, PluginSessionStatus> _retryStatuses = {};
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();

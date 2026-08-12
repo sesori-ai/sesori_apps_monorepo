@@ -28,10 +28,7 @@ void main() {
   });
 }
 
-class _FakeLoopbackPortApi({required Map<int, bool> availabilityByPort}) implements LoopbackPortApi {
-  this : _availabilityByPort = availabilityByPort;
-
-  final Map<int, bool> _availabilityByPort;
+class _FakeLoopbackPortApi({required final Map<int, bool> _availabilityByPort}) implements LoopbackPortApi {
   final List<String> invocations = <String>[];
 
   @override

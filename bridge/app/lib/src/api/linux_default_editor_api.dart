@@ -2,11 +2,9 @@ import '../bridge/foundation/process_runner.dart';
 import 'default_editor_api.dart';
 
 class LinuxDefaultEditorApi({
-    required ProcessRunner processRunner,
-  }) implements DefaultEditorApi {
-  final ProcessRunner _runProcess;
-
-  this : _runProcess = processRunner;
+  required ProcessRunner processRunner,
+}) implements DefaultEditorApi {
+  final ProcessRunner _runProcess = processRunner;
 
   @override
   Future<void> openFile(String filePath) async {

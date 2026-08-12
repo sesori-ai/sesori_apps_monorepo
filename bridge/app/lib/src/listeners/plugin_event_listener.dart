@@ -4,16 +4,11 @@ import "../bridge/runtime/plugin_runtime.dart";
 import "../bridge/services/session_event_dispatcher.dart";
 
 class PluginEventListener({
-    required Stream<SourcedPluginRuntimeEvent> source,
-    required SessionEventDispatcher dispatcher,
-  }) {
-  final Stream<SourcedPluginRuntimeEvent> _source;
-  final SessionEventDispatcher _dispatcher;
+  required final Stream<SourcedPluginRuntimeEvent> _source,
+  required final SessionEventDispatcher _dispatcher,
+}) {
   StreamSubscription<SourcedPluginRuntimeEvent>? _subscription;
   bool _disposed = false;
-
-  this : _source = source,
-       _dispatcher = dispatcher;
 
   void start() {
     if (_subscription != null || _disposed) return;

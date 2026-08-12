@@ -19,9 +19,7 @@ import "models/claude_transcript_record_dto.dart";
 /// Every read is synchronous so the catalog can hoist the whole call tree into
 /// `Isolate.run`.
 class ClaudeTranscriptApi({required Map<String, String> environment}) {
-  this : _environment = Map.unmodifiable(environment);
-
-  final Map<String, String> _environment;
+  final Map<String, String> _environment = Map.unmodifiable(environment);
 
   /// How many leading lines [readHeader] decodes.
   ///

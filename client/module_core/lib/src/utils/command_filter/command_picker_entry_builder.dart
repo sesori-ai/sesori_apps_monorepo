@@ -2,25 +2,20 @@ import "package:sesori_shared/sesori_shared.dart";
 
 /// A command row in the command picker, pre-shaped for display.
 class const CommandPickerEntry({
-    required this.command,
-    required this.displayDescription,
-    required this.displayHints,
-    required this.searchText,
-  }) {
   /// The command reported back when the entry is selected.
-  final CommandInfo command;
+  required final CommandInfo command,
 
   /// Trimmed description, `null` when absent or blank. Capped in length so
   /// pathological multi-kilobyte strings never reach text layout.
-  final String? displayDescription;
+  required final String? displayDescription,
 
   /// Non-blank hints joined for display, `null` when there are none.
-  final String? displayHints;
+  required final String? displayHints,
 
   /// Lowercase search haystack (command name, description, hints) matched
   /// against the lowercased search query with a plain `contains`.
-  final String searchText;
-}
+  required final String searchText,
+});
 
 /// Shapes raw [CommandInfo] catalogs into the entries displayed by the
 /// command picker sheet.

@@ -33,38 +33,29 @@ typedef _CapturedManagementRequest = ({
 typedef PluginAuthenticationTerminalUpdate = ({String pluginId, PluginAuthenticationProgress progress});
 
 sealed class const PluginManagementIdleTimeoutInput() {
-  const factory PluginManagementIdleTimeoutInput.noTimeout() = PluginManagementIdleTimeoutInputNoTimeout;
+  const factory noTimeout() = PluginManagementIdleTimeoutInputNoTimeout;
 
-  const factory PluginManagementIdleTimeoutInput.custom({required String input}) =
+  const factory custom({required String input}) =
       PluginManagementIdleTimeoutInputCustom;
 }
 
 final class const PluginManagementIdleTimeoutInputNoTimeout() extends PluginManagementIdleTimeoutInput;
 
-final class const PluginManagementIdleTimeoutInputCustom({required this.input}) extends PluginManagementIdleTimeoutInput {
-  final String input;
-}
+final class const PluginManagementIdleTimeoutInputCustom({required final String input}) extends PluginManagementIdleTimeoutInput;
 
 @lazySingleton
 class PluginManagementService({
-    required PluginRepository pluginRepository,
-    required ConnectionService connectionService,
-    required ProductAnalyticsService productAnalyticsService,
+    required final PluginRepository _pluginRepository,
+    required final ConnectionService _connectionService,
+    required final ProductAnalyticsService _productAnalyticsService,
   }) with Disposable {
-  this : _pluginRepository = pluginRepository,
-       _connectionService = connectionService,
-       _productAnalyticsService = productAnalyticsService,
-       _connected = connectionService.currentStatus is ConnectionConnected,
-       _connectionEpoch = connectionService.currentStatus is ConnectionConnected ? 1 : 0 {
+  this {
     _subscriptions
       ..add(_connectionService.status.listen(_onConnectionStatus))
       ..add(_connectionService.events.listen(_onSseEvent))
       ..add(_connectionService.dataMayBeStale.listen((_) => _markStale()));
   }
 
-  final PluginRepository _pluginRepository;
-  final ConnectionService _connectionService;
-  final ProductAnalyticsService _productAnalyticsService;
   final BehaviorSubject<PluginManagementLoadResult> _snapshots = BehaviorSubject();
   final BehaviorSubject<Map<String, PluginInstallProgress>> _installProgress = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, PluginAuthenticationChallenge>> _authenticationChallenges = BehaviorSubject.seeded(
@@ -74,8 +65,8 @@ class PluginManagementService({
       StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  bool _connected;
-  int _connectionEpoch;
+  bool _connected = _connectionService.currentStatus is ConnectionConnected;
+  int _connectionEpoch = _connectionService.currentStatus is ConnectionConnected ? 1 : 0;
   bool _receivedInitialStatus = false;
   bool _disposed = false;
 
@@ -732,12 +723,11 @@ int? _parseIdleTimeoutMins({required PluginManagementIdleTimeoutInput input}) {
 
 /// One harness' in-flight managed runtime install, as last reported.
 @immutable
-class const PluginInstallProgress({required this.phase, required this.percent}) {
-  final PluginInstallPhase phase;
-
+class const PluginInstallProgress({
+  required final PluginInstallPhase phase,
   /// Download completion, only present while downloading with a known total.
-  final int? percent;
-
+  required final int? percent,
+}) {
   @override
   bool operator ==(Object other) => other is PluginInstallProgress && other.phase == phase && other.percent == percent;
 
@@ -746,10 +736,7 @@ class const PluginInstallProgress({required this.phase, required this.percent}) 
 }
 
 @immutable
-class const PluginAuthenticationChallenge({required this.verificationUri, required this.userCode}) {
-  final Uri verificationUri;
-  final String userCode;
-
+class const PluginAuthenticationChallenge({required final Uri verificationUri, required final String userCode}) {
   @override
   bool operator ==(Object other) =>
       other is PluginAuthenticationChallenge && other.verificationUri == verificationUri && other.userCode == userCode;
@@ -763,32 +750,28 @@ enum _RefreshOutcome() { applied, failed, superseded, fenced }
 enum _PublicationOutcome() { applied, fenced, superseded, identitySuperseded }
 
 sealed class const PluginManagementCommandPlan() {
-  const factory PluginManagementCommandPlan.request({
+  const factory request({
     required PluginIdleTimeoutUpdateRequest request,
   }) = PluginManagementCommandPlanRequest;
 
-  const factory PluginManagementCommandPlan.invalidInput() = PluginManagementCommandPlanInvalidInput;
+  const factory invalidInput() = PluginManagementCommandPlanInvalidInput;
 }
 
-final class const PluginManagementCommandPlanRequest({required this.request}) extends PluginManagementCommandPlan {
-  final PluginIdleTimeoutUpdateRequest request;
-}
+final class const PluginManagementCommandPlanRequest({required final PluginIdleTimeoutUpdateRequest request}) extends PluginManagementCommandPlan;
 
 final class const PluginManagementCommandPlanInvalidInput() extends PluginManagementCommandPlan;
 
 enum PluginManagementForceAction() { disable, restart }
 
 sealed class const PluginManagementForceAssessment() {
-  const factory PluginManagementForceAssessment.requiresConfirmation({
+  const factory requiresConfirmation({
     required PluginLifecycleCommandRequest request,
   }) = PluginManagementForceAssessmentRequiresConfirmation;
 
-  const factory PluginManagementForceAssessment.notForceable() = PluginManagementForceAssessmentNotForceable;
+  const factory notForceable() = PluginManagementForceAssessmentNotForceable;
 }
 
-final class const PluginManagementForceAssessmentRequiresConfirmation({required this.request}) extends PluginManagementForceAssessment {
-  final PluginLifecycleCommandRequest request;
-}
+final class const PluginManagementForceAssessmentRequiresConfirmation({required final PluginLifecycleCommandRequest request}) extends PluginManagementForceAssessment;
 
 final class const PluginManagementForceAssessmentNotForceable() extends PluginManagementForceAssessment;
 

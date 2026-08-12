@@ -19,18 +19,10 @@ import "../acp_plugin.dart";
 /// surface: it drives the status state machine off the ACP connection and the
 /// child's exit, and owns the ordered, idempotent [shutdown].
 class AcpBridgePlugin({
-    required AcpPlugin plugin,
-    required ServerClock clock,
-    String? endpoint,
-  }) with SteadyPluginLifecycle implements BridgePlugin {
-  this : _plugin = plugin,
-       _clock = clock,
-       _endpoint = endpoint;
-
-  final AcpPlugin _plugin;
-  final ServerClock _clock;
-  final String? _endpoint;
-
+  required final AcpPlugin _plugin,
+  required final ServerClock _clock,
+  final String? _endpoint,
+}) with SteadyPluginLifecycle implements BridgePlugin {
   StreamSubscription<int>? _exitSubscription;
   StreamSubscription<void>? _connectedSubscription;
   var _stopping = false;

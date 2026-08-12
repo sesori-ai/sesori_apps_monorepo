@@ -8,9 +8,9 @@ part "session_detail_state.freezed.dart";
 
 @Freezed()
 sealed class SessionDetailState with _$SessionDetailState {
-  const factory SessionDetailState.loading() = SessionDetailLoading;
+  const factory loading() = SessionDetailLoading;
 
-  const factory SessionDetailState.loaded({
+  const factory loaded({
     required List<MessageWithParts> messages,
 
     /// Cursor for the page of messages before [messages], or null when the
@@ -61,5 +61,5 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String? retryErrorMessage,
   }) = SessionDetailLoaded;
 
-  const factory SessionDetailState.failed({required RemoteFailureReason reason}) = SessionDetailFailed;
+  const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }

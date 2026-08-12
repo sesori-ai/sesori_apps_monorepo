@@ -12,31 +12,17 @@ const Duration _bridgeShutdownWait = Duration(seconds: 5);
 enum BridgeInstanceResolutionStatus() { allowed, declined, nonInteractive }
 
 class const BridgeInstanceResolution({
-    required this.status,
-    required this.existingBridges,
-    required this.terminatedBridges,
-  }) {
-  final BridgeInstanceResolutionStatus status;
-  final List<ProcessIdentity> existingBridges;
-  final List<ProcessIdentity> terminatedBridges;
-}
+    required final BridgeInstanceResolutionStatus status,
+    required final List<ProcessIdentity> existingBridges,
+    required final List<ProcessIdentity> terminatedBridges,
+  });
 
 class BridgeInstanceService({
-    required BridgeInstanceRepository bridgeInstanceRepository,
-    required BridgeReplacePrompt replacePrompt,
-    required ProcessRepository processRepository,
-    required ServerClock clock,
+    required final BridgeInstanceRepository _bridgeInstanceRepository,
+    required final BridgeReplacePrompt _replacePrompt,
+    required final ProcessRepository _processRepository,
+    required final ServerClock _clock,
   }) {
-  this : _bridgeInstanceRepository = bridgeInstanceRepository,
-       _replacePrompt = replacePrompt,
-       _processRepository = processRepository,
-       _clock = clock;
-
-  final BridgeInstanceRepository _bridgeInstanceRepository;
-  final BridgeReplacePrompt _replacePrompt;
-  final ProcessRepository _processRepository;
-  final ServerClock _clock;
-
   /// Waits for a restart predecessor (the bridge that spawned this one) to
   /// exit before single-live-bridge enforcement runs, so a restart hands off
   /// cleanly instead of prompting/aborting on the still-exiting predecessor.

@@ -13,11 +13,11 @@ import "../repositories/session_repository.dart";
 
 @lazySingleton
 class SessionDetailLoadService({
-    required SessionRepository repository,
-    required ProjectRepository projectRepository,
-    required PluginRepository pluginRepository,
-    required ConnectionService connectionService,
-  }) {
+  required final SessionRepository _repository,
+  required final ProjectRepository _projectRepository,
+  required final PluginRepository _pluginRepository,
+  required final ConnectionService _connectionService,
+}) {
   /// Messages fetched when a session opens. Large enough that most sessions
   /// arrive complete in one page, small enough that a very long one does not
   /// ship in full before anything renders.
@@ -25,16 +25,6 @@ class SessionDetailLoadService({
 
   /// Messages fetched per load-older request.
   static const olderPageSize = 50;
-
-  final SessionRepository _repository;
-  final ProjectRepository _projectRepository;
-  final PluginRepository _pluginRepository;
-  final ConnectionService _connectionService;
-
-  this : _repository = repository,
-       _projectRepository = projectRepository,
-       _pluginRepository = pluginRepository,
-       _connectionService = connectionService;
 
   Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId, requireCompleteOptions: false);
@@ -325,54 +315,37 @@ class SessionDetailLoadService({
 }
 
 class const SessionDetailSnapshot({
-    required this.projectId,
-    required this.pluginId,
-    required this.supportsPromptAttachments,
-    required this.messages,
-    required this.olderMessagesCursor,
-    required this.pendingQuestions,
-    required this.pendingPermissions,
-    required this.childSessions,
-    required this.statuses,
-    required this.agents,
-    required this.providerData,
-    required this.commands,
-    required this.canonicalSessionTitle,
-    required this.promptDefaults,
-    required this.isRootSession,
-    required this.isArchived,
-  }) {
-  final String? projectId;
+  required final String? projectId,
 
   /// The harness running this session, or `null` when neither the session nor
   /// the project fallback resolved it.
-  final String? pluginId;
+  required final String? pluginId,
 
   /// Whether the session's plugin explicitly declares inline attachment
   /// support, or `null` when plugin metadata could not be resolved.
-  final bool? supportsPromptAttachments;
-  final List<MessageWithParts> messages;
+  required final bool? supportsPromptAttachments,
+  required final List<MessageWithParts> messages,
 
   /// Cursor for the page before [messages], or null when the transcript is
   /// complete — either because it all fits, or because the bridge predates
   /// pagination and always sends everything.
-  final int? olderMessagesCursor;
-  final List<PendingQuestion> pendingQuestions;
-  final List<PendingPermission> pendingPermissions;
-  final List<Session> childSessions;
-  final Map<String, SessionStatus> statuses;
-  final List<AgentInfo?> agents;
-  final ProviderListResponse? providerData;
-  final List<CommandInfo> commands;
-  final String? canonicalSessionTitle;
-  final SessionPromptDefaults? promptDefaults;
+  required final int? olderMessagesCursor,
+  required final List<PendingQuestion> pendingQuestions,
+  required final List<PendingPermission> pendingPermissions,
+  required final List<Session> childSessions,
+  required final Map<String, SessionStatus> statuses,
+  required final List<AgentInfo?> agents,
+  required final ProviderListResponse? providerData,
+  required final List<CommandInfo> commands,
+  required final String? canonicalSessionTitle,
+  required final SessionPromptDefaults? promptDefaults,
 
   /// Whether this session is a root (main) session. `true` when the session
   /// metadata confirms `parentID == null`; `false` when `parentID != null`;
   /// `null` when the session metadata lookup failed, so we cannot tell.
-  final bool? isRootSession;
-  final bool isArchived;
-}
+  required final bool? isRootSession,
+  required final bool isArchived,
+});
 
 /// One page of history plus the cursor for the page before it.
 typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor});
@@ -385,48 +358,42 @@ typedef _SessionDetailOptions = ({
 
 sealed class const _SessionDetailOptionsResult();
 
-final class const _SessionDetailOptionsAvailable({required this.options}) extends _SessionDetailOptionsResult {
-  final _SessionDetailOptions options;
-}
+final class const _SessionDetailOptionsAvailable({required final _SessionDetailOptions options})
+    extends _SessionDetailOptionsResult;
 
-final class const _SessionDetailOptionsFailure({required this.error, required this.stackTrace}) extends _SessionDetailOptionsResult {
-  final Object error;
-  final StackTrace stackTrace;
-}
+final class const _SessionDetailOptionsFailure({required final Object error, required final StackTrace stackTrace})
+    extends _SessionDetailOptionsResult;
 
 final class _LegacySessionOptionsLoadError({required List<LegacySessionOptionError> errors}) implements Exception {
-  this : errors = List.unmodifiable(errors);
-
-  final List<LegacySessionOptionError> errors;
+  final List<LegacySessionOptionError> errors = List.unmodifiable(errors);
 
   @override
   String toString() => errors.map((failure) => "${failure.source.name}: ${failure.error.toString()}").join("; ");
 }
 
 sealed class const SessionDetailLoadResult() {
-  const factory SessionDetailLoadResult.loaded({
+  const factory loaded({
     required SessionDetailSnapshot snapshot,
     required bool isBridgeConnected,
   }) = SessionDetailLoadResultLoaded;
 
-  const factory SessionDetailLoadResult.waitingForConnection() = SessionDetailLoadResultWaitingForConnection;
+  const factory waitingForConnection() = SessionDetailLoadResultWaitingForConnection;
 
-  const factory SessionDetailLoadResult.failed({
+  const factory failed({
     // ignore: no_slop_linter/prefer_specific_type
     required Object error,
     required StackTrace? stackTrace,
   }) = SessionDetailLoadResultFailed;
 }
 
-final class const SessionDetailLoadResultLoaded({required this.snapshot, required this.isBridgeConnected}) extends SessionDetailLoadResult {
-  final SessionDetailSnapshot snapshot;
-  final bool isBridgeConnected;
-}
+final class const SessionDetailLoadResultLoaded({
+  required final SessionDetailSnapshot snapshot,
+  required final bool isBridgeConnected,
+}) extends SessionDetailLoadResult;
 
 final class const SessionDetailLoadResultWaitingForConnection() extends SessionDetailLoadResult;
 
-final class const SessionDetailLoadResultFailed({required this.error, required this.stackTrace}) extends SessionDetailLoadResult {
+final class const SessionDetailLoadResultFailed({required final Object error, required final StackTrace? stackTrace})
+    extends SessionDetailLoadResult {
   // ignore: no_slop_linter/prefer_specific_type
-  final Object error;
-  final StackTrace? stackTrace;
 }

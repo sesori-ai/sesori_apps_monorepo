@@ -7,17 +7,14 @@ import "package:theme_prego/module_prego.dart";
 /// Renders as a center-aligned red text row with a subtle shimmer
 /// animation to indicate an ongoing loading/retry state.
 class const RetryErrorMessageCard({
-    super.key,
-    required this.message,
-  }) extends StatefulWidget {
-  final String message;
-
+  super.key,
+  required final String message,
+}) extends StatefulWidget {
   @override
   State<RetryErrorMessageCard> createState() => _RetryErrorMessageCardState();
 }
 
-class _RetryErrorMessageCardState() extends State<RetryErrorMessageCard>
-    with SingleTickerProviderStateMixin {
+class _RetryErrorMessageCardState() extends State<RetryErrorMessageCard> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation;
 

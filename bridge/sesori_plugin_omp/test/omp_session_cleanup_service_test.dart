@@ -127,8 +127,7 @@ OmpSessionCleanupService _service({required _FakeCleanupRepository repository, r
       maxPages: maxPages,
     );
 
-class _FakeCleanupRepository({required this.pages}) implements OmpSessionCleanupRepository {
-  final List<OmpCleanupPage> pages;
+class _FakeCleanupRepository({required final List<OmpCleanupPage> pages}) implements OmpSessionCleanupRepository {
   final List<Object> operations = [];
   Object? deleteError;
 

@@ -39,7 +39,7 @@ class PullRequestsTable() extends Table {
 
 @freezed
 sealed class const PullRequestDto._() with _$PullRequestDto, $PullRequestsTableTableToColumns {
-  const factory PullRequestDto({
+  const factory({
     required String projectId,
     required String githubRepositoryIdentity,
     required String githubLogin,

@@ -8,9 +8,7 @@ import "package:sesori_mobile/core/external_link.dart";
 
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
-class const _UriLeakingException({required this.uri}) implements Exception {
-  final Uri uri;
-
+class const _UriLeakingException({required final Uri uri}) implements Exception {
   @override
   String toString() => "Could not launch $uri";
 }

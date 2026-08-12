@@ -296,9 +296,7 @@ Future<void> _waitUntil(bool Function() predicate) async {
 }
 
 final class _FakeConnectionService({required ConnectionStatus initialStatus}) implements ConnectionService {
-  this : _statuses = BehaviorSubject.seeded(initialStatus);
-
-  final BehaviorSubject<ConnectionStatus> _statuses;
+  final BehaviorSubject<ConnectionStatus> _statuses = BehaviorSubject.seeded(initialStatus);
 
   @override
   ConnectionStatus get currentStatus => _statuses.value;

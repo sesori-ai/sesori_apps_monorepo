@@ -12,27 +12,17 @@ enum SseParseOutcome() {
 
 /// Result of parsing a raw OpenCode SSE event string.
 class const SseParseResult({
-    required this.outcome,
-    this.event,
-    this.eventType,
-    this.directory,
-    required this.rawData,
-  }) {
-  /// The parsed event, or null if parsing failed.
-  final SseEventData? event;
-
-  /// The parsed SSE event type, when it could be extracted from the frame.
-  final String? eventType;
-
-  /// The top-level directory from the OpenCode wrapper, if present.
-  final String? directory;
-
-  /// The original raw data string - always preserved for forwarding.
-  final String rawData;
-
-  /// Categorized parser outcome for callers that need more than null/non-null.
-  final SseParseOutcome outcome;
-}
+    /// Categorized parser outcome for callers that need more than null/non-null.
+  required final SseParseOutcome outcome,
+    /// The parsed event, or null if parsing failed.
+  final SseEventData? event,
+    /// The parsed SSE event type, when it could be extracted from the frame.
+  final String? eventType,
+    /// The top-level directory from the OpenCode wrapper, if present.
+  final String? directory,
+    /// The original raw data string - always preserved for forwarding.
+  required final String rawData,
+  });
 
 /// Parses raw OpenCode SSE event strings into typed [SseEventData] objects.
 ///

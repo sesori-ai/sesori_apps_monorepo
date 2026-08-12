@@ -1,21 +1,18 @@
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 
-final class const DeferredProductAnalyticsRetention({required this.candidates, required this.retained}) {
-  final DeferredProductAnalyticsCandidates candidates;
-  final bool retained;
-}
+final class const DeferredProductAnalyticsRetention({
+  required final DeferredProductAnalyticsCandidates candidates,
+  required final bool retained,
+});
 
 sealed class const DeferredProductAnalyticsDrain();
 
 final class const DeferredProductAnalyticsDrainComplete() extends DeferredProductAnalyticsDrain;
 
 final class const DeferredProductAnalyticsDrainNext({
-    required this.envelope,
-    required this.remainingCandidates,
-  }) extends DeferredProductAnalyticsDrain {
-  final ProductAnalyticsEnvelope envelope;
-  final DeferredProductAnalyticsCandidates remainingCandidates;
-}
+  required final ProductAnalyticsEnvelope envelope,
+  required final DeferredProductAnalyticsCandidates remainingCandidates,
+}) extends DeferredProductAnalyticsDrain;
 
 final class DeferredProductAnalyticsCandidates {
   final int generation;
@@ -24,7 +21,7 @@ final class DeferredProductAnalyticsCandidates {
   final _DeferredProductAnalyticsCandidate _diffAdoption;
   final _DeferredProductAnalyticsCandidate _sessionActivity;
 
-  const DeferredProductAnalyticsCandidates._({
+  const new _({
     required this.generation,
     required _DeferredProductAnalyticsCandidate activation,
     required _DeferredProductAnalyticsCandidate projectAvailable,
@@ -35,7 +32,7 @@ final class DeferredProductAnalyticsCandidates {
        _diffAdoption = diffAdoption,
        _sessionActivity = sessionActivity;
 
-  const DeferredProductAnalyticsCandidates.empty({required this.generation})
+  const new empty({required this.generation})
     : _activation = const _DeferredProductAnalyticsCandidateEmpty(),
       _projectAvailable = const _DeferredProductAnalyticsCandidateEmpty(),
       _diffAdoption = const _DeferredProductAnalyticsCandidateEmpty(),
@@ -197,9 +194,8 @@ final class const _DeferredProductAnalyticsCandidateEmpty() extends _DeferredPro
   );
 }
 
-final class const _DeferredProductAnalyticsCandidateRetained({required this.envelope}) extends _DeferredProductAnalyticsCandidate {
-  final ProductAnalyticsEnvelope envelope;
-
+final class const _DeferredProductAnalyticsCandidateRetained({required final ProductAnalyticsEnvelope envelope})
+    extends _DeferredProductAnalyticsCandidate {
   @override
   ({_DeferredProductAnalyticsCandidate candidate, bool retained}) retain({
     required ProductAnalyticsEnvelope envelope,

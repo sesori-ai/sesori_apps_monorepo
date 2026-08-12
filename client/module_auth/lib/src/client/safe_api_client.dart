@@ -4,15 +4,13 @@ import "dart:io";
 
 import "api_response.dart";
 
-enum HttpMethod(this.dioName) {
+enum HttpMethod(final String dioName) {
   get("GET"),
   post("POST"),
   put("PUT"),
   patch("PATCH"),
   delete("DELETE"),
   ;
-
-  final String dioName;
 }
 
 abstract class SafeApiClient() {

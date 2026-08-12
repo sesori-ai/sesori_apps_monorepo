@@ -6,14 +6,9 @@ import "../bridge/runtime/plugin_runtime.dart";
 import "../bridge/services/session_options_service.dart";
 
 class SessionOptionsChangedRefreshListener({
-    required PluginRuntime runtime,
-    required SessionOptionsService service,
-  }) {
-  this : _runtime = runtime,
-       _service = service;
-
-  final PluginRuntime _runtime;
-  final SessionOptionsService _service;
+  required final PluginRuntime _runtime,
+  required final SessionOptionsService _service,
+}) {
   final Set<Future<void>> _pending = {};
   StreamSubscription<SourcedPluginRuntimeEvent>? _subscription;
   Future<void>? _disposeFuture;

@@ -23,10 +23,8 @@ final class const ProvisionResolving() extends RuntimeProvisionProgress {
 /// Downloading the managed runtime archive. [receivedBytes] grows toward
 /// [totalBytes]; [totalBytes] is `null` when the server did not advertise a
 /// length (progress is then indeterminate).
-final class const ProvisionDownloading({required this.receivedBytes, required this.totalBytes}) extends RuntimeProvisionProgress {
-  final int receivedBytes;
-  final int? totalBytes;
-
+final class const ProvisionDownloading({required final int receivedBytes, required final int? totalBytes})
+    extends RuntimeProvisionProgress {
   /// Fraction in `[0, 1]`, or `null` when the total size is unknown.
   double? get fraction {
     final int? total = totalBytes;
@@ -56,18 +54,14 @@ final class const ProvisionVerifying() extends RuntimeProvisionProgress {
 /// installed runtime is older than the minimum supported version; using the
 /// managed runtime instead"). The bridge core prints [message]; it is authored
 /// by the plugin so the core stays backend-agnostic.
-final class const ProvisionNotice({required this.message}) extends RuntimeProvisionProgress {
-  final String message;
-
+final class const ProvisionNotice({required final String message}) extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionNotice(message: $message)";
 }
 
 /// Terminal success: the runtime is ready and [binaryPath] is the executable
 /// path (or PATH-resolved command) the plugin's `start()` should launch.
-final class const ProvisionReady({required this.binaryPath}) extends RuntimeProvisionProgress {
-  final String binaryPath;
-
+final class const ProvisionReady({required final String binaryPath}) extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionReady(binaryPath: $binaryPath)";
 }
@@ -75,9 +69,7 @@ final class const ProvisionReady({required this.binaryPath}) extends RuntimeProv
 /// Terminal failure: the runtime could not be provisioned. Non-fatal — the
 /// bridge continues to `start()`, which surfaces a degraded plugin status.
 /// [message] explains what went wrong for logs/diagnostics.
-final class const ProvisionFailed({required this.message}) extends RuntimeProvisionProgress {
-  final String message;
-
+final class const ProvisionFailed({required final String message}) extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionFailed(message: $message)";
 }

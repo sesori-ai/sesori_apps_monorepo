@@ -10,7 +10,7 @@ part "bridge_control_status.freezed.dart";
 /// because `sesori_dart_core` already exports a relay-side `BridgeStatus`.
 @Freezed()
 sealed class BridgeControlStatus with _$BridgeControlStatus {
-  const factory BridgeControlStatus({
+  const factory({
     /// Whether a helper is currently connected to the GUI's control channel.
     required bool helperOnline,
     required ControlRelayConnectionState relay,

@@ -150,19 +150,10 @@ void main() {
 }
 
 class _CapturingStdout({
-    required this.hasTerminal,
-    required this.supportsAnsiEscapes,
-    required this.terminalColumns,
-  }) implements Stdout {
-  @override
-  final bool hasTerminal;
-
-  @override
-  final bool supportsAnsiEscapes;
-
-  @override
-  final int terminalColumns;
-
+  @override required final bool hasTerminal,
+  @override required final bool supportsAnsiEscapes,
+  @override required final int terminalColumns,
+}) implements Stdout {
   final StringBuffer _buffer = StringBuffer();
   String get written => _buffer.toString();
 

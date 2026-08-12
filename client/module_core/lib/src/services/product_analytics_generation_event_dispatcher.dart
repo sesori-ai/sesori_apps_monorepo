@@ -13,7 +13,7 @@ final class ProductAnalyticsGenerationEventDispatcher() {
     if (_readyGeneration == generation) return AnalyticsDeliveryResult.acceptedBySdk;
     final active = _activeDelivery;
     if (active != null && active.generation == generation) {
-      return active.future;
+      return await active.future;
     }
 
     final future = _deliver(generation: generation, deliver: deliver);

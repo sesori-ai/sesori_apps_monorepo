@@ -46,15 +46,11 @@ class const _StubManifest() implements RuntimeManifest {
 }
 
 class _FakeValidator({
-    required this.pathVersion,
-    required this.managedVersion,
-    this.candidateVersions = const {},
-    this.onDetect,
-  }) implements RuntimeVersionValidator {
-  final SemanticVersion? pathVersion;
-  final SemanticVersion? managedVersion;
-  final Map<String, SemanticVersion?> candidateVersions;
-  final void Function(String executable)? onDetect;
+  required final SemanticVersion? pathVersion,
+  required final SemanticVersion? managedVersion,
+  final Map<String, SemanticVersion?> candidateVersions = const {},
+  final void Function(String executable)? onDetect,
+}) implements RuntimeVersionValidator {
   final List<String> detectedExecutables = [];
 
   @override
@@ -76,14 +72,9 @@ class _FakeValidator({
 }
 
 class const _FakeHost({
-    required this.stateDirectory,
-    required this.abortSignal,
-  }) implements PluginHost {
-  @override
-  final String stateDirectory;
-
-  final StartAbortSignal abortSignal;
-
+  @override required final String stateDirectory,
+  required final StartAbortSignal abortSignal,
+}) implements PluginHost {
   @override
   Map<String, String> get environment => const {};
 

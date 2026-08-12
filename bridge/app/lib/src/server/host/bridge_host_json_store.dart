@@ -5,12 +5,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show HostJ
 import "../api/runtime_file_api.dart";
 
 class BridgeHostJsonStore({
-    required RuntimeFileApi fileApi,
-  }) implements HostJsonStore {
-  this : _fileApi = fileApi;
-
-  final RuntimeFileApi _fileApi;
-
+  required final RuntimeFileApi _fileApi,
+}) implements HostJsonStore {
   @override
   Future<String?> read({required String name}) {
     _validateName(name);
@@ -58,7 +54,11 @@ class BridgeHostJsonStore({
       throw ArgumentError.value(name, "name", "the 'bridge-startup.*' prefix is reserved for the bridge");
     }
     if (name.endsWith(".tmp") || name.endsWith(RuntimeFileApi.updateLockSuffix)) {
-      throw ArgumentError.value(name, "name", "the '.tmp' and '${RuntimeFileApi.updateLockSuffix}' suffixes are reserved for the store's own machinery");
+      throw ArgumentError.value(
+        name,
+        "name",
+        "the '.tmp' and '${RuntimeFileApi.updateLockSuffix}' suffixes are reserved for the store's own machinery",
+      );
     }
   }
 }

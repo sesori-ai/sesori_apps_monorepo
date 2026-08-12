@@ -35,38 +35,22 @@ const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 enum _InventoryAnalyticsGuard() { ready, inFlight, consumed }
 
 class ProjectListCubit(
-    ProjectRepository projectRepository,
-    ConnectionService connectionService,
-    SseEventTracker sseEventTracker,
+    final ProjectRepository _projectRepository,
+    final ConnectionService _connectionService,
+    final SseEventTracker _sseEventTracker,
     RouteSource routeSource, {
-    required ProjectListService projectListService,
-    required SessionUnseenTracker sessionUnseenTracker,
-    required RegisteredBridgesService registeredBridgesService,
-    required ProductAnalyticsService productAnalyticsService,
-    required FailureReporter failureReporter,
+    required final ProjectListService _projectListService,
+    required final SessionUnseenTracker _sessionUnseenTracker,
+    required final RegisteredBridgesService _registeredBridgesService,
+    required final ProductAnalyticsService _productAnalyticsService,
+    required final FailureReporter _failureReporter,
   }) extends Cubit<ProjectListState> {
-  final ProjectRepository _projectRepository;
-  final ProjectListService _projectListService;
-  final ConnectionService _connectionService;
-  final SseEventTracker _sseEventTracker;
-  final SessionUnseenTracker _sessionUnseenTracker;
-  final RegisteredBridgesService _registeredBridgesService;
-  final ProductAnalyticsService _productAnalyticsService;
-  final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
   _InventoryAnalyticsGuard _emptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
   _InventoryAnalyticsGuard _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : _projectRepository = projectRepository,
-       _projectListService = projectListService,
-       _connectionService = connectionService,
-       _sseEventTracker = sseEventTracker,
-       _sessionUnseenTracker = sessionUnseenTracker,
-       _registeredBridgesService = registeredBridgesService,
-       _productAnalyticsService = productAnalyticsService,
-       _failureReporter = failureReporter,
-       super(const ProjectListState.loading()) {
+  this : super(const ProjectListState.loading()) {
     unawaited(_loadInitialProjects());
 
     // 1. Immediate activity badge updates (no API call).

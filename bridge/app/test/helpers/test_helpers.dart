@@ -15,9 +15,7 @@ import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class FakeAccessTokenProvider([String token = "test-token"]) implements AccessTokenProvider {
-  final BehaviorSubject<String> _subject;
-
-  this : _subject = BehaviorSubject.seeded(token);
+  final BehaviorSubject<String> _subject = BehaviorSubject.seeded(token);
 
   @override
   String get accessToken => _subject.value;
@@ -26,9 +24,7 @@ class FakeAccessTokenProvider([String token = "test-token"]) implements AccessTo
   ValueStream<String> get tokenStream => _subject.stream;
 }
 
-class FakeBridgeIdProvider([this.id]) implements BridgeIdProvider {
-  String? id;
-
+class FakeBridgeIdProvider([var String? id]) implements BridgeIdProvider {
   @override
   String? get bridgeId => id;
 }
@@ -39,9 +35,7 @@ class FakeTokenRefresher() implements TokenRefresher {
 }
 
 /// In-memory [BridgeIdStorage] substitute for [BridgeRegistrationService] tests.
-class FakeBridgeIdStorage({this.bridgeId}) implements BridgeIdStorage {
-  String? bridgeId;
-
+class FakeBridgeIdStorage({var String? bridgeId}) implements BridgeIdStorage {
   /// When non-null, [clear] throws this error instead of clearing.
   Object? clearError;
 
@@ -228,8 +222,7 @@ Future<({RelayClient client, RelayConnection connection})> connectTestRelayClien
 /// A test relay server that exposes individual server-side [WebSocket]
 /// connections so tests can send data to clients or close connections
 /// to simulate network failures.
-class TestRelayServer._(this._server) {
-  final HttpServer _server;
+class TestRelayServer._(final HttpServer _server) {
   final Queue<WebSocket> _bufferedClients = Queue();
   final Queue<Completer<WebSocket>> _waiters = Queue();
   int _acceptedClientCount = 0;

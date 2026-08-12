@@ -1,15 +1,14 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
 import "../../../l10n/app_localizations.dart";
 import "file_part_widget.dart";
 
-class const ToolPartWidget({super.key, required this.part}) extends StatelessWidget {
-  final MessagePart part;
-
+class const ToolPartWidget({super.key, required final MessagePart part}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -127,9 +126,7 @@ class const ToolPartWidget({super.key, required this.part}) extends StatelessWid
 /// button, expandable to the full (previously hard-capped at 500 chars)
 /// output. Kept collapsed by default so large outputs don't grow the list
 /// or jank while streaming.
-class const _ToolOutputBlock({required this.output}) extends StatefulWidget {
-  final String output;
-
+class const _ToolOutputBlock({required final String output}) extends StatefulWidget {
   @override
   State<_ToolOutputBlock> createState() => _ToolOutputBlockState();
 }

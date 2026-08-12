@@ -3,9 +3,7 @@
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 
-class const NonNullTextTheme({required this.textTheme}) extends TextTheme {
-  final TextTheme textTheme;
-
+class const NonNullTextTheme({required final TextTheme textTheme}) extends TextTheme {
   @override
   TextTheme apply({
     String? fontFamily,
@@ -148,50 +146,19 @@ class const NonNullTextTheme({required this.textTheme}) extends TextTheme {
 }
 
 class const GuaranteedTextTheme({
-    required this.displayLarge,
-    required this.displayMedium,
-    required this.displaySmall,
-    required this.headlineLarge,
-    required this.headlineMedium,
-    required this.headlineSmall,
-    required this.titleLarge,
-    required this.titleMedium,
-    required this.titleSmall,
-    required this.labelLarge,
-    required this.labelMedium,
-    required this.labelSmall,
-    required this.bodyLarge,
-    required this.bodyMedium,
-    required this.bodySmall,
-  }) extends TextTheme {
-  @override
-  final TextStyle displayLarge;
-  @override
-  final TextStyle displayMedium;
-  @override
-  final TextStyle displaySmall;
-  @override
-  final TextStyle headlineLarge;
-  @override
-  final TextStyle headlineMedium;
-  @override
-  final TextStyle headlineSmall;
-  @override
-  final TextStyle titleLarge;
-  @override
-  final TextStyle titleMedium;
-  @override
-  final TextStyle titleSmall;
-  @override
-  final TextStyle labelLarge;
-  @override
-  final TextStyle labelMedium;
-  @override
-  final TextStyle labelSmall;
-  @override
-  final TextStyle bodyLarge;
-  @override
-  final TextStyle bodyMedium;
-  @override
-  final TextStyle bodySmall;
-}
+  @override required final TextStyle displayLarge,
+  @override required final TextStyle displayMedium,
+  @override required final TextStyle displaySmall,
+  @override required final TextStyle headlineLarge,
+  @override required final TextStyle headlineMedium,
+  @override required final TextStyle headlineSmall,
+  @override required final TextStyle titleLarge,
+  @override required final TextStyle titleMedium,
+  @override required final TextStyle titleSmall,
+  @override required final TextStyle labelLarge,
+  @override required final TextStyle labelMedium,
+  @override required final TextStyle labelSmall,
+  @override required final TextStyle bodyLarge,
+  @override required final TextStyle bodyMedium,
+  @override required final TextStyle bodySmall,
+}) extends TextTheme;

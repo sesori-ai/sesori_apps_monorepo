@@ -51,7 +51,7 @@ class ProjectsTable() extends Table {
 
 @freezed
 sealed class const ProjectDto._() with _$ProjectDto, $ProjectsTableTableToColumns {
-  const factory ProjectDto({
+  const factory({
     required String projectId,
     required String path,
     @Default(false) bool hidden,

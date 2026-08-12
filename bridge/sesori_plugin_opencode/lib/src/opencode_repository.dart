@@ -12,8 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginProvidersResult,
         PluginSession,
         PluginSessionVariant;
-import "package:sesori_shared/sesori_shared.dart"
-    show StringExtensions, maxInlineMessageAttachmentBytes, wait2;
+import "package:sesori_shared/sesori_shared.dart" show StringExtensions, maxInlineMessageAttachmentBytes, wait2;
 
 import "message_part_mapper.dart";
 import "models/openapi/command.g.dart";
@@ -65,8 +64,7 @@ const String _globalProjectId = "global";
 ///    sessions but no real project entry (e.g., a non-git directory that was
 ///    used once), we create a virtual project so the mobile app can still
 ///    display those sessions.
-class OpenCodeRepository(this._api) {
-  final OpenCodeApi _api;
+class OpenCodeRepository(final OpenCodeApi _api) {
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
     maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes,

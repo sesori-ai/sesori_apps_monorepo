@@ -12,33 +12,23 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 /// order; consecutive same-role chunks belong to one message, and a role
 /// switch starts a new message.
 class AcpReplayCollector({
-    required this.sessionId,
-    required this.agentId,
-    this.modelId,
-    this.providerId,
-    required this.initialUserMessageId,
-    required this.haltClassifier,
-    required AcpContentMapper contentMapper,
-  }) {
-  this : _contentMapper = contentMapper;
+  required final String sessionId,
+  required final String agentId,
 
-  final String sessionId;
-  final String agentId;
-  final String? initialUserMessageId;
+  /// Model/provider stamped on replayed assistant messages. Mutable so the
+  /// plugin can set the loaded session's real model after `session/load`
+  /// returns its catalog (the collector is created before the load runs).
+  var String? modelId,
+  var String? providerId,
+  required final String? initialUserMessageId,
 
   /// Classifies a fully-accumulated assistant message as a backend halt notice
   /// (see [AcpEventMapper.classifyHaltNotice]) so a reloaded session renders the
   /// notice as an error message exactly as it appeared live. Null on backends
   /// with no halt notices.
-  final AcpHaltNotice? Function({required String text})? haltClassifier;
-  final AcpContentMapper _contentMapper;
-
-  /// Model/provider stamped on replayed assistant messages. Mutable so the
-  /// plugin can set the loaded session's real model after `session/load`
-  /// returns its catalog (the collector is created before the load runs).
-  String? modelId;
-  String? providerId;
-
+  required final AcpHaltNotice? Function({required String text})? haltClassifier,
+  required final AcpContentMapper _contentMapper,
+}) {
   final List<_Draft> _drafts = [];
   int _seq = 0;
   bool _hasUserDraft = false;
@@ -488,55 +478,38 @@ class AcpReplayCollector({
 }
 
 class _Draft({
-    required this.role,
-    required this.id,
-    required this.acpMessageId,
-    required this.contentTracker,
-  }) {
-  final String role;
-  final String id;
+  required final String role,
+  required final String id,
 
   /// The ACP `messageId` this draft groups, when the agent stamped one.
-  String? acpMessageId;
+  required var String? acpMessageId,
+  required final AcpContentTracker contentTracker,
+}) {
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();
-  final AcpContentTracker contentTracker;
   final List<_AssistantDraftEntry> entries = [];
   final Map<String, _ToolDraft> tools = {};
 }
 
 sealed class const _AssistantDraftEntry();
 
-final class const _AssistantContentEntry({required this.mutation}) extends _AssistantDraftEntry {
-  final AcpContentMutation mutation;
-}
+final class const _AssistantContentEntry({required final AcpContentMutation mutation}) extends _AssistantDraftEntry;
 
-final class const _AssistantToolEntry({required this.toolId, required this.tool}) extends _AssistantDraftEntry {
-  final String toolId;
-  final _ToolDraft tool;
-}
+final class const _AssistantToolEntry({required final String toolId, required final _ToolDraft tool})
+    extends _AssistantDraftEntry;
 
 final class const _PendingAssistantContent({
-    required this.messageId,
-    required this.tracker,
-  }) {
-  final String? messageId;
-  final AcpContentTracker tracker;
-}
+  required final String? messageId,
+  required final AcpContentTracker tracker,
+});
 
 class _ToolDraft({
-    required this.tool,
-    required this.title,
-    required this.status,
-    required this.contentTracker,
-    required this.hasExplicitKind,
-    required this.hasExplicitStatus,
-  }) {
-  String tool;
+  required var String tool,
+  required var String? title,
+  required var PluginToolStatus status,
+  required final AcpToolContentTracker contentTracker,
+  required var bool hasExplicitKind,
+  required var bool hasExplicitStatus,
+}) {
   // Reassigned as later tool_call_update notifications arrive during replay.
-  String? title;
-  PluginToolStatus status;
-  final AcpToolContentTracker contentTracker;
-  bool hasExplicitKind;
-  bool hasExplicitStatus;
 }

@@ -6,29 +6,20 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 import "models/codex_tool_outcome_dto.dart";
 
 final class const CodexToolOutcomeDecodeException({
-    required this.cause,
-    required this.stackTrace,
-  }) implements Exception {
-  final Object cause;
-  final StackTrace stackTrace;
-
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) implements Exception {
   @override
   String toString() => "CodexToolOutcomeDecodeException: $cause";
 }
 
 /// Layer-1 persistence for structured tool outcomes omitted by Codex rollout.
 class CodexToolOutcomeStorage({
-    required HostJsonStore store,
-    required ServerClock clock,
-  }) {
+  required final HostJsonStore _store,
+  required final ServerClock _clock,
+}) {
   static const String fileName = "codex-tool-outcomes-v1.json";
   static const int _schemaVersion = 1;
-
-  this : _store = store,
-       _clock = clock;
-
-  final HostJsonStore _store;
-  final ServerClock _clock;
 
   Future<List<CodexStoredToolErrorDto>> readErrors() async {
     final contents = await _store.read(name: fileName);

@@ -250,11 +250,8 @@ class _FakeConfigRepository() implements AcpSessionConfigRepository {
   }
 }
 
-class _FakeCatalogService(this.catalog) implements OmpCatalogService {
-  this : result = OmpCatalogObserved(catalog: catalog);
-
-  final OmpProjectCatalog catalog;
-  OmpCatalogDiscoveryResult result;
+class _FakeCatalogService(final OmpProjectCatalog catalog) implements OmpCatalogService {
+  OmpCatalogDiscoveryResult result = OmpCatalogObserved(catalog: catalog);
 
   @override
   Future<OmpCatalogDiscoveryResult> ensureCatalog({required String projectId}) async => result;

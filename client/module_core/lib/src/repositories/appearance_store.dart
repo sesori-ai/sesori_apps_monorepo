@@ -4,14 +4,14 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../logging/logging.dart";
 
 /// Which theme the app renders in: the device setting, or a pinned choice.
-enum AppearanceMode({required this.storageValue}) {
+enum AppearanceMode({
+  /// The persisted spelling of this mode. Pinned here rather than derived from
+  /// the enum name so renaming a case cannot orphan a stored preference.
+  required final String storageValue,
+}) {
   light(storageValue: "light"),
   dark(storageValue: "dark"),
   system(storageValue: "system");
-
-  /// The persisted spelling of this mode. Pinned here rather than derived from
-  /// the enum name so renaming a case cannot orphan a stored preference.
-  final String storageValue;
 
   /// The mode persisted as [value], or `null` when it matches no known case.
   static AppearanceMode? tryParse({required String value}) {
@@ -32,9 +32,7 @@ enum AppearanceMode({required this.storageValue}) {
 class AppearanceStore({required SecureStorage secureStorage}) {
   static const _storageKey = "appearance_mode";
 
-  final SecureStorage _storage;
-
-  this : _storage = secureStorage;
+  final SecureStorage _storage = secureStorage;
 
   /// The stored appearance preference, or [AppearanceMode.system] when nothing
   /// was ever chosen, the stored value is unreadable, or storage fails. A

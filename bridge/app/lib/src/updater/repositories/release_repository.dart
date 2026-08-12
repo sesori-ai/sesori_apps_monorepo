@@ -12,23 +12,13 @@ import '../models/release_info.dart';
 import '../models/update_resolution.dart';
 
 class ReleaseRepository({
-    required GitHubReleasesApi api,
-    required UpdateCacheApi cache,
-    required String currentVersion,
-    required DistributionTarget target,
-    required ReleaseTrack track,
-  }) {
-  final GitHubReleasesApi _api;
-  final UpdateCacheApi _cache;
-  SemanticVersion _currentVersion;
-  final DistributionTarget _target;
-  final ReleaseTrack _track;
-
-  this : _api = api,
-       _cache = cache,
-       _currentVersion = SemanticVersion.parse(value: currentVersion),
-       _target = target,
-       _track = track;
+  required final GitHubReleasesApi _api,
+  required final UpdateCacheApi _cache,
+  required String currentVersion,
+  required final DistributionTarget _target,
+  required final ReleaseTrack _track,
+}) {
+  SemanticVersion _currentVersion = SemanticVersion.parse(value: currentVersion);
 
   /// Advances the "is newer" comparison baseline to [version] after the
   /// background updater applies an in-place swap.
@@ -73,7 +63,7 @@ class ReleaseRepository({
       }
     }
 
-    return _fetchAndEvaluate();
+    return await _fetchAndEvaluate();
   }
 
   /// Resolves the latest release eligible for the active track, regardless of
@@ -137,15 +127,13 @@ class ReleaseRepository({
       return null;
     }
 
-    return _evaluateRelease(release: release);
+    return await _evaluateRelease(release: release);
   }
 
   GitHubReleaseDto? _selectLatestBridgeRelease({required List<GitHubReleaseDto> releases}) {
     final filteredReleases = releases
         .where(
-          (release) =>
-              !release.draft &&
-              release.tagName.startsWith('v'),
+          (release) => !release.draft && release.tagName.startsWith('v'),
         )
         .map(
           (release) {

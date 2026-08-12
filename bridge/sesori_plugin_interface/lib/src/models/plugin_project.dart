@@ -13,7 +13,7 @@ part "plugin_project.g.dart";
 /// populated from upstream project metadata.
 @freezed
 sealed class PluginProject with _$PluginProject {
-  const factory PluginProject({
+  const factory({
     required String id,
     required String directory,
     String? name,
@@ -28,7 +28,7 @@ sealed class PluginProject with _$PluginProject {
 /// the activity is null.
 @freezed
 sealed class PluginProjectActivity with _$PluginProjectActivity {
-  const factory PluginProjectActivity({
+  const factory({
     required int createdAt,
     required int updatedAt,
   }) = _PluginProjectActivity;

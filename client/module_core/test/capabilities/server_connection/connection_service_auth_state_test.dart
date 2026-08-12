@@ -24,8 +24,7 @@ class _MockFailureReporter() extends Mock implements FailureReporter;
 
 class _MockRelayClient() extends Mock implements RelayClient;
 
-class _RecordingRelayClientFactory(this._produce) extends RelayClientFactory {
-  final _MockRelayClient Function() _produce;
+class _RecordingRelayClientFactory(final _MockRelayClient Function() _produce) extends RelayClientFactory {
   int callCount = 0;
   String? lastAuthToken;
 
@@ -110,7 +109,9 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(
+          user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u"),
+        ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -138,7 +139,9 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(
+          user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u"),
+        ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -164,7 +167,9 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(
+          user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u"),
+        ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 

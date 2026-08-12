@@ -6,28 +6,16 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "codex_app_server_client.dart";
 
-final class const _PendingRequest({required this.method, required this.completer}) {
-  final String method;
-  final Completer<dynamic> completer;
-}
+final class const _PendingRequest({required final String method, required final Completer<dynamic> completer});
 
 /// JSONL transport for a short-lived `codex app-server` stdio connection.
 class CodexStdioAppServerClient({
-    required HostProcessService processes,
-    required String executable,
-    required Map<String, String> environment,
-    required Duration shutdownTimeout,
-  }) implements CodexAppServerTransport {
-  this : _processes = processes,
-       _executable = executable,
-       _environment = Map<String, String>.unmodifiable(environment),
-       _shutdownTimeout = shutdownTimeout;
-
-  final HostProcessService _processes;
-  final String _executable;
-  final Map<String, String> _environment;
-  final Duration _shutdownTimeout;
-
+  required final HostProcessService _processes,
+  required final String _executable,
+  required Map<String, String> environment,
+  required final Duration _shutdownTimeout,
+}) implements CodexAppServerTransport {
+  final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
   SpawnedProcess? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<List<int>>? _stderrSubscription;

@@ -19,22 +19,14 @@ import "runtime_version_validator.dart";
 /// backend's desktop app, enumerated by the owning plugin), then the pinned
 /// managed runtime when that exact version is already present and runnable.
 class ManagedRuntimeProvisionService({
-    required RuntimeManifest manifest,
-    required RuntimeVersionValidator versionValidator,
-    required List<String> fallbackExecutableCandidates,
-  }) {
-  final RuntimeManifest _manifest;
-  final RuntimeVersionValidator _versionValidator;
+  required final RuntimeManifest _manifest,
+  required final RuntimeVersionValidator _versionValidator,
 
   /// Absolute executable paths probed after PATH, in preference order. Each is
   /// version-gated like a PATH install; a missing path fails its probe
   /// harmlessly.
-  final List<String> _fallbackExecutableCandidates;
-
-  this : _manifest = manifest,
-       _versionValidator = versionValidator,
-       _fallbackExecutableCandidates = fallbackExecutableCandidates;
-
+  required final List<String> _fallbackExecutableCandidates,
+}) {
   Stream<RuntimeProvisionProgress> provision({required PluginHost host}) async* {
     _throwIfAborted(host);
     yield const ProvisionResolving();

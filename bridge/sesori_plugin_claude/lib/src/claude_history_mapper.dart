@@ -6,12 +6,8 @@ import "repositories/models/claude_transcript_record.dart";
 /// Maps Claude's persisted transcript into the same neutral message shapes used
 /// by live stream events.
 final class const ClaudeHistoryMapper({
-    required ClaudeContentMapper content,
-  }) {
-  this : _content = content;
-
-  final ClaudeContentMapper _content;
-
+  required final ClaudeContentMapper _content,
+}) {
   List<PluginMessageWithParts> map({
     required String sessionId,
     required List<ClaudeTranscriptRecord> records,
@@ -147,14 +143,13 @@ bool _skipRecord({required ClaudeTranscriptAttributedRecord record, required Str
 
 sealed class const _ClaudeHistoryEntry();
 
-final class const _UserHistoryMessage({required this.message}) extends _ClaudeHistoryEntry {
-  final PluginMessageWithParts message;
-}
+final class const _UserHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
 
-final class _AssistantHistoryMessage({required this.id, required this.timestamp, required this.model}) extends _ClaudeHistoryEntry {
-  final String id;
-  final DateTime? timestamp;
-  String? model;
+final class _AssistantHistoryMessage({
+  required final String id,
+  required final DateTime? timestamp,
+  required var String? model,
+}) extends _ClaudeHistoryEntry {
   final List<Object?> content = [];
 }
 
@@ -189,7 +184,8 @@ String? _stripBridgeContext(String text) {
 }
 
 bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
-  (block) => block is ClaudeMappedTextContentBlock &&
+  (block) =>
+      block is ClaudeMappedTextContentBlock &&
       (block.text.contains("<local-command-stdout>") ||
           block.text.contains("<local-command-caveat>") ||
           block.text.contains("<command-name>")),

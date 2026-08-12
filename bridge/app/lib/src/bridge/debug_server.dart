@@ -11,17 +11,12 @@ import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 
 class DebugServer({
-    required Stream<SesoriSseEvent> localWireEvents,
-    required RoutedRequestDispatcher routedRequestDispatcher,
-    required this.port,
-    required FailureReporter failureReporter,
-    required BridgeRestartDispatcher restartDispatcher,
-  }) {
-  final Stream<SesoriSseEvent> _localWireEvents;
-  final RoutedRequestDispatcher _routedRequestDispatcher;
-  final FailureReporter _failureReporter;
-  final BridgeRestartDispatcher _restartDispatcher;
-  final int port;
+  required final Stream<SesoriSseEvent> _localWireEvents,
+  required final RoutedRequestDispatcher _routedRequestDispatcher,
+  required final int port,
+  required final FailureReporter _failureReporter,
+  required final BridgeRestartDispatcher _restartDispatcher,
+}) {
   final List<HttpResponse> _sseClients = [];
   // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
   final CompositeSubscription _compositeSubscription = CompositeSubscription();
@@ -35,11 +30,6 @@ class DebugServer({
   Future<void>? _drainFuture;
 
   int _nextRequestId = 1;
-
-  this : _localWireEvents = localWireEvents,
-       _routedRequestDispatcher = routedRequestDispatcher,
-       _failureReporter = failureReporter,
-       _restartDispatcher = restartDispatcher;
 
   int? get boundPort => _server?.port;
   RoutedRequestDispatcher get routedRequestDispatcher => _routedRequestDispatcher;
@@ -139,15 +129,13 @@ class DebugServer({
         headers[name] = values.join(", ");
       });
 
-      final relayRequest =
-          RelayMessage.request(
-                id: (_nextRequestId++).toString(),
-                method: request.method,
-                path: request.uri.toString(),
-                headers: headers,
-                body: body,
-              )
-              as RelayRequest;
+      final relayRequest = RelayMessage.request(
+        id: (_nextRequestId++).toString(),
+        method: request.method,
+        path: request.uri.toString(),
+        headers: headers,
+        body: body,
+      ) as RelayRequest;
 
       final dispatch = _routedRequestDispatcher.dispatch(request: relayRequest);
       switch (dispatch) {

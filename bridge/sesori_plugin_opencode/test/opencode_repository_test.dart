@@ -1220,19 +1220,17 @@ void main() {
 }
 
 class _FakeApi({
-    List<Session>? sessions,
-    List<GlobalSession>? globalSessions,
-    List<Project>? projects,
-    List<Command>? commands,
-    Session? createdSession,
-    Project? currentProject,
-  }) implements OpenCodeApi {
-  final List<Session> _sessions;
-  final List<GlobalSession> _globalSessions;
-  final List<Project> _projects;
-  final List<Command> _commands;
-  final Session? _createdSession;
-  final Project? _currentProject;
+  List<Session>? sessions,
+  List<GlobalSession>? globalSessions,
+  List<Project>? projects,
+  List<Command>? commands,
+  final Session? _createdSession,
+  final Project? _currentProject,
+}) implements OpenCodeApi {
+  final List<Session> _sessions = sessions ?? [];
+  final List<GlobalSession> _globalSessions = globalSessions ?? [];
+  final List<Project> _projects = projects ?? [];
+  final List<Command> _commands = commands ?? [];
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
   String? lastPromptSessionId;
@@ -1247,13 +1245,6 @@ class _FakeApi({
   SummarizeBody? lastSummarizeBody;
   String? lastGetProjectDirectory;
   int updateProjectCalls = 0;
-
-  this : _sessions = sessions ?? [],
-       _globalSessions = globalSessions ?? [],
-       _projects = projects ?? [],
-       _commands = commands ?? [],
-       _createdSession = createdSession,
-       _currentProject = currentProject;
 
   @override
   Future<bool> healthCheck() async => true;

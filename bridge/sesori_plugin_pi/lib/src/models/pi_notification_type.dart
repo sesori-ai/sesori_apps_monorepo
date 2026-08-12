@@ -1,10 +1,8 @@
 /// The severity Pi assigns to an extension notification.
-enum PiNotificationType(this.wireValue) {
+enum PiNotificationType(final String wireValue) {
   info("info"),
   warning("warning"),
   error("error");
-
-  final String wireValue;
 
   static PiNotificationType? tryParse({required String? value}) {
     for (final type in values) {

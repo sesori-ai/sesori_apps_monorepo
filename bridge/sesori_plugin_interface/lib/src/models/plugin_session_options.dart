@@ -12,7 +12,7 @@ enum PluginSessionOptionsDiscoveryMode() { reuse, refresh }
 
 @Freezed(toJson: false)
 sealed class PluginSessionOptions with _$PluginSessionOptions {
-  const factory PluginSessionOptions({
+  const factory({
     required List<PluginAgent> agents,
     required PluginProvidersResult providers,
     required List<PluginCommand> commands,
@@ -22,9 +22,9 @@ sealed class PluginSessionOptions with _$PluginSessionOptions {
 
 @Freezed(toJson: false)
 sealed class PluginSessionOptionsDiscoveryResult with _$PluginSessionOptionsDiscoveryResult {
-  const factory PluginSessionOptionsDiscoveryResult.observed({
+  const factory observed({
     required PluginSessionOptions options,
   }) = PluginSessionOptionsDiscoveryObserved;
 
-  const factory PluginSessionOptionsDiscoveryResult.failed() = PluginSessionOptionsDiscoveryFailed;
+  const factory failed() = PluginSessionOptionsDiscoveryFailed;
 }

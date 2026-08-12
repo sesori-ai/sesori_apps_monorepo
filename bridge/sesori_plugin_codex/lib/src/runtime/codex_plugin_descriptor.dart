@@ -44,12 +44,11 @@ const int _setupProbeOutputLimit = 64 * 1024;
 /// Builds the [CodexManagedApi] for a resolved server. The production default
 /// constructs a [CodexPlugin] wired to the descriptor's status reporter; tests
 /// inject a fake.
-typedef CodexManagedApiFactory =
-    CodexManagedApi Function({
-      required String serverUrl,
-      required void Function() onConnected,
-      required void Function() onDisconnected,
-    });
+typedef CodexManagedApiFactory = CodexManagedApi Function({
+  required String serverUrl,
+  required void Function() onConnected,
+  required void Function() onDisconnected,
+});
 
 CodexManagedApi _defaultBuildApi({
   required PluginHost host,
@@ -131,39 +130,21 @@ CodexManagedApi _defaultBuildApi({
 /// The optional constructor parameters are test seams; the registered
 /// descriptor is `const CodexPluginDescriptor()`.
 class const CodexPluginDescriptor({
-    CodexManagedApiFactory? buildApi,
-    Iterable<int>? candidatePorts,
-    Random? random,
-    Duration degradedDebounce = const Duration(seconds: 5),
-    Duration coldStartBudget = codexColdStartBudget,
-    Duration versionProbeTimeout = codexVersionProbeTimeout,
-    ManagedRuntimeProvisionService? provisionService,
-    List<String>? desktopAppCliCandidates,
-  }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
-  this : _buildApi = buildApi,
-       _candidatePorts = candidatePorts,
-       _random = random,
-       _degradedDebounce = degradedDebounce,
-       _coldStartBudget = coldStartBudget,
-       _versionProbeTimeout = versionProbeTimeout,
-       _provisionService = provisionService,
-       _desktopAppCliCandidates = desktopAppCliCandidates;
-
-  final CodexManagedApiFactory? _buildApi;
-  final Iterable<int>? _candidatePorts;
-  final Random? _random;
-  final Duration _degradedDebounce;
-  final Duration _coldStartBudget;
-  final Duration _versionProbeTimeout;
+  final CodexManagedApiFactory? _buildApi,
+  final Iterable<int>? _candidatePorts,
+  final Random? _random,
+  final Duration _degradedDebounce = const Duration(seconds: 5),
+  final Duration _coldStartBudget = codexColdStartBudget,
+  final Duration _versionProbeTimeout = codexVersionProbeTimeout,
 
   /// Test seam for existing-runtime resolution. Production builds a default in
   /// [ensureRuntime] from the host's process service.
-  final ManagedRuntimeProvisionService? _provisionService;
+  final ManagedRuntimeProvisionService? _provisionService,
 
   /// Test seam for desktop-app CLI candidates. Production enumerates them with
   /// [codexDesktopAppCliCandidates] for the current platform.
-  final List<String>? _desktopAppCliCandidates;
-
+  final List<String>? _desktopAppCliCandidates,
+}) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
   @override
   bool get supportsPromptAttachments => true;
 

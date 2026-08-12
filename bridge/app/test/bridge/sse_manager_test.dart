@@ -608,12 +608,7 @@ class _ThrowingRelayClient() extends RelayClient {
 
 /// A [CapturingFailureReporter] that completes a completer on the first
 /// recorded failure, so tests await the report instead of polling.
-class _CompletingFailureReporter({required Completer<void> reported}) extends CapturingFailureReporter {
-  this
-    : _reported = reported;
-
-  final Completer<void> _reported;
-
+class _CompletingFailureReporter({required final Completer<void> _reported}) extends CapturingFailureReporter {
   @override
   Future<void> recordFailure({
     required Object error,

@@ -14,10 +14,10 @@ enum SessionArchivedReason() {
 /// is archived. Archiving is permanent: archived sessions are audit-only.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionArchivedRejection with _$SessionArchivedRejection {
-  const factory SessionArchivedRejection({
+  const factory({
     required String sessionId,
     required SessionArchivedReason reason,
   }) = _SessionArchivedRejection;
 
-  factory SessionArchivedRejection.fromJson(Map<String, dynamic> json) => _$SessionArchivedRejectionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionArchivedRejectionFromJson(json);
 }

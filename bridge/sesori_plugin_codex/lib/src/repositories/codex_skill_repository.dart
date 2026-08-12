@@ -4,11 +4,7 @@ import "../api/codex_app_server_api.dart";
 import "../api/models/codex_skill_dto.dart";
 
 /// Maps Codex's authoritative app-server skill catalog into plugin commands.
-class CodexSkillRepository({required CodexAppServerApi appServerApi}) {
-  this : _appServerApi = appServerApi;
-
-  final CodexAppServerApi _appServerApi;
-
+class CodexSkillRepository({required final CodexAppServerApi _appServerApi}) {
   Future<List<PluginCommand>> listCommands({required String cwd}) async {
     final response = await _appServerApi.listSkills(cwd: cwd);
     if (response.data.isEmpty) return const [];

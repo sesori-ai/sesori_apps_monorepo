@@ -329,9 +329,7 @@ class _LoginScreenBodyState() extends State<_LoginScreenBody> {
 /// [LoginFailed], and slides back up out of view otherwise. The last
 /// failure reason is retained so the message stays readable during the
 /// slide-out animation.
-class const _LoginErrorBanner({required this.state}) extends StatefulWidget {
-  final LoginState state;
-
+class const _LoginErrorBanner({required final LoginState state}) extends StatefulWidget {
   @override
   State<_LoginErrorBanner> createState() => _LoginErrorBannerState();
 }

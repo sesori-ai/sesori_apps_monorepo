@@ -28,39 +28,17 @@ import 'update_install_service.dart';
 /// surfaced on stderr (branded, not gated by `--log-level`) and the durable
 /// update log.
 class UpdateService({
-    required ReleaseRepository releaseRepository,
-    required UpdateInstallService updateInstallService,
-    required UpdateApplyService updateApplyService,
-    required UpdateLogRepository logRepository,
-    required UpdateMessageFormatter messageFormatter,
-    required String installRoot,
-    required String executablePath,
-    required String managedExecutablePath,
-    required Map<String, String> environment,
-    required bool isSupervised,
-  }) {
-  this : _releaseRepository = releaseRepository,
-       _updateInstallService = updateInstallService,
-       _updateApplyService = updateApplyService,
-       _logRepository = logRepository,
-       _messageFormatter = messageFormatter,
-       _installRoot = installRoot,
-       _executablePath = executablePath,
-       _managedExecutablePath = managedExecutablePath,
-       _environment = environment,
-       _isSupervised = isSupervised;
-
-  final ReleaseRepository _releaseRepository;
-  final UpdateInstallService _updateInstallService;
-  final UpdateApplyService _updateApplyService;
-  final UpdateLogRepository _logRepository;
-  final UpdateMessageFormatter _messageFormatter;
-  final String _installRoot;
-  final String _executablePath;
-  final String _managedExecutablePath;
-  final Map<String, String> _environment;
-  final bool _isSupervised;
-
+  required final ReleaseRepository _releaseRepository,
+  required final UpdateInstallService _updateInstallService,
+  required final UpdateApplyService _updateApplyService,
+  required final UpdateLogRepository _logRepository,
+  required final UpdateMessageFormatter _messageFormatter,
+  required final String _installRoot,
+  required final String _executablePath,
+  required final String _managedExecutablePath,
+  required final Map<String, String> _environment,
+  required final bool _isSupervised,
+}) {
   StreamSubscription<void>? _subscription;
   bool _disposed = false;
 
@@ -90,14 +68,16 @@ class UpdateService({
 
     _subscription =
         Rx.concat<void>([
-          Stream<void>.value(null),
-          Stream<void>.periodic(pollInterval, (_) {}),
-        ]).asyncMap((_) => _runCycle()).listen(
-          (_) {},
-          onError: (Object error, StackTrace stackTrace) {
-            logError('Update cycle stream error', error, stackTrace);
-          },
-        );
+              Stream<void>.value(null),
+              Stream<void>.periodic(pollInterval, (_) {}),
+            ])
+            .asyncMap((_) => _runCycle())
+            .listen(
+              (_) {},
+              onError: (Object error, StackTrace stackTrace) {
+                logError('Update cycle stream error', error, stackTrace);
+              },
+            );
   }
 
   Future<void> dispose() async {

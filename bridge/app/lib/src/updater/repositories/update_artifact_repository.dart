@@ -21,27 +21,13 @@ import '../models/update_result.dart';
 /// (the explicit `update` command) or a no-listener drain (the background
 /// updater).
 class UpdateArtifactRepository({
-    required BinaryDownloadClient downloadClient,
-    required ChecksumManifestApi checksumManifestApi,
-    required ChecksumValidator checksumValidator,
-    required ArchiveExtractor archiveExtractor,
-    required ArchiveFormat archiveFormat,
-    required StreamSink<DownloadProgress> progressSink,
-  }) {
-  final BinaryDownloadClient _downloadClient;
-  final ChecksumManifestApi _checksumManifestApi;
-  final ChecksumValidator _checksumValidator;
-  final ArchiveExtractor _archiveExtractor;
-  final ArchiveFormat _archiveFormat;
-  final StreamSink<DownloadProgress> _progressSink;
-
-  this : _downloadClient = downloadClient,
-       _checksumManifestApi = checksumManifestApi,
-       _checksumValidator = checksumValidator,
-       _archiveExtractor = archiveExtractor,
-       _archiveFormat = archiveFormat,
-       _progressSink = progressSink;
-
+  required final BinaryDownloadClient _downloadClient,
+  required final ChecksumManifestApi _checksumManifestApi,
+  required final ChecksumValidator _checksumValidator,
+  required final ArchiveExtractor _archiveExtractor,
+  required final ArchiveFormat _archiveFormat,
+  required final StreamSink<DownloadProgress> _progressSink,
+}) {
   Future<UpdateResult> downloadArchive({
     required ReleaseInfo release,
     required String archivePath,
@@ -52,9 +38,7 @@ class UpdateArtifactRepository({
       // error, so a thrown `DownloadException` is still caught and mapped below;
       // a connection-phase error (e.g. SocketException from the initial send)
       // propagates raw and is classified by the install service, as before.
-      await _downloadClient
-          .download(url: release.assetUrl, destinationPath: archivePath)
-          .forEach(_progressSink.add);
+      await _downloadClient.download(url: release.assetUrl, destinationPath: archivePath).forEach(_progressSink.add);
       return UpdateResult.success;
     } on DownloadException catch (error) {
       switch (error.kind) {

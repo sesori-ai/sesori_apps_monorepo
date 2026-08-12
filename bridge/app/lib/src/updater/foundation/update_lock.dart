@@ -17,9 +17,9 @@ enum LockAcquireResult() {
 }
 
 class UpdateLock({
-    required int currentPid,
-    required ProcessRunner processRunner,
-    required Clock clock,
+    required final int _currentPid,
+    required final ProcessRunner _processRunner,
+    required final Clock _clock,
   }) {
   /// Default age after which a still-"held" `.update.lock` is reaped as stale,
   /// even when the holder PID still appears alive.
@@ -31,13 +31,6 @@ class UpdateLock({
   /// well under a second, so this never trips a legitimate update.
   static const Duration updateStaleLockMaxAge = Duration(minutes: 15);
 
-  final int _currentPid;
-  final ProcessRunner _processRunner;
-  final Clock _clock;
-
-  this : _currentPid = currentPid,
-       _processRunner = processRunner,
-       _clock = clock;
 
   Future<T> locked<T>({
     required File lockFile,
@@ -51,7 +44,7 @@ class UpdateLock({
       staleLockMaxAge: staleLockMaxAge,
     );
     if (lockResult != LockAcquireResult.acquired) {
-      return onLockRejected(lockResult);
+      return await onLockRejected(lockResult);
     }
 
     late final T value;
@@ -165,16 +158,16 @@ class UpdateLock({
       if (_lockAge(lockFile: lockFile) < _invalidLockGracePeriod) {
         return LockAcquireResult.alreadyLocked;
       }
-      return _deleteStaleLock(lockFile: lockFile);
+      return await _deleteStaleLock(lockFile: lockFile);
     }
 
     final String? processMarker = await _readProcessMarker(pidToCheck: owner.pid);
     if (processMarker == null) {
-      return _deleteStaleLock(lockFile: lockFile);
+      return await _deleteStaleLock(lockFile: lockFile);
     }
 
     if (owner.processMarker != null && owner.processMarker != processMarker) {
-      return _deleteStaleLock(lockFile: lockFile);
+      return await _deleteStaleLock(lockFile: lockFile);
     }
 
     final bool isAlive = await isProcessAlive(pidToCheck: owner.pid);
@@ -184,12 +177,12 @@ class UpdateLock({
       // this only ever clears the rare wedge of a crashed holder whose PID was
       // reused by an unrelated long-lived process.
       if (staleLockMaxAge != null && _lockAge(lockFile: lockFile) > staleLockMaxAge) {
-        return _deleteStaleLock(lockFile: lockFile);
+        return await _deleteStaleLock(lockFile: lockFile);
       }
       return LockAcquireResult.alreadyLocked;
     }
 
-    return _deleteStaleLock(lockFile: lockFile);
+    return await _deleteStaleLock(lockFile: lockFile);
   }
 
   Duration _lockAge({required File lockFile}) {
@@ -336,11 +329,8 @@ class UpdateLock({
   }
 }
 
-final class const _LockOwner({required this.pid, required this.processMarker}) {
-  final int pid;
-  final String? processMarker;
-
-  factory _LockOwner.fromJson(Map<String, dynamic> json) {
+final class const _LockOwner({required final int pid, required final String? processMarker}) {
+  factory fromJson(Map<String, dynamic> json) {
     return _LockOwner(
       pid: json['pid'] as int,
       processMarker: json['processMarker'] as String?,

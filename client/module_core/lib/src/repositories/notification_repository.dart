@@ -8,19 +8,13 @@ import "../logging/logging.dart";
 
 @lazySingleton
 class NotificationRepository({
-    required NotificationApi api,
-    required NotificationPreferencesDeviceIdStorage deviceIdStorage,
-  }) {
-  final NotificationApi _api;
-  final NotificationPreferencesDeviceIdStorage _deviceIdStorage;
-
-  this : _api = api,
-       _deviceIdStorage = deviceIdStorage;
-
+  required final NotificationApi _api,
+  required final NotificationPreferencesDeviceIdStorage _deviceIdStorage,
+}) {
   /// Sends the same device ID the notification settings are stored under, so the
   /// server can match this push token to the preferences for this device.
   Future<void> registerToken({required String token, required DevicePlatform platform}) async {
-    return _api.registerToken(
+    return await _api.registerToken(
       request: RegisterTokenRequest(token: token, platform: platform, deviceId: await _readDeviceId()),
     );
   }

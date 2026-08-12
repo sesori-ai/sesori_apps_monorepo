@@ -15,37 +15,36 @@ part "control_provision_progress.g.dart";
 sealed class ControlProvisionProgress with _$ControlProvisionProgress {
   /// Deciding which runtime to use; no bytes fetched yet.
   @FreezedUnionValue("resolving")
-  const factory ControlProvisionProgress.resolving() = ControlProvisionResolving;
+  const factory resolving() = ControlProvisionResolving;
 
   /// Downloading the managed runtime archive. [totalBytes] is null when the
   /// server did not advertise a length (progress is then indeterminate).
   @FreezedUnionValue("downloading")
-  const factory ControlProvisionProgress.downloading({
+  const factory downloading({
     required int receivedBytes,
     required int? totalBytes,
   }) = ControlProvisionDownloading;
 
   /// Unpacking the downloaded archive into its versioned install directory.
   @FreezedUnionValue("extracting")
-  const factory ControlProvisionProgress.extracting() = ControlProvisionExtracting;
+  const factory extracting() = ControlProvisionExtracting;
 
   /// Verifying the downloaded archive against its pinned checksum.
   @FreezedUnionValue("verifying")
-  const factory ControlProvisionProgress.verifying() = ControlProvisionVerifying;
+  const factory verifying() = ControlProvisionVerifying;
 
   /// A non-terminal, user-facing notice surfaced mid-provision.
   @FreezedUnionValue("notice")
-  const factory ControlProvisionProgress.notice({required String message}) = ControlProvisionNotice;
+  const factory notice({required String message}) = ControlProvisionNotice;
 
   /// Terminal success: the runtime is ready; [binaryPath] is the launch target.
   @FreezedUnionValue("ready")
-  const factory ControlProvisionProgress.ready({required String binaryPath}) = ControlProvisionReady;
+  const factory ready({required String binaryPath}) = ControlProvisionReady;
 
   /// Terminal failure (non-fatal): the runtime could not be provisioned;
   /// [message] explains what went wrong for logs/diagnostics.
   @FreezedUnionValue("failed")
-  const factory ControlProvisionProgress.failed({required String message}) = ControlProvisionFailed;
+  const factory failed({required String message}) = ControlProvisionFailed;
 
-  factory ControlProvisionProgress.fromJson(Map<String, dynamic> json) =>
-      _$ControlProvisionProgressFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ControlProvisionProgressFromJson(json);
 }

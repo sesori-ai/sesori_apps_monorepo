@@ -388,9 +388,7 @@ void main() {
 }
 
 class _FakeYoloSettingsService({required bool enabled}) implements YoloSettingsService {
-  this : _settings = YoloSettingsResponse(enabled: enabled);
-
-  YoloSettingsResponse _settings;
+  YoloSettingsResponse _settings = YoloSettingsResponse(enabled: enabled);
 
   @override
   YoloSettingsResponse get currentSettings => _settings;

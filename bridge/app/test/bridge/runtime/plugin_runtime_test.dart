@@ -1689,15 +1689,11 @@ Future<void> _waitUntil(bool Function() predicate) async {
 }
 
 class _FakeGenerationFactory({
-    required this.startGate,
-    this.pluginFactory,
-    this.startError,
-    this.honorAbort = true,
+    required final Future<void> startGate,
+    final _FakePlugin Function(int generation)? pluginFactory,
+    final Object? startError,
+    final bool honorAbort = true,
   }) implements PluginGenerationFactory {
-  final Future<void> startGate;
-  final _FakePlugin Function(int generation)? pluginFactory;
-  final Object? startError;
-  final bool honorAbort;
   final List<_FakePlugin> plugins = <_FakePlugin>[];
   int startCount = 0;
 
@@ -1721,10 +1717,7 @@ class _FakeGenerationFactory({
   }
 }
 
-class const _FakeDescriptor({this.inspect, this.install}) extends BridgePluginDescriptor {
-  final Future<PluginSetupStatus> Function()? inspect;
-  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install;
-
+class const _FakeDescriptor({final Future<PluginSetupStatus> Function()? inspect, final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install}) extends BridgePluginDescriptor {
   @override
   String get id => "one";
 
@@ -1776,12 +1769,8 @@ class const _FakeDescriptor({this.inspect, this.install}) extends BridgePluginDe
 }
 
 class const _AuthenticationDescriptor({
-    required Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) authenticate,
+    required final Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) _authenticate,
   }) extends _FakeDescriptor implements InteractivePluginAuthenticationDescriptor {
-  this : _authenticate = authenticate;
-
-  final Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) _authenticate;
-
   @override
   Stream<PluginAuthenticationEvent> authenticate({
     required PluginConfig config,
@@ -1792,19 +1781,16 @@ class const _AuthenticationDescriptor({
   }) => _authenticate(aborted);
 }
 
-class _FakePlugin({required this.api, this.shutdownGate, this.shutdownError}) implements BridgePlugin {
+class _FakePlugin({
+  @override
+  required final _FakeApi api, final Future<void>? shutdownGate, final Object? shutdownError}) implements BridgePlugin {
   final BehaviorSubject<PluginStatus> statuses = BehaviorSubject.seeded(const PluginReady());
   final BehaviorSubject<PluginWorkState> workStates = BehaviorSubject.seeded(PluginWorkState.idle);
-  final Future<void>? shutdownGate;
-  final Object? shutdownError;
   Future<void>? _shutdownFuture;
   int shutdownInvocationCount = 0;
   int shutdownCount = 0;
   int interruptActiveWorkCount = 0;
   Future<Set<String>> Function(Duration budget)? interruptActiveWorkHandler;
-
-  @override
-  final _FakeApi api;
 
   @override
   PluginStatus get currentStatus => statuses.value;
@@ -1845,18 +1831,14 @@ class _FakePlugin({required this.api, this.shutdownGate, this.shutdownError}) im
 }
 
 class _FakeApi({
-    this.id = "one",
-    this.closeEventsOnDispose = false,
-    this.activeSessionsSummary = const [],
+    @override
+  final String id = "one",
+    final bool closeEventsOnDispose = false,
+    final List<PluginProjectActivitySummary> activeSessionsSummary = const [],
   }) extends NativeProjectsPluginApi {
   final StreamController<BridgeSseEvent> eventsController = StreamController.broadcast();
-  final bool closeEventsOnDispose;
-  final List<PluginProjectActivitySummary> activeSessionsSummary;
   int disposeCount = 0;
   int getActiveSessionsSummaryCount = 0;
-
-  @override
-  final String id;
 
   @override
   Stream<BridgeSseEvent> get events => eventsController.stream;

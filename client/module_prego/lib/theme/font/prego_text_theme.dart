@@ -5,8 +5,7 @@ import "../primitives/prego_colors.g.dart";
 
 enum _PregoTextThemeVariant() {
   dark,
-  light
-  ;
+  light;
 
   Color get color => switch (this) {
     .dark => PregoColors.dark.textPrimary,
@@ -21,7 +20,7 @@ class PregoTextTheme {
   static final dark = PregoTextTheme._(variant: .dark);
   static final light = PregoTextTheme._(variant: .light);
 
-  PregoTextTheme._({required _PregoTextThemeVariant variant})
+  new _({required _PregoTextThemeVariant variant})
     : display2xl = FontVariation(
         fontSize: 72,
         height: 90,
@@ -117,7 +116,7 @@ class PregoTextTheme {
         textXs: FontVariation.lerpVariation(a: a.textXs, b: b.textXs, t: t),
       );
 
-  PregoTextTheme._lerped({
+  new _lerped({
     required this.display2xl,
     required this.displayXl,
     required this.displayLg,
@@ -151,7 +150,7 @@ class PregoTextTheme {
 }
 
 class FontVariation {
-  FontVariation({
+  new({
     required double fontSize,
     required double letterSpacing,
     required double height,
@@ -192,7 +191,7 @@ class FontVariation {
          fontWeight: .w900,
        );
 
-  FontVariation._fromStyles({
+  new _fromStyles({
     required this.light,
     required this.regular,
     required this.medium,

@@ -22,9 +22,12 @@ void main() {
         ),
       ),
     );
-    expect(loopbackPortApi.invocations, equals(<_ProbeInvocation>[
-      const _ProbeInvocation(host: loopbackPortHost, port: 4100),
-    ]));
+    expect(
+      loopbackPortApi.invocations,
+      equals(<_ProbeInvocation>[
+        const _ProbeInvocation(host: loopbackPortHost, port: 4100),
+      ]),
+    );
   });
 
   test("port repository reports occupied port without kill", () async {
@@ -76,11 +79,8 @@ void main() {
 }
 
 class _FakeLoopbackPortApi({
-    required Map<int, bool> availabilityByPort,
-  }) implements LoopbackPortApi {
-  this : _availabilityByPort = availabilityByPort;
-
-  final Map<int, bool> _availabilityByPort;
+  required final Map<int, bool> _availabilityByPort,
+}) implements LoopbackPortApi {
   final List<_ProbeInvocation> invocations = <_ProbeInvocation>[];
   int unexpectedKillCallCount = 0;
 
@@ -104,16 +104,12 @@ class _FakeLoopbackPortApi({
 
 @immutable
 class const _ProbeInvocation({
-    required this.host,
-    required this.port,
-  }) {
-  final String host;
-  final int port;
-
+  required final String host,
+  required final int port,
+}) {
   @override
   bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is _ProbeInvocation && other.host == host && other.port == port;
+    return identical(this, other) || other is _ProbeInvocation && other.host == host && other.port == port;
   }
 
   @override

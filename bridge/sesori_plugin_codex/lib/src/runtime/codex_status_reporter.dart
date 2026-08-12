@@ -14,18 +14,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// monitor-emitted [PluginFailed] or a deliberate shutdown is dropped by the
 /// state machine.
 class CodexRuntimeStatusReporter({
-    required PluginStatusController status,
-    required ServerClock clock,
-    Duration degradedDebounce = const Duration(seconds: 5),
-  }) {
-  this : _status = status,
-       _clock = clock,
-       _degradedDebounce = degradedDebounce;
-
-  final PluginStatusController _status;
-  final ServerClock _clock;
-  final Duration _degradedDebounce;
-
+  required final PluginStatusController _status,
+  required final ServerClock _clock,
+  final Duration _degradedDebounce = const Duration(seconds: 5),
+}) {
   int _generation = 0;
   DateTime? _degradedSince;
   bool _disposed = false;

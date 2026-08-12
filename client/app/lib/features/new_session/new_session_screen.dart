@@ -22,15 +22,11 @@ import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
 
 class const NewSessionScreen({
-    super.key,
-    required this.projectId,
-    required this.projectName,
-    required this.initialSupportsDedicatedWorktrees,
-  }) extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final bool? initialSupportsDedicatedWorktrees;
-
+  super.key,
+  required final String projectId,
+  required final String? projectName,
+  required final bool? initialSupportsDedicatedWorktrees,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -51,10 +47,8 @@ class const NewSessionScreen({
   }
 }
 
-class const _NewSessionBody({required this.projectId, required this.projectName}) extends StatefulWidget {
-  final String projectId;
-  final String? projectName;
-
+class const _NewSessionBody({required final String projectId, required final String? projectName})
+    extends StatefulWidget {
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
 }
@@ -435,8 +429,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                             hasNoHarnesses: hasNoHarnesses,
                           ),
                         ),
-                        if (showsRefresh)
-                          _buildOptionsRefresh(cubit: cubit, isHarnessDiscovery: needsHarnessDiscovery),
+                        if (showsRefresh) _buildOptionsRefresh(cubit: cubit, isHarnessDiscovery: needsHarnessDiscovery),
                       ],
                     ),
                   ),
@@ -498,10 +491,8 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
 
 /// Whether the session gets a git worktree of its own instead of working in
 /// the project checkout everyone shares.
-class const _DedicatedWorkspaceRow({required this.value, required this.onChanged}) extends StatelessWidget {
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
+class const _DedicatedWorkspaceRow({required final bool value, required final ValueChanged<bool> onChanged})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

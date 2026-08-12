@@ -6,19 +6,15 @@ import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/explicit_update_outcome.dart';
 import 'package:test/test.dart';
 
-class _FakeStdout({required this.supportsAnsiEscapes}) implements Stdout {
-  @override
-  final bool supportsAnsiEscapes;
-
+class _FakeStdout({@override required final bool supportsAnsiEscapes}) implements Stdout {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-UpdateOutputFormatter _outputFormatter({required bool color, required bool unicode}) =>
-    UpdateOutputFormatter.forStream(
-      out: _FakeStdout(supportsAnsiEscapes: color),
-      environment: unicode ? const {'LANG': 'en_US.UTF-8'} : const <String, String>{},
-    );
+UpdateOutputFormatter _outputFormatter({required bool color, required bool unicode}) => UpdateOutputFormatter.forStream(
+  out: _FakeStdout(supportsAnsiEscapes: color),
+  environment: unicode ? const {'LANG': 'en_US.UTF-8'} : const <String, String>{},
+);
 
 UpdateCommandFormatter _formatter({bool color = false, bool unicode = false}) {
   final output = _outputFormatter(color: color, unicode: unicode);

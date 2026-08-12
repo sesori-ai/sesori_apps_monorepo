@@ -86,9 +86,7 @@ void main() {
 }
 
 /// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
-class _CapturingStdout(this.lines) implements Stdout {
-  final List<String> lines;
-
+class _CapturingStdout(final List<String> lines) implements Stdout {
   @override
   void writeln([Object? object = ""]) {
     lines.add(object.toString());

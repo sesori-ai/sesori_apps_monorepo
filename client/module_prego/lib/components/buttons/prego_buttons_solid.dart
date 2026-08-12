@@ -107,7 +107,7 @@ enum PregoButtonsSolidType() {
 /// )
 /// ```
 class PregoButtonsSolid extends StatefulWidget {
-  const PregoButtonsSolid({
+  const new({
     super.key,
     required this.label,
     required this.hierarchy,
@@ -133,7 +133,7 @@ class PregoButtonsSolid extends StatefulWidget {
        iconOnly = false;
 
   /// Icon-only variant — renders a square button with a single centred icon.
-  const PregoButtonsSolid.iconOnly({
+  const new iconOnly({
     super.key,
     required this.leadingIcon,
     required this.hierarchy,
@@ -806,12 +806,9 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 /// `skeuomorphicInnerBorder` so both layers use the same token.
 class const PregoSkeuomorphicOverlay({
     super.key,
-    required this.innerBorderColor,
-    required this.bottomShadowColor,
+    required final Color innerBorderColor,
+    required final Color bottomShadowColor,
   }) extends StatelessWidget {
-  final Color innerBorderColor;
-  final Color bottomShadowColor;
-
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -828,12 +825,9 @@ class const PregoSkeuomorphicOverlay({
 }
 
 class _SkeuomorphicPainter({
-    required this.innerBorderColor,
-    required this.bottomShadowColor,
+    required final Color innerBorderColor,
+    required final Color bottomShadowColor,
   }) extends CustomPainter {
-  final Color innerBorderColor;
-  final Color bottomShadowColor;
-
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
@@ -866,10 +860,7 @@ class _SkeuomorphicPainter({
 }
 
 /// A small circular progress indicator used in the button loading state.
-class const _LoadingSpinner({required this.color, required this.size}) extends StatelessWidget {
-  final Color color;
-  final double size;
-
+class const _LoadingSpinner({required final Color color, required final double size}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Not CircularProgressIndicator.adaptive: its Cupertino variant takes the

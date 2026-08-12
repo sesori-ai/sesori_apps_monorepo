@@ -13,9 +13,7 @@ import "pi_frame_fields.dart";
 ///
 /// The raw frame is retained on every variant so later steps can reach payload
 /// fields this build does not model. It is never logged.
-sealed class const PiRpcFrame({required this.raw}) {
-  final Map<String, Object?> raw;
-
+sealed class const PiRpcFrame({required final Map<String, Object?> raw}) {
   /// Routes one decoded stdout object.
   ///
   /// Never throws and never returns null.
@@ -63,55 +61,48 @@ sealed class const PiRpcFrame({required this.raw}) {
 }
 
 /// A response correlated to one command by [id].
-sealed class const PiResponseFrame({required this.id, required this.command, required this.rawCommand, required super.raw}) extends PiRpcFrame {
+sealed class const PiResponseFrame({
   /// The request ID this answers, or null when Pi could not read one — which
   /// happens for its `parse` failures.
-  final String? id;
+  required final String? id,
 
   /// The command Pi believes it answered when it belongs to the integration's
   /// closed command set.
-  final PiRpcCommand? command;
+  required final PiRpcCommand? command,
 
   /// Pi's untyped command echo. This also preserves `parse` and future commands.
-  final String? rawCommand;
-}
+  required final String? rawCommand,
+  required super.raw,
+}) extends PiRpcFrame;
 
 /// A command Pi accepted. For `prompt`, acceptance is not completion: the
 /// agent's own events may arrive before or after this frame.
 final class const PiSuccessResponseFrame({
-    required super.id,
-    required super.command,
-    required super.rawCommand,
-    required this.data,
-    required super.raw,
-  }) extends PiResponseFrame {
+  required super.id,
+  required super.command,
+  required super.rawCommand,
+
   /// The command's payload, empty for commands that answer with no data.
-  final Map<String, Object?> data;
-}
+  required final Map<String, Object?> data,
+  required super.raw,
+}) extends PiResponseFrame;
 
 /// A command Pi rejected. Pi's error strings are untyped prose; classification
 /// belongs to the repository layer, not the transport.
 final class const PiFailureResponseFrame({
-    required super.id,
-    required super.command,
-    required super.rawCommand,
-    required this.error,
-    required super.raw,
-  }) extends PiResponseFrame {
-  final String? error;
-}
+  required super.id,
+  required super.command,
+  required super.rawCommand,
+  required final String? error,
+  required super.raw,
+}) extends PiResponseFrame;
 
 /// An agent event. Never correlated to a request.
-final class const PiEventFrame({required this.event, required super.raw}) extends PiRpcFrame {
-  final PiEvent event;
-}
+final class const PiEventFrame({required final PiEvent event, required super.raw}) extends PiRpcFrame;
 
 /// An extension dialog or decoration request.
-final class const PiExtensionUiFrame({required this.request, required super.raw}) extends PiRpcFrame {
-  final PiExtensionUiRequest request;
-}
+final class const PiExtensionUiFrame({required final PiExtensionUiRequest request, required super.raw})
+    extends PiRpcFrame;
 
 /// A frame with no `type`, or one this build does not model.
-final class const PiUnknownFrame({required this.type, required super.raw}) extends PiRpcFrame {
-  final String? type;
-}
+final class const PiUnknownFrame({required final String? type, required super.raw}) extends PiRpcFrame;

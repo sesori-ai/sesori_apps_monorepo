@@ -72,10 +72,10 @@ AttachmentStorageScope testAttachmentStorageScope({required String sessionId}) =
     AttachmentStorageScope(pluginId: "opencode", backendSessionId: sessionId);
 
 class TestChatHistoryRepository({
-    required super.chatHistoryDao,
-    required super.attachmentSpillStorage,
-    required super.archivedSessionStorage,
-  }) extends ChatHistoryRepository {
+  required super.chatHistoryDao,
+  required super.attachmentSpillStorage,
+  required super.archivedSessionStorage,
+}) extends ChatHistoryRepository {
   @override
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,
@@ -93,11 +93,11 @@ class TestChatHistoryRepository({
 }
 
 class TestChatHistoryService({
-    required super.chatHistoryRepository,
-    required super.sessionRepository,
-    required super.attachmentThumbnailBuilder,
-    required super.bridgeIdProvider,
-  }) extends ChatHistoryService {
+  required super.chatHistoryRepository,
+  required super.sessionRepository,
+  required super.attachmentThumbnailBuilder,
+  required super.bridgeIdProvider,
+}) extends ChatHistoryService {
   @override
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,
@@ -125,16 +125,11 @@ class TestChatHistoryService({
   );
 }
 
-class const _TestBridgeIdProvider(this.bridgeId) implements BridgeIdProvider {
-  @override
-  final String? bridgeId;
-}
+class const _TestBridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;
 
 /// Fails on any call: a test that reaches the plugin path should have supplied
 /// its own repository instead of silently backfilling from nothing.
-class _UnusedSessionRepository({required this.archivedAt}) implements SessionRepository {
-  final int? archivedAt;
-
+class _UnusedSessionRepository({required final int? archivedAt}) implements SessionRepository {
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
     id: sessionId,

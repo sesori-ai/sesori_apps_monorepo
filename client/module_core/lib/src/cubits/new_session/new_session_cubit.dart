@@ -26,55 +26,37 @@ import "../../services/product_analytics_service.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit({
-    required ConnectionService connectionService,
-    required SessionService sessionService,
-    required NewSessionPluginService newSessionPluginService,
-    required NewSessionOptionsService newSessionOptionsService,
-    required ProjectRepository projectRepository,
-    required NewSessionSelectionTracker selectionTracker,
-    required ComposerDraftRepository composerDraftRepository,
-    required ProductAnalyticsService productAnalyticsService,
-    required String projectId,
-    required bool? initialSupportsDedicatedWorktrees,
-  }) extends Cubit<NewSessionState> {
-  this : _connectionService = connectionService,
-       _sessionService = sessionService,
-       _newSessionPluginService = newSessionPluginService,
-       _newSessionOptionsService = newSessionOptionsService,
-       _projectRepository = projectRepository,
-       _selectionTracker = selectionTracker,
-       _composerDraftRepository = composerDraftRepository,
-       _productAnalyticsService = productAnalyticsService,
-       _projectId = projectId,
-       _composerDraft = composerDraftRepository.readForNewSession(projectId: projectId),
-       super(
-         NewSessionState.idle(
-           availablePlugins: const [],
-           selectedPlugin: null,
-           options: const NewSessionOptionsLoadingState(source: null),
-           backendScope: selectionTracker.backendScope.invalidate(),
-           isPluginDiscoveryInFlight: false,
-           // Notification/deep-link entry lacks project-list context; retain
-           // the prior visible behavior until the project fetch completes.
-           supportsDedicatedWorktrees: initialSupportsDedicatedWorktrees ?? true,
-         ),
-       ) {
+  required final ConnectionService _connectionService,
+  required final SessionService _sessionService,
+  required final NewSessionPluginService _newSessionPluginService,
+  required final NewSessionOptionsService _newSessionOptionsService,
+  required final ProjectRepository _projectRepository,
+  required final NewSessionSelectionTracker _selectionTracker,
+  required final ComposerDraftRepository _composerDraftRepository,
+  required final ProductAnalyticsService _productAnalyticsService,
+  required final String _projectId,
+  required bool? initialSupportsDedicatedWorktrees,
+}) extends Cubit<NewSessionState> {
+  this
+    : super(
+        NewSessionState.idle(
+          availablePlugins: const [],
+          selectedPlugin: null,
+          options: const NewSessionOptionsLoadingState(source: null),
+          backendScope: _selectionTracker.backendScope.invalidate(),
+          isPluginDiscoveryInFlight: false,
+          // Notification/deep-link entry lacks project-list context; retain
+          // the prior visible behavior until the project fetch completes.
+          supportsDedicatedWorktrees: initialSupportsDedicatedWorktrees ?? true,
+        ),
+      ) {
     _wasConnected = _connectionService.currentStatus is ConnectionConnected;
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
   }
 
-  final ConnectionService _connectionService;
-  final SessionService _sessionService;
-  final NewSessionPluginService _newSessionPluginService;
-  final NewSessionOptionsService _newSessionOptionsService;
-  final ProjectRepository _projectRepository;
-  final NewSessionSelectionTracker _selectionTracker;
-  final ComposerDraftRepository _composerDraftRepository;
-  final ProductAnalyticsService _productAnalyticsService;
-  final String _projectId;
-  ComposerDraft _composerDraft;
+  ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession(projectId: _projectId);
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late bool _wasConnected;
   int _loadGeneration = 0;
@@ -357,9 +339,10 @@ class NewSessionCubit({
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
     // The bridge answers these with an opaque error code rather than an
     // exception, so without this the screen renders a failure no log explains.
-    if (result case NewSessionOptionsLoadFailureUnavailable() ||
-        NewSessionOptionsRefreshFailureUnavailable() ||
-        NewSessionOptionsFailureUnavailable()) {
+    if (result
+        case NewSessionOptionsLoadFailureUnavailable() ||
+            NewSessionOptionsRefreshFailureUnavailable() ||
+            NewSessionOptionsFailureUnavailable()) {
       logw(
         "New session: options unavailable for plugin $pluginId "
         "(source: ${source.name}, mode: ${mode.name}, result: ${result.runtimeType.toString()})",
@@ -424,8 +407,7 @@ class NewSessionCubit({
   /// Whether the bridge itself answered that it runs no harness. Only then may
   /// the screen state that as fact — after a failed discovery the error is the
   /// honest explanation, and retrying is still the way forward.
-  bool get hasNoHarnesses =>
-      needsHarnessDiscovery && (state.agentModelData?.backendScope.isVerified ?? false);
+  bool get hasNoHarnesses => needsHarnessDiscovery && (state.agentModelData?.backendScope.isVerified ?? false);
 
   bool get canRefreshOptions =>
       needsHarnessDiscovery || ((state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer);

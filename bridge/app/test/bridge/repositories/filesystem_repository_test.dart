@@ -262,10 +262,10 @@ class _GrowingFilesystemApi() implements FilesystemApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _EnvironmentFilesystemApi({required this.environment, required this.currentDirectory}) implements FilesystemApi {
-  final Map<String, String> environment;
-  final String currentDirectory;
-
+class _EnvironmentFilesystemApi({
+  required final Map<String, String> environment,
+  required final String currentDirectory,
+}) implements FilesystemApi {
   @override
   String currentDirectoryPath() => currentDirectory;
 

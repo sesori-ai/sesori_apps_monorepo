@@ -1890,9 +1890,8 @@ SseEventData _questionAsked(String id, String sessionId) {
   );
 }
 
-class FakeOpenCodeApi({this.messages = const [], this.messagesError}) implements OpenCodeApi {
-  List<SessionMessagesResponseItem> messages;
-  Object? messagesError;
+class FakeOpenCodeApi({var List<SessionMessagesResponseItem> messages = const [], var Object? messagesError})
+    implements OpenCodeApi {
   String? lastRequestedSessionId;
   String? lastRequestedDirectory;
 
@@ -2037,38 +2036,23 @@ class FakeOpenCodeApi({this.messages = const [], this.messagesError}) implements
 }
 
 class FakeOpenCodeRepository._({
-    required this.api,
-    required List<Project> projects,
-    required List<Session> sessions,
-    required List<PluginCommand> commands,
-    required List<PluginAgent> agents,
-    required PluginProvidersResult providers,
-    required List<String>? optionStarts,
-    required Completer<void>? optionsRelease,
-    required PluginSession? createdSession,
-    required PluginProject? currentProject,
-    required this.providersError,
-    this.replyToQuestionError,
-    this.rejectQuestionError,
-    this.replyToPermissionError,
-    required Map<String, List<QuestionRequest>> pendingQuestionsByDirectory,
-    required Map<String, List<PermissionRequest>> pendingPermissionsByDirectory,
-  }) extends OpenCodeRepository {
-  @override
-  final FakeOpenCodeApi api;
-
-  final List<Project> _projects;
-  final List<Session> _sessions;
-  final List<PluginCommand> _commands;
-  final List<PluginAgent> _agents;
-  final PluginProvidersResult _providers;
-  final List<String>? _optionStarts;
-  final Completer<void>? _optionsRelease;
-  final PluginSession? _createdSession;
-  final PluginProject? _currentProject;
-  final Object? providersError;
-  final Map<String, List<QuestionRequest>> _pendingQuestionsByDirectory;
-  final Map<String, List<PermissionRequest>> _pendingPermissionsByDirectory;
+  @override required final FakeOpenCodeApi api,
+  required final List<Project> _projects,
+  required final List<Session> _sessions,
+  required final List<PluginCommand> _commands,
+  required final List<PluginAgent> _agents,
+  required final PluginProvidersResult _providers,
+  required final List<String>? _optionStarts,
+  required final Completer<void>? _optionsRelease,
+  required final PluginSession? _createdSession,
+  required final PluginProject? _currentProject,
+  required final Object? providersError,
+  var Object? replyToQuestionError,
+  var Object? rejectQuestionError,
+  var Object? replyToPermissionError,
+  required final Map<String, List<QuestionRequest>> _pendingQuestionsByDirectory,
+  required final Map<String, List<PermissionRequest>> _pendingPermissionsByDirectory,
+}) extends OpenCodeRepository {
   int getProjectsCalls = 0;
   int getSessionsCalls = 0;
   String? lastWorktree;
@@ -2106,21 +2090,18 @@ class FakeOpenCodeRepository._({
   String? lastReplyQuestionId;
   String? lastReplyQuestionDirectory;
   QuestionReplyBody? lastReplyQuestionBody;
-  Object? replyToQuestionError;
   String? lastRejectQuestionId;
   String? lastRejectQuestionDirectory;
-  Object? rejectQuestionError;
   String? lastReplyPermissionRequestId;
   String? lastReplyPermissionDirectory;
   PluginPermissionReply? lastReplyPermissionReply;
-  Object? replyToPermissionError;
   int getSessionCalls = 0;
   String? lastGetSessionId;
   String? lastGetSessionDirectory;
   final List<String?> pendingQuestionDirectories = [];
   final List<String?> pendingPermissionDirectories = [];
 
-  factory FakeOpenCodeRepository({
+  factory({
     List<Project> projects = const [],
     List<Session> sessions = const [],
     List<PluginCommand> commands = const [],
@@ -2160,18 +2141,7 @@ class FakeOpenCodeRepository._({
     );
   }
 
-  this : _projects = projects,
-       _sessions = sessions,
-       _commands = commands,
-       _agents = agents,
-       _providers = providers,
-       _optionStarts = optionStarts,
-       _optionsRelease = optionsRelease,
-       _createdSession = createdSession,
-       _currentProject = currentProject,
-       _pendingQuestionsByDirectory = pendingQuestionsByDirectory,
-       _pendingPermissionsByDirectory = pendingPermissionsByDirectory,
-       super(api);
+  this : super(api);
 
   @override
   Future<List<({PluginProject project, List<String> sandboxes})>> getProjects() async {
@@ -2407,21 +2377,19 @@ class FakeOpenCodeRepository._({
 }
 
 class FakeActiveSessionTracker({
-    this.summary = const [],
-    Map<String, String> sessionDirectories = const {},
-    this.resolvedWorktree,
-    this.clearPendingQuestionFound = false,
-    this.clearPendingQuestionResolvedSessionId,
-    this.clearPendingQuestionChanged = false,
-    this.clearPendingPermissionFound = false,
-    this.clearPendingPermissionChanged = false,
-  }) extends ActiveSessionTracker {
+  var List<ProjectActivitySummary> summary = const [],
+  Map<String, String> sessionDirectories = const {},
+  final String? resolvedWorktree,
+  final bool clearPendingQuestionFound = false,
+  final String? clearPendingQuestionResolvedSessionId,
+  final bool clearPendingQuestionChanged = false,
+  final bool clearPendingPermissionFound = false,
+  final bool clearPendingPermissionChanged = false,
+}) extends ActiveSessionTracker {
   int coldStartCalls = 0;
   int resetCalls = 0;
   int buildSummaryCalls = 0;
-  List<ProjectActivitySummary> summary;
-  final Map<String, String> _sessionDirectories;
-  final String? resolvedWorktree;
+  final Map<String, String> _sessionDirectories = Map<String, String>.from(sessionDirectories);
   String? lastRegisteredSessionId;
   String? lastRegisteredDirectory;
   String? lastRegisteredParentId;
@@ -2430,11 +2398,6 @@ class FakeActiveSessionTracker({
   List<PermissionRequest> populatedPermissions = const [];
   bool? pendingQuestionsBaselineTrusted;
   bool? pendingPermissionsBaselineTrusted;
-  final bool clearPendingQuestionFound;
-  final String? clearPendingQuestionResolvedSessionId;
-  final bool clearPendingQuestionChanged;
-  final bool clearPendingPermissionFound;
-  final bool clearPendingPermissionChanged;
   String? lastClearedQuestionId;
   String? lastClearedQuestionSessionId;
   String? lastClearedPermissionRequestId;
@@ -2447,8 +2410,7 @@ class FakeActiveSessionTracker({
   final List<({String directory, String worktree})> registeredAliases = [];
   bool registerWorktreeAliasReturns = false;
 
-  this : _sessionDirectories = Map<String, String>.from(sessionDirectories),
-       super(OpenCodeRepository(FakeOpenCodeApi()));
+  this : super(OpenCodeRepository(FakeOpenCodeApi()));
 
   @override
   Future<void> coldStart() async {

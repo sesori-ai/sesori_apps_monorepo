@@ -9,9 +9,7 @@ import "diff_line_widget.dart";
 /// Sliver that renders the body of one expanded file diff: a lazy list of
 /// its hunk headers and lines, or an italic placeholder when the diff was
 /// skipped (binary file, too large, or unreadable).
-class const DiffFileContentSliver({super.key, required this.viewModel}) extends StatelessWidget {
-  final DiffFileViewModel viewModel;
-
+class const DiffFileContentSliver({super.key, required final DiffFileViewModel viewModel}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.skipReason case final skipReason?) {
@@ -36,9 +34,7 @@ class const DiffFileContentSliver({super.key, required this.viewModel}) extends 
   }
 }
 
-class const _SkippedPlaceholder({required this.reason}) extends StatelessWidget {
-  final FileDiffSkipReason reason;
-
+class const _SkippedPlaceholder({required final FileDiffSkipReason reason}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

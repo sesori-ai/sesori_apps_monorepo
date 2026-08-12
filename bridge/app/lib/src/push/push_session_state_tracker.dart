@@ -4,13 +4,10 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "push_session_state_tracker_types.dart";
 
-class PushSessionStateTracker({required DateTime Function() now}) {
+class PushSessionStateTracker({required final DateTime Function() _now}) {
   final Map<String, _PushTrackedSessionState> _sessions = {};
   final Map<String, _PushTrackedMessageRole> _messageRoles = {};
   final Map<String, String> _permissionRequestToSession = {};
-  final DateTime Function() _now;
-
-  this : _now = now;
 
   void handleEvent(SesoriSseEvent event) {
     final now = _now();
@@ -33,7 +30,11 @@ class PushSessionStateTracker({required DateTime Function() now}) {
         }
       case SesoriMessageUpdated(:final info):
         _messageRoles[info.id] = _PushTrackedMessageRole(
-          role: info is MessageAssistant ? "assistant" : info is MessageUser ? "user" : "error",
+          role: info is MessageAssistant
+              ? "assistant"
+              : info is MessageUser
+              ? "user"
+              : "error",
           sessionId: info.sessionID,
           updatedAt: now,
         );
@@ -86,8 +87,7 @@ class PushSessionStateTracker({required DateTime Function() now}) {
   bool hasPendingInteraction(String sessionId) {
     return _collectSubtreeStates(rootSessionId: sessionId).any(
       (sessionState) =>
-          sessionState.pendingQuestionIds.isNotEmpty ||
-          sessionState.pendingPermissionRequestIds.isNotEmpty,
+          sessionState.pendingQuestionIds.isNotEmpty || sessionState.pendingPermissionRequestIds.isNotEmpty,
     );
   }
 
@@ -547,11 +547,7 @@ final class _PushTrackedSessionState() {
 }
 
 final class const _PushTrackedMessageRole({
-    required this.role,
-    required this.sessionId,
-    required this.updatedAt,
-  }) {
-  final String role;
-  final String sessionId;
-  final DateTime updatedAt;
-}
+  required final String role,
+  required final String sessionId,
+  required final DateTime updatedAt,
+});

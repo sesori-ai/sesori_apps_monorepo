@@ -6,16 +6,9 @@ import "models/product_analytics_state.dart";
 
 enum _ProductAnalyticsActivationPolicy() { inactive, authoritativeSynchronization }
 
-final class const ProductAnalyticsPreferenceTransition({required this.snapshot, required this.state}) {
-  final ProductAnalyticsPreferenceSnapshot snapshot;
-  final ProductAnalyticsState state;
-}
+final class const ProductAnalyticsPreferenceTransition({required final ProductAnalyticsPreferenceSnapshot snapshot, required final ProductAnalyticsState state});
 
-final class const ProductAnalyticsPreferenceStateMapper({required AnalyticsRuntimeCapability capability}) {
-  final AnalyticsRuntimeCapability _capability;
-
-  this
-    : _capability = capability;
+final class const ProductAnalyticsPreferenceStateMapper({required final AnalyticsRuntimeCapability _capability}) {
 
   ProductAnalyticsState fromLocal({
     required ProductAnalyticsPreferenceSnapshot snapshot,

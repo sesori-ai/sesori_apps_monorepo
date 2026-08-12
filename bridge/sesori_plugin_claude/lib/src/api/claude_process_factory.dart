@@ -30,14 +30,10 @@ final class const ClaudeProcessSpawnFailed() extends ClaudeProcessSpawnEvent;
 /// Routes Claude children through the bridge host and reports binary spawn
 /// outcomes separately from per-session process exits.
 final class HostClaudeProcessFactory({
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) {
-  this : _processes = processes,
-       _environment = Map.unmodifiable(environment);
-
-  final HostProcessService _processes;
-  final Map<String, String> _environment;
+  required final HostProcessService _processes,
+  required Map<String, String> environment,
+}) {
+  final Map<String, String> _environment = Map.unmodifiable(environment);
   final StreamController<ClaudeProcessSpawnEvent> _events = StreamController.broadcast();
 
   Stream<ClaudeProcessSpawnEvent> get events => _events.stream;
@@ -63,15 +59,9 @@ final class HostClaudeProcessFactory({
 }
 
 final class _HostClaudeProcessHandle({
-    required SpawnedProcess process,
-    required HostProcessService processes,
-  }) implements ClaudeProcessHandle {
-  this : _process = process,
-       _processes = processes;
-
-  final SpawnedProcess _process;
-  final HostProcessService _processes;
-
+  required final SpawnedProcess _process,
+  required final HostProcessService _processes,
+}) implements ClaudeProcessHandle {
   @override
   Stream<List<int>> get stdout => _process.stdout;
 
@@ -117,9 +107,7 @@ Future<ClaudeProcessHandle> defaultClaudeProcessFactory(ClaudeLaunchSpec spec) a
   return _RealClaudeProcess(process);
 }
 
-class _RealClaudeProcess(this._process) implements ClaudeProcessHandle {
-  final io.Process _process;
-
+class _RealClaudeProcess(final io.Process _process) implements ClaudeProcessHandle {
   @override
   Stream<List<int>> get stdout => _process.stdout;
 

@@ -26,60 +26,48 @@ import "../../utils/color_extensions.dart";
 /// );
 /// ```
 class const PregoBottomSheet({
-    super.key,
-    required this.title,
-    required this.child,
-    this.subtitle,
-    this.alignment = PregoSheetTitleAlignment.center,
-    this.onClose,
-    this.onBack,
-    this.actions,
-    this.leading,
-    this.surfaceColor,
-    this.contentPadding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
-    this.handleBottomSafeArea = true,
-    this.topInset,
-  }) extends StatelessWidget {
-  /// Header title. See [PregoTopNavigationSheets.title].
-  final String title;
+  super.key,
 
-  /// Optional header subtitle. See [PregoTopNavigationSheets.subtitle].
-  final String? subtitle;
+  /// Header title. See [PregoTopNavigationSheets.title].
+  required final String title,
 
   /// The sheet body. It is padded down to clear the header and scrolls behind
   /// it; wrap tall content in a single widget (e.g. a [Column]).
-  final Widget child;
+  required final Widget child,
+
+  /// Optional header subtitle. See [PregoTopNavigationSheets.subtitle].
+  final String? subtitle,
 
   /// Header title alignment. Defaults to [PregoSheetTitleAlignment.center].
-  final PregoSheetTitleAlignment alignment;
+  final PregoSheetTitleAlignment alignment = PregoSheetTitleAlignment.center,
 
   /// Invoked by the header's close button. [showPregoBottomSheet] injects a
   /// route-pop; pass your own when using this widget directly.
-  final VoidCallback? onClose;
+  final VoidCallback? onClose,
 
   /// When set, the header's leading slot is a back button invoking this — for
   /// in-sheet navigation. It sits alongside the trailing close button rather
   /// than replacing it.
-  final VoidCallback? onBack;
+  final VoidCallback? onBack,
 
   /// Trailing header actions. See [PregoTopNavigationSheets.actions].
-  final List<Widget>? actions;
+  final List<Widget>? actions,
 
   /// Overrides the header's leading slot entirely.
-  final Widget? leading;
+  final Widget? leading,
 
   /// The sheet surface colour (also the scroll-edge fade colour). Defaults to
   /// `bg-secondary` — a raised surface that flips correctly in dark mode.
-  final Color? surfaceColor;
+  final Color? surfaceColor,
 
   /// Padding applied around [child] (not the header). Defaults to 16pt
   /// horizontal.
-  final EdgeInsetsGeometry contentPadding;
+  final EdgeInsetsGeometry contentPadding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
 
   /// Whether to pad the body up by the bottom safe area (home indicator) when
   /// the keyboard is hidden. Set `false` for content that scrolls to the very
   /// bottom edge. The keyboard inset is always applied.
-  final bool handleBottomSafeArea;
+  final bool handleBottomSafeArea = true,
 
   /// The top inset (status bar / notch) the sheet keeps clear when it grows to
   /// full height.
@@ -90,8 +78,8 @@ class const PregoBottomSheet({
   /// in `MediaQuery.removePadding(removeTop: true)`). When null — e.g. a direct
   /// caller not behind that wrapper — the sheet falls back to
   /// [MediaQuery.paddingOf].
-  final double? topInset;
-
+  final double? topInset,
+}) extends StatelessWidget {
   /// Extra height, below the header, over which the scroll-edge gradient fades
   /// content out.
   static const double _fadeExtent = PregoSpacing.x3l;

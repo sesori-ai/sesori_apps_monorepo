@@ -61,8 +61,8 @@ class DeferredPartEventBuffer() {
   }
 }
 
-final class const _DeferredPartEvent({required this.partId, required this.event, required this.sequence}) {
-  final String partId;
-  final SesoriSessionEvent event;
-  final int sequence;
-}
+final class const _DeferredPartEvent({
+  required final String partId,
+  required final SesoriSessionEvent event,
+  required final int sequence,
+});

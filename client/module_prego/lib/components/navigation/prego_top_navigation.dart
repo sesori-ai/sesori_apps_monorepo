@@ -72,60 +72,40 @@ enum PregoTopNavigationTitleMode() {
 /// ```
 class const PregoTopNavigation({
     super.key,
-    required this.title,
-    this.subtitle,
-    this.subtitleText,
-    this.titleMode = PregoTopNavigationTitleMode.collapsing,
-    this.leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
-    this.scrollController,
-    this.actions,
-    this.leading,
-    this.onBack,
-    this.automaticallyImplyLeading = true,
-  }) extends StatelessWidget implements PreferredSizeWidget {
-  /// Primary title — fixed (inline and back-leading modes) or fading in as the
+    /// Primary title — fixed (inline and back-leading modes) or fading in as the
   /// large title collapses (collapsing mode), depending on [titleMode].
-  final String title;
-
-  /// The back-leading title block's second line — a self-contained,
+  required final String title,
+    /// The back-leading title block's second line — a self-contained,
   /// caller-composed widget (typically a [PregoNavSubtitle]) holding
   /// everything the row needs: icon, status dot, tap affordance. Back-leading
   /// mode only; null renders the title on its own.
-  final Widget? subtitle;
-
-  /// Optional second text line rendered beneath the centred [title] in the
+  final Widget? subtitle,
+    /// Optional second text line rendered beneath the centred [title] in the
   /// bar's own muted style (inline mode). A `null` or empty value renders the
   /// title on its own.
-  final String? subtitleText;
-
-  /// How the bar presents its title. See the class doc for the three modes.
-  final PregoTopNavigationTitleMode titleMode;
-
-  /// Weight of the back-leading title line ([PregoNavLeadingTitle.emphasis]).
+  final String? subtitleText,
+    /// How the bar presents its title. See the class doc for the three modes.
+  final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,
+    /// Weight of the back-leading title line ([PregoNavLeadingTitle.emphasis]).
   /// Back-leading mode only.
-  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis;
-
-  /// Drives the collapsing title in collapsing mode: the bar fades its title in
+  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
+    /// Drives the collapsing title in collapsing mode: the bar fades its title in
   /// as this controller's offset crosses [collapseDistance]. Ignored in the
   /// other modes. Typically [PregoGlassScaffold]'s own controller.
-  final ScrollController? scrollController;
-
-  /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
+  final ScrollController? scrollController,
+    /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
   /// match the leading/back button.
-  final List<Widget>? actions;
-
-  /// Overrides the leading slot entirely. Takes precedence over [onBack] and
+  final List<Widget>? actions,
+    /// Overrides the leading slot entirely. Takes precedence over [onBack] and
   /// [automaticallyImplyLeading].
-  final Widget? leading;
-
-  /// When set (and [leading] is null), renders a glass back button that invokes
+  final Widget? leading,
+    /// When set (and [leading] is null), renders a glass back button that invokes
   /// this callback instead of relying on the enclosing navigator.
-  final VoidCallback? onBack;
-
-  /// Whether the bar may infer a back button from the navigator when neither
+  final VoidCallback? onBack,
+    /// Whether the bar may infer a back button from the navigator when neither
   /// [leading] nor [onBack] is supplied.
-  final bool automaticallyImplyLeading;
-
+  final bool automaticallyImplyLeading = true,
+  }) extends StatelessWidget implements PreferredSizeWidget {
   /// [GlassAppBar]'s content height — matches the Figma design. Bodies that own
   /// their own scroll behind the bar (see [PregoGlassScaffold] with
   /// `reserveBarSpace: false`) should take their top inset from

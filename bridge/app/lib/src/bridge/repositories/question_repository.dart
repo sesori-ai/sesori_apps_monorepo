@@ -15,22 +15,12 @@ import "models/session_operation.dart";
 /// Delegates to the plugin and maps the plugin-contract models to the shared
 /// wire models so routing handlers stay plugin-agnostic.
 class QuestionRepository({
-    required PluginRuntime runtime,
-    required SessionDao sessionDao,
-    required ProjectsDao projectsDao,
-    required Duration aggregateSourceDeadline,
-  }) {
+  required final PluginRuntime _runtime,
+  required final SessionDao _sessionDao,
+  required final ProjectsDao _projectsDao,
+  required final Duration _aggregateSourceDeadline,
+}) {
   static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
-
-  final PluginRuntime _runtime;
-  final SessionDao _sessionDao;
-  final ProjectsDao _projectsDao;
-  final Duration _aggregateSourceDeadline;
-
-  this : _runtime = runtime,
-       _sessionDao = sessionDao,
-       _projectsDao = projectsDao,
-       _aggregateSourceDeadline = aggregateSourceDeadline;
 
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
@@ -54,7 +44,7 @@ class QuestionRepository({
           if (tombstoned.contains(binding.backendSessionId)) return const <PendingQuestion>[];
         }
         final questions = await plugin.getPendingQuestions(sessionId: binding.backendSessionId);
-        return _mapPendingQuestions(
+        return await _mapPendingQuestions(
           pluginId: plugin.id,
           questions: [
             for (final question in questions)
@@ -134,7 +124,7 @@ class QuestionRepository({
     switch (plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginQuestions = await plugin.getProjectQuestions(projectId: directory);
-        return _mapPendingQuestions(pluginId: plugin.id, questions: pluginQuestions);
+        return await _mapPendingQuestions(pluginId: plugin.id, questions: pluginQuestions);
 
       case final BridgeDerivedProjectsPluginApi plugin:
         final (sessionProjectPaths, tombstoned, ownScopedQuestions) = await (
@@ -176,7 +166,7 @@ class QuestionRepository({
             questionsByKey["${question.sessionID}:${question.id}"] = question;
           }
         }
-        return _mapPendingQuestions(
+        return await _mapPendingQuestions(
           pluginId: plugin.id,
           questions: questionsByKey.values.toList(growable: false),
         );
@@ -197,7 +187,7 @@ class QuestionRepository({
       sessionId: sessionId,
       operation: SessionOperation.replyToQuestion,
     );
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.replyToQuestion,
       body: (plugin) async {
@@ -207,7 +197,7 @@ class QuestionRepository({
           operation: SessionOperation.replyToQuestion,
           plugin: plugin,
         );
-        return plugin.replyToQuestion(
+        return await plugin.replyToQuestion(
           questionId: questionId,
           sessionId: binding.backendSessionId,
           answers: answers.map((answer) => answer.values).toList(),
@@ -224,7 +214,7 @@ class QuestionRepository({
       sessionId: sessionId,
       operation: SessionOperation.rejectQuestion,
     );
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.rejectQuestion,
       body: (plugin) async {
@@ -234,7 +224,7 @@ class QuestionRepository({
           operation: SessionOperation.rejectQuestion,
           plugin: plugin,
         );
-        return plugin.rejectQuestion(
+        return await plugin.rejectQuestion(
           questionId: questionId,
           sessionId: binding.backendSessionId,
         );
@@ -248,7 +238,7 @@ class QuestionRepository({
   }) async {
     final bindings = await _sessionDao.getSessionsForPlugin(pluginId: pluginId);
     final roots = bindings.values.where((binding) => binding.parentSessionId == null);
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: pluginId,
       operation: SessionOperation.rejectQuestion,
       body: (plugin) async {

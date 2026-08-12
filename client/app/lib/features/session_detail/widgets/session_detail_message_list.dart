@@ -58,43 +58,32 @@ import "user_message_card.dart";
 /// [FollowDetachScrollable]; this widget owns message rendering, the
 /// detached snapshot, and the follow/chat controller lifecycles.
 class const SessionDetailMessageList({
-    super.key,
-    required this.projectId,
-    required this.messages,
-    required this.streamingText,
-    required this.children,
-    required this.childStatuses,
-    required this.onLoadOlderMessages,
-    required this.isLoadingOlderMessages,
-    this.retryErrorMessage,
-    this.bottomInset = 0,
-    this.topInset = 0,
-  }) extends StatefulWidget {
-  final String? projectId;
-  final List<MessageWithParts> messages;
-  final Map<String, String> streamingText;
-  final List<Session> children;
-  final Map<String, SessionStatus> childStatuses;
-  final String? retryErrorMessage;
-  final bool isLoadingOlderMessages;
+  super.key,
+  required final String? projectId,
+  required final List<MessageWithParts> messages,
+  required final Map<String, String> streamingText,
+  required final List<Session> children,
+  required final Map<String, SessionStatus> childStatuses,
+
+  /// Requests the page of messages before the ones shown, or null when the
+  /// start of the transcript is already loaded.
+  required final Future<void> Function()? onLoadOlderMessages,
+  required final bool isLoadingOlderMessages,
+  final String? retryErrorMessage,
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
   /// both as extra bottom scroll padding — so the newest message rests clear of
   /// the composer while older content scrolls up behind its fade — and to lift
   /// the "jump to latest" pill above the composer. Zero in the read-only
   /// variant, which renders no composer.
-  final double bottomInset;
+  final double bottomInset = 0,
 
   /// Top inset (status bar + nav bar height) the list scrolls behind. Added as
   /// extra top scroll padding so the oldest message rests clear of the
   /// transparent bar at full scroll, while content in between scrolls up behind
   /// it and dissolves into the bar's fade.
-  final double topInset;
-
-  /// Requests the page of messages before the ones shown, or null when the
-  /// start of the transcript is already loaded.
-  final Future<void> Function()? onLoadOlderMessages;
-
+  final double topInset = 0,
+}) extends StatefulWidget {
   @override
   State<SessionDetailMessageList> createState() => _SessionDetailMessageListState();
 }
@@ -455,17 +444,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             // Full-row control: drop the package's bubble/alignment/
             // gesture wrapper and render our cards bare, exactly as the
             // previous ListView did.
-            chatMessageBuilder:
-                (
-                  context,
-                  message,
-                  index,
-                  animation,
-                  child, {
-                  bool? isRemoved,
-                  required bool isSentByMe,
-                  chat_core.MessageGroupStatus? groupStatus,
-                }) => child,
+            chatMessageBuilder: (
+              context,
+              message,
+              index,
+              animation,
+              child, {
+              bool? isRemoved,
+              required bool isSentByMe,
+              chat_core.MessageGroupStatus? groupStatus,
+            }) => child,
             customMessageBuilder:
                 (
                   context,

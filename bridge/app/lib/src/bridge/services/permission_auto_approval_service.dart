@@ -7,23 +7,14 @@ import "../repositories/session_repository.dart";
 import "pending_interaction_service.dart";
 
 class PermissionAutoApprovalService({
-    required SessionRepository sessionRepository,
-    required PermissionRepository permissionRepository,
-    required PendingInteractionService pendingInteractionService,
-    required BridgeSettingsRepository bridgeSettingsRepository,
-  }) {
-  final SessionRepository _sessionRepository;
-  final PermissionRepository _permissionRepository;
-  final PendingInteractionService _pendingInteractionService;
-  final BridgeSettingsRepository _bridgeSettingsRepository;
+  required final SessionRepository _sessionRepository,
+  required final PermissionRepository _permissionRepository,
+  required final PendingInteractionService _pendingInteractionService,
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+}) {
   final Set<({String requestId, String sessionId})> _approvedPermissions = {};
 
   bool _disposed = false;
-
-  this : _sessionRepository = sessionRepository,
-       _permissionRepository = permissionRepository,
-       _pendingInteractionService = pendingInteractionService,
-       _bridgeSettingsRepository = bridgeSettingsRepository;
 
   bool consumeReply({required String requestId, required String sessionId}) {
     return _approvedPermissions.remove((requestId: requestId, sessionId: sessionId));

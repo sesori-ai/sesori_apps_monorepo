@@ -29,18 +29,16 @@ String formatDroppedSseFrameLog({
 }
 
 class OpenCodePlugin._({
-    required OpenCodeService service,
-    required io.HttpClient httpClient,
-    required String serverUrl,
-    required String? password,
-    required bool autoInitialize,
-    void Function()? onConnected,
-    void Function()? onDisconnected,
-  }) implements OpenCodeManagedApi {
-  final OpenCodeService _service;
+  required final OpenCodeService _service,
+  required final io.HttpClient _httpClient,
+  required String serverUrl,
+  required String? password,
+  required bool autoInitialize,
+  void Function()? onConnected,
+  void Function()? onDisconnected,
+}) implements OpenCodeManagedApi {
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
-  final io.HttpClient _httpClient;
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
   // One shared error-normalization mapper drives both the live SSE path
   // ([_mapper]) and the REST load path ([_pluginModelMapper]) so an errored
@@ -65,7 +63,7 @@ class OpenCodePlugin._({
   /// `autoInitialize: false` and awaits [initialize] itself so it can surface a
   /// cold-start failure as a degraded status. [onConnected]/[onDisconnected]
   /// follow the SSE transport's live state for lifecycle reporting.
-  factory OpenCodePlugin({
+  factory({
     required String serverUrl,
     String? password,
     bool autoInitialize = true,
@@ -93,10 +91,7 @@ class OpenCodePlugin._({
     );
   }
 
-  this : _service = service,
-       _httpClient = httpClient,
-       _parser = SseEventParser(),
-       _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
+  this : _parser = SseEventParser(), _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _sseConnection = SseConnection(
       targetUrl: serverUrl,
       password: password,
@@ -280,7 +275,7 @@ class OpenCodePlugin._({
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    return _call(() => _service.getCommands(projectId: projectId));
+    return await _call(() => _service.getCommands(projectId: projectId));
   }
 
   @override
@@ -293,7 +288,7 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
-    return _callAndSyncWorkState(
+    return await _callAndSyncWorkState(
       () => _service.createSession(
         directory: directory,
         parentSessionId: parentSessionId,
@@ -570,7 +565,7 @@ class OpenCodePlugin._({
 
   @override
   Future<PluginProject> getProject(String projectId) async {
-    return _call(() => _service.getProject(directory: projectId));
+    return await _call(() => _service.getProject(directory: projectId));
   }
 
   @override

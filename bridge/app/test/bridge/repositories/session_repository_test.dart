@@ -2227,10 +2227,10 @@ void main() {
           agent: null,
           model: null,
         ),
-        () async => repository.getSessionMessages(sessionId: "gone"),
+        () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),
         () => repository.abortSession(sessionId: "gone"),
-        () async => repository.getChildSessions(sessionId: "gone"),
+        () async => await repository.getChildSessions(sessionId: "gone"),
       ];
       for (final operation in guardedOperations) {
         await expectLater(
@@ -2454,8 +2454,7 @@ void main() {
 }
 
 class _GenerationReplacingRuntime({required BridgePluginApi plugin}) extends TestPluginRuntime {
-  this
-    : super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
+  this : super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
 
   final Completer<void> observationCollected = Completer<void>();
   final Completer<void> _replacement = Completer<void>();
@@ -2479,16 +2478,14 @@ class _GenerationReplacingRuntime({required BridgePluginApi plugin}) extends Tes
 }
 
 class _CapabilityProbeFailingRuntime({
-    required Iterable<BridgePluginApi> plugins,
-    required String failingPluginId,
-  }) extends TestPluginRuntime {
-  this : _failingPluginId = failingPluginId,
-       super(
-         plugins: {for (final plugin in plugins) plugin.id: plugin},
-         eligiblePluginIds: null,
-       );
-
-  final String _failingPluginId;
+  required Iterable<BridgePluginApi> plugins,
+  required final String _failingPluginId,
+}) extends TestPluginRuntime {
+  this
+    : super(
+        plugins: {for (final plugin in plugins) plugin.id: plugin},
+        eligiblePluginIds: null,
+      );
 
   @override
   Future<T?> useIfActive<T>({
@@ -2673,9 +2670,8 @@ class _FakePersistedCleanupPlugin() extends _FakeBridgePlugin implements Persist
   }
 }
 
-class _CountingSessionDao({required this.tombstones, required this.readBlock}) implements SessionDao {
-  final Set<String> tombstones;
-  final Completer<void>? readBlock;
+class _CountingSessionDao({required final Set<String> tombstones, required final Completer<void>? readBlock})
+    implements SessionDao {
   int bulkReadCount = 0;
   int failuresRemaining = 0;
 
@@ -2747,11 +2743,10 @@ class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends Proj
 /// [BridgeDerivedProjectsPluginApi.listAllSessions]. `id` is "codex" so the
 /// repository's stored-attribution lookup
 /// (`getSessionProjectPaths(pluginId: ...)`) matches the seeded session rows.
-class _FakeDerivedPlugin({required this.launchDirectory, required this.allSessions}) implements BridgeDerivedProjectsPluginApi {
-  @override
-  final String launchDirectory;
-
-  List<PluginSession> allSessions;
+class _FakeDerivedPlugin({
+  @override required final String launchDirectory,
+  required var List<PluginSession> allSessions,
+}) implements BridgeDerivedProjectsPluginApi {
   String? lastRenameSessionId;
   List<PluginSession> childSessions = const [];
   Object? getChildSessionsError;

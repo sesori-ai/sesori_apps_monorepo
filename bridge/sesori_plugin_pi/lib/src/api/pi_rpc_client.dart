@@ -14,51 +14,39 @@ import "pi_process_factory.dart";
 sealed class const PiRpcException() implements Exception;
 
 /// Pi rejected a command with untyped prose.
-final class const PiRpcCommandFailureException({required this.command, required this.error}) extends PiRpcException {
-  final PiRpcCommand command;
-  final String error;
-
+final class const PiRpcCommandFailureException({required final PiRpcCommand command, required final String error})
+    extends PiRpcException {
   @override
   String toString() => "PiRpcCommandFailureException(command: ${command.wireValue})";
 }
 
 /// A command could not be written to Pi's stdin.
-final class const PiRpcWriteException({required this.command, required this.cause}) extends PiRpcException {
-  final PiRpcCommand command;
-  final Object cause;
-
+final class const PiRpcWriteException({required final PiRpcCommand command, required final Object cause})
+    extends PiRpcException {
   @override
   String toString() => "PiRpcWriteException(command: ${command.wireValue})";
 }
 
 /// Pi's stdout stream failed before the process exited.
-final class const PiRpcStdoutException({required this.cause}) extends PiRpcException {
-  final Object cause;
-
+final class const PiRpcStdoutException({required final Object cause}) extends PiRpcException {
   @override
   String toString() => "PiRpcStdoutException";
 }
 
 /// Pi's stdin failed asynchronously after accepting a write.
-final class const PiRpcStdinException({required this.cause}) extends PiRpcException {
-  final Object cause;
-
+final class const PiRpcStdinException({required final Object cause}) extends PiRpcException {
   @override
   String toString() => "PiRpcStdinException";
 }
 
 /// The Pi process exited.
-final class const PiRpcProcessExitException({required this.exitCode}) extends PiRpcException {
-  final int exitCode;
-
+final class const PiRpcProcessExitException({required final int exitCode}) extends PiRpcException {
   @override
   String toString() => "PiRpcProcessExitException(exitCode: $exitCode)";
 }
 
 /// A command was sent before a Pi process was started.
-final class const PiRpcNotRunningException({required this.command}) extends PiRpcException {
-  final PiRpcCommand command;
-
+final class const PiRpcNotRunningException({required final PiRpcCommand command}) extends PiRpcException {
   @override
   String toString() => "PiRpcNotRunningException(command: ${command.wireValue})";
 }
@@ -75,17 +63,13 @@ sealed class const PiExtensionUiReply() {
 }
 
 /// Answers a `select`, `input`, or `editor` dialog.
-final class const PiExtensionUiValueReply({required this.value}) extends PiExtensionUiReply {
-  final String value;
-
+final class const PiExtensionUiValueReply({required final String value}) extends PiExtensionUiReply {
   @override
   Map<String, Object?> get fields => {"value": value};
 }
 
 /// Answers a `confirm` dialog.
-final class const PiExtensionUiConfirmationReply({required this.confirmed}) extends PiExtensionUiReply {
-  final bool confirmed;
-
+final class const PiExtensionUiConfirmationReply({required final bool confirmed}) extends PiExtensionUiReply {
   @override
   Map<String, Object?> get fields => {"confirmed": confirmed};
 }
@@ -113,12 +97,9 @@ final class const PiExtensionUiCancelledReply() extends PiExtensionUiReply {
 ///
 /// No prompt, transcript, tool, dialog, or raw frame content is ever logged.
 class PiRpcClient({
-    required PiLaunchSpec launchSpec,
-    required PiProcessFactory processFactory,
-  }) {
-  this : _launchSpec = launchSpec,
-       _processFactory = processFactory;
-
+  required final PiLaunchSpec _launchSpec,
+  required final PiProcessFactory _processFactory,
+}) {
   /// How many parsed frames are held while no router has attached yet.
   ///
   /// Pi streams continuously, so an unbounded startup buffer would grow with
@@ -130,9 +111,6 @@ class PiRpcClient({
 
   /// Longest retained stderr line. A crashing runtime can emit very long lines.
   static const int _stderrLineLimit = 500;
-
-  final PiLaunchSpec _launchSpec;
-  final PiProcessFactory _processFactory;
 
   PiProcessHandle? _process;
   Future<void>? _starting;

@@ -237,36 +237,27 @@ CodexSessionRecord _record({
   model: "gpt-5.4-codex",
 );
 
-class _StubCodexCatalogRepository(this.records) extends CodexCatalogRepository {
+class _StubCodexCatalogRepository(final List<CodexSessionRecord> records) extends CodexCatalogRepository {
   this : super(rolloutApi: CodexRolloutApi(environment: const {}));
-
-  final List<CodexSessionRecord> records;
 
   @override
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
 }
 
 class _DiscoveryStubCodexCatalogRepository({
-    required super.rolloutApi,
-    required this.records,
-  }) extends CodexCatalogRepository {
-  final List<CodexSessionRecord> records;
-
+  required super.rolloutApi,
+  required final List<CodexSessionRecord> records,
+}) extends CodexCatalogRepository {
   @override
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
 }
 
 class _DiscoveryRolloutApi({
-    required this.documentsCodexDirectory,
-    required this.projectlessThreadIds,
-    required this.desktopStateError,
-  }) extends CodexRolloutApi {
+  @override required final String? documentsCodexDirectory,
+  required final Set<String> projectlessThreadIds,
+  required final Object? desktopStateError,
+}) extends CodexRolloutApi {
   this : super(environment: const {});
-
-  @override
-  final String? documentsCodexDirectory;
-  final Set<String> projectlessThreadIds;
-  final Object? desktopStateError;
 
   @override
   Future<CodexDesktopStateDto> readDesktopState() async {

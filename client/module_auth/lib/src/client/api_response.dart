@@ -6,7 +6,7 @@ part "api_response.freezed.dart";
 
 @Freezed()
 sealed class ApiResponse<T>._() with _$ApiResponse<T> {
-  factory ApiResponse.success(T data) = SuccessResponse;
+  factory success(T data) = SuccessResponse;
 
-  factory ApiResponse.error(ApiError error) = ErrorResponse;
+  factory error(ApiError error) = ErrorResponse;
 }

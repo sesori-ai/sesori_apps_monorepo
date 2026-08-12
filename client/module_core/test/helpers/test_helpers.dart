@@ -219,16 +219,13 @@ class MockConnectionService() extends Mock implements ConnectionService {
   void emitDataMayBeStale() => _dataMayBeStale.add(null);
 }
 
-class MockRouteSource({AppRouteDef? initialRoute, this.currentLocation}) extends Mock implements RouteSource {
-  final BehaviorSubject<AppRouteDef?> _currentRoute;
-
-  this : _currentRoute = BehaviorSubject.seeded(initialRoute);
+class MockRouteSource({AppRouteDef? initialRoute, @override var String? currentLocation})
+    extends Mock
+    implements RouteSource {
+  final BehaviorSubject<AppRouteDef?> _currentRoute = BehaviorSubject.seeded(initialRoute);
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
-
-  @override
-  String? currentLocation;
 
   AppRouteDef? get currentRoute => _currentRoute.value;
 

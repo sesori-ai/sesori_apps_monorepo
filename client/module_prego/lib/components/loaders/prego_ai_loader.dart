@@ -19,17 +19,14 @@ import "../../utils/lerp_utils.dart";
 /// The sparkle is decorative — it always accompanies a label that carries the
 /// meaning, so it is excluded from semantics.
 class const PregoAiLoader({
-    super.key,
-    this.size = 16,
-    this.animate = true,
-    this.phase = 0,
-  }) extends StatefulWidget {
+  super.key,
+
   /// Side of the square the sparkle is painted into. Defaults to the 16px the
   /// design uses inline with a text-sm label.
-  final double size;
+  final double size = 16,
 
   /// Whether the sparkle twinkles. When false it rests on the solid keyframe.
-  final bool animate;
+  final bool animate = true,
 
   /// Fraction of the loop [0, 1) this sparkle starts at.
   ///
@@ -39,8 +36,8 @@ class const PregoAiLoader({
   /// derived from something stable about the row, so a given row's phase
   /// survives a rebuild. Ignored while the sparkle is at rest, which always
   /// shows the solid keyframe.
-  final double phase;
-
+  final double phase = 0,
+}) extends StatefulWidget {
   /// A [phase] derived from [seed], for staggering a list of sparkles.
   ///
   /// Rows pass something stable about themselves (their id), so each row keeps
@@ -51,7 +48,8 @@ class const PregoAiLoader({
   State<PregoAiLoader> createState() => _PregoAiLoaderState();
 }
 
-class _PregoAiLoaderState() extends State<PregoAiLoader>
+class _PregoAiLoaderState()
+    extends State<PregoAiLoader>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// One full twinkle. Slow enough to read as breathing rather than blinking.
   static const Duration _period = Duration(milliseconds: 1400);
@@ -119,24 +117,18 @@ class _PregoAiLoaderState() extends State<PregoAiLoader>
 /// times a second. The cost is that [shouldRepaint] is only consulted when the
 /// widget rebuilds, so it must compare everything *except* the animation.
 class _AiLoaderPainter({
-    required Animation<double> repaint,
-    required this.phase,
-    required this.solid,
-    required this.outline,
-    required this.faded,
-  }) extends CustomPainter {
-  this : _progress = repaint,
-       super(repaint: repaint);
-
-  final double phase;
+  required Animation<double> repaint,
+  required final double phase,
 
   /// The three designed keyframes: a solid brand sparkle, a hollow outline, and
   /// a faded solid one.
-  final Color solid;
-  final Color outline;
-  final Color faded;
+  required final Color solid,
+  required final Color outline,
+  required final Color faded,
+}) extends CustomPainter {
+  this : super(repaint: repaint);
 
-  final Animation<double> _progress;
+  final Animation<double> _progress = repaint;
 
   /// The sparkle's coordinate space, from the source icon.
   static const double _viewBox = 24;

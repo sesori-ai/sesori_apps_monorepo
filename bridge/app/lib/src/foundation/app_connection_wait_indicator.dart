@@ -10,15 +10,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 /// limited terminals receive one static status line instead, so the bridge's
 /// state remains understandable without ANSI cursor control.
 class AppConnectionWaitIndicator({
-    required Stdout out,
-    required Map<String, String> environment,
-    required Duration frameInterval,
-  }) {
-  this : _out = out,
-       _frameInterval = frameInterval,
-       _unicode = TerminalGlyphValidator.isSupported(environment: environment),
-       _animated = _canAnimate(out: out, environment: environment);
-
+  required final Stdout _out,
+  required Map<String, String> environment,
+  required final Duration _frameInterval,
+}) {
   static const String waitingMessage = "Waiting for Sesori on your phone to connect";
   static const String staticWaitingMessage =
       "Waiting for Sesori on your phone to connect. The bridge is already running.";
@@ -27,10 +22,8 @@ class AppConnectionWaitIndicator({
   static const List<String> _asciiFrames = ["|", "/", "-", r"\"];
   static const int _animatedLineWidth = waitingMessage.length + 2;
 
-  final Stdout _out;
-  final Duration _frameInterval;
-  final bool _unicode;
-  final bool _animated;
+  final bool _unicode = TerminalGlyphValidator.isSupported(environment: environment);
+  final bool _animated = _canAnimate(out: _out, environment: environment);
 
   Timer? _timer;
   int _frameIndex = 0;

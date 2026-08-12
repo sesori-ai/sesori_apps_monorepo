@@ -7,15 +7,9 @@ enum ShutdownSignal() { graceful, force }
 /// Carries the platform [ProcessSignal] that was actually sent — the
 /// interface package is CLI-only, so depending on `dart:io` here is accepted.
 class const SignalResult({
-    required this.pid,
-    required this.requestedSignal,
-    required this.deliveredSignal,
-    required this.wasRequested,
-    required this.attemptedAt,
-  }) {
-  final int pid;
-  final ShutdownSignal requestedSignal;
-  final ProcessSignal deliveredSignal;
-  final bool wasRequested;
-  final DateTime attemptedAt;
-}
+    required final int pid,
+    required final ShutdownSignal requestedSignal,
+    required final ProcessSignal deliveredSignal,
+    required final bool wasRequested,
+    required final DateTime attemptedAt,
+  });

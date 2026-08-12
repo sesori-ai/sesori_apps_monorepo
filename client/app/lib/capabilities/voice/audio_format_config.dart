@@ -14,25 +14,19 @@ import "package:universal_platform/universal_platform.dart";
 /// to avoid a hardware sample-rate mismatch that produces silent recordings).
 @lazySingleton
 class AudioFormatConfig.forPlatform({required bool isWeb, bool isAndroid = false}) {
-  final AudioEncoder encoder;
-  final String mimeType;
-  final String fileExtension;
+  final AudioEncoder encoder = isWeb ? AudioEncoder.wav : AudioEncoder.aacLc;
+  final String mimeType = isWeb ? "audio/wav" : "audio/mp4";
+  final String fileExtension = isWeb ? "wav" : "m4a";
   final int bitRate;
-  final int sampleRate;
+  final int sampleRate = isAndroid ? 16000 : 44100;
   final int numChannels;
 
-  AudioFormatConfig()
+  new()
     : this.forPlatform(
         isWeb: UniversalPlatform.isWeb,
         isAndroid: UniversalPlatform.isAndroid,
       );
 
   @visibleForTesting
-  this
-    : encoder = isWeb ? AudioEncoder.wav : AudioEncoder.aacLc,
-      mimeType = isWeb ? "audio/wav" : "audio/mp4",
-      fileExtension = isWeb ? "wav" : "m4a",
-      bitRate = 128000,
-      sampleRate = isAndroid ? 16000 : 44100,
-      numChannels = 1;
+  this : bitRate = 128000, numChannels = 1;
 }

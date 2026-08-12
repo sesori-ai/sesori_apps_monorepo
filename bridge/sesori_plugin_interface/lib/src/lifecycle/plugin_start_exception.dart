@@ -5,13 +5,13 @@
 /// it wrote, close sockets. The bridge holds its cross-instance startup mutex
 /// until `start()` settles, so a throw that leaks resources would leak them
 /// under the lock with no owner left to clean up.
-class const PluginStartException(this.message, {required this.cause}) implements Exception {
+class const PluginStartException(
   /// Human-readable description of why the plugin could not start.
-  final String message;
+  final String message, {
 
   /// The underlying error, when one exists.
-  final Object? cause;
-
+  required final Object? cause,
+}) implements Exception {
   @override
   String toString() {
     final causeDetail = cause == null ? "" : " (cause: $cause)";

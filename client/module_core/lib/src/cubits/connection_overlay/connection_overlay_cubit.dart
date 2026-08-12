@@ -19,15 +19,13 @@ import "connection_overlay_state.dart";
 /// latch resolves (or flips) afterwards; combining the two streams re-derives the
 /// banner whenever either input changes.
 class ConnectionOverlayCubit(
-    ConnectionService connectionService,
-    RegisteredBridgesService registeredBridgesService,
-  ) extends Cubit<ConnectionOverlayState> {
-  final ConnectionService _connectionService;
+  final ConnectionService _connectionService,
+  RegisteredBridgesService registeredBridgesService,
+) extends Cubit<ConnectionOverlayState> {
   late final StreamSubscription<ConnectionOverlayState> _subscription;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : _connectionService = connectionService,
-      super(_derive(connectionService.currentStatus, registeredBridgesService.isRegistered.value)) {
+  this : super(_derive(_connectionService.currentStatus, registeredBridgesService.isRegistered.value)) {
     _subscription =
         Rx.combineLatest2(
           _connectionService.status,
@@ -47,9 +45,10 @@ class ConnectionOverlayCubit(
     return switch (status) {
       ConnectionLost() => const ConnectionOverlayState.connectionLost(),
       ConnectionReconnecting() => const ConnectionOverlayState.reconnecting(),
-      ConnectionBridgeOffline() => isRegistered
-          ? const ConnectionOverlayState.bridgeOffline()
-          : const ConnectionOverlayState.hidden(connected: false),
+      ConnectionBridgeOffline() =>
+        isRegistered
+            ? const ConnectionOverlayState.bridgeOffline()
+            : const ConnectionOverlayState.hidden(connected: false),
       ConnectionConnected() => const ConnectionOverlayState.hidden(connected: true),
       ConnectionDisconnected() => const ConnectionOverlayState.hidden(connected: false),
     };

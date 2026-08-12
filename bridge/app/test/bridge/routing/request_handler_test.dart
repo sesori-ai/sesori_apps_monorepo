@@ -22,10 +22,8 @@ class _StubHandler(super.method, super.path) extends RequestHandlerBase {
 }
 
 // Throws the configured error from handle() to exercise error mapping.
-class _ThrowingGetHandler(this._error) extends GetRequestHandler<Object> {
+class _ThrowingGetHandler(final Object _error) extends GetRequestHandler<Object> {
   this : super("/throw");
-
-  final Object _error;
 
   @override
   Future<Object> handle(

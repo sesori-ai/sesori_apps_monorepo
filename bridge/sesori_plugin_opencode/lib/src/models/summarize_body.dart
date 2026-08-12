@@ -7,14 +7,10 @@
 /// compaction from a manual, user-initiated one; the bridge only ever triggers
 /// the manual variant, so it defaults to `false`.
 class const SummarizeBody({
-    required this.providerID,
-    required this.modelID,
-    this.auto = false,
-  }) {
-  final String providerID;
-  final String modelID;
-  final bool auto;
-
+  required final String providerID,
+  required final String modelID,
+  final bool auto = false,
+}) {
   Map<String, dynamic> toJson() {
     return {
       "providerID": providerID,

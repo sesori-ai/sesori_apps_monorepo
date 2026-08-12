@@ -10,16 +10,10 @@ final class const AppOnboardingStatePresent() extends AppOnboardingStateLookup;
 
 final class const AppOnboardingStateAbsent() extends AppOnboardingStateLookup;
 
-final class const AppOnboardingStateReadFailed({required this.error, required this.stackTrace}) extends AppOnboardingStateLookup {
-  final Object error;
-  final StackTrace stackTrace;
-}
+final class const AppOnboardingStateReadFailed({required final Object error, required final StackTrace stackTrace})
+    extends AppOnboardingStateLookup;
 
-class AppOnboardingStateRepository({required AppOnboardingStateStorage storage}) {
-  this : _storage = storage;
-
-  final AppOnboardingStateStorage _storage;
-
+class AppOnboardingStateRepository({required final AppOnboardingStateStorage _storage}) {
   Future<AppOnboardingStateLookup> lookup({
     required String authBackendUrl,
     required String userId,

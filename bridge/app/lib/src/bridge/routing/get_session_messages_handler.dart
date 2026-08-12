@@ -5,12 +5,10 @@ import "request_handler.dart";
 
 /// Handles `POST /session/messages` — returns a page of a session's messages,
 /// or the whole transcript when the request carries no limit.
-class GetSessionMessagesHandler({required ChatHistoryService chatHistoryService}) extends BodyRequestHandler<SessionMessagesRequest, MessageWithPartsResponse> {
-  final ChatHistoryService _chatHistoryService;
-
+class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryService})
+    extends BodyRequestHandler<SessionMessagesRequest, MessageWithPartsResponse> {
   this
-    : _chatHistoryService = chatHistoryService,
-      super(
+    : super(
         HttpMethod.post,
         "/session/messages",
         fromJson: SessionMessagesRequest.fromJson,

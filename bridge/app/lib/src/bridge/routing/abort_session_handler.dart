@@ -5,16 +5,14 @@ import "request_handler.dart";
 
 /// Handles `POST /session/:id/abort` — aborts in-progress session execution.
 class AbortSessionHandler({
-    required SessionAbortService sessionAbortService,
-  }) extends BodyRequestHandler<SessionIdRequest, SuccessEmptyResponse> {
-  final SessionAbortService _sessionAbortService;
-
-  this : _sessionAbortService = sessionAbortService,
-       super(
-         HttpMethod.post,
-         "/session/abort",
-         fromJson: SessionIdRequest.fromJson,
-       );
+  required final SessionAbortService _sessionAbortService,
+}) extends BodyRequestHandler<SessionIdRequest, SuccessEmptyResponse> {
+  this
+    : super(
+        HttpMethod.post,
+        "/session/abort",
+        fromJson: SessionIdRequest.fromJson,
+      );
 
   @override
   Future<SuccessEmptyResponse> handle(

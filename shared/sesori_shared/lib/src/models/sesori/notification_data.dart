@@ -6,21 +6,21 @@ part "notification_data.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class NotificationData with _$NotificationData {
-  const factory NotificationData({
+  const factory({
     @JsonKey(unknownEnumValue: NotificationCategory.unknown) required NotificationCategory category,
     @JsonKey(unknownEnumValue: NotificationEventType.unknown) required NotificationEventType? eventType,
     required String? sessionId,
     required String? projectId,
   }) = _NotificationData;
 
-  factory NotificationData.fromJson(Map<String, dynamic> json) => _$NotificationDataFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$NotificationDataFromJson(json);
 }
 
 enum NotificationCategory({
-    required this.id,
-    required this.displayName,
-    required this.description,
-    required this.importance,
+    required final String id,
+    required final String displayName,
+    required final String description,
+    required final NotificationImportance importance,
   }) {
   @JsonValue("ai_interaction")
   aiInteraction(
@@ -60,10 +60,6 @@ enum NotificationCategory({
   ),
   ;
 
-  final String id;
-  final String displayName;
-  final String description;
-  final NotificationImportance importance;
 }
 
 enum NotificationEventType() {

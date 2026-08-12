@@ -41,18 +41,18 @@ const _specPathInRepo = 'packages/sdk/openapi.json';
 /// Resolved upstream ref description passed to the codegen. Exactly one
 /// of [tag], [branch], [commit] is non-null. [commitSha] is the 40-char
 /// hex commit SHA the ref points at (always populated when [kind] is set).
-class SourceRef({required this.kind, required this.value, required this.commitSha}) {
+class SourceRef({
   /// One of 'tag', 'branch', 'commit'.
-  final String kind;
+  required final String kind,
 
   /// The user-supplied ref string (`v1.16.2`, `dev`, or a 40-char SHA).
-  final String value;
+  required final String value,
 
   /// The 40-char hex commit SHA the ref resolves to. Pre-resolved at
   /// startup via `git ls-remote` so generation is fully offline after
   /// the initial fetch.
-  final String commitSha;
-
+  required final String commitSha,
+}) {
   /// Display form used in generated file headers:
   /// `anomalyco/opencode@<value> (<commitSha>)`.
   String get display => '$_upstreamOwner/$_upstreamRepo@$value ($commitSha)';
@@ -300,24 +300,18 @@ Future<SourceRef> _resolveAndFetch({
 }
 
 class Codegen({
-    required this.spec,
-    required this.outDir,
-    required this.verbose,
-    required this.withClient,
-    this.sourceRef,
-  }) {
-  final Map<String, dynamic> spec;
-  final String outDir;
-  final bool verbose;
-  final bool withClient;
+  required final Map<String, dynamic> spec,
+  required final String outDir,
+  required final bool verbose,
+  required final bool withClient,
 
   /// Upstream ref (tag, branch, or commit SHA) the spec was fetched
   /// from, pre-resolved to a commit SHA. Recorded in every generated
   /// file header so we always know exactly what the code was generated
   /// from. Null when the generator is run against a local file with no
   /// tracked upstream.
-  final SourceRef? sourceRef;
-
+  final SourceRef? sourceRef,
+}) {
   late final Map<String, dynamic> components = (spec['components'] as Map<String, dynamic>?) ?? const {};
   late Map<String, dynamic> schemas = Map<String, dynamic>.from(
     (components['schemas'] as Map<String, dynamic>?) ?? const {},
@@ -1123,10 +1117,10 @@ String _schemaNameFromRef(String ref) {
 // ---------------------------------------------------------------------------
 
 class Operation.fromOpenApi({
-    required this.path,
-    required this.method,
-    required this.op,
-  }) {
+  required final String path,
+  required final String method,
+  required final Map<String, dynamic> op,
+}) {
   this {
     operationId = op['operationId'] as String?;
     summary = op['summary'] as String?;
@@ -1167,9 +1161,6 @@ class Operation.fromOpenApi({
     methodName = _methodNameFromId(operationId, method, path);
   }
 
-  late final String path;
-  late final String method;
-  final Map<String, dynamic> op;
   String? operationId;
   String? summary;
   String? description;
@@ -1199,18 +1190,15 @@ class Operation.fromOpenApi({
 }
 
 class SurfaceSpec({
-    required this.operations,
-    required this.extraSchemas,
-  }) {
-  factory SurfaceSpec.fromJson(Map<String, dynamic> json) {
+  required final List<String> operations,
+  required final List<String> extraSchemas,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
     return SurfaceSpec(
       operations: (json['operations'] as List).cast<String>(),
       extraSchemas: ((json['extraSchemas'] as List?) ?? const []).cast<String>(),
     );
   }
-
-  final List<String> operations;
-  final List<String> extraSchemas;
 }
 
 class Parameter.fromOpenApi(Map<String, dynamic> p) {
@@ -1283,31 +1271,24 @@ class ResponseSpec.fromOpenApi(Map<String, dynamic> r) {
 // ---------------------------------------------------------------------------
 
 class ModelWriter({
-    required this.name,
-    required this.rawName,
-    required this.schema,
-    required this.schemas,
-    this.implementsClass,
-    this.sourceHeader,
-  }) {
   /// Cleaned, valid Dart class name.
-  final String name;
+  required final String name,
 
   /// Original schema name as it appears in the OpenAPI document.
-  final String rawName;
-  final Map<String, dynamic> schema;
-  final Map<String, dynamic> schemas;
+  required final String rawName,
+  required final Map<String, dynamic> schema,
+  required final Map<String, dynamic> schemas,
 
   /// If this schema is a variant of a union, the name of the union class it
   /// implements.
-  final String? implementsClass;
+  final String? implementsClass,
 
   /// Multi-line comment block describing the upstream ref / commit /
   /// generation timestamp. Emitted at the top of every generated file
   /// so consumers and reviewers always know what the code was
   /// generated from.
-  final String? sourceHeader;
-
+  final String? sourceHeader,
+}) {
   /// Track inline enums we emit (de-duped by their values tuple).
   final List<InlineEnum> _inlineEnums = [];
   final Set<String> _emittedEnumKeys = {};
@@ -2930,64 +2911,48 @@ class ModelWriter({
 /// [ModelWriter._emitInlineVariantClass] so it can reuse the
 /// schema-reading helpers.
 class _InlineVariantClassEntry({
-    required this.className,
-    required this.schema,
-  }) {
-  final String className;
-  final Map<String, dynamic> schema;
-}
+  required final String className,
+  required final Map<String, dynamic> schema,
+});
 
 /// A class synthesized for an inline `type: object` property schema
 /// (e.g. `Session.time` → `SessionTime`). Emitted as a sibling of the
 /// owning class by [ModelWriter.emit].
 class _InlineObjectEntry({
-    required this.className,
-    required this.schema,
-  }) {
-  final String className;
-  final Map<String, dynamic> schema;
-}
+  required final String className,
+  required final Map<String, dynamic> schema,
+});
 
 /// Everything the object-class emitter needs to know about one field,
 /// computed once so the constructor, fromJson, toJson, `==`, hashCode,
 /// and field declaration all agree.
 class _FieldRecord({
-    required this.jsonName,
-    required this.safeName,
-    required this.schema,
-    required this.isRequired,
-    required this.dartType,
-    required this.context,
-  }) {
   /// JSON object key as it appears in the spec.
-  final String jsonName;
+  required final String jsonName,
 
   /// Dart-safe identifier for the field.
-  final String safeName;
+  required final String safeName,
 
   /// The field's property schema.
-  final Map<String, dynamic> schema;
+  required final Map<String, dynamic> schema,
 
   /// Whether the spec lists the field in `required`.
-  final bool isRequired;
+  required final bool isRequired,
 
   /// Final Dart type INCLUDING nullability marker.
-  final String dartType;
+  required final String dartType,
 
+  /// Synthesized-class name context for inline objects under this field.
+  required final String context,
+}) {
   /// Whether the Dart field type is nullable (`dartType` ends with `?`).
   /// This is the single source of truth fromJson/toJson decode use, so
   /// the field declaration and the (de)serialization always agree.
   bool get isNullable => dartType.endsWith('?');
-
-  /// Synthesized-class name context for inline objects under this field.
-  final String context;
 }
 
 /// An enum class synthesized for an inline enum in a property.
-class InlineEnum({required this.className, required this.values}) {
-  final String className;
-  final List<String> values;
-
+class InlineEnum({required final String className, required final List<String> values}) {
   String emit() => _emitEnumBody(className, values);
 }
 

@@ -17,9 +17,7 @@ import "prego_colors.g.dart";
 /// )
 /// ```
 @immutable
-final class const PregoShadows({required this.colors}) {
-  final PregoColors colors;
-
+final class const PregoShadows({required final PregoColors colors}) {
   /// Figma: shadow-xs
   /// Single layer: offset(0, 1), blur 2, spread 0
   List<BoxShadow> get xs => [

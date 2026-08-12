@@ -1,16 +1,10 @@
 class const SendCommandBody({
-    required this.command,
-    required this.arguments,
-    required this.agent,
-    required this.variant,
-    required this.model,
-  }) {
-  final String command;
-  final String arguments;
-  final String? agent;
-  final String? variant;
-  final ({String providerID, String modelID})? model;
-
+  required final String command,
+  required final String arguments,
+  required final String? agent,
+  required final String? variant,
+  required final ({String providerID, String modelID})? model,
+}) {
   Map<String, dynamic> toJson() {
     final selectedModel = model;
     return {

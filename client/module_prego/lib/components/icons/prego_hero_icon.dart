@@ -8,7 +8,14 @@ import "../../utils/lerp_utils.dart";
 /// Each value maps to an SVG asset in `assets/svgs/hero_icons/`.
 /// These are the default profile icons assigned to new wallets
 /// before the user sets a custom icon.
-enum PregoHeroIconType(this.id) {
+enum PregoHeroIconType(
+  /// Stable string identifier for database persistence.
+  ///
+  /// This value is **not** derived from [index] or [name] so it survives
+  /// reordering, renaming, and code obfuscation. Once shipped, existing
+  /// IDs must never change.
+  final String id,
+) {
   icon1("hero_icon_1"),
   icon2("hero_icon_2"),
   icon3("hero_icon_3"),
@@ -20,13 +27,6 @@ enum PregoHeroIconType(this.id) {
   icon9("hero_icon_9"),
   icon10("hero_icon_10"),
   ;
-
-  /// Stable string identifier for database persistence.
-  ///
-  /// This value is **not** derived from [index] or [name] so it survives
-  /// reordering, renaming, and code obfuscation. Once shipped, existing
-  /// IDs must never change.
-  final String id;
 
   /// Asset path for this hero icon.
   String get assetPath => "assets/svgs/hero_icons/$id.svg";
@@ -59,21 +59,18 @@ enum PregoHeroIconType(this.id) {
 /// )
 /// ```
 class const PregoHeroIcon({
-    super.key,
-    required this.type,
-    required this.color,
-    this.size,
-  }) extends StatelessWidget {
+  super.key,
+
   /// Which hero icon shape to display.
-  final PregoHeroIconType type;
+  required final PregoHeroIconType type,
 
   /// Base color used to compute the gradient.
-  final Color color;
+  required final Color color,
 
   /// Width and height of the icon. When `null`, the SVG's intrinsic
   /// dimensions are used.
-  final double? size;
-
+  final double? size,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
@@ -101,11 +98,14 @@ class const PregoHeroIcon({
 /// Must be `@immutable` because `flutter_svg` uses it as part of a cache key.
 @immutable
 class const _HeroIconColorMapper({
-    required this.gradientStart,
-    required this.gradientEnd,
-  }) extends ColorMapper {
+  /// Color for gradient position 0 (top of the icon).
+  required final Color gradientStart,
+
+  /// Color for gradient position 1 (bottom of the icon).
+  required final Color gradientEnd,
+}) extends ColorMapper {
   /// Computes gradient stops appropriate for the given [brightness].
-  factory _HeroIconColorMapper.fromBrightness({
+  factory fromBrightness({
     required Color color,
     required Brightness brightness,
   }) {
@@ -125,12 +125,6 @@ class const _HeroIconColorMapper({
       ),
     };
   }
-
-  /// Color for gradient position 0 (top of the icon).
-  final Color gradientStart;
-
-  /// Color for gradient position 1 (bottom of the icon).
-  final Color gradientEnd;
 
   /// The original gradient-start color baked into the Figma SVGs.
   static const Color _originalGradientStart = Color(0xFFFFFFFF);

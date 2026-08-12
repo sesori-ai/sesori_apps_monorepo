@@ -13,11 +13,9 @@ import "models/session_activity_info.dart";
 
 @lazySingleton
 class SseEventTracker(
-    ConnectionService connectionService, {
-    required FailureReporter failureReporter,
-  }) with Disposable {
-  final ConnectionService _connectionService;
-  final FailureReporter _failureReporter;
+  final ConnectionService _connectionService, {
+  required final FailureReporter _failureReporter,
+}) with Disposable {
   late final StreamSubscription<SseEvent> _eventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
 
@@ -36,8 +34,7 @@ class SseEventTracker(
   /// advance with stale or partial data.
   final BehaviorSubject<Map<String, int>> _projectTimestampUpdates = BehaviorSubject.seeded(const {});
 
-  this : _connectionService = connectionService,
-       _failureReporter = failureReporter {
+  this {
     _eventSubscription = _connectionService.events.listen(_handleEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_handleConnectionStatus);
   }

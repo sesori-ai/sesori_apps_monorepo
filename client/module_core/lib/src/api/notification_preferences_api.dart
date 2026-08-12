@@ -10,39 +10,33 @@ part "notification_preferences_api.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class NotificationPreferencesApiRecord with _$NotificationPreferencesApiRecord {
-  const factory NotificationPreferencesApiRecord({
+  const factory({
     required String deviceId,
     required NotificationPreferencesApiNotifications notifications,
     required DateTime? updatedAt,
   }) = _NotificationPreferencesApiRecord;
 
-  factory NotificationPreferencesApiRecord.fromJson(Map<String, dynamic> json) =>
-      _$NotificationPreferencesApiRecordFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$NotificationPreferencesApiRecordFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class NotificationPreferencesApiNotifications with _$NotificationPreferencesApiNotifications {
-  const factory NotificationPreferencesApiNotifications({
+  const factory({
     required bool aiInteraction,
     required bool sessionMessage,
     required bool connectionStatus,
     required bool systemUpdate,
   }) = _NotificationPreferencesApiNotifications;
 
-  factory NotificationPreferencesApiNotifications.fromJson(Map<String, dynamic> json) =>
-      _$NotificationPreferencesApiNotificationsFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$NotificationPreferencesApiNotificationsFromJson(json);
 }
 
 @Freezed(fromJson: false, toJson: false)
 sealed class const NotificationPreferencePatchApiRequest._() with _$NotificationPreferencePatchApiRequest {
-  const factory NotificationPreferencePatchApiRequest.aiInteraction({required bool enabled}) =
-      NotificationPreferencePatchAiInteraction;
-  const factory NotificationPreferencePatchApiRequest.sessionMessage({required bool enabled}) =
-      NotificationPreferencePatchSessionMessage;
-  const factory NotificationPreferencePatchApiRequest.connectionStatus({required bool enabled}) =
-      NotificationPreferencePatchConnectionStatus;
-  const factory NotificationPreferencePatchApiRequest.systemUpdate({required bool enabled}) =
-      NotificationPreferencePatchSystemUpdate;
+  const factory aiInteraction({required bool enabled}) = NotificationPreferencePatchAiInteraction;
+  const factory sessionMessage({required bool enabled}) = NotificationPreferencePatchSessionMessage;
+  const factory connectionStatus({required bool enabled}) = NotificationPreferencePatchConnectionStatus;
+  const factory systemUpdate({required bool enabled}) = NotificationPreferencePatchSystemUpdate;
 
   Map<String, Map<String, bool>> toJson() => {
     "notifications": switch (this) {
@@ -55,11 +49,7 @@ sealed class const NotificationPreferencePatchApiRequest._() with _$Notification
 }
 
 @lazySingleton
-class NotificationPreferencesApi({required AuthenticatedHttpApiClient client}) {
-  final AuthenticatedHttpApiClient _client;
-
-  this : _client = client;
-
+class NotificationPreferencesApi({required final AuthenticatedHttpApiClient _client}) {
   Future<NotificationPreferencesApiRecord> getPreferences({
     required String userId,
     required String deviceId,

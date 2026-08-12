@@ -15,27 +15,19 @@ import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
 
 final class const CodexSessionMessageRead._({
-    required CodexPreparedMessageRead messages,
-    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
-    required CodexConfigDefaults config,
-  }) {
-  this : _messages = messages,
-       _structuredToolStatusByCallId = structuredToolStatusByCallId,
-       _config = config;
-
-  final CodexPreparedMessageRead _messages;
-  final Map<String, PluginToolStatus> _structuredToolStatusByCallId;
-  final CodexConfigDefaults _config;
-}
+  required final CodexPreparedMessageRead _messages,
+  required final Map<String, PluginToolStatus> _structuredToolStatusByCallId,
+  required final CodexConfigDefaults _config,
+});
 
 /// Layer-3 coordination for the migrated Codex session operations.
 class CodexSessionService({
-    required CodexCatalogRepository catalogRepository,
-    required CodexMessageRepository messageRepository,
-    required CodexMetadataRepository metadataRepository,
-    required CodexToolOutcomeRepository toolOutcomeRepository,
-    required String launchDirectory,
-  }) {
+  required final CodexCatalogRepository _catalogRepository,
+  required final CodexMessageRepository _messageRepository,
+  required final CodexMetadataRepository _metadataRepository,
+  required final CodexToolOutcomeRepository _toolOutcomeRepository,
+  required final String _launchDirectory,
+}) {
   static const String compactionCommandName = "compact";
 
   static const PluginCommand _compactionCommand = PluginCommand(
@@ -44,18 +36,6 @@ class CodexSessionService({
     provider: null,
     source: PluginCommandSource.command,
   );
-
-  this : _catalogRepository = catalogRepository,
-       _messageRepository = messageRepository,
-       _metadataRepository = metadataRepository,
-       _toolOutcomeRepository = toolOutcomeRepository,
-       _launchDirectory = launchDirectory;
-
-  final CodexCatalogRepository _catalogRepository;
-  final CodexMessageRepository _messageRepository;
-  final CodexMetadataRepository _metadataRepository;
-  final CodexToolOutcomeRepository _toolOutcomeRepository;
-  final String _launchDirectory;
 
   CodexThreadRepository? _threadRepository;
   CodexModelRepository? _modelRepository;
@@ -312,7 +292,7 @@ class CodexSessionService({
       return null;
     }
     final invocation = arguments.isEmpty ? "\$$command" : "\$$command $arguments";
-    return _connectedThreadRepository.startTurn(
+    return await _connectedThreadRepository.startTurn(
       threadId: threadId,
       parts: [PluginPromptPart.text(text: invocation)],
       model: model,

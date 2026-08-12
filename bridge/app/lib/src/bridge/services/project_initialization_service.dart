@@ -8,31 +8,23 @@ import "../repositories/worktree_repository.dart";
 
 /// Thrown when project directory creation cannot proceed because the target
 /// already exists.
-class ProjectDirectoryExistsException({required this.path}) implements Exception {
-  final String path;
-
+class ProjectDirectoryExistsException({required final String path}) implements Exception {
   @override
   String toString() => "ProjectDirectoryExistsException: directory already exists: $path";
 }
 
 /// Thrown when the target's parent directory does not exist.
-class ProjectParentMissingException({required this.path}) implements Exception {
-  final String path;
-
+class ProjectParentMissingException({required final String path}) implements Exception {
   @override
   String toString() => "ProjectParentMissingException: parent directory does not exist: $path";
 }
 
 /// Thrown when Git setup fails for a newly created project directory.
 class ProjectGitSetupException({
-    required this.path,
-    required this.operation,
-    required this.cause,
+    required final String path,
+    required final String operation,
+    required final Object? cause,
   }) implements Exception {
-  final String path;
-  final String operation;
-  final Object? cause;
-
   @override
   String toString() => "ProjectGitSetupException: $operation failed: $path";
 }
@@ -48,17 +40,12 @@ enum ExistingProjectPreparationOutcome() { ready, gitChoiceRequired }
 /// [FilesystemPermissionDeniedException] propagates unchanged so the handler
 /// can surface an actionable message.
 class ProjectInitializationService({
-    required WorktreeRepository worktreeRepository,
-    required FilesystemRepository filesystemRepository,
+    required final WorktreeRepository _worktreeRepository,
+    required final FilesystemRepository _filesystemRepository,
   }) {
   static const String _gitignoreEntry = ".worktrees/";
   static const String _initialCommitMessage = "Initial commit";
 
-  final WorktreeRepository _worktreeRepository;
-  final FilesystemRepository _filesystemRepository;
-
-  this : _worktreeRepository = worktreeRepository,
-       _filesystemRepository = filesystemRepository;
 
   /// Creates and initializes a new git project at [path].
   ///

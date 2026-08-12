@@ -9,11 +9,9 @@ import "../../repositories/models/bridge_settings_result.dart";
 import "../../services/bridge_settings_service.dart";
 import "bridge_settings_state.dart";
 
-class BridgeSettingsCubit({required BridgeSettingsService service, required ConnectionService connectionService}) extends Cubit<BridgeSettingsState> {
+class BridgeSettingsCubit({required final BridgeSettingsService _service, required ConnectionService connectionService}) extends Cubit<BridgeSettingsState> {
   this
-    : _service = service,
-      _connected = connectionService.currentStatus is ConnectionConnected,
-      super(
+    : super(
         connectionService.currentStatus is ConnectionConnected
             ? const BridgeSettingsLoading()
             : const BridgeSettingsDisconnected(),
@@ -22,9 +20,8 @@ class BridgeSettingsCubit({required BridgeSettingsService service, required Conn
     if (_connected) unawaited(refresh());
   }
 
-  final BridgeSettingsService _service;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
-  bool _connected;
+  bool _connected = connectionService.currentStatus is ConnectionConnected;
   int _connectionEpoch = 0;
   bool _operationInProgress = false;
   bool _refreshPending = false;
@@ -364,7 +361,7 @@ class BridgeSettingsCubit({required BridgeSettingsService service, required Conn
     _connected = false;
     _connectionEpoch++;
     await _connectionStatusSubscription.cancel();
-    return super.close();
+    return await super.close();
   }
 }
 

@@ -5,11 +5,11 @@ part "auth_init_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class AuthInitResponse with _$AuthInitResponse {
-  const factory AuthInitResponse({
+  const factory({
     required String authUrl,
     required String state,
     required int expiresIn,
   }) = _AuthInitResponse;
 
-  factory AuthInitResponse.fromJson(Map<String, dynamic> json) => _$AuthInitResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AuthInitResponseFromJson(json);
 }

@@ -9,18 +9,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class const _SessionDetailMessageListHarness({
-    super.key,
-    required this.initialMessages,
-    required this.initialStreamingText,
-    this.initialRetryErrorMessage,
-    this.onLoadOlderMessages,
-  }) extends StatefulWidget {
-  final List<MessageWithParts> initialMessages;
-  final Map<String, String> initialStreamingText;
-  final String? initialRetryErrorMessage;
-
-  final Future<void> Function()? onLoadOlderMessages;
-
+  super.key,
+  required final List<MessageWithParts> initialMessages,
+  required final Map<String, String> initialStreamingText,
+  final String? initialRetryErrorMessage,
+  final Future<void> Function()? onLoadOlderMessages,
+}) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
 }

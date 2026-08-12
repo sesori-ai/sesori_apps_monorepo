@@ -492,14 +492,10 @@ ProcessResult _fail({required int exitCode, String stderr = ""}) {
 }
 
 class const _Invocation({
-    required this.command,
-    required this.arguments,
-    required this.workingDirectory,
-  }) {
-  final String command;
-  final List<String> arguments;
-  final String? workingDirectory;
-}
+  required final String command,
+  required final List<String> arguments,
+  required final String? workingDirectory,
+});
 
 class _FakeProcessRunner() implements ProcessRunner {
   @override
@@ -550,9 +546,7 @@ class _FakeProcessRunner() implements ProcessRunner {
   }
 }
 
-class _CapturingStdout(this.lines) implements Stdout {
-  final List<String> lines;
-
+class _CapturingStdout(final List<String> lines) implements Stdout {
   @override
   bool get supportsAnsiEscapes => false;
 

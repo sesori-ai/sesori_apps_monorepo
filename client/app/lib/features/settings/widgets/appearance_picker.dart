@@ -59,16 +59,11 @@ class const AppearancePicker({super.key}) extends StatelessWidget {
 
 /// One theme choice: a preview tile in a selection ring, with its label below.
 class const _AppearanceOption({
-    required this.mode,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  }) extends StatelessWidget {
-  final AppearanceMode mode;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
+  required final AppearanceMode mode,
+  required final String label,
+  required final bool isSelected,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -130,9 +125,7 @@ class const _AppearanceOption({
 ///
 /// Drawn from [palette] rather than the ambient theme — a preview has to show
 /// its own theme regardless of which one the app is currently rendering in.
-class const _ThemePreview({required this.palette}) extends StatelessWidget {
-  final PregoColors palette;
-
+class const _ThemePreview({required final PregoColors palette}) extends StatelessWidget {
   /// Fractions of the tile, measured off the Figma tile. Everything is
   /// relative so the mock scales with the available width.
   static const double _bubbleBleed = 0.08;
@@ -152,9 +145,7 @@ class const _ThemePreview({required this.palette}) extends StatelessWidget {
   Widget build(BuildContext context) {
     // The canvas is the app background of the previewed theme: white in light,
     // near-black in dark. Bubbles and the composer sit on it as surfaces.
-    final canvas = palette.brightness == Brightness.light
-        ? palette.bgSurface3
-        : palette.bgSurface1;
+    final canvas = palette.brightness == Brightness.light ? palette.bgSurface3 : palette.bgSurface1;
     final surface = BoxDecoration(
       color: palette.bgSurface3,
       border: Border.all(color: palette.borderSecondary),

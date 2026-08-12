@@ -15,30 +15,14 @@ import "codex_status_reporter.dart";
 /// [CodexRuntimeStatusReporter]) and the exit monitor, plus an ordered,
 /// idempotent [shutdown].
 class CodexBridgePlugin({
-    required this.api,
-    required CodexRuntimeStatusReporter reporter,
-    required ManagedRuntimeMonitor<CodexOwnershipRecord> monitor,
-    required ManagedProcessService<CodexOwnershipRecord> service,
-    required CodexOwnershipRecord? ownedRecord,
-    required this.port,
-    required this.serverUrl,
-  }) implements BridgePlugin {
-  this : _reporter = reporter,
-       _monitor = monitor,
-       _service = service,
-       _ownedRecord = ownedRecord;
-
-  @override
-  final CodexManagedApi api;
-
-  final int port;
-  final String serverUrl;
-
-  final CodexRuntimeStatusReporter _reporter;
-  final ManagedRuntimeMonitor<CodexOwnershipRecord> _monitor;
-  final ManagedProcessService<CodexOwnershipRecord> _service;
-  final CodexOwnershipRecord? _ownedRecord;
-
+  @override required final CodexManagedApi api,
+  required final CodexRuntimeStatusReporter _reporter,
+  required final ManagedRuntimeMonitor<CodexOwnershipRecord> _monitor,
+  required final ManagedProcessService<CodexOwnershipRecord> _service,
+  required final CodexOwnershipRecord? _ownedRecord,
+  required final int port,
+  required final String serverUrl,
+}) implements BridgePlugin {
   Future<void>? _shutdown;
 
   PluginStatusController get _status => _reporter.status;

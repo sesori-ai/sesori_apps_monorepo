@@ -9,10 +9,9 @@ import '../api/bridge_settings_api.dart';
 import '../updater/foundation/release_track.dart';
 import 'bridge_settings.dart';
 
-class BridgeSettingsRepository({required BridgeSettingsApi api}) {
+class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
   static const JsonEncoder _jsonEncoder = JsonEncoder.withIndent('  ');
 
-  final BridgeSettingsApi _api;
   final StreamController<BridgeSettingsChange> _settingsChanges = StreamController<BridgeSettingsChange>.broadcast(
     sync: true,
   );
@@ -20,8 +19,6 @@ class BridgeSettingsRepository({required BridgeSettingsApi api}) {
   Future<void> _mutationTail = Future<void>.value();
   Future<void>? _disposeFuture;
   bool _disposed = false;
-
-  this : _api = api;
 
   String get configFilePath => _api.configFilePath;
 
@@ -122,7 +119,7 @@ class BridgeSettingsRepository({required BridgeSettingsApi api}) {
   }
 
   Future<BridgeSettings> updatePluginDisabled({required String pluginId, required bool disabled}) async {
-    return mutateSettings(
+    return await mutateSettings(
       mutation: ({required current}) => current.copyWith(
         plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
       ),
@@ -184,7 +181,4 @@ class BridgeSettingsRepository({required BridgeSettingsApi api}) {
   }
 }
 
-class const BridgeSettingsChange({required this.previous, required this.current}) {
-  final BridgeSettings previous;
-  final BridgeSettings current;
-}
+class const BridgeSettingsChange({required final BridgeSettings previous, required final BridgeSettings current});

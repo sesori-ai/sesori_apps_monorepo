@@ -24,10 +24,8 @@ Future<void> showRenameSessionDialog({
   );
 }
 
-class const _RenameSessionDialog({required this.session, required this.cubit}) extends StatefulWidget {
-  final Session session;
-  final SessionListCubit cubit;
-
+class const _RenameSessionDialog({required final Session session, required final SessionListCubit cubit})
+    extends StatefulWidget {
   @override
   State<_RenameSessionDialog> createState() => _RenameSessionDialogState();
 }

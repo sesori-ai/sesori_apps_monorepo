@@ -12,19 +12,13 @@ import 'package:path/path.dart' as p;
 /// `.log.1`, and every line is passed through [_redact] so tokens/auth headers
 /// never land on disk.
 class UpdateLogApi({
-    required this.installRoot,
-    required this.clock,
-    int maxBytes = 512 * 1024,
-  }) {
-  this : _maxBytes = maxBytes;
-
-  final String installRoot;
-  final Clock clock;
+  required final String installRoot,
+  required final Clock clock,
 
   /// Soft cap before the active log rotates. One rotation is kept, so on-disk
   /// usage stays bounded at ~2x this value.
-  final int _maxBytes;
-
+  final int _maxBytes = 512 * 1024,
+}) {
   static const String _fileName = '.sesori-bridge-update.log';
   static const String _rotatedFileName = '.sesori-bridge-update.log.1';
 

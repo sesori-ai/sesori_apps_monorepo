@@ -1,7 +1,5 @@
 class RouteStack({required List<String> paths}) {
-  final List<String> paths;
-
-  this : paths = List<String>.unmodifiable(paths);
+  final List<String> paths = List<String>.unmodifiable(paths);
 }
 
 abstract interface class RouteDispatcher() {

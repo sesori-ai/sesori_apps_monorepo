@@ -20,24 +20,20 @@ import "../surfaces/prego_surfaces.dart";
 /// )
 /// ```
 class const PregoPickerButton({
-    super.key,
-    required this.leadingIcon,
-    required this.label,
-    required this.surfaceStyle,
-    required this.onPressed,
-  }) extends StatelessWidget {
+  super.key,
+
   /// The glyph rendered before the label.
-  final IconData leadingIcon;
+  required final IconData leadingIcon,
 
   /// One-line button text; ellipsizes when it doesn't fit.
-  final String label;
+  required final String label,
 
   /// Outline emphasis shared with the current composer state.
-  final PregoComposerSurfaceStyle surfaceStyle;
+  required final PregoComposerSurfaceStyle surfaceStyle,
 
   /// Called when the pill is tapped. Wire this to the menu's open callback.
-  final VoidCallback onPressed;
-
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

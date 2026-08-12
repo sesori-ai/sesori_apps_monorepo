@@ -23,17 +23,15 @@ import "../../theme/prego_theme.dart";
 /// Pointer-transparent by design: the popup's dismiss barrier sits below it in
 /// the route and must keep receiving tap-outside.
 class const AnchoredSpotlightBackdrop({
-    super.key,
-    required this.spotlightRect,
-    required this.borderRadius,
-  }) extends StatelessWidget {
+  super.key,
+
   /// Screen-space rectangle left sharp — the anchored widget's bounds, already
   /// inset by the caller.
-  final Rect spotlightRect;
+  required final Rect spotlightRect,
 
   /// Corner radius of the sharp cut-out.
-  final double borderRadius;
-
+  required final double borderRadius,
+}) extends StatelessWidget {
   /// Gaussian sigma the page blurs to. Enough to take the surrounding rows out
   /// of legibility without smearing the page into an unreadable wash — the
   /// user should still recognise the list they came from.
@@ -82,9 +80,7 @@ class const AnchoredSpotlightBackdrop({
               // would save a layer, and the filter would then sample that layer
               // instead of the page painted beneath the route.
               child: Actor(
-                acts: blurred
-                    ? const [Act.backdropBlur(to: _blurSigma), Act.fadeIn()]
-                    : const [Act.fadeIn()],
+                acts: blurred ? const [Act.backdropBlur(to: _blurSigma), Act.fadeIn()] : const [Act.fadeIn()],
                 child: ColoredBox(
                   color: prego.colors.bgSurface1.withValues(
                     alpha: blurred ? _scrimOpacity : _unblurredScrimOpacity,
@@ -116,9 +112,7 @@ class const AnchoredSpotlightBackdrop({
 
 /// Clips to the whole layer *minus* [hole] — so the blur and scrim it wraps
 /// never paint over the anchored widget.
-class const _SpotlightHoleClipper({required this.hole}) extends CustomClipper<Path> {
-  final RRect hole;
-
+class const _SpotlightHoleClipper({required final RRect hole}) extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     return Path.combine(

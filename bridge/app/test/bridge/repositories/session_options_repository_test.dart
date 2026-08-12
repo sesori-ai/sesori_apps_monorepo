@@ -473,8 +473,7 @@ class _FakePlugin() implements BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _RecordingPluginRuntime({required this.plugin}) implements PluginRuntime {
-  final BridgePluginApi plugin;
+class _RecordingPluginRuntime({required final BridgePluginApi plugin}) implements PluginRuntime {
   bool active = true;
   bool generationCurrent = true;
   int currentGeneration = 1;
@@ -512,7 +511,7 @@ class _RecordingPluginRuntime({required this.plugin}) implements PluginRuntime {
     activeOnlyCalls++;
     lastOperation = operation;
     if (!active) return null;
-    return body(plugin, currentGeneration);
+    return await body(plugin, currentGeneration);
   }
 
   @override
@@ -527,7 +526,7 @@ class _RecordingPluginRuntime({required this.plugin}) implements PluginRuntime {
     if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "stale generation");
     }
-    return commit();
+    return await commit();
   }
 
   @override

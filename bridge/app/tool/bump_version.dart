@@ -16,7 +16,7 @@ bool isValidSemver({required String version}) {
 
 /// Reads a file and returns its content as a string.
 Future<String> readFile({required String path}) async {
-  return File(path).readAsString();
+  return await File(path).readAsString();
 }
 
 /// Writes content to a file.

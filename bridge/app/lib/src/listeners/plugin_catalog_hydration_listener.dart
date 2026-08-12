@@ -5,14 +5,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../services/catalog_import_service.dart";
 
 class PluginCatalogHydrationListener({
-    required Stream<List<String>> readyPluginIds,
-    required CatalogImportService catalogImportService,
-  }) {
-  this : _readyPluginIds = readyPluginIds,
-       _catalogImportService = catalogImportService;
-
-  final Stream<List<String>> _readyPluginIds;
-  final CatalogImportService _catalogImportService;
+  required final Stream<List<String>> _readyPluginIds,
+  required final CatalogImportService _catalogImportService,
+}) {
   StreamSubscription<List<String>>? _subscription;
   Set<String> _previousReadyIds = const {};
   bool _disposed = false;

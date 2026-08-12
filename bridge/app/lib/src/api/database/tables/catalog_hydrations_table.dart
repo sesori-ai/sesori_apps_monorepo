@@ -20,7 +20,7 @@ class CatalogHydrationsTable() extends Table {
 
 @freezed
 sealed class const CatalogHydrationDto._() with _$CatalogHydrationDto, $CatalogHydrationsTableTableToColumns {
-  const factory CatalogHydrationDto({
+  const factory({
     required String pluginId,
     required int projectionVersion,
     required int completedAt,

@@ -188,30 +188,18 @@ _TestRecord _record({required String ownerSessionId, required int pid, required 
 enum _TestStatus() { starting, ready, stopping }
 
 class const _TestRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.openCodeCommand,
-    required this.openCodeArgs,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.startedAt,
-    required this.status,
+    required final String ownerSessionId,
+    required final int openCodePid,
+    required final String? openCodeStartMarker,
+    required final String openCodeExecutablePath,
+    required final String openCodeCommand,
+    required final List<String> openCodeArgs,
+    required final int port,
+    required final int bridgePid,
+    required final String? bridgeStartMarker,
+    required final DateTime startedAt,
+    required final _TestStatus status,
   }) {
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String openCodeCommand;
-  final List<String> openCodeArgs;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final DateTime startedAt;
-  final _TestStatus status;
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "ownerSessionId": ownerSessionId,

@@ -10,10 +10,7 @@ import "models/claude_stream_message.dart";
 
 /// A control request that the CLI answered with a failure, or that could not be
 /// delivered at all.
-class ClaudeControlException({required this.subtype, required this.message}) implements Exception {
-  final String subtype;
-  final String message;
-
+class ClaudeControlException({required final String subtype, required final String message}) implements Exception {
   @override
   String toString() => "ClaudeControlException($subtype, $message)";
 }
@@ -29,21 +26,11 @@ class ClaudeControlException({required this.subtype, required this.message}) imp
 /// SIGTERM-then-SIGKILL termination — are ported from `AcpStdioClient`, where
 /// they are load-bearing.
 class ClaudeStreamClient({
-    required ClaudeLaunchSpec launchSpec,
-    required ClaudeProcessFactory processFactory,
-    Duration controlTimeout = const Duration(seconds: 60),
-    String logTag = "claude",
-  }) {
-  this : _launchSpec = launchSpec,
-       _processFactory = processFactory,
-       _controlTimeout = controlTimeout,
-       _logTag = logTag;
-
-  final ClaudeLaunchSpec _launchSpec;
-  final ClaudeProcessFactory _processFactory;
-  final Duration _controlTimeout;
-  final String _logTag;
-
+  required final ClaudeLaunchSpec _launchSpec,
+  required final ClaudeProcessFactory _processFactory,
+  final Duration _controlTimeout = const Duration(seconds: 60),
+  final String _logTag = "claude",
+}) {
   ClaudeProcessHandle? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;

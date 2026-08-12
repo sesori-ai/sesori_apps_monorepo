@@ -28,30 +28,22 @@ import "repositories/models/codex_thread_record.dart";
 /// has 50+ notification methods and only a subset has a mobile-facing
 /// representation today.
 class CodexEventMapper({
-    required this.pluginId,
-    required this.projectCwd,
-    required CodexImageAttachmentMapper imageAttachmentMapper,
-    required CodexImageBearingItemParser imageBearingItemParser,
-    required CodexRolloutToolMapper rolloutToolMapper,
-    this.config = const CodexConfigDefaults.empty(),
-  }) {
-  this : _imageAttachmentMapper = imageAttachmentMapper,
-       _imageBearingItemParser = imageBearingItemParser,
-       _rolloutToolMapper = rolloutToolMapper;
-
-  final String pluginId;
+  required final String pluginId,
 
   /// The bridge launch CWD — codex's single synthesised project id. Used as
   /// the `projectID` for sessions, and as the `directory` fallback when a
   /// notification does not carry the thread's own cwd.
-  final String projectCwd;
+  required final String projectCwd,
+  required final CodexImageAttachmentMapper _imageAttachmentMapper,
+  required final CodexImageBearingItemParser _imageBearingItemParser,
+  required final CodexRolloutToolMapper _rolloutToolMapper,
 
   /// Global model/provider fallback from `~/.codex/config.toml`. Live
   /// `item`/`turn` notifications do not carry the model, so streaming
   /// assistant messages are stamped with this until the session is re-fetched
   /// from its rollout (the authoritative per-session source).
-  final CodexConfigDefaults config;
-
+  final CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+}) {
   /// Per-thread provider captured from `thread/started.modelProvider`, used to
   /// stamp streaming assistant messages.
   final Map<String, String> _threadProvider = {};
@@ -63,9 +55,6 @@ class CodexEventMapper({
   /// global [config] default — making a model switch look like it never took
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
-  final CodexImageAttachmentMapper _imageAttachmentMapper;
-  final CodexImageBearingItemParser _imageBearingItemParser;
-  final CodexRolloutToolMapper _rolloutToolMapper;
 
   /// Last-known thread times, used to turn activity notifications into a
   /// timestamp-bearing `session.updated` payload. Codex sends the activity

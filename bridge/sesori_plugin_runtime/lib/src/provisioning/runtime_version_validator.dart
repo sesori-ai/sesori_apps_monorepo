@@ -8,18 +8,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 /// confirm a freshly-installed managed binary actually runs and reports the
 /// expected version.
 class RuntimeVersionValidator({
-    required CommandExecutor commandExecutor,
-    required String runtimeId,
-    Duration probeTimeout = const Duration(seconds: 10),
-  }) {
-  final CommandExecutor _commandExecutor;
-  final String _runtimeId;
-  final Duration _probeTimeout;
-
-  this : _commandExecutor = commandExecutor,
-       _runtimeId = runtimeId,
-       _probeTimeout = probeTimeout;
-
+  required final CommandExecutor _commandExecutor,
+  required final String _runtimeId,
+  final Duration _probeTimeout = const Duration(seconds: 10),
+}) {
   /// Runs `<executable> --version` and returns the parsed [SemanticVersion], or
   /// `null` when the binary cannot be launched, exits non-zero, hangs past the
   /// probe timeout, or prints no parseable version. Never throws.

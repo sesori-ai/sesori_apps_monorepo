@@ -8,25 +8,26 @@ sealed class const ProductAnalyticsLogoutState();
 
 final class const ProductAnalyticsLogoutIdle() extends ProductAnalyticsLogoutState;
 
-sealed class const ProductAnalyticsLogoutPreparation({required this.generation, required this.capturedState}) extends ProductAnalyticsLogoutState {
-  final int generation;
-  final ProductAnalyticsState capturedState;
-}
+sealed class const ProductAnalyticsLogoutPreparation({
+  required final int generation,
+  required final ProductAnalyticsState capturedState,
+}) extends ProductAnalyticsLogoutState;
 
-final class const ProductAnalyticsLogoutPreparationClean({required super.generation, required super.capturedState}) extends ProductAnalyticsLogoutPreparation;
+final class const ProductAnalyticsLogoutPreparationClean({required super.generation, required super.capturedState})
+    extends ProductAnalyticsLogoutPreparation;
 
 final class const ProductAnalyticsLogoutPreparationRecoveryRequired({
-    required super.generation,
-    required super.capturedState,
-  }) extends ProductAnalyticsLogoutPreparation;
+  required super.generation,
+  required super.capturedState,
+}) extends ProductAnalyticsLogoutPreparation;
 
 final class ProductAnalyticsPreferenceIntent {
   final int sequence;
   final ProductAnalyticsPreference? latestPreference;
 
-  const ProductAnalyticsPreferenceIntent.idle() : sequence = 0, latestPreference = null;
+  const new idle() : sequence = 0, latestPreference = null;
 
-  const ProductAnalyticsPreferenceIntent._({required this.sequence, required this.latestPreference});
+  const new _({required this.sequence, required this.latestPreference});
 
   ProductAnalyticsPreferenceIntent begin({required ProductAnalyticsPreference preference}) =>
       ProductAnalyticsPreferenceIntent._(
@@ -43,10 +44,10 @@ final class ProductAnalyticsPreferenceIntent {
   );
 }
 
-sealed class const ProductAnalyticsAccountSession({required this.generation, required this.snapshot}) {
-  final int generation;
-  final ProductAnalyticsPreferenceSnapshot snapshot;
-
+sealed class const ProductAnalyticsAccountSession({
+  required final int generation,
+  required final ProductAnalyticsPreferenceSnapshot snapshot,
+}) {
   String? get userId;
   Future<void>? get hydration;
   bool get reconciled;
@@ -56,8 +57,7 @@ sealed class const ProductAnalyticsAccountSession({required this.generation, req
 }
 
 final class const ProductAnalyticsSignedOutSession({required super.generation}) extends ProductAnalyticsAccountSession {
-  this
-    : super(snapshot: const ProductAnalyticsPreferenceUnresolved());
+  this : super(snapshot: const ProductAnalyticsPreferenceUnresolved());
 
   @override
   String? get userId => null;
@@ -76,15 +76,11 @@ final class const ProductAnalyticsSignedOutSession({required super.generation}) 
 }
 
 final class const ProductAnalyticsHydratingSession({
-    required this.userId,
-    required super.generation,
-    required this.completion,
-    required super.snapshot,
-  }) extends ProductAnalyticsAccountSession {
-  @override
-  final String userId;
-  final Completer<void> completion;
-
+  @override required final String userId,
+  required super.generation,
+  required final Completer<void> completion,
+  required super.snapshot,
+}) extends ProductAnalyticsAccountSession {
   @override
   Future<void> get hydration => completion.future;
 
@@ -105,16 +101,11 @@ final class const ProductAnalyticsHydratingSession({
 }
 
 final class const ProductAnalyticsReadySession({
-    required this.userId,
-    required super.generation,
-    required super.snapshot,
-    required this.reconciled,
-  }) extends ProductAnalyticsAccountSession {
-  @override
-  final String userId;
-  @override
-  final bool reconciled;
-
+  @override required final String userId,
+  required super.generation,
+  required super.snapshot,
+  @override required final bool reconciled,
+}) extends ProductAnalyticsAccountSession {
   @override
   Future<void>? get hydration => null;
 

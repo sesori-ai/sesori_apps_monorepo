@@ -385,12 +385,11 @@ _TestRecord _record({required int pid, required int port}) {
 }
 
 class _Fakes({ServerClock? clock}) {
-  this : clock = clock ?? _AdvancingServerClock();
 
   final _FakeOwnershipRepository ownership = _FakeOwnershipRepository();
   final _FakeHostProcessService processes = _FakeHostProcessService();
   final _FakeBridgeHostInfo bridge = _FakeBridgeHostInfo();
-  final ServerClock clock;
+  final ServerClock clock = clock ?? _AdvancingServerClock();
   final _SpawnPlan spawn = _SpawnPlan();
   final _ProbePlan probe = _ProbePlan();
   final _BindablePlan bindable = _BindablePlan();
@@ -478,26 +477,16 @@ class _BindablePlan() {
 enum _TestStatus() { starting, ready, stopping }
 
 class const _TestRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.commandLine,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.status,
+    required final String ownerSessionId,
+    required final int openCodePid,
+    required final String? openCodeStartMarker,
+    required final String openCodeExecutablePath,
+    required final String commandLine,
+    required final int port,
+    required final int bridgePid,
+    required final String? bridgeStartMarker,
+    required final _TestStatus status,
   }) {
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String commandLine;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final _TestStatus status;
-
   _TestRecord withStatus(_TestStatus status) {
     return _TestRecord(
       ownerSessionId: ownerSessionId,
@@ -691,19 +680,17 @@ class _NeverElapsingServerClock() implements ServerClock {
 }
 
 class _MonitorSpawnedProcess({
-    required ProcessIdentity identity,
+    required final ProcessIdentity _identity,
     required bool exitImmediately,
     Stream<List<int>>? stderr,
   }) implements SpawnedProcess {
-  this : _identity = identity,
-       _stderr = stderr ?? const Stream<List<int>>.empty() {
+  this{
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);
     }
   }
 
-  final ProcessIdentity _identity;
-  final Stream<List<int>> _stderr;
+  final Stream<List<int>> _stderr = stderr ?? const Stream<List<int>>.empty();
   final Completer<int> _exitCodeCompleter = Completer<int>();
 
   @override

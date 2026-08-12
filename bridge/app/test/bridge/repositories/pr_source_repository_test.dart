@@ -697,19 +697,15 @@ ProcessResult _result({required String stdout}) {
 }
 
 final class _FakeGhCliApi({
-    required List<GhPullRequestBatchResponse> initialResponses,
-    List<GhPullRequestBatchResponse> cursorResponses = const [],
-    this.finalIdentityLogin = "octocat",
-  }) implements GhCliApi {
-  final Queue<GhPullRequestBatchResponse> _initialResponses;
-  final Queue<GhPullRequestBatchResponse> _cursorResponses;
+  required List<GhPullRequestBatchResponse> initialResponses,
+  List<GhPullRequestBatchResponse> cursorResponses = const [],
+  var String finalIdentityLogin = "octocat",
+}) implements GhCliApi {
+  final Queue<GhPullRequestBatchResponse> _initialResponses = Queue<GhPullRequestBatchResponse>.from(initialResponses);
+  final Queue<GhPullRequestBatchResponse> _cursorResponses = Queue<GhPullRequestBatchResponse>.from(cursorResponses);
   final List<List<GhPullRequestTarget>> initialCalls = <List<GhPullRequestTarget>>[];
   final List<List<GhPullRequestCursorRequest>> cursorCalls = <List<GhPullRequestCursorRequest>>[];
-  String finalIdentityLogin;
   int identityCalls = 0;
-
-  this : _initialResponses = Queue<GhPullRequestBatchResponse>.from(initialResponses),
-       _cursorResponses = Queue<GhPullRequestBatchResponse>.from(cursorResponses);
 
   @override
   Future<GhAuthenticatedIdentity> getAuthenticatedIdentity() async {
@@ -741,9 +737,7 @@ final class _FakeGhCliApi({
 }
 
 class _QueueProcessRunner({required List<ProcessResult> results}) extends ProcessRunner {
-  final Queue<ProcessResult> _results;
-
-  this : _results = Queue<ProcessResult>.from(results);
+  final Queue<ProcessResult> _results = Queue<ProcessResult>.from(results);
 
   @override
   Future<ProcessResult> run(
@@ -760,8 +754,8 @@ class _QueueProcessRunner({required List<ProcessResult> results}) extends Proces
   }
 }
 
-final class _CompletingGitCliApi({required this.branchResults}) implements GitCliApi {
-  final Map<String, Completer<GitCurrentBranchResult>> branchResults;
+final class _CompletingGitCliApi({required final Map<String, Completer<GitCurrentBranchResult>> branchResults})
+    implements GitCliApi {
   final List<String> branchCalls = <String>[];
   final Completer<void> resolutionLimitReached = Completer<void>();
   final Completer<void> nextChunkStarted = Completer<void>();

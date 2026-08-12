@@ -14,19 +14,13 @@ import "../../core/extensions/build_context_x.dart";
 /// off it, so a harness that needs setting up is one tap from where the user
 /// noticed the problem.
 class const NewSessionPluginChooser({
-    super.key,
-    required this.plugins,
-    required this.selectedPluginId,
-    required this.isSelectionEnabled,
-    required this.onSelected,
-    required this.onSettingsPressed,
-  }) extends StatelessWidget {
-  final List<PluginMetadata> plugins;
-  final String? selectedPluginId;
-  final bool isSelectionEnabled;
-  final ValueChanged<String> onSelected;
-  final VoidCallback onSettingsPressed;
-
+  super.key,
+  required final List<PluginMetadata> plugins,
+  required final String? selectedPluginId,
+  required final bool isSelectionEnabled,
+  required final ValueChanged<String> onSelected,
+  required final VoidCallback onSettingsPressed,
+}) extends StatelessWidget {
   /// Height of the trigger row and of the menu's header row (Figma: 40 / 52).
   static const double _triggerHeight = 40;
   static const double _menuHeaderHeight = 52;
@@ -101,16 +95,11 @@ class const NewSessionPluginChooser({
 
 /// The picked harness' mark and name over an unfold caret.
 class const _HarnessTrigger({
-    required this.pluginId,
-    required this.label,
-    required this.height,
-    required this.onPressed,
-  }) extends StatelessWidget {
-  final String? pluginId;
-  final String label;
-  final double height;
-  final VoidCallback onPressed;
-
+  required final String? pluginId,
+  required final String label,
+  required final double height,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -162,10 +151,8 @@ class const _HarnessTrigger({
 
 /// The menu's first row: the section name and the shortcut into harness
 /// settings, where harnesses are enabled, restarted and set up.
-class const _HarnessesMenuHeader({required this.height, required this.onSettingsPressed}) extends StatelessWidget {
-  final double height;
-  final VoidCallback onSettingsPressed;
-
+class const _HarnessesMenuHeader({required final double height, required final VoidCallback onSettingsPressed})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

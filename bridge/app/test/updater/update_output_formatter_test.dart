@@ -3,10 +3,7 @@ import 'dart:io';
 import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
 import 'package:test/test.dart';
 
-class _FakeStdout({required this.supportsAnsiEscapes}) implements Stdout {
-  @override
-  final bool supportsAnsiEscapes;
-
+class _FakeStdout({@override required final bool supportsAnsiEscapes}) implements Stdout {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

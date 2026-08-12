@@ -12,20 +12,14 @@ const _settingsPreferenceReadDeadline = Duration(seconds: 10);
 
 @lazySingleton
 class NotificationPreferencesRepository({
-    required NotificationPreferencesApi api,
-    required NotificationPreferencesDeviceIdStorage deviceIdStorage,
-  }) {
-  final NotificationPreferencesApi _api;
-  final NotificationPreferencesDeviceIdStorage _deviceIdStorage;
-
+  required final NotificationPreferencesApi _api,
+  required final NotificationPreferencesDeviceIdStorage _deviceIdStorage,
+}) {
   final Map<String, Map<NotificationCategory, bool>> _cachedPreferences = {};
   final Map<String, Future<Map<NotificationCategory, bool>>> _activeFetches = {};
   final Map<String, int> _cacheGenerations = {};
   final Map<String, int> _fetchSequences = {};
   final Map<(String, NotificationCategory), Future<void>> _updateTails = {};
-
-  this : _api = api,
-       _deviceIdStorage = deviceIdStorage;
 
   Future<bool> isEnabled({required String userId, required NotificationCategory category}) async {
     if (category == NotificationCategory.unknown) return true;

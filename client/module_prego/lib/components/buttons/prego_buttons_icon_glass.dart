@@ -43,32 +43,20 @@ extension PregoButtonsIconGlassSizeDiameter on PregoButtonsIconGlassSize {
 /// ```
 class const PregoButtonsIconGlass({
     super.key,
-    required this.icon,
-    required this.onPressed,
-    this.size = PregoButtonsIconGlassSize.lg,
-    this.iconSize,
-    this.iconColor,
-    this.semanticLabel,
-  }) extends StatelessWidget {
-  /// The glyph rendered at the centre of the button.
-  final IconData icon;
-
-  /// Called when the button is tapped. Pass `null` to render in disabled state.
-  final VoidCallback? onPressed;
-
-  /// Governs the button diameter (and the default icon size).
-  final PregoButtonsIconGlassSize size;
-
-  /// Overrides the default icon size for the chosen [size].
-  final double? iconSize;
-
-  /// Overrides the icon colour. Defaults to `text-primary` when enabled and
+    /// The glyph rendered at the centre of the button.
+  required final IconData icon,
+    /// Called when the button is tapped. Pass `null` to render in disabled state.
+  required final VoidCallback? onPressed,
+    /// Governs the button diameter (and the default icon size).
+  final PregoButtonsIconGlassSize size = PregoButtonsIconGlassSize.lg,
+    /// Overrides the default icon size for the chosen [size].
+  final double? iconSize,
+    /// Overrides the icon colour. Defaults to `text-primary` when enabled and
   /// `text-disabled` when [onPressed] is `null`.
-  final Color? iconColor;
-
-  /// Optional semantics label describing the action for screen readers.
-  final String? semanticLabel;
-
+  final Color? iconColor,
+    /// Optional semantics label describing the action for screen readers.
+  final String? semanticLabel,
+  }) extends StatelessWidget {
   double get _defaultIconSize => switch (size) {
     PregoButtonsIconGlassSize.xs => 20.0,
     PregoButtonsIconGlassSize.sm => 20.0,

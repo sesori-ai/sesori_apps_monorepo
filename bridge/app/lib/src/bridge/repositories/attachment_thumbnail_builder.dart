@@ -8,19 +8,17 @@ import "../../api/attachment_spill_storage.dart";
 
 sealed class const AttachmentThumbnailBuildResult();
 
-final class const AttachmentThumbnailRendered({required this.bytes, required this.format}) extends AttachmentThumbnailBuildResult {
-  final Uint8List bytes;
-  final AttachmentThumbnailFormat format;
-}
+final class const AttachmentThumbnailRendered({
+  required final Uint8List bytes,
+  required final AttachmentThumbnailFormat format,
+}) extends AttachmentThumbnailBuildResult;
 
 final class const AttachmentThumbnailUnsupported() extends AttachmentThumbnailBuildResult;
 
 final class const AttachmentThumbnailTooLarge() extends AttachmentThumbnailBuildResult;
 
-final class const AttachmentThumbnailFailed({required this.cause, required this.stackTrace}) extends AttachmentThumbnailBuildResult {
-  final Object cause;
-  final StackTrace stackTrace;
-}
+final class const AttachmentThumbnailFailed({required final Object cause, required final StackTrace stackTrace})
+    extends AttachmentThumbnailBuildResult;
 
 class const AttachmentThumbnailBuilder() {
   static const _size = 512;

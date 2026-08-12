@@ -224,9 +224,7 @@ void main() {
 }
 
 class FakeAuthSession({required AuthState initialState}) implements AuthSession {
-  final BehaviorSubject<AuthState> _authStates;
-
-  this : _authStates = BehaviorSubject<AuthState>.seeded(initialState);
+  final BehaviorSubject<AuthState> _authStates = BehaviorSubject<AuthState>.seeded(initialState);
 
   @override
   ValueStream<AuthState> get authStateStream => _authStates.stream;
@@ -236,7 +234,9 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
 
   void emit(AuthState state) => _authStates.add(state);
 
-  Future<void> dispose() async => _authStates.close();
+  Future<void> dispose() async {
+    await _authStates.close();
+  }
 
   @override
   Future<AuthUser?> getCurrentUser() async => null;
@@ -343,7 +343,9 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
     required String? sessionTitle,
   }) async {}
 
-  Future<void> dispose() async => _notificationOpenedController.close();
+  Future<void> dispose() async {
+    await _notificationOpenedController.close();
+  }
 }
 
 class RecordingRouteDispatcher() implements RouteDispatcher {

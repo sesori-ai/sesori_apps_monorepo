@@ -15,26 +15,18 @@ import "diff_state.dart";
 enum _DiffAnalyticsGuard() { ready, inFlight, consumed }
 
 class DiffCubit({
-    required SessionRepository sessionRepository,
-    required ConnectionService connectionService,
-    required ProductAnalyticsService productAnalyticsService,
-    required this.sessionId,
+    required final SessionRepository _sessionRepository,
+    required final ConnectionService _connectionService,
+    required final ProductAnalyticsService _productAnalyticsService,
+    required final String sessionId,
   }) extends Cubit<DiffState> {
-  final SessionRepository _sessionRepository;
-  final ConnectionService _connectionService;
-  final ProductAnalyticsService _productAnalyticsService;
-  final String sessionId;
-
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<bool> _analyticsStateSubscription;
   Future<void>? _activeRefresh;
   _DiffAnalyticsGuard _emptyDiffAnalytics = _DiffAnalyticsGuard.ready;
   _DiffAnalyticsGuard _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
 
-  this : _sessionRepository = sessionRepository,
-       _connectionService = connectionService,
-       _productAnalyticsService = productAnalyticsService,
-       super(const DiffState.loading()) {
+  this : super(const DiffState.loading()) {
     _eventSubscription = _connectionService.sessionEvents(sessionId).listen(_handleEvent);
     _analyticsStateSubscription = _productAnalyticsService.stateStream
         .map((state) => state.isActive)
@@ -149,6 +141,6 @@ class DiffCubit({
       _eventSubscription.cancel(),
       _analyticsStateSubscription.cancel(),
     ]);
-    return super.close();
+    return await super.close();
   }
 }

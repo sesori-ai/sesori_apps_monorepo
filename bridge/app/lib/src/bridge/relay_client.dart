@@ -12,19 +12,13 @@ import "../auth/bridge_id_provider.dart";
 
 const String _bridgeRole = "bridge";
 
-class const RelayClientMessage({required this.isText, required this.data}) {
-  final bool isText;
-  final Uint8List data;
-}
+class const RelayClientMessage({required final bool isText, required final Uint8List data});
 
 /// Opaque handle for one exact relay WebSocket generation.
 ///
 /// Callers can retain and pass the handle back to [RelayClient], but cannot
 /// inspect the underlying socket.
-final class RelayConnection._({required IOWebSocketChannel channel}) {
-  this : _channel = channel;
-
-  final IOWebSocketChannel _channel;
+final class RelayConnection._({required final IOWebSocketChannel _channel}) {
   String? _lastAuthedToken;
 }
 
@@ -55,32 +49,18 @@ final class const RelayConnected() extends RelayConnectionState;
 /// bridge-replaced close during the relay-deploy rollout window (the relay
 /// sends `1000 + "replaced"` until it emits the dedicated code); it is fragile
 /// and only consulted for that fallback — the close code is authoritative.
-final class const RelayDisconnected({required this.closeCode, required this.closeReason}) extends RelayConnectionState {
-  final int? closeCode;
-  final String? closeReason;
-}
+final class const RelayDisconnected({required final int? closeCode, required final String? closeReason}) extends RelayConnectionState;
 
 class RelayClient({
-    required String relayURL,
-    required AccessTokenProvider accessTokenProvider,
-    required BridgeIdProvider bridgeIdProvider,
-    Duration pingInterval = const Duration(seconds: 15),
-    Duration connectTimeout = const Duration(seconds: 15),
+    required final String _relayURL,
+    required final AccessTokenProvider _accessTokenProvider,
+    required final BridgeIdProvider _bridgeIdProvider,
+    final Duration _pingInterval = const Duration(seconds: 15),
+    final Duration _connectTimeout = const Duration(seconds: 15),
   }) {
-  final String _relayURL;
-  final AccessTokenProvider _accessTokenProvider;
-  final BridgeIdProvider _bridgeIdProvider;
-  final Duration _pingInterval;
-  final Duration _connectTimeout;
   final StreamController<RelayConnectionState> _connectionState = StreamController<RelayConnectionState>.broadcast();
   _RelayConnectionAttempt? _pendingConnection;
   RelayConnection? _connection;
-
-  this : _relayURL = relayURL,
-       _accessTokenProvider = accessTokenProvider,
-       _bridgeIdProvider = bridgeIdProvider,
-       _pingInterval = pingInterval,
-       _connectTimeout = connectTimeout;
 
   /// The WebSocket close code of [connection], available once it has closed.
   int? closeCode({required RelayConnection connection}) => connection._channel.closeCode;
@@ -212,7 +192,7 @@ class RelayClient({
     } on Object catch (error, stackTrace) {
       Log.w("reconnect: close failed; continuing with a fresh connection", error, stackTrace);
     }
-    return connect();
+    return await connect();
   }
 
   Stream<RelayClientMessage> read({required RelayConnection connection}) {
@@ -351,7 +331,4 @@ class RelayClient({
   }
 }
 
-final class const _RelayConnectionAttempt({required this.channel, required this.httpClient}) {
-  final IOWebSocketChannel channel;
-  final HttpClient httpClient;
-}
+final class const _RelayConnectionAttempt({required final IOWebSocketChannel channel, required final HttpClient httpClient});

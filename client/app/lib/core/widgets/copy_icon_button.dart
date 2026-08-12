@@ -9,15 +9,11 @@ import "package:theme_prego/module_prego.dart";
 /// or `ScaffoldMessenger` dependency, so it is safe to embed inside a
 /// [SelectionArea] (e.g. message cards, code blocks, tool output).
 class const CopyIconButton({
-    super.key,
-    required this.text,
-    this.tooltip,
-    this.iconSize = 16,
-  }) extends StatefulWidget {
-  final String text;
-  final String? tooltip;
-  final double iconSize;
-
+  super.key,
+  required final String text,
+  final String? tooltip,
+  final double iconSize = 16,
+}) extends StatefulWidget {
   @override
   State<CopyIconButton> createState() => _CopyIconButtonState();
 }

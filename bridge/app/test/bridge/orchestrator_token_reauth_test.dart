@@ -235,16 +235,13 @@ String _jwt({required String userId, required int seq}) {
 /// access-token provider (sync getter + replayed stream) and the refresher used
 /// by the reconnect pre-pull. Tests drive token pushes via [emit] and simulate a
 /// signed-out GUI via [failRefresh].
-class _ScriptedTokenAuthority(this.current) implements AccessTokenProvider, TokenRefresher {
-  final BehaviorSubject<String> _subject;
-  String current;
+class _ScriptedTokenAuthority(var String current) implements AccessTokenProvider, TokenRefresher {
+  final BehaviorSubject<String> _subject = BehaviorSubject<String>.seeded(current);
   bool failRefresh = false;
   bool transientFailRefresh = false;
   // When false, the synchronous getter throws — mirroring a service whose cache
   // is empty or sign-out-invalidated (no safe token to reconnect with).
   bool cachedTokenAvailable = true;
-
-  this : _subject = BehaviorSubject<String>.seeded(current);
 
   /// Pushes a new token, mirroring the service caching a `token_update`.
   void emit(String token) {
@@ -294,24 +291,15 @@ const ReconnectBackoffPolicy _fastOrdinaryBackoff = ReconnectBackoffPolicy(
 );
 
 class _ReauthHarness._({
-    required this.session,
-    required this.runFuture,
-    required this.relayServer,
-    required this.database,
-    required this.authority,
-    required this.registrationRepository,
-    required this.lifecycleService,
-    required this.httpClient,
-  }) {
-  final OrchestratorSession session;
-  final Future<void> runFuture;
-  final _CountingRelayServer relayServer;
-  final AppDatabase database;
-  final _ScriptedTokenAuthority authority;
-  final FakeBridgeRegistrationRepository registrationRepository;
-  final PluginLifecycleService lifecycleService;
-  final http.Client httpClient;
-
+  required final OrchestratorSession session,
+  required final Future<void> runFuture,
+  required final _CountingRelayServer relayServer,
+  required final AppDatabase database,
+  required final _ScriptedTokenAuthority authority,
+  required final FakeBridgeRegistrationRepository registrationRepository,
+  required final PluginLifecycleService lifecycleService,
+  required final http.Client httpClient,
+}) {
   static Future<_ReauthHarness> start({
     required _ScriptedTokenAuthority authority,
     ReconnectBackoffPolicy backoffPolicy = _fastOrdinaryBackoff,
@@ -396,9 +384,7 @@ class _ReauthHarness._({
 /// [acceptedClientCount], which the server increments when it ACCEPTS a socket
 /// (not when a test consumes one), so a spurious reconnect that sits buffered is
 /// still observed by a "no reconnect" assertion.
-class _CountingRelayServer._(this._inner) {
-  final TestRelayServer _inner;
-
+class _CountingRelayServer._(final TestRelayServer _inner) {
   static Future<_CountingRelayServer> start() async {
     return _CountingRelayServer._(await TestRelayServer.start());
   }
@@ -408,7 +394,7 @@ class _CountingRelayServer._(this._inner) {
   int get acceptedClientCount => _inner.acceptedClientCount;
 
   Future<WebSocket> nextClient({Duration timeout = const Duration(seconds: 5)}) async {
-    return _inner.nextClient().timeout(timeout);
+    return await _inner.nextClient().timeout(timeout);
   }
 
   Future<void> close() => _inner.close();

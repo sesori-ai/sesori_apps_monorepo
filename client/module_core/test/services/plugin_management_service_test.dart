@@ -1350,9 +1350,7 @@ class _FakePluginRepository() implements PluginRepository {
 }
 
 class _FakeConnectionService({required ConnectionStatus initialStatus}) implements ConnectionService {
-  this : _statuses = BehaviorSubject.seeded(initialStatus);
-
-  final BehaviorSubject<ConnectionStatus> _statuses;
+  final BehaviorSubject<ConnectionStatus> _statuses = BehaviorSubject.seeded(initialStatus);
   final StreamController<SseEvent> _events = StreamController.broadcast();
   final StreamController<void> _stale = StreamController.broadcast();
 

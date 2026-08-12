@@ -4,6 +4,4 @@ sealed class CleanupResult();
 
 final class CleanupSuccess() extends CleanupResult;
 
-final class CleanupRejected({required this.rejection}) extends CleanupResult {
-  final SessionCleanupRejection rejection;
-}
+final class CleanupRejected({required final SessionCleanupRejection rejection}) extends CleanupResult;

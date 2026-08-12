@@ -6,11 +6,8 @@ import "wake_lock_client.dart";
 
 typedef ProcessStarter = Future<Process> Function(String executable, List<String> arguments);
 
-class MacOSWakeLockApi({required ProcessStarter processStarter}) implements WakeLockClient {
-  final ProcessStarter _processStarter;
+class MacOSWakeLockApi({required final ProcessStarter _processStarter}) implements WakeLockClient {
   Process? _process;
-
-  this : _processStarter = processStarter;
 
   @override
   Future<void> enable() async {

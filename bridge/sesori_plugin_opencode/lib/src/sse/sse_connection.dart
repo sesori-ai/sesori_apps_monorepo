@@ -5,33 +5,19 @@ import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class SseConnection({
-    required String targetUrl,
-    required String? password,
-    required void Function(String rawData) onEvent,
-    Future<void> Function()? onReconnect,
-    void Function()? onConnected,
-    void Function()? onDisconnected,
-  }) {
-  final String _targetUrl;
-  final String? _password;
-  final void Function(String rawData) _onEvent;
-  final Future<void> Function()? _onReconnect;
-  final void Function()? _onConnected;
-  final void Function()? _onDisconnected;
-
+  required final String _targetUrl,
+  required final String? _password,
+  required final void Function(String rawData) _onEvent,
+  final Future<void> Function()? _onReconnect,
+  final void Function()? _onConnected,
+  final void Function()? _onDisconnected,
+}) {
   bool _active = false;
   int _generation = 0;
   http.Client? _currentClient;
   final Completer<void> _firstConnected = Completer<void>();
 
   Future<void> get firstConnected => _firstConnected.future;
-
-  this : _targetUrl = targetUrl,
-       _password = password,
-       _onEvent = onEvent,
-       _onReconnect = onReconnect,
-       _onConnected = onConnected,
-       _onDisconnected = onDisconnected;
 
   void start({required bool recoverOnFirstConnect}) {
     if (_active) return;

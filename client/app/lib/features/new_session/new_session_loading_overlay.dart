@@ -14,13 +14,10 @@ import "../../core/extensions/build_context_x.dart";
 /// Uses [Cue] entrance animation when motion is not disabled by accessibility
 /// settings. Safe to place inside a [Stack] with [Positioned.fill].
 class const NewSessionLoadingOverlay({
-    super.key = const Key("new_session_loading_overlay"),
-    required this.semanticsLabel,
-    required this.messages,
-  }) extends StatefulWidget {
-  final String semanticsLabel;
-  final List<String> messages;
-
+  super.key = const Key("new_session_loading_overlay"),
+  required final String semanticsLabel,
+  required final List<String> messages,
+}) extends StatefulWidget {
   @override
   State<NewSessionLoadingOverlay> createState() => _NewSessionLoadingOverlayState();
 }
@@ -124,15 +121,16 @@ class _NewSessionLoadingOverlayState() extends State<NewSessionLoadingOverlay> {
                         return FadeTransition(
                           opacity: animation,
                           child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.4),
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              ),
-                            ),
+                            position:
+                                Tween<Offset>(
+                                  begin: const Offset(0, 0.4),
+                                  end: Offset.zero,
+                                ).animate(
+                                  CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutCubic,
+                                  ),
+                                ),
                             child: child,
                           ),
                         );

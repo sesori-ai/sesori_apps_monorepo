@@ -6,21 +6,21 @@ part "api_error.g.dart";
 
 @Freezed(fromJson: true)
 sealed class ApiError._() extends Error with _$ApiError {
-  factory ApiError.jsonParsing(String jsonString) = JsonParsingError;
+  factory jsonParsing(String jsonString) = JsonParsingError;
 
   // ignore: no_slop_linter/prefer_specific_type
-  factory ApiError.dartHttpClient(Object innerError) = DartHttpClientError;
+  factory dartHttpClient(Object innerError) = DartHttpClientError;
 
-  factory ApiError.generic() = GenericError;
+  factory generic() = GenericError;
 
-  factory ApiError.notAuthenticated() = NotAuthenticatedError;
+  factory notAuthenticated() = NotAuthenticatedError;
 
-  factory ApiError.nonSuccessCode({
+  factory nonSuccessCode({
     required int errorCode,
     required String? rawErrorString,
   }) = NonSuccessCodeError;
 
-  factory ApiError.emptyResponse() = EmptyResponseError;
+  factory emptyResponse() = EmptyResponseError;
 
   // @override
   // StackTrace? get stackTrace => super.stackTrace;

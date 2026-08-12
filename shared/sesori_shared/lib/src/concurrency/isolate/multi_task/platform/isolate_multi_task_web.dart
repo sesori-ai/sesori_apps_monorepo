@@ -3,12 +3,9 @@ import "../../isolate.dart";
 /// This basically runs the tasks on the main thread
 /// - Useful for WEB where we don't have access to Isolates
 class MultiTaskIsolateImpl({
-    required this.onActiveTaskCountChanged,
-    required this.debugName,
-  }) implements MultiTaskIsolate {
-  final void Function(int)? onActiveTaskCountChanged;
-  final String debugName;
-
+  required final void Function(int)? onActiveTaskCountChanged,
+  required final String debugName,
+}) implements MultiTaskIsolate {
   int _activeTaskCount = 0;
 
   @override

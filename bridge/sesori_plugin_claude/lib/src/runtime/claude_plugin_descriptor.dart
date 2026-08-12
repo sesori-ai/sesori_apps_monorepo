@@ -24,14 +24,13 @@ import "claude_bridge_plugin.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
-typedef ClaudeBridgePluginFactory =
-    ClaudeBridgePlugin Function({
-      required ClaudePlugin plugin,
-      required ClaudeSessionService sessions,
-      required HostClaudeProcessFactory processFactory,
-      required ServerClock clock,
-      required Duration statusDebounce,
-    });
+typedef ClaudeBridgePluginFactory = ClaudeBridgePlugin Function({
+  required ClaudePlugin plugin,
+  required ClaudeSessionService sessions,
+  required HostClaudeProcessFactory processFactory,
+  required ServerClock clock,
+  required Duration statusDebounce,
+});
 
 ClaudeBridgePlugin _defaultBuildBridgePlugin({
   required ClaudePlugin plugin,
@@ -49,16 +48,11 @@ ClaudeBridgePlugin _defaultBuildBridgePlugin({
 
 /// Descriptor and composition root for the local Claude Code CLI plugin.
 final class const ClaudePluginDescriptor({
-    Duration probeTimeout = const Duration(seconds: 10),
-    Duration sessionIdleTimeout = const Duration(minutes: 5),
-    Duration statusDebounce = const Duration(seconds: 5),
-    ClaudeBridgePluginFactory? buildBridgePlugin,
-  }) extends BridgePluginDescriptor {
-  this : _probeTimeout = probeTimeout,
-       _sessionIdleTimeout = sessionIdleTimeout,
-       _statusDebounce = statusDebounce,
-       _buildBridgePlugin = buildBridgePlugin;
-
+  final Duration _probeTimeout = const Duration(seconds: 10),
+  final Duration _sessionIdleTimeout = const Duration(minutes: 5),
+  final Duration _statusDebounce = const Duration(seconds: 5),
+  final ClaudeBridgePluginFactory? _buildBridgePlugin,
+}) extends BridgePluginDescriptor {
   static const String binOption = "bin";
   static const String defaultBinary = "claude";
   static const String minVersion = "2.1.221";
@@ -74,11 +68,6 @@ final class const ClaudePluginDescriptor({
       validate: null,
     ),
   ];
-
-  final Duration _probeTimeout;
-  final Duration _sessionIdleTimeout;
-  final Duration _statusDebounce;
-  final ClaudeBridgePluginFactory? _buildBridgePlugin;
 
   @override
   String get id => ClaudePlugin.pluginId;

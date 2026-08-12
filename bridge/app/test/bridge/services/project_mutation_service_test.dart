@@ -155,8 +155,7 @@ class _Fixture() {
   );
 }
 
-class _FilesystemRepository({required this.events}) implements FilesystemRepository {
-  final List<String> events;
+class _FilesystemRepository({required final List<String> events}) implements FilesystemRepository {
   final Map<String, FilesystemEntityKind> kinds = {};
   final List<String> classifiedPaths = [];
 
@@ -171,8 +170,7 @@ class _FilesystemRepository({required this.events}) implements FilesystemReposit
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ProjectInitializationService({required this.events}) implements ProjectInitializationService {
-  final List<String> events;
+class _ProjectInitializationService({required final List<String> events}) implements ProjectInitializationService {
   final Completer<void> initializeStarted = Completer<void>();
   final Map<String, ExistingProjectPreparationOutcome> preparations = {};
   Completer<void>? initializeGate;
@@ -201,9 +199,8 @@ class _ProjectInitializationService({required this.events}) implements ProjectIn
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ProjectActivityService({required this.events, required this.projects}) implements ProjectActivityService {
-  final List<String> events;
-  final _ProjectRepository projects;
+class _ProjectActivityService({required final List<String> events, required final _ProjectRepository projects})
+    implements ProjectActivityService {
   final Completer<void> openStarted = Completer<void>();
   final List<String> openedPaths = [];
   Completer<void>? openGate;
@@ -229,8 +226,7 @@ class _ProjectActivityService({required this.events, required this.projects}) im
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ProjectRepository({required this.events}) implements ProjectRepository {
-  final List<String> events;
+class _ProjectRepository({required final List<String> events}) implements ProjectRepository {
   final Completer<void> hideStarted = Completer<void>();
   final List<String> hideCalls = [];
   Completer<void>? hideGate;

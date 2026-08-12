@@ -211,11 +211,13 @@ void main() {
     });
 
     test("bounds untrusted image MIME metadata", () {
-      final mapped = mapper
-          .map(
-            content: _image(data: "AA==", mime: "X" * 300),
-          )
-          .single as ClaudeMappedImageContentBlock;
+      final mapped =
+          mapper
+                  .map(
+                    content: _image(data: "AA==", mime: "X" * 300),
+                  )
+                  .single
+              as ClaudeMappedImageContentBlock;
 
       expect(mapped.attachment.mime, "x" * 255);
       expect(mapped.attachment, isA<PluginMessageAttachmentMetadata>());
@@ -293,9 +295,7 @@ class _BufferingStdout() implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-class _ThrowingCastMap(this._values) extends MapBase<Object?, Object?> {
-  final Map<Object?, Object?> _values;
-
+class _ThrowingCastMap(final Map<Object?, Object?> _values) extends MapBase<Object?, Object?> {
   @override
   Object? operator [](Object? key) => _values[key];
 

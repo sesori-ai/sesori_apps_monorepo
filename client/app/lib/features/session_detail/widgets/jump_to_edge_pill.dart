@@ -12,21 +12,16 @@ import "package:theme_prego/module_prego.dart";
 /// tappable region directly; the widget's own [key] is for outer
 /// element reconciliation.
 class const JumpToEdgePill({
-    super.key,
-    required this.tapTargetKey,
-    required this.label,
-    required this.onTap,
-    required this.bottomInset,
-  }) extends StatelessWidget {
-  final Key? tapTargetKey;
-  final String label;
-  final VoidCallback onTap;
+  super.key,
+  required final Key? tapTargetKey,
+  required final String label,
+  required final VoidCallback onTap,
 
   /// Extra distance lifted above the bottom edge so the pill clears a floating
   /// composer overlaid on the scrollable. Zero when nothing overlays the bottom
   /// (e.g. the read-only variant).
-  final double bottomInset;
-
+  required final double bottomInset,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

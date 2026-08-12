@@ -11,10 +11,7 @@ import "package:test/test.dart";
 final _url = Uri.parse("https://api.example.com/terms");
 
 /// Answers every request with a fixed status and body.
-class _StubClient({required this.statusCode, required this.body}) extends http.BaseClient {
-  final int statusCode;
-  final String body;
-
+class _StubClient({required final int statusCode, required final String body}) extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     return http.StreamedResponse(Stream.value(utf8.encode(body)), statusCode);

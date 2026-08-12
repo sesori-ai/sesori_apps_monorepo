@@ -100,7 +100,7 @@ class SessionTable() extends Table {
 
 @freezed
 sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns {
-  const factory SessionDto({
+  const factory({
     required String sessionId,
     required String backendSessionId,
     required String projectId,

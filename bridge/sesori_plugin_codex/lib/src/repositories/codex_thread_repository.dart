@@ -13,36 +13,31 @@ import "../models/codex_collaboration_mode.dart";
 import "models/codex_thread_record.dart";
 
 sealed class const CodexThreadOperationException({
-    required this.operation,
-    required this.message,
-  }) implements Exception {
-  final String operation;
-  final String message;
-
+  required final String operation,
+  required final String message,
+}) implements Exception {
   @override
   String toString() => "CodexThreadOperationException($operation: $message)";
 }
 
 final class const CodexThreadNotFoundException({
-    required super.operation,
-    required super.message,
-  }) extends CodexThreadOperationException;
+  required super.operation,
+  required super.message,
+}) extends CodexThreadOperationException;
 
 final class const CodexThreadRequestException({
-    required super.operation,
-    required super.message,
-  }) extends CodexThreadOperationException;
+  required super.operation,
+  required super.message,
+}) extends CodexThreadOperationException;
 
-final class const _CodexPromptAttachmentException({required this.message, required this.innerError}) implements Exception {
-  final String message;
-  final Object? innerError;
-
+final class const _CodexPromptAttachmentException({required final String message, required final Object? innerError})
+    implements Exception {
   @override
   String toString() => "CodexPromptAttachmentException($message)";
 }
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
-class CodexThreadRepository({required CodexAppServerApi appServerApi}) {
+class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   static const _supportedImageMimes = {
     "image/bmp",
     "image/gif",
@@ -50,10 +45,6 @@ class CodexThreadRepository({required CodexAppServerApi appServerApi}) {
     "image/png",
     "image/webp",
   };
-
-  this : _appServerApi = appServerApi;
-
-  final CodexAppServerApi _appServerApi;
 
   Future<CodexThreadRecord> startThread({
     required String cwd,

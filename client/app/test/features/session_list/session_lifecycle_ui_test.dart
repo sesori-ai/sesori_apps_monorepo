@@ -186,10 +186,8 @@ class const _TestSessionListBody() extends StatelessWidget {
 // the full SessionListScreen widget. But since it requires full DI setup,
 // we'll instead test the bottom sheet UI patterns directly.
 
-class const _TestDeleteSheet({required this.session, required this.cubit}) extends StatefulWidget {
-  final Session session;
-  final SessionListCubit cubit;
-
+class const _TestDeleteSheet({required final Session session, required final SessionListCubit cubit})
+    extends StatefulWidget {
   @override
   State<_TestDeleteSheet> createState() => _TestDeleteSheetState();
 }
@@ -239,10 +237,8 @@ class _TestDeleteSheetState() extends State<_TestDeleteSheet> {
   }
 }
 
-class const _TestArchiveSheet({required this.session, required this.cubit}) extends StatefulWidget {
-  final Session session;
-  final SessionListCubit cubit;
-
+class const _TestArchiveSheet({required final Session session, required final SessionListCubit cubit})
+    extends StatefulWidget {
   @override
   State<_TestArchiveSheet> createState() => _TestArchiveSheetState();
 }
@@ -740,5 +736,4 @@ void main() {
       expect(find.text("Force Archive"), findsOneWidget);
     });
   });
-
 }

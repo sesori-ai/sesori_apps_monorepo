@@ -23,7 +23,7 @@ void main() {
 
     Future<String> createAudioPath() async {
       final tempDir = await Directory.systemTemp.createTemp("voice_api_test");
-      addTearDown(() async => tempDir.delete(recursive: true));
+      addTearDown(() async => await tempDir.delete(recursive: true));
       final audioFile = File("${tempDir.path}/clip.m4a");
       await audioFile.writeAsBytes([1, 2, 3, 4]);
       return audioFile.path;

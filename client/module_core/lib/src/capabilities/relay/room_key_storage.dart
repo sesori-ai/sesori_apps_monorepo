@@ -7,11 +7,8 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../../logging/logging.dart";
 
 @lazySingleton
-class RoomKeyStorage(SecureStorage storage) {
+class RoomKeyStorage(final SecureStorage _storage) {
   static const _key = "relay_room_key";
-  final SecureStorage _storage;
-
-  this : _storage = storage;
 
   Future<Uint8List?> getRoomKey() async {
     try {

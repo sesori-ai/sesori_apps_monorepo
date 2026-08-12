@@ -258,13 +258,10 @@ Future<void> _pump() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-final class _PluginHost({required this.startAborted, required this.processes}) implements PluginHost {
-  @override
-  final StartAbortSignal startAborted;
-
-  @override
-  final HostProcessService processes;
-
+final class _PluginHost({
+  @override required final StartAbortSignal startAborted,
+  @override required final HostProcessService processes,
+}) implements PluginHost {
   @override
   PluginConfig get config => const PluginConfig(values: {ClaudePluginDescriptor.binOption: "claude"});
 
@@ -302,8 +299,7 @@ final class _AbortOnSecondCheck() implements StartAbortSignal {
   Future<void> get whenAborted => Completer<void>().future;
 }
 
-final class _ProcessService(this._outcomes) implements HostProcessService {
-  final List<Object> _outcomes;
+final class _ProcessService(final List<Object> _outcomes) implements HostProcessService {
   final List<List<String>> arguments = [];
   final List<Map<String, String>?> environments = [];
   final List<bool> runInShellValues = [];
@@ -360,13 +356,11 @@ final class _ProcessService(this._outcomes) implements HostProcessService {
 }
 
 final class _ProbeProcess({
-    required String stdoutText,
-    required Future<int> exitCode,
-    bool keepStdoutOpen = false,
-  }) implements SpawnedProcess {
-  this : pid = _nextPid++,
-       _stdout = StreamController<List<int>>(),
-       _stdin = CapturingIOSink() {
+  required String stdoutText,
+  required Future<int> exitCode,
+  bool keepStdoutOpen = false,
+}) implements SpawnedProcess {
+  this : pid = _nextPid++, _stdout = StreamController<List<int>>(), _stdin = CapturingIOSink() {
     if (stdoutText.isNotEmpty) _stdout.add(utf8.encode(stdoutText));
     if (!keepStdoutOpen) unawaited(_stdout.close());
     unawaited(exitCode.then(completeExit));

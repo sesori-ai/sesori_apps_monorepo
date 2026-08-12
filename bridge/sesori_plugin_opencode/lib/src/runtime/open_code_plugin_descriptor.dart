@@ -31,13 +31,12 @@ abstract final class _OpenCodeConfigKey() {
 /// constructs an [OpenCodePlugin] with auto-initialization disabled (the
 /// descriptor awaits [OpenCodeManagedApi.initialize] explicitly); tests inject a
 /// fake.
-typedef OpenCodeManagedApiFactory =
-    OpenCodeManagedApi Function({
-      required String serverUrl,
-      required String? password,
-      required void Function() onConnected,
-      required void Function() onDisconnected,
-    });
+typedef OpenCodeManagedApiFactory = OpenCodeManagedApi Function({
+  required String serverUrl,
+  required String? password,
+  required void Function() onConnected,
+  required void Function() onDisconnected,
+});
 
 OpenCodeManagedApi _defaultBuildApi({
   required String serverUrl,
@@ -70,36 +69,18 @@ OpenCodeManagedApi _defaultBuildApi({
 /// sources the supervisor needs); the registered descriptor is `const
 /// OpenCodePluginDescriptor()`.
 class const OpenCodePluginDescriptor({
-    OpenCodeManagedApiFactory? buildApi,
-    http.Client Function()? probeClientFactory,
-    Iterable<int>? candidatePorts,
-    Random? random,
-    Duration degradedDebounce = const Duration(seconds: 5),
-    Duration coldStartBudget = openCodeColdStartBudget,
-    Duration versionProbeTimeout = openCodeVersionProbeTimeout,
-    ManagedRuntimeProvisionService? provisionService,
-  }) extends BridgePluginDescriptor {
-  this : _buildApi = buildApi,
-       _probeClientFactory = probeClientFactory,
-       _candidatePorts = candidatePorts,
-       _random = random,
-       _degradedDebounce = degradedDebounce,
-       _coldStartBudget = coldStartBudget,
-       _versionProbeTimeout = versionProbeTimeout,
-       _provisionService = provisionService;
-
-  final OpenCodeManagedApiFactory? _buildApi;
-  final http.Client Function()? _probeClientFactory;
-  final Iterable<int>? _candidatePorts;
-  final Random? _random;
-  final Duration _degradedDebounce;
-  final Duration _coldStartBudget;
-  final Duration _versionProbeTimeout;
+  final OpenCodeManagedApiFactory? _buildApi,
+  final http.Client Function()? _probeClientFactory,
+  final Iterable<int>? _candidatePorts,
+  final Random? _random,
+  final Duration _degradedDebounce = const Duration(seconds: 5),
+  final Duration _coldStartBudget = openCodeColdStartBudget,
+  final Duration _versionProbeTimeout = openCodeVersionProbeTimeout,
 
   /// Test seam for existing-runtime resolution. Production builds a default in
   /// [ensureRuntime] from the host's process service.
-  final ManagedRuntimeProvisionService? _provisionService;
-
+  final ManagedRuntimeProvisionService? _provisionService,
+}) extends BridgePluginDescriptor {
   @override
   bool get supportsPromptAttachments => true;
 

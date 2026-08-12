@@ -24,20 +24,13 @@ abstract class CommandExecutor() {
 /// The captured outcome of a [CommandExecutor.run] call.
 @immutable
 class const CommandResult({
-    required this.exitCode,
-    required this.stdout,
-    required this.stderr,
-  }) {
-  final int exitCode;
-  final String stdout;
-  final String stderr;
-
+  required final int exitCode,
+  required final String stdout,
+  required final String stderr,
+}) {
   @override
   bool operator ==(Object other) =>
-      other is CommandResult &&
-      other.exitCode == exitCode &&
-      other.stdout == stdout &&
-      other.stderr == stderr;
+      other is CommandResult && other.exitCode == exitCode && other.stdout == stdout && other.stderr == stderr;
 
   @override
   int get hashCode => Object.hash(exitCode, stdout, stderr);

@@ -50,22 +50,18 @@ enum PlatformArch() {
 /// published asset name/format/checksum (the bridge updater and the OpenCode
 /// runtime manifest each key their own asset tables off this).
 @immutable
-final class const PlatformTarget({required this.os, required this.arch}) {
-  factory PlatformTarget.current() {
+final class const PlatformTarget({required final PlatformOs os, required final PlatformArch arch}) {
+  factory current() {
     return PlatformTarget(
       os: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
       arch: PlatformArch.fromDartVersion(dartVersion: Platform.version),
     );
   }
 
-  final PlatformOs os;
-  final PlatformArch arch;
-
   String get key => "${os.value} ${arch.value}";
 
   @override
-  bool operator ==(Object other) =>
-      other is PlatformTarget && other.os == os && other.arch == arch;
+  bool operator ==(Object other) => other is PlatformTarget && other.os == os && other.arch == arch;
 
   @override
   int get hashCode => Object.hash(os, arch);

@@ -35,48 +35,33 @@ import "repositories/mappers/acp_content_mapper.dart";
 /// port), this owns the agent subprocess: it spawns lazily on first use and
 /// reaps it on [dispose].
 abstract class AcpPlugin({
-    required this.id,
-    required this.agentDisplayName,
-    required this.launchSpec,
-    required String launchDirectory,
-    required this.eventMapper,
-    required AcpContentMapper contentMapper,
-    required AcpCommandTracker commandTracker,
-    required AcpSessionOptionsService sessionOptionsService,
-    AcpProcessFactory? processFactory,
-  }) extends BridgeDerivedProjectsPluginApi {
-  this : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
-       _processFactory = processFactory,
-       _contentMapper = contentMapper,
-       _commandTracker = commandTracker,
-       _sessionOptionsService = sessionOptionsService,
-       _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
-
-  @override
-  final String id;
+  @override required final String id,
 
   /// Human-facing agent name used for synthesized agents/providers.
-  final String agentDisplayName;
+  required final String agentDisplayName,
+  required final AcpLaunchSpec launchSpec,
+  required String launchDirectory,
 
-  final AcpLaunchSpec launchSpec;
+  /// The live event mapper (subclasses may pass a specialized one).
+  required final AcpEventMapper eventMapper,
+  required final AcpContentMapper _contentMapper,
+
+  /// Snapshot of the agent's advertised slash commands, fed by the
+  /// notification listener and served by [getCommands].
+  required final AcpCommandTracker _commandTracker,
+  required final AcpSessionOptionsService _sessionOptionsService,
+  final AcpProcessFactory? _processFactory,
+}) extends BridgeDerivedProjectsPluginApi {
+  this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
 
   /// Bridge launch CWD (canonicalized) — the directory the bridge seeds as an
   /// always-present project, and the fallback attribution for sessions whose
   /// own directory is unknown.
   @override
-  final String launchDirectory;
+  final String launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
-  /// The live event mapper (subclasses may pass a specialized one).
-  final AcpEventMapper eventMapper;
-
-  final AcpProcessFactory? _processFactory;
-  final AcpContentMapper _contentMapper;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
 
-  /// Snapshot of the agent's advertised slash commands, fed by the
-  /// notification listener and served by [getCommands].
-  final AcpCommandTracker _commandTracker;
-  final AcpSessionOptionsService _sessionOptionsService;
   AcpCommandListener? _commandListener;
 
   /// sessionId -> the canonical directory the session lives in. Populated on
@@ -351,7 +336,7 @@ abstract class AcpPlugin({
           _client = null;
           _connectFuture = null;
         }
-        return Future<bool>.error(error);
+        return await Future<bool>.error(error);
       }
     }();
     _connectFuture = future.catchError((Object _) => false);
@@ -785,7 +770,7 @@ abstract class AcpPlugin({
       // model/mode are in place for whichever turn comes first later.
       try {
         await _runOnProcessLane(
-          () async => applyTurnSelection(
+          () async => await applyTurnSelection(
             configRepository: AcpSessionConfigRepository(
               client: await _connectedClient(),
             ),
@@ -1749,11 +1734,7 @@ class _SessionTurnState() {
 }
 
 class const _TurnSelection({
-    required this.model,
-    required this.variant,
-    required this.agent,
-  }) {
-  final ({String providerID, String modelID})? model;
-  final PluginSessionVariant? variant;
-  final String? agent;
-}
+  required final ({String providerID, String modelID})? model,
+  required final PluginSessionVariant? variant,
+  required final String? agent,
+});

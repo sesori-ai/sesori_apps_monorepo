@@ -9,32 +9,21 @@ enum CatalogImportTrigger() { automatic, explicit, headless }
 
 enum CatalogEmptyHydrationPolicy() { complete, retry }
 
-class CatalogImportPluginUnknownException({required this.pluginId}) implements Exception {
-  final String pluginId;
-}
+class CatalogImportPluginUnknownException({required final String pluginId}) implements Exception;
 
-class CatalogImportPluginNotEnabledException({required this.pluginId}) implements Exception {
-  final String pluginId;
-}
+class CatalogImportPluginNotEnabledException({required final String pluginId}) implements Exception;
 
-class CatalogImportPluginUnavailableException({required this.pluginId}) implements Exception {
-  final String pluginId;
-}
+class CatalogImportPluginUnavailableException({required final String pluginId}) implements Exception;
 
 class CatalogImportService({
-    required CatalogImportRepository repository,
+    required final CatalogImportRepository _repository,
     required List<String> orderedPluginIds,
     required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
   }) {
-  this : _repository = repository,
-       _orderedPluginIds = List<String>.unmodifiable(orderedPluginIds),
-       _knownPluginIds = Set<String>.unmodifiable(orderedPluginIds),
-       _emptyHydrationPolicies = Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);
 
-  final CatalogImportRepository _repository;
-  final List<String> _orderedPluginIds;
-  final Set<String> _knownPluginIds;
-  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies;
+  final List<String> _orderedPluginIds = List<String>.unmodifiable(orderedPluginIds);
+  final Set<String> _knownPluginIds = Set<String>.unmodifiable(orderedPluginIds);
+  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies = Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);
   final StreamController<CatalogImportProgress> _progressController = StreamController<CatalogImportProgress>.broadcast(
     sync: true,
   );

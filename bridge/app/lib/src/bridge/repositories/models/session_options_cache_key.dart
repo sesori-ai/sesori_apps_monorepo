@@ -2,18 +2,16 @@ import "package:meta/meta.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 @immutable
-sealed class const SessionOptionsCacheKey({required this.pluginId}) {
-  const factory SessionOptionsCacheKey.plugin({
+sealed class const SessionOptionsCacheKey({required final String pluginId}) {
+  const factory plugin({
     required String pluginId,
   }) = PluginSessionOptionsCacheKey;
 
-  const factory SessionOptionsCacheKey.project({
+  const factory project({
     required String pluginId,
     required String projectId,
     required String projectPath,
   }) = ProjectSessionOptionsCacheKey;
-
-  final String pluginId;
 
   PluginSessionOptionsScope get scope;
 
@@ -37,16 +35,11 @@ final class const PluginSessionOptionsCacheKey({required super.pluginId}) extend
 }
 
 final class const ProjectSessionOptionsCacheKey({
-    required super.pluginId,
-    required this.projectId,
-    required this.projectPath,
-  }) extends SessionOptionsCacheKey {
-  this : assert(pluginId != ""),
-       assert(projectId != ""),
-       assert(projectPath != "");
-
-  final String projectId;
-  final String projectPath;
+  required super.pluginId,
+  required final String projectId,
+  required final String projectPath,
+}) extends SessionOptionsCacheKey {
+  this : assert(pluginId != ""), assert(projectId != ""), assert(projectPath != "");
 
   @override
   PluginSessionOptionsScope get scope => PluginSessionOptionsScope.project;

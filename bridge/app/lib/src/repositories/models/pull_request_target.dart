@@ -4,47 +4,31 @@ enum PullRequestNoBranchReason() { missingDirectory, notGitRepository, detachedH
 
 sealed class const PullRequestDirectoryTarget();
 
-final class const PullRequestGithubDirectoryTarget({required this.target}) extends PullRequestDirectoryTarget {
-  final PullRequestSelectionTarget target;
-}
+final class const PullRequestGithubDirectoryTarget({required final PullRequestSelectionTarget target}) extends PullRequestDirectoryTarget;
 
-final class const PullRequestLocalBranchDirectoryTarget({required this.branchName}) extends PullRequestDirectoryTarget {
-  final String branchName;
-}
+final class const PullRequestLocalBranchDirectoryTarget({required final String branchName}) extends PullRequestDirectoryTarget;
 
-final class const PullRequestNoBranchDirectoryTarget({required this.reason}) extends PullRequestDirectoryTarget {
-  final PullRequestNoBranchReason reason;
-}
+final class const PullRequestNoBranchDirectoryTarget({required final PullRequestNoBranchReason reason}) extends PullRequestDirectoryTarget;
 
-final class const PullRequestBranchResolutionFailed({required this.error}) extends PullRequestDirectoryTarget {
-  final PullRequestTargetResolutionException error;
-}
+final class const PullRequestBranchResolutionFailed({required final PullRequestTargetResolutionException error}) extends PullRequestDirectoryTarget;
 
 final class const PullRequestBranchChangedDuringResolution() extends PullRequestDirectoryTarget;
 
 final class const PullRequestRepositoryResolutionFailed({
-    required this.branchName,
-    required this.error,
-  }) extends PullRequestDirectoryTarget {
-  final String branchName;
-  final PullRequestTargetResolutionException error;
-}
+    required final String branchName,
+    required final PullRequestTargetResolutionException error,
+  }) extends PullRequestDirectoryTarget;
 
 final class const PullRequestTargetResolutionException({
-    required this.innerError,
-    required this.innerStackTrace,
+    required final Object innerError,
+    required final StackTrace innerStackTrace,
   }) implements Exception {
-  final Object innerError;
-  final StackTrace innerStackTrace;
-
   @override
   String toString() => "Local pull request target resolution failed while handling ${innerError.runtimeType}";
 }
 
 sealed class const PullRequestReplacementOutcome();
 
-final class const PullRequestReplacementApplied({required this.changed}) extends PullRequestReplacementOutcome {
-  final bool changed;
-}
+final class const PullRequestReplacementApplied({required final bool changed}) extends PullRequestReplacementOutcome;
 
 final class const PullRequestReplacementScopeChanged() extends PullRequestReplacementOutcome;

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "../../../core/extensions/build_context_x.dart";
 
 /// Tappable header row of the background-tasks card. Shows a spinner +
@@ -7,15 +8,11 @@ import "../../../core/extensions/build_context_x.dart";
 /// the card expands. Rendered as a [PregoListTile] so it shares the card's
 /// surface and press feedback with the task rows below it.
 class const BackgroundTasksHeader({
-    super.key,
-    required this.runningCount,
-    required this.expanded,
-    required this.onTap,
-  }) extends StatelessWidget {
-  final int runningCount;
-  final bool expanded;
-  final VoidCallback onTap;
-
+  super.key,
+  required final int runningCount,
+  required final bool expanded,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

@@ -1280,12 +1280,8 @@ class _ThrowingRenameSessionPlugin() extends _OpenCodeFakeBridgePlugin {
   }
 }
 
-class _OrderCheckingCommandPlugin({required AppDatabase database}) extends _OpenCodeFakeBridgePlugin {
-  final AppDatabase _database;
-
+class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extends _OpenCodeFakeBridgePlugin {
   bool hadStoredRowWhenCommandSent = false;
-
-  this : _database = database;
 
   @override
   Future<void> sendCommand({

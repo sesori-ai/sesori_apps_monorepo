@@ -38,19 +38,13 @@ enum PregoInlineAlertsNotificationsType() {
 /// for the corresponding [PregoInlineAlertsNotifications] field to omit a
 /// button.
 class const PregoInlineAlertsNotificationsAction({
-    required this.label,
-    required this.onPressed,
-    this.icon,
-  }) {
-  /// Button label.
-  final String label;
-
-  /// Called when the button is tapped.
-  final VoidCallback onPressed;
-
-  /// Optional icon placed before the [label].
-  final IconData? icon;
-}
+    /// Button label.
+  required final String label,
+    /// Called when the button is tapped.
+  required final VoidCallback onPressed,
+    /// Optional icon placed before the [label].
+  final IconData? icon,
+  });
 
 /// An inline alert / notification card — a faithful port of the Figma
 /// `pregoInlineAletsNotifications` component (sic).
@@ -83,47 +77,31 @@ class const PregoInlineAlertsNotificationsAction({
 /// ```
 class const PregoInlineAlertsNotifications({
     super.key,
-    required this.title,
-    this.type = PregoInlineAlertsNotificationsType.info,
-    this.supportingText,
-    this.icon,
-    this.primaryAction,
-    this.secondaryAction,
-    this.onClose,
-    this.additionalContent,
-  }) extends StatelessWidget {
-  /// Bold headline text shown on the first row. Long titles ellipsize on a
+    /// Bold headline text shown on the first row. Long titles ellipsize on a
   /// single line so the actions stay aligned to the trailing edge.
-  final String title;
-
-  /// Selects the leading icon, accent gradient, and primary-action fill.
-  final PregoInlineAlertsNotificationsType type;
-
-  /// Optional supporting text shown below the title. When `null`, no supporting
+  required final String title,
+    /// Selects the leading icon, accent gradient, and primary-action fill.
+  final PregoInlineAlertsNotificationsType type = PregoInlineAlertsNotificationsType.info,
+    /// Optional supporting text shown below the title. When `null`, no supporting
   /// text row is rendered.
-  final String? supportingText;
-
-  /// Overrides the leading icon. When `null`, the [type]'s default icon is
+  final String? supportingText,
+    /// Overrides the leading icon. When `null`, the [type]'s default icon is
   /// used. Ignored for [PregoInlineAlertsNotificationsType.loading], which
   /// always shows a spinner.
-  final IconData? icon;
-
-  /// Optional primary (solid, accent-coloured) action button. When `null`, no
+  final IconData? icon,
+    /// Optional primary (solid, accent-coloured) action button. When `null`, no
   /// primary button is rendered.
-  final PregoInlineAlertsNotificationsAction? primaryAction;
-
-  /// Optional secondary (tertiary, label-only) action button, placed before
+  final PregoInlineAlertsNotificationsAction? primaryAction,
+    /// Optional secondary (tertiary, label-only) action button, placed before
   /// the [primaryAction]. When `null`, no secondary button is rendered.
-  final PregoInlineAlertsNotificationsAction? secondaryAction;
-
-  /// Called when the close button is tapped. When `null`, the close button is
+  final PregoInlineAlertsNotificationsAction? secondaryAction,
+    /// Called when the close button is tapped. When `null`, the close button is
   /// not rendered.
-  final VoidCallback? onClose;
-
-  /// Optional custom widget rendered in the content column, below the
+  final VoidCallback? onClose,
+    /// Optional custom widget rendered in the content column, below the
   /// [supportingText]. Use for richer content (links, inline controls, etc.).
-  final Widget? additionalContent;
-
+  final Widget? additionalContent,
+  }) extends StatelessWidget {
   // Gap between the leading icon and the content column. Figma uses 10px —
   // between spacing-md (8) and spacing-lg (12) — so it has no named token.
   static const double _leadingGap = 10.0;
@@ -399,9 +377,7 @@ class const PregoInlineAlertsNotifications({
 /// loading-type `primaryAlt` fill — are tuned for the page background, so they
 /// sit on the wrong side of this inverted surface. Wrapping them in the
 /// opposite-brightness palette puts every token back on the correct side.
-class const _InvertedSurfaceTheme({required this.child}) extends StatelessWidget {
-  final Widget child;
-
+class const _InvertedSurfaceTheme({required final Widget child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -424,10 +400,9 @@ class const _InvertedSurfaceTheme({required this.child}) extends StatelessWidget
 /// circular iso-colour rings into ellipses [scaleX] times wider than they are
 /// tall. The warm overlay then fans out almost horizontally, as if its centre
 /// sat far above the card — matching the Figma radial.
-class const _WideEllipseGradientTransform(this.scaleX) extends GradientTransform {
+class const _WideEllipseGradientTransform(
   /// How many times wider than tall each iso-colour ring is drawn.
-  final double scaleX;
-
+  final double scaleX) extends GradientTransform {
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
     // Scale x by [scaleX] about the gradient centre (the card's mid-x). The

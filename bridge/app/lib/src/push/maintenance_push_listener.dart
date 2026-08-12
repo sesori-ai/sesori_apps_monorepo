@@ -9,25 +9,14 @@ import "push_rate_limiter.dart";
 import "push_session_state_tracker.dart";
 
 class MaintenancePushListener({
-    required PushSessionStateTracker tracker,
-    required CompletionNotifier completionNotifier,
-    required PushRateLimiter rateLimiter,
-    required PushMaintenanceTelemetryBuilder telemetryBuilder,
-    Duration maintenanceInterval = const Duration(minutes: 10),
-  }) {
-  final PushSessionStateTracker _tracker;
-  final CompletionNotifier _completionNotifier;
-  final PushRateLimiter _rateLimiter;
-  final PushMaintenanceTelemetryBuilder _telemetryBuilder;
-  final Duration _maintenanceInterval;
+  required final PushSessionStateTracker _tracker,
+  required final CompletionNotifier _completionNotifier,
+  required final PushRateLimiter _rateLimiter,
+  required final PushMaintenanceTelemetryBuilder _telemetryBuilder,
+  final Duration _maintenanceInterval = const Duration(minutes: 10),
+}) {
   Timer? _timer;
   PushMaintenanceTelemetrySnapshot? _lastMaintenanceTelemetry;
-
-  this : _tracker = tracker,
-       _completionNotifier = completionNotifier,
-       _rateLimiter = rateLimiter,
-       _telemetryBuilder = telemetryBuilder,
-       _maintenanceInterval = maintenanceInterval;
 
   @visibleForTesting
   bool get isStarted => _timer != null;

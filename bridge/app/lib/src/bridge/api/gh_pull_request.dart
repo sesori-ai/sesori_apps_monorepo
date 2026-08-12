@@ -116,7 +116,7 @@ PrCheckStatus _prCheckStatusFromString(String? value) {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class GhPullRequest with _$GhPullRequest {
-  const factory GhPullRequest({
+  const factory({
     required int number,
     required String url,
     required String title,
@@ -129,7 +129,7 @@ sealed class GhPullRequest with _$GhPullRequest {
     @JsonKey(fromJson: _prCheckStatusFromRollup, toJson: _rollupStateToJson) required PrCheckStatus statusCheckRollup,
   }) = _GhPullRequest;
 
-  factory GhPullRequest.fromJson(Map<String, dynamic> json) => _$GhPullRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$GhPullRequestFromJson(json);
 }
 
 String? _rollupStateToJson(PrCheckStatus value) => switch (value) {

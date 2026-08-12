@@ -14,22 +14,18 @@ import "../../../core/extensions/build_context_x.dart";
 /// reads as a single round `pregoButtonsSolid` (44pt, skeuomorphic surface);
 /// opened, each option is an icon button sharing that one joined background.
 class const ComposerOptionsAccordion({
-    super.key,
-    required this.actionsEnabled,
-    required this.showAttachImage,
-    required this.onSlashCommandsTap,
-    required this.onAttachImageTap,
-  }) extends StatefulWidget {
+  super.key,
+
   /// Disables the revealed actions (not the toggle) while the composer is
   /// recording or transcribing, mirroring the old always-visible slash button.
-  final bool actionsEnabled;
+  required final bool actionsEnabled,
 
   /// Whether the image-attach action is offered at all. Harnesses that drop
   /// image parts get no attach button rather than one that loses the image.
-  final bool showAttachImage;
-  final VoidCallback onSlashCommandsTap;
-  final VoidCallback onAttachImageTap;
-
+  required final bool showAttachImage,
+  required final VoidCallback onSlashCommandsTap,
+  required final VoidCallback onAttachImageTap,
+}) extends StatefulWidget {
   @override
   State<ComposerOptionsAccordion> createState() => _ComposerOptionsAccordionState();
 }
@@ -118,16 +114,11 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
 
 /// A 32pt transparent circular icon button used inside the accordion pill.
 class const _AccordionIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-    this.rotated = false,
-  }) extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final bool rotated;
-  final VoidCallback? onTap;
-
+  required final IconData icon,
+  required final String tooltip,
+  required final VoidCallback? onTap,
+  final bool rotated = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

@@ -14,52 +14,33 @@ import "worktree_service.dart";
 enum SessionCleanupOperation() { removeWorktree, deleteBranch }
 
 class SessionCleanupFailedException({
-    required this.sessionId,
-    required this.operation,
+    required final String sessionId,
+    required final SessionCleanupOperation operation,
   }) implements Exception {
-  final String sessionId;
-  final SessionCleanupOperation operation;
-
   @override
   String toString() => "session cleanup failed for $sessionId while ${operation.name}";
 }
 
-class SessionArchiveConflictException({required this.rejection}) implements Exception {
-  final SessionCleanupRejection rejection;
-}
+class SessionArchiveConflictException({required final SessionCleanupRejection rejection}) implements Exception;
 
-class ArchiveStatusUpdate({required this.session, required this.changed, required this.projectId}) {
-  final Session session;
-  final bool changed;
-
+class ArchiveStatusUpdate({
+  required final Session session,
+  required final bool changed,
   /// The stored project id the session row is keyed by. A dedicated-worktree
   /// session can report its worktree directory as the enriched project id.
-  final String projectId;
-}
+  required final String projectId,
+});
 
 class SessionNotFoundException() implements Exception;
 
 class SessionLifecycleService({
-    required WorktreeService worktreeService,
-    required SessionRepository sessionRepository,
-    required FilesystemRepository filesystemRepository,
-    required SessionOperationDispatcher sessionOperationDispatcher,
-    required ChatHistoryService chatHistoryService,
-    required ArchivedSessionValidator archivedSessionValidator,
+    required final WorktreeService _worktreeService,
+    required final SessionRepository _sessionRepository,
+    required final FilesystemRepository _filesystemRepository,
+    required final SessionOperationDispatcher _sessionOperationDispatcher,
+    required final ChatHistoryService _chatHistoryService,
+    required final ArchivedSessionValidator _archivedSessionValidator,
   }) {
-  final WorktreeService _worktreeService;
-  final SessionRepository _sessionRepository;
-  final FilesystemRepository _filesystemRepository;
-  final SessionOperationDispatcher _sessionOperationDispatcher;
-  final ChatHistoryService _chatHistoryService;
-  final ArchivedSessionValidator _archivedSessionValidator;
-
-  this : _worktreeService = worktreeService,
-       _sessionRepository = sessionRepository,
-       _filesystemRepository = filesystemRepository,
-       _sessionOperationDispatcher = sessionOperationDispatcher,
-       _chatHistoryService = chatHistoryService,
-       _archivedSessionValidator = archivedSessionValidator;
 
   /// Runs cleanup inside a session-family operation already reserved by the
   /// archive or deletion workflow.
@@ -181,7 +162,7 @@ class SessionLifecycleService({
     // and answers with an explicit rejection; remove tolerance when out of
     // support.
     if (!archived) {
-      return _refuseUnarchive(sessionId: sessionId);
+      return await _refuseUnarchive(sessionId: sessionId);
     }
     final storedSession = await _getStoredSession(sessionId: sessionId);
     return ArchiveStatusUpdate(
@@ -216,7 +197,7 @@ class SessionLifecycleService({
   }
 
   Future<StoredSession> _getStoredSession({required String sessionId}) async {
-    return _sessionRepository.requireRoutableStoredSession(
+    return await _sessionRepository.requireRoutableStoredSession(
       sessionId: sessionId,
       operation: SessionOperation.updateSessionArchiveStatus,
     );

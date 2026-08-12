@@ -9,9 +9,7 @@ typedef GitPathExistsChecker = bool Function({required String gitPath});
 
 sealed class const GitCurrentBranchResult();
 
-final class const GitCurrentBranchNamed({required this.branchName}) extends GitCurrentBranchResult {
-  final String branchName;
-}
+final class const GitCurrentBranchNamed({required final String branchName}) extends GitCurrentBranchResult;
 
 final class const GitCurrentBranchDetached() extends GitCurrentBranchResult;
 
@@ -20,25 +18,15 @@ final class const GitCurrentBranchMissingDirectory() extends GitCurrentBranchRes
 final class const GitCurrentBranchNotRepository() extends GitCurrentBranchResult;
 
 class GitWorktreeSafetySnapshot({
-    required this.worktreeExists,
-    required this.hasUnstagedChanges,
-    required this.actualBranch,
-  }) {
-  final bool worktreeExists;
-  final bool hasUnstagedChanges;
-  final String actualBranch;
-}
+  required final bool worktreeExists,
+  required final bool hasUnstagedChanges,
+  required final String actualBranch,
+});
 
 class GitCliApi({
-    required ProcessRunner processRunner,
-    required GitPathExistsChecker gitPathExists,
-  }) {
-  final ProcessRunner _processRunner;
-  final GitPathExistsChecker _gitPathExists;
-
-  this : _processRunner = processRunner,
-       _gitPathExists = gitPathExists;
-
+  required final ProcessRunner _processRunner,
+  required final GitPathExistsChecker _gitPathExists,
+}) {
   Future<bool> isGitInitialized({required String projectPath}) async {
     return _gitPathExists(gitPath: p.join(projectPath, ".git"));
   }

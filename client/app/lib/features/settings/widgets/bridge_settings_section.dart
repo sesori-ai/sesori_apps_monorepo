@@ -207,14 +207,10 @@ Future<void> _editInterval({
 }
 
 class const _RefreshIntervalSheet({
-    required this.cubit,
-    required this.initialSeconds,
-    required this.validationBounds,
-  }) extends StatefulWidget {
-  final BridgeSettingsCubit cubit;
-  final int initialSeconds;
-  final PullRequestRefreshSettingsBounds? validationBounds;
-
+  required final BridgeSettingsCubit cubit,
+  required final int initialSeconds,
+  required final PullRequestRefreshSettingsBounds? validationBounds,
+}) extends StatefulWidget {
   @override
   State<_RefreshIntervalSheet> createState() => _RefreshIntervalSheetState();
 }

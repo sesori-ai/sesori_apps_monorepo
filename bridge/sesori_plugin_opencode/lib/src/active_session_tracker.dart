@@ -8,9 +8,7 @@ import "models/openapi/session_status.g.dart";
 import "models/sse_event_data.g.dart";
 import "opencode_repository.dart";
 
-class ActiveSessionTracker(this._repository) {
-  final OpenCodeRepository _repository;
-
+class ActiveSessionTracker(final OpenCodeRepository _repository) {
   final Set<String> _projectWorktrees = {};
 
   // Empty virtual folders cannot be rediscovered from OpenCode until their

@@ -9,22 +9,17 @@ import 'release_info.dart';
 /// Version parsing/typing lives in the repository that builds this; consumers
 /// only compare the already-typed values.
 class const UpdateResolution({
-    required this.currentVersion,
-    required this.currentEligible,
-    required this.latestEligible,
-    required this.latestVersion,
-  }) {
   /// The version of the currently running binary.
-  final SemanticVersion currentVersion;
+  required final SemanticVersion currentVersion,
 
   /// Whether [currentVersion] is eligible for the active track (e.g. an
   /// `-internal.*` build is not eligible while the track is `stable`).
-  final bool currentEligible;
+  required final bool currentEligible,
 
   /// The latest release eligible for the active track, or `null` when none was
   /// found (empty/unreachable release set is surfaced as an error upstream).
-  final ReleaseInfo? latestEligible;
+  required final ReleaseInfo? latestEligible,
 
   /// The typed version of [latestEligible], or `null` when there is none.
-  final SemanticVersion? latestVersion;
-}
+  required final SemanticVersion? latestVersion,
+});

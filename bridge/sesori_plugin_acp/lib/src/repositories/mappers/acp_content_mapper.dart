@@ -11,27 +11,19 @@ const int acpToolImageCandidateLimit = 4;
 
 sealed class const AcpMappedContentBlock();
 
-final class const AcpMappedTextContentBlock({required this.text}) extends AcpMappedContentBlock {
-  final String text;
-}
+final class const AcpMappedTextContentBlock({required final String text}) extends AcpMappedContentBlock;
 
 sealed class const AcpMappedImageContentBlock() extends AcpMappedContentBlock;
 
 final class const AcpMappedInlineImageContentBlock({
-    required this.attachment,
-    required this.decodedBytes,
-  }) extends AcpMappedImageContentBlock {
-  final PluginMessageAttachmentInlineImage attachment;
-  final int decodedBytes;
-}
+    required final PluginMessageAttachmentInlineImage attachment,
+    required final int decodedBytes,
+  }) extends AcpMappedImageContentBlock;
 
 final class const AcpMappedMetadataImageContentBlock({
-    required this.attachment,
-    required this.reason,
-  }) extends AcpMappedImageContentBlock {
-  final PluginMessageAttachmentMetadata attachment;
-  final AcpImageDegradationReason reason;
-}
+    required final PluginMessageAttachmentMetadata attachment,
+    required final AcpImageDegradationReason reason,
+  }) extends AcpMappedImageContentBlock;
 
 final class const AcpMappedUnsupportedContentBlock() extends AcpMappedContentBlock;
 
@@ -46,18 +38,12 @@ enum AcpImageDegradationReason() {
 sealed class const AcpToolContentMutation();
 
 final class const AcpReplaceToolContentMutation({
-    required this.output,
-    required this.imageCandidates,
-    required this.hasDiff,
-  }) extends AcpToolContentMutation {
-  final String? output;
-  final List<AcpMappedImageContentBlock> imageCandidates;
-  final bool hasDiff;
-}
+    required final String? output,
+    required final List<AcpMappedImageContentBlock> imageCandidates,
+    required final bool hasDiff,
+  }) extends AcpToolContentMutation;
 
-final class const AcpUpdateToolOutputMutation({required this.output}) extends AcpToolContentMutation {
-  final String? output;
-}
+final class const AcpUpdateToolOutputMutation({required final String? output}) extends AcpToolContentMutation;
 
 final class const AcpUnchangedToolContentMutation() extends AcpToolContentMutation;
 
@@ -556,8 +542,6 @@ final class _AcpToolImagePrefix() {
 
 sealed class const _AcpMappedToolItem();
 
-final class const _AcpMappedToolBlock({required this.block}) extends _AcpMappedToolItem {
-  final AcpMappedContentBlock block;
-}
+final class const _AcpMappedToolBlock({required final AcpMappedContentBlock block}) extends _AcpMappedToolItem;
 
 final class const _AcpMappedToolDiff() extends _AcpMappedToolItem;

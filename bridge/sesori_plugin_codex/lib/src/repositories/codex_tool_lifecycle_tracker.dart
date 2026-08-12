@@ -17,11 +17,8 @@ import "models/codex_projected_tool.dart";
 /// execute sequentially within a turn, making the pending same-turn FIFO the
 /// narrow common identity between the streams.
 class CodexToolLifecycleTracker({
-    required CodexRolloutToolMapper rolloutToolMapper,
-  }) {
-  this : _rolloutToolMapper = rolloutToolMapper;
-
-  final CodexRolloutToolMapper _rolloutToolMapper;
+  required final CodexRolloutToolMapper _rolloutToolMapper,
+}) {
   final Map<String, _ThreadToolLifecycle> _threads = {};
   final Map<String, Map<String, _TrackedTool>> _retainedCommandsByThread = {};
 
@@ -32,7 +29,7 @@ class CodexToolLifecycleTracker({
   }) {
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
     return switch (line) {
-      CodexRolloutResponseItemLineDto(: final payload) => _observeRolloutPayload(
+      CodexRolloutResponseItemLineDto(:final payload) => _observeRolloutPayload(
         thread: thread,
         payload: payload,
       ),
@@ -239,9 +236,11 @@ class CodexToolLifecycleTracker({
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
     thread.durableImageResults.addAll([
       for (final line in lines)
-        if (line case CodexRolloutEventMessageLineDto(
-          payload: CodexRolloutImageGenerationEndEventDto(:final result),
-        ) when result.isNotEmpty)
+        if (line
+            case CodexRolloutEventMessageLineDto(
+              payload: CodexRolloutImageGenerationEndEventDto(:final result),
+            )
+            when result.isNotEmpty)
           result,
     ]);
   }
@@ -774,19 +773,13 @@ class _ThreadToolLifecycle() {
 }
 
 class _TrackedTool({
-    required this.id,
-    required this.tool,
-    required this.title,
-    required this.turnId,
-    required this.chronologySegment,
-    required this.isRolloutCall,
-  }) {
-  final String id;
-  final String tool;
-  String? title;
-  final String? turnId;
-  final int chronologySegment;
-  final bool isRolloutCall;
+  required final String id,
+  required final String tool,
+  required var String? title,
+  required final String? turnId,
+  required final int chronologySegment,
+  required final bool isRolloutCall,
+}) {
   PluginToolStatus status = PluginToolStatus.running;
   String? rolloutOutput;
   String? appServerOutput;

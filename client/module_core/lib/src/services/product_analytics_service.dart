@@ -15,11 +15,9 @@ import "product_analytics_preference_service.dart";
 
 @lazySingleton
 class ProductAnalyticsService({
-    required AnalyticsRepository analyticsRepository,
-    required ProductAnalyticsPreferenceService preferenceService,
-  }) {
-  final AnalyticsRepository _analyticsRepository;
-  final ProductAnalyticsPreferenceService _preferenceService;
+  required final AnalyticsRepository _analyticsRepository,
+  required final ProductAnalyticsPreferenceService _preferenceService,
+}) {
   final ProductAnalyticsGenerationEventDispatcher _schemaReadiness = ProductAnalyticsGenerationEventDispatcher();
   final ProductAnalyticsGenerationEventDispatcher _activationReadiness = ProductAnalyticsGenerationEventDispatcher();
 
@@ -30,9 +28,6 @@ class ProductAnalyticsService({
   Future<void>? _startFuture;
   Future<void>? _disposeFuture;
   bool _disposed = false;
-
-  this : _analyticsRepository = analyticsRepository,
-       _preferenceService = preferenceService;
 
   ValueStream<ProductAnalyticsState> get stateStream => _preferenceService.stateStream;
   ProductAnalyticsState get state => _preferenceService.state;
@@ -69,7 +64,7 @@ class ProductAnalyticsService({
     final context = _preferenceService.deliveryContext;
     if (context != null) {
       _retryActiveGenerationDispatch(context: context);
-      return _deliver(envelope: envelope, context: context);
+      return await _deliver(envelope: envelope, context: context);
     }
 
     final generation = _preferenceService.deferrableGeneration;

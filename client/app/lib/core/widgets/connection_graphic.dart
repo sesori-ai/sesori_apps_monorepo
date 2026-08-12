@@ -19,10 +19,10 @@ enum _ConnectionGraphicState() { off, on }
 ///   filled with an aurora glow and a green broadcast badge.
 class ConnectionGraphic extends StatelessWidget {
   /// Bridge disconnected — a greyed shell carrying a broadcast-off badge.
-  const ConnectionGraphic.connectionOff({super.key}) : _state = _ConnectionGraphicState.off;
+  const new connectionOff({super.key}) : _state = _ConnectionGraphicState.off;
 
   /// Bridge connected — an aurora-filled shell carrying a broadcast badge.
-  const ConnectionGraphic.connectionOn({super.key}) : _state = _ConnectionGraphicState.on;
+  const new connectionOn({super.key}) : _state = _ConnectionGraphicState.on;
 
   final _ConnectionGraphicState _state;
 

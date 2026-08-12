@@ -5,17 +5,17 @@ part "codex_model_dto.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexModelListResponseDto with _$CodexModelListResponseDto {
-  const factory CodexModelListResponseDto({
+  const factory({
     @CodexModelListConverter() required List<CodexModelDto> data,
     required String? nextCursor,
   }) = _CodexModelListResponseDto;
 
-  factory CodexModelListResponseDto.fromJson(Map<String, dynamic> json) => _$CodexModelListResponseDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexModelListResponseDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexModelDto with _$CodexModelDto {
-  const factory CodexModelDto({
+  const factory({
     required String? id,
     required String? displayName,
     required bool? hidden,
@@ -24,17 +24,17 @@ sealed class CodexModelDto with _$CodexModelDto {
     required bool? isDefault,
   }) = _CodexModelDto;
 
-  factory CodexModelDto.fromJson(Map<String, dynamic> json) => _$CodexModelDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexModelDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexReasoningEffortOptionDto with _$CodexReasoningEffortOptionDto {
-  const factory CodexReasoningEffortOptionDto({
+  const factory({
     required String? reasoningEffort,
     required String? description,
   }) = _CodexReasoningEffortOptionDto;
 
-  factory CodexReasoningEffortOptionDto.fromJson(
+  factory fromJson(
     Map<String, dynamic> json,
   ) => _$CodexReasoningEffortOptionDtoFromJson(json);
 }
@@ -57,7 +57,8 @@ class const CodexModelListConverter() implements JsonConverter<List<CodexModelDt
   }
 }
 
-class const CodexReasoningEffortListConverter() implements JsonConverter<List<CodexReasoningEffortOptionDto>?, Object?> {
+class const CodexReasoningEffortListConverter()
+    implements JsonConverter<List<CodexReasoningEffortOptionDto>?, Object?> {
   @override
   List<CodexReasoningEffortOptionDto>? fromJson(Object? json) {
     if (json == null) return null;

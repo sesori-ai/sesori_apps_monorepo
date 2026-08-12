@@ -31,9 +31,7 @@ int decodedBase64Length({required String base64Data}) {
   return (base64Data.length * 3 ~/ 4) - padding;
 }
 
-final class const _MalformedMessageAttachmentError({required this.innerError}) implements Exception {
-  final Object innerError;
-
+final class const _MalformedMessageAttachmentError({required final Object innerError}) implements Exception {
   @override
   String toString() => "Malformed message attachment payload";
 }
@@ -104,7 +102,7 @@ enum MessageAttachmentDelivery() { inline, storedReference }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class MessagePart with _$MessagePart {
-  const factory MessagePart({
+  const factory({
     required String id,
     required String sessionID,
     required String messageID,
@@ -121,7 +119,7 @@ sealed class MessagePart with _$MessagePart {
     @JsonKey(fromJson: _messageAttachmentFromJson) required MessageAttachment? attachment,
   }) = _MessagePart;
 
-  factory MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 }
 
 /// A client-safe attachment source normalized by the owning backend plugin.
@@ -138,21 +136,21 @@ sealed class MessagePart with _$MessagePart {
 )
 sealed class MessageAttachment with _$MessageAttachment {
   @FreezedUnionValue("inline_image")
-  const factory MessageAttachment.inlineImage({
+  const factory inlineImage({
     required String mime,
     required String base64,
     required String? filename,
   }) = MessageAttachmentInlineImage;
 
   @FreezedUnionValue("remote_url")
-  const factory MessageAttachment.remoteUrl({
+  const factory remoteUrl({
     required String mime,
     required String url,
     required String? filename,
   }) = MessageAttachmentRemoteUrl;
 
   @FreezedUnionValue("stored_image")
-  const factory MessageAttachment.storedImage({
+  const factory storedImage({
     required String attachmentId,
     required String bridgeId,
     required String mime,
@@ -160,15 +158,15 @@ sealed class MessageAttachment with _$MessageAttachment {
     required int byteLength,
   }) = MessageAttachmentStoredImage;
 
-  const factory MessageAttachment.metadata({
+  const factory metadata({
     required String mime,
     required String? filename,
   }) = MessageAttachmentMetadata;
 
   /// Forward-compatible fallback for attachment sources added by newer peers.
-  const factory MessageAttachment.unknown() = MessageAttachmentUnknown;
+  const factory unknown() = MessageAttachmentUnknown;
 
-  factory MessageAttachment.fromJson(Map<String, dynamic> json) => _$MessageAttachmentFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$MessageAttachmentFromJson(json);
 }
 
 extension MessageAttachmentSafety on MessageAttachment {
@@ -209,7 +207,7 @@ enum ToolStatus() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ToolState with _$ToolState {
-  const factory ToolState({
+  const factory({
     @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
     required String? title,
     required String? output,
@@ -218,5 +216,5 @@ sealed class ToolState with _$ToolState {
     @JsonKey(fromJson: _messageAttachmentsFromJson) @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
   }) = _ToolState;
 
-  factory ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 }

@@ -8,14 +8,10 @@ import "plugin_generation_factory.dart";
 enum PluginRuntimeAccessGate() { enabled, draining, disabled }
 
 class const PluginRuntimeAccess({
-    required this.pluginId,
-    required this.gate,
-    required this.startAllowed,
-  }) {
-  final String pluginId;
-  final PluginRuntimeAccessGate gate;
-  final bool startAllowed;
-}
+    required final String pluginId,
+    required final PluginRuntimeAccessGate gate,
+    required final bool startAllowed,
+  });
 
 enum PluginRuntimeState() { disabled, blocked, dormant, starting, active, degraded, stopping, failed }
 
@@ -26,28 +22,18 @@ enum PluginStopIntent() { safe, force }
 enum PluginRuntimeConflictReason() { inFlight, busy, workStateUnknown, transitioning, notEligible }
 
 class const PluginRuntimeSnapshot({
-    required this.pluginId,
-    required this.projectOwnership,
-    required this.setup,
-    required this.accessGate,
-    required this.startAllowed,
-    required this.generation,
-    required this.state,
-    required this.workState,
-    required this.leaseCount,
-    required this.transition,
+    required final String pluginId,
+    required final PluginProjectOwnership projectOwnership,
+    required final PluginSetupStatus setup,
+    required final PluginRuntimeAccessGate accessGate,
+    required final bool startAllowed,
+    required final int? generation,
+    required final PluginRuntimeState state,
+    required final PluginWorkState workState,
+    required final int leaseCount,
+    required final PluginRuntimeTransition transition,
   }) {
-  final String pluginId;
-  final PluginProjectOwnership projectOwnership;
-  final PluginSetupStatus setup;
-  final PluginRuntimeAccessGate accessGate;
   bool get eligible => accessGate != PluginRuntimeAccessGate.disabled;
-  final bool startAllowed;
-  final int? generation;
-  final PluginRuntimeState state;
-  final PluginWorkState workState;
-  final int leaseCount;
-  final PluginRuntimeTransition transition;
 }
 
 typedef SourcedPluginRuntimeEvent = ({
@@ -59,56 +45,38 @@ typedef SourcedPluginRuntimeEvent = ({
 });
 typedef SourcedPluginProvisionProgress = ({String pluginId, RuntimeProvisionProgress event});
 
-class const PluginRuntimeAuthenticationOperation({required this.events, required this.abort}) {
-  final Stream<PluginAuthenticationEvent> events;
-  final void Function() abort;
-}
+class const PluginRuntimeAuthenticationOperation({required final Stream<PluginAuthenticationEvent> events, required final void Function() abort});
 
-sealed class const PluginRuntimeCommandResult({required this.snapshot}) {
-  final PluginRuntimeSnapshot snapshot;
-}
+sealed class const PluginRuntimeCommandResult({required final PluginRuntimeSnapshot snapshot});
 
 final class const PluginRuntimeCommandApplied({required super.snapshot}) extends PluginRuntimeCommandResult;
 
 final class const PluginRuntimeCommandCurrent({required super.snapshot}) extends PluginRuntimeCommandResult;
 
-final class const PluginRuntimeCommandConflict({required super.snapshot, required this.reasons}) extends PluginRuntimeCommandResult {
-  final List<PluginRuntimeConflictReason> reasons;
-}
+final class const PluginRuntimeCommandConflict({required super.snapshot, required final List<PluginRuntimeConflictReason> reasons}) extends PluginRuntimeCommandResult;
 
-final class const PluginRuntimeCommandFailed({required super.snapshot, required this.message}) extends PluginRuntimeCommandResult {
-  final String message;
-}
+final class const PluginRuntimeCommandFailed({required super.snapshot, required final String message}) extends PluginRuntimeCommandResult;
 
 class PluginRuntime({
     required List<PluginRuntimeRegistration> registrations,
-    required PluginGenerationFactory generationFactory,
-    required HostProcessService setupProcesses,
+    required final PluginGenerationFactory _generationFactory,
+    required final HostProcessService _setupProcesses,
     required Map<String, String> environment,
-    required ServerClock clock,
-    required Duration shutdownBudget,
+    required final ServerClock _clock,
+    required final Duration _shutdownBudget,
   }) {
-  this : _generationFactory = generationFactory,
-       _setupProcesses = setupProcesses,
-       _environment = Map<String, String>.unmodifiable(environment),
-       _clock = clock,
-       _shutdownBudget = shutdownBudget,
-       _slots = <String, _PluginRuntimeSlot>{
-         for (final registration in registrations)
-           registration.descriptor.id: _PluginRuntimeSlot(registration: registration),
-       } {
+  this {
     if (_slots.length != registrations.length) {
       throw ArgumentError.value(registrations, "registrations", "must not contain duplicate plugin ids");
     }
     _snapshotsSubject = BehaviorSubject<List<PluginRuntimeSnapshot>>.seeded(_buildSnapshots());
   }
 
-  final PluginGenerationFactory _generationFactory;
-  final HostProcessService _setupProcesses;
-  final Map<String, String> _environment;
-  final ServerClock _clock;
-  final Duration _shutdownBudget;
-  final Map<String, _PluginRuntimeSlot> _slots;
+  final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
+  final Map<String, _PluginRuntimeSlot> _slots = <String, _PluginRuntimeSlot>{
+         for (final registration in registrations)
+           registration.descriptor.id: _PluginRuntimeSlot(registration: registration),
+       };
   late final BehaviorSubject<List<PluginRuntimeSnapshot>> _snapshotsSubject;
   final ReplaySubject<SourcedPluginRuntimeEvent> _backendEventsSubject = ReplaySubject<SourcedPluginRuntimeEvent>(
     maxSize: 1024,
@@ -1856,8 +1824,7 @@ class PluginRuntime({
   }
 }
 
-class _PluginRuntimeSlot({required this.registration}) {
-  final PluginRuntimeRegistration registration;
+class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}) {
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);
   PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.disabled;
   bool startAllowed = false;
@@ -1886,8 +1853,4 @@ class _PluginRuntimeSlot({required this.registration}) {
   final Set<Future<void> Function()> operationStreamCancellations = <Future<void> Function()>{};
 }
 
-class const _PluginLease({required this.slot, required this.generation, required this.api}) {
-  final _PluginRuntimeSlot slot;
-  final int generation;
-  final BridgePluginApi api;
-}
+class const _PluginLease({required final _PluginRuntimeSlot slot, required final int generation, required final BridgePluginApi api});

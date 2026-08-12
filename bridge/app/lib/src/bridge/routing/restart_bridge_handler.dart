@@ -9,12 +9,8 @@ import "routed_request.dart";
 /// It validates that a restart can be delivered and returns a typed acceptance.
 /// The transport closes or enqueues the fixed response before dispatching the
 /// handoff.
-class RestartBridgeHandler({required BridgeRestartService restartService}) extends RequestHandlerBase {
-  this
-    : _restartService = restartService,
-      super(HttpMethod.post, "/global/restart");
-
-  final BridgeRestartService _restartService;
+class RestartBridgeHandler({required final BridgeRestartService _restartService}) extends RequestHandlerBase {
+  this : super(HttpMethod.post, "/global/restart");
 
   @override
   Future<RoutedRequestOutcome> routeInternal({

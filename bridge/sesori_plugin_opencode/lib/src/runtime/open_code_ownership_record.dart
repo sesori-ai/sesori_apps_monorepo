@@ -26,7 +26,7 @@ enum OpenCodeOwnershipStatus() {
 /// bridge-side copy is deleted in PR 13.
 @freezed
 sealed class OpenCodeOwnershipRecord with _$OpenCodeOwnershipRecord {
-  const factory OpenCodeOwnershipRecord({
+  const factory({
     required String ownerSessionId,
     required int openCodePid,
     required String? openCodeStartMarker,
@@ -40,6 +40,6 @@ sealed class OpenCodeOwnershipRecord with _$OpenCodeOwnershipRecord {
     required OpenCodeOwnershipStatus status,
   }) = _OpenCodeOwnershipRecord;
 
-  factory OpenCodeOwnershipRecord.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$OpenCodeOwnershipRecordFromJson(json);
 }

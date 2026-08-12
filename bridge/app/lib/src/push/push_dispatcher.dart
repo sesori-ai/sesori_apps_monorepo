@@ -11,21 +11,11 @@ import "push_send_exception.dart";
 import "push_session_state_tracker.dart";
 
 class PushDispatcher({
-    required PushNotificationClient client,
-    required PushRateLimiter rateLimiter,
-    required PushSessionStateTracker tracker,
-    required PushNotificationContentBuilder contentBuilder,
-  }) {
-  final PushNotificationClient _client;
-  final PushRateLimiter _rateLimiter;
-  final PushSessionStateTracker _tracker;
-  final PushNotificationContentBuilder _contentBuilder;
-
-  this : _client = client,
-       _rateLimiter = rateLimiter,
-       _tracker = tracker,
-       _contentBuilder = contentBuilder;
-
+  required final PushNotificationClient _client,
+  required final PushRateLimiter _rateLimiter,
+  required final PushSessionStateTracker _tracker,
+  required final PushNotificationContentBuilder _contentBuilder,
+}) {
   void dispatchImmediateIfApplicable(SesoriSseEvent event) {
     _sendImmediateNotificationIfApplicable(event);
   }

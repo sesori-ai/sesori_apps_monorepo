@@ -28,7 +28,7 @@ enum CodexToolCallStatus() {
 )
 sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
   @FreezedUnionValue("imageGeneration")
-  const factory CodexImageBearingItemDto.imageGeneration({
+  const factory imageGeneration({
     required String id,
     @JsonKey(
       unknownEnumValue: CodexImageGenerationStatus.unknown,
@@ -41,7 +41,7 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
   }) = CodexImageGenerationItemDto;
 
   @FreezedUnionValue("mcpToolCall")
-  const factory CodexImageBearingItemDto.mcpToolCall({
+  const factory mcpToolCall({
     required String id,
     required String? server,
     required String? tool,
@@ -55,7 +55,7 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
   }) = CodexMcpToolCallItemDto;
 
   @FreezedUnionValue("dynamicToolCall")
-  const factory CodexImageBearingItemDto.dynamicToolCall({
+  const factory dynamicToolCall({
     required String id,
     @CodexToolNameConverter() required String tool,
     required Object? arguments,
@@ -69,9 +69,9 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
     required List<CodexImageBearingContentDto> content,
   }) = CodexDynamicToolCallItemDto;
 
-  const factory CodexImageBearingItemDto.unknown() = CodexUnknownImageBearingItemDto;
+  const factory unknown() = CodexUnknownImageBearingItemDto;
 
-  factory CodexImageBearingItemDto.fromJson(Map<String, dynamic> json) => _$CodexImageBearingItemDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexImageBearingItemDtoFromJson(json);
 }
 
 @Freezed(
@@ -82,34 +82,34 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
 )
 sealed class CodexImageBearingContentDto with _$CodexImageBearingContentDto {
   @FreezedUnionValue("text")
-  const factory CodexImageBearingContentDto.mcpText({
+  const factory mcpText({
     required String text,
   }) = CodexMcpTextContentDto;
 
   @FreezedUnionValue("image")
-  const factory CodexImageBearingContentDto.mcpImage({
+  const factory mcpImage({
     required String data,
     required String mimeType,
   }) = CodexMcpImageContentDto;
 
   @FreezedUnionValue("inputText")
-  const factory CodexImageBearingContentDto.dynamicText({
+  const factory dynamicText({
     required String text,
   }) = CodexDynamicTextContentDto;
 
   @FreezedUnionValue("inputImage")
-  const factory CodexImageBearingContentDto.dynamicImage({
+  const factory dynamicImage({
     required String imageUrl,
   }) = CodexDynamicImageContentDto;
 
   @FreezedUnionValue("inputAudio")
-  const factory CodexImageBearingContentDto.dynamicAudio({
+  const factory dynamicAudio({
     required String audioUrl,
   }) = CodexDynamicAudioContentDto;
 
-  const factory CodexImageBearingContentDto.unknown() = CodexUnknownImageBearingContentDto;
+  const factory unknown() = CodexUnknownImageBearingContentDto;
 
-  factory CodexImageBearingContentDto.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$CodexImageBearingContentDtoFromJson(json);
 }
 

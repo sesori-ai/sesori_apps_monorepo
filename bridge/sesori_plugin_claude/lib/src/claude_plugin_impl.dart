@@ -21,46 +21,26 @@ typedef ClaudeSessionIdGenerator = String Function();
 
 /// Backend-neutral Claude Code plugin API over the stream-json components.
 final class ClaudePlugin({
-    required ClaudeSessionProcessRepository processes,
-    required ClaudeTranscriptCatalogRepository transcripts,
-    required ClaudeSessionService sessions,
-    required ClaudeCatalogService catalogService,
-    required ClaudeApprovalRegistry approvals,
-    required ClaudeEventDispatcher eventDispatcher,
-    required ClaudeHistoryMapper history,
-    required BufferedUntilFirstListener<BridgeSseEvent> eventBuffer,
-    required ServerClock clock,
-    required ClaudeSessionIdGenerator generateSessionId,
-    required String launchDirectory,
-  }) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi {
-  this : _processes = processes,
-       _transcripts = transcripts,
-       _sessions = sessions,
-       _catalogService = catalogService,
-       _approvals = approvals,
-       _eventDispatcher = eventDispatcher,
-       _history = history,
-       _eventBuffer = eventBuffer,
-       _clock = clock,
-       _generateSessionId = generateSessionId,
-       _launchDirectory = normalizeProjectDirectory(directory: launchDirectory) {
+  required final ClaudeSessionProcessRepository _processes,
+  required final ClaudeTranscriptCatalogRepository _transcripts,
+  required final ClaudeSessionService _sessions,
+  required final ClaudeCatalogService _catalogService,
+  required final ClaudeApprovalRegistry _approvals,
+  required final ClaudeEventDispatcher _eventDispatcher,
+  required final ClaudeHistoryMapper _history,
+  required final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer,
+  required final ServerClock _clock,
+  required final ClaudeSessionIdGenerator _generateSessionId,
+  required String launchDirectory,
+}) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi {
+  this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
     _processes.events.listen(_handleProcessEvent).addTo(_subscriptions);
   }
 
   static const String pluginId = "claude";
 
-  final ClaudeSessionProcessRepository _processes;
-  final ClaudeTranscriptCatalogRepository _transcripts;
-  final ClaudeSessionService _sessions;
-  final ClaudeCatalogService _catalogService;
-  final ClaudeApprovalRegistry _approvals;
-  final ClaudeEventDispatcher _eventDispatcher;
-  final ClaudeHistoryMapper _history;
-  final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
-  final ServerClock _clock;
-  final ClaudeSessionIdGenerator _generateSessionId;
-  final String _launchDirectory;
+  final String _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
   final Map<String, PluginSession> _createdSessions = {};
   final Set<String> _unstartedSessions = {};
   final CompositeSubscription _subscriptions = CompositeSubscription();

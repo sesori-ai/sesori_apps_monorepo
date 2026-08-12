@@ -7,12 +7,8 @@ import "../api/models/codex_tool_outcome_dto.dart";
 
 /// Layer-2 decisions over persisted structured tool failures.
 class CodexToolOutcomeRepository({
-    required CodexToolOutcomeStorage storage,
-  }) {
-  this : _storage = storage;
-
-  final CodexToolOutcomeStorage _storage;
-
+  required final CodexToolOutcomeStorage _storage,
+}) {
   Future<Map<String, PluginToolStatus>> readStatuses({
     required String sessionId,
   }) async {

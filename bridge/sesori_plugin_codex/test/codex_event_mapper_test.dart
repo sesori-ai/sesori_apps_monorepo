@@ -492,11 +492,9 @@ void main() {
           },
         ),
       );
-      final assistant =
-          shared.Message.fromJson(
-                (events[0] as BridgeSseMessageUpdated).info,
-              )
-              as shared.MessageAssistant;
+      final assistant = shared.Message.fromJson(
+        (events[0] as BridgeSseMessageUpdated).info,
+      ) as shared.MessageAssistant;
       expect(assistant.modelID, equals("gpt-5.4-mini"));
       expect(assistant.providerID, equals("openai"));
 
@@ -511,11 +509,9 @@ void main() {
           },
         ),
       );
-      final assistant2 =
-          shared.Message.fromJson(
-                (events2[0] as BridgeSseMessageUpdated).info,
-              )
-              as shared.MessageAssistant;
+      final assistant2 = shared.Message.fromJson(
+        (events2[0] as BridgeSseMessageUpdated).info,
+      ) as shared.MessageAssistant;
       expect(assistant2.modelID, equals("gpt-5.5"));
     });
 
@@ -1510,15 +1506,9 @@ void main() {
 }
 
 class _ToolLifecycleHarness({
-    required CodexEventMapper eventMapper,
-    required CodexToolLifecycleTracker toolTracker,
-  }) {
-  this : _eventMapper = eventMapper,
-       _toolTracker = toolTracker;
-
-  final CodexEventMapper _eventMapper;
-  final CodexToolLifecycleTracker _toolTracker;
-
+  required final CodexEventMapper _eventMapper,
+  required final CodexToolLifecycleTracker _toolTracker,
+}) {
   List<BridgeSseEvent> mapRolloutLine({
     required String threadId,
     required CodexRolloutLineDto line,

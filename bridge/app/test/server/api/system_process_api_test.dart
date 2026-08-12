@@ -177,16 +177,14 @@ void main() {
   });
 }
 
-class _RecordedCall({required this.executable, required this.arguments, required this.environment}) {
-  final String executable;
-  final List<String> arguments;
-  final Map<String, String>? environment;
-}
+class _RecordedCall({
+  required final String executable,
+  required final List<String> arguments,
+  required final Map<String, String>? environment,
+});
 
-class _RecordingProcessRunner({this.exitCode = 0, this.stdout = "", this.stderr = ""}) implements ProcessRunner {
-  final int exitCode;
-  final String stdout;
-  final String stderr;
+class _RecordingProcessRunner({final int exitCode = 0, final String stdout = "", final String stderr = ""})
+    implements ProcessRunner {
   final List<_RecordedCall> calls = <_RecordedCall>[];
 
   @override

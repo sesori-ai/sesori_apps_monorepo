@@ -12,35 +12,24 @@ import "models/codex_rollout_dto.dart";
 typedef CodexSessionIndexLine = ({CodexSessionIndexEntryDto? entry, String raw});
 
 class const CodexRolloutTailChunk({
-    required this.lines,
-    required this.nextOffset,
-    required this.trailingBytes,
-  }) {
-  final List<CodexRolloutLineDto> lines;
-  final int nextOffset;
-  final List<int> trailingBytes;
-}
+  required final List<CodexRolloutLineDto> lines,
+  required final int nextOffset,
+  required final List<int> trailingBytes,
+});
 
 class const CodexRolloutTailPosition({
-    required this.offset,
-    required this.trailingBytes,
-  }) {
-  final int offset;
-  final List<int> trailingBytes;
-}
+  required final int offset,
+  required final List<int> trailingBytes,
+});
 
-class const CodexDesktopStateReadException({required this.cause}) implements Exception {
-  final Object cause;
-
+class const CodexDesktopStateReadException({required final Object cause}) implements Exception {
   @override
   String toString() => "Codex Desktop state read failed (${cause.runtimeType})";
 }
 
 /// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
 class CodexRolloutApi({Map<String, String>? environment}) {
-  this : _environment = environment ?? Platform.environment;
-
-  final Map<String, String> _environment;
+  final Map<String, String> _environment = environment ?? Platform.environment;
 
   String? get codexHome {
     final explicit = _environment["CODEX_HOME"];
@@ -448,9 +437,7 @@ bool _isRolloutEnumValuePath({required List<String> path}) {
       (path.last == "type" || path.last == "role" || path.last == "status");
 }
 
-class _RolloutSchemaBudget({required this.remainingNodes}) {
-  int remainingNodes;
-
+class _RolloutSchemaBudget({required var int remainingNodes}) {
   bool get isExhausted => remainingNodes == 0;
 
   bool takeNode() {

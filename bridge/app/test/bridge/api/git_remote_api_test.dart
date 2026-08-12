@@ -240,16 +240,21 @@ void main() {
 }
 
 class const Invocation({
-    required this.executable,
-    required this.arguments,
-    required this.workingDirectory,
-  }) {
-  final String executable;
-  final List<String> arguments;
-  final String? workingDirectory;
-}
+  required final String executable,
+  required final List<String> arguments,
+  required final String? workingDirectory,
+});
 
-class FakeProcessRunner(this._runImpl) implements ProcessRunner {
+class FakeProcessRunner(
+  final Future<ProcessResult> Function(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+    String? workingDirectory,
+    Duration timeout,
+  })
+  _runImpl,
+) implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -259,18 +264,9 @@ class FakeProcessRunner(this._runImpl) implements ProcessRunner {
     throw UnimplementedError();
   }
 
-  final Future<ProcessResult> Function(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout,
-  })
-  _runImpl;
-
   final List<Invocation> invocations = <Invocation>[];
 
-  factory FakeProcessRunner.result({required int exitCode, required String stdout}) {
+  factory result({required int exitCode, required String stdout}) {
     return FakeProcessRunner((
       String executable,
       List<String> arguments, {
@@ -297,7 +293,7 @@ class FakeProcessRunner(this._runImpl) implements ProcessRunner {
         workingDirectory: workingDirectory,
       ),
     );
-    return _runImpl(
+    return await _runImpl(
       executable,
       arguments,
       environment: environment,

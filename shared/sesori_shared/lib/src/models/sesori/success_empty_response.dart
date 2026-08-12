@@ -6,7 +6,7 @@ part "success_empty_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SuccessEmptyResponse with _$SuccessEmptyResponse {
-  const factory SuccessEmptyResponse() = _SuccessEmptyResponse;
+  const factory() = _SuccessEmptyResponse;
 
-  factory SuccessEmptyResponse.fromJson(Map<String, dynamic> json) => _$SuccessEmptyResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SuccessEmptyResponseFromJson(json);
 }

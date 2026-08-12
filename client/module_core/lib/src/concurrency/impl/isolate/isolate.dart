@@ -13,9 +13,7 @@ final class const IsolateConfigs._() {
   static bool debugLogsEnabled = false;
 }
 
-class const IsolateTask<IN, OUT>(this.staticFunction) {
-  final FutureOr<OUT> Function(IN arg) staticFunction;
-}
+class const IsolateTask<IN, OUT>(final FutureOr<OUT> Function(IN arg) staticFunction);
 
 abstract interface class MultiTaskIsolate {
   int get activeTaskCount;
@@ -24,7 +22,7 @@ abstract interface class MultiTaskIsolate {
   Future<OUT> run<IN, OUT>(IsolateTask<IN, OUT> task, IN arg);
 
   /// Creates a flexible multi task isolate (pool)
-  factory MultiTaskIsolate({
+  factory({
     int minPoolSize = 1, // default to single isolate
     int maxPoolSize = 1, // default to single isolate
     Duration timeout = IsolateConfigs.transientDefaultTimeout,
@@ -58,7 +56,7 @@ abstract interface class SingleTaskIsolate<IN, OUT> {
   void dispose();
 
   /// Creates a flexible single task isolate (pool)
-  factory SingleTaskIsolate({
+  factory({
     required IsolateTask<IN, OUT> task,
     int minPoolSize = 1, // default to single isolate
     int maxPoolSize = 1, // default to single isolate

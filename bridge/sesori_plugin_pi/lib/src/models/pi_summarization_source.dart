@@ -14,11 +14,8 @@ sealed class const PiSummarizationSource() {
 
 final class const PiBranchSummarySource() extends PiSummarizationSource;
 
-final class const PiCompactionSummarizationSource({required this.reason}) extends PiSummarizationSource {
-  final PiCompactionReason reason;
-}
+final class const PiCompactionSummarizationSource({required final PiCompactionReason reason})
+    extends PiSummarizationSource;
 
-final class const PiUnknownSummarizationSource({required this.source, required this.reason}) extends PiSummarizationSource {
-  final String? source;
-  final Object? reason;
-}
+final class const PiUnknownSummarizationSource({required final String? source, required final Object? reason})
+    extends PiSummarizationSource;

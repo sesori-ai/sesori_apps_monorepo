@@ -9,16 +9,10 @@ import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
 import "client/relay_http_client.dart";
 
-class const SessionCleanupRejectedException({required this.rejection}) implements Exception {
-  final SessionCleanupRejection rejection;
-}
+class const SessionCleanupRejectedException({required final SessionCleanupRejection rejection}) implements Exception;
 
 @lazySingleton
-class SessionApi({required RelayHttpApiClient client}) {
-  final RelayHttpApiClient _client;
-
-  this : _client = client;
-
+class SessionApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
     return _client.post(
       "/agent",

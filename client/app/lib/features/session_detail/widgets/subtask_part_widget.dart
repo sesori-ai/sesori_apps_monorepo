@@ -2,22 +2,18 @@ import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
 
 class const SubtaskPartWidget({
-    super.key,
-    required this.projectId,
-    required this.part,
-    required this.children,
-    required this.childStatuses,
-  }) extends StatelessWidget {
-  final String? projectId;
-  final MessagePart part;
-  final List<Session> children;
-  final Map<String, SessionStatus> childStatuses;
-
+  super.key,
+  required final String? projectId,
+  required final MessagePart part,
+  required final List<Session> children,
+  required final Map<String, SessionStatus> childStatuses,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

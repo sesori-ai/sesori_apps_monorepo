@@ -43,7 +43,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async => m.createAll(),
+    onCreate: (m) async => await m.createAll(),
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
         await m.addColumn(schema.projectsTable, schema.projectsTable.baseBranch);

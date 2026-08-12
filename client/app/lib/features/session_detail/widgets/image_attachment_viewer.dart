@@ -16,32 +16,19 @@ sealed class const MessageImageViewerImage() {
 }
 
 final class const LoadedMessageImage({
-    required this.bytes,
-    required this.provider,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-  }) extends MessageImageViewerImage {
-  final Uint8List bytes;
-  @override
-  final ImageProvider provider;
-  final String mime;
-  final String actionFilename;
-  @override
-  final Uri? originalUri;
-
+  required final Uint8List bytes,
+  @override required final ImageProvider provider,
+  required final String mime,
+  required final String actionFilename,
+  @override required final Uri? originalUri,
+}) extends MessageImageViewerImage {
   this : super();
 }
 
 final class const ViewOnlyMessageImage({
-    required this.provider,
-    required this.originalUri,
-  }) extends MessageImageViewerImage {
-  @override
-  final ImageProvider provider;
-  @override
-  final Uri? originalUri;
-
+  @override required final ImageProvider provider,
+  @override required final Uri? originalUri,
+}) extends MessageImageViewerImage {
   this : super();
 }
 
@@ -103,16 +90,12 @@ Future<void> showImageAttachmentViewer({
 }
 
 class const ImageAttachmentViewer({
-    super.key,
-    required this.image,
-    required this.filename,
-    required this.heroTag,
-  }) extends StatefulWidget {
+  super.key,
+  required final MessageImageViewerImage image,
+  required final String? filename,
+  required final Key heroTag,
+}) extends StatefulWidget {
   static const imageKey = ValueKey("imageAttachmentViewer.image");
-
-  final MessageImageViewerImage image;
-  final String? filename;
-  final Key heroTag;
 
   @override
   State<ImageAttachmentViewer> createState() => _ImageAttachmentViewerState();

@@ -3,37 +3,25 @@ import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmen
 
 import "../mappers/acp_content_mapper.dart";
 
-sealed class const AcpContentMutation({required this.partIdSuffix}) {
-  final String partIdSuffix;
-}
+sealed class const AcpContentMutation({required final String partIdSuffix});
 
 final class const AcpTextDeltaMutation({
     required super.partIdSuffix,
-    required this.delta,
-  }) extends AcpContentMutation {
-  final String delta;
-}
+    required final String delta,
+  }) extends AcpContentMutation;
 
 final class const AcpImageMutation({
     required super.partIdSuffix,
-    required this.attachment,
-  }) extends AcpContentMutation {
-  final PluginMessageAttachment attachment;
-}
+    required final PluginMessageAttachment attachment,
+  }) extends AcpContentMutation;
 
 final class const AcpContentSnapshot({
-    required this.textPartCount,
-    required this.activeTextPartIdSuffix,
-    required this.imageCandidateCount,
-    required this.decodedImageBytes,
-    required this.composition,
-  }) {
-  final int textPartCount;
-  final String? activeTextPartIdSuffix;
-  final int imageCandidateCount;
-  final int decodedImageBytes;
-  final AcpContentComposition composition;
-}
+    required final int textPartCount,
+    required final String? activeTextPartIdSuffix,
+    required final int imageCandidateCount,
+    required final int decodedImageBytes,
+    required final AcpContentComposition composition,
+  });
 
 enum AcpContentComposition() {
   empty,

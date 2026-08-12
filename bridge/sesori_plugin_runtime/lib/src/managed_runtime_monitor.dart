@@ -32,27 +32,13 @@ import "runtime_restart_policy.dart";
 ///   aborts any in-flight restart so the relaunched child is rolled back rather
 ///   than leaked, and cancels the stdio subscriptions. It is idempotent.
 class ManagedRuntimeMonitor<R>({
-    required ManagedProcessService<R> service,
-    required ManagedRuntimeSpec<R> spec,
-    required PluginStatusController status,
-    required ServerClock clock,
-    required String runtimeId,
-    required RuntimeRestartPolicy restartPolicy,
-  }) {
-  this : _service = service,
-       _spec = spec,
-       _status = status,
-       _clock = clock,
-       _runtimeId = runtimeId,
-       _restartPolicy = restartPolicy;
-
-  final ManagedProcessService<R> _service;
-  final ManagedRuntimeSpec<R> _spec;
-  final PluginStatusController _status;
-  final ServerClock _clock;
-  final String _runtimeId;
-  final RuntimeRestartPolicy _restartPolicy;
-
+  required final ManagedProcessService<R> _service,
+  required final ManagedRuntimeSpec<R> _spec,
+  required final PluginStatusController _status,
+  required final ServerClock _clock,
+  required final String _runtimeId,
+  required final RuntimeRestartPolicy _restartPolicy,
+}) {
   ManagedRuntimeHandle<R>? _currentHandle;
   int? _pinnedPort;
   bool _disarmed = false;

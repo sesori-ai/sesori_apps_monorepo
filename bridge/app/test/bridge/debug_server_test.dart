@@ -1033,22 +1033,14 @@ class _RecordingProcessRunner() implements ProcessRunner {
 }
 
 class const _DebugServerHarness({
-    required this.runtime,
-    required this.debugServer,
-    required this.httpClient,
-    required this.lifecycleService,
-    required this.relayServer,
-    required this.bridgeSocket,
-    required this.runFuture,
-  }) {
-  final BridgeRuntime runtime;
-  final DebugServer debugServer;
-  final http.Client httpClient;
-  final PluginLifecycleService lifecycleService;
-  final TestRelayServer relayServer;
-  final WebSocket bridgeSocket;
-  final Future<void> runFuture;
-
+  required final BridgeRuntime runtime,
+  required final DebugServer debugServer,
+  required final http.Client httpClient,
+  required final PluginLifecycleService lifecycleService,
+  required final TestRelayServer relayServer,
+  required final WebSocket bridgeSocket,
+  required final Future<void> runFuture,
+}) {
   Future<void> close() async {
     await debugServer.stop();
     await runtime.session.cancel();
@@ -1251,8 +1243,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
   Future<void> close() => _controller.close();
 }
 
-class _BlockingMutationPlugin({required this.onDispose}) extends _FakeBridgePlugin {
-  final Future<void> Function() onDispose;
+class _BlockingMutationPlugin({required final Future<void> Function() onDispose}) extends _FakeBridgePlugin {
   final Completer<void> _mutationStarted = Completer<void>();
   final Completer<void> _mutationRelease = Completer<void>();
   int disposeCalls = 0;
@@ -1494,10 +1485,7 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
 // SSE test client
 // ---------------------------------------------------------------------------
 
-class _SseTestClient._(this._socket, this._lines) {
-  final Socket _socket;
-  final StreamIterator<String> _lines;
-
+class _SseTestClient._(final Socket _socket, final StreamIterator<String> _lines) {
   static Future<_SseTestClient> connect(int port) async {
     final socket = await Socket.connect("127.0.0.1", port);
     socket.write(
@@ -1514,41 +1502,43 @@ class _SseTestClient._(this._socket, this._lines) {
     var headersParsed = false;
     var lineBuffer = "";
 
-    utf8.decoder.bind(socket).listen(
-      (chunk) {
-        buffer += chunk;
+    utf8.decoder
+        .bind(socket)
+        .listen(
+          (chunk) {
+            buffer += chunk;
 
-        if (!headersParsed) {
-          final headerEnd = buffer.indexOf("\r\n\r\n");
-          if (headerEnd == -1) {
-            return;
-          }
-          headersParsed = true;
-          buffer = buffer.substring(headerEnd + 4);
-        }
+            if (!headersParsed) {
+              final headerEnd = buffer.indexOf("\r\n\r\n");
+              if (headerEnd == -1) {
+                return;
+              }
+              headersParsed = true;
+              buffer = buffer.substring(headerEnd + 4);
+            }
 
-        lineBuffer += buffer;
-        buffer = "";
+            lineBuffer += buffer;
+            buffer = "";
 
-        final parts = lineBuffer.split("\n");
-        lineBuffer = parts.removeLast();
-        for (final part in parts) {
-          final line = part.endsWith("\r") ? part.substring(0, part.length - 1) : part;
-          lineController.add(line);
-        }
-      },
-      onDone: () {
-        if (!lineController.isClosed) {
-          lineController.close();
-        }
-      },
-      onError: (_) {
-        if (!lineController.isClosed) {
-          lineController.close();
-        }
-      },
-      cancelOnError: true,
-    );
+            final parts = lineBuffer.split("\n");
+            lineBuffer = parts.removeLast();
+            for (final part in parts) {
+              final line = part.endsWith("\r") ? part.substring(0, part.length - 1) : part;
+              lineController.add(line);
+            }
+          },
+          onDone: () {
+            if (!lineController.isClosed) {
+              lineController.close();
+            }
+          },
+          onError: (_) {
+            if (!lineController.isClosed) {
+              lineController.close();
+            }
+          },
+          cancelOnError: true,
+        );
 
     final instance = _SseTestClient._(socket, lines);
     await instance._waitForReady();

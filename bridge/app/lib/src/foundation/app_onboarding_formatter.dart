@@ -4,11 +4,7 @@ import "package:qr/qr.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show TerminalColorValidator, TerminalGlyphValidator;
 
-class AppOnboardingFormatter({required Stdout out, required Map<String, String> environment}) {
-  this
-    : _out = out,
-      _environment = environment;
-
+class AppOnboardingFormatter({required final Stdout _out, required final Map<String, String> _environment}) {
   static const String appUrl = "https://sesori.com/app/?openStore=true";
   static const int _quietZoneModules = 4;
   static const String _reset = "\x1b[0m";
@@ -17,9 +13,6 @@ class AppOnboardingFormatter({required Stdout out, required Map<String, String> 
   static const String _blackBackground = "\x1b[40m";
   static const String _whiteBackground = "\x1b[47m";
   static const String _upperHalfBlock = "▀";
-
-  final Stdout _out;
-  final Map<String, String> _environment;
 
   String formatDestination() {
     if (!TerminalColorValidator.isSupported(out: _out, environment: _environment) ||

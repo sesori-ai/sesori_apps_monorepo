@@ -8,25 +8,17 @@ import "acp_process_factory.dart";
 
 /// A JSON-RPC error returned by an ACP agent.
 class AcpRpcException({
-    required this.method,
-    required this.code,
-    required this.message,
-    this.data,
-  }) implements Exception {
-  final String method;
-  final int code;
-  final String message;
-  final Object? data;
-
+  required final String method,
+  required final int code,
+  required final String message,
+  final Object? data,
+}) implements Exception {
   @override
   String toString() => "AcpRpcException($method, code=$code, $message)";
 }
 
 /// A server-originated notification (no `id`), e.g. `session/update`.
-class const AcpNotification({required this.method, required this.params}) {
-  final String method;
-  final Map<String, dynamic> params;
-
+class const AcpNotification({required final String method, required final Map<String, dynamic> params}) {
   @override
   String toString() => "AcpNotification($method)";
 }
@@ -34,15 +26,11 @@ class const AcpNotification({required this.method, required this.params}) {
 /// A server-originated request that expects a response, e.g.
 /// `session/request_permission` or Cursor's `cursor/ask_question`.
 class const AcpServerRequest({
-    required this.id,
-    required this.method,
-    required this.params,
-  }) {
   /// JSON-RPC `id` — echo this when responding.
-  final Object id;
-  final String method;
-  final Map<String, dynamic> params;
-}
+  required final Object id,
+  required final String method,
+  required final Map<String, dynamic> params,
+});
 
 /// JSON-RPC 2.0 client for an ACP agent spoken over the agent process's
 /// stdin/stdout, framed as newline-delimited JSON (ndjson): one JSON-RPC
@@ -55,18 +43,11 @@ class const AcpServerRequest({
 /// notifications ([notify], e.g. `session/cancel`) which the WebSocket client
 /// never needed.
 class AcpStdioClient({
-    required AcpLaunchSpec launchSpec,
-    AcpProcessFactory? processFactory,
-    String logTag = "acp",
-  }) {
-  this : _launchSpec = launchSpec,
-       _processFactory = processFactory ?? defaultAcpProcessFactory,
-       _logTag = logTag;
-
-  final AcpLaunchSpec _launchSpec;
-  final AcpProcessFactory _processFactory;
-  final String _logTag;
-
+  required final AcpLaunchSpec _launchSpec,
+  AcpProcessFactory? processFactory,
+  final String _logTag = "acp",
+}) {
+  final AcpProcessFactory _processFactory = processFactory ?? defaultAcpProcessFactory;
   AcpProcessHandle? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
@@ -75,10 +56,8 @@ class AcpStdioClient({
   int _connectionGeneration = 0;
 
   final Map<Object, Completer<dynamic>> _pending = {};
-  final StreamController<AcpNotification> _notifications =
-      StreamController.broadcast();
-  final StreamController<AcpServerRequest> _serverRequests =
-      StreamController.broadcast();
+  final StreamController<AcpNotification> _notifications = StreamController.broadcast();
+  final StreamController<AcpServerRequest> _serverRequests = StreamController.broadcast();
   Completer<int> _exited = Completer<int>();
 
   /// Server-originated notifications (broadcast).
@@ -120,9 +99,7 @@ class AcpStdioClient({
         Log.w("[$_logTag] failed to reap process spawned during teardown", error, stack);
       }
       throw StateError(
-        _disposed
-            ? "AcpStdioClient disposed during connect"
-            : "AcpStdioClient reset during connect",
+        _disposed ? "AcpStdioClient disposed during connect" : "AcpStdioClient reset during connect",
       );
     }
     final exited = Completer<int>();
@@ -155,8 +132,7 @@ class AcpStdioClient({
         .transform(const LineSplitter())
         .listen(
           (line) => Log.d("[$_logTag][stderr] $line"),
-          onError: (Object error, StackTrace stack) =>
-              Log.w("[$_logTag] stderr stream error: $error", error, stack),
+          onError: (Object error, StackTrace stack) => Log.w("[$_logTag] stderr stream error: $error", error, stack),
           cancelOnError: false,
         );
 

@@ -28,9 +28,7 @@ final class const ControlChannelConnected() extends ControlChannelEvent;
 final class const ControlChannelDisconnected() extends ControlChannelEvent;
 
 /// A text frame from the authenticated helper.
-final class const ControlChannelFrame({required this.text}) extends ControlChannelEvent {
-  final String text;
-}
+final class const ControlChannelFrame({required final String text}) extends ControlChannelEvent;
 
 /// GUI-hosted loopback WebSocket control host for the supervised bridge
 /// helper (transport only — message semantics live in the dispatcher).

@@ -180,10 +180,10 @@ class const _ConnectBridgeChecklist() extends StatelessWidget {
 /// pill that opens the [_WhyBridgeInfoSheet] bottom sheet. Centred so the
 /// stretch parent doesn't force it full-width. Shared by both empty Projects
 /// states and the bridge-offline recovery view.
-class const _WhyBridgeButton({required this.surface}) extends StatelessWidget {
+class const _WhyBridgeButton({
   /// The onboarding surface hosting the button, reported with the open event.
-  final OnboardingSurface surface;
-
+  required final OnboardingSurface surface,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -212,16 +212,16 @@ class const _WhyBridgeButton({required this.surface}) extends StatelessWidget {
 /// bridge ⓘ" on the connect onboarding or "Make sure the Bridge is running ⓘ"
 /// on the bridge-offline view. Tapping the icon opens a [PregoInfoPopover]
 /// (glass on iOS, flat/`cue` on Android) anchored to it, showing [info].
-class const _InfoLabel({required this.title, required this.info, required this.centered}) extends StatelessWidget {
-  final String title;
-  final String info;
+class const _InfoLabel({
+  required final String title,
+  required final String info,
 
   /// Centres the label + icon pair instead of aligning it to the start. The
   /// numbered onboarding steps sit above a full-width box and read as a list,
   /// so they stay start-aligned; the bridge-offline label heads a centred
   /// composition.
-  final bool centered;
-
+  required final bool centered,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -286,11 +286,11 @@ class const _InfoLabel({required this.title, required this.info, required this.c
 /// X), each launching an external link. Forced flat on every platform
 /// ([PregoAnchorMenu.flat]) so the popup matches its flat trigger instead of
 /// morphing in as glass.
-class const _NeedHelpMenu({required this.surface}) extends StatelessWidget {
+class const _NeedHelpMenu({
   /// The onboarding surface hosting the pill, reported with every event so
   /// help-seeking is attributable to the funnel step the user was on.
-  final OnboardingSurface surface;
-
+  required final OnboardingSurface surface,
+}) extends StatelessWidget {
   /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
   /// shared [openExternalLink] helper. Reports the tapped [channel] to
   /// analytics only after the platform confirms the handoff.
@@ -375,17 +375,17 @@ class const _NeedHelpMenu({required this.surface}) extends StatelessWidget {
 /// by the connect-setup onboarding ([_ConnectBridgeChecklist]) and the
 /// bridge-offline reconnect disclosure ([_BridgeOfflineView]) so both stay in
 /// sync; callers supply their own surrounding padding.
-class const _InstallCommandBoxes({required this.surface, this.stepHeader}) extends StatefulWidget {
+class const _InstallCommandBoxes({
   /// The surface hosting the boxes, stamped on the copy/share analytics of
   /// every install method built here.
-  final OnboardingSurface surface;
+  required final OnboardingSurface surface,
 
   /// Optional widget rendered between the OS segmented control and the install
   /// command box. The connect onboarding slots its "1. Install the bridge" step
   /// label here; the bridge-offline disclosure passes none and shows the switch
   /// directly above the box.
-  final Widget? stepHeader;
-
+  final Widget? stepHeader,
+}) extends StatefulWidget {
   @override
   State<_InstallCommandBoxes> createState() => _InstallCommandBoxesState();
 }
@@ -500,14 +500,10 @@ class _InstallCommandBoxesState() extends State<_InstallCommandBoxes> {
 /// theme for the labels. Selection is tap-driven — the two-segment switch has no
 /// need for Cupertino's drag-to-slide gesture — and the thumb still animates.
 class const _OsSegmentedControl({
-    required this.labels,
-    required this.selectedIndex,
-    required this.onChanged,
-  }) extends StatelessWidget {
-  final List<String> labels;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-
+  required final List<String> labels,
+  required final int selectedIndex,
+  required final ValueChanged<int> onChanged,
+}) extends StatelessWidget {
   /// iOS segmented-control thumb fill (white in light, grey in dark) and its
   /// subtle lift shadow, taken from Cupertino's own values so the thumb reads as
   /// native despite the rounder pill shape.
@@ -598,32 +594,27 @@ class const _OsSegmentedControl({
 /// [label] (e.g. "curl", "npm"), the one-line [command] it installs with, and
 /// the bounded dimensions its copy/share outcome intents report.
 class const _InstallMethod({
-    required this.label,
-    required this.command,
-    required this.method,
-    required this.os,
-    required this.surface,
-  }) {
   /// Tab label (literal tool name — not translated).
-  final String label;
+  required final String label,
 
   /// The one-line install command shown and copied when this tab is selected.
-  final String command;
-
-  final BridgeInstallMethod method;
-  final BridgeInstallOs os;
-  final OnboardingSurface surface;
-}
+  required final String command,
+  required final BridgeInstallMethod method,
+  required final BridgeInstallOs os,
+  required final OnboardingSurface surface,
+});
 
 /// One platform's install instruction box: a row of method tabs (e.g.
 /// curl/npm/bun) and, below them, the monospace one-line command for the
 /// selected method with copy and share actions. The platform group is chosen by
 /// the [_OsSegmentedControl] above it; this box just renders the given
 /// [methods]. Mirrors the Figma onboarding install box.
-class const _InstallCommandBox({super.key, required this.methods}) extends StatefulWidget {
-  /// Selectable install methods; the first is selected initially.
-  final List<_InstallMethod> methods;
+class const _InstallCommandBox({
+  super.key,
 
+  /// Selectable install methods; the first is selected initially.
+  required final List<_InstallMethod> methods,
+}) extends StatefulWidget {
   @override
   State<_InstallCommandBox> createState() => _InstallCommandBoxState();
 }
@@ -712,9 +703,7 @@ class _InstallCommandBoxState() extends State<_InstallCommandBox> {
 /// The rounded, bordered chrome shared by the install-command box and the
 /// bridge-offline "Start your bridge" box, so both command boxes read as the
 /// same component. Clips [child] to the radius and paints the border on top.
-class const _CommandBoxFrame({required this.child}) extends StatelessWidget {
-  final Widget child;
-
+class const _CommandBoxFrame({required final Widget child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
@@ -739,22 +728,16 @@ class const _CommandBoxFrame({required this.child}) extends StatelessWidget {
 /// native-share buttons. [topDivider] draws the hairline separating this row
 /// from the method tabs above it in the install box.
 class const _CommandActionRow({
-    required this.command,
-    required this.reportCopied,
-    required this.reportShared,
-    this.topDivider = false,
-  }) extends StatefulWidget {
-  final String command;
+  required final String command,
 
   /// Dispatches the copy outcome through the owning Cubit after clipboard
   /// success. The host supplies the command's bounded identity.
-  final void Function(ProjectListCubit cubit) reportCopied;
+  required final void Function(ProjectListCubit cubit) reportCopied,
 
   /// Dispatches the share outcome after the native sheet confirms a handoff.
-  final void Function(ProjectListCubit cubit) reportShared;
-
-  final bool topDivider;
-
+  required final void Function(ProjectListCubit cubit) reportShared,
+  final bool topDivider = false,
+}) extends StatefulWidget {
   @override
   State<_CommandActionRow> createState() => _CommandActionRowState();
 }
@@ -878,11 +861,11 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
 /// carries the box's full 44px inner height rather than the row padding it.
 /// Transparent [Material] so the ripple paints on top of the surface fill
 /// rather than behind it on the Scaffold's Material.
-class const _CommandIconButton({required this.icon, required this.label, required this.onTap}) extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Future<void> Function() onTap;
-
+class const _CommandIconButton({
+  required final IconData icon,
+  required final String label,
+  required final Future<void> Function() onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;

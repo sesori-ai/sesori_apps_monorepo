@@ -24,7 +24,7 @@ class SessionDetailLoadedView extends StatefulWidget {
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
-  const SessionDetailLoadedView.readOnly({
+  const new readOnly({
     super.key,
     required this.projectId,
     required this.state,
@@ -33,7 +33,7 @@ class SessionDetailLoadedView extends StatefulWidget {
   }) : readOnly = true,
        sessionId = null;
 
-  const SessionDetailLoadedView.editable({
+  const new editable({
     super.key,
     required this.projectId,
     required this.sessionId,
@@ -294,9 +294,8 @@ bool hasActiveWork({
 /// Used to feed the floating composer's height to the message list so the
 /// newest message and the "jump to latest" pill rest clear of it. [onChange]
 /// is invoked post-frame so listeners may safely call `setState`.
-class const _MeasureSize({required this.onChange, required super.child}) extends SingleChildRenderObjectWidget {
-  final ValueChanged<Size> onChange;
-
+class const _MeasureSize({required final ValueChanged<Size> onChange, required super.child})
+    extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) => _MeasureSizeRenderBox(onChange);
 
@@ -306,8 +305,7 @@ class const _MeasureSize({required this.onChange, required super.child}) extends
   }
 }
 
-class _MeasureSizeRenderBox(this.onChange) extends RenderProxyBox {
-  ValueChanged<Size> onChange;
+class _MeasureSizeRenderBox(var ValueChanged<Size> onChange) extends RenderProxyBox {
   Size? _lastReported;
 
   @override

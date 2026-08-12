@@ -5,30 +5,24 @@ import "package:sesori_shared/sesori_shared.dart"
     show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 sealed class const CodexImageAttachmentCandidate() {
-  const factory CodexImageAttachmentCandidate.base64({
+  const factory base64({
     required String data,
     required String mime,
     required String? filenameHint,
   }) = CodexBase64ImageAttachmentCandidate;
 
-  const factory CodexImageAttachmentCandidate.imageUrl({
+  const factory imageUrl({
     required String imageUrl,
   }) = CodexImageUrlAttachmentCandidate;
 }
 
 final class const CodexBase64ImageAttachmentCandidate({
-    required this.data,
-    required this.mime,
-    required this.filenameHint,
-  }) extends CodexImageAttachmentCandidate {
-  final String data;
-  final String mime;
-  final String? filenameHint;
-}
+    required final String data,
+    required final String mime,
+    required final String? filenameHint,
+  }) extends CodexImageAttachmentCandidate;
 
-final class const CodexImageUrlAttachmentCandidate({required this.imageUrl}) extends CodexImageAttachmentCandidate {
-  final String imageUrl;
-}
+final class const CodexImageUrlAttachmentCandidate({required final String imageUrl}) extends CodexImageAttachmentCandidate;
 
 final class const CodexImageAttachmentMapper() {
   static const int _maxAttachmentCount = 4;
@@ -341,17 +335,11 @@ enum _ImageDegradationReason() {
 sealed class const _ImageMappingResult();
 
 final class const _InlineImageResult({
-    required this.attachment,
-    required this.decodedBytes,
-  }) extends _ImageMappingResult {
-  final PluginMessageAttachment attachment;
-  final int decodedBytes;
-}
+    required final PluginMessageAttachment attachment,
+    required final int decodedBytes,
+  }) extends _ImageMappingResult;
 
 final class const _MetadataImageResult({
-    required this.attachment,
-    required this.reason,
-  }) extends _ImageMappingResult {
-  final PluginMessageAttachment attachment;
-  final _ImageDegradationReason reason;
-}
+    required final PluginMessageAttachment attachment,
+    required final _ImageDegradationReason reason,
+  }) extends _ImageMappingResult;

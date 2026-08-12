@@ -26,10 +26,7 @@ class MockFailureReporter() extends Mock implements FailureReporter;
 
 class MockRelayClient() extends Mock implements RelayClient;
 
-class _TestRelayClientFactory({required RelayClient client}) extends RelayClientFactory {
-  final RelayClient _client;
-  this : _client = client;
-
+class _TestRelayClientFactory({required final RelayClient _client}) extends RelayClientFactory {
   @override
   RelayClient call({
     required String relayHost,
@@ -39,9 +36,7 @@ class _TestRelayClientFactory({required RelayClient client}) extends RelayClient
   }) => _client;
 }
 
-class _TestClockProvider(this._now) extends ClockProvider {
-  final DateTime Function() _now;
-
+class _TestClockProvider(final DateTime Function() _now) extends ClockProvider {
   @override
   DateTime call() => _now();
 }

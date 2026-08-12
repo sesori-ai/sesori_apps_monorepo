@@ -12,7 +12,7 @@ enum PluginCommandSource() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginCommand with _$PluginCommand {
-  const factory PluginCommand({
+  const factory({
     required String name,
     String? template,
     @Default(<String>[]) List<String> hints,
@@ -24,5 +24,5 @@ sealed class PluginCommand with _$PluginCommand {
     bool? subtask,
   }) = _PluginCommand;
 
-  factory PluginCommand.fromJson(Map<String, dynamic> json) => _$PluginCommandFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginCommandFromJson(json);
 }

@@ -13,10 +13,10 @@ enum SessionOptionsErrorCode() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionOptionsErrorResponse with _$SessionOptionsErrorResponse {
-  const factory SessionOptionsErrorResponse({
+  const factory({
     @JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) required SessionOptionsErrorCode code,
   }) = _SessionOptionsErrorResponse;
 
-  factory SessionOptionsErrorResponse.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$SessionOptionsErrorResponseFromJson(json);
 }

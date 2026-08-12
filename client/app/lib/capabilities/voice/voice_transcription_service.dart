@@ -26,19 +26,13 @@ const double _amplitudeFloor = -60.0;
 
 @lazySingleton
 class VoiceTranscriptionService({
-    required VoiceApi voiceApi,
-    required AudioRecorder recorder,
-    required RecorderPrewarmClient recorderPrewarmClient,
-    required RecordingFileProvider fileProvider,
-    required WakeLockService wakeLockService,
-    required AudioFormatConfig audioFormat,
-  }) {
-  final VoiceApi _voiceApi;
-  final AudioRecorder _recorder;
-  final RecorderPrewarmClient _recorderPrewarmClient;
-  final RecordingFileProvider _fileProvider;
-  final WakeLockService _wakeLockService;
-  final AudioFormatConfig _audioFormat;
+  required final VoiceApi _voiceApi,
+  required final AudioRecorder _recorder,
+  required final RecorderPrewarmClient _recorderPrewarmClient,
+  required final RecordingFileProvider _fileProvider,
+  required final WakeLockService _wakeLockService,
+  required final AudioFormatConfig _audioFormat,
+}) {
   bool _isRecording = false;
   bool _isBusy = false;
   Future<void>? _prewarmFuture;
@@ -48,13 +42,6 @@ class VoiceTranscriptionService({
   Timer? _maxDurationTimer;
   final _amplitudeController = StreamController<double>.broadcast();
   final _maxDurationReachedController = StreamController<void>.broadcast();
-
-  this : _voiceApi = voiceApi,
-       _recorder = recorder,
-       _recorderPrewarmClient = recorderPrewarmClient,
-       _fileProvider = fileProvider,
-       _wakeLockService = wakeLockService,
-       _audioFormat = audioFormat;
 
   bool get isRecording => _isRecording;
   bool get isBusy => _isBusy;
@@ -352,24 +339,22 @@ class VoiceTranscriptionService({
   }
 }
 
-sealed class const VoiceTranscriptionError._(this.message) implements Exception {
-  final String message;
+sealed class const VoiceTranscriptionError._(final String message) implements Exception {
+  factory microphonePermissionDenied() = MicrophonePermissionDeniedError._;
 
-  factory VoiceTranscriptionError.microphonePermissionDenied() = MicrophonePermissionDeniedError._;
+  factory recordingFailed() = RecordingFailedError._;
 
-  factory VoiceTranscriptionError.recordingFailed() = RecordingFailedError._;
+  factory notRecording() = NotRecordingError._;
 
-  factory VoiceTranscriptionError.notRecording() = NotRecordingError._;
+  factory notAuthenticated() = NotAuthenticatedVoiceError._;
 
-  factory VoiceTranscriptionError.notAuthenticated() = NotAuthenticatedVoiceError._;
+  factory serverError(int statusCode) = ServerVoiceError._;
 
-  factory VoiceTranscriptionError.serverError(int statusCode) = ServerVoiceError._;
+  factory emptyTranscript() = EmptyTranscriptError._;
 
-  factory VoiceTranscriptionError.emptyTranscript() = EmptyTranscriptError._;
+  factory networkError() = NetworkVoiceError._;
 
-  factory VoiceTranscriptionError.networkError() = NetworkVoiceError._;
-
-  factory VoiceTranscriptionError.cancelled() = TranscriptionCancelledError._;
+  factory cancelled() = TranscriptionCancelledError._;
 
   @override
   String toString() => "VoiceTranscriptionError: $message";
@@ -391,9 +376,7 @@ class const NotAuthenticatedVoiceError._() extends VoiceTranscriptionError {
   this : super._("Not authenticated");
 }
 
-class ServerVoiceError._(this.statusCode) extends VoiceTranscriptionError {
-  final int statusCode;
-
+class ServerVoiceError._(final int statusCode) extends VoiceTranscriptionError {
   this : super._("Server error ($statusCode)");
 }
 

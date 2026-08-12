@@ -6,15 +6,12 @@ const double _headerGap = 10.0;
 
 /// A titled settings section: a secondary `text-md` header above its card.
 class const SettingsSection({
-    super.key,
-    required this.title,
-    required this.child,
-  }) extends StatelessWidget {
-  final String title;
+  super.key,
+  required final String title,
 
   /// The section body, typically a [PregoGroupedRows] card.
-  final Widget child;
-
+  required final Widget child,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

@@ -2,14 +2,10 @@
 import "dart:async";
 
 class ConcurrentCache<T>({
-    required this.compute,
-    required this.valid,
-    required this.grace,
-  }) {
-  final Future<T> Function(T?) compute;
-  final Duration valid;
-  final Duration? grace;
-
+  required final Future<T> Function(T?) compute,
+  required final Duration valid,
+  required final Duration? grace,
+}) {
   ({T cachedValue, int expirationTime})? _cacheData;
 
   Future<T>? _fetchingDataFuture;
@@ -28,7 +24,7 @@ class ConcurrentCache<T>({
 
   Future<T> getOrFetch({bool forceFetch = false}) async {
     if (forceFetch) {
-      return _fetchAndCacheValue();
+      return await _fetchAndCacheValue();
     }
 
     final FutureOr<T> newCacheFuture =
@@ -36,9 +32,9 @@ class ConcurrentCache<T>({
         ? _fetchingDataFuture ?? _fetchAndCacheValue()
         : _cacheData?.cachedValue ?? _fetchAndCacheValue();
 
-    return _isGraceExpired() //
+    return await (_isGraceExpired() //
         ? newCacheFuture
-        : _cacheData?.cachedValue ?? newCacheFuture;
+        : _cacheData?.cachedValue ?? newCacheFuture);
   }
 
   Future<T> _fetchAndCacheValue() async {

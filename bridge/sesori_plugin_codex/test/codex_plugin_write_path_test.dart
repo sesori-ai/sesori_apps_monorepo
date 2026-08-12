@@ -2018,11 +2018,7 @@ const Map<String, dynamic> _initOk = {
   "platformFamily": "unix",
 };
 
-class const _Response({this.result, this.error, this.respond = true}) {
-  final Object? result;
-  final Map<String, dynamic>? error;
-  final bool respond;
-}
+class const _Response({final Object? result, final Map<String, dynamic>? error, final bool respond = true});
 
 Map<String, Object?> _toolCall({
   required String id,
@@ -2242,18 +2238,10 @@ class _FakeAppServer() {
   }
 }
 
-class _SentFrame({required this.method, required this.params}) {
-  final String method;
-  final Map<String, dynamic>? params;
-}
+class _SentFrame({required final String method, required final Map<String, dynamic>? params});
 
-class _StubChannel({required this.stream, required this.sink}) implements WebSocketChannel {
-  @override
-  final Stream<dynamic> stream;
-
-  @override
-  final WebSocketSink sink;
-
+class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
+    implements WebSocketChannel {
   @override
   int? get closeCode => null;
   @override
@@ -2267,9 +2255,7 @@ class _StubChannel({required this.stream, required this.sink}) implements WebSoc
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SinkAdapter(this._controller) implements WebSocketSink {
-  final StreamController<Object?> _controller;
-
+class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
   @override
   void add(Object? data) => _controller.add(data);
 

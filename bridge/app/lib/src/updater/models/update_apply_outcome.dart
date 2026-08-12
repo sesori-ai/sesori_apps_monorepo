@@ -15,17 +15,13 @@ sealed class const UpdateApplyOutcome();
 /// failed — the manifest may be stale, or the activation record may have been
 /// cleared — so the post-swap state is not fully persisted and a chained
 /// in-session apply must not proceed.
-final class const UpdateApplied({required this.version, required this.durablyRecorded}) extends UpdateApplyOutcome {
-  final String version;
-  final bool durablyRecorded;
-}
+final class const UpdateApplied({required final String version, required final bool durablyRecorded})
+    extends UpdateApplyOutcome;
 
 /// Another process holds the update lock; the swap was skipped (benign).
 final class const UpdateApplyLockBusy() extends UpdateApplyOutcome;
 
 /// The swap failed. [reason] is a human-readable cause; [logPath] points at the
 /// durable update log with full detail.
-final class const UpdateApplyFailed({required this.reason, required this.logPath}) extends UpdateApplyOutcome {
-  final String reason;
-  final String logPath;
-}
+final class const UpdateApplyFailed({required final String reason, required final String logPath})
+    extends UpdateApplyOutcome;

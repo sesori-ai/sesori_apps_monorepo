@@ -7,15 +7,12 @@ import "../services/session_options_service.dart";
 import "request_handler.dart";
 
 class PostSessionOptionsHandler({
-    required SessionOptionsService service,
-    required Set<String> pluginIds,
-  }) extends RequestHandlerBase {
-  this : _service = service,
-       _pluginIds = Set.unmodifiable(pluginIds),
-       super(HttpMethod.post, "/session/options");
+  required final SessionOptionsService _service,
+  required Set<String> pluginIds,
+}) extends RequestHandlerBase {
+  this : super(HttpMethod.post, "/session/options");
 
-  final SessionOptionsService _service;
-  final Set<String> _pluginIds;
+  final Set<String> _pluginIds = Set.unmodifiable(pluginIds);
 
   @override
   Future<RelayResponse> handleInternal(

@@ -9,19 +9,15 @@ import "package:rxdart/rxdart.dart";
 /// Adding listeners after the stream has completed/disposed and the [delayBeforeCancel] time has passed
 /// will result in a new broadcast stream being created with [_factory] and shared to new listeners.
 class RefCountReusableStream<T>._(
-    this._factory, {
-    required this.replayLastValueToNewListeners,
-    required this.delayBeforeCancel,
-    this.onCancel,
-  }) extends Stream<T> {
-  final bool replayLastValueToNewListeners;
-  final Duration delayBeforeCancel;
-  final void Function()? onCancel;
-  final Stream<T> Function() _factory;
+  final Stream<T> Function() _factory, {
+  required final bool replayLastValueToNewListeners,
+  required final Duration delayBeforeCancel,
+  final void Function()? onCancel,
+}) extends Stream<T> {
   StreamSubscription<T>? _subscription;
   StreamController<T>? _controller;
 
-  RefCountReusableStream.publish(
+  new publish(
     Stream<T> Function() factory, {
     Duration delayBeforeCancel = Duration.zero,
     void Function()? onCancel,
@@ -32,7 +28,7 @@ class RefCountReusableStream<T>._(
          onCancel: onCancel,
        );
 
-  RefCountReusableStream.behaviour(
+  new behaviour(
     Stream<T> Function() factory, {
     Duration delayBeforeCancel = Duration.zero,
     void Function()? onCancel,

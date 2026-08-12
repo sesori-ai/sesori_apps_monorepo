@@ -196,7 +196,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   }
 
   Future<SessionDto?> getSession({required String sessionId}) async {
-    return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
+    return await (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
   }
 
   Future<void> updatePullRequestScopes({
@@ -310,7 +310,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         ),
       );
     });
-    return getSessionsByBackendIds(
+    return await getSessionsByBackendIds(
       pluginId: pluginId,
       backendSessionIds: [for (final session in sessions) session.backendSessionId],
     );
@@ -433,7 +433,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   }
 
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
-    return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
+    return await (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
   /// The stored project path for every session recorded for [pluginId], via a
@@ -563,7 +563,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   }) async {
     if (worktreePath == null && branchName == null) return [];
 
-    return (select(sessionTable)..where((t) {
+    return await (select(sessionTable)..where((t) {
           final base = t.sessionId.equals(sessionId).not() & t.projectId.equals(projectId) & t.archivedAt.isNull();
 
           final sharingCondition = switch ((worktreePath, branchName)) {

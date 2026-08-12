@@ -14,9 +14,9 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 class _FakeLifecycleSource implements LifecycleSource {
   final BehaviorSubject<LifecycleState> states;
 
-  _FakeLifecycleSource() : states = BehaviorSubject.seeded(LifecycleState.resumed);
+  new() : states = BehaviorSubject.seeded(LifecycleState.resumed);
 
-  _FakeLifecycleSource.blocking({required FutureOr<void> Function() onCancel})
+  new blocking({required FutureOr<void> Function() onCancel})
     : states = BehaviorSubject.seeded(LifecycleState.resumed, onCancel: onCancel);
 
   @override
@@ -24,9 +24,7 @@ class _FakeLifecycleSource implements LifecycleSource {
 }
 
 class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSource {
-  final BehaviorSubject<AppRouteDef?> routes;
-
-  this : routes = BehaviorSubject.seeded(initialRoute);
+  final BehaviorSubject<AppRouteDef?> routes = BehaviorSubject.seeded(initialRoute);
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;

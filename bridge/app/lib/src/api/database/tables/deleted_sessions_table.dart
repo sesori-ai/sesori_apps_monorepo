@@ -39,7 +39,7 @@ class DeletedSessionsTable() extends Table {
 
 @freezed
 sealed class const DeletedSessionDto._() with _$DeletedSessionDto, $DeletedSessionsTableTableToColumns {
-  const factory DeletedSessionDto({
+  const factory({
     required String ownerIdentity,
     required String backendSessionId,
     required String pluginId,

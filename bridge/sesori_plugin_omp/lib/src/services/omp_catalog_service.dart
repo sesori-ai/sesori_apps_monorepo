@@ -10,20 +10,11 @@ import "../trackers/omp_catalog_tracker.dart";
 
 /// Coordinates bounded scratch-session discovery of OMP project options.
 class OmpCatalogService({
-    required OmpCatalogRepository repository,
-    required OmpCatalogTracker tracker,
-    required Duration totalTimeout,
-    required int maxModels,
-  }) {
-  this : _repository = repository,
-       _tracker = tracker,
-       _totalTimeout = totalTimeout,
-       _maxModels = maxModels;
-
-  final OmpCatalogRepository _repository;
-  final OmpCatalogTracker _tracker;
-  final Duration _totalTimeout;
-  final int _maxModels;
+  required final OmpCatalogRepository _repository,
+  required final OmpCatalogTracker _tracker,
+  required final Duration _totalTimeout,
+  required final int _maxModels,
+}) {
   final Map<String, Future<OmpCatalogDiscoveryResult>> _inFlight = {};
   Future<void> _leaseTail = Future.value();
 

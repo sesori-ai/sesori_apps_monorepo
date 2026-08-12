@@ -253,9 +253,7 @@ class _RecordingTokenRefresher() implements TokenRefresher {
   }
 }
 
-class _UnregisterFailingRepository({required this.statusCode}) implements BridgeRegistrationRepository {
-  final int statusCode;
-
+class _UnregisterFailingRepository({required final int statusCode}) implements BridgeRegistrationRepository {
   @override
   Future<BridgeSummary> register({
     required String name,

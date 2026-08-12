@@ -36,16 +36,11 @@ Future<void> main(List<String> arguments) async {
 }
 
 class const _BenchmarkConfiguration({
-    required this.projectCount,
-    required this.sessionCount,
-    required this.warmupCount,
-    required this.sampleCount,
-  }) {
-  final int projectCount;
-  final int sessionCount;
-  final int warmupCount;
-  final int sampleCount;
-
+  required final int projectCount,
+  required final int sessionCount,
+  required final int warmupCount,
+  required final int sampleCount,
+}) {
   static _BenchmarkConfiguration parse({required List<String> arguments}) {
     final parser = ArgParser()
       ..addOption("projects", defaultsTo: "$_defaultProjectCount")
@@ -78,11 +73,7 @@ class const _BenchmarkConfiguration({
   }
 }
 
-class const _ImportConcurrencyBenchmark({required _BenchmarkConfiguration configuration}) {
-  this : _configuration = configuration;
-
-  final _BenchmarkConfiguration _configuration;
-
+class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-import-concurrency-");
@@ -367,13 +358,10 @@ class _SchedulingLagProbe() {
 }
 
 class _BenchmarkProjectsDao(
-    super.attachedDatabase, {
-    required this.publicationStarted,
-    required this.releasePublication,
-  }) extends ProjectsDao {
-  final Completer<void> publicationStarted;
-  final Completer<void> releasePublication;
-
+  super.attachedDatabase, {
+  required final Completer<void> publicationStarted,
+  required final Completer<void> releasePublication,
+}) extends ProjectsDao {
   @override
   Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
     await super.upsertProjectRows(rows: rows);
@@ -383,14 +371,10 @@ class _BenchmarkProjectsDao(
 }
 
 class _BenchmarkPlugin({
-    required this.launchDirectory,
-    required this.sessions,
-    required this.releaseEnumeration,
-  }) implements BridgeDerivedProjectsPluginApi {
-  @override
-  final String launchDirectory;
-  final List<PluginSession> sessions;
-  final Completer<void> releaseEnumeration;
+  @override required final String launchDirectory,
+  required final List<PluginSession> sessions,
+  required final Completer<void> releaseEnumeration,
+}) implements BridgeDerivedProjectsPluginApi {
   final Completer<void> enumerationStarted = Completer<void>();
 
   @override

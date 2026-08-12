@@ -15,12 +15,12 @@ import "copy_icon_button.dart";
 ///
 /// `pre` is always a block tag, so this never affects inline code (single
 /// backticks), which keeps flowing through the default `code` style.
-class CodeBlockMarkdownBuilder({required this.highlightEnabled, this.copyTooltip}) extends MarkdownElementBuilder {
+class CodeBlockMarkdownBuilder({
   /// When false (e.g. while the message is still streaming) the block renders
   /// as plain monospace to avoid re-highlighting on every token delta.
-  final bool highlightEnabled;
-  final String? copyTooltip;
-
+  required final bool highlightEnabled,
+  final String? copyTooltip,
+}) extends MarkdownElementBuilder {
   @override
   Widget? visitElementAfterWithContext(
     BuildContext context,
@@ -62,17 +62,12 @@ class CodeBlockMarkdownBuilder({required this.highlightEnabled, this.copyTooltip
 /// one-tap copy button, over horizontally scrollable, optionally
 /// syntax-highlighted code.
 class const CodeBlock({
-    super.key,
-    required this.code,
-    required this.language,
-    this.highlightEnabled = true,
-    this.copyTooltip,
-  }) extends StatefulWidget {
-  final String code;
-  final String? language;
-  final bool highlightEnabled;
-  final String? copyTooltip;
-
+  super.key,
+  required final String code,
+  required final String? language,
+  final bool highlightEnabled = true,
+  final String? copyTooltip,
+}) extends StatefulWidget {
   @override
   State<CodeBlock> createState() => _CodeBlockState();
 }

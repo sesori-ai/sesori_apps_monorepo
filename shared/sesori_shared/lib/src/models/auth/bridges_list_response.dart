@@ -9,9 +9,9 @@ part "bridges_list_response.g.dart";
 /// authenticated account.
 @Freezed(fromJson: true, toJson: false)
 sealed class BridgesListResponse with _$BridgesListResponse {
-  const factory BridgesListResponse({
+  const factory({
     required List<BridgeSummary> bridges,
   }) = _BridgesListResponse;
 
-  factory BridgesListResponse.fromJson(Map<String, dynamic> json) => _$BridgesListResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$BridgesListResponseFromJson(json);
 }

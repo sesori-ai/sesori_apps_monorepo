@@ -78,8 +78,8 @@ import "package:sesori_shared/sesori_shared.dart";
 /// (no banner, chain up); pass e.g. `ConnectionOverlayState.bridgeOffline()`
 /// to exercise the banner.
 class StubConnectionOverlayCubit({
-    ConnectionOverlayState initialState = const ConnectionOverlayState.hidden(connected: true),
-  }) extends Cubit<ConnectionOverlayState> implements ConnectionOverlayCubit {
+  ConnectionOverlayState initialState = const ConnectionOverlayState.hidden(connected: true),
+}) extends Cubit<ConnectionOverlayState> implements ConnectionOverlayCubit {
   this : super(initialState);
 
   @override
@@ -89,7 +89,9 @@ class StubConnectionOverlayCubit({
 /// The composer resolves its resting layout (hold-to-talk vs tap-to-type)
 /// from [ChatInputModeCubit], so any harness that pumps a composer-bearing
 /// screen must provide one. Defaults to the app default, voice-first.
-class StubChatInputModeCubit({ChatInputMode initialState = ChatInputMode.voiceFirst}) extends Cubit<ChatInputMode> implements ChatInputModeCubit {
+class StubChatInputModeCubit({ChatInputMode initialState = ChatInputMode.voiceFirst})
+    extends Cubit<ChatInputMode>
+    implements ChatInputModeCubit {
   this : super(initialState);
 
   @override
@@ -328,16 +330,13 @@ MockProjectViewingService stubbedProjectViewingService() {
   return mock;
 }
 
-class MockRouteSource({AppRouteDef? initialRoute, this.currentLocation}) extends Mock implements RouteSource {
-  final BehaviorSubject<AppRouteDef?> _currentRoute;
-
-  this : _currentRoute = BehaviorSubject.seeded(initialRoute);
+class MockRouteSource({AppRouteDef? initialRoute, @override var String? currentLocation})
+    extends Mock
+    implements RouteSource {
+  final BehaviorSubject<AppRouteDef?> _currentRoute = BehaviorSubject.seeded(initialRoute);
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
-
-  @override
-  String? currentLocation;
 
   AppRouteDef? get currentRoute => _currentRoute.value;
 

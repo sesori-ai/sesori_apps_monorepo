@@ -845,18 +845,12 @@ Future<List<int>> _nextRelayPayload({
 }
 
 class const _OrchestratorHarness({
-    required this.plugins,
-    required this.lifecycleService,
-    required this.composition,
-    required this.runtime,
-    required this.httpClient,
-  }) {
-  final List<_SourcedPlugin> plugins;
-  final PluginLifecycleService lifecycleService;
-  final OrchestratorComposition composition;
-  final BridgeRuntime runtime;
-  final http.Client httpClient;
-
+  required final List<_SourcedPlugin> plugins,
+  required final PluginLifecycleService lifecycleService,
+  required final OrchestratorComposition composition,
+  required final BridgeRuntime runtime,
+  required final http.Client httpClient,
+}) {
   static Future<_OrchestratorHarness> create({
     required List<String> pluginIds,
     String relayUrl = "ws://127.0.0.1:1",
@@ -948,8 +942,7 @@ class const _OrchestratorHarness({
   }
 }
 
-class _SourcedPlugin(this.pluginId) extends FakeBridgePlugin {
-  final String pluginId;
+class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   Completer<void>? getProjectStarted;
   Completer<void>? getProjectGate;
   Completer<void>? activeSummaryReadStarted;
@@ -967,7 +960,7 @@ class _SourcedPlugin(this.pluginId) extends FakeBridgePlugin {
       started.complete();
       if (gate != null) await gate.future;
     }
-    return super.getProject(projectId);
+    return await super.getProject(projectId);
   }
 
   @override

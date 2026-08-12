@@ -7,18 +7,10 @@ import "session_mutation_dispatcher.dart";
 
 /// Owns the complete cleanup-and-delete workflow for one session family.
 class SessionDeletionService({
-    required SessionLifecycleService sessionLifecycleService,
-    required SessionMutationDispatcher sessionMutationDispatcher,
-    required ChatHistoryService chatHistoryService,
-  }) {
-  final SessionLifecycleService _sessionLifecycleService;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
-  final ChatHistoryService _chatHistoryService;
-
-  this : _sessionLifecycleService = sessionLifecycleService,
-       _sessionMutationDispatcher = sessionMutationDispatcher,
-       _chatHistoryService = chatHistoryService;
-
+  required final SessionLifecycleService _sessionLifecycleService,
+  required final SessionMutationDispatcher _sessionMutationDispatcher,
+  required final ChatHistoryService _chatHistoryService,
+}) {
   Future<CleanupResult> deleteSession({
     required String sessionId,
     required bool deleteWorktree,

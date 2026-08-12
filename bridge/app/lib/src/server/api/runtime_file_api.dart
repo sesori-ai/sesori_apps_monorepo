@@ -11,9 +11,7 @@ import 'package:path/path.dart' as p;
 /// advisory locks neither exclude lockers within one process nor survive
 /// another file descriptor to the lock file being closed, so a second
 /// instance over the same directory would silently break the guarantee.
-class RuntimeFileApi({required this.runtimeDirectory}) {
-  final String runtimeDirectory;
-
+class RuntimeFileApi({required final String runtimeDirectory}) {
   static const String _ownershipFileName = 'opencode-processes.json';
 
   /// Suffix of the sidecar files [updateFile] takes its advisory lock on.

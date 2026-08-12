@@ -20,35 +20,21 @@ enum AcpQuestionResolution() { declined, cancelled }
 enum _PendingKind() { permission, question }
 
 class _PendingApproval({
-    required this.bridgeRequestId,
-    required this.acpId,
-    required this.sessionId,
-    required this.kind,
-    this.params = const {},
-    this.questions = const [],
-    this.replyBuilder,
-    this.resolutionBuilder,
-  }) {
-  final String bridgeRequestId;
-
-  /// Original JSON-RPC `id` — echoed when responding.
-  final Object acpId;
-  final String sessionId;
-  final _PendingKind kind;
-
-  /// Raw request params (permission: carries the `options[]`).
-  final Map<String, dynamic> params;
-
-  /// Rendered questions for `getPendingQuestions` (question kind only).
-  final List<PluginQuestionInfo> questions;
-
-  /// Builds the reply payload (question kind only).
-  final AcpQuestionReplyBuilder? replyBuilder;
-
-  /// Builds protocol-specific decline/cancel results. Null preserves the
+    required final String bridgeRequestId,
+    /// Original JSON-RPC `id` — echoed when responding.
+  required final Object acpId,
+    required final String sessionId,
+    required final _PendingKind kind,
+    /// Raw request params (permission: carries the `options[]`).
+  final Map<String, dynamic> params = const {},
+    /// Rendered questions for `getPendingQuestions` (question kind only).
+  final List<PluginQuestionInfo> questions = const [],
+    /// Builds the reply payload (question kind only).
+  final AcpQuestionReplyBuilder? replyBuilder,
+    /// Builds protocol-specific decline/cancel results. Null preserves the
   /// existing JSON-RPC error response used by harness extension questions.
-  final AcpQuestionResolutionBuilder? resolutionBuilder;
-}
+  final AcpQuestionResolutionBuilder? resolutionBuilder,
+  });
 
 /// Routes ACP server-originated requests to the bridge SSE stream and answers
 /// them when the bridge consumer replies.
@@ -58,22 +44,19 @@ class _PendingApproval({
 /// `cursor/ask_question`) are caught by overriding [handleExtensionRequest]
 /// and registering a pending question via [addPendingQuestion].
 class AcpApprovalRegistry({
-    required void Function(BridgeSseEvent event) emit,
-    required AcpResponder respond,
-    required AcpErrorResponder respondError,
-    required void Function(AcpNotification notification) onFireAndForgetNotification,
+    required final void Function(BridgeSseEvent event) _emit,
+    required final AcpResponder _respond,
+    required final AcpErrorResponder _respondError,
+    required final void Function(AcpNotification notification) _onFireAndForgetNotification,
     String Function()? idGenerator,
-    String? Function()? activeSessionResolver,
+    /// Resolves the session a server request belongs to when the request itself
+  /// omits one. Some agents (Cursor's `cursor/create_plan`) send blocking
+  /// requests with no `sessionId`; falling back to the active turn's session is
+  /// the only signal tying the request to the conversation that triggered it.
+  final String? Function()? _activeSessionResolver,
   }) {
-  this : _emit = emit,
-       _respond = respond,
-       _respondError = respondError,
-       _onFireAndForgetNotification = onFireAndForgetNotification,
-       _injectedIdGenerator = idGenerator,
-       _activeSessionResolver = activeSessionResolver;
-
   /// Convenience constructor wiring the responders to an [AcpStdioClient].
-  factory AcpApprovalRegistry.forClient({
+  factory forClient({
     required AcpStdioClient client,
     required void Function(BridgeSseEvent event) emit,
     required void Function(AcpNotification notification) onFireAndForgetNotification,
@@ -90,17 +73,7 @@ class AcpApprovalRegistry({
     );
   }
 
-  final void Function(BridgeSseEvent event) _emit;
-  final AcpResponder _respond;
-  final AcpErrorResponder _respondError;
-  final void Function(AcpNotification notification) _onFireAndForgetNotification;
-  final String Function()? _injectedIdGenerator;
-
-  /// Resolves the session a server request belongs to when the request itself
-  /// omits one. Some agents (Cursor's `cursor/create_plan`) send blocking
-  /// requests with no `sessionId`; falling back to the active turn's session is
-  /// the only signal tying the request to the conversation that triggered it.
-  final String? Function()? _activeSessionResolver;
+  final String Function()? _injectedIdGenerator = idGenerator;
 
   StreamSubscription<AcpServerRequest>? _subscription;
   int _seq = 0;

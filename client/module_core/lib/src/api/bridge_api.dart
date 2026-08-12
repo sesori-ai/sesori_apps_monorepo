@@ -4,11 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 /// Layer 1 access to the auth server's bridge endpoints.
 @lazySingleton
-class BridgeApi({required AuthenticatedHttpApiClient client}) {
-  final AuthenticatedHttpApiClient _client;
-
-  this : _client = client;
-
+class BridgeApi({required final AuthenticatedHttpApiClient _client}) {
   /// Fetches the bridges registered with the authenticated account
   /// (`GET /auth/bridges`).
   Future<ApiResponse<BridgesListResponse>> fetchRegisteredBridges() {

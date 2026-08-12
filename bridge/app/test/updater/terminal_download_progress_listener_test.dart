@@ -6,10 +6,7 @@ import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dar
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show DownloadProgress;
 import 'package:test/test.dart';
 
-class _CapturingStdout({required this.hasTerminal}) implements Stdout {
-  @override
-  final bool hasTerminal;
-
+class _CapturingStdout({@override required final bool hasTerminal}) implements Stdout {
   final StringBuffer _buffer = StringBuffer();
   String get written => _buffer.toString();
 

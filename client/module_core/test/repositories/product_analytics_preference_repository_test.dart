@@ -25,8 +25,7 @@ ProductAnalyticsPreferenceRecord _domainRecord({
   userKey: _userKey,
 );
 
-class _RecordingPreferenceApi({required this.operations}) implements ProductAnalyticsPreferenceApi {
-  final List<String> operations;
+class _RecordingPreferenceApi({required final List<String> operations}) implements ProductAnalyticsPreferenceApi {
   final getResults = Queue<ProductAnalyticsPreferenceApiResult>();
   final updateResults = Queue<ProductAnalyticsPreferenceApiResult>();
   final updates = <({String userId, ProductAnalyticsPreference preference, int revision, String operationId})>[];
@@ -55,8 +54,8 @@ class _RecordingPreferenceApi({required this.operations}) implements ProductAnal
   }
 }
 
-class _RecordingPreferenceStorage({required this.operations}) implements ProductAnalyticsPreferenceStorage {
-  final List<String> operations;
+class _RecordingPreferenceStorage({required final List<String> operations})
+    implements ProductAnalyticsPreferenceStorage {
   final writes = <StoredProductAnalyticsPreference>[];
   StoredProductAnalyticsPreference? stored;
   Object? readError;

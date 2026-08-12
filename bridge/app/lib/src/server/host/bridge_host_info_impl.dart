@@ -4,27 +4,18 @@ import "../foundation/process_match.dart";
 import "../repositories/process_repository.dart";
 
 class BridgeHostInfoImpl({
-    required this.identity,
-    required this.ownerSessionId,
-    required List<ProcessIdentity> terminatedBridgeIdentities,
-    required ProcessRepository processRepository,
-  }) implements BridgeHostInfo {
-  this : terminatedBridgeIdentities = List<ProcessIdentity>.unmodifiable(terminatedBridgeIdentities),
-       _processRepository = processRepository;
-
-  @override
-  final ProcessIdentity identity;
-
-  @override
-  final String ownerSessionId;
-
+  @override required final ProcessIdentity identity,
+  @override required final String ownerSessionId,
+  required List<ProcessIdentity> terminatedBridgeIdentities,
+  required final ProcessRepository _processRepository,
+}) implements BridgeHostInfo {
   /// An unmodifiable snapshot: the replaced-bridge identities are a fixed
   /// fact of this startup, and cleanup authorization must not be alterable
   /// through a retained caller-side list reference.
   @override
-  final List<ProcessIdentity> terminatedBridgeIdentities;
-
-  final ProcessRepository _processRepository;
+  final List<ProcessIdentity> terminatedBridgeIdentities = List<ProcessIdentity>.unmodifiable(
+    terminatedBridgeIdentities,
+  );
 
   /// Mirrors the stale-kill authorization predicate
   /// (`OpenCodeServerService._isStaleKillAuthorized`): classification plus

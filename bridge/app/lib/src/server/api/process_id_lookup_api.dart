@@ -4,7 +4,7 @@ import "dart:io";
 import "../../bridge/foundation/process_runner.dart";
 
 sealed class ProcessIdLookupApi._() {
-  factory ProcessIdLookupApi.forPlatform({
+  factory forPlatform({
     required bool isWindows,
     required ProcessRunner processRunner,
   }) {
@@ -18,10 +18,8 @@ sealed class ProcessIdLookupApi._() {
   Future<List<int>> listProcessIdsByExecutableName({required String executableName});
 }
 
-final class _PosixProcessIdLookupApi({required ProcessRunner processRunner}) extends ProcessIdLookupApi {
-  this : _processRunner = processRunner, super._();
-
-  final ProcessRunner _processRunner;
+final class _PosixProcessIdLookupApi({required final ProcessRunner _processRunner}) extends ProcessIdLookupApi {
+  this : super._();
 
   @override
   Future<List<int>> listProcessIdsByExecutableName({required String executableName}) async {
@@ -55,10 +53,8 @@ final class _PosixProcessIdLookupApi({required ProcessRunner processRunner}) ext
   }
 }
 
-final class _WindowsProcessIdLookupApi({required ProcessRunner processRunner}) extends ProcessIdLookupApi {
-  this : _processRunner = processRunner, super._();
-
-  final ProcessRunner _processRunner;
+final class _WindowsProcessIdLookupApi({required final ProcessRunner _processRunner}) extends ProcessIdLookupApi {
+  this : super._();
 
   @override
   Future<List<int>> listProcessIdsByExecutableName({required String executableName}) async {

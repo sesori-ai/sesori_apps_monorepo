@@ -2,12 +2,10 @@ import "package:flutter/widgets.dart";
 import "package:go_router/go_router.dart";
 
 class const ImperativePaneRouteScope({
-    super.key,
-    required this.isImperative,
-    required super.child,
-  }) extends InheritedWidget {
-  final bool isImperative;
-
+  super.key,
+  required final bool isImperative,
+  required super.child,
+}) extends InheritedWidget {
   static ImperativePaneRouteScope? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<ImperativePaneRouteScope>();
   }

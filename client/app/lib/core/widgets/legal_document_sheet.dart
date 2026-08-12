@@ -67,9 +67,7 @@ class const _LegalDocumentBody() extends StatelessWidget {
   }
 }
 
-class const _FailureView({required this.reason}) extends StatelessWidget {
-  final RemoteFailureReason reason;
-
+class const _FailureView({required final RemoteFailureReason reason}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

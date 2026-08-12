@@ -21,7 +21,7 @@ enum CodexOwnershipStatus() {
 /// [CodexRecordMapper].
 @freezed
 sealed class CodexOwnershipRecord with _$CodexOwnershipRecord {
-  const factory CodexOwnershipRecord({
+  const factory({
     required String ownerSessionId,
     required int codexPid,
     required String? codexStartMarker,
@@ -35,6 +35,6 @@ sealed class CodexOwnershipRecord with _$CodexOwnershipRecord {
     required CodexOwnershipStatus status,
   }) = _CodexOwnershipRecord;
 
-  factory CodexOwnershipRecord.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$CodexOwnershipRecordFromJson(json);
 }

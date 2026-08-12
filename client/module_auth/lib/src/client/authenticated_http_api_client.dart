@@ -13,15 +13,9 @@ import "safe_api_client.dart";
 /// Decorates [HttpApiClient] with bearer-token injection and one-time retry on 401.
 @lazySingleton
 class AuthenticatedHttpApiClient(
-    HttpApiClient client,
-    AuthManager authManager,
-  ) implements SafeApiClient {
-  final HttpApiClient _client;
-  final AuthManager _authManager;
-
-  this : _client = client,
-      _authManager = authManager;
-
+  final HttpApiClient _client,
+  final AuthManager _authManager,
+) implements SafeApiClient {
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> get<T>(
@@ -209,7 +203,7 @@ class AuthenticatedHttpApiClient(
       expectedUserId: null,
       makeRequest: (token) async {
         final files = await createFiles();
-        return _client.postMultipart(
+        return await _client.postMultipart(
           url,
           fromJson: fromJson,
           files: files,

@@ -7,16 +7,12 @@ import "../repositories/cursor_session_storage_repository.dart";
 
 /// Resolves and safely removes Cursor's persisted storage for one session.
 class CursorSessionCleanupService({
-    required CursorSessionStorageRepository repository,
-    required Map<String, String> environment,
-  }) {
-  this : _repository = repository,
-       _environment = Map<String, String>.unmodifiable(environment);
-
+  required final CursorSessionStorageRepository _repository,
+  required Map<String, String> environment,
+}) {
   static const String _sessionsDirectoryName = "acp-sessions";
 
-  final CursorSessionStorageRepository _repository;
-  final Map<String, String> _environment;
+  final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
   late final String _sessionsRoot = p.normalize(
     p.absolute(p.join(_resolveConfigDirectory(), _sessionsDirectoryName)),
   );

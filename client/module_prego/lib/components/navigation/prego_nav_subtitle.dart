@@ -28,32 +28,22 @@ enum PregoNavStatus() {
 /// bar's API.
 class const PregoNavSubtitle({
     super.key,
-    required this.text,
-    this.icon,
-    this.status,
-    this.infoMessage,
-    this.infoSemanticLabel,
-  }) extends StatelessWidget {
-  /// The row's text, in `text-xs / medium / text-secondary`, clipped to a
+    /// The row's text, in `text-xs / medium / text-secondary`, clipped to a
   /// single ellipsised line.
-  final String text;
-
-  /// Optional icon rendered before the [text], sized to the row's `text-xs`
+  required final String text,
+    /// Optional icon rendered before the [text], sized to the row's `text-xs`
   /// glyphs.
-  final IconData? icon;
-
-  /// Status dot before the row; absent when `null`.
-  final PregoNavStatus? status;
-
-  /// When set, the row becomes tappable: a trailing chevron-down is shown and
+  final IconData? icon,
+    /// Status dot before the row; absent when `null`.
+  final PregoNavStatus? status,
+    /// When set, the row becomes tappable: a trailing chevron-down is shown and
   /// tapping opens a [PregoInfoPopover] with this message (e.g. the
   /// untruncated form of an ellipsised [text]).
-  final String? infoMessage;
-
-  /// Screen-reader label for the tappable row; only used when [infoMessage]
+  final String? infoMessage,
+    /// Screen-reader label for the tappable row; only used when [infoMessage]
   /// is set.
-  final String? infoSemanticLabel;
-
+  final String? infoSemanticLabel,
+  }) extends StatelessWidget {
   /// Status dot diameter — the Figma online-indicator size.
   static const double _dotSize = 6;
 

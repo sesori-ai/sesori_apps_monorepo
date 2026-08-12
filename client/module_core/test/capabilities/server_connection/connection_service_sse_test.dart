@@ -27,11 +27,7 @@ class _MockFailureReporter() extends Mock implements FailureReporter;
 
 class _MockRelayClient() extends Mock implements RelayClient;
 
-class _TestRelayClientFactory({required RelayClient client}) extends RelayClientFactory {
-  final RelayClient _client;
-
-  this : _client = client;
-
+class _TestRelayClientFactory({required final RelayClient _client}) extends RelayClientFactory {
   @override
   RelayClient call({
     required String relayHost,

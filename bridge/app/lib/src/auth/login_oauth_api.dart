@@ -11,20 +11,11 @@ Uri _buildUri({required String base, required String path}) {
 }
 
 class LoginOAuthApi({
-    required this.authBackendUrl,
-    required http.Client client,
-    required AuthClientType clientType,
-    required DeviceInfo device,
-  }) {
-  final String authBackendUrl;
-  final http.Client _client;
-  final AuthClientType _clientType;
-  final DeviceInfo _device;
-
-  this : _client = client,
-       _clientType = clientType,
-       _device = device;
-
+  required final String authBackendUrl,
+  required final http.Client _client,
+  required final AuthClientType _clientType,
+  required final DeviceInfo _device,
+}) {
   Future<AuthInitResponse> initOAuthSession({
     required OAuthProvider provider,
     required String sessionToken,

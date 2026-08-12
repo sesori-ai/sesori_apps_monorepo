@@ -19,9 +19,7 @@ class _MockSessionDetailCubit() extends Mock implements SessionDetailCubit;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 class _FakeLifecycleSource({required LifecycleState initialState}) implements LifecycleSource {
-  final BehaviorSubject<LifecycleState> states;
-
-  this : states = BehaviorSubject.seeded(initialState);
+  final BehaviorSubject<LifecycleState> states = BehaviorSubject.seeded(initialState);
 
   @override
   ValueStream<LifecycleState> get lifecycleStateStream => states.stream;

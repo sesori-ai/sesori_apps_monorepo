@@ -137,11 +137,7 @@ void main() {
   });
 }
 
-class _RequestResponse({required this.path, required this.statusCode, required this.body}) {
-  final String path;
-  final int statusCode;
-  final String body;
-}
+class _RequestResponse({required final String path, required final int statusCode, required final String body});
 
 void _handleRequests(HttpServer server, List<_RequestResponse> responses) {
   var index = 0;

@@ -206,11 +206,11 @@ class _FakeProcessRunner() implements ProcessRunner {
   }
 }
 
-class _Invocation({required this.command, required this.arguments, required this.workingDirectory}) {
-  final String command;
-  final List<String> arguments;
-  final String? workingDirectory;
-}
+class _Invocation({
+  required final String command,
+  required final List<String> arguments,
+  required final String? workingDirectory,
+});
 
 class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   int deleteWorkspaceCallCount = 0;

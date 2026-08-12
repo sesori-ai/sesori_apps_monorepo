@@ -14,10 +14,8 @@ import "../repositories/session_repository.dart";
 
 sealed class const SessionAttachmentResult();
 
-final class const SessionAttachmentFound({required this.bytes, required this.mime}) extends SessionAttachmentResult {
-  final Uint8List bytes;
-  final String mime;
-}
+final class const SessionAttachmentFound({required final Uint8List bytes, required final String mime})
+    extends SessionAttachmentResult;
 
 final class const SessionAttachmentMissing() extends SessionAttachmentResult;
 
@@ -30,13 +28,13 @@ final class const SessionAttachmentTooLarge() extends SessionAttachmentResult;
 sealed class const CapturedPartDelivery();
 
 /// The part as stored, projected once per delivery mode.
-final class const CapturedPartShapes({required this.inlinePart, required this.storedReferencePart}) extends CapturedPartDelivery {
+final class const CapturedPartShapes({
   /// The released shape: bounded inline images, excess degraded to metadata.
-  final MessagePart inlinePart;
+  required final MessagePart inlinePart,
 
   /// The capable shape: stored images carry an identifier instead of bytes.
-  final MessagePart storedReferencePart;
-}
+  required final MessagePart storedReferencePart,
+}) extends CapturedPartDelivery;
 
 /// The write did not land, so no reference may be advertised for it.
 final class const CapturedPartUnavailable() extends CapturedPartDelivery;
@@ -46,20 +44,11 @@ final class const CapturedPartUnavailable() extends CapturedPartDelivery;
 /// Every mutation runs through a per-session queue so writes for one session
 /// never interleave, while unrelated sessions stay independent.
 class ChatHistoryService({
-    required ChatHistoryRepository chatHistoryRepository,
-    required SessionRepository sessionRepository,
-    required AttachmentThumbnailBuilder attachmentThumbnailBuilder,
-    required BridgeIdProvider bridgeIdProvider,
-  }) {
-  this : _chatHistoryRepository = chatHistoryRepository,
-       _sessionRepository = sessionRepository,
-       _attachmentThumbnailBuilder = attachmentThumbnailBuilder,
-       _bridgeIdProvider = bridgeIdProvider;
-
-  final ChatHistoryRepository _chatHistoryRepository;
-  final SessionRepository _sessionRepository;
-  final AttachmentThumbnailBuilder _attachmentThumbnailBuilder;
-  final BridgeIdProvider _bridgeIdProvider;
+  required final ChatHistoryRepository _chatHistoryRepository,
+  required final SessionRepository _sessionRepository,
+  required final AttachmentThumbnailBuilder _attachmentThumbnailBuilder,
+  required final BridgeIdProvider _bridgeIdProvider,
+}) {
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
   Future<void> _thumbnailGenerationLane = Future.value();
@@ -112,7 +101,7 @@ class ChatHistoryService({
         if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
           return null;
         }
-        return _chatHistoryRepository.getSessionMessages(
+        return await _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
           limit: limit,
@@ -127,7 +116,7 @@ class ChatHistoryService({
     final storageScope = await _requireStorageScope(sessionId: sessionId);
     // The backfill is itself queued, so this read lands after it and after
     // any capture that raced its fetch.
-    return _enqueueRead(
+    return await _enqueueRead(
       sessionId: sessionId,
       read: () => _chatHistoryRepository.getSessionMessages(
         sessionId: sessionId,
@@ -168,7 +157,7 @@ class ChatHistoryService({
           if (cached != null) {
             return SessionAttachmentFound(bytes: cached.bytes, mime: cached.format.mime);
           }
-          return _generateThumbnail(
+          return await _generateThumbnail(
             sessionId: sessionId,
             storageScope: storageScope,
             attachmentId: attachmentId,
@@ -577,7 +566,7 @@ class ChatHistoryService({
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
     if (session == null) return null;
     final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
-    return _chatHistoryRepository.getArchivedSessionMessages(
+    return await _chatHistoryRepository.getArchivedSessionMessages(
       sessionId: sessionId,
       storageScope: _storageScopeFor(session: session),
       limit: limit,

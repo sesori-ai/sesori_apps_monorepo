@@ -3,14 +3,14 @@ import "dart:io";
 import "terminal_color_validator.dart";
 
 /// ANSI foreground colors used to highlight terminal output.
-enum AnsiColor(this.code) {
+enum AnsiColor(
+  /// The escape sequence that activates this color.
+  final String code,
+) {
   red("\x1B[31m"),
   yellow("\x1B[33m"),
   blue("\x1B[94m"),
   gray("\x1B[90m");
-
-  /// The escape sequence that activates this color.
-  final String code;
 }
 
 /// Wraps terminal text in ANSI color escape sequences.

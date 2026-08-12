@@ -41,16 +41,11 @@ BoxDecoration pregoComposerSurfaceDecoration({
 /// Uses the same fill, border, and elevation as the composer on every platform.
 class const PregoCard({
     super.key,
-    required this.child,
-    required this.surfaceStyle,
-    this.borderRadius = 20,
+    required final Widget child,
+    required final PregoComposerSurfaceStyle surfaceStyle,
+    /// Corner radius of the card.
+  final double borderRadius = 20,
   }) extends StatelessWidget {
-  final Widget child;
-  final PregoComposerSurfaceStyle surfaceStyle;
-
-  /// Corner radius of the card.
-  final double borderRadius;
-
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -80,23 +75,15 @@ class const PregoCard({
 /// screen readers).
 class const PregoDivider({
     super.key,
-    this.indent = 0,
-    this.endIndent = 0,
-    this.height,
-    this.flat = false,
+    /// Empty space leading the line on the left.
+  final double indent = 0,
+    /// Empty space trailing the line on the right.
+  final double endIndent = 0,
+    /// Total cross-axis space the divider occupies. Defaults to 1.0.
+  final double? height,
+    /// Forces the solid divider used inside [PregoCard] on every platform.
+  final bool flat = false,
   }) extends StatelessWidget {
-  /// Empty space leading the line on the left.
-  final double indent;
-
-  /// Empty space trailing the line on the right.
-  final double endIndent;
-
-  /// Total cross-axis space the divider occupies. Defaults to 1.0.
-  final double? height;
-
-  /// Forces the solid divider used inside [PregoCard] on every platform.
-  final bool flat;
-
   @override
   Widget build(BuildContext context) {
     if (!flat && glassEffectsEnabled()) {
@@ -126,40 +113,23 @@ class const PregoDivider({
 /// [PregoDivider] below itself unless it is the last row.
 class const PregoListTile({
     super.key,
-    this.leading,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
-    this.isLast = false,
-    this.showDivider = true,
-    this.contentPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    this.leadingIconColor,
-    this.titleStyle,
-    this.subtitleStyle,
-    this.dividerIndent,
-  }) extends StatelessWidget {
-  final Widget? leading;
-  final Widget title;
-  final Widget? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  /// Whether this is the last row in its group; suppresses the bottom divider.
-  final bool isLast;
-
-  /// Whether to draw a [PregoDivider] below this row. Ignored when [isLast].
-  final bool showDivider;
-
-  final EdgeInsetsGeometry contentPadding;
-  final Color? leadingIconColor;
-  final TextStyle? titleStyle;
-  final TextStyle? subtitleStyle;
-
-  /// Leading indent of the bottom divider. Defaults to 56 when a [leading]
+    final Widget? leading,
+    required final Widget title,
+    final Widget? subtitle,
+    final Widget? trailing,
+    final VoidCallback? onTap,
+    /// Whether this is the last row in its group; suppresses the bottom divider.
+  final bool isLast = false,
+    /// Whether to draw a [PregoDivider] below this row. Ignored when [isLast].
+  final bool showDivider = true,
+    final EdgeInsetsGeometry contentPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final Color? leadingIconColor,
+    final TextStyle? titleStyle,
+    final TextStyle? subtitleStyle,
+    /// Leading indent of the bottom divider. Defaults to 56 when a [leading]
   /// widget is present (aligning the line under the title), 16 otherwise.
-  final double? dividerIndent;
-
+  final double? dividerIndent,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tile = _buildFlat(context);

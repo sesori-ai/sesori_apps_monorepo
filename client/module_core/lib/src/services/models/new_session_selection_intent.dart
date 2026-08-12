@@ -1,24 +1,19 @@
-final class const NewSessionModelIntent({required this.providerId, required this.modelId}) {
-  final String providerId;
-  final String modelId;
-}
+final class const NewSessionModelIntent({required final String providerId, required final String modelId});
 
 sealed class const NewSessionVariantIntent();
 
 final class const NewSessionDefaultVariantIntent() extends NewSessionVariantIntent;
 
-final class const NewSessionNamedVariantIntent({required this.id}) extends NewSessionVariantIntent {
-  final String id;
-}
+final class const NewSessionNamedVariantIntent({required final String id}) extends NewSessionVariantIntent;
 
 final class NewSessionSelectionIntent {
-  const NewSessionSelectionIntent({
+  const new({
     required this.agentName,
     required this.model,
     required this.variant,
   });
 
-  const NewSessionSelectionIntent.empty() : agentName = null, model = null, variant = null;
+  const new empty() : agentName = null, model = null, variant = null;
 
   final String? agentName;
   final NewSessionModelIntent? model;

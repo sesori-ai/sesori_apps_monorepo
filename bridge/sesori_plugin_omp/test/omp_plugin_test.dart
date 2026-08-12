@@ -76,7 +76,7 @@ void main() {
       );
       final frame = await waitForFrame(AcpMethods.sessionNew, count: expected);
       respond(frame, {"sessionId": id});
-      return creating;
+      return await creating;
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(

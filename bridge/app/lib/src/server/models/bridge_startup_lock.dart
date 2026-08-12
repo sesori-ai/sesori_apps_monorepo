@@ -6,12 +6,12 @@ part 'bridge_startup_lock.g.dart';
 
 @freezed
 sealed class const BridgeStartupLock._() with _$BridgeStartupLock {
-  const factory BridgeStartupLock({
+  const factory({
     required int bridgePid,
     required String? bridgeStartMarker,
   }) = _BridgeStartupLock;
 
-  factory BridgeStartupLock.fromJson(Map<String, dynamic> json) => _$BridgeStartupLockFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$BridgeStartupLockFromJson(json);
 
   bool matchesStartMarkerOf({required ProcessIdentity identity}) {
     if (identity.startMarker != null || bridgeStartMarker != null) {

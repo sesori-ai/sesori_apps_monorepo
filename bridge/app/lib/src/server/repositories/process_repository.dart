@@ -5,15 +5,9 @@ import "../api/system_process_api.dart";
 import "../foundation/process_match.dart";
 
 class ProcessRepository({
-    required SystemProcessApi api,
-    required ProcessUser? currentUser,
-  }) {
-  this : _api = api,
-       _currentUser = currentUser;
-
-  final SystemProcessApi _api;
-  final ProcessUser? _currentUser;
-
+  required final SystemProcessApi _api,
+  required final ProcessUser? _currentUser,
+}) {
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     final identity = await _api.inspectProcess(pid: pid);
     if (identity == null) {

@@ -8,9 +8,7 @@ import "dart:io";
 /// where the GUI supplies tokens over the control channel and no token file
 /// exists on disk.
 class BridgeIdStorage({required String filePath}) {
-  final String _path;
-
-  this : _path = filePath;
+  final String _path = filePath;
 
   /// Returns the persisted bridge id, or null when no id has been stored yet
   /// (missing file) or the file is empty.

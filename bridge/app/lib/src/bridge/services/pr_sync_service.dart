@@ -18,17 +18,12 @@ enum PrRefreshPolicy() { background, explicit, viewedProject }
 typedef PullRequestRenderedChange = ({String projectId});
 
 class PrSyncService({
-    required PrSourceRepository prSource,
-    required PullRequestRepository pullRequestRepository,
-    required SessionRepository sessionRepository,
-    required Clock clock,
-    Duration debounceWindow = const Duration(seconds: 30),
+    required final PrSourceRepository _prSource,
+    required final PullRequestRepository _pullRequestRepository,
+    required final SessionRepository _sessionRepository,
+    required final Clock _clock,
+    final Duration _debounceWindow = const Duration(seconds: 30),
   }) {
-  final PrSourceRepository _prSource;
-  final PullRequestRepository _pullRequestRepository;
-  final SessionRepository _sessionRepository;
-  final Clock _clock;
-  final Duration _debounceWindow;
   final StreamController<PullRequestRenderedChange> _renderedChangesController =
       StreamController<PullRequestRenderedChange>.broadcast();
 
@@ -44,12 +39,6 @@ class PrSyncService({
   bool _disposed = false;
 
   static const _githubCliCapabilityCacheTtl = Duration(seconds: 30);
-
-  this : _prSource = prSource,
-       _pullRequestRepository = pullRequestRepository,
-       _sessionRepository = sessionRepository,
-       _clock = clock,
-       _debounceWindow = debounceWindow;
 
   Stream<PullRequestRenderedChange> get renderedChanges => _renderedChangesController.stream;
 
@@ -169,7 +158,7 @@ class PrSyncService({
 
   Future<bool> _hasGithubCliCapability() async {
     final inFlight = _githubCliCapabilityCheck;
-    if (inFlight != null) return inFlight;
+    if (inFlight != null) return await inFlight;
 
     final cached = _githubCliCapabilityCache;
     if (cached != null && _clock.now().difference(cached.checkedAt) < _githubCliCapabilityCacheTtl) {
@@ -374,12 +363,10 @@ class PrSyncService({
 }
 
 final class _PrRefreshWaiter({required Map<String, int> requiredGenerations}) {
-  final Map<String, int> _remainingGenerations;
+  final Map<String, int> _remainingGenerations = Map<String, int>.from(requiredGenerations);
   final Completer<PrRefreshOutcome> _completer = Completer<PrRefreshOutcome>();
   bool _failed = false;
 
-  this
-    : _remainingGenerations = Map<String, int>.from(requiredGenerations);
 
   Future<PrRefreshOutcome> get future => _completer.future;
   bool get isSettled => _completer.isCompleted;

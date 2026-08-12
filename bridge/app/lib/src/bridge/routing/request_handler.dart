@@ -11,8 +11,8 @@ import "routed_request.dart";
 export "http_method.dart";
 
 abstract class GetRequestHandler<RES extends Object>(
-    String path,
-  ) extends RequestHandlerBase {
+  String path,
+) extends RequestHandlerBase {
   this : super(HttpMethod.get, path);
 
   Future<RES> handle(
@@ -62,14 +62,10 @@ abstract class GetRequestHandler<RES extends Object>(
 }
 
 abstract class BodyRequestHandler<REQ, RES extends Object>(
-    super.method,
-    super.path, {
-    required REQ Function(Map<String, dynamic> json) fromJson,
-  }) extends RequestHandlerBase {
-  final REQ Function(Map<String, dynamic> json) _fromJson;
-
-  this : _fromJson = fromJson;
-
+  super.method,
+  super.path, {
+  required final REQ Function(Map<String, dynamic> json) _fromJson,
+}) extends RequestHandlerBase {
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
@@ -147,16 +143,16 @@ abstract class BodyRequestHandler<REQ, RES extends Object>(
 ///       : super(HttpMethod.get, "/session/:id/message");
 /// }
 /// ```
-abstract class const RequestHandlerBase(this.method, this.path) {
+abstract class const RequestHandlerBase(
   /// HTTP method this handler responds to.
-  final HttpMethod method;
+  final HttpMethod method,
 
   /// URL path pattern, optionally containing `:param` placeholders.
   /// Use `"*"` to match any path (catch-all).
   ///
   /// Examples: `"/project"`, `"/session/:id/message"`.
-  final String path;
-
+  final String path,
+) {
   String get diagnosticLabel => "${method.diagnosticLabel} $path";
 
   // ── Matching ────────────────────────────────────────────────────────────────

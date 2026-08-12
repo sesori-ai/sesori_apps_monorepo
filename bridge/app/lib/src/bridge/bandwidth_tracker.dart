@@ -63,7 +63,4 @@ class BandwidthTracker({required Stream<int> bytesSent}) {
   }
 }
 
-class const _Record(this.time, this.bytes) {
-  final DateTime time;
-  final int bytes;
-}
+class const _Record(final DateTime time, final int bytes);

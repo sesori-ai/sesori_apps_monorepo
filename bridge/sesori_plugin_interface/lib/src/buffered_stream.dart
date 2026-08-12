@@ -62,17 +62,12 @@ sealed class _BufferedEvent<T>() {
   void dispatch(StreamController<T> controller);
 }
 
-class _DataEvent<T>(this.value) implements _BufferedEvent<T> {
-  final T value;
-
+class _DataEvent<T>(final T value) implements _BufferedEvent<T> {
   @override
   void dispatch(StreamController<T> controller) => controller.add(value);
 }
 
-class _ErrorEvent<T>(this.error, this.stackTrace) implements _BufferedEvent<T> {
-  final Object error;
-  final StackTrace? stackTrace;
-
+class _ErrorEvent<T>(final Object error, final StackTrace? stackTrace) implements _BufferedEvent<T> {
   @override
   void dispatch(StreamController<T> controller) => controller.addError(error, stackTrace);
 }

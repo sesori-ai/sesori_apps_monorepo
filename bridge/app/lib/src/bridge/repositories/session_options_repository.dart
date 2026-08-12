@@ -18,64 +18,40 @@ enum SessionOptionsCaptureActivation() { mayActivate, activeOnly }
 enum SessionOptionsRuntimeOperation() { capture, commit }
 
 class const SessionOptionsCacheEntry({
-    required this.key,
-    required this.revision,
-    required this.capturedAt,
-    required this.completeness,
-    required this.response,
-  }) {
-  final SessionOptionsCacheKey key;
-  final int revision;
-  final DateTime capturedAt;
-  final PluginSessionOptionsCompleteness completeness;
-  final SessionOptionsResponse response;
-}
+    required final SessionOptionsCacheKey key,
+    required final int revision,
+    required final DateTime capturedAt,
+    required final PluginSessionOptionsCompleteness completeness,
+    required final SessionOptionsResponse response,
+  });
 
 sealed class const SessionOptionsCaptureResult();
 
 final class const SessionOptionsCaptureObserved({
-    required this.response,
-    required this.completeness,
-    required this.generation,
-  }) extends SessionOptionsCaptureResult {
-  final SessionOptionsResponse response;
-  final PluginSessionOptionsCompleteness completeness;
-  final int generation;
-}
+    required final SessionOptionsResponse response,
+    required final PluginSessionOptionsCompleteness completeness,
+    required final int generation,
+  }) extends SessionOptionsCaptureResult;
 
 final class const SessionOptionsCaptureFailed() extends SessionOptionsCaptureResult;
 
 final class const SessionOptionsCaptureInactive() extends SessionOptionsCaptureResult;
 
 final class const SessionOptionsCacheDecodingException({
-    required this.cause,
-    required this.causeStackTrace,
-    required this.revision,
+    required final Object cause,
+    required final StackTrace causeStackTrace,
+    required final int? revision,
   }) implements Exception {
-  final Object cause;
-  final StackTrace causeStackTrace;
-  final int? revision;
-
   @override
   String toString() => "SessionOptionsCacheDecodingException: invalid persisted session options cache";
 }
 
 class SessionOptionsRepository({
-    required PluginRuntime runtime,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required SessionOptionsCacheDao cacheDao,
+    required final PluginRuntime _runtime,
+    required final ProjectsDao _projectsDao,
+    required final SessionDao _sessionDao,
+    required final SessionOptionsCacheDao _cacheDao,
   }) {
-  this : _runtime = runtime,
-       _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _cacheDao = cacheDao;
-
-  final PluginRuntime _runtime;
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-  final SessionOptionsCacheDao _cacheDao;
-
   Future<String?> resolveProjectPath({required String projectId}) {
     return _projectsDao.getResolvedPath(projectId: projectId);
   }
@@ -290,9 +266,6 @@ class SessionOptionsRepository({
 
 sealed class const _ActiveCapture();
 
-final class const _ActiveCaptureResult({required this.result, required this.generation}) extends _ActiveCapture {
-  final PluginSessionOptionsDiscoveryResult result;
-  final int generation;
-}
+final class const _ActiveCaptureResult({required final PluginSessionOptionsDiscoveryResult result, required final int generation}) extends _ActiveCapture;
 
 final class const _ActiveCaptureInactive() extends _ActiveCapture;

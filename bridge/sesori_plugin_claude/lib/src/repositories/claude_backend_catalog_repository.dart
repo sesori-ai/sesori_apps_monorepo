@@ -4,11 +4,11 @@ import "../api/models/claude_backend_catalog_dto.dart";
 import "../models/claude_agent_selection.dart";
 import "../models/claude_effort_level.dart";
 
-final class const ClaudeBackendCatalog({required this.agents, required this.providers, required this.commands}) {
-  final List<PluginAgent> agents;
-  final PluginProvidersResult providers;
-  final List<PluginCommand> commands;
-}
+final class const ClaudeBackendCatalog({
+  required final List<PluginAgent> agents,
+  required final PluginProvidersResult providers,
+  required final List<PluginCommand> commands,
+});
 
 /// Maps Claude's backend catalog into the backend-neutral plugin contract.
 final class const ClaudeBackendCatalogRepository() {

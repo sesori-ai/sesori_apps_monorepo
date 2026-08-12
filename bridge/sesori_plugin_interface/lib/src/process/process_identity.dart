@@ -1,22 +1,14 @@
 import "process_user.dart";
 
 class const ProcessIdentity({
-    required this.pid,
-    required this.startMarker,
-    required this.executablePath,
-    required this.commandLine,
-    required this.ownerUser,
-    required this.platform,
-    required this.capturedAt,
-  }) {
-  final int pid;
-  final String? startMarker;
-  final String? executablePath;
-  final String commandLine;
-  final ProcessUser? ownerUser;
-  final String platform;
-  final DateTime capturedAt;
-
+  required final int pid,
+  required final String? startMarker,
+  required final String? executablePath,
+  required final String commandLine,
+  required final ProcessUser? ownerUser,
+  required final String platform,
+  required final DateTime capturedAt,
+}) {
   bool hasSameIdentityAs(ProcessIdentity other) {
     if (pid != other.pid) {
       return false;

@@ -5,10 +5,10 @@ part "set_base_branch_request.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SetBaseBranchRequest with _$SetBaseBranchRequest {
-  const factory SetBaseBranchRequest({
+  const factory({
     required String projectId,
     required String baseBranch,
   }) = _SetBaseBranchRequest;
 
-  factory SetBaseBranchRequest.fromJson(Map<String, dynamic> json) => _$SetBaseBranchRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SetBaseBranchRequestFromJson(json);
 }

@@ -5,12 +5,9 @@ import 'login_email_api.dart';
 import 'token.dart';
 
 class LoginEmailRepository({
-    required this.emailAuthApi,
-    required this.promptForCredentials,
-  }) {
-  final LoginEmailApi emailAuthApi;
-  final ({String email, String password}) Function() promptForCredentials;
-
+  required final LoginEmailApi emailAuthApi,
+  required final ({String email, String password}) Function() promptForCredentials,
+}) {
   Future<TokenData> performEmailLogin() async {
     final credentials = promptForCredentials();
 

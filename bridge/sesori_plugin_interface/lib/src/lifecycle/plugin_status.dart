@@ -83,29 +83,25 @@ final class const PluginReady() extends PluginStatus {
 /// human (e.g. a remote plugin's credentials expired), set
 /// [requiresUserAction] and explain what to do in [userActionHint].
 final class const PluginDegraded({
-    required this.since,
-    required this.recoverable,
-    required this.requiresUserAction,
-    required this.userActionHint,
-  }) extends PluginStatus {
-  this : assert(
-         !requiresUserAction || userActionHint != null,
-         "userActionHint should explain what to do when requiresUserAction is true",
-       );
-
   /// When the degradation was first observed (not when it was reported —
   /// debounced reporters keep the earliest observation time).
-  final DateTime since;
+  required final DateTime since,
 
   /// Whether the plugin expects to recover without intervention.
-  final bool recoverable;
+  required final bool recoverable,
 
   /// Whether recovery needs the user to act (re-authenticate, restart a
   /// remote server). When `true`, [userActionHint] should say what to do.
-  final bool requiresUserAction;
+  required final bool requiresUserAction,
 
   /// Human-readable instruction shown when [requiresUserAction] is `true`.
-  final String? userActionHint;
+  required final String? userActionHint,
+}) extends PluginStatus {
+  this
+    : assert(
+        !requiresUserAction || userActionHint != null,
+        "userActionHint should explain what to do when requiresUserAction is true",
+      );
 
   @override
   bool operator ==(Object other) {
@@ -129,15 +125,14 @@ final class const PluginDegraded({
 }
 
 /// The plugin is restarting its managed runtime after an unexpected exit.
-final class const PluginRestarting({required this.attempt, required this.reason}) extends PluginStatus {
-  this
-    : assert(attempt >= 1, "attempt is 1-based: the first restart is attempt 1");
-
+final class const PluginRestarting({
   /// 1-based restart attempt within the current failure episode.
-  final int attempt;
+  required final int attempt,
 
   /// Why the restart was triggered (e.g. "runtime exited with code 1").
-  final String? reason;
+  required final String? reason,
+}) extends PluginStatus {
+  this : assert(attempt >= 1, "attempt is 1-based: the first restart is attempt 1");
 
   @override
   bool operator ==(Object other) {
@@ -157,13 +152,13 @@ final class const PluginRestarting({required this.attempt, required this.reason}
 /// bridge and other plugins continue running. A plugin that is being stopped
 /// deliberately must never emit this — the state machine forbids `Failed`
 /// after `Stopping`.
-final class const PluginFailed({required this.reason, required this.cause}) extends PluginStatus {
+final class const PluginFailed({
   /// Human-readable description of the terminal failure.
-  final String reason;
+  required final String reason,
 
   /// The underlying error, when one exists.
-  final Object? cause;
-
+  required final Object? cause,
+}) extends PluginStatus {
   @override
   bool operator ==(Object other) {
     return other is PluginFailed && other.reason == reason && other.cause == cause;

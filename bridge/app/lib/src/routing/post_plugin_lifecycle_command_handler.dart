@@ -5,17 +5,14 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
-class PostPluginLifecycleCommandHandler({required PluginLifecycleService lifecycleService})
+class PostPluginLifecycleCommandHandler({required final PluginLifecycleService _lifecycleService})
     extends BodyRequestHandler<PluginLifecycleCommandRequest, PluginManagementResponse> {
   this
-    : _lifecycleService = lifecycleService,
-      super(
+    : super(
         HttpMethod.post,
         "/plugin/:id/command",
         fromJson: PluginLifecycleCommandRequest.fromJson,
       );
-
-  final PluginLifecycleService _lifecycleService;
 
   @override
   Future<PluginManagementResponse> handle(

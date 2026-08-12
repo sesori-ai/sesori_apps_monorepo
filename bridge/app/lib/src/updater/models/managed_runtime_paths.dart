@@ -1,9 +1,5 @@
 final class const ManagedRuntimePaths({
-    required this.installRoot,
-    required this.binaryPath,
-    required this.cacheDirectory,
-  }) {
-  final String installRoot;
-  final String binaryPath;
-  final String cacheDirectory;
-}
+  required final String installRoot,
+  required final String binaryPath,
+  required final String cacheDirectory,
+});

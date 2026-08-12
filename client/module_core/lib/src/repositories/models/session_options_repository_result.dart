@@ -4,65 +4,45 @@ import "package:sesori_shared/sesori_shared.dart";
 final class SessionOptionsCatalog({
     required List<AgentInfo> agents,
     required List<ProviderInfo> providers,
-    required this.providersConnectedOnly,
+    required final bool providersConnectedOnly,
     required List<CommandInfo> commands,
   }) {
-  this : agents = List.unmodifiable(agents),
-       providers = List.unmodifiable(providers),
-       commands = List.unmodifiable(commands);
 
-  final List<AgentInfo> agents;
-  final List<ProviderInfo> providers;
-  final bool providersConnectedOnly;
-  final List<CommandInfo> commands;
+  final List<AgentInfo> agents = List.unmodifiable(agents);
+  final List<ProviderInfo> providers = List.unmodifiable(providers);
+  final List<CommandInfo> commands = List.unmodifiable(commands);
 }
 
 sealed class const LegacySessionOptionsRepositoryResult();
 
 enum LegacySessionOptionSource() { agents, providers, commands }
 
-final class const LegacySessionOptionError({required this.source, required this.error}) {
-  final LegacySessionOptionSource source;
-  final ApiError error;
-}
+final class const LegacySessionOptionError({required final LegacySessionOptionSource source, required final ApiError error});
 
-final class const LegacySessionOptionsRepositoryAvailable({required this.catalog}) extends LegacySessionOptionsRepositoryResult {
-  final SessionOptionsCatalog catalog;
-}
+final class const LegacySessionOptionsRepositoryAvailable({required final SessionOptionsCatalog catalog}) extends LegacySessionOptionsRepositoryResult;
 
 final class LegacySessionOptionsRepositoryFailure({required List<LegacySessionOptionError> errors}) extends LegacySessionOptionsRepositoryResult {
-  this
-    : errors = List.unmodifiable(errors);
 
-  final List<LegacySessionOptionError> errors;
+  final List<LegacySessionOptionError> errors = List.unmodifiable(errors);
 }
 
-final class LegacySessionOptionsRepositoryPartial({required this.catalog, required List<LegacySessionOptionError> errors}) extends LegacySessionOptionsRepositoryResult {
-  this
-    : errors = List.unmodifiable(errors);
+final class LegacySessionOptionsRepositoryPartial({required final SessionOptionsCatalog catalog, required List<LegacySessionOptionError> errors}) extends LegacySessionOptionsRepositoryResult {
 
-  final SessionOptionsCatalog catalog;
-  final List<LegacySessionOptionError> errors;
+  final List<LegacySessionOptionError> errors = List.unmodifiable(errors);
 }
 
 sealed class const SessionOptionsRepositoryResult();
 
-final class const SessionOptionsRepositoryAvailable({required this.catalog}) extends SessionOptionsRepositoryResult {
-  final SessionOptionsCatalog catalog;
-}
+final class const SessionOptionsRepositoryAvailable({required final SessionOptionsCatalog catalog}) extends SessionOptionsRepositoryResult;
 
 final class const SessionOptionsRepositoryCacheUnavailable() extends SessionOptionsRepositoryResult;
 
 final class const SessionOptionsRepositoryUnsupported() extends SessionOptionsRepositoryResult;
 
-final class const SessionOptionsRepositoryProjectNotFound({required this.error}) extends SessionOptionsRepositoryResult {
-  final ApiError error;
-}
+final class const SessionOptionsRepositoryProjectNotFound({required final ApiError error}) extends SessionOptionsRepositoryResult;
 
 final class const SessionOptionsRepositoryRefreshFailedRetained() extends SessionOptionsRepositoryResult;
 
 final class const SessionOptionsRepositoryRefreshFailedUnavailable() extends SessionOptionsRepositoryResult;
 
-final class const SessionOptionsRepositoryFailure({required this.error}) extends SessionOptionsRepositoryResult {
-  final ApiError error;
-}
+final class const SessionOptionsRepositoryFailure({required final ApiError error}) extends SessionOptionsRepositoryResult;

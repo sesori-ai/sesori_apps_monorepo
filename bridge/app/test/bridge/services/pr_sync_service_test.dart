@@ -686,15 +686,15 @@ Future<void> _waitFor(bool Function() condition) async {
 }
 
 final class _FakePrSource({
-    Map<String, PullRequestDirectoryTarget> targetsByDirectory = const {},
-    this.resolutionResults = const [],
-    this.selectionBlocks = const [],
-  }) implements PrSourceRepository {
-  final List<Map<String, PullRequestDirectoryTarget>> resolutionResults;
-  final List<Completer<void>> selectionBlocks;
+  Map<String, PullRequestDirectoryTarget> targetsByDirectory = const {},
+  final List<Map<String, PullRequestDirectoryTarget>> resolutionResults = const [],
+  final List<Completer<void>> selectionBlocks = const [],
+}) implements PrSourceRepository {
   final List<List<String>> resolveCalls = <List<String>>[];
   final List<List<PullRequestSelectionTarget>> selectionCalls = <List<PullRequestSelectionTarget>>[];
-  Map<String, PullRequestDirectoryTarget> targetsByDirectory;
+  Map<String, PullRequestDirectoryTarget> targetsByDirectory = Map<String, PullRequestDirectoryTarget>.from(
+    targetsByDirectory,
+  );
   PullRequestSelectionOutcome? selectionOutcome;
   bool isAvailableResult = true;
   bool isAuthenticatedResult = true;
@@ -704,8 +704,6 @@ final class _FakePrSource({
   int identityCallCount = 0;
   int _activeSelections = 0;
   int maxConcurrentSelections = 0;
-
-  this : targetsByDirectory = Map<String, PullRequestDirectoryTarget>.from(targetsByDirectory);
 
   @override
   Future<Map<String, PullRequestDirectoryTarget>> resolvePullRequestTargets({
@@ -823,9 +821,8 @@ final class _FakePullRequestRepository() implements PullRequestRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakeSessionRepository({required this.sessionsByProject}) implements SessionRepository {
-  final Map<String, List<StoredSession>> sessionsByProject;
-
+final class _FakeSessionRepository({required final Map<String, List<StoredSession>> sessionsByProject})
+    implements SessionRepository {
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     return sessionsByProject[projectId] ?? const <StoredSession>[];

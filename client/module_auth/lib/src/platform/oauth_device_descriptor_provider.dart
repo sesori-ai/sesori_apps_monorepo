@@ -3,10 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 /// The platform-derived descriptor sent at OAuth init: the auth-server
 /// `clientType` for this build (e.g. "app_ios" / "app_android") plus the
 /// structured [DeviceInfo] describing the device that started the sign-in.
-class const OAuthDeviceDescriptor({required this.clientType, required this.device}) {
-  final AuthClientType clientType;
-  final DeviceInfo device;
-}
+class const OAuthDeviceDescriptor({required final AuthClientType clientType, required final DeviceInfo device});
 
 /// Supplies the [OAuthDeviceDescriptor] for this device.
 ///

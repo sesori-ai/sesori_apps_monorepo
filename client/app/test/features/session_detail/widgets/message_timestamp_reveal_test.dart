@@ -6,9 +6,8 @@ import "package:theme_prego/module_prego.dart";
 
 /// Hosts an [AnimationController] and hands it to [builder] so a test can
 /// drive the reveal progress directly.
-class const _ControllerHost({required this.builder}) extends StatefulWidget {
-  final Widget Function(AnimationController controller) builder;
-
+class const _ControllerHost({required final Widget Function(AnimationController controller) builder})
+    extends StatefulWidget {
   @override
   State<_ControllerHost> createState() => _ControllerHostState();
 }

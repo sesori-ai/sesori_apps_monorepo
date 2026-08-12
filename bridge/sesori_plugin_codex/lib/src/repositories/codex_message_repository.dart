@@ -9,22 +9,14 @@ import "mappers/codex_rollout_tool_mapper.dart";
 import "models/codex_projected_tool.dart";
 
 final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) {
-  this : _lines = List.unmodifiable(lines);
-
-  final List<CodexRolloutLineDto> _lines;
+  final List<CodexRolloutLineDto> _lines = List.unmodifiable(lines);
 }
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
 class CodexMessageRepository({
-    required CodexRolloutApi rolloutApi,
-    required CodexRolloutToolMapper rolloutToolMapper,
-  }) {
-  this : _rolloutApi = rolloutApi,
-       _rolloutToolMapper = rolloutToolMapper;
-
-  final CodexRolloutApi _rolloutApi;
-  final CodexRolloutToolMapper _rolloutToolMapper;
-
+  required final CodexRolloutApi _rolloutApi,
+  required final CodexRolloutToolMapper _rolloutToolMapper,
+}) {
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
     required String sessionId,
@@ -197,7 +189,7 @@ class CodexMessageRepository({
           final model = context.model;
           if (model != null && model.isNotEmpty) currentModel = model;
           continue;
-        case CodexRolloutCompactedLineDto(: final timestamp):
+        case CodexRolloutCompactedLineDto(:final timestamp):
           messageCounter += 1;
           final messageId = "codex-compaction-$messageCounter";
           messages.add(
@@ -537,12 +529,10 @@ class CodexMessageRepository({
   }
 }
 
-enum _GeneratedContextTag(this.wireName) {
+enum _GeneratedContextTag(final String wireName) {
   recommendedPlugins("recommended_plugins"),
   environmentContext("environment_context"),
   turnAborted("turn_aborted");
-
-  final String wireName;
 
   bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }
@@ -559,18 +549,12 @@ bool _isGeneratedContext({required String text}) {
 }
 
 class _PendingUserMessage({
-    required this.slot,
-    required this.persistedId,
-    required this.fallbackText,
-    required this.attachments,
-    required this.legacyCounter,
-    required this.time,
-  }) {
-  final int slot;
-  final String? persistedId;
-  final String? fallbackText;
-  final List<PluginMessageAttachment> attachments;
-  final int? legacyCounter;
-  final PluginMessageTime? time;
+  required final int slot,
+  required final String? persistedId,
+  required final String? fallbackText,
+  required final List<PluginMessageAttachment> attachments,
+  required final int? legacyCounter,
+  required final PluginMessageTime? time,
+}) {
   bool resolved = false;
 }

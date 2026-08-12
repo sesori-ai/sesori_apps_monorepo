@@ -129,9 +129,7 @@ class const _ProfileBody() extends StatelessWidget {
   }
 }
 
-class const _ProductAnalyticsPreferenceRow({required this.blocked}) extends StatelessWidget {
-  final bool blocked;
-
+class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -214,12 +212,9 @@ class const _ProductAnalyticsPreferenceRow({required this.blocked}) extends Stat
 }
 
 class const _ProductAnalyticsPreferenceSubtitle({
-    required this.status,
-    required this.statusIsFailure,
-  }) extends StatelessWidget {
-  final String? status;
-  final bool statusIsFailure;
-
+  required final String? status,
+  required final bool statusIsFailure,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = this.status;

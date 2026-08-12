@@ -6,19 +6,16 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../../logging/logging.dart";
 
 @lazySingleton
-class NotificationPreferencesDeviceIdStorage({required SecureStorage storage}) {
+class NotificationPreferencesDeviceIdStorage({required final SecureStorage _storage}) {
   static const _storageKey = "notification_preferences_device_id_v1";
   static final _uuidV4Pattern = RegExp(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
   );
 
-  final SecureStorage _storage;
   final Random _random = Random.secure();
 
   String? _deviceId;
   Future<String>? _pendingDeviceId;
-
-  this : _storage = storage;
 
   Future<String> getOrCreate() {
     final deviceId = _deviceId;

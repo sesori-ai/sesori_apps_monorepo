@@ -10,17 +10,13 @@ import "../foundation/filesystem_permission_validator.dart";
 /// Thrown when a filesystem operation fails because the host OS denied access
 /// (e.g. macOS Full Disk Access not granted to the terminal running the
 /// bridge). Carries the [path] that could not be accessed.
-class FilesystemPermissionDeniedException({required this.path}) implements Exception {
-  final String path;
-
+class FilesystemPermissionDeniedException({required final String path}) implements Exception {
   @override
   String toString() => "FilesystemPermissionDeniedException: permission denied: $path";
 }
 
 /// Thrown when a directory that was expected to exist could not be found.
-class FilesystemDirectoryNotFoundException({required this.path}) implements Exception {
-  final String path;
-
+class FilesystemDirectoryNotFoundException({required final String path}) implements Exception {
   @override
   String toString() => "FilesystemDirectoryNotFoundException: directory not found: $path";
 }
@@ -34,9 +30,7 @@ enum CreatableDirectoryStatus() { creatable, parentMissing, alreadyExists }
 
 sealed class BoundedTextFileReadResult();
 
-class BoundedTextFileContent({required this.content}) extends BoundedTextFileReadResult {
-  final String content;
-}
+class BoundedTextFileContent({required final String content}) extends BoundedTextFileReadResult;
 
 class BoundedTextFileMissing() extends BoundedTextFileReadResult;
 
@@ -51,8 +45,8 @@ class BoundedTextFileReadFailure() extends BoundedTextFileReadResult;
 /// [FileSystemException]s into typed domain errors. Handlers consume the typed
 /// results/exceptions and map them to HTTP statuses.
 class FilesystemRepository({
-    required FilesystemApi filesystemApi,
-    required FilesystemPermissionValidator permissionValidator,
+    required final FilesystemApi _filesystemApi,
+    required final FilesystemPermissionValidator _permissionValidator,
   }) {
   static const _binaryExtensions = <String>{
     "png",
@@ -102,11 +96,6 @@ class FilesystemRepository({
     "db",
   };
 
-  final FilesystemApi _filesystemApi;
-  final FilesystemPermissionValidator _permissionValidator;
-
-  this : _filesystemApi = filesystemApi,
-       _permissionValidator = permissionValidator;
 
   bool directoryExists({required String path}) {
     return _guard(path: path, () => _filesystemApi.directoryExists(path));

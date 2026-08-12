@@ -26,13 +26,10 @@ Future<void> showRenameProjectDialog({
 
 @visibleForTesting
 class const RenameProjectDialog({
-    required this.project,
-    required this.cubit,
-    super.key,
-  }) extends StatefulWidget {
-  final Project project;
-  final ProjectListCubit cubit;
-
+  required final Project project,
+  required final ProjectListCubit cubit,
+  super.key,
+}) extends StatefulWidget {
   @override
   State<RenameProjectDialog> createState() => _RenameProjectDialogState();
 }

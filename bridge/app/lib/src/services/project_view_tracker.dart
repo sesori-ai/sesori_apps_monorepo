@@ -2,14 +2,11 @@ import "dart:async";
 
 /// An immutable aggregate change to the projects currently viewed by phones.
 final class ProjectViewChange({
-    required Set<String> activeProjectIds,
-    required Set<String> newlyAddedProjectIds,
-  }) {
-  final Set<String> activeProjectIds;
-  final Set<String> newlyAddedProjectIds;
-
-  this : activeProjectIds = Set<String>.unmodifiable(activeProjectIds),
-       newlyAddedProjectIds = Set<String>.unmodifiable(newlyAddedProjectIds);
+  required Set<String> activeProjectIds,
+  required Set<String> newlyAddedProjectIds,
+}) {
+  final Set<String> activeProjectIds = Set<String>.unmodifiable(activeProjectIds);
+  final Set<String> newlyAddedProjectIds = Set<String>.unmodifiable(newlyAddedProjectIds);
 }
 
 /// Tracks one full-state project-view declaration per relay connection and

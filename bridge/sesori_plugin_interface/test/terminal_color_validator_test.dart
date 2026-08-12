@@ -131,11 +131,7 @@ void main() {
 }
 
 /// Stdout whose ANSI support can be controlled.
-class _FakeStdout({required bool supportsAnsiEscapes}) implements Stdout {
-  this : _supportsAnsiEscapes = supportsAnsiEscapes;
-
-  final bool _supportsAnsiEscapes;
-
+class _FakeStdout({required final bool _supportsAnsiEscapes}) implements Stdout {
   @override
   bool get supportsAnsiEscapes => _supportsAnsiEscapes;
 

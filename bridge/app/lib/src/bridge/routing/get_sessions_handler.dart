@@ -11,22 +11,16 @@ import "request_handler.dart";
 ///
 /// Reads the durable catalog and applies bridge-owned enrichment.
 class GetSessionsHandler({
-    required SessionRepository sessionRepository,
-    required PrSyncService prSyncService,
-    Duration prRefreshTimeout = const Duration(seconds: 5),
-  }) extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
-  final SessionRepository _sessionRepository;
-  final PrSyncService _prSyncService;
-  final Duration _prRefreshTimeout;
-
-  this : _sessionRepository = sessionRepository,
-       _prSyncService = prSyncService,
-       _prRefreshTimeout = prRefreshTimeout,
-       super(
-         HttpMethod.post,
-         "/sessions",
-         fromJson: SessionListRequest.fromJson,
-       );
+  required final SessionRepository _sessionRepository,
+  required final PrSyncService _prSyncService,
+  final Duration _prRefreshTimeout = const Duration(seconds: 5),
+}) extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
+  this
+    : super(
+        HttpMethod.post,
+        "/sessions",
+        fromJson: SessionListRequest.fromJson,
+      );
 
   @override
   Future<SessionListResponse> handle(

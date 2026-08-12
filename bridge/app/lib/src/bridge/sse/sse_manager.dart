@@ -23,19 +23,14 @@ typedef _OrphanQueue = ({
 });
 
 class SSEManager({
-    required this.replayWindow,
-    required void Function(int bytes) onBytesSent,
-    required FailureReporter failureReporter,
-  }) {
+  /// How long a disconnected subscriber's orphan queue stays valid.
+  required final Duration replayWindow,
+  required final void Function(int bytes) _onBytesSent,
+  required final FailureReporter _failureReporter,
+}) {
   /// Default duration for which orphan queues remain valid after a phone
   /// disconnects. Referenced by the CLI entry point and tests.
   static const Duration defaultReplayWindow = sseReplayWindow;
-
-  /// How long a disconnected subscriber's orphan queue stays valid.
-  final Duration replayWindow;
-
-  final void Function(int bytes) _onBytesSent;
-  final FailureReporter _failureReporter;
 
   /// Maximum number of events retained per subscriber queue.
   static const int maxQueueSize = 50000;
@@ -46,9 +41,6 @@ class SSEManager({
   final Queue<_OrphanQueue> _orphanQueues = Queue<_OrphanQueue>();
 
   List<int>? _roomKey;
-
-  this : _onBytesSent = onBytesSent,
-       _failureReporter = failureReporter;
 
   /// Stores a copy of the room key used to encrypt outgoing SSE events.
   void setRoomKey(List<int> roomKey) {

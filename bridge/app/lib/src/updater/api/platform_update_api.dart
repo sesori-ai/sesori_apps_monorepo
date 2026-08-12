@@ -32,7 +32,7 @@ abstract class PlatformUpdateApi {
   bool get supportsInSessionChaining;
 
   /// Returns the implementation matching the host platform.
-  factory PlatformUpdateApi.forPlatform({required ProcessRunner processRunner}) {
+  factory forPlatform({required ProcessRunner processRunner}) {
     if (Platform.isWindows) {
       return const WindowsUpdateApi();
     }
@@ -42,9 +42,7 @@ abstract class PlatformUpdateApi {
 
 /// Raised when an in-place swap cannot be completed. The applier rolls back any
 /// partial state before throwing so the running install is left intact.
-class const UpdateApplyException(this.message) implements Exception {
-  final String message;
-
+class const UpdateApplyException(final String message) implements Exception {
   @override
   String toString() => 'UpdateApplyException: $message';
 }

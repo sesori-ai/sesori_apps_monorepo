@@ -29,18 +29,18 @@ CodexFileChangeStatus _fileChangeStatusFromJson(Object? value) {
 
 @freezed
 sealed class CodexFileChangeParamsDto with _$CodexFileChangeParamsDto {
-  const factory CodexFileChangeParamsDto({
+  const factory({
     required String? threadId,
     required String? turnId,
     required CodexFileChangeItemDto item,
   }) = _CodexFileChangeParamsDto;
 
-  factory CodexFileChangeParamsDto.fromJson(Map<String, dynamic> json) => _$CodexFileChangeParamsDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeParamsDtoFromJson(json);
 }
 
 @freezed
 sealed class CodexFileChangeItemDto with _$CodexFileChangeItemDto {
-  const factory CodexFileChangeItemDto({
+  const factory({
     @JsonKey(
       unknownEnumValue: CodexFileChangeItemType.unknown,
       defaultValue: CodexFileChangeItemType.unknown,
@@ -50,5 +50,5 @@ sealed class CodexFileChangeItemDto with _$CodexFileChangeItemDto {
     @JsonKey(fromJson: _fileChangeStatusFromJson) required CodexFileChangeStatus status,
   }) = _CodexFileChangeItemDto;
 
-  factory CodexFileChangeItemDto.fromJson(Map<String, dynamic> json) => _$CodexFileChangeItemDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeItemDtoFromJson(json);
 }

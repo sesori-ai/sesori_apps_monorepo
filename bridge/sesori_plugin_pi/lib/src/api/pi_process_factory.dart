@@ -3,11 +3,7 @@ import "dart:io";
 import "pi_launch_spec.dart";
 
 /// Concrete adapter exposing the process surface used by Pi's JSONL transport.
-class PiProcessHandle({required Process process}) {
-  this : _process = process;
-
-  final Process _process;
-
+class PiProcessHandle({required final Process _process}) {
   Stream<List<int>> get stdout => _process.stdout;
   Stream<List<int>> get stderr => _process.stderr;
   IOSink get stdin => _process.stdin;

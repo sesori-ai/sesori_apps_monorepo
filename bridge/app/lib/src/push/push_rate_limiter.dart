@@ -3,10 +3,8 @@ import "package:sesori_shared/sesori_shared.dart" show NotificationCategory;
 class PushRateLimiter({DateTime Function()? now}) {
   static const staleEntryTtl = Duration(minutes: 30);
 
-  final DateTime Function() _now;
+  final DateTime Function() _now = now ?? DateTime.now;
   final Map<String, DateTime> _lastSent = {};
-
-  this : _now = now ?? DateTime.now;
 
   static const _cooldowns = {
     NotificationCategory.aiInteraction: Duration(seconds: 5),

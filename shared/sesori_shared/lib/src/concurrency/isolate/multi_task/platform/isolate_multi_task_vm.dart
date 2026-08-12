@@ -5,14 +5,12 @@ import "../../isolate.dart";
 
 /// This is the VM implementation of the reusable isolate
 class MultiTaskIsolateImpl({
-    required this.onActiveTaskCountChanged,
-    required String debugName,
-  }) implements MultiTaskIsolate {
+  required final void Function(int)? onActiveTaskCountChanged,
+  required String debugName,
+}) implements MultiTaskIsolate {
   final _receivePort = ReceivePort();
   late final Future<SendPort> _sendPort;
   late final Future<Isolate> _isolate;
-
-  final void Function(int)? onActiveTaskCountChanged;
 
   int _activeTaskCount = 0;
 
@@ -112,20 +110,15 @@ void _isolateEntry<IN, OUT>(SendPort sendPort) {
   });
 }
 
-final class _IsolateErrorWrapper(this.error) {
+final class _IsolateErrorWrapper(final Object error) {
   // ignore: no_slop_linter/prefer_specific_type
-  final Object error;
 }
 
 final class const _IsolateTaskWithArgAndSendPort<IN, OUT>({
-    required this.task,
-    required this.arg,
-    required this.sendPort,
-  }) {
-  final IsolateTask<IN, OUT> task;
-  final IN arg;
-  final SendPort sendPort;
-
+  required final IsolateTask<IN, OUT> task,
+  required final IN arg,
+  required final SendPort sendPort,
+}) {
   @pragma("vm:prefer-inline")
   FutureOr<OUT> run() => task.staticFunction(arg);
 }

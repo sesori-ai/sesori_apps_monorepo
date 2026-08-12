@@ -2,12 +2,8 @@ import "package:meta/meta.dart";
 
 @immutable
 class const ProcessUser._({
-    required String normalizedUser,
-  }) {
-  final String _normalizedUser;
-
-  this : _normalizedUser = normalizedUser;
-
+  required final String _normalizedUser,
+}) {
   static ProcessUser? fromRawUser(String? rawUser) {
     final trimmedRawUser = rawUser?.trim();
     if (trimmedRawUser == null || trimmedRawUser.isEmpty) return null;

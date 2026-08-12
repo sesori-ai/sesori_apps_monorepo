@@ -406,30 +406,18 @@ ProcessIdentity _identity({
 enum _TestStatus() { ready, stopping }
 
 class const _TestRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.openCodeCommand,
-    required this.openCodeArgs,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.startedAt,
-    required this.status,
-  }) {
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String openCodeCommand;
-  final List<String> openCodeArgs;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final DateTime startedAt;
-  final _TestStatus status;
-}
+    required final String ownerSessionId,
+    required final int openCodePid,
+    required final String? openCodeStartMarker,
+    required final String openCodeExecutablePath,
+    required final String openCodeCommand,
+    required final List<String> openCodeArgs,
+    required final int port,
+    required final int bridgePid,
+    required final String? bridgeStartMarker,
+    required final DateTime startedAt,
+    required final _TestStatus status,
+  });
 
 class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   @override
@@ -583,13 +571,10 @@ class _FakeHostProcessService() implements HostProcessService {
   }
 }
 
-class _FakeBridgeHostInfo({required ProcessIdentity identity}) implements BridgeHostInfo {
+class _FakeBridgeHostInfo({required final ProcessIdentity _identity}) implements BridgeHostInfo {
   @override
   List<ProcessIdentity> get terminatedBridgeIdentities => const [];
 
-  this : _identity = identity;
-
-  final ProcessIdentity _identity;
   final Map<int, List<bool>> liveBridgeResults = <int, List<bool>>{};
 
   @override
@@ -620,14 +605,13 @@ class _FakeServerClock() implements ServerClock {
   DateTime now() => DateTime.utc(2026, 5, 15, 12, 30);
 }
 
-class _FakeSpawnedProcess({required ProcessIdentity identity, required bool exitImmediately}) implements SpawnedProcess {
-  this : _identity = identity {
+class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately}) implements SpawnedProcess {
+  this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);
     }
   }
 
-  final ProcessIdentity _identity;
   final Completer<int> _exitCodeCompleter = Completer<int>();
   final List<ProcessSignal> killSignals = <ProcessSignal>[];
 

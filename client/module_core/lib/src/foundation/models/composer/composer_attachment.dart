@@ -21,11 +21,7 @@ const maxComposerPromptAttachmentBytes = 50 * 1000 * 1000;
 /// treat it as read-only.
 @immutable
 final class const ComposerAttachment({
-    required this.mime,
-    required this.bytes,
-    required this.filename,
-  }) {
-  final String mime;
-  final Uint8List bytes;
-  final String? filename;
-}
+  required final String mime,
+  required final Uint8List bytes,
+  required final String? filename,
+});

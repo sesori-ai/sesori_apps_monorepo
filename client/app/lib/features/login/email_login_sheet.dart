@@ -191,12 +191,9 @@ class _EmailLoginSheetState() extends State<EmailLoginSheet> {
 
 /// Eye toggle inside the password field.
 class const _PasswordVisibilityToggle({
-    required this.isObscured,
-    required this.onPressed,
-  }) extends StatelessWidget {
-  final bool isObscured;
-  final VoidCallback onPressed;
-
+  required final bool isObscured,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

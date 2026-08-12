@@ -3,26 +3,18 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 /// An immutable presentation snapshot of one Claude tool call.
 final class const ClaudeTrackedTool({
-    required this.id,
-    required this.messageId,
-    required this.name,
-    required this.input,
-    required this.state,
-    required this.sessionDiffRequired,
-    required this.todoRefreshRequired,
-  }) {
-  final String id;
-  final String messageId;
-  final String name;
-  final Object? input;
-  final PluginToolState state;
+  required final String id,
+  required final String messageId,
+  required final String name,
+  required final Object? input,
+  required final PluginToolState state,
 
   /// Whether this update should emit the session's one-shot diff signal.
-  final bool sessionDiffRequired;
+  required final bool sessionDiffRequired,
 
   /// Whether this terminal update invalidates the session's todo projection.
-  final bool todoRefreshRequired;
-}
+  required final bool todoRefreshRequired,
+});
 
 /// Tracks Claude `tool_use` blocks from their streamed start through the
 /// matching `tool_result` block.
@@ -182,27 +174,19 @@ final class _StreamedToolBlock() {
 }
 
 final class _TrackedTool({
-    required this.id,
-    required this.messageId,
-    required String name,
-    required this.input,
-    required this.status,
-  }) {
-  this : _name = name,
-       kind = _ClaudeToolKind.parse(name);
-
-  final String id;
-  final String messageId;
+  required final String id,
+  required final String messageId,
+  required var String _name,
+  required var Object? input,
+  required var PluginToolStatus status,
+}) {
   String get name => _name;
-  String _name;
   set name(String value) {
     _name = value;
     kind = _ClaudeToolKind.parse(value);
   }
 
-  _ClaudeToolKind kind;
-  Object? input;
-  PluginToolStatus status;
+  _ClaudeToolKind kind = _ClaudeToolKind.parse(_name);
   String? output;
   String? error;
   List<PluginMessageAttachment> attachments = const [];

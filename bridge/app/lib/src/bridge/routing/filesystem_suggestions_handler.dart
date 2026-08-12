@@ -8,12 +8,10 @@ import "../repositories/filesystem_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /filesystem/suggestions` — lists child directories of a given prefix path.
-class FilesystemSuggestionsHandler({required FilesystemRepository filesystemRepository}) extends BodyRequestHandler<FilesystemSuggestionsRequest, FilesystemSuggestions> {
-  final FilesystemRepository _filesystemRepository;
-
+class FilesystemSuggestionsHandler({required final FilesystemRepository _filesystemRepository})
+    extends BodyRequestHandler<FilesystemSuggestionsRequest, FilesystemSuggestions> {
   this
-    : _filesystemRepository = filesystemRepository,
-      super(
+    : super(
         HttpMethod.post,
         "/filesystem/suggestions",
         fromJson: FilesystemSuggestionsRequest.fromJson,

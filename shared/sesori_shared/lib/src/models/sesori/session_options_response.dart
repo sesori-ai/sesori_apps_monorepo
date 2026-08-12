@@ -9,11 +9,11 @@ part "session_options_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionOptionsResponse with _$SessionOptionsResponse {
-  const factory SessionOptionsResponse({
+  const factory({
     required Agents agents,
     required ProviderListResponse providers,
     required CommandListResponse commands,
   }) = _SessionOptionsResponse;
 
-  factory SessionOptionsResponse.fromJson(Map<String, dynamic> json) => _$SessionOptionsResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionOptionsResponseFromJson(json);
 }

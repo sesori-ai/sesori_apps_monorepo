@@ -12,21 +12,14 @@ import "session_list_content.dart";
 import "session_tile.dart";
 
 class const SessionListScaffold({
-    super.key,
-    this.projectName,
-    this.selectedSessionId,
-    required this.onSessionTap,
-    required this.sessionMenuEntries,
-    required this.onNewSession,
-    required this.onBack,
-  }) extends StatelessWidget {
-  final String? projectName;
-  final String? selectedSessionId;
-  final ValueChanged<Session> onSessionTap;
-  final SessionMenuEntriesBuilder sessionMenuEntries;
-  final VoidCallback onNewSession;
-  final VoidCallback? onBack;
-
+  super.key,
+  final String? projectName,
+  final String? selectedSessionId,
+  required final ValueChanged<Session> onSessionTap,
+  required final SessionMenuEntriesBuilder sessionMenuEntries,
+  required final VoidCallback onNewSession,
+  required final VoidCallback? onBack,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

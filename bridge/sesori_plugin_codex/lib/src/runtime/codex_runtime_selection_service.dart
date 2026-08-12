@@ -22,64 +22,46 @@ enum CodexRuntimeSelectionFailure() {
 sealed class const CodexRuntimeSelection();
 
 final class const CodexRuntimeSelected({
-    required this.binaryPath,
-    required this.source,
-    required this.version,
-    required this.rejectedPathVersion,
-  }) extends CodexRuntimeSelection {
-  final String binaryPath;
-  final CodexRuntimeSource source;
-  final SemanticVersion version;
-  final SemanticVersion? rejectedPathVersion;
-}
+    required final String binaryPath,
+    required final CodexRuntimeSource source,
+    required final SemanticVersion version,
+    required final SemanticVersion? rejectedPathVersion,
+  }) extends CodexRuntimeSelection;
 
 final class const CodexRuntimeNotSelected({
-    required this.failure,
-    required this.hasExplicitBinary,
-  }) extends CodexRuntimeSelection {
-  final CodexRuntimeSelectionFailure failure;
-  final bool hasExplicitBinary;
-}
+    required final CodexRuntimeSelectionFailure failure,
+    required final bool hasExplicitBinary,
+  }) extends CodexRuntimeSelection;
 
 sealed class const _VersionProbe();
 
-final class const _VersionProbeSucceeded({required this.version}) extends _VersionProbe {
-  final SemanticVersion version;
-}
+final class const _VersionProbeSucceeded({required final SemanticVersion version}) extends _VersionProbe;
 
-final class const _VersionProbeFailed({required this.failure}) extends _VersionProbe {
-  final CodexRuntimeSelectionFailure failure;
-}
+final class const _VersionProbeFailed({required final CodexRuntimeSelectionFailure failure}) extends _VersionProbe;
 
 /// Selects the Codex executable shared by setup inspection, startup, and
 /// interactive authentication without installing or mutating runtime files.
 class CodexRuntimeSelectionService({
     required HostProcessService processes,
-    required Duration versionProbeTimeout,
+    required final Duration _versionProbeTimeout,
     required int? maxCapturedOutputCharactersPerStream,
-    required List<String>? desktopAppCliCandidates,
+    required final List<String>? _desktopAppCliCandidates,
   }) {
-  this : _versionProbeTimeout = versionProbeTimeout,
-       _desktopAppCliCandidates = desktopAppCliCandidates,
-       _commandExecutor = HostProcessCommandExecutor(
+
+  final CommandExecutor _commandExecutor = HostProcessCommandExecutor(
          processes: processes,
          runInShell: io.Platform.isWindows,
          maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
-       ),
-       _versionValidator = RuntimeVersionValidator(
+       );
+  final RuntimeVersionValidator _versionValidator = RuntimeVersionValidator(
          commandExecutor: HostProcessCommandExecutor(
            processes: processes,
            runInShell: io.Platform.isWindows,
            maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
          ),
          runtimeId: const CodexRuntimeManifest().runtimeId,
-         probeTimeout: versionProbeTimeout,
+         probeTimeout: _versionProbeTimeout,
        );
-
-  final Duration _versionProbeTimeout;
-  final List<String>? _desktopAppCliCandidates;
-  final CommandExecutor _commandExecutor;
-  final RuntimeVersionValidator _versionValidator;
 
   static String? explicitBinary({required PluginConfig config}) {
     final value = config.value("bin")?.trim();

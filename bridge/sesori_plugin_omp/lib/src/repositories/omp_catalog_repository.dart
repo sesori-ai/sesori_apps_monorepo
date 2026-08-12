@@ -8,10 +8,7 @@ import "../models/omp_catalog_models.dart";
 import "../omp_identity.dart";
 
 /// Layer-2 mapping and access for OMP catalog discovery.
-class OmpCatalogRepository({required OmpAcpApi api}) {
-  this : _api = api;
-
-  final OmpAcpApi _api;
+class OmpCatalogRepository({required final OmpAcpApi _api}) {
   AcpCommandTracker? _commandTracker;
   StreamSubscription<AcpNotification>? _commandSubscription;
   Completer<void>? _commandSnapshot;

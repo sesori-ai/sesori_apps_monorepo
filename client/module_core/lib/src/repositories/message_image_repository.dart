@@ -18,33 +18,25 @@ Uint8List? _tryDecodeBase64Image(String base64Data) {
 sealed class const MessageImageLoadResult();
 
 final class const MessageImageLoadSuccess({
-    required this.bytes,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-  }) extends MessageImageLoadResult {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
-  final Uri? originalUri;
-}
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+  required final Uri? originalUri,
+}) extends MessageImageLoadResult;
 
 final class const MessageImageLoadUnsupported() extends MessageImageLoadResult;
 
 final class const MessageImageLoadRejected() extends MessageImageLoadResult;
 
 final class const MessageImageLoadFailure({
-    required this.cause,
-    required this.stackTrace,
-  }) extends MessageImageLoadResult {
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
-  final Object cause;
-  final StackTrace stackTrace;
-}
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImageLoadResult;
 
 /// Layer-2 policy and mapping for renderable message image attachments.
 @lazySingleton
-class MessageImageRepository({required MessageImageApi api}) {
+class MessageImageRepository({required final MessageImageApi _api}) {
   static const _remoteFetchTimeout = Duration(seconds: 15);
   static const _maxFilenameBytes = 255;
   static const _supportedRasterMimes = {
@@ -54,10 +46,6 @@ class MessageImageRepository({required MessageImageApi api}) {
     "image/png",
     "image/webp",
   };
-
-  final MessageImageApi _api;
-
-  this : _api = api;
 
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
     MessageAttachmentInlineImage(:final mime) => _supportedRasterMimes.contains(_normalizedMime(mime: mime)),
@@ -69,7 +57,7 @@ class MessageImageRepository({required MessageImageApi api}) {
 
   Future<MessageImageLoadResult> load({required MessageAttachment attachment}) async {
     if (!canLoad(attachment: attachment)) return const MessageImageLoadUnsupported();
-    return switch (attachment) {
+    return await (switch (attachment) {
       MessageAttachmentInlineImage(:final mime, :final base64, :final filename) => _loadInline(
         mime: _normalizedMime(mime: mime),
         base64Data: base64,
@@ -83,7 +71,7 @@ class MessageImageRepository({required MessageImageApi api}) {
       MessageAttachmentMetadata() ||
       MessageAttachmentStoredImage() ||
       MessageAttachmentUnknown() => Future<MessageImageLoadResult>.value(const MessageImageLoadUnsupported()),
-    };
+    });
   }
 
   Future<MessageImageLoadResult> _loadInline({

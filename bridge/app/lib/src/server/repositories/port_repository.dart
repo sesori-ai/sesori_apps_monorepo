@@ -5,12 +5,8 @@ import "../api/loopback_port_api.dart";
 const String loopbackPortHost = "127.0.0.1";
 
 class const PortRepository({
-    required LoopbackPortApi loopbackPortApi,
-  }) {
-  this : _loopbackPortApi = loopbackPortApi;
-
-  final LoopbackPortApi _loopbackPortApi;
-
+  required final LoopbackPortApi _loopbackPortApi,
+}) {
   Future<PortAvailabilityFact> getAvailabilityFact({
     required int port,
   }) async {
@@ -41,21 +37,14 @@ class const PortRepository({
 
 @immutable
 class const PortAvailabilityFact({
-    required this.host,
-    required this.port,
-    required this.isAvailable,
-  }) {
-  final String host;
-  final int port;
-  final bool isAvailable;
-
+  required final String host,
+  required final int port,
+  required final bool isAvailable,
+}) {
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        other is PortAvailabilityFact &&
-            other.host == host &&
-            other.port == port &&
-            other.isAvailable == isAvailable;
+        other is PortAvailabilityFact && other.host == host && other.port == port && other.isAvailable == isAvailable;
   }
 
   @override

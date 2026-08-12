@@ -4,12 +4,10 @@ import "../services/session_prompt_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/prompt_async` — sends a prompt to a session.
-class SendPromptHandler({required SessionPromptService sessionPromptService}) extends BodyRequestHandler<SendPromptRequest, SuccessEmptyResponse> {
-  final SessionPromptService _sessionPromptService;
-
+class SendPromptHandler({required final SessionPromptService _sessionPromptService})
+    extends BodyRequestHandler<SendPromptRequest, SuccessEmptyResponse> {
   this
-    : _sessionPromptService = sessionPromptService,
-      super(
+    : super(
         HttpMethod.post,
         "/session/prompt_async",
         fromJson: SendPromptRequest.fromJson,

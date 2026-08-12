@@ -54,9 +54,9 @@ final class const ProductAnalyticsPreferenceUnresolved() extends ProductAnalytic
   ProductAnalyticsPreferenceRecord? get currentRecord => null;
 }
 
-final class const ProductAnalyticsPreferenceSynchronizedSnapshot({required this.record}) extends ProductAnalyticsPreferenceSnapshot {
-  final ProductAnalyticsPreferenceRecord record;
-
+final class const ProductAnalyticsPreferenceSynchronizedSnapshot({
+  required final ProductAnalyticsPreferenceRecord record,
+}) extends ProductAnalyticsPreferenceSnapshot {
   @override
   LocalProductAnalyticsPreference get local => LocalProductAnalyticsSynced(record: record);
 
@@ -74,19 +74,17 @@ sealed class const ProductAnalyticsPreferenceDurablePendingSnapshot() extends Pr
   ProductAnalyticsPreferenceRecord get currentRecord => pending.record;
 }
 
-final class const ProductAnalyticsPreferencePendingDisableSnapshot({required this.pending}) extends ProductAnalyticsPreferenceDurablePendingSnapshot {
-  @override
-  final LocalProductAnalyticsPendingDisable pending;
-}
+final class const ProductAnalyticsPreferencePendingDisableSnapshot({
+  @override required final LocalProductAnalyticsPendingDisable pending,
+}) extends ProductAnalyticsPreferenceDurablePendingSnapshot;
 
-final class const ProductAnalyticsPreferencePendingEnableSnapshot({required this.pending}) extends ProductAnalyticsPreferenceDurablePendingSnapshot {
-  @override
-  final LocalProductAnalyticsPendingEnable pending;
-}
+final class const ProductAnalyticsPreferencePendingEnableSnapshot({
+  @override required final LocalProductAnalyticsPendingEnable pending,
+}) extends ProductAnalyticsPreferenceDurablePendingSnapshot;
 
-final class const ProductAnalyticsPreferenceVolatileDisableSnapshot({required this.pending}) extends ProductAnalyticsPreferenceSnapshot {
-  final LocalProductAnalyticsPendingDisable pending;
-
+final class const ProductAnalyticsPreferenceVolatileDisableSnapshot({
+  required final LocalProductAnalyticsPendingDisable pending,
+}) extends ProductAnalyticsPreferenceSnapshot {
   @override
   LocalProductAnalyticsPreference? get local => null;
 
@@ -103,12 +101,9 @@ final class const ProductAnalyticsPreferenceStorageReadFailedSnapshot() extends 
 }
 
 final class const ProductAnalyticsPreferenceCommandSnapshot({
-    required this.baseline,
-    required this.desiredPreference,
-  }) extends ProductAnalyticsPreferenceSnapshot {
-  final ProductAnalyticsPreferenceSnapshot baseline;
-  final ProductAnalyticsPreference desiredPreference;
-
+  required final ProductAnalyticsPreferenceSnapshot baseline,
+  required final ProductAnalyticsPreference desiredPreference,
+}) extends ProductAnalyticsPreferenceSnapshot {
   @override
   LocalProductAnalyticsPreference? get local => baseline.local;
 
@@ -116,9 +111,9 @@ final class const ProductAnalyticsPreferenceCommandSnapshot({
   ProductAnalyticsPreferenceRecord? get currentRecord => baseline.currentRecord;
 }
 
-final class const ProductAnalyticsPreferenceRefreshRequiredSnapshot({required this.record}) extends ProductAnalyticsPreferenceSnapshot {
-  final ProductAnalyticsPreferenceRecord record;
-
+final class const ProductAnalyticsPreferenceRefreshRequiredSnapshot({
+  required final ProductAnalyticsPreferenceRecord record,
+}) extends ProductAnalyticsPreferenceSnapshot {
   @override
   LocalProductAnalyticsPreference get local => LocalProductAnalyticsSynced(record: record);
 
@@ -127,12 +122,9 @@ final class const ProductAnalyticsPreferenceRefreshRequiredSnapshot({required th
 }
 
 final class const ProductAnalyticsPreferenceServerConfirmedStorageFailedSnapshot({
-    required this.record,
-    required this.retainedLocal,
-  }) extends ProductAnalyticsPreferenceSnapshot {
-  final ProductAnalyticsPreferenceRecord record;
-  final LocalProductAnalyticsPreference? retainedLocal;
-
+  required final ProductAnalyticsPreferenceRecord record,
+  required final LocalProductAnalyticsPreference? retainedLocal,
+}) extends ProductAnalyticsPreferenceSnapshot {
   @override
   LocalProductAnalyticsPreference? get local => retainedLocal;
 

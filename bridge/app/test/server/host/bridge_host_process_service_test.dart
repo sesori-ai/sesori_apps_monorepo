@@ -355,10 +355,7 @@ class _RecordingStarter() {
   }
 }
 
-class _FakeProcess({required int pidValue}) implements Process {
-  this : _pidValue = pidValue;
-
-  final int _pidValue;
+class _FakeProcess({required final int _pidValue}) implements Process {
   final StreamController<List<int>> stdoutController = StreamController<List<int>>();
   final StreamController<List<int>> stderrController = StreamController<List<int>>();
   final Completer<int> exitCodeCompleter = Completer<int>();

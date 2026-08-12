@@ -41,24 +41,15 @@ class const RelayClientFactory() {
 
 @lazySingleton
 class ConnectionService(
-    RelayCryptoService cryptoService,
-    RoomKeyStorage roomKeyStorage,
-    AuthTokenProvider authTokenProvider,
-    AuthSession authSession,
-    LifecycleSource lifecycleSource,
-    FailureReporter failureReporter, {
-    @visibleForTesting ClockProvider clock = const ClockProvider(),
-    @visibleForTesting RelayClientFactory relayClientFactory = const RelayClientFactory(),
-  }) {
-  final RelayCryptoService _cryptoService;
-  final RoomKeyStorage _roomKeyStorage;
-  final LifecycleSource _lifecycleSource;
-  final AuthTokenProvider _authTokenProvider;
-  final AuthSession _authSession;
-  final FailureReporter _failureReporter;
-  final ClockProvider _clock;
-  final RelayClientFactory _relayClientFactory;
-
+  final RelayCryptoService _cryptoService,
+  final RoomKeyStorage _roomKeyStorage,
+  final AuthTokenProvider _authTokenProvider,
+  final AuthSession _authSession,
+  final LifecycleSource _lifecycleSource,
+  final FailureReporter _failureReporter, {
+  @visibleForTesting final ClockProvider _clock = const ClockProvider(),
+  @visibleForTesting final RelayClientFactory _relayClientFactory = const RelayClientFactory(),
+}) {
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
@@ -102,14 +93,7 @@ class ConnectionService(
     milliseconds: (sseReplayWindow.inMilliseconds * 0.9).round(),
   );
 
-  this : _cryptoService = cryptoService,
-       _roomKeyStorage = roomKeyStorage,
-       _authTokenProvider = authTokenProvider,
-       _authSession = authSession,
-       _lifecycleSource = lifecycleSource,
-       _failureReporter = failureReporter,
-       _clock = clock,
-       _relayClientFactory = relayClientFactory {
+  this {
     _compositeSubscription.add(
       _lifecycleSource.lifecycleStateStream.listen((state) {
         switch (state) {

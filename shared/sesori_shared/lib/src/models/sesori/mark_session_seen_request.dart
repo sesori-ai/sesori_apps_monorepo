@@ -10,10 +10,10 @@ part "mark_session_seen_request.g.dart";
 /// ([read] == false) action on a session.
 @Freezed(fromJson: true, toJson: true)
 sealed class MarkSessionSeenRequest with _$MarkSessionSeenRequest {
-  const factory MarkSessionSeenRequest({
+  const factory({
     required String sessionId,
     required bool read,
   }) = _MarkSessionSeenRequest;
 
-  factory MarkSessionSeenRequest.fromJson(Map<String, dynamic> json) => _$MarkSessionSeenRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$MarkSessionSeenRequestFromJson(json);
 }

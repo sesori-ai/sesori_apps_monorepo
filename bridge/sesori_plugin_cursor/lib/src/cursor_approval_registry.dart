@@ -17,17 +17,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// builders below are best-effort and should be confirmed against a real
 /// `cursor-agent acp` trace during end-to-end verification.
 class CursorApprovalRegistry({
-    required AcpStdioClient client,
-    required super.emit,
-    required super.onFireAndForgetNotification,
-    super.idGenerator,
-    super.activeSessionResolver,
-  }) extends AcpApprovalRegistry {
-  this : super(
-         respond: (id, result) => client.respondToServerRequest(id: id, result: result),
-         respondError: (id, code, message) =>
-             client.respondToServerRequestWithError(id: id, code: code, message: message),
-       );
+  required AcpStdioClient client,
+  required super.emit,
+  required super.onFireAndForgetNotification,
+  super.idGenerator,
+  super.activeSessionResolver,
+}) extends AcpApprovalRegistry {
+  this
+    : super(
+        respond: (id, result) => client.respondToServerRequest(id: id, result: result),
+        respondError: (id, code, message) =>
+            client.respondToServerRequestWithError(id: id, code: code, message: message),
+      );
 
   @override
   Set<String> get fireAndForgetExtensionMethods => const {
@@ -210,7 +211,4 @@ class CursorApprovalRegistry({
   }
 }
 
-class _QuestionMeta({required this.id, required this.labelToId}) {
-  final String? id;
-  final Map<String, String> labelToId;
-}
+class _QuestionMeta({required final String? id, required final Map<String, String> labelToId});

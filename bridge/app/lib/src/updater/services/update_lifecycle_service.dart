@@ -9,15 +9,9 @@ import 'update_service.dart';
 /// reaching into the individual services, so disposal stays encapsulated here —
 /// the single owner that knows what needs tearing down.
 class UpdateLifecycleService({
-    required UpdateService updateService,
-    required UpdateReconciliationService reconciliationService,
-  }) {
-  this : _updateService = updateService,
-       _reconciliationService = reconciliationService;
-
-  final UpdateService _updateService;
-  final UpdateReconciliationService _reconciliationService;
-
+  required final UpdateService _updateService,
+  required final UpdateReconciliationService _reconciliationService,
+}) {
   /// Reconciles a prior in-place update (fast, local, network-free). Run once,
   /// early on startup, before the session begins.
   Future<void> reconcile() => _reconciliationService.reconcile();

@@ -14,8 +14,7 @@ BenchmarkPluginRuntime createBenchmarkPluginRuntime({required Iterable<BridgePlu
 
 class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) extends PluginRuntime {
   this
-    : _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
-      super(
+    : super(
         registrations: const [],
         generationFactory: const _UnusedGenerationFactory(),
         setupProcesses: const _UnusedHostProcessService(),
@@ -24,7 +23,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
         shutdownBudget: const Duration(seconds: 1),
       );
 
-  final Map<String, BridgePluginApi> _plugins;
+  final Map<String, BridgePluginApi> _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins);
 
   @override
   Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
@@ -81,7 +80,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
     if (plugin == null) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
-    return body(plugin);
+    return await body(plugin);
   }
 
   @override
@@ -108,7 +107,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
     if (plugin == null) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
-    return commit(await prepare(plugin), 1);
+    return await commit(await prepare(plugin), 1);
   }
 
   @override
@@ -141,7 +140,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final plugin = _plugins[pluginId];
-    return plugin == null ? null : body(plugin, 1);
+    return await (plugin == null ? null : body(plugin, 1));
   }
 
   @override

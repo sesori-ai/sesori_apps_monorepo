@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "background_task_row.dart";
 import "background_tasks_toggle.dart";
 
@@ -8,21 +9,14 @@ import "background_tasks_toggle.dart";
 /// header, then the scrollable list of task rows. Running tasks come first;
 /// completed tasks appear after a "Show N completed" toggle.
 class const BackgroundTasksList({
-    super.key,
-    required this.projectId,
-    required this.runningTasks,
-    required this.completedTasks,
-    required this.childStatuses,
-    required this.showCompleted,
-    required this.onToggleCompleted,
-  }) extends StatelessWidget {
-  final String? projectId;
-  final List<Session> runningTasks;
-  final List<Session> completedTasks;
-  final Map<String, SessionStatus> childStatuses;
-  final bool showCompleted;
-  final VoidCallback onToggleCompleted;
-
+  super.key,
+  required final String? projectId,
+  required final List<Session> runningTasks,
+  required final List<Session> completedTasks,
+  required final Map<String, SessionStatus> childStatuses,
+  required final bool showCompleted,
+  required final VoidCallback onToggleCompleted,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasRunning = runningTasks.isNotEmpty;

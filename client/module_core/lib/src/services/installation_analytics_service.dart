@@ -11,14 +11,9 @@ enum LoginAttemptFailureCause() { authentication, launch, cancelled, timeout, un
 
 @lazySingleton
 class InstallationAnalyticsService({
-    required AnalyticsRuntimeCapability capability,
-    required AnalyticsRepository repository,
+    required final AnalyticsRuntimeCapability _capability,
+    required final AnalyticsRepository _repository,
   }) {
-  final AnalyticsRuntimeCapability _capability;
-  final AnalyticsRepository _repository;
-
-  this : _capability = capability,
-       _repository = repository;
 
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AuthProvider provider}) {
     return _log(

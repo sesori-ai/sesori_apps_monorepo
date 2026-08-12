@@ -5,16 +5,14 @@ import "request_handler.dart";
 
 /// Returns file diffs for a session's worktree via bridge-side `git diff`.
 class GetSessionDiffsHandler({
-    required SessionDiffService sessionDiffService,
-  }) extends BodyRequestHandler<SessionIdRequest, SessionDiffsResponse> {
-  final SessionDiffService _sessionDiffService;
-
-  this : _sessionDiffService = sessionDiffService,
-       super(
-         HttpMethod.post,
-         "/session/diffs",
-         fromJson: SessionIdRequest.fromJson,
-       );
+  required final SessionDiffService _sessionDiffService,
+}) extends BodyRequestHandler<SessionIdRequest, SessionDiffsResponse> {
+  this
+    : super(
+        HttpMethod.post,
+        "/session/diffs",
+        fromJson: SessionIdRequest.fromJson,
+      );
 
   @override
   Future<SessionDiffsResponse> handle(

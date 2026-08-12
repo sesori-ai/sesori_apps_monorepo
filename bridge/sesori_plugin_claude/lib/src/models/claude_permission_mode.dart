@@ -8,7 +8,14 @@
 ///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 6.
-enum ClaudePermissionMode({required this.cliValue, required this.controlValue}) {
+enum ClaudePermissionMode({
+  /// Spelling accepted by the `--permission-mode` command-line flag.
+  required final String cliValue,
+
+  /// Spelling accepted by a `set_permission_mode` control request, and reported
+  /// back on `system/init.permissionMode` and in transcript records.
+  required final String controlValue,
+}) {
   /// Prompts before dangerous operations. `manual` on the CLI, `default` in the
   /// control protocol.
   standard(cliValue: "manual", controlValue: "default"),
@@ -29,13 +36,6 @@ enum ClaudePermissionMode({required this.cliValue, required this.controlValue}) 
   /// Uses a model classifier to approve or deny prompts. This is the CLI's own
   /// default when no mode is passed.
   auto(cliValue: "auto", controlValue: "auto");
-
-  /// Spelling accepted by the `--permission-mode` command-line flag.
-  final String cliValue;
-
-  /// Spelling accepted by a `set_permission_mode` control request, and reported
-  /// back on `system/init.permissionMode` and in transcript records.
-  final String controlValue;
 
   /// Parses either spelling at the wire boundary.
   ///

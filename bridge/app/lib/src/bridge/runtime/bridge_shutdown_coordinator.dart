@@ -13,15 +13,11 @@ enum BridgeShutdownPhase() {
 }
 
 class BridgeShutdownCoordinator({
-    required StartAbortSignal startAbortSignal,
+    required final StartAbortSignal _startAbortSignal,
     int Function()? backstopExitCode,
     void Function(int code)? exitProcess,
-    Future<void> Function()? emergencyDisposal,
+    final Future<void> Function()? _emergencyDisposal,
   }) {
-  this : _backstopExitCode = backstopExitCode ?? _alwaysZero,
-       _exitProcess = exitProcess ?? io.exit,
-       _startAbortSignal = startAbortSignal,
-       _emergencyDisposal = emergencyDisposal;
 
   static int _alwaysZero() => 0;
   static const Duration _backstopSlack = Duration(seconds: 10);
@@ -34,10 +30,8 @@ class BridgeShutdownCoordinator({
   /// exists to prevent.
   static const Duration _emergencyDisposalCap = Duration(seconds: 6);
 
-  final int Function() _backstopExitCode;
-  final void Function(int code) _exitProcess;
-  final StartAbortSignal _startAbortSignal;
-  final Future<void> Function()? _emergencyDisposal;
+  final int Function() _backstopExitCode = backstopExitCode ?? _alwaysZero;
+  final void Function(int code) _exitProcess = exitProcess ?? io.exit;
   final Map<BridgeShutdownPhase, List<_ShutdownAction>> _actions = {
     for (final phase in BridgeShutdownPhase.values) phase: <_ShutdownAction>[],
   };
@@ -131,7 +125,4 @@ class BridgeShutdownCoordinator({
   }
 }
 
-class const _ShutdownAction({required this.action, required this.budget}) {
-  final FutureOr<void> Function() action;
-  final Duration budget;
-}
+class const _ShutdownAction({required final FutureOr<void> Function() action, required final Duration budget});

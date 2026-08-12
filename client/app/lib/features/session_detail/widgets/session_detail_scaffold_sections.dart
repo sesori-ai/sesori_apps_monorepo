@@ -14,22 +14,16 @@ import "queued_message_bubble.dart";
 /// while sharing the glass language of the background-tasks card and the
 /// composer pills below.
 class const SessionDetailPendingBanner({
-    super.key,
-    required this.icon,
-    required this.backgroundColor,
-    required this.foregroundColor,
-    required this.label,
-    required this.onTap,
-  }) extends StatelessWidget {
-  final IconData icon;
+  super.key,
+  required final IconData icon,
 
   /// Semantic surface colour for the glass tint — applied with reduced alpha so
   /// the card stays frosted and the chat refracts through its edges.
-  final Color backgroundColor;
-  final Color foregroundColor;
-  final String label;
-  final VoidCallback onTap;
-
+  required final Color backgroundColor,
+  required final Color foregroundColor,
+  required final String label,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -77,9 +71,8 @@ class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
   }
 }
 
-class const SessionDetailQueuedMessagesSection({super.key, required this.messages}) extends StatelessWidget {
-  final List<QueuedSessionSubmission> messages;
-
+class const SessionDetailQueuedMessagesSection({super.key, required final List<QueuedSessionSubmission> messages})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -97,10 +90,11 @@ class const SessionDetailQueuedMessagesSection({super.key, required this.message
   }
 }
 
-class const SessionDetailErrorView({super.key, required this.reason, required this.onRetry}) extends StatelessWidget {
-  final RemoteFailureReason reason;
-  final VoidCallback onRetry;
-
+class const SessionDetailErrorView({
+  super.key,
+  required final RemoteFailureReason reason,
+  required final VoidCallback onRetry,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

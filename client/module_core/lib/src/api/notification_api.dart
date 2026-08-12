@@ -4,11 +4,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../capabilities/notifications/register_token_request.dart";
 
 @lazySingleton
-class NotificationApi({required AuthenticatedHttpApiClient client}) {
-  final AuthenticatedHttpApiClient _client;
-
-  this : _client = client;
-
+class NotificationApi({required final AuthenticatedHttpApiClient _client}) {
   Future<void> registerToken({required RegisterTokenRequest request}) async {
     final response = await _client.post(
       Uri.parse("$authBaseUrl/notifications/register-token"),
@@ -30,7 +26,7 @@ class NotificationApi({required AuthenticatedHttpApiClient client}) {
   }
 
   void _throwIfError<T>(ApiResponse<T> response) {
-    if (response case ErrorResponse<T>(: final error)) {
+    if (response case ErrorResponse<T>(:final error)) {
       throw error;
     }
   }

@@ -17,21 +17,11 @@ import "../trackers/bridge_status_tracker.dart";
 /// read the same trackers.
 @lazySingleton
 class ControlMessageDispatcher({
-    required ControlChannelServer server,
-    required AuthTokenProvider tokenProvider,
-    required BridgeStatusTracker statusTracker,
-    required BridgePromptTracker promptTracker,
-  }) {
-  this : _server = server,
-       _tokenProvider = tokenProvider,
-       _statusTracker = statusTracker,
-       _promptTracker = promptTracker;
-
-  final ControlChannelServer _server;
-  final AuthTokenProvider _tokenProvider;
-  final BridgeStatusTracker _statusTracker;
-  final BridgePromptTracker _promptTracker;
-
+  required final ControlChannelServer _server,
+  required final AuthTokenProvider _tokenProvider,
+  required final BridgeStatusTracker _statusTracker,
+  required final BridgePromptTracker _promptTracker,
+}) {
   StreamSubscription<ControlChannelEvent>? _eventSubscription;
 
   /// Bumped on every connect/disconnect: an async token reply is bound to the
@@ -115,7 +105,9 @@ class ControlMessageDispatcher({
       logd("Dropping a token response for a connection that no longer exists");
       return;
     }
-    _send(message: ControlMessage.tokenResponse(id: request.id, accessToken: accessToken));
+    _send(
+      message: ControlMessage.tokenResponse(id: request.id, accessToken: accessToken),
+    );
   }
 
   void _send({required ControlMessage message}) {

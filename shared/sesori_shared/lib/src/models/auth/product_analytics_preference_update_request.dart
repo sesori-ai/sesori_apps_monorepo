@@ -12,12 +12,12 @@ enum ProductAnalyticsPreferenceUpdateValue() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ProductAnalyticsPreferenceUpdateRequest with _$ProductAnalyticsPreferenceUpdateRequest {
-  const factory ProductAnalyticsPreferenceUpdateRequest({
+  const factory({
     required ProductAnalyticsPreferenceUpdateValue preference,
     required int expectedRevision,
     required String operationId,
   }) = _ProductAnalyticsPreferenceUpdateRequest;
 
-  factory ProductAnalyticsPreferenceUpdateRequest.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$ProductAnalyticsPreferenceUpdateRequestFromJson(json);
 }

@@ -21,10 +21,9 @@ import "../repositories/session_view_repository.dart";
 /// post-resume/reconnect refresh has rendered fresh content.
 @lazySingleton
 class SessionViewingService({
-    required SessionViewRepository viewRepository,
-    required LifecycleSource lifecycleSource,
-  }) with Disposable {
-  final SessionViewRepository _viewRepository;
+  required final SessionViewRepository _viewRepository,
+  required LifecycleSource lifecycleSource,
+}) with Disposable {
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
 
   String? _currentSessionId;
@@ -40,7 +39,7 @@ class SessionViewingService({
   /// errors, so the tail never breaks.
   Future<void> _sendTail = Future<void>.value();
 
-  this : _viewRepository = viewRepository {
+  this {
     _lifecycleSubscription = lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged);
   }
 

@@ -203,8 +203,7 @@ void main() {
   });
 }
 
-class _FakeHostProcessService(this._outcomes) implements HostProcessService {
-  final List<Object> _outcomes;
+class _FakeHostProcessService(final List<Object> _outcomes) implements HostProcessService {
   final List<String> executables = <String>[];
   final List<List<String>> arguments = <List<String>>[];
   final List<Map<String, String>?> environments = <Map<String, String>?>[];
@@ -248,19 +247,17 @@ class _FakeHostProcessService(this._outcomes) implements HostProcessService {
   );
 }
 
-class _ProbeProcess({required String stdoutText, int? exitCode, Future<int>? exitCodeFuture}) implements SpawnedProcess {
-  this
-    : pid = _nextPid++,
-      _stdoutBytes = utf8.encode(stdoutText),
-      _exitCode = exitCodeFuture ?? Future<int>.value(exitCode!);
+class _ProbeProcess({required String stdoutText, int? exitCode, Future<int>? exitCodeFuture})
+    implements SpawnedProcess {
+  this : pid = _nextPid++;
 
   static int _nextPid = 1;
 
   @override
   final int pid;
 
-  final List<int> _stdoutBytes;
-  final Future<int> _exitCode;
+  final List<int> _stdoutBytes = utf8.encode(stdoutText);
+  final Future<int> _exitCode = exitCodeFuture ?? Future<int>.value(exitCode!);
 
   @override
   Future<int> get exitCode => _exitCode;

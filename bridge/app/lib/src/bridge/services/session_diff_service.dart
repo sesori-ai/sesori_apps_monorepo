@@ -9,25 +9,19 @@ import "../repositories/session_repository.dart";
 
 class SessionDiffSessionNotFoundException() implements Exception;
 
-class const BaseBranchUnreachableException({required this.message}) implements Exception {
-  final String message;
-
+class const BaseBranchUnreachableException({required final String message}) implements Exception {
   @override
   String toString() => message;
 }
 
-class const GitDiffQueryException({required this.message}) implements Exception {
-  final String message;
-
+class const GitDiffQueryException({required final String message}) implements Exception {
   @override
   String toString() => message;
 }
 
 sealed class _DiffFileReadResult();
 
-class _DiffFileContent({required this.content}) extends _DiffFileReadResult {
-  final String content;
-}
+class _DiffFileContent({required final String content}) extends _DiffFileReadResult;
 
 class _DiffFileBinary() extends _DiffFileReadResult;
 
@@ -36,19 +30,11 @@ class _DiffFileTooLarge() extends _DiffFileReadResult;
 class _DiffFileReadFailure() extends _DiffFileReadResult;
 
 class SessionDiffService({
-    required SessionRepository sessionRepository,
-    required SessionDiffRepository sessionDiffRepository,
-    required FilesystemRepository filesystemRepository,
-  }) {
+  required final SessionRepository _sessionRepository,
+  required final SessionDiffRepository _sessionDiffRepository,
+  required final FilesystemRepository _filesystemRepository,
+}) {
   static const _maxFileContentBytes = 200 * 1024;
-
-  final SessionRepository _sessionRepository;
-  final SessionDiffRepository _sessionDiffRepository;
-  final FilesystemRepository _filesystemRepository;
-
-  this : _sessionRepository = sessionRepository,
-       _sessionDiffRepository = sessionDiffRepository,
-       _filesystemRepository = filesystemRepository;
 
   Future<List<FileDiff>> getDiffs({required String sessionId}) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);

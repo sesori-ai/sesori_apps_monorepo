@@ -31,9 +31,7 @@ class _RealCommandExecutor() implements CommandExecutor {
 
 /// A [CommandExecutor] that always throws, modelling a missing/unexecutable tool
 /// (`ProcessException`) or a force-killed timeout (`TimeoutException`).
-class _ThrowingCommandExecutor({required this.error}) implements CommandExecutor {
-  final Object error;
-
+class _ThrowingCommandExecutor({required final Object error}) implements CommandExecutor {
   @override
   Future<CommandResult> run(
     String executable,

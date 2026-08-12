@@ -189,20 +189,16 @@ void main() {
       // Harnesses rise as a modal from the new-session harness menu and push
       // in from the settings list, so the route builds its own page per
       // presentation instead of taking the default push for both.
-      final harnessesModalPage =
-          children[1].pageBuilder!(
-                _FakeBuildContext(),
-                _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "modal"}),
-              )
-              as CupertinoPage<void>;
+      final harnessesModalPage = children[1].pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "modal"}),
+      ) as CupertinoPage<void>;
       expect(harnessesModalPage.fullscreenDialog, isTrue);
       expect(harnessesModalPage.child, isA<HarnessesSettingsScreen>());
-      final harnessesPushedPage =
-          children[1].pageBuilder!(
-                _FakeBuildContext(),
-                _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "pushed"}),
-              )
-              as MaterialPage<void>;
+      final harnessesPushedPage = children[1].pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "pushed"}),
+      ) as MaterialPage<void>;
       expect(harnessesPushedPage.child, isA<HarnessesSettingsScreen>());
       expect(
         (harnessesPushedPage.child as HarnessesSettingsScreen).presentation,
@@ -569,19 +565,13 @@ class _FakeBuildContext() extends Fake implements BuildContext {
 }
 
 class _FakeGoRouterState({
-    this.pathParameters = const {},
-    Map<String, String> queryParameters = const {},
-  }) extends Fake
-    // ignore: avoid_implementing_value_types, tests only need a lightweight fake
-    implements GoRouterState {
-  this : uri = Uri(path: "/", queryParameters: queryParameters.isEmpty ? null : queryParameters);
-
+  @override final Map<String, String> pathParameters = const {},
+  Map<String, String> queryParameters = const {},
+}) extends Fake implements GoRouterState {
   @override
-  final Map<String, String> pathParameters;
-
-  @override
-  final Uri uri;
+  final Uri uri = Uri(path: "/", queryParameters: queryParameters.isEmpty ? null : queryParameters);
 
   @override
   ValueKey<String> get pageKey => const ValueKey<String>("/login");
 }
+// ignore_for_file: avoid_implementing_value_types, tests use a lightweight GoRouterState fake

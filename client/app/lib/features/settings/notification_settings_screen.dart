@@ -163,20 +163,13 @@ class const _NotificationPreferencesFailure() extends StatelessWidget {
 }
 
 class const _NotificationToggleRow({
-    required this.category,
-    required this.title,
-    required this.subtitle,
-    required this.preferences,
-    required this.updatingCategories,
-    this.isLast = false,
-  }) extends StatelessWidget {
-  final NotificationCategory category;
-  final String title;
-  final String? subtitle;
-  final Map<NotificationCategory, bool> preferences;
-  final Set<NotificationCategory> updatingCategories;
-  final bool isLast;
-
+  required final NotificationCategory category,
+  required final String title,
+  required final String? subtitle,
+  required final Map<NotificationCategory, bool> preferences,
+  required final Set<NotificationCategory> updatingCategories,
+  final bool isLast = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = this.subtitle;

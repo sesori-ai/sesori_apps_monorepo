@@ -17,24 +17,12 @@ typedef ProjectActivityObservation = ({
 
 /// Collects plugin evidence used to reconcile bridge-owned project activity.
 class ProjectActivityRepository({
-    required PluginRuntime runtime,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-    required Duration aggregateSourceDeadline,
+    required final PluginRuntime _runtime,
+    required final ProjectsDao _projectsDao,
+    required final SessionDao _sessionDao,
+    required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+    required final Duration _aggregateSourceDeadline,
   }) {
-  this : _runtime = runtime,
-       _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
-       _aggregateSourceDeadline = aggregateSourceDeadline;
-
-  final PluginRuntime _runtime;
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
-  final Duration _aggregateSourceDeadline;
-
   Set<String> get operationalPluginIds => _runtime.activePluginIds;
 
   Future<ProjectActivityObservation?> listProjectActivityEvidence({required String pluginId}) async {
@@ -215,23 +203,16 @@ class ProjectActivityRepository({
 
 enum _ProjectActivityOperation() { listProjectActivityEvidence, commitActivities }
 
-sealed class const _ProjectActivitySource({required this.pluginId, required this.generation}) {
-  final String pluginId;
-  final int generation;
-}
+sealed class const _ProjectActivitySource({required final String pluginId, required final int generation});
 
 final class const _NativeProjectActivitySource({
     required super.pluginId,
     required super.generation,
-    required this.projects,
-  }) extends _ProjectActivitySource {
-  final List<PluginProject> projects;
-}
+    required final List<PluginProject> projects,
+  }) extends _ProjectActivitySource;
 
 final class const _ResolvedProjectActivitySource({
     required super.pluginId,
     required super.generation,
-    required this.evidence,
-  }) extends _ProjectActivitySource {
-  final List<ProjectActivityEvidence> evidence;
-}
+    required final List<ProjectActivityEvidence> evidence,
+  }) extends _ProjectActivitySource;

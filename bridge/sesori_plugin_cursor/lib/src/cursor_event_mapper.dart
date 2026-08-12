@@ -14,18 +14,11 @@ import "repositories/cursor_generated_image_reader.dart";
 /// [AcpApprovalRegistry.fireAndForgetExtensionMethods]), so this mapper is the
 /// single handling site for both wire shapes.
 class CursorEventMapper({
-    required super.launchDirectory,
-    required super.pluginId,
-    required super.configurationTracker,
-    required super.contentMapper,
-    required CursorGeneratedImageReader generatedImageReader,
-    required String? Function() activeSessionResolver,
-  }) extends AcpEventMapper {
-  this : _generatedImageReader = generatedImageReader,
-       _activeSessionResolver = activeSessionResolver,
-       super(agentId: pluginId);
-
-  final CursorGeneratedImageReader _generatedImageReader;
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+  required super.contentMapper,
+  required final CursorGeneratedImageReader _generatedImageReader,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
   /// last-resort attribution for Cursor extension payloads that omit
@@ -34,7 +27,9 @@ class CursorEventMapper({
   /// session fallback, so "which session does an unattributed payload belong
   /// to" has exactly one owner: the plugin, which also clears its state when a
   /// session is deleted.
-  final String? Function() _activeSessionResolver;
+  required final String? Function() _activeSessionResolver,
+}) extends AcpEventMapper {
+  this : super(agentId: pluginId);
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {

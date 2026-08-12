@@ -27,15 +27,15 @@ class MockFailureReporter() extends Mock implements FailureReporter;
 
 class MockRelayClient() extends Mock implements RelayClient;
 
-class _TestRelayClientFactory(this._factory) extends RelayClientFactory {
+class _TestRelayClientFactory(
   final RelayClient Function({
     required String relayHost,
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
   })
-  _factory;
-
+  _factory,
+) extends RelayClientFactory {
   int callCount = 0;
 
   @override
@@ -55,9 +55,7 @@ class _TestRelayClientFactory(this._factory) extends RelayClientFactory {
   }
 }
 
-class _TestClockProvider(this._now) extends ClockProvider {
-  final DateTime Function() _now;
-
+class _TestClockProvider(final DateTime Function() _now) extends ClockProvider {
   @override
   DateTime call() => _now();
 }

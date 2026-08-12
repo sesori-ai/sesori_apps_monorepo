@@ -5,34 +5,33 @@ part "filesystem_suggestion.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class FilesystemSuggestionsRequest with _$FilesystemSuggestionsRequest {
-  const factory FilesystemSuggestionsRequest({
+  const factory({
     required int maxResults,
     required String? prefix,
   }) = _FilesystemSuggestionsRequest;
 
-  factory FilesystemSuggestionsRequest.fromJson(Map<String, dynamic> json) =>
-      _$FilesystemSuggestionsRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionsRequestFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class FilesystemSuggestions with _$FilesystemSuggestions {
-  const factory FilesystemSuggestions({
+  const factory({
     required List<FilesystemSuggestion> data,
     required String? path,
   }) = _FilesystemSuggestions;
 
-  factory FilesystemSuggestions.fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionsFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionsFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class FilesystemSuggestion with _$FilesystemSuggestion {
-  const factory FilesystemSuggestion({
+  const factory({
     required String path,
     required String name,
     required bool isGitRepo,
   }) = _FilesystemSuggestion;
 
-  factory FilesystemSuggestion.fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionFromJson(json);
 }
 
 /// Creates a plain directory named [name] inside [parentPath] on the bridge's
@@ -46,11 +45,10 @@ sealed class FilesystemSuggestion with _$FilesystemSuggestion {
 /// `/project/open` call.
 @Freezed(fromJson: true, toJson: true)
 sealed class FilesystemCreateDirectoryRequest with _$FilesystemCreateDirectoryRequest {
-  const factory FilesystemCreateDirectoryRequest({
+  const factory({
     required String parentPath,
     required String name,
   }) = _FilesystemCreateDirectoryRequest;
 
-  factory FilesystemCreateDirectoryRequest.fromJson(Map<String, dynamic> json) =>
-      _$FilesystemCreateDirectoryRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$FilesystemCreateDirectoryRequestFromJson(json);
 }

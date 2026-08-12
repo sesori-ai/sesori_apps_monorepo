@@ -4,11 +4,7 @@ import "../api/storage/composer_draft_storage.dart";
 import "../foundation/models/composer/composer_draft.dart";
 
 @lazySingleton
-class ComposerDraftRepository({required ComposerDraftStorage storage}) {
-  final ComposerDraftStorage _storage;
-
-  this : _storage = storage;
-
+class ComposerDraftRepository({required final ComposerDraftStorage _storage}) {
   static String newSessionIdentity({required String projectId}) => "new-session:$projectId";
 
   ComposerDraft readForSession({required String sessionId}) =>

@@ -2317,10 +2317,7 @@ PluginLifecycleService _commandService({
   );
 }
 
-class _FakePluginApi({required this.id}) extends BridgeDerivedProjectsPluginApi {
-  @override
-  final String id;
-
+class _FakePluginApi({@override required final String id}) extends BridgeDerivedProjectsPluginApi {
   @override
   Stream<BridgeSseEvent> get events => const Stream.empty();
 
@@ -2337,12 +2334,12 @@ class _FakePluginApi({required this.id}) extends BridgeDerivedProjectsPluginApi 
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeState.active}) implements PluginLifecycleRepository {
-  this
-    : _current = [_snapshot(state: initialState, workState: PluginWorkState.unknown, leaseCount: 0)];
-
+class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeState.active})
+    implements PluginLifecycleRepository {
   final StreamController<List<PluginLifecycleSnapshot>> _snapshots = StreamController.broadcast(sync: true);
-  List<PluginLifecycleSnapshot> _current;
+  List<PluginLifecycleSnapshot> _current = [
+    _snapshot(state: initialState, workState: PluginWorkState.unknown, leaseCount: 0),
+  ];
   int stopCalls = 0;
 
   @override
@@ -2491,13 +2488,10 @@ class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepositor
 }
 
 class _CommandLifecycleRepository({
-    required this.inspectionResult,
-    required this.inspectionGate,
-    required this.startFailureMessage,
-  }) implements PluginLifecycleRepository {
-  PluginSetupStatus inspectionResult;
-  final Completer<void>? inspectionGate;
-  String? startFailureMessage;
+  required var PluginSetupStatus inspectionResult,
+  required final Completer<void>? inspectionGate,
+  required var String? startFailureMessage,
+}) implements PluginLifecycleRepository {
   final StreamController<List<PluginLifecycleSnapshot>> _snapshots = StreamController.broadcast(sync: true);
   PluginLifecycleSnapshot _current = const PluginLifecycleSnapshot(
     pluginId: "one",
@@ -2614,7 +2608,7 @@ class _CommandLifecycleRepository({
     required PluginStopIntent intent,
   }) async {
     restartCalls++;
-    return start(pluginId: pluginId);
+    return await start(pluginId: pluginId);
   }
 
   @override
@@ -2690,8 +2684,7 @@ class _CommandLifecycleRepository({
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _MutableBridgeSettingsRepository({required this.settings}) implements BridgeSettingsRepository {
-  BridgeSettings settings;
+class _MutableBridgeSettingsRepository({required var BridgeSettings settings}) implements BridgeSettingsRepository {
   Completer<void>? saveGate;
   Object? saveError;
   int loadCalls = 0;
@@ -2734,11 +2727,8 @@ class _ControllablePluginIdleTimerScheduler() implements PluginIdleTimerSchedule
   }
 }
 
-class _ControllablePluginIdleTimer({required this.duration, required void Function() onElapsed}) implements Timer {
-  this : _onElapsed = onElapsed;
-
-  final Duration duration;
-  final void Function() _onElapsed;
+class _ControllablePluginIdleTimer({required final Duration duration, required final void Function() _onElapsed})
+    implements Timer {
   bool _isActive = true;
 
   void elapse() {

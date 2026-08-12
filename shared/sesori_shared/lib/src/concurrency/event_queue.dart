@@ -26,15 +26,15 @@ import "dart:collection";
 /// 4. [EventQueueSubscription.cancel] to detach — events buffer again.
 /// 5. [listen] again to re-attach a (possibly different) listener.
 /// 6. [dispose] to release resources when no longer needed.
-class EventQueue<T extends Object>({this.maxSize, this.maxAttempts = 5}) {
+class EventQueue<T extends Object>({
   /// Maximum number of events to buffer. When exceeded, oldest events are
   /// dropped. `null` means unlimited.
-  final int? maxSize;
+  final int? maxSize,
 
   /// Maximum consecutive failures allowed for the same head event before
   /// it is dropped.
-  final int maxAttempts;
-
+  final int maxAttempts = 5,
+}) {
   final Queue<T> _buffer = Queue<T>();
   bool _draining = false;
   bool _disposed = false;
@@ -229,9 +229,7 @@ class EventQueue<T extends Object>({this.maxSize, this.maxAttempts = 5}) {
 ///
 /// Call [cancel] to detach the listener — pending events remain buffered
 /// in the queue and will be delivered to the next listener.
-class EventQueueSubscription<T extends Object>._(this._queue) {
-  final EventQueue<T> _queue;
-
+class EventQueueSubscription<T extends Object>._(final EventQueue<T> _queue) {
   bool get _isActive => identical(_queue._activeSubscription, this);
 
   /// Detaches the listener. Pending events remain buffered in the queue.

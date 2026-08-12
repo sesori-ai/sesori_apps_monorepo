@@ -11,16 +11,16 @@ part "agent_info.g.dart";
 /// We only model the fields relevant for the mobile picker UI.
 @Freezed(fromJson: true, toJson: true)
 sealed class Agents with _$Agents {
-  const factory Agents({
+  const factory({
     required List<AgentInfo> agents,
   }) = _Agents;
 
-  factory Agents.fromJson(Map<String, dynamic> json) => _$AgentsFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AgentsFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class AgentInfo with _$AgentInfo {
-  const factory AgentInfo({
+  const factory({
     required String name,
     required String? description,
     required AgentModel? model,
@@ -28,16 +28,16 @@ sealed class AgentInfo with _$AgentInfo {
     @Default(false) bool hidden,
   }) = _AgentInfo;
 
-  factory AgentInfo.fromJson(Map<String, dynamic> json) => _$AgentInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AgentInfoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class AgentModel with _$AgentModel {
-  const factory AgentModel({
+  const factory({
     required String modelID,
     required String providerID,
     required String? variant,
   }) = _AgentModel;
 
-  factory AgentModel.fromJson(Map<String, dynamic> json) => _$AgentModelFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AgentModelFromJson(json);
 }

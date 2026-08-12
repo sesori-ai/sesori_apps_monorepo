@@ -62,7 +62,9 @@ void main() {
       // Only the child's creation is seen (so its project is tracked); the root
       // session is not yet known to the push tracker.
       harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(info: _session(id: "child", projectID: "project-a", parentID: "root")),
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", projectID: "project-a", parentID: "root"),
+        ),
       );
 
       harness.dispatcher.dispatchImmediateIfApplicable(
@@ -564,9 +566,8 @@ _newHarness({
   );
 }
 
-class ThrowingPushSessionStateTracker({required super.now, this.throwFindPrunableRoots = false}) extends PushSessionStateTracker {
-  final bool throwFindPrunableRoots;
-
+class ThrowingPushSessionStateTracker({required super.now, final bool throwFindPrunableRoots = false})
+    extends PushSessionStateTracker {
   @override
   List<PushPrunableRoot> findPrunableRoots() {
     if (throwFindPrunableRoots) {
@@ -599,9 +600,7 @@ class FakePushNotificationClient() extends PushNotificationClient {
   }
 }
 
-class FakePushRateLimiter({this.shouldAllowSend = true, super.now}) extends PushRateLimiter {
-  bool shouldAllowSend;
-
+class FakePushRateLimiter({var bool shouldAllowSend = true, super.now}) extends PushRateLimiter {
   @override
   bool shouldSend({
     required NotificationCategory category,

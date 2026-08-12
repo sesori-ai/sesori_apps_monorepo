@@ -28,30 +28,14 @@ import 'update_install_service.dart';
 /// [ExplicitUpdateOutcome] as pure data — the command renders it and never the
 /// service.
 class ManualUpdateService({
-    required ReleaseRepository releaseRepository,
-    required UpdateInstallService updateInstallService,
-    required UpdateApplyService updateApplyService,
-    required ReleaseTrack track,
-    required String installRoot,
-    required String executablePath,
-    required String managedExecutablePath,
-  }) {
-  this : _releaseRepository = releaseRepository,
-       _updateInstallService = updateInstallService,
-       _updateApplyService = updateApplyService,
-       _track = track,
-       _installRoot = installRoot,
-       _executablePath = executablePath,
-       _managedExecutablePath = managedExecutablePath;
-
-  final ReleaseRepository _releaseRepository;
-  final UpdateInstallService _updateInstallService;
-  final UpdateApplyService _updateApplyService;
-  final ReleaseTrack _track;
-  final String _installRoot;
-  final String _executablePath;
-  final String _managedExecutablePath;
-
+  required final ReleaseRepository _releaseRepository,
+  required final UpdateInstallService _updateInstallService,
+  required final UpdateApplyService _updateApplyService,
+  required final ReleaseTrack _track,
+  required final String _installRoot,
+  required final String _executablePath,
+  required final String _managedExecutablePath,
+}) {
   /// Runs the update once. When [force] is true, installs the latest eligible
   /// release for the active track regardless of the current version (a repair
   /// reinstall, or a downgrade onto the track); otherwise installs only a
@@ -90,7 +74,7 @@ class ManualUpdateService({
 
     if (!force) {
       if (comparison > 0) {
-        return _stageAndApply(release: latest, fromVersion: current, kind: UpdateAppliedKind.upgrade);
+        return await _stageAndApply(release: latest, fromVersion: current, kind: UpdateAppliedKind.upgrade);
       }
       if (comparison == 0) {
         return ExplicitUpdateAlreadyLatest(version: current.toString(), track: _track);
@@ -108,7 +92,7 @@ class ManualUpdateService({
       );
     }
 
-    return _stageAndApply(
+    return await _stageAndApply(
       release: latest,
       fromVersion: current,
       kind: comparison > 0

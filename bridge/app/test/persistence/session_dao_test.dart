@@ -756,7 +756,7 @@ void main() {
         // The v5 FK constraint on session_table.projectId → projects_table.projectId
         // must reject this insert at the SQLite level.
         expect(
-          () async => dao.insertSessionsIfMissing(
+          () async => await dao.insertSessionsIfMissing(
             pluginId: "opencode",
             sessions: [
               (
@@ -885,7 +885,7 @@ void main() {
         // Same FK enforcement proof but via the existing insertSession path.
         // Proves the v5 FK constraint catches BOTH session insert paths.
         expect(
-          () async => dao.insertSession(
+          () async => await dao.insertSession(
             pluginId: "opencode",
             sessionId: "s2",
             backendSessionId: "s2",

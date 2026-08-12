@@ -1,13 +1,9 @@
 import 'dart:io';
 
 class BridgeSettingsApi({String? homeDirectory}) {
-  final String _homeDirectory;
+  final String _homeDirectory = homeDirectory ?? _resolveHomeDirectory();
 
-  this
-      : _homeDirectory = homeDirectory ?? _resolveHomeDirectory();
-
-  String get configFilePath =>
-      '$_homeDirectory/.config/sesori/config.json';
+  String get configFilePath => '$_homeDirectory/.config/sesori/config.json';
 
   Future<String?> readConfig() async {
     final file = File(configFilePath);
@@ -15,7 +11,7 @@ class BridgeSettingsApi({String? homeDirectory}) {
       return null;
     }
 
-    return file.readAsString();
+    return await file.readAsString();
   }
 
   Future<void> writeConfig(String jsonContent) async {
@@ -30,8 +26,11 @@ class BridgeSettingsApi({String? homeDirectory}) {
   static String _resolveHomeDirectory() {
     final home = Platform.environment['HOME'];
     final userProfile = Platform.environment['USERPROFILE'];
-    final homeDirectory =
-        (home != null && home.isNotEmpty) ? home : (userProfile != null && userProfile.isNotEmpty) ? userProfile : null;
+    final homeDirectory = (home != null && home.isNotEmpty)
+        ? home
+        : (userProfile != null && userProfile.isNotEmpty)
+        ? userProfile
+        : null;
     if (homeDirectory == null) {
       throw StateError('Unable to determine home directory');
     }

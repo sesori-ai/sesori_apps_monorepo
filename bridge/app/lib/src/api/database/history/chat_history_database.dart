@@ -30,7 +30,7 @@ class ChatHistoryDatabase(super.e) extends _$ChatHistoryDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async => m.createAll(),
+    onCreate: (m) async => await m.createAll(),
     beforeOpen: (details) async {
       await customStatement("PRAGMA foreign_keys = ON");
     },

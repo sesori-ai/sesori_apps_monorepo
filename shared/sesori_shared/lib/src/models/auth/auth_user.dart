@@ -8,12 +8,12 @@ part "auth_user.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class AuthUser with _$AuthUser {
-  const factory AuthUser({
+  const factory({
     required String id,
     @authProviderConverter required AuthProvider provider,
     required String providerUserId,
     required String? providerUsername,
   }) = _AuthUser;
 
-  factory AuthUser.fromJson(Map<String, dynamic> json) => _$AuthUserFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AuthUserFromJson(json);
 }

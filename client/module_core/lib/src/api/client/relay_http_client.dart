@@ -11,12 +11,9 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../logging/logging.dart";
 
 @lazySingleton
-class RelayHttpApiClient(ConnectionService connectionService) {
-  final ConnectionService _connectionService;
+class RelayHttpApiClient(final ConnectionService _connectionService) {
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
-
-  this : _connectionService = connectionService;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> get<T>(

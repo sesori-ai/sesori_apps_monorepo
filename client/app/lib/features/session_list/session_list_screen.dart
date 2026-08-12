@@ -7,13 +7,10 @@ import "session_list_action_dispatcher.dart";
 import "session_list_scaffold.dart";
 
 class const SessionListScreen({
-    super.key,
-    required this.projectId,
-    this.projectName,
-  }) extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-
+  super.key,
+  required final String projectId,
+  final String? projectName,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SessionListBody(
@@ -23,10 +20,7 @@ class const SessionListScreen({
   }
 }
 
-class const _SessionListBody({required this.projectId, this.projectName}) extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-
+class const _SessionListBody({required final String projectId, final String? projectName}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const actionDispatcher = SessionListActionDispatcher();

@@ -25,16 +25,14 @@ extension on NotificationImportance {
 }
 
 @LazySingleton(as: LocalNotificationClient)
-class FlutterLocalNotificationClient({required FlutterLocalNotificationsPlugin plugin}) implements LocalNotificationClient {
-  final FlutterLocalNotificationsPlugin _plugin;
+class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPlugin _plugin})
+    implements LocalNotificationClient {
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
       StreamController<NotificationOpenRequest>.broadcast();
 
   NotificationOpenRequest? _initialNotificationOpen;
   bool _initialNotificationOpenConsumed = false;
   bool _initialized = false;
-
-  this : _plugin = plugin;
 
   @override
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
