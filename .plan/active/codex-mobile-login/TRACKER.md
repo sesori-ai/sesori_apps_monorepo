@@ -4,11 +4,11 @@
 
 - **Plan slug:** `codex-mobile-login`
 - **Series state:** Steps 1-5 merged; Step 6 PR open
-- **Current step:** 6/8
+- **Current step:** 7/8 implemented locally; Step 6 in review
 - **Implementation base:** Step 5 merge commit `e13b9a38`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
 - **Current PR:** [#837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837)
-- **Next action:** Monitor Step 6 and implement Step 7 locally
+- **Next action:** Monitor Step 6; publish Step 7 after merge and live smoke verification
 
 ## Plan Review
 
@@ -32,7 +32,7 @@
 | [x] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | [PR #834](https://github.com/sesori-ai/sesori_apps_monorepo/pull/834) merged |
 | [x] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | [PR #835](https://github.com/sesori-ai/sesori_apps_monorepo/pull/835) merged |
 | [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | [PR #837](https://github.com/sesori-ai/sesori_apps_monorepo/pull/837) open |
-| [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Pending |
+| [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Implemented locally; awaiting Step 6 merge and live smoke |
 | [ ] | 8/8 | `🌱 [codex-mobile-login] docs: retire mobile Codex login plan [step 8/8]` | 50-200 | Pending |
 
 ## Locked Decisions
@@ -116,6 +116,20 @@
   primarily generated Freezed presentation state plus focused API, repository,
   service, and cubit race coverage added for the security-sensitive cross-layer
   flow and review-discovered response-ordering cases.
+- Step 7 local: All 941 mobile app tests pass, including 27 focused harness
+  settings tests for capability/setup gating, code copy, explicit browser open,
+  launch failure, dismissal without cancellation, cancellation waiting, and
+  terminal sheet closure. Mobile fatal-info analysis passes. Codex descriptor
+  setup tests and analysis pass after replacing terminal-only authentication
+  guidance with neutral sign-in copy. No authentication analytics were added,
+  consistent with the locked privacy decision. The required real logged-out
+  Codex authorization-to-session smoke remains pending because it requires a
+  live bridge and provider interaction; no code or account data will be recorded.
+  `git diff --check` passes and the Step 7 scope contains 751 additions and 22
+  deletions, within the 750-1,350 target. The architecture review sub-agent
+  again failed before reading code with `no such column: replacement_seq`;
+  this step adds presentation and backend-owned guidance only, with no new
+  dependency ownership, wire contract, or persistence boundary.
 
 ## Findings And Plan Deltas
 
@@ -183,3 +197,8 @@
   plugin-controlled failure details remain local while wire progress uses a
   fixed safe message. PR #835 is green, approved, mergeable, and has zero
   unresolved threads.
+- **2026-08-12 - Step 7 implementation:** Added capability/setup-gated Log in
+  and Continue login rows, an accessible anti-phishing device-code sheet,
+  clipboard copy, explicit external browser launch, launch-failure retry,
+  cancellation/waiting states, terminal closure, and neutral Codex sign-in
+  guidance. Dismissal remains separate from cancellation.

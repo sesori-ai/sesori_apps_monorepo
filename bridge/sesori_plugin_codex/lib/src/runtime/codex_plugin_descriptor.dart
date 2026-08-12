@@ -348,7 +348,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor implements Interactiv
     final statusOutput = _normalizedStatusOutput(loginResult);
     if (statusOutput.contains("not logged in") || statusOutput.contains("logged out")) {
       return const PluginSetupAuthenticationRequired(
-        actionHint: "Run `codex login` on this machine, then retry setup detection.",
+        actionHint: "Sign in to Codex, then retry setup detection.",
       );
     }
     if (loginResult.exitCode == 0 && statusOutput.contains("logged in")) {

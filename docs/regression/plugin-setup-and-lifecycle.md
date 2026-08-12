@@ -40,6 +40,10 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Authentication ownership and challenge state are fenced to the current connection epoch
   and bridge identity and clear on reconnect, identity change, or disposal. External
   operations still update shared management metadata without claiming local presentation.
+- Mobile shows login only for authentication-required harnesses that declare the capability.
+  Its device-code sheet keeps anti-phishing guidance and the selectable/copyable one-time
+  code visible, opens the external browser only on explicit intent, and separates sheet
+  dismissal from cancellation. Terminal progress closes the sheet and refreshes setup.
 
 ## Regression Levels
 
@@ -72,6 +76,9 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 - A malformed or non-HTTPS verification URL reaching the launcher, a browser opening
   without explicit user intent, response loss reported as definite failure, a fast terminal
   event being lost, or stale challenge state surviving reconnect or bridge replacement.
+- Login shown without both capability and authentication-required setup, terminal-only
+  guidance shown despite mobile login support, sheet dismissal cancelling upstream, or a
+  browser/copy failure removing the challenge before the user can retry.
 - One failing harness taking down the rest of the bridge, or an empty picker
   instead of the explicit no-harness state when none is usable.
 
@@ -79,9 +86,8 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 
 - The harness set comes from the current registry; unregistered in-development harnesses
   are out of scope, and no lifecycle path installs a runtime.
-- Backend authentication and credential persistence happen on the bridge machine. Client
-  presentation controls remain outside this document until their planned step lands. A
-  forced disable leaves work interrupted.
+- Backend authentication and credential persistence happen on the bridge machine. A forced
+  disable leaves work interrupted.
 - Idle windows are minutes-order, so observing a real elapse belongs at L4 or above.
 
 ## Sources

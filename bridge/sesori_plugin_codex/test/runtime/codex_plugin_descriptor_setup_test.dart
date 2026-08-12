@@ -293,7 +293,12 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupAuthenticationRequired>());
+      expect(
+        result,
+        const PluginSetupAuthenticationRequired(
+          actionHint: "Sign in to Codex, then retry setup detection.",
+        ),
+      );
       expect(processes.spawnedArguments, [
         const ["--version"],
         const ["login", "status"],
