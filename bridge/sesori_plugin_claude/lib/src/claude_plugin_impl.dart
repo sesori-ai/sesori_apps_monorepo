@@ -327,13 +327,20 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
       throw const PluginOperationException("replyToQuestion", message: "Claude rejected the question response");
     }
     if (exitsPlanMode) {
+      final applied = _processes.appliedSelection(sessionId: sessionId);
+      if (applied != null) {
+        _processes.recordAppliedSelection(
+          sessionId: sessionId,
+          model: applied.model,
+          effort: applied.effort,
+          permissionMode: ClaudePermissionMode.auto,
+        );
+      }
       _eventBuffer.add(
         BridgeSseSessionPromptDefaultsChanged(
           sessionID: sessionId,
           agent: "Default",
-          providerID: null,
-          modelID: null,
-          variant: null,
+          model: null,
         ),
       );
     }

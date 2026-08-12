@@ -42,9 +42,7 @@ void main() {
         const BridgeSseSessionPromptDefaultsChanged(
           sessionID: "stable-session",
           agent: "Default",
-          providerID: null,
-          modelID: null,
-          variant: null,
+          model: null,
         ),
       );
 

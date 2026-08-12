@@ -25,7 +25,7 @@ final class ClaudeHistoryMapper {
         case ClaudeTranscriptAssistantRecord():
           if (_skipRecord(record: record, sessionId: sessionId)) continue;
           final blocks = _content.map(content: record.content);
-          if (_containsInternalCommandOutput(blocks)) continue;
+          if (_containsInternalCommandOutput(blocks: blocks)) continue;
           final assistant = assistantsByMessageId.putIfAbsent(record.id, () {
             final created = _AssistantHistoryMessage(
               id: record.id,
@@ -47,7 +47,7 @@ final class ClaudeHistoryMapper {
             continue;
           }
           final blocks = _content.map(content: record.content);
-          if (_containsInternalCommandOutput(blocks)) continue;
+          if (_containsInternalCommandOutput(blocks: blocks)) continue;
           final results = [
             for (final block in blocks)
               if (block is ClaudeMappedToolResultContentBlock) block,
@@ -194,7 +194,7 @@ String? _stripBridgeContext(String text) {
   return trailing.isEmpty ? prefix : "$prefix $trailing";
 }
 
-bool _containsInternalCommandOutput(List<ClaudeMappedContentBlock> blocks) => blocks.any(
+bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
   (block) => block is ClaudeMappedTextContentBlock &&
       (block.text.contains("<local-command-stdout>") ||
           block.text.contains("<local-command-caveat>") ||

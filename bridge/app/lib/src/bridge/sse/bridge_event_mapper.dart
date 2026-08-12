@@ -33,16 +33,19 @@ class BridgeEventMapper {
         BridgeSseSessionPromptDefaultsChanged(
           :final sessionID,
           :final agent,
-          :final providerID,
-          :final modelID,
-          :final variant,
+          model: final pluginModel,
         ) => SesoriSseEvent.sessionPromptDefaultsChanged(
           sessionID: sessionID,
           promptDefaults: SessionPromptDefaults(
             agent: agent,
-            model: providerID == null || modelID == null
-                ? null
-                : AgentModel(providerID: providerID, modelID: modelID, variant: variant?.id),
+            model: switch (pluginModel) {
+              PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
+                providerID: providerID,
+                modelID: modelID,
+                variant: variant,
+              ),
+              null => null,
+            },
           ),
         ),
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),

@@ -103,7 +103,7 @@ final class ClaudeEventDispatcher {
     final rawMessage = _mapOrNull(message.event["message"]);
     final messageId = _nonEmptyString(rawMessage?["id"]);
     if (messageId == null) return const [];
-    final model = _nonEmptyString(rawMessage?["model"]);
+    final model = _realModel(model: _nonEmptyString(rawMessage?["model"]));
     _messageIds[sessionId] = messageId;
     _streamedMessageIds.putIfAbsent(sessionId, () => <String>{}).add(messageId);
     if (model != null) _models[sessionId] = model;
@@ -229,9 +229,9 @@ final class ClaudeEventDispatcher {
     final messageId = _nonEmptyString(message.messageId);
     if (messageId == null) return const [];
     _messageIds[sessionId] = messageId;
-    if (_realModel(message.model) case final model?) _models[sessionId] = model;
+    if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
-    if (_containsInternalCommandOutput(mapped)) return const [];
+    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
     final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
     if (!parts.any((part) => part.type.isVisible)) return const [];
     _announcedMessageIds[sessionId] = messageId;
@@ -273,7 +273,7 @@ final class ClaudeEventDispatcher {
     required ClaudeUserMessage message,
   }) {
     final mapped = _content.map(content: message.message["content"]);
-    if (_containsInternalCommandOutput(mapped)) return const [];
+    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();
     if (results.isNotEmpty) {
       final events = <BridgeSseEvent>[];
@@ -428,12 +428,12 @@ Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<Str
 
 String? _nonEmptyString(Object? value) => value is String && value.isNotEmpty ? value : null;
 
-String? _realModel(String? model) {
+String? _realModel({required String? model}) {
   final normalized = _nonEmptyString(model);
   return normalized == "<synthetic>" ? null : normalized;
 }
 
-bool _containsInternalCommandOutput(List<ClaudeMappedContentBlock> blocks) => blocks.any(
+bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
   (block) => block is ClaudeMappedTextContentBlock &&
       (block.text.contains("<local-command-stdout>") ||
           block.text.contains("<local-command-caveat>") ||

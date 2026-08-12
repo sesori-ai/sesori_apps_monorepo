@@ -158,6 +158,7 @@ void main() {
 
     test("hides local command records and keeps the last real model", () {
       _startMessage(mapper, messageId: "msg-real", model: "claude-opus-5");
+      _startMessage(mapper, messageId: "msg-command", model: "<synthetic>");
       final assistant = _map(
         mapper,
         _assistant(

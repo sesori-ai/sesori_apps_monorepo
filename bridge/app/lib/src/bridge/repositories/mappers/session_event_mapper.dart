@@ -137,16 +137,12 @@ class SessionEventMapper {
       BridgeSseSessionPromptDefaultsChanged(
         :final sessionID,
         :final agent,
-        :final providerID,
-        :final modelID,
-        :final variant,
+        :final model,
       ) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseSessionPromptDefaultsChanged(
           sessionID: sessionId,
           agent: agent,
-          providerID: providerID,
-          modelID: modelID,
-          variant: variant,
+          model: model,
         ),
         null => null,
       },

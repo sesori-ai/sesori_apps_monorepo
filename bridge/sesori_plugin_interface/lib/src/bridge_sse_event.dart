@@ -1,6 +1,6 @@
+import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
-import "models/plugin_session_variant.dart";
 
 sealed class BridgeSseEvent {
   const BridgeSseEvent();
@@ -72,16 +72,12 @@ class BridgeSseSessionOptionsChanged extends BridgeSseEvent {
 class BridgeSseSessionPromptDefaultsChanged extends BridgeSseEvent {
   final String sessionID;
   final String? agent;
-  final String? providerID;
-  final String? modelID;
-  final PluginSessionVariant? variant;
+  final PluginAgentModel? model;
 
   const BridgeSseSessionPromptDefaultsChanged({
     required this.sessionID,
     required this.agent,
-    required this.providerID,
-    required this.modelID,
-    required this.variant,
+    required this.model,
   });
 }
 
