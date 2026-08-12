@@ -8,7 +8,7 @@ Widget _harness({required PregoBrandLogo logo, Brightness brightness = Brightnes
   return MaterialApp(
     theme: ThemeData(
       brightness: brightness,
-      extensions: [brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark],
+      extensions: [if (brightness == Brightness.light) PregoDesignSystem.light else PregoDesignSystem.dark],
     ),
     home: Scaffold(body: Center(child: logo)),
   );

@@ -63,7 +63,7 @@ final class ClaudeBackendCatalogRepository {
     if (id == null || id.isEmpty) return null;
     final displayName = dto.displayName?.trim();
     final resolvedModel = dto.resolvedModel?.trim();
-    final variants = dto.supportsEffort == true
+    final variants = dto.supportsEffort ?? false
         ? [
             for (final raw in dto.supportedEffortLevels)
               if (ClaudeEffortLevel.tryParse(raw) case final level?) level.wireValue,
@@ -71,9 +71,9 @@ final class ClaudeBackendCatalogRepository {
         : const <String>[];
     return PluginModel(
       id: id,
-      name: displayName?.isNotEmpty == true
+      name: displayName?.isNotEmpty ?? false
           ? displayName!
-          : resolvedModel?.isNotEmpty == true
+          : resolvedModel?.isNotEmpty ?? false
           ? resolvedModel!
           : id,
       variants: variants,
@@ -90,8 +90,8 @@ final class ClaudeBackendCatalogRepository {
     final hint = dto.argumentHint?.trim();
     return PluginCommand(
       name: name,
-      description: description?.isNotEmpty == true ? description : null,
-      hints: [if (hint?.isNotEmpty == true) hint!],
+      description: description?.isNotEmpty ?? false ? description : null,
+      hints: [if (hint?.isNotEmpty ?? false) hint!],
       provider: null,
       source: PluginCommandSource.command,
     );

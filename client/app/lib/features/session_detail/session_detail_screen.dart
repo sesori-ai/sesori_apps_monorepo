@@ -70,7 +70,7 @@ class _SessionActivityAnalyticsOwnerState extends State<_SessionActivityAnalytic
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final isRouteVisible = ModalRoute.of(context)?.isCurrent == true;
+    final isRouteVisible = ModalRoute.of(context)?.isCurrent ?? false;
     final listener = _listener;
     if (listener == null) {
       _listener = SessionActivityAnalyticsListener(

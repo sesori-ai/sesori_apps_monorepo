@@ -111,16 +111,14 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                 color: prego.colors.bgBrandSolid,
               ),
               const SizedBox(height: 24),
-              reducedMotion
-                  ? Text(
+              if (reducedMotion) Text(
                       message,
                       key: const Key("new_session_loading_message"),
                       style: prego.textTheme.textSm.regular.copyWith(
                         color: prego.colors.textPrimary,
                       ),
                       textAlign: TextAlign.center,
-                    )
-                  : AnimatedSwitcher(
+                    ) else AnimatedSwitcher(
                       duration: const Duration(milliseconds: 500),
                       transitionBuilder: (child, animation) {
                         return FadeTransition(

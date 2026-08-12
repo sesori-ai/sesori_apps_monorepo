@@ -86,7 +86,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       ].join(" · "),
       SessionDetailLoading() || SessionDetailFailed() => "",
     };
-    final canShowDiffs = state is SessionDetailLoaded && state.isRootSession == true && !state.isArchived;
+    final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
 
     final actions = <Widget>[
       if (canShowDiffs)
@@ -303,7 +303,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void _scheduleModal(VoidCallback action) =>
       Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
 
-  bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent == true;
+  bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent ?? false;
 
   void _showFailureSnackBar(String message) {
     ScaffoldMessenger.of(context)

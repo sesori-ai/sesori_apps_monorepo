@@ -357,7 +357,7 @@ final class ClaudeSessionProcessRepository {
     );
     process.messages = client.messages.listen((message) {
       final current = _resident[sessionId];
-      if (current?.resumed == true && current?.appliedModel == null && message is ClaudeAssistantMessage) {
+      if ((current?.resumed ?? false) && current?.appliedModel == null && message is ClaudeAssistantMessage) {
         current?.appliedModel = message.model;
       }
       if (!_events.isClosed) {

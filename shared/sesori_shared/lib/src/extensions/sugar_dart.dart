@@ -59,8 +59,7 @@ extension Sugar<T> on T {
 
 extension FutureSugar<T> on Future<T> {
   ValueStream<T> asValueStream({required CompositeSubscription? disposeWith}) => asStream().shareValueConnected(
-    connection: (subscription) => disposeWith?.isDisposed == true
-        // ignore: discarded_futures
+    connection: (subscription) => disposeWith?.isDisposed ?? false
         ? subscription
               .cancel() //
         : disposeWith?.add(subscription),
@@ -90,16 +89,14 @@ extension StreamExtensions<T> on Stream<T> {
   ValueStream<T> shareValueAutoConnect({
     required CompositeSubscription? disposeWith,
   }) => publishValue().autoConnect(
-    connection: (subscription) => disposeWith?.isDisposed == true
-        // ignore: discarded_futures
+    connection: (subscription) => disposeWith?.isDisposed ?? false
         ? subscription
               .cancel() //
         : disposeWith?.add(subscription),
   );
 
   Stream<T> shareAutoConnect({required CompositeSubscription? disposeWith}) => publish().autoConnect(
-    connection: (subscription) => disposeWith?.isDisposed == true
-        // ignore: discarded_futures
+    connection: (subscription) => disposeWith?.isDisposed ?? false
         ? subscription
               .cancel() //
         : disposeWith?.add(subscription),

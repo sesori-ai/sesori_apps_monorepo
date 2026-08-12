@@ -19,7 +19,7 @@ void main() {
         theme: ThemeData(
           colorScheme: (isDark ? PregoColors.dark : PregoColors.light).toFlutterColorScheme(),
           textTheme: (isDark ? PregoTextTheme.dark : PregoTextTheme.light).asFlutterTextTheme(),
-          extensions: [isDark ? PregoDesignSystem.dark : PregoDesignSystem.light],
+          extensions: [if (isDark) PregoDesignSystem.dark else PregoDesignSystem.light],
         ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

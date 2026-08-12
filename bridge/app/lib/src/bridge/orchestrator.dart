@@ -1448,7 +1448,7 @@ class OrchestratorSession {
     if (_inFlightRelayCompletions.isEmpty) return "";
     final routes = [
       for (final MapEntry(key: label, value: count) in _inFlightRouteCounts.entries)
-        count == 1 ? label : "$label x$count",
+        if (count == 1) label else "$label x$count",
     ];
     return "$separator${_inFlightRelayCompletions.length} in-flight relay completion(s)"
         "${routes.isEmpty ? "" : ": ${routes.join(", ")}"}";

@@ -25,7 +25,6 @@ import "primitives/prego_widths.g.dart";
 /// )
 /// ```
 @immutable
-// ignore: use_enums, theme extension instances need class semantics and static light/dark singletons
 final class PregoDesignSystem extends ThemeExtension<PregoDesignSystem> {
   PregoDesignSystem._({
     required this.colors,

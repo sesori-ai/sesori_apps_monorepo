@@ -143,7 +143,7 @@ final class ClaudeHistoryMapper {
 }
 
 bool _skipRecord({required ClaudeTranscriptAttributedRecord record, required String sessionId}) =>
-    record.isSidechain == true || (record.sessionId != null && record.sessionId != sessionId);
+    (record.isSidechain ?? false) || (record.sessionId != null && record.sessionId != sessionId);
 
 sealed class _ClaudeHistoryEntry {
   const _ClaudeHistoryEntry();

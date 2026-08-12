@@ -48,7 +48,7 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
     _initialized = true;
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     _initialNotificationOpen = _notificationOpenFromPayload(
-      payload: launchDetails?.didNotificationLaunchApp == true ? launchDetails?.notificationResponse?.payload : null,
+      payload: launchDetails?.didNotificationLaunchApp ?? false ? launchDetails?.notificationResponse?.payload : null,
     );
 
     if (Platform.isAndroid) {

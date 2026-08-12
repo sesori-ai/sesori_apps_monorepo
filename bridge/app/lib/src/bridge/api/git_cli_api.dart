@@ -547,7 +547,7 @@ class GitCliApi {
   }) async {
     final result = await runGit(
       projectPath: projectPath,
-      arguments: ["branch", force ? "-D" : "-d", "--", branchName],
+      arguments: ["branch", if (force) "-D" else "-d", "--", branchName],
     );
     return result.exitCode == 0;
   }

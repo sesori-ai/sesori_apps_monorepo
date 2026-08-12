@@ -214,7 +214,7 @@ class _ProductAnalyticsPreferenceRow extends StatelessWidget {
       isLast: true,
     );
     return PregoGroupedRows(
-      children: [hasFailure ? row : MergeSemantics(child: row)],
+      children: [if (hasFailure) row else MergeSemantics(child: row)],
     );
   }
 }

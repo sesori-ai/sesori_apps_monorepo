@@ -413,7 +413,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-a",
             supportsSessionOptions: true,
-            plugins: [discoveryCalls == 1 ? pluginA : refreshedA],
+            plugins: [if (discoveryCalls == 1) pluginA else refreshedA],
           ),
         );
       });
@@ -479,7 +479,7 @@ void main() {
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
         ..add(connectedStatus);
-      await _waitUntil(() => cubit.state.agentModelData?.isLoading == true);
+      await _waitUntil(() => cubit.state.agentModelData?.isLoading ?? false);
 
       expect(cubit.state.agentModelData?.stagedCommand, command);
 

@@ -1468,7 +1468,6 @@ class PluginRuntime {
       _validateStartedPlugin(slot: slot, plugin: started);
       slot.plugin = started;
       final startedApi = started.api;
-      // ignore: cancel_subscriptions - retained by the slot and cancelled when this generation stops.
       slot.statusSubscription = started.status.listen(
         (status) => _applyStatus(slot: slot, generation: generation, status: status),
         onError: (Object error, StackTrace stackTrace) {
@@ -1485,7 +1484,6 @@ class PluginRuntime {
         },
       );
       slot.workState = started.currentWorkState;
-      // ignore: cancel_subscriptions - retained by the slot and cancelled when this generation stops.
       slot.workSubscription = started.workState.listen(
         (workState) {
           if (slot.generation != generation) return;
@@ -1504,7 +1502,6 @@ class PluginRuntime {
           _publishSnapshots();
         },
       );
-      // ignore: cancel_subscriptions - retained by the slot and cancelled when this generation stops.
       slot.eventSubscription = started.api.events.listen(
         (event) {
           if (slot.generation == generation && !_backendEventsSubject.isClosed) {

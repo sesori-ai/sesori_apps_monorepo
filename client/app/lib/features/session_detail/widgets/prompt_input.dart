@@ -369,7 +369,7 @@ class _PromptInputState extends State<PromptInput> {
 
   bool get _hasSendableContent {
     final hasContent = _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
-    return hasContent && (_attachments.isEmpty || widget.attachmentsSupported == true);
+    return hasContent && (_attachments.isEmpty || (widget.attachmentsSupported ?? false));
   }
 
   /// Switches to the typing layout and raises the keyboard. Focus is
@@ -1293,7 +1293,7 @@ class _PromptInputState extends State<PromptInput> {
 
   Widget _buildComposerContextMenu({required EditableTextState editableTextState}) {
     final buttonItems = [...editableTextState.contextMenuButtonItems];
-    if (!kIsWeb && widget.attachmentsSupported == true) {
+    if (!kIsWeb && (widget.attachmentsSupported ?? false)) {
       final pasteIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.paste);
       final existingPaste = pasteIndex < 0 ? null : buttonItems[pasteIndex];
       final existingPasteCallback = existingPaste?.onPressed;
@@ -1476,7 +1476,7 @@ class _PromptInputState extends State<PromptInput> {
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
       actionsEnabled: _displayedVoiceState == _VoiceState.idle,
-      showAttachImage: widget.attachmentsSupported == true,
+      showAttachImage: widget.attachmentsSupported ?? false,
       onSlashCommandsTap: _openCommandPicker,
       onAttachImageTap: _handleAttachImage,
     );

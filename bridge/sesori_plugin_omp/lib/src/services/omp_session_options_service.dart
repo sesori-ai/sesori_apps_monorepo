@@ -97,7 +97,7 @@ class OmpSessionOptionsService {
     final requestedModel = model?.modelID;
     if (requestedModel != null && requestedModel.isNotEmpty) {
       final configId = current?.modelConfigId ?? catalog?.modelConfigId;
-      final models = current?.models.isNotEmpty == true ? current!.models : catalog?.models ?? const [];
+      final models = current?.models.isNotEmpty ?? false ? current!.models : catalog?.models ?? const [];
       if (configId == null || !models.any((entry) => entry.value == requestedModel)) {
         throw const PluginOperationException(
           "session/set_config_option",
@@ -264,7 +264,7 @@ class OmpSessionOptionsService {
     required OmpSessionConfigSnapshot? snapshot,
     required OmpProjectCatalog? catalog,
   }) {
-    final modes = snapshot?.modes.isNotEmpty == true ? snapshot!.modes : catalog?.modes ?? const [];
+    final modes = snapshot?.modes.isNotEmpty ?? false ? snapshot!.modes : catalog?.modes ?? const [];
     for (final mode in modes) {
       if (mode.value == agent || mode.name == agent) return mode.value;
     }

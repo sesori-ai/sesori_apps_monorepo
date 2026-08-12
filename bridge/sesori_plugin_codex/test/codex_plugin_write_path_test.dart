@@ -1,7 +1,7 @@
 // Phase 4 write-path integration tests: createSession, sendPrompt,
 // abortSession round-trip against an in-memory fake WS, plus the
 // notification → BridgeSseEvent pipeline.
-// ignore_for_file: unawaited_futures, cast_nullable_to_non_nullable, prefer_foreach, avoid_dynamic_calls
+// ignore_for_file: cast_nullable_to_non_nullable, prefer_foreach, avoid_dynamic_calls
 
 import "dart:async";
 import "dart:convert";
@@ -2019,7 +2019,6 @@ const Map<String, dynamic> _initOk = {
 };
 
 class _Response {
-  // ignore: unused_element_parameter
   const _Response({this.result, this.error, this.respond = true});
   final Object? result;
   final Map<String, dynamic>? error;
