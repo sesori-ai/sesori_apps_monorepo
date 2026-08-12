@@ -302,7 +302,6 @@ void main() {
         "settings": {
           "model": "gpt-5.4",
           "reasoning_effort": "medium",
-          "developer_instructions": null,
         },
       });
     });
@@ -572,8 +571,6 @@ void main() {
         "mode": "default",
         "settings": {
           "model": "gpt-5.4-mini",
-          "reasoning_effort": null,
-          "developer_instructions": null,
         },
       });
     });
@@ -1946,7 +1943,6 @@ void main() {
         "settings": {
           "model": "gpt-5.5",
           "reasoning_effort": "high",
-          "developer_instructions": null,
         },
       });
     });
@@ -2009,7 +2005,6 @@ void main() {
         "settings": {
           "model": "gpt-5.5",
           "reasoning_effort": "low",
-          "developer_instructions": null,
         },
       });
     });

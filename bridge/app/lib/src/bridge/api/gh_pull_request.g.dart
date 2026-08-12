@@ -32,7 +32,7 @@ Map<String, dynamic> _$GhPullRequestToJson(_GhPullRequest instance) =>
       'isCrossRepository': instance.isCrossRepository,
       'mergeable': _$PrMergeableStatusEnumMap[instance.mergeable]!,
       'reviewDecision': _$PrReviewDecisionEnumMap[instance.reviewDecision]!,
-      'statusCheckRollup': _rollupStateToJson(instance.statusCheckRollup),
+      'statusCheckRollup': ?_rollupStateToJson(instance.statusCheckRollup),
     };
 
 const _$PrStateEnumMap = {
