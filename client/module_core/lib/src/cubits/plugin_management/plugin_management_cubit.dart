@@ -25,6 +25,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   late final StreamSubscription<Map<String, PluginInstallProgress>> _installSubscription;
   late final StreamSubscription<PluginAuthenticationTerminalUpdate> _authenticationTerminalSubscription;
   int _actionGeneration = 0;
+  int _authenticationGeneration = 0;
 
   Future<void> refresh() => _service.refresh();
 
@@ -35,6 +36,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
         current.authentication is! PluginAuthenticationPresentationFailed) {
       return;
     }
+    final generation = ++_authenticationGeneration;
     emit(
       current.copyWith(
         authentication: PluginAuthenticationPresentationState.starting(pluginId: pluginId),
@@ -45,7 +47,8 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     final latest = state;
     if (latest is! PluginManagementReady) return;
     final currentAuthentication = latest.authentication;
-    if (currentAuthentication is! PluginAuthenticationPresentationStarting ||
+    if (generation != _authenticationGeneration ||
+        currentAuthentication is! PluginAuthenticationPresentationStarting ||
         currentAuthentication.pluginId != pluginId) {
       return;
     }
@@ -64,8 +67,6 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
             pluginId: pluginId,
             verificationUri: challenge.verificationUri,
             userCode: challenge.userCode,
-            cancelling: false,
-            error: null,
           ),
         );
       case PluginAuthenticationStartNotFound():
@@ -99,21 +100,25 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   Future<void> launchAuthenticationBrowser() async {
     final current = state;
     if (isClosed || current is! PluginManagementReady) return;
-    final authentication = current.authentication;
-    if (authentication is! PluginAuthenticationPresentationChallenge) return;
-    final launched = await _urlLauncher.launch(authentication.verificationUri);
+    final challenge = _authenticationChallengeData(current.authentication);
+    if (challenge == null) return;
+    bool launched;
+    try {
+      launched = await _urlLauncher.launch(challenge.verificationUri);
+    } on Object {
+      launched = false;
+    }
     if (isClosed) return;
     final latest = state;
     if (launched || latest is! PluginManagementReady) return;
-    final latestAuthentication = latest.authentication;
-    if (latestAuthentication is! PluginAuthenticationPresentationChallenge ||
-        latestAuthentication.pluginId != authentication.pluginId) {
-      return;
-    }
+    final latestChallenge = _authenticationChallengeData(latest.authentication);
+    if (latestChallenge?.pluginId != challenge.pluginId) return;
     emit(
       latest.copyWith(
-        authentication: latestAuthentication.copyWith(
-          error: const PluginAuthenticationPresentationError.browserLaunchFailed(),
+        authentication: PluginAuthenticationPresentationState.browserLaunchFailed(
+          pluginId: challenge.pluginId,
+          verificationUri: challenge.verificationUri,
+          userCode: challenge.userCode,
         ),
       ),
     );
@@ -122,32 +127,46 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   Future<void> cancelAuthentication() async {
     final current = state;
     if (isClosed || current is! PluginManagementReady) return;
-    final authentication = current.authentication;
-    if (authentication is! PluginAuthenticationPresentationChallenge || authentication.cancelling) return;
-    emit(current.copyWith(authentication: authentication.copyWith(cancelling: true, error: null)));
-    final result = await _service.cancelAuthentication(pluginId: authentication.pluginId);
+    final challenge = _authenticationChallengeData(current.authentication);
+    if (challenge == null) return;
+    _setAuthentication(
+      PluginAuthenticationPresentationState.cancelling(
+        pluginId: challenge.pluginId,
+        verificationUri: challenge.verificationUri,
+        userCode: challenge.userCode,
+      ),
+    );
+    final result = await _service.cancelAuthentication(pluginId: challenge.pluginId);
     if (isClosed) return;
     switch (result) {
       case PluginAuthenticationCancelSuccess():
         break;
       case PluginAuthenticationCancelNotFound():
         _setAuthenticationFailure(
-          pluginId: authentication.pluginId,
+          pluginId: challenge.pluginId,
           error: const PluginAuthenticationPresentationError.notFound(),
+        );
+      case PluginAuthenticationCancelConflict(:final conflict):
+        _setAuthenticationFailure(
+          pluginId: challenge.pluginId,
+          error: PluginAuthenticationPresentationError.conflict(conflict: conflict),
         );
       case PluginAuthenticationCancelUnsupported():
         _setAuthenticationFailure(
-          pluginId: authentication.pluginId,
+          pluginId: challenge.pluginId,
           error: const PluginAuthenticationPresentationError.unsupported(),
         );
       case PluginAuthenticationCancelUncertain():
-        _setAuthenticationFailure(
-          pluginId: authentication.pluginId,
-          error: const PluginAuthenticationPresentationError.uncertain(),
+        _setAuthentication(
+          PluginAuthenticationPresentationState.cancellingUncertain(
+            pluginId: challenge.pluginId,
+            verificationUri: challenge.verificationUri,
+            userCode: challenge.userCode,
+          ),
         );
       case PluginAuthenticationCancelFailure(:final error):
         _setAuthenticationFailure(
-          pluginId: authentication.pluginId,
+          pluginId: challenge.pluginId,
           error: PluginAuthenticationPresentationError.request(error: error),
         );
     }
@@ -453,10 +472,14 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     final authentication = current.authentication;
     final currentPluginId = switch (authentication) {
       PluginAuthenticationPresentationStarting(:final pluginId) ||
-      PluginAuthenticationPresentationChallenge(:final pluginId) => pluginId,
+      PluginAuthenticationPresentationChallenge(:final pluginId) ||
+      PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId) ||
+      PluginAuthenticationPresentationCancelling(:final pluginId) ||
+      PluginAuthenticationPresentationCancellingUncertain(:final pluginId) => pluginId,
       PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => null,
     };
     if (currentPluginId != update.pluginId) return;
+    _authenticationGeneration++;
     switch (update.progress) {
       case PluginAuthenticationCompletedProgress() || PluginAuthenticationCancelledProgress():
         _setAuthentication(const PluginAuthenticationPresentationState.idle());
@@ -505,3 +528,23 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     return super.close();
   }
 }
+
+({String pluginId, Uri verificationUri, String userCode})? _authenticationChallengeData(
+  PluginAuthenticationPresentationState state,
+) => switch (state) {
+  PluginAuthenticationPresentationChallenge(:final pluginId, :final verificationUri, :final userCode) ||
+  PluginAuthenticationPresentationBrowserLaunchFailedState(
+    :final pluginId,
+    :final verificationUri,
+    :final userCode,
+  ) ||
+  PluginAuthenticationPresentationCancelling(:final pluginId, :final verificationUri, :final userCode) ||
+  PluginAuthenticationPresentationCancellingUncertain(
+    :final pluginId,
+    :final verificationUri,
+    :final userCode,
+  ) => (pluginId: pluginId, verificationUri: verificationUri, userCode: userCode),
+  PluginAuthenticationPresentationIdle() ||
+  PluginAuthenticationPresentationStarting() ||
+  PluginAuthenticationPresentationFailed() => null,
+};

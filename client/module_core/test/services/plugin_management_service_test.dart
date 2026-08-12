@@ -144,6 +144,69 @@ void main() {
       expect(terminals.single.progress, const PluginAuthenticationProgress.cancelled());
       expect(service.authenticationChallenges.value, isEmpty);
     });
+
+    test("fast terminal settles an uncertain start response", () async {
+      final start = Completer<PluginAuthenticationStartResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(start.future)
+        ..queueLoad(_supported(_response(token: "terminal")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+      final result = service.startAuthentication(pluginId: "codex");
+      connection.emitAuthenticationProgress(
+        pluginId: "codex",
+        progress: const PluginAuthenticationProgress.completed(),
+      );
+      start.complete(const PluginAuthenticationStartResult.uncertain());
+
+      expect(await result, isA<PluginAuthenticationStartUncertain>());
+      expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
+    });
+
+    test("fast terminal settles before the cancellation response returns", () async {
+      final cancel = Completer<PluginAuthenticationCancelResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(
+          const PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationChallengeResponse.deviceCode(
+              verificationUrl: "https://auth.example/device",
+              userCode: "ABCD-EFGH",
+            ),
+          ),
+        )
+        ..queueAuthenticationCancel(cancel.future)
+        ..queueLoad(_supported(_response(token: "terminal")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      await service.startAuthentication(pluginId: "codex");
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+      final result = service.cancelAuthentication(pluginId: "codex");
+      connection.emitAuthenticationProgress(
+        pluginId: "codex",
+        progress: const PluginAuthenticationProgress.cancelled(),
+      );
+      cancel.complete(const PluginAuthenticationCancelResult.success());
+
+      expect(await result, isA<PluginAuthenticationCancelSuccess>());
+      expect(terminals.single.progress, const PluginAuthenticationProgress.cancelled());
+    });
   });
 
   group("refresh synchronization", () {

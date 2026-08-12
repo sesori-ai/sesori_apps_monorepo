@@ -215,6 +215,8 @@ class PluginManagementService with Disposable {
         if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
         return result;
       case PluginAuthenticationStartUncertain():
+        final pending = _pendingAuthenticationOutcomes.remove(pluginId);
+        if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
         return result;
       case PluginAuthenticationStartNotFound() ||
           PluginAuthenticationStartConflict() ||
@@ -229,10 +231,14 @@ class PluginManagementService with Disposable {
     if (_disposed || !_connected || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
       return PluginAuthenticationCancelResult.failure(error: ApiError.generic());
     }
+    _authenticationRequestsInFlight.add(pluginId);
     final result = await _pluginRepository.cancelAuthentication(pluginId: pluginId);
+    _authenticationRequestsInFlight.remove(pluginId);
     if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
       return const PluginAuthenticationCancelResult.uncertain();
     }
+    final pending = _pendingAuthenticationOutcomes.remove(pluginId);
+    if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
     return result;
   }
 

@@ -89,9 +89,22 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
     required String pluginId,
     required Uri verificationUri,
     required String userCode,
-    required bool cancelling,
-    required PluginAuthenticationPresentationError? error,
   }) = PluginAuthenticationPresentationChallenge;
+  const factory PluginAuthenticationPresentationState.browserLaunchFailed({
+    required String pluginId,
+    required Uri verificationUri,
+    required String userCode,
+  }) = PluginAuthenticationPresentationBrowserLaunchFailedState;
+  const factory PluginAuthenticationPresentationState.cancelling({
+    required String pluginId,
+    required Uri verificationUri,
+    required String userCode,
+  }) = PluginAuthenticationPresentationCancelling;
+  const factory PluginAuthenticationPresentationState.cancellingUncertain({
+    required String pluginId,
+    required Uri verificationUri,
+    required String userCode,
+  }) = PluginAuthenticationPresentationCancellingUncertain;
   const factory PluginAuthenticationPresentationState.failed({
     required String? pluginId,
     required PluginAuthenticationPresentationError error,

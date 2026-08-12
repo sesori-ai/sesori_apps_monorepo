@@ -396,6 +396,35 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.error(ApiError.emptyResponse()));
       expect(await repository.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelUncertain>());
     });
+
+    test("maps typed cancellation conflicts and malformed conflict bodies", () async {
+      const conflict = PluginAuthenticationConflict(
+        pluginId: "codex",
+        reasons: [PluginAuthenticationConflictReason.inFlight],
+        current: _managementPlugin,
+      );
+      when(
+        () => api.cancelAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 409, rawErrorString: jsonEncode(conflict.toJson())),
+        ),
+      );
+      expect(
+        await repository.cancelAuthentication(pluginId: "codex"),
+        isA<PluginAuthenticationCancelConflict>().having((result) => result.conflict, "conflict", conflict),
+      );
+
+      when(
+        () => api.startAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 409, rawErrorString: "not-json")),
+      );
+      expect(
+        await repository.startAuthentication(pluginId: "codex"),
+        isA<PluginAuthenticationStartFailure>().having((result) => result.error, "error", isA<JsonParsingError>()),
+      );
+    });
   });
 }
 

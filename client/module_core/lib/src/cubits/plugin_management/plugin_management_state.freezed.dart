@@ -1400,14 +1400,12 @@ as String,
 
 
 class PluginAuthenticationPresentationChallenge implements PluginAuthenticationPresentationState {
-  const PluginAuthenticationPresentationChallenge({required this.pluginId, required this.verificationUri, required this.userCode, required this.cancelling, required this.error});
+  const PluginAuthenticationPresentationChallenge({required this.pluginId, required this.verificationUri, required this.userCode});
   
 
  final  String pluginId;
  final  Uri verificationUri;
  final  String userCode;
- final  bool cancelling;
- final  PluginAuthenticationPresentationError? error;
 
 /// Create a copy of PluginAuthenticationPresentationState
 /// with the given fields replaced by the non-null parameter values.
@@ -1419,16 +1417,16 @@ $PluginAuthenticationPresentationChallengeCopyWith<PluginAuthenticationPresentat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationChallenge&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.verificationUri, verificationUri) || other.verificationUri == verificationUri)&&(identical(other.userCode, userCode) || other.userCode == userCode)&&(identical(other.cancelling, cancelling) || other.cancelling == cancelling)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationChallenge&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.verificationUri, verificationUri) || other.verificationUri == verificationUri)&&(identical(other.userCode, userCode) || other.userCode == userCode));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,verificationUri,userCode,cancelling,error);
+int get hashCode => Object.hash(runtimeType,pluginId,verificationUri,userCode);
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.challenge(pluginId: $pluginId, verificationUri: $verificationUri, userCode: $userCode, cancelling: $cancelling, error: $error)';
+  return 'PluginAuthenticationPresentationState.challenge(pluginId: $pluginId, verificationUri: $verificationUri, userCode: $userCode)';
 }
 
 
@@ -1439,11 +1437,11 @@ abstract mixin class $PluginAuthenticationPresentationChallengeCopyWith<$Res> im
   factory $PluginAuthenticationPresentationChallengeCopyWith(PluginAuthenticationPresentationChallenge value, $Res Function(PluginAuthenticationPresentationChallenge) _then) = _$PluginAuthenticationPresentationChallengeCopyWithImpl;
 @useResult
 $Res call({
- String pluginId, Uri verificationUri, String userCode, bool cancelling, PluginAuthenticationPresentationError? error
+ String pluginId, Uri verificationUri, String userCode
 });
 
 
-$PluginAuthenticationPresentationErrorCopyWith<$Res>? get error;
+
 
 }
 /// @nodoc
@@ -1456,30 +1454,226 @@ class _$PluginAuthenticationPresentationChallengeCopyWithImpl<$Res>
 
 /// Create a copy of PluginAuthenticationPresentationState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? verificationUri = null,Object? userCode = null,Object? cancelling = null,Object? error = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? verificationUri = null,Object? userCode = null,}) {
   return _then(PluginAuthenticationPresentationChallenge(
 pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,verificationUri: null == verificationUri ? _self.verificationUri : verificationUri // ignore: cast_nullable_to_non_nullable
 as Uri,userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
-as String,cancelling: null == cancelling ? _self.cancelling : cancelling // ignore: cast_nullable_to_non_nullable
-as bool,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as PluginAuthenticationPresentationError?,
+as String,
   ));
 }
 
+
+}
+
+/// @nodoc
+
+
+class PluginAuthenticationPresentationBrowserLaunchFailedState implements PluginAuthenticationPresentationState {
+  const PluginAuthenticationPresentationBrowserLaunchFailedState({required this.pluginId, required this.verificationUri, required this.userCode});
+  
+
+ final  String pluginId;
+ final  Uri verificationUri;
+ final  String userCode;
+
 /// Create a copy of PluginAuthenticationPresentationState
 /// with the given fields replaced by the non-null parameter values.
-@override
+@JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$PluginAuthenticationPresentationErrorCopyWith<$Res>? get error {
-    if (_self.error == null) {
-    return null;
-  }
+$PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWith<PluginAuthenticationPresentationBrowserLaunchFailedState> get copyWith => _$PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWithImpl<PluginAuthenticationPresentationBrowserLaunchFailedState>(this, _$identity);
 
-  return $PluginAuthenticationPresentationErrorCopyWith<$Res>(_self.error!, (value) {
-    return _then(_self.copyWith(error: value));
-  });
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserLaunchFailedState&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.verificationUri, verificationUri) || other.verificationUri == verificationUri)&&(identical(other.userCode, userCode) || other.userCode == userCode));
 }
+
+
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,verificationUri,userCode);
+
+@override
+String toString() {
+  return 'PluginAuthenticationPresentationState.browserLaunchFailed(pluginId: $pluginId, verificationUri: $verificationUri, userCode: $userCode)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWith<$Res> implements $PluginAuthenticationPresentationStateCopyWith<$Res> {
+  factory $PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWith(PluginAuthenticationPresentationBrowserLaunchFailedState value, $Res Function(PluginAuthenticationPresentationBrowserLaunchFailedState) _then) = _$PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, Uri verificationUri, String userCode
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWithImpl<$Res>
+    implements $PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWith<$Res> {
+  _$PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWithImpl(this._self, this._then);
+
+  final PluginAuthenticationPresentationBrowserLaunchFailedState _self;
+  final $Res Function(PluginAuthenticationPresentationBrowserLaunchFailedState) _then;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? verificationUri = null,Object? userCode = null,}) {
+  return _then(PluginAuthenticationPresentationBrowserLaunchFailedState(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,verificationUri: null == verificationUri ? _self.verificationUri : verificationUri // ignore: cast_nullable_to_non_nullable
+as Uri,userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class PluginAuthenticationPresentationCancelling implements PluginAuthenticationPresentationState {
+  const PluginAuthenticationPresentationCancelling({required this.pluginId, required this.verificationUri, required this.userCode});
+  
+
+ final  String pluginId;
+ final  Uri verificationUri;
+ final  String userCode;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginAuthenticationPresentationCancellingCopyWith<PluginAuthenticationPresentationCancelling> get copyWith => _$PluginAuthenticationPresentationCancellingCopyWithImpl<PluginAuthenticationPresentationCancelling>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancelling&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.verificationUri, verificationUri) || other.verificationUri == verificationUri)&&(identical(other.userCode, userCode) || other.userCode == userCode));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,verificationUri,userCode);
+
+@override
+String toString() {
+  return 'PluginAuthenticationPresentationState.cancelling(pluginId: $pluginId, verificationUri: $verificationUri, userCode: $userCode)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginAuthenticationPresentationCancellingCopyWith<$Res> implements $PluginAuthenticationPresentationStateCopyWith<$Res> {
+  factory $PluginAuthenticationPresentationCancellingCopyWith(PluginAuthenticationPresentationCancelling value, $Res Function(PluginAuthenticationPresentationCancelling) _then) = _$PluginAuthenticationPresentationCancellingCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, Uri verificationUri, String userCode
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginAuthenticationPresentationCancellingCopyWithImpl<$Res>
+    implements $PluginAuthenticationPresentationCancellingCopyWith<$Res> {
+  _$PluginAuthenticationPresentationCancellingCopyWithImpl(this._self, this._then);
+
+  final PluginAuthenticationPresentationCancelling _self;
+  final $Res Function(PluginAuthenticationPresentationCancelling) _then;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? verificationUri = null,Object? userCode = null,}) {
+  return _then(PluginAuthenticationPresentationCancelling(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,verificationUri: null == verificationUri ? _self.verificationUri : verificationUri // ignore: cast_nullable_to_non_nullable
+as Uri,userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class PluginAuthenticationPresentationCancellingUncertain implements PluginAuthenticationPresentationState {
+  const PluginAuthenticationPresentationCancellingUncertain({required this.pluginId, required this.verificationUri, required this.userCode});
+  
+
+ final  String pluginId;
+ final  Uri verificationUri;
+ final  String userCode;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginAuthenticationPresentationCancellingUncertainCopyWith<PluginAuthenticationPresentationCancellingUncertain> get copyWith => _$PluginAuthenticationPresentationCancellingUncertainCopyWithImpl<PluginAuthenticationPresentationCancellingUncertain>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancellingUncertain&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.verificationUri, verificationUri) || other.verificationUri == verificationUri)&&(identical(other.userCode, userCode) || other.userCode == userCode));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,verificationUri,userCode);
+
+@override
+String toString() {
+  return 'PluginAuthenticationPresentationState.cancellingUncertain(pluginId: $pluginId, verificationUri: $verificationUri, userCode: $userCode)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginAuthenticationPresentationCancellingUncertainCopyWith<$Res> implements $PluginAuthenticationPresentationStateCopyWith<$Res> {
+  factory $PluginAuthenticationPresentationCancellingUncertainCopyWith(PluginAuthenticationPresentationCancellingUncertain value, $Res Function(PluginAuthenticationPresentationCancellingUncertain) _then) = _$PluginAuthenticationPresentationCancellingUncertainCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, Uri verificationUri, String userCode
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginAuthenticationPresentationCancellingUncertainCopyWithImpl<$Res>
+    implements $PluginAuthenticationPresentationCancellingUncertainCopyWith<$Res> {
+  _$PluginAuthenticationPresentationCancellingUncertainCopyWithImpl(this._self, this._then);
+
+  final PluginAuthenticationPresentationCancellingUncertain _self;
+  final $Res Function(PluginAuthenticationPresentationCancellingUncertain) _then;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? verificationUri = null,Object? userCode = null,}) {
+  return _then(PluginAuthenticationPresentationCancellingUncertain(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,verificationUri: null == verificationUri ? _self.verificationUri : verificationUri // ignore: cast_nullable_to_non_nullable
+as Uri,userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 /// @nodoc

@@ -56,7 +56,8 @@ class PluginRepository {
     return switch (await _api.cancelAuthentication(pluginId: pluginId)) {
       SuccessResponse() => const PluginAuthenticationCancelResult.success(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginAuthenticationCancelResult.notFound(),
-      ErrorResponse(error: NonSuccessCodeError(errorCode: 409)) => const PluginAuthenticationCancelResult.unsupported(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
+        _mapAuthenticationCancelConflict(body: body),
       ErrorResponse(
         error: JsonParsingError() ||
             EmptyResponseError() ||
@@ -75,10 +76,26 @@ class PluginRepository {
             ? const PluginAuthenticationStartResult.unsupported()
             : PluginAuthenticationStartResult.conflict(conflict: conflict);
       } on Object {
-        // The typed failure below is the single observable outcome.
+        return PluginAuthenticationStartResult.failure(error: ApiError.jsonParsing(body));
       }
     }
     return PluginAuthenticationStartResult.failure(
+      error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body),
+    );
+  }
+
+  PluginAuthenticationCancelResult _mapAuthenticationCancelConflict({required String? body}) {
+    if (body != null) {
+      try {
+        final conflict = PluginAuthenticationConflict.fromJson(jsonDecodeMap(body));
+        return conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
+            ? const PluginAuthenticationCancelResult.unsupported()
+            : PluginAuthenticationCancelResult.conflict(conflict: conflict);
+      } on Object {
+        return PluginAuthenticationCancelResult.failure(error: ApiError.jsonParsing(body));
+      }
+    }
+    return PluginAuthenticationCancelResult.failure(
       error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body),
     );
   }

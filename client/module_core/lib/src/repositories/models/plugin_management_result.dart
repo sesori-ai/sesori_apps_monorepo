@@ -141,6 +141,9 @@ sealed class PluginAuthenticationCancelResult {
 
   const factory PluginAuthenticationCancelResult.success() = PluginAuthenticationCancelSuccess;
   const factory PluginAuthenticationCancelResult.notFound() = PluginAuthenticationCancelNotFound;
+  const factory PluginAuthenticationCancelResult.conflict({
+    required PluginAuthenticationConflict conflict,
+  }) = PluginAuthenticationCancelConflict;
   const factory PluginAuthenticationCancelResult.unsupported() = PluginAuthenticationCancelUnsupported;
   const factory PluginAuthenticationCancelResult.uncertain() = PluginAuthenticationCancelUncertain;
   const factory PluginAuthenticationCancelResult.failure({required ApiError error}) = PluginAuthenticationCancelFailure;
@@ -152,6 +155,11 @@ final class PluginAuthenticationCancelSuccess extends PluginAuthenticationCancel
 
 final class PluginAuthenticationCancelNotFound extends PluginAuthenticationCancelResult {
   const PluginAuthenticationCancelNotFound();
+}
+
+final class PluginAuthenticationCancelConflict extends PluginAuthenticationCancelResult {
+  const PluginAuthenticationCancelConflict({required this.conflict});
+  final PluginAuthenticationConflict conflict;
 }
 
 final class PluginAuthenticationCancelUnsupported extends PluginAuthenticationCancelResult {

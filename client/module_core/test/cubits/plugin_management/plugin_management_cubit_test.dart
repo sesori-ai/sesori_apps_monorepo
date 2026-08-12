@@ -156,6 +156,66 @@ void main() {
     );
   });
 
+  test("authentication maps a thrown browser launch and allows retry", () async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    when(
+      () => urlLauncher.launch(any(), mode: any(named: "mode")),
+    ).thenThrow(StateError("launcher unavailable"));
+    await _settle();
+    await cubit.startAuthentication(pluginId: "codex");
+
+    await cubit.launchAuthenticationBrowser();
+
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      isA<PluginAuthenticationPresentationBrowserLaunchFailedState>(),
+    );
+  });
+
+  test("a stale same-plugin start response cannot overwrite a newer attempt", () async {
+    final first = Completer<PluginAuthenticationStartResult>();
+    var call = 0;
+    when(
+      () => service.startAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) {
+      call++;
+      return call == 1
+          ? first.future
+          : Future.value(
+              PluginAuthenticationStartResult.failure(error: ApiError.generic()),
+            );
+    });
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await _settle();
+    final firstStart = cubit.startAuthentication(pluginId: "codex");
+    authenticationTerminal.add((
+      pluginId: "codex",
+      progress: const PluginAuthenticationProgress.failed(message: "First attempt failed."),
+    ));
+    await _settle();
+    await cubit.startAuthentication(pluginId: "codex");
+    first.complete(
+      const PluginAuthenticationStartResult.challenge(
+        challenge: PluginAuthenticationChallengeResponse.deviceCode(
+          verificationUrl: "https://stale.example/device",
+          userCode: "STALE-CODE",
+        ),
+      ),
+    );
+    await firstStart;
+
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      isA<PluginAuthenticationPresentationFailed>(),
+    );
+  });
+
   test("authentication cancellation waits for terminal progress", () async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({
@@ -171,7 +231,7 @@ void main() {
     final cancelling = (cubit.state as PluginManagementReady).authentication;
     expect(
       cancelling,
-      isA<PluginAuthenticationPresentationChallenge>().having((state) => state.cancelling, "cancelling", true),
+      isA<PluginAuthenticationPresentationCancelling>(),
     );
     authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.cancelled()));
     await _settle();
