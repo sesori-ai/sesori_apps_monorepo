@@ -24,9 +24,9 @@ import "repositories/mappers/acp_content_mapper.dart";
 /// so the bridge derives the project list from [listAllSessions] and owns all
 /// project/session persistence itself; the plugin stores nothing on disk.
 ///
-/// Concrete so a vanilla ACP harness needs only an [id] + [agentDisplayName]
-/// (the "config row" case). Harnesses with quirks (e.g. Cursor's model
-/// selection and `cursor/*` extensions) subclass and override the hooks:
+/// Backend adapters subclass this and must declare their protocol policies.
+/// Harnesses with quirks (e.g. Cursor's model selection and `cursor/*`
+/// extensions) also override the relevant behavior hooks:
 /// [buildApprovalRegistry], [applyTurnSelection], [authMethodId],
 /// [initializeCapabilityMeta], [commandForDispatch], [getAgents],
 /// [getProviders].
@@ -34,7 +34,7 @@ import "repositories/mappers/acp_content_mapper.dart";
 /// Unlike the codex plugin (which connects to a process listening on a ws
 /// port), this owns the agent subprocess: it spawns lazily on first use and
 /// reaps it on [dispose].
-class AcpPlugin extends BridgeDerivedProjectsPluginApi {
+abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpPlugin({
     required this.id,
     required this.agentDisplayName,
@@ -183,30 +183,30 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// enumeration; reset on respawn since a replacement process may comply.
   bool _bareSessionListUnsupported = false;
 
-  // --- Overridable hooks ---
+  // --- Required backend policies and overridable hooks ---
 
-  String get clientName => "sesori-bridge";
-  String get clientVersion => "0.0.0";
+  String get clientName;
+  String get clientVersion;
 
   /// Auth method id to call if the agent reports it requires auth. `null`
   /// uses the first advertised method.
-  String? get authMethodId => null;
+  String? get authMethodId;
 
   /// Non-standard capability hints sent under `clientCapabilities._meta`
   /// (e.g. Cursor's `parameterizedModelPicker`).
-  Map<String, dynamic>? get initializeCapabilityMeta => null;
+  Map<String, dynamic>? get initializeCapabilityMeta;
 
   /// Whether this agent should be told the client supports standard ACP forms.
-  bool get supportsFormElicitation => false;
+  bool get supportsFormElicitation;
 
   /// Whether prompts across all sessions share one dispatch lane.
-  bool get serializesPromptsProcessWide => false;
+  bool get serializesPromptsProcessWide;
 
   /// Whether a turn must stop when its requested selection cannot be applied.
-  bool get failsTurnOnSelectionError => false;
+  bool get failsTurnOnSelectionError;
 
   /// Maximum time deletion waits for a cancelled target turn before close.
-  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
+  Duration get sessionCloseSettlementTimeout;
 
   /// Maps the user-selected slash command to the command name sent to the ACP
   /// agent. The original name remains authoritative for client-facing events.

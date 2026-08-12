@@ -5,7 +5,7 @@ import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-class _PolicyPlugin extends AcpPlugin {
+class _PolicyPlugin extends TestAcpPlugin {
   _PolicyPlugin({
     required this.processWide,
     required this.failClosed,
