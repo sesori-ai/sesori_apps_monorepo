@@ -7,12 +7,11 @@
 - **App:** installed Sesori app (`com.sesori.app`) on iPhone 17 Pro Max simulator,
   iOS 26.5
 - **Bridge:** source-run from merged `main` at `2bc60ae3`, using
-  `$HOME/.local/share/sesori-dev`
+  `<SESORI_DEV_DIR>`
 - **Claude Code:** authenticated CLI 2.1.227
-- **Project:** `$HOME/Developer/sesori-claude-e2e`
+- **Project:** `<CLAUDE_E2E_PROJECT>`
 - **Permissions:** YOLO mode off
-- **Bridge log:**
-  `/var/folders/g6/p0sj7nz10dxg2ffb8k8ctd_h0000gn/T/opencode/claude-full-e2e-2026-08-12.log`
+- **Bridge log:** retained locally outside the repository
 
 Testing used the real mobile client, relay, source bridge, Claude plugin, and
 authenticated Claude CLI. This report records observed product behavior only.
@@ -240,8 +239,8 @@ The following user-facing Claude Code scenarios passed in this run:
 - Claude Code is enabled, setup-ready, Active, and idle.
 - YOLO mode remains off.
 - The normal `claude` binary configuration is restored.
-- The source bridge remains running against `$HOME/.local/share/sesori-dev` so
+- The source bridge remains running against `<SESORI_DEV_DIR>` so
   the findings can be reviewed in the simulator.
 - No Claude `stream-json` process remains while the restored harness is idle.
-- Test files and transcripts remain in `$HOME/Developer/sesori-claude-e2e` for
+- Test files and transcripts remain in `<CLAUDE_E2E_PROJECT>` for
   reproduction.
