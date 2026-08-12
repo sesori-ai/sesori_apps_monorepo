@@ -131,8 +131,8 @@ class _ComposerPreview extends StatelessWidget {
     return Stack(
       children: [
         Positioned(
-          left: _composerInset - (isSelected ? _selectionRingWidth : 0),
-          top: (_previewHeight - _composerHeight) / 2 - (isSelected ? _selectionRingWidth : 0),
+          left: _composerInset,
+          top: (_previewHeight - _composerHeight) / 2,
           width: _composerWidth,
           height: _composerHeight,
           child: _ComposerPill(mode: mode, isSelected: isSelected),
