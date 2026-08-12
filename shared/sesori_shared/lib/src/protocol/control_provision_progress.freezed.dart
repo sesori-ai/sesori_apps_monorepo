@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'control_provision_progress.dart';
@@ -9,6 +9,7 @@ part of 'control_provision_progress.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 ControlProvisionProgress _$ControlProvisionProgressFromJson(
@@ -92,7 +93,7 @@ $ControlProvisionProgressCopyWith(ControlProvisionProgress _, $Res Function(Cont
 @JsonSerializable()
 
 class ControlProvisionResolving implements ControlProvisionProgress {
-  const ControlProvisionResolving({final  String? $type}): $type = $type ?? 'resolving';
+  const ControlProvisionResolving({ String? $type}): $type = $type ?? 'resolving';
   factory ControlProvisionResolving.fromJson(Map<String, dynamic> json) => _$ControlProvisionResolvingFromJson(json);
 
 
@@ -131,7 +132,7 @@ String toString() {
 @JsonSerializable()
 
 class ControlProvisionDownloading implements ControlProvisionProgress {
-  const ControlProvisionDownloading({required this.receivedBytes, required this.totalBytes, final  String? $type}): $type = $type ?? 'downloading';
+  const ControlProvisionDownloading({required this.receivedBytes, required this.totalBytes,  String? $type}): $type = $type ?? 'downloading';
   factory ControlProvisionDownloading.fromJson(Map<String, dynamic> json) => _$ControlProvisionDownloadingFromJson(json);
 
  final  int receivedBytes;
@@ -206,7 +207,7 @@ as int?,
 @JsonSerializable()
 
 class ControlProvisionExtracting implements ControlProvisionProgress {
-  const ControlProvisionExtracting({final  String? $type}): $type = $type ?? 'extracting';
+  const ControlProvisionExtracting({ String? $type}): $type = $type ?? 'extracting';
   factory ControlProvisionExtracting.fromJson(Map<String, dynamic> json) => _$ControlProvisionExtractingFromJson(json);
 
 
@@ -245,7 +246,7 @@ String toString() {
 @JsonSerializable()
 
 class ControlProvisionVerifying implements ControlProvisionProgress {
-  const ControlProvisionVerifying({final  String? $type}): $type = $type ?? 'verifying';
+  const ControlProvisionVerifying({ String? $type}): $type = $type ?? 'verifying';
   factory ControlProvisionVerifying.fromJson(Map<String, dynamic> json) => _$ControlProvisionVerifyingFromJson(json);
 
 
@@ -284,7 +285,7 @@ String toString() {
 @JsonSerializable()
 
 class ControlProvisionNotice implements ControlProvisionProgress {
-  const ControlProvisionNotice({required this.message, final  String? $type}): $type = $type ?? 'notice';
+  const ControlProvisionNotice({required this.message,  String? $type}): $type = $type ?? 'notice';
   factory ControlProvisionNotice.fromJson(Map<String, dynamic> json) => _$ControlProvisionNoticeFromJson(json);
 
  final  String message;
@@ -357,7 +358,7 @@ as String,
 @JsonSerializable()
 
 class ControlProvisionReady implements ControlProvisionProgress {
-  const ControlProvisionReady({required this.binaryPath, final  String? $type}): $type = $type ?? 'ready';
+  const ControlProvisionReady({required this.binaryPath,  String? $type}): $type = $type ?? 'ready';
   factory ControlProvisionReady.fromJson(Map<String, dynamic> json) => _$ControlProvisionReadyFromJson(json);
 
  final  String binaryPath;
@@ -430,7 +431,7 @@ as String,
 @JsonSerializable()
 
 class ControlProvisionFailed implements ControlProvisionProgress {
-  const ControlProvisionFailed({required this.message, final  String? $type}): $type = $type ?? 'failed';
+  const ControlProvisionFailed({required this.message,  String? $type}): $type = $type ?? 'failed';
   factory ControlProvisionFailed.fromJson(Map<String, dynamic> json) => _$ControlProvisionFailedFromJson(json);
 
  final  String message;

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'bridge_setting_update.dart';
@@ -9,6 +9,7 @@ part of 'bridge_setting_update.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 BridgeSettingUpdate _$BridgeSettingUpdateFromJson(
@@ -66,7 +67,7 @@ String toString() {
 @JsonSerializable()
 
 class PullRequestRefreshIntervalSettingUpdate implements BridgeSettingUpdate {
-  const PullRequestRefreshIntervalSettingUpdate({@strictIntJsonConverter required this.intervalSeconds, final  String? $type}): $type = $type ?? 'pullRequestRefreshInterval';
+  const PullRequestRefreshIntervalSettingUpdate({@strictIntJsonConverter required this.intervalSeconds,  String? $type}): $type = $type ?? 'pullRequestRefreshInterval';
   factory PullRequestRefreshIntervalSettingUpdate.fromJson(Map<String, dynamic> json) => _$PullRequestRefreshIntervalSettingUpdateFromJson(json);
 
 @strictIntJsonConverter final  int intervalSeconds;
@@ -105,7 +106,7 @@ String toString() {
 @JsonSerializable()
 
 class YoloSettingUpdate implements BridgeSettingUpdate {
-  const YoloSettingUpdate({required this.enabled, final  String? $type}): $type = $type ?? 'yolo';
+  const YoloSettingUpdate({required this.enabled,  String? $type}): $type = $type ?? 'yolo';
   factory YoloSettingUpdate.fromJson(Map<String, dynamic> json) => _$YoloSettingUpdateFromJson(json);
 
  final  bool enabled;
@@ -144,7 +145,7 @@ String toString() {
 @JsonSerializable()
 
 class UnknownBridgeSettingUpdate implements BridgeSettingUpdate {
-  const UnknownBridgeSettingUpdate({final  String? $type}): $type = $type ?? 'unknown';
+  const UnknownBridgeSettingUpdate({ String? $type}): $type = $type ?? 'unknown';
   factory UnknownBridgeSettingUpdate.fromJson(Map<String, dynamic> json) => _$UnknownBridgeSettingUpdateFromJson(json);
 
 
@@ -230,7 +231,7 @@ String toString() {
 @JsonSerializable()
 
 class PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection implements BridgeSettingUpdateRejection {
-  const PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection({@strictIntJsonConverter required this.minimumIntervalSeconds, @strictIntJsonConverter required this.maximumIntervalSeconds, final  String? $type}): $type = $type ?? 'pullRequestRefreshIntervalOutOfRange';
+  const PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection({@strictIntJsonConverter required this.minimumIntervalSeconds, @strictIntJsonConverter required this.maximumIntervalSeconds,  String? $type}): $type = $type ?? 'pullRequestRefreshIntervalOutOfRange';
   factory PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection.fromJson(Map<String, dynamic> json) => _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionFromJson(json);
 
 @strictIntJsonConverter final  int minimumIntervalSeconds;
@@ -270,7 +271,7 @@ String toString() {
 @JsonSerializable()
 
 class UnknownBridgeSettingUpdateRejection implements BridgeSettingUpdateRejection {
-  const UnknownBridgeSettingUpdateRejection({final  String? $type}): $type = $type ?? 'unknown';
+  const UnknownBridgeSettingUpdateRejection({ String? $type}): $type = $type ?? 'unknown';
   factory UnknownBridgeSettingUpdateRejection.fromJson(Map<String, dynamic> json) => _$UnknownBridgeSettingUpdateRejectionFromJson(json);
 
 

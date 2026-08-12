@@ -83,5 +83,5 @@ Map<String, dynamic> _$GhPullRequestPageInfoToJson(
   _GhPullRequestPageInfo instance,
 ) => <String, dynamic>{
   'hasNextPage': instance.hasNextPage,
-  'endCursor': instance.endCursor,
+  'endCursor': ?instance.endCursor,
 };

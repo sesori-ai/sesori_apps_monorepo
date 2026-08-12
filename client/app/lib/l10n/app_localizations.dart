@@ -811,6 +811,144 @@ abstract class AppLocalizations {
   /// **'Check your connection and try again.'**
   String get harnessManagementRequestFailed;
 
+  /// No description provided for @harnessAuthenticationLogIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get harnessAuthenticationLogIn;
+
+  /// No description provided for @harnessAuthenticationContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue login'**
+  String get harnessAuthenticationContinue;
+
+  /// No description provided for @harnessAuthenticationDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorize this harness from your phone.'**
+  String get harnessAuthenticationDescription;
+
+  /// No description provided for @harnessAuthenticationSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to harness'**
+  String get harnessAuthenticationSheetTitle;
+
+  /// No description provided for @harnessAuthenticationSecurityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you started this login. Sesori will open the harness provider\'s secure website; verify the address before entering the code.'**
+  String get harnessAuthenticationSecurityDescription;
+
+  /// No description provided for @harnessAuthenticationSecuritySemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Security notice. Only continue if you started this login. Verify the website address before entering the code.'**
+  String get harnessAuthenticationSecuritySemantics;
+
+  /// No description provided for @harnessAuthenticationCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time code'**
+  String get harnessAuthenticationCodeLabel;
+
+  /// No description provided for @harnessAuthenticationCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy one-time code'**
+  String get harnessAuthenticationCopyCode;
+
+  /// No description provided for @harnessAuthenticationCodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied'**
+  String get harnessAuthenticationCodeCopied;
+
+  /// No description provided for @harnessAuthenticationWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for authorization on the bridge…'**
+  String get harnessAuthenticationWaiting;
+
+  /// No description provided for @harnessAuthenticationOpenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open secure website'**
+  String get harnessAuthenticationOpenBrowser;
+
+  /// No description provided for @harnessAuthenticationCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel login'**
+  String get harnessAuthenticationCancel;
+
+  /// No description provided for @harnessAuthenticationCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling…'**
+  String get harnessAuthenticationCancelling;
+
+  /// No description provided for @harnessAuthenticationCancellingUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation was sent, but the response was lost. Waiting for the bridge to confirm…'**
+  String get harnessAuthenticationCancellingUncertain;
+
+  /// No description provided for @harnessAuthenticationFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness login failed'**
+  String get harnessAuthenticationFailedTitle;
+
+  /// No description provided for @harnessAuthenticationDismissError.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss login error'**
+  String get harnessAuthenticationDismissError;
+
+  /// No description provided for @harnessAuthenticationNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is no longer registered on this bridge.'**
+  String get harnessAuthenticationNotFound;
+
+  /// No description provided for @harnessAuthenticationUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to log in from this device.'**
+  String get harnessAuthenticationUnsupported;
+
+  /// No description provided for @harnessAuthenticationConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is busy with another management action. Refresh before trying again.'**
+  String get harnessAuthenticationConflict;
+
+  /// No description provided for @harnessAuthenticationUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection changed before the result could be confirmed. Refresh before trying again.'**
+  String get harnessAuthenticationUncertain;
+
+  /// No description provided for @harnessAuthenticationInvalidChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
+  String get harnessAuthenticationInvalidChallenge;
+
+  /// No description provided for @harnessAuthenticationBrowserFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The secure website could not be opened. Copy the code and try again.'**
+  String get harnessAuthenticationBrowserFailed;
+
+  /// No description provided for @harnessAuthenticationRequestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get harnessAuthenticationRequestFailed;
+
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:

@@ -1,3 +1,4 @@
+import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 
@@ -65,6 +66,19 @@ class BridgeSseSessionsUpdated extends BridgeSseEvent {
 class BridgeSseSessionOptionsChanged extends BridgeSseEvent {
   final String sessionID;
   const BridgeSseSessionOptionsChanged({required this.sessionID});
+}
+
+/// Signals that a backend changed the effective defaults for future turns.
+class BridgeSseSessionPromptDefaultsChanged extends BridgeSseEvent {
+  final String sessionID;
+  final String? agent;
+  final PluginAgentModel? model;
+
+  const BridgeSseSessionPromptDefaultsChanged({
+    required this.sessionID,
+    required this.agent,
+    required this.model,
+  });
 }
 
 class BridgeSseSessionDeleted extends BridgeSseEvent {

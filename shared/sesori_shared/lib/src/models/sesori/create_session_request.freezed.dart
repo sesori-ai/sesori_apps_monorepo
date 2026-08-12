@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'create_session_request.dart';
@@ -9,14 +9,14 @@ part of 'create_session_request.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$CreateSessionRequest {
 
- String get projectId;// COMPATIBILITY 2026-07-13 (v1.5.0): Old create requests omit pluginId and mean OpenCode. Remove default; require it.
- String get pluginId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant; bool get dedicatedWorktree;
+ String get projectId; String get pluginId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant; bool get dedicatedWorktree;
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -67,7 +67,7 @@ class _$CreateSessionRequestCopyWithImpl<$Res>
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? pluginId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,Object? dedicatedWorktree = null,}) {
-  return _then(_self.copyWith(
+  return _then(CreateSessionRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
@@ -112,11 +112,10 @@ $SessionVariantCopyWith<$Res>? get variant {
 @JsonSerializable()
 
 class _CreateSessionRequest implements CreateSessionRequest {
-  const _CreateSessionRequest({required this.projectId, this.pluginId = legacyMissingPluginId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.variant, required this.dedicatedWorktree}): _parts = parts;
+  const _CreateSessionRequest({required this.projectId, this.pluginId = legacyMissingPluginId, required  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.variant, required this.dedicatedWorktree}): _parts = parts;
   factory _CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 
 @override final  String projectId;
-// COMPATIBILITY 2026-07-13 (v1.5.0): Old create requests omit pluginId and mean OpenCode. Remove default; require it.
 @override@JsonKey() final  String pluginId;
  final  List<PromptPart> _parts;
 @override List<PromptPart> get parts {

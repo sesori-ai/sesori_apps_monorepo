@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_rollout_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_rollout_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -64,7 +65,7 @@ class _$CodexSessionIndexEntryDtoCopyWithImpl<$Res>
 /// Create a copy of CodexSessionIndexEntryDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? threadName = freezed,Object? updatedAt = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexSessionIndexEntryDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,threadName: freezed == threadName ? _self.threadName : threadName // ignore: cast_nullable_to_non_nullable
 as String?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
@@ -245,7 +246,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutSessionMetadataLineDto implements CodexRolloutLineDto {
-  const CodexRolloutSessionMetadataLineDto({required this.timestamp, required this.payload, final  String? $type}): $type = $type ?? 'session_meta';
+  const CodexRolloutSessionMetadataLineDto({required this.timestamp, required this.payload,  String? $type}): $type = $type ?? 'session_meta';
   factory CodexRolloutSessionMetadataLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutSessionMetadataLineDtoFromJson(json);
 
 @override final  String? timestamp;
@@ -326,7 +327,7 @@ $CodexRolloutSessionMetadataPayloadDtoCopyWith<$Res> get payload {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutTurnContextLineDto implements CodexRolloutLineDto {
-  const CodexRolloutTurnContextLineDto({required this.timestamp, required this.payload, final  String? $type}): $type = $type ?? 'turn_context';
+  const CodexRolloutTurnContextLineDto({required this.timestamp, required this.payload,  String? $type}): $type = $type ?? 'turn_context';
   factory CodexRolloutTurnContextLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnContextLineDtoFromJson(json);
 
 @override final  String? timestamp;
@@ -407,7 +408,7 @@ $CodexRolloutTurnContextPayloadDtoCopyWith<$Res> get payload {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutResponseItemLineDto implements CodexRolloutLineDto {
-  const CodexRolloutResponseItemLineDto({required this.timestamp, required this.payload, final  String? $type}): $type = $type ?? 'response_item';
+  const CodexRolloutResponseItemLineDto({required this.timestamp, required this.payload,  String? $type}): $type = $type ?? 'response_item';
   factory CodexRolloutResponseItemLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutResponseItemLineDtoFromJson(json);
 
 @override final  String? timestamp;
@@ -488,7 +489,7 @@ $CodexRolloutResponseItemDtoCopyWith<$Res> get payload {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutEventMessageLineDto implements CodexRolloutLineDto {
-  const CodexRolloutEventMessageLineDto({required this.timestamp, required this.payload, final  String? $type}): $type = $type ?? 'event_msg';
+  const CodexRolloutEventMessageLineDto({required this.timestamp, required this.payload,  String? $type}): $type = $type ?? 'event_msg';
   factory CodexRolloutEventMessageLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutEventMessageLineDtoFromJson(json);
 
 @override final  String? timestamp;
@@ -569,7 +570,7 @@ $CodexRolloutEventDtoCopyWith<$Res> get payload {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCompactedLineDto implements CodexRolloutLineDto {
-  const CodexRolloutCompactedLineDto({required this.timestamp, final  String? $type}): $type = $type ?? 'compacted';
+  const CodexRolloutCompactedLineDto({required this.timestamp,  String? $type}): $type = $type ?? 'compacted';
   factory CodexRolloutCompactedLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompactedLineDtoFromJson(json);
 
 @override final  String? timestamp;
@@ -639,7 +640,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutUnknownLineDto implements CodexRolloutLineDto {
-  const CodexRolloutUnknownLineDto({required this.timestamp, final  String? $type}): $type = $type ?? 'unknown';
+  const CodexRolloutUnknownLineDto({required this.timestamp,  String? $type}): $type = $type ?? 'unknown';
   factory CodexRolloutUnknownLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUnknownLineDtoFromJson(json);
 
 @override final  String? timestamp;
@@ -773,7 +774,7 @@ $CodexRolloutEventDtoCopyWith(CodexRolloutEventDto _, $Res Function(CodexRollout
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutUserMessageEventDto implements CodexRolloutEventDto {
-  const CodexRolloutUserMessageEventDto({required this.message, final  String? $type}): $type = $type ?? 'user_message';
+  const CodexRolloutUserMessageEventDto({required this.message,  String? $type}): $type = $type ?? 'user_message';
   factory CodexRolloutUserMessageEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUserMessageEventDtoFromJson(json);
 
  final  String message;
@@ -843,7 +844,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutImageGenerationEndEventDto implements CodexRolloutEventDto {
-  const CodexRolloutImageGenerationEndEventDto({@JsonKey(name: "call_id") required this.callId, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, @JsonKey(name: "revised_prompt") required this.revisedPrompt, required this.result, @JsonKey(name: "saved_path") required this.savedPath, final  String? $type}): $type = $type ?? 'image_generation_end';
+  const CodexRolloutImageGenerationEndEventDto({@JsonKey(name: "call_id") required this.callId, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, @JsonKey(name: "revised_prompt") required this.revisedPrompt, required this.result, @JsonKey(name: "saved_path") required this.savedPath,  String? $type}): $type = $type ?? 'image_generation_end';
   factory CodexRolloutImageGenerationEndEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutImageGenerationEndEventDtoFromJson(json);
 
 @JsonKey(name: "call_id") final  String callId;
@@ -921,7 +922,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutTaskStartedEventDto implements CodexRolloutEventDto {
-  const CodexRolloutTaskStartedEventDto({@JsonKey(name: "turn_id") required this.turnId, final  String? $type}): $type = $type ?? 'task_started';
+  const CodexRolloutTaskStartedEventDto({@JsonKey(name: "turn_id") required this.turnId,  String? $type}): $type = $type ?? 'task_started';
   factory CodexRolloutTaskStartedEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTaskStartedEventDtoFromJson(json);
 
 @JsonKey(name: "turn_id") final  String turnId;
@@ -991,7 +992,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutTaskCompleteEventDto implements CodexRolloutEventDto {
-  const CodexRolloutTaskCompleteEventDto({@JsonKey(name: "turn_id") required this.turnId, final  String? $type}): $type = $type ?? 'task_complete';
+  const CodexRolloutTaskCompleteEventDto({@JsonKey(name: "turn_id") required this.turnId,  String? $type}): $type = $type ?? 'task_complete';
   factory CodexRolloutTaskCompleteEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTaskCompleteEventDtoFromJson(json);
 
 @JsonKey(name: "turn_id") final  String turnId;
@@ -1061,7 +1062,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutTurnAbortedEventDto implements CodexRolloutEventDto {
-  const CodexRolloutTurnAbortedEventDto({@JsonKey(name: "turn_id") required this.turnId, final  String? $type}): $type = $type ?? 'turn_aborted';
+  const CodexRolloutTurnAbortedEventDto({@JsonKey(name: "turn_id") required this.turnId,  String? $type}): $type = $type ?? 'turn_aborted';
   factory CodexRolloutTurnAbortedEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnAbortedEventDtoFromJson(json);
 
 @JsonKey(name: "turn_id") final  String turnId;
@@ -1131,7 +1132,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutUnknownEventDto implements CodexRolloutEventDto {
-  const CodexRolloutUnknownEventDto({final  String? $type}): $type = $type ?? 'unknown';
+  const CodexRolloutUnknownEventDto({ String? $type}): $type = $type ?? 'unknown';
   factory CodexRolloutUnknownEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUnknownEventDtoFromJson(json);
 
 
@@ -1216,7 +1217,7 @@ class _$CodexRolloutSessionMetadataPayloadDtoCopyWithImpl<$Res>
 /// Create a copy of CodexRolloutSessionMetadataPayloadDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? cliVersion = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexRolloutSessionMetadataPayloadDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
 as String?,timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
@@ -1357,7 +1358,7 @@ class _$CodexRolloutTurnContextPayloadDtoCopyWithImpl<$Res>
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? model = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexRolloutTurnContextPayloadDto(
 model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -1486,7 +1487,7 @@ class _$CodexRolloutItemMetadataDtoCopyWithImpl<$Res>
 /// Create a copy of CodexRolloutItemMetadataDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? turnId = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexRolloutItemMetadataDto(
 turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -1642,7 +1643,7 @@ $CodexRolloutResponseItemDtoCopyWith(CodexRolloutResponseItemDto _, $Res Functio
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutMessageDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutMessageDto({required this.id, @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required this.role, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto> content, final  String? $type}): _content = content,$type = $type ?? 'message';
+  const CodexRolloutMessageDto({required this.id, @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required this.role, @CodexRolloutContentListConverter() required  List<CodexRolloutContentDto> content,  String? $type}): _content = content,$type = $type ?? 'message';
   factory CodexRolloutMessageDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutMessageDtoFromJson(json);
 
  final  String? id;
@@ -1722,7 +1723,7 @@ as List<CodexRolloutContentDto>,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutReasoningDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutReasoningDto({required this.id, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto> summary, final  String? $type}): _summary = summary,$type = $type ?? 'reasoning';
+  const CodexRolloutReasoningDto({required this.id, @CodexRolloutContentListConverter() required  List<CodexRolloutContentDto> summary,  String? $type}): _summary = summary,$type = $type ?? 'reasoning';
   factory CodexRolloutReasoningDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutReasoningDtoFromJson(json);
 
  final  String? id;
@@ -1800,7 +1801,7 @@ as List<CodexRolloutContentDto>,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutFunctionCallDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutFunctionCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.arguments, @JsonKey(name: "internal_chat_message_metadata_passthrough") required this.metadata, final  String? $type}): $type = $type ?? 'function_call';
+  const CodexRolloutFunctionCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.arguments, @JsonKey(name: "internal_chat_message_metadata_passthrough") required this.metadata,  String? $type}): $type = $type ?? 'function_call';
   factory CodexRolloutFunctionCallDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutFunctionCallDtoFromJson(json);
 
  final  String? id;
@@ -1890,7 +1891,7 @@ $CodexRolloutItemMetadataDtoCopyWith<$Res>? get metadata {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutFunctionCallOutputDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutFunctionCallOutputDto({@JsonKey(name: "call_id") required this.callId, @CodexRolloutOutputConverter() required final  List<CodexRolloutContentDto> output, final  String? $type}): _output = output,$type = $type ?? 'function_call_output';
+  const CodexRolloutFunctionCallOutputDto({@JsonKey(name: "call_id") required this.callId, @CodexRolloutOutputConverter() required  List<CodexRolloutContentDto> output,  String? $type}): _output = output,$type = $type ?? 'function_call_output';
   factory CodexRolloutFunctionCallOutputDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutFunctionCallOutputDtoFromJson(json);
 
 @JsonKey(name: "call_id") final  String callId;
@@ -1968,7 +1969,7 @@ as List<CodexRolloutContentDto>,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCustomToolCallDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutCustomToolCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.input, @JsonKey(name: "internal_chat_message_metadata_passthrough") required this.metadata, final  String? $type}): $type = $type ?? 'custom_tool_call';
+  const CodexRolloutCustomToolCallDto({required this.id, @JsonKey(name: "call_id") required this.callId, required this.name, required this.input, @JsonKey(name: "internal_chat_message_metadata_passthrough") required this.metadata,  String? $type}): $type = $type ?? 'custom_tool_call';
   factory CodexRolloutCustomToolCallDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCustomToolCallDtoFromJson(json);
 
  final  String? id;
@@ -2058,7 +2059,7 @@ $CodexRolloutItemMetadataDtoCopyWith<$Res>? get metadata {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCustomToolCallOutputDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutCustomToolCallOutputDto({@JsonKey(name: "call_id") required this.callId, @CodexRolloutOutputConverter() required final  List<CodexRolloutContentDto> output, final  String? $type}): _output = output,$type = $type ?? 'custom_tool_call_output';
+  const CodexRolloutCustomToolCallOutputDto({@JsonKey(name: "call_id") required this.callId, @CodexRolloutOutputConverter() required  List<CodexRolloutContentDto> output,  String? $type}): _output = output,$type = $type ?? 'custom_tool_call_output';
   factory CodexRolloutCustomToolCallOutputDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCustomToolCallOutputDtoFromJson(json);
 
 @JsonKey(name: "call_id") final  String callId;
@@ -2136,7 +2137,7 @@ as List<CodexRolloutContentDto>,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutWebSearchCallDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutWebSearchCallDto({required this.id, required this.action, final  String? $type}): $type = $type ?? 'web_search_call';
+  const CodexRolloutWebSearchCallDto({required this.id, required this.action,  String? $type}): $type = $type ?? 'web_search_call';
   factory CodexRolloutWebSearchCallDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutWebSearchCallDtoFromJson(json);
 
  final  String? id;
@@ -2220,7 +2221,7 @@ $CodexRolloutActionDtoCopyWith<$Res>? get action {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutImageGenerationDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutImageGenerationDto({required this.id, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, required this.result, final  String? $type}): $type = $type ?? 'image_generation_call';
+  const CodexRolloutImageGenerationDto({required this.id, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, required this.result,  String? $type}): $type = $type ?? 'image_generation_call';
   factory CodexRolloutImageGenerationDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutImageGenerationDtoFromJson(json);
 
  final  String? id;
@@ -2294,7 +2295,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutUnknownResponseItemDto implements CodexRolloutResponseItemDto {
-  const CodexRolloutUnknownResponseItemDto({final  String? $type}): $type = $type ?? 'unknown';
+  const CodexRolloutUnknownResponseItemDto({ String? $type}): $type = $type ?? 'unknown';
   factory CodexRolloutUnknownResponseItemDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUnknownResponseItemDtoFromJson(json);
 
 
@@ -2392,7 +2393,7 @@ $CodexRolloutContentDtoCopyWith(CodexRolloutContentDto _, $Res Function(CodexRol
 @JsonSerializable()
 
 class CodexRolloutInputTextDto implements CodexRolloutContentDto {
-  const CodexRolloutInputTextDto({required this.text, final  String? $type}): $type = $type ?? 'input_text';
+  const CodexRolloutInputTextDto({required this.text,  String? $type}): $type = $type ?? 'input_text';
   factory CodexRolloutInputTextDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutInputTextDtoFromJson(json);
 
  final  String text;
@@ -2465,7 +2466,7 @@ as String,
 @JsonSerializable()
 
 class CodexRolloutOutputTextDto implements CodexRolloutContentDto {
-  const CodexRolloutOutputTextDto({required this.text, final  String? $type}): $type = $type ?? 'output_text';
+  const CodexRolloutOutputTextDto({required this.text,  String? $type}): $type = $type ?? 'output_text';
   factory CodexRolloutOutputTextDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutOutputTextDtoFromJson(json);
 
  final  String text;
@@ -2538,7 +2539,7 @@ as String,
 @JsonSerializable()
 
 class CodexRolloutSummaryTextDto implements CodexRolloutContentDto {
-  const CodexRolloutSummaryTextDto({required this.text, final  String? $type}): $type = $type ?? 'summary_text';
+  const CodexRolloutSummaryTextDto({required this.text,  String? $type}): $type = $type ?? 'summary_text';
   factory CodexRolloutSummaryTextDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutSummaryTextDtoFromJson(json);
 
  final  String text;
@@ -2611,7 +2612,7 @@ as String,
 @JsonSerializable()
 
 class CodexRolloutInputImageDto implements CodexRolloutContentDto {
-  const CodexRolloutInputImageDto({@JsonKey(name: "image_url") required this.imageUrl, final  String? $type}): $type = $type ?? 'input_image';
+  const CodexRolloutInputImageDto({@JsonKey(name: "image_url") required this.imageUrl,  String? $type}): $type = $type ?? 'input_image';
   factory CodexRolloutInputImageDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutInputImageDtoFromJson(json);
 
 @JsonKey(name: "image_url") final  String imageUrl;
@@ -2684,7 +2685,7 @@ as String,
 @JsonSerializable()
 
 class CodexRolloutUnknownContentDto implements CodexRolloutContentDto {
-  const CodexRolloutUnknownContentDto({final  String? $type}): $type = $type ?? 'unknown';
+  const CodexRolloutUnknownContentDto({ String? $type}): $type = $type ?? 'unknown';
   factory CodexRolloutUnknownContentDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUnknownContentDtoFromJson(json);
 
 
@@ -2772,7 +2773,7 @@ class _$CodexRolloutActionDtoCopyWithImpl<$Res>
 /// Create a copy of CodexRolloutActionDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? query = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexRolloutActionDto(
 query: freezed == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -2901,7 +2902,7 @@ class _$CodexToolArgumentsDtoCopyWithImpl<$Res>
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,Object? cellId = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexToolArgumentsDto(
 cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,cellId: freezed == cellId ? _self.cellId : cellId ,
   ));
 }

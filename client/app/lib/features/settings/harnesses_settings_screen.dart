@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -50,13 +51,26 @@ class _HarnessesSettingsBody extends StatelessWidget {
     final cubit = context.read<PluginManagementCubit>();
     final state = context.watch<PluginManagementCubit>().state;
 
-    return BlocListener<PluginManagementCubit, PluginManagementState>(
-      listenWhen: (previous, current) => _forceConfirmation(previous) != _forceConfirmation(current),
-      listener: (context, state) {
-        final confirmation = _forceConfirmation(state);
-        if (confirmation == null) return;
-        unawaited(_showForceConfirmation(context: context, cubit: cubit, confirmation: confirmation));
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<PluginManagementCubit, PluginManagementState>(
+          listenWhen: (previous, current) => _forceConfirmation(previous) != _forceConfirmation(current),
+          listener: (context, state) {
+            final confirmation = _forceConfirmation(state);
+            if (confirmation == null) return;
+            unawaited(_showForceConfirmation(context: context, cubit: cubit, confirmation: confirmation));
+          },
+        ),
+        BlocListener<PluginManagementCubit, PluginManagementState>(
+          listenWhen: (previous, current) =>
+              _authenticationChallenge(state: previous) == null && _authenticationChallenge(state: current) != null,
+          listener: (context, state) {
+            final challenge = _authenticationChallenge(state: state);
+            if (challenge == null) return;
+            unawaited(_showAuthenticationSheet(context: context, cubit: cubit));
+          },
+        ),
+      ],
       child: PregoGlassScaffold(
         title: loc.settingsHarnessesTitle,
         titleMode: PregoTopNavigationTitleMode.inline,
@@ -75,8 +89,7 @@ class _HarnessesSettingsBody extends StatelessWidget {
               // Closing the modal means going back to whatever raised it. Only
               // a deep link arrives with nothing underneath, and that falls
               // back to the app's home.
-              onPressed: () =>
-                  context.canPop() ? context.pop() : context.goRoute(const AppRoute.projects()),
+              onPressed: () => context.canPop() ? context.pop() : context.goRoute(const AppRoute.projects()),
             ),
         ],
         onRefresh: cubit.refresh,
@@ -103,6 +116,70 @@ class _HarnessesSettingsBody extends StatelessWidget {
     );
   }
 }
+
+({String pluginId, Uri verificationUri, String userCode, bool cancelling, bool uncertain, bool browserFailed})?
+_authenticationChallenge({required PluginManagementState state}) => switch (state) {
+  PluginManagementReady(
+    authentication: PluginAuthenticationPresentationChallenge(:final pluginId, :final verificationUri, :final userCode),
+  ) =>
+    (
+      pluginId: pluginId,
+      verificationUri: verificationUri,
+      userCode: userCode,
+      cancelling: false,
+      uncertain: false,
+      browserFailed: false,
+    ),
+  PluginManagementReady(
+    authentication: PluginAuthenticationPresentationBrowserLaunchFailedState(
+      :final pluginId,
+      :final verificationUri,
+      :final userCode,
+    ),
+  ) =>
+    (
+      pluginId: pluginId,
+      verificationUri: verificationUri,
+      userCode: userCode,
+      cancelling: false,
+      uncertain: false,
+      browserFailed: true,
+    ),
+  PluginManagementReady(
+    authentication: PluginAuthenticationPresentationCancelling(
+      :final pluginId,
+      :final verificationUri,
+      :final userCode,
+    ),
+  ) =>
+    (
+      pluginId: pluginId,
+      verificationUri: verificationUri,
+      userCode: userCode,
+      cancelling: true,
+      uncertain: false,
+      browserFailed: false,
+    ),
+  PluginManagementReady(
+    authentication: PluginAuthenticationPresentationCancellingUncertain(
+      :final pluginId,
+      :final verificationUri,
+      :final userCode,
+    ),
+  ) =>
+    (
+      pluginId: pluginId,
+      verificationUri: verificationUri,
+      userCode: userCode,
+      cancelling: true,
+      uncertain: true,
+      browserFailed: false,
+    ),
+  PluginManagementReady() ||
+  PluginManagementLoading() ||
+  PluginManagementUnsupported() ||
+  PluginManagementFailure() => null,
+};
 
 PluginManagementActionForceConfirmationRequired? _forceConfirmation(PluginManagementState state) => switch (state) {
   PluginManagementReady(action: final PluginManagementActionForceConfirmationRequired confirmation) => confirmation,
@@ -220,6 +297,16 @@ class _ReadyView extends StatelessWidget {
           ),
           const SizedBox(height: PregoSpacing.xl),
         ],
+        if (state.authentication case final PluginAuthenticationPresentationFailed failure) ...[
+          _MessageRow(
+            key: const Key("harness_authentication_error"),
+            title: loc.harnessAuthenticationFailedTitle,
+            description: _authenticationErrorDescription(context: context, error: failure.error),
+            dismissLabel: loc.harnessAuthenticationDismissError,
+            onDismiss: context.read<PluginManagementCubit>().dismissAuthentication,
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+        ],
         Text(
           loc.harnessManagementDescription,
           style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
@@ -269,6 +356,7 @@ class _ReadyView extends StatelessWidget {
                         plugin: response.plugins[index],
                         isDefault: response.plugins[index].setup.id == response.defaultPluginId,
                         action: state.action,
+                        authentication: state.authentication,
                         install: state.installs[response.plugins[index].setup.id],
                       ),
                       if (index != response.plugins.length - 1) const SizedBox(height: PregoSpacing.md),
@@ -320,12 +408,14 @@ class _HarnessControlCard extends StatelessWidget {
     required this.plugin,
     required this.isDefault,
     required this.action,
+    required this.authentication,
     required this.install,
   });
 
   final PluginManagementMetadata plugin;
   final bool isDefault;
   final PluginManagementActionState action;
+  final PluginAuthenticationPresentationState authentication;
 
   /// This harness' in-flight managed runtime install, when one is running.
   final PluginInstallProgress? install;
@@ -350,11 +440,29 @@ class _HarnessControlCard extends StatelessWidget {
     // is genuinely missing or too old — the two states a managed install fixes.
     final showInstall =
         capabilities.contains(PluginManagementCapability.install) &&
-        (plugin.setup.state == PluginSetupState.runtimeMissing ||
-            plugin.setup.state == PluginSetupState.unavailable);
+        (plugin.setup.state == PluginSetupState.runtimeMissing || plugin.setup.state == PluginSetupState.unavailable);
     final showRestart = showOperational && supportsLifecycle;
     final showTimeout = showOperational && supportsIdleTimeout;
     final showClearTimeout = showTimeout && plugin.hasIdleTimeoutOverride;
+    final supportsAuthentication = capabilities.contains(PluginManagementCapability.authentication);
+    final showAuthentication = supportsAuthentication && plugin.setup.state == PluginSetupState.authenticationRequired;
+    final authenticationForThisHarness = switch (authentication) {
+      PluginAuthenticationPresentationStarting(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationChallenge(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationBrowserLaunchFailedState(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationCancelling(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationCancellingUncertain(pluginId: final targetPluginId) => targetPluginId == pluginId,
+      PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => false,
+    };
+    final authenticationStarting = switch (authentication) {
+      PluginAuthenticationPresentationStarting(pluginId: final targetPluginId) => targetPluginId == pluginId,
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationChallenge() ||
+      PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+      PluginAuthenticationPresentationCancelling() ||
+      PluginAuthenticationPresentationCancellingUncertain() ||
+      PluginAuthenticationPresentationFailed() => false,
+    };
     final blocked = _controlsBlocked(action);
     final actionForThisHarness = switch (action) {
       PluginManagementActionInProgress(
@@ -400,12 +508,40 @@ class _HarnessControlCard extends StatelessWidget {
                     showWork ||
                     showExternal ||
                     showInstall ||
+                    showAuthentication ||
                     showLifecycle ||
                     showSetupRefresh ||
                     showRestart ||
                     showTimeout ||
                     showClearTimeout),
           ),
+          if (showAuthentication)
+            PregoGroupedRow(
+              key: Key("harness_authentication_$pluginId"),
+              icon: TablerRegular.login,
+              title: Text(
+                plugin.authenticationState == PluginAuthenticationState.inProgress || authenticationForThisHarness
+                    ? loc.harnessAuthenticationContinue
+                    : loc.harnessAuthenticationLogIn,
+              ),
+              subtitle: Text(loc.harnessAuthenticationDescription),
+              trailing: authenticationStarting
+                  ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)
+                  : null,
+              onTap: blocked || authenticationStarting
+                  ? null
+                  : () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
+              isLast:
+                  !(showRuntime ||
+                      showWork ||
+                      showExternal ||
+                      showInstall ||
+                      showLifecycle ||
+                      showSetupRefresh ||
+                      showRestart ||
+                      showTimeout ||
+                      showClearTimeout),
+            ),
           if (showRuntime)
             _FactRow(
               title: loc.harnessesRuntimeStatus,
@@ -456,8 +592,7 @@ class _HarnessControlCard extends StatelessWidget {
                     loc.harnessManagementInstallDownloading,
                   PluginInstallProgress(phase: PluginInstallPhase.verifying) => loc.harnessManagementInstallVerifying,
                   PluginInstallProgress(phase: PluginInstallPhase.extracting) => loc.harnessManagementInstallExtracting,
-                  PluginInstallProgress(phase: PluginInstallPhase.finalizing) =>
-                    loc.harnessManagementInstallFinishing,
+                  PluginInstallProgress(phase: PluginInstallPhase.finalizing) => loc.harnessManagementInstallFinishing,
                   // A phase only a newer bridge names: report work without
                   // claiming which step it is.
                   PluginInstallProgress() => loc.harnessManagementInstallInProgress,
@@ -870,6 +1005,165 @@ Future<void> _showForceConfirmation({
     cubit.dismissForceConfirmation();
   }
 }
+
+Future<void> _showAuthenticationSheet({
+  required BuildContext context,
+  required PluginManagementCubit cubit,
+}) async {
+  await showPregoBottomSheet<void>(
+    context: context,
+    title: context.loc.harnessAuthenticationSheetTitle,
+    builder: (_) => BlocProvider<PluginManagementCubit>.value(
+      value: cubit,
+      child: const _AuthenticationSheet(),
+    ),
+  );
+  final authentication = switch (cubit.state) {
+    PluginManagementReady(:final authentication) => authentication,
+    PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
+  };
+  if (!cubit.isClosed &&
+      _authenticationChallenge(state: cubit.state) != null &&
+      authentication is! PluginAuthenticationPresentationCancelling &&
+      authentication is! PluginAuthenticationPresentationCancellingUncertain) {
+    cubit.dismissAuthentication();
+  }
+}
+
+class _AuthenticationSheet extends StatelessWidget {
+  const _AuthenticationSheet();
+
+  Future<void> _copyCode({required BuildContext context, required String code}) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: code));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.loc.harnessAuthenticationCodeCopied)),
+      );
+    } on Object catch (error, stackTrace) {
+      logw("Failed to copy authentication code", error, stackTrace);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_authenticationChallenge(state: context.read<PluginManagementCubit>().state) == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? false)) context.pop();
+      });
+    }
+    return BlocListener<PluginManagementCubit, PluginManagementState>(
+      listenWhen: (previous, current) =>
+          _authenticationChallenge(state: previous) != null && _authenticationChallenge(state: current) == null,
+      listener: (context, _) {
+        if (ModalRoute.of(context)?.isCurrent ?? false) context.pop();
+      },
+      child: _buildContent(context: context),
+    );
+  }
+
+  Widget _buildContent({required BuildContext context}) {
+    final loc = context.loc;
+    final state = context.watch<PluginManagementCubit>().state;
+    final challenge = _authenticationChallenge(state: state);
+    if (challenge == null) {
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            label: loc.harnessAuthenticationSecuritySemantics,
+            child: Text(
+              loc.harnessAuthenticationSecurityDescription,
+              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+            ),
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+          PregoGroupedRows(
+            children: [
+              PregoGroupedRow(
+                key: const Key("harness_authentication_code"),
+                icon: TablerRegular.key,
+                title: Text(loc.harnessAuthenticationCodeLabel),
+                subtitle: SelectableText(challenge.userCode),
+                trailing: IconButton(
+                  key: const Key("harness_authentication_copy"),
+                  tooltip: loc.harnessAuthenticationCopyCode,
+                  onPressed: () => _copyCode(context: context, code: challenge.userCode),
+                  icon: const Icon(TablerRegular.copy),
+                ),
+                isLast: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+          if (challenge.browserFailed) ...[
+            Text(
+              loc.harnessAuthenticationBrowserFailed,
+              textAlign: TextAlign.center,
+              style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textErrorPrimary),
+            ),
+            const SizedBox(height: PregoSpacing.md),
+          ],
+          Text(
+            challenge.uncertain
+                ? loc.harnessAuthenticationCancellingUncertain
+                : challenge.cancelling
+                ? loc.harnessAuthenticationCancelling
+                : loc.harnessAuthenticationWaiting,
+            textAlign: TextAlign.center,
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoButtonsSolid(
+            key: const Key("harness_authentication_open_browser"),
+            label: loc.harnessAuthenticationOpenBrowser,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: challenge.cancelling ? null : context.read<PluginManagementCubit>().launchAuthenticationBrowser,
+          ),
+          const SizedBox(height: PregoSpacing.md),
+          PregoButtonsSolid(
+            key: const Key("harness_authentication_cancel"),
+            label: challenge.cancelling && !challenge.uncertain
+                ? loc.harnessAuthenticationCancelling
+                : loc.harnessAuthenticationCancel,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            type: PregoButtonsSolidType.destructive,
+            fullWidth: true,
+            isLoading: challenge.cancelling && !challenge.uncertain,
+            onPressed: challenge.cancelling && !challenge.uncertain
+                ? null
+                : context.read<PluginManagementCubit>().cancelAuthentication,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _authenticationErrorDescription({
+  required BuildContext context,
+  required PluginAuthenticationPresentationError error,
+}) => switch (error) {
+  PluginAuthenticationPresentationNotFound() => context.loc.harnessAuthenticationNotFound,
+  PluginAuthenticationPresentationUnsupported() => context.loc.harnessAuthenticationUnsupported,
+  PluginAuthenticationPresentationConflict() => context.loc.harnessAuthenticationConflict,
+  PluginAuthenticationPresentationUncertain() => context.loc.harnessAuthenticationUncertain,
+  PluginAuthenticationPresentationInvalidChallenge() => context.loc.harnessAuthenticationInvalidChallenge,
+  PluginAuthenticationPresentationRemoteError(:final message) => message,
+  PluginAuthenticationPresentationRequestError() => context.loc.harnessAuthenticationRequestFailed,
+};
 
 String _actionErrorDescription({required BuildContext context, required PluginManagementActionError error}) =>
     switch (error) {

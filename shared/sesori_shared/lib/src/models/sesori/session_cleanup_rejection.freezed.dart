@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'session_cleanup_rejection.dart';
@@ -9,6 +9,7 @@ part of 'session_cleanup_rejection.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$SessionCleanupRejectionCopyWithImpl<$Res>
 /// Create a copy of SessionCleanupRejection
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? issues = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionCleanupRejection(
 issues: null == issues ? _self.issues : issues // ignore: cast_nullable_to_non_nullable
 as List<CleanupIssue>,
   ));
@@ -80,7 +81,7 @@ as List<CleanupIssue>,
 @JsonSerializable()
 
 class _SessionCleanupRejection implements SessionCleanupRejection {
-  const _SessionCleanupRejection({required final  List<CleanupIssue> issues}): _issues = issues;
+  const _SessionCleanupRejection({required  List<CleanupIssue> issues}): _issues = issues;
   factory _SessionCleanupRejection.fromJson(Map<String, dynamic> json) => _$SessionCleanupRejectionFromJson(json);
 
  final  List<CleanupIssue> _issues;
@@ -216,7 +217,7 @@ $CleanupIssueCopyWith(CleanupIssue _, $Res Function(CleanupIssue) __);
 @JsonSerializable()
 
 class CleanupIssueUnstagedChanges implements CleanupIssue {
-  const CleanupIssueUnstagedChanges({final  String? $type}): $type = $type ?? 'unstaged_changes';
+  const CleanupIssueUnstagedChanges({ String? $type}): $type = $type ?? 'unstaged_changes';
   factory CleanupIssueUnstagedChanges.fromJson(Map<String, dynamic> json) => _$CleanupIssueUnstagedChangesFromJson(json);
 
 
@@ -255,7 +256,7 @@ String toString() {
 @JsonSerializable()
 
 class CleanupIssueBranchMismatch implements CleanupIssue {
-  const CleanupIssueBranchMismatch({required this.expected, required this.actual, final  String? $type}): $type = $type ?? 'branch_mismatch';
+  const CleanupIssueBranchMismatch({required this.expected, required this.actual,  String? $type}): $type = $type ?? 'branch_mismatch';
   factory CleanupIssueBranchMismatch.fromJson(Map<String, dynamic> json) => _$CleanupIssueBranchMismatchFromJson(json);
 
  final  String expected;
@@ -330,7 +331,7 @@ as String,
 @JsonSerializable()
 
 class CleanupIssueSharedWorktree implements CleanupIssue {
-  const CleanupIssueSharedWorktree({final  String? $type}): $type = $type ?? 'shared_worktree';
+  const CleanupIssueSharedWorktree({ String? $type}): $type = $type ?? 'shared_worktree';
   factory CleanupIssueSharedWorktree.fromJson(Map<String, dynamic> json) => _$CleanupIssueSharedWorktreeFromJson(json);
 
 

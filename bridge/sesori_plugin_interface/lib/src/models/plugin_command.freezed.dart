@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_command.dart';
@@ -9,6 +9,7 @@ part of 'plugin_command.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$PluginCommandCopyWithImpl<$Res>
 /// Create a copy of PluginCommand
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? template = freezed,Object? hints = null,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? provider = freezed,Object? source = freezed,Object? subtask = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginCommand(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,template: freezed == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
 as String?,hints: null == hints ? _self.hints : hints // ignore: cast_nullable_to_non_nullable
@@ -88,7 +89,7 @@ as bool?,
 @JsonSerializable()
 
 class _PluginCommand implements PluginCommand {
-  const _PluginCommand({required this.name, this.template, final  List<String> hints = const <String>[], this.description, this.agent, this.model, required this.provider, this.source, this.subtask}): _hints = hints;
+  const _PluginCommand({required this.name, this.template,  List<String> hints = const <String>[], this.description, this.agent, this.model, required this.provider, this.source, this.subtask}): _hints = hints;
   factory _PluginCommand.fromJson(Map<String, dynamic> json) => _$PluginCommandFromJson(json);
 
 @override final  String name;

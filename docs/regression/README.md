@@ -63,6 +63,13 @@ phone: a bridge policy can end at the live plugin, while rendering needs the
 client. The debug server can control and inspect bridge state but cannot prove
 relay encryption or client presentation.
 
+## JSON Serialization
+
+Every package using `json_serializable` configures `include_if_null: false` in
+its `build.yaml`. Generated payloads omit null-valued keys by default, while
+decoders continue accepting omitted nullable fields. Feature regressions that
+exercise JSON boundaries should preserve both sides of this invariant.
+
 ## Plugin Coverage
 
 Backend-neutral implementation can still require every plugin when each

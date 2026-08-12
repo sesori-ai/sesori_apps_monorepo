@@ -342,10 +342,8 @@ void main() {
     );
     await tester.pump();
 
-    unawaited(
-      navigatorKey.currentState!.push<void>(
-        MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text("Covering route"))),
-      ),
+    navigatorKey.currentState!.push<void>(
+      MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text("Covering route"))),
     );
     await tester.pumpAndSettle();
     clearInteractions(productAnalyticsService);

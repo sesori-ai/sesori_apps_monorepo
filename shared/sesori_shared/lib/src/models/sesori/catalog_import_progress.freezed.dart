@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'catalog_import_progress.dart';
@@ -9,6 +9,7 @@ part of 'catalog_import_progress.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 CatalogImportProgress _$CatalogImportProgressFromJson(
@@ -81,7 +82,7 @@ String toString() {
 @JsonSerializable()
 
 class CatalogImportEnumerating implements CatalogImportProgress {
-  const CatalogImportEnumerating({required this.pluginId, required this.projectsSeen, required this.sessionsSeen, final  String? $type}): $type = $type ?? 'enumerating';
+  const CatalogImportEnumerating({required this.pluginId, required this.projectsSeen, required this.sessionsSeen,  String? $type}): $type = $type ?? 'enumerating';
   factory CatalogImportEnumerating.fromJson(Map<String, dynamic> json) => _$CatalogImportEnumeratingFromJson(json);
 
 @override final  String pluginId;
@@ -122,7 +123,7 @@ String toString() {
 @JsonSerializable()
 
 class CatalogImportCommitting implements CatalogImportProgress {
-  const CatalogImportCommitting({required this.pluginId, required this.projectsSeen, required this.sessionsSeen, final  String? $type}): $type = $type ?? 'committing';
+  const CatalogImportCommitting({required this.pluginId, required this.projectsSeen, required this.sessionsSeen,  String? $type}): $type = $type ?? 'committing';
   factory CatalogImportCommitting.fromJson(Map<String, dynamic> json) => _$CatalogImportCommittingFromJson(json);
 
 @override final  String pluginId;
@@ -163,7 +164,7 @@ String toString() {
 @JsonSerializable()
 
 class CatalogImportCompleted implements CatalogImportProgress {
-  const CatalogImportCompleted({required this.pluginId, required this.projectsImported, required this.sessionsImported, required this.completedAt, final  String? $type}): $type = $type ?? 'completed';
+  const CatalogImportCompleted({required this.pluginId, required this.projectsImported, required this.sessionsImported, required this.completedAt,  String? $type}): $type = $type ?? 'completed';
   factory CatalogImportCompleted.fromJson(Map<String, dynamic> json) => _$CatalogImportCompletedFromJson(json);
 
 @override final  String pluginId;
@@ -205,7 +206,7 @@ String toString() {
 @JsonSerializable()
 
 class CatalogImportCancelled implements CatalogImportProgress {
-  const CatalogImportCancelled({required this.pluginId, final  String? $type}): $type = $type ?? 'cancelled';
+  const CatalogImportCancelled({required this.pluginId,  String? $type}): $type = $type ?? 'cancelled';
   factory CatalogImportCancelled.fromJson(Map<String, dynamic> json) => _$CatalogImportCancelledFromJson(json);
 
 @override final  String pluginId;
@@ -244,7 +245,7 @@ String toString() {
 @JsonSerializable()
 
 class CatalogImportFailed implements CatalogImportProgress {
-  const CatalogImportFailed({required this.pluginId, required this.message, final  String? $type}): $type = $type ?? 'failed';
+  const CatalogImportFailed({required this.pluginId, required this.message,  String? $type}): $type = $type ?? 'failed';
   factory CatalogImportFailed.fromJson(Map<String, dynamic> json) => _$CatalogImportFailedFromJson(json);
 
 @override final  String pluginId;

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'project.dart';
@@ -9,6 +9,7 @@ part of 'project.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$ProjectsCopyWithImpl<$Res>
 /// Create a copy of Projects
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
-  return _then(_self.copyWith(
+  return _then(Projects(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<Project>,
   ));
@@ -80,7 +81,7 @@ as List<Project>,
 @JsonSerializable()
 
 class _Projects implements Projects {
-  const _Projects({required final  List<Project> data}): _data = data;
+  const _Projects({required  List<Project> data}): _data = data;
   factory _Projects.fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
 
  final  List<Project> _data;
@@ -155,29 +156,7 @@ as List<Project>,
 /// @nodoc
 mixin _$Project {
 
- String get id; String? get name;// Live directory of the project on disk — the directory backend operations
-// run in. Distinct from [id]: the id is a stable identifier that survives
-// folder moves (for git-backed backends it is the original worktree path,
-// pinned at first open). Defaults to "" so payloads from older bridges
-// (which don't send a path) still decode; clients fall back to [id] when
-// empty.
-// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once those bridges are unsupported.
- String get path;// COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
- ProjectTime? get time;// Whether this project has at least one non-archived session with unseen
-// activity. Backend-derived from its sessions. Defaults to false so older
-// payloads (and the baseline) deserialize as "seen".
-// COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
- bool get hasUnseenChanges;// Whether the project's directory no longer exists on disk at its recorded
-// location (the folder was moved or deleted). The bridge stamps this from a
-// filesystem check; the client renders such projects as "folder not found"
-// instead of driving into a dead path. Defaults to false so older payloads
-// deserialize as "present".
-// COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
- bool get directoryMissing;// Whether this project can create dedicated Git worktrees. This is a
-// capability rather than a raw Git-state field so clients render the
-// behavior the bridge can actually provide.
-// COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
- bool get supportsDedicatedWorktrees;
+ String get id; String? get name; String get path; ProjectTime? get time; bool get hasUnseenChanges; bool get directoryMissing; bool get supportsDedicatedWorktrees;
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -228,7 +207,7 @@ class _$ProjectCopyWithImpl<$Res>
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,Object? supportsDedicatedWorktrees = null,}) {
-  return _then(_self.copyWith(
+  return _then(Project(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
@@ -265,32 +244,10 @@ class _Project implements Project {
 
 @override final  String id;
 @override final  String? name;
-// Live directory of the project on disk — the directory backend operations
-// run in. Distinct from [id]: the id is a stable identifier that survives
-// folder moves (for git-backed backends it is the original worktree path,
-// pinned at first open). Defaults to "" so payloads from older bridges
-// (which don't send a path) still decode; clients fall back to [id] when
-// empty.
-// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once those bridges are unsupported.
 @override@JsonKey() final  String path;
-// COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
 @override final  ProjectTime? time;
-// Whether this project has at least one non-archived session with unseen
-// activity. Backend-derived from its sessions. Defaults to false so older
-// payloads (and the baseline) deserialize as "seen".
-// COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
 @override@JsonKey() final  bool hasUnseenChanges;
-// Whether the project's directory no longer exists on disk at its recorded
-// location (the folder was moved or deleted). The bridge stamps this from a
-// filesystem check; the client renders such projects as "folder not found"
-// instead of driving into a dead path. Defaults to false so older payloads
-// deserialize as "present".
-// COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
 @override@JsonKey() final  bool directoryMissing;
-// Whether this project can create dedicated Git worktrees. This is a
-// capability rather than a raw Git-state field so clients render the
-// behavior the bridge can actually provide.
-// COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
 @override@JsonKey() final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of Project
@@ -426,7 +383,7 @@ class _$ProjectTimeCopyWithImpl<$Res>
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? updated = null,}) {
-  return _then(_self.copyWith(
+  return _then(ProjectTime(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
 as int,
@@ -563,7 +520,7 @@ class _$ProjectIdRequestCopyWithImpl<$Res>
 /// Create a copy of ProjectIdRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,}) {
-  return _then(_self.copyWith(
+  return _then(ProjectIdRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -697,7 +654,7 @@ class _$ProjectPathRequestCopyWithImpl<$Res>
 /// Create a copy of ProjectPathRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? path = null,}) {
-  return _then(_self.copyWith(
+  return _then(ProjectPathRequest(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -780,8 +737,7 @@ as String,
 /// @nodoc
 mixin _$OpenProjectRequest {
 
- String get path;// COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until those apps are unsupported.
- OpenProjectGitAction get gitAction;
+ String get path; OpenProjectGitAction get gitAction;
 /// Create a copy of OpenProjectRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -832,7 +788,7 @@ class _$OpenProjectRequestCopyWithImpl<$Res>
 /// Create a copy of OpenProjectRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? gitAction = null,}) {
-  return _then(_self.copyWith(
+  return _then(OpenProjectRequest(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,gitAction: null == gitAction ? _self.gitAction : gitAction // ignore: cast_nullable_to_non_nullable
 as OpenProjectGitAction,
@@ -851,7 +807,6 @@ class _OpenProjectRequest implements OpenProjectRequest {
   factory _OpenProjectRequest.fromJson(Map<String, dynamic> json) => _$OpenProjectRequestFromJson(json);
 
 @override final  String path;
-// COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until those apps are unsupported.
 @override@JsonKey() final  OpenProjectGitAction gitAction;
 
 /// Create a copy of OpenProjectRequest

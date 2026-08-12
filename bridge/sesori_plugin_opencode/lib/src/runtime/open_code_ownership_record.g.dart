@@ -28,13 +28,13 @@ Map<String, dynamic> _$OpenCodeOwnershipRecordToJson(
 ) => <String, dynamic>{
   'ownerSessionId': instance.ownerSessionId,
   'openCodePid': instance.openCodePid,
-  'openCodeStartMarker': instance.openCodeStartMarker,
+  'openCodeStartMarker': ?instance.openCodeStartMarker,
   'openCodeExecutablePath': instance.openCodeExecutablePath,
   'openCodeCommand': instance.openCodeCommand,
   'openCodeArgs': instance.openCodeArgs,
   'port': instance.port,
   'bridgePid': instance.bridgePid,
-  'bridgeStartMarker': instance.bridgeStartMarker,
+  'bridgeStartMarker': ?instance.bridgeStartMarker,
   'startedAt': instance.startedAt.toIso8601String(),
   'status': _$OpenCodeOwnershipStatusEnumMap[instance.status]!,
 };

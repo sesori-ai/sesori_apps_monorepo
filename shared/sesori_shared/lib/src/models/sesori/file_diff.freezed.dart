@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'file_diff.dart';
@@ -9,6 +9,7 @@ part of 'file_diff.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 FileDiff _$FileDiffFromJson(
@@ -104,7 +105,7 @@ as FileDiffStatus?,
 @JsonSerializable()
 
 class FileDiffContent implements FileDiff {
-  const FileDiffContent({required this.file, required this.before, required this.after, required this.additions, required this.deletions, required this.status, final  String? $type}): $type = $type ?? 'content';
+  const FileDiffContent({required this.file, required this.before, required this.after, required this.additions, required this.deletions, required this.status,  String? $type}): $type = $type ?? 'content';
   factory FileDiffContent.fromJson(Map<String, dynamic> json) => _$FileDiffContentFromJson(json);
 
 @override final  String file;
@@ -187,7 +188,7 @@ as FileDiffStatus?,
 @JsonSerializable()
 
 class FileDiffSkipped implements FileDiff {
-  const FileDiffSkipped({required this.file, required this.reason, required this.status, final  String? $type}): $type = $type ?? 'skipped';
+  const FileDiffSkipped({required this.file, required this.reason, required this.status,  String? $type}): $type = $type ?? 'skipped';
   factory FileDiffSkipped.fromJson(Map<String, dynamic> json) => _$FileDiffSkippedFromJson(json);
 
 @override final  String file;

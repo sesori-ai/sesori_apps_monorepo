@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'acp_content_block_dto.dart';
@@ -9,6 +9,7 @@ part of 'acp_content_block_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 AcpContentBlockDto _$AcpContentBlockDtoFromJson(
@@ -79,7 +80,7 @@ $AcpContentBlockDtoCopyWith(AcpContentBlockDto _, $Res Function(AcpContentBlockD
 @JsonSerializable(createToJson: false)
 
 class AcpTextContentBlockDto implements AcpContentBlockDto {
-  const AcpTextContentBlockDto({required this.text, final  String? $type}): $type = $type ?? 'text';
+  const AcpTextContentBlockDto({required this.text,  String? $type}): $type = $type ?? 'text';
   factory AcpTextContentBlockDto.fromJson(Map<String, dynamic> json) => _$AcpTextContentBlockDtoFromJson(json);
 
  final  String text;
@@ -149,7 +150,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class AcpImageContentBlockDto implements AcpContentBlockDto {
-  const AcpImageContentBlockDto({required this.data, required this.mimeType, required this.uri, final  String? $type}): $type = $type ?? 'image';
+  const AcpImageContentBlockDto({required this.data, required this.mimeType, required this.uri,  String? $type}): $type = $type ?? 'image';
   factory AcpImageContentBlockDto.fromJson(Map<String, dynamic> json) => _$AcpImageContentBlockDtoFromJson(json);
 
  final  String data;
@@ -223,7 +224,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class AcpUnsupportedAudioContentBlockDto implements AcpContentBlockDto {
-  const AcpUnsupportedAudioContentBlockDto({final  String? $type}): $type = $type ?? 'audio';
+  const AcpUnsupportedAudioContentBlockDto({ String? $type}): $type = $type ?? 'audio';
   factory AcpUnsupportedAudioContentBlockDto.fromJson(Map<String, dynamic> json) => _$AcpUnsupportedAudioContentBlockDtoFromJson(json);
 
 
@@ -259,7 +260,7 @@ String toString() {
 @JsonSerializable(createToJson: false)
 
 class AcpUnsupportedResourceContentBlockDto implements AcpContentBlockDto {
-  const AcpUnsupportedResourceContentBlockDto({final  String? $type}): $type = $type ?? 'resource';
+  const AcpUnsupportedResourceContentBlockDto({ String? $type}): $type = $type ?? 'resource';
   factory AcpUnsupportedResourceContentBlockDto.fromJson(Map<String, dynamic> json) => _$AcpUnsupportedResourceContentBlockDtoFromJson(json);
 
 
@@ -295,7 +296,7 @@ String toString() {
 @JsonSerializable(createToJson: false)
 
 class AcpUnsupportedResourceLinkContentBlockDto implements AcpContentBlockDto {
-  const AcpUnsupportedResourceLinkContentBlockDto({final  String? $type}): $type = $type ?? 'resource_link';
+  const AcpUnsupportedResourceLinkContentBlockDto({ String? $type}): $type = $type ?? 'resource_link';
   factory AcpUnsupportedResourceLinkContentBlockDto.fromJson(Map<String, dynamic> json) => _$AcpUnsupportedResourceLinkContentBlockDtoFromJson(json);
 
 
@@ -331,7 +332,7 @@ String toString() {
 @JsonSerializable(createToJson: false)
 
 class AcpUnknownContentBlockDto implements AcpContentBlockDto {
-  const AcpUnknownContentBlockDto({final  String? $type}): $type = $type ?? 'unknown';
+  const AcpUnknownContentBlockDto({ String? $type}): $type = $type ?? 'unknown';
   factory AcpUnknownContentBlockDto.fromJson(Map<String, dynamic> json) => _$AcpUnknownContentBlockDtoFromJson(json);
 
 

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_skill_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_skill_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -64,7 +65,7 @@ class _$CodexSkillsListResponseDtoCopyWithImpl<$Res>
 /// Create a copy of CodexSkillsListResponseDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexSkillsListResponseDto(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<CodexSkillsListEntryDto>,
   ));
@@ -78,7 +79,7 @@ as List<CodexSkillsListEntryDto>,
 @JsonSerializable(createToJson: false)
 
 class _CodexSkillsListResponseDto implements CodexSkillsListResponseDto {
-  const _CodexSkillsListResponseDto({required final  List<CodexSkillsListEntryDto> data}): _data = data;
+  const _CodexSkillsListResponseDto({required  List<CodexSkillsListEntryDto> data}): _data = data;
   factory _CodexSkillsListResponseDto.fromJson(Map<String, dynamic> json) => _$CodexSkillsListResponseDtoFromJson(json);
 
  final  List<CodexSkillsListEntryDto> _data;
@@ -199,7 +200,7 @@ class _$CodexSkillsListEntryDtoCopyWithImpl<$Res>
 /// Create a copy of CodexSkillsListEntryDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? cwd = null,Object? skills = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexSkillsListEntryDto(
 cwd: null == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
 as String,skills: null == skills ? _self.skills : skills // ignore: cast_nullable_to_non_nullable
 as List<CodexSkillDto>,
@@ -214,7 +215,7 @@ as List<CodexSkillDto>,
 @JsonSerializable(createToJson: false)
 
 class _CodexSkillsListEntryDto implements CodexSkillsListEntryDto {
-  const _CodexSkillsListEntryDto({required this.cwd, required final  List<CodexSkillDto> skills}): _skills = skills;
+  const _CodexSkillsListEntryDto({required this.cwd, required  List<CodexSkillDto> skills}): _skills = skills;
   factory _CodexSkillsListEntryDto.fromJson(Map<String, dynamic> json) => _$CodexSkillsListEntryDtoFromJson(json);
 
 @override final  String cwd;
@@ -337,7 +338,7 @@ class _$CodexSkillDtoCopyWithImpl<$Res>
 /// Create a copy of CodexSkillDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = null,Object? shortDescription = freezed,Object? interface = freezed,Object? enabled = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexSkillDto(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,shortDescription: freezed == shortDescription ? _self.shortDescription : shortDescription // ignore: cast_nullable_to_non_nullable
@@ -502,7 +503,7 @@ class _$CodexSkillInterfaceDtoCopyWithImpl<$Res>
 /// Create a copy of CodexSkillInterfaceDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? shortDescription = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexSkillInterfaceDto(
 shortDescription: freezed == shortDescription ? _self.shortDescription : shortDescription // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

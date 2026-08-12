@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_account_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_account_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -65,7 +66,7 @@ class _$CodexDeviceLoginStartParamsDtoCopyWithImpl<$Res>
 /// Create a copy of CodexDeviceLoginStartParamsDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? type = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexDeviceLoginStartParamsDto(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexAccountLoginType,
   ));
@@ -197,7 +198,7 @@ class _$CodexDeviceLoginStartResponseDtoCopyWithImpl<$Res>
 /// Create a copy of CodexDeviceLoginStartResponseDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? loginId = null,Object? verificationUrl = null,Object? userCode = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexDeviceLoginStartResponseDto(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexAccountLoginType,loginId: null == loginId ? _self.loginId : loginId // ignore: cast_nullable_to_non_nullable
 as String,verificationUrl: null == verificationUrl ? _self.verificationUrl : verificationUrl // ignore: cast_nullable_to_non_nullable
@@ -336,7 +337,7 @@ class _$CodexAccountLoginCancelParamsDtoCopyWithImpl<$Res>
 /// Create a copy of CodexAccountLoginCancelParamsDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? loginId = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexAccountLoginCancelParamsDto(
 loginId: null == loginId ? _self.loginId : loginId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -468,7 +469,7 @@ class _$CodexAccountLoginCancelResponseDtoCopyWithImpl<$Res>
 /// Create a copy of CodexAccountLoginCancelResponseDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? status = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexAccountLoginCancelResponseDto(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as CodexAccountLoginCancelStatus,
   ));
@@ -597,7 +598,7 @@ class _$CodexAccountLoginCompletedNotificationDtoCopyWithImpl<$Res>
 /// Create a copy of CodexAccountLoginCompletedNotificationDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? loginId = freezed,Object? success = null,Object? error = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexAccountLoginCompletedNotificationDto(
 loginId: freezed == loginId ? _self.loginId : loginId // ignore: cast_nullable_to_non_nullable
 as String?,success: null == success ? _self.success : success // ignore: cast_nullable_to_non_nullable
 as bool,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable

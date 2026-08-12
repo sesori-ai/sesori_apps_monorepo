@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'pending_permission.dart';
@@ -9,6 +9,7 @@ part of 'pending_permission.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$PendingPermissionResponseCopyWithImpl<$Res>
 /// Create a copy of PendingPermissionResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
-  return _then(_self.copyWith(
+  return _then(PendingPermissionResponse(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<PendingPermission>,
   ));
@@ -80,7 +81,7 @@ as List<PendingPermission>,
 @JsonSerializable()
 
 class _PendingPermissionResponse implements PendingPermissionResponse {
-  const _PendingPermissionResponse({required final  List<PendingPermission> data}): _data = data;
+  const _PendingPermissionResponse({required  List<PendingPermission> data}): _data = data;
   factory _PendingPermissionResponse.fromJson(Map<String, dynamic> json) => _$PendingPermissionResponseFromJson(json);
 
  final  List<PendingPermission> _data;
@@ -158,9 +159,7 @@ mixin _$PendingPermission {
  String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
- String? get displaySessionId; String get tool; String get description;// COMPATIBILITY 2026-08-10 (v1.8.0): Older bridges omit this capability;
-// remove the default after the minimum supported bridge sends it.
- bool get allowAlways;
+ String? get displaySessionId; String get tool; String get description; bool get allowAlways;
 /// Create a copy of PendingPermission
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -211,7 +210,7 @@ class _$PendingPermissionCopyWithImpl<$Res>
 /// Create a copy of PendingPermission
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? allowAlways = null,}) {
-  return _then(_self.copyWith(
+  return _then(PendingPermission(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
@@ -241,8 +240,6 @@ class _PendingPermission implements PendingPermission {
 @override final  String? displaySessionId;
 @override final  String tool;
 @override final  String description;
-// COMPATIBILITY 2026-08-10 (v1.8.0): Older bridges omit this capability;
-// remove the default after the minimum supported bridge sends it.
 @override@JsonKey() final  bool allowAlways;
 
 /// Create a copy of PendingPermission

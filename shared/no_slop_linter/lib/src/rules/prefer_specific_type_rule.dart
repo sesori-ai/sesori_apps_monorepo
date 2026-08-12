@@ -169,7 +169,7 @@ class PreferSpecificTypeRule extends NoSlopRule {
     if (functionExpression == null) return false;
 
     final parent = functionExpression.parent;
-    return parent is ArgumentList || parent is NamedExpression;
+    return parent is ArgumentList || parent is NamedArgument;
   }
 
   /// Generic bounds (`T extends Object?`) are outside the developer's control —
@@ -184,16 +184,8 @@ class PreferSpecificTypeRule extends NoSlopRule {
   bool _isErrorNamed(NamedType node) {
     AstNode? current = node.parent;
     while (current != null) {
-      if (current is SimpleFormalParameter) {
+      if (current is FormalParameter) {
         return current.name?.lexeme.toLowerCase().contains('error') ?? false;
-      }
-
-      if (current is DefaultFormalParameter) {
-        final inner = current.parameter;
-        if (inner is SimpleFormalParameter) {
-          return inner.name?.lexeme.toLowerCase().contains('error') ?? false;
-        }
-        return false;
       }
 
       if (current is VariableDeclarationList) {

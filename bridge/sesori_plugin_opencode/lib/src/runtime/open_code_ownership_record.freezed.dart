@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'open_code_ownership_record.dart';
@@ -9,6 +9,7 @@ part of 'open_code_ownership_record.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$OpenCodeOwnershipRecordCopyWithImpl<$Res>
 /// Create a copy of OpenCodeOwnershipRecord
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? ownerSessionId = null,Object? openCodePid = null,Object? openCodeStartMarker = freezed,Object? openCodeExecutablePath = null,Object? openCodeCommand = null,Object? openCodeArgs = null,Object? port = null,Object? bridgePid = null,Object? bridgeStartMarker = freezed,Object? startedAt = null,Object? status = null,}) {
-  return _then(_self.copyWith(
+  return _then(OpenCodeOwnershipRecord(
 ownerSessionId: null == ownerSessionId ? _self.ownerSessionId : ownerSessionId // ignore: cast_nullable_to_non_nullable
 as String,openCodePid: null == openCodePid ? _self.openCodePid : openCodePid // ignore: cast_nullable_to_non_nullable
 as int,openCodeStartMarker: freezed == openCodeStartMarker ? _self.openCodeStartMarker : openCodeStartMarker // ignore: cast_nullable_to_non_nullable
@@ -90,7 +91,7 @@ as OpenCodeOwnershipStatus,
 @JsonSerializable()
 
 class _OpenCodeOwnershipRecord implements OpenCodeOwnershipRecord {
-  const _OpenCodeOwnershipRecord({required this.ownerSessionId, required this.openCodePid, required this.openCodeStartMarker, required this.openCodeExecutablePath, required this.openCodeCommand, required final  List<String> openCodeArgs, required this.port, required this.bridgePid, required this.bridgeStartMarker, required this.startedAt, required this.status}): _openCodeArgs = openCodeArgs;
+  const _OpenCodeOwnershipRecord({required this.ownerSessionId, required this.openCodePid, required this.openCodeStartMarker, required this.openCodeExecutablePath, required this.openCodeCommand, required  List<String> openCodeArgs, required this.port, required this.bridgePid, required this.bridgeStartMarker, required this.startedAt, required this.status}): _openCodeArgs = openCodeArgs;
   factory _OpenCodeOwnershipRecord.fromJson(Map<String, dynamic> json) => _$OpenCodeOwnershipRecordFromJson(json);
 
 @override final  String ownerSessionId;

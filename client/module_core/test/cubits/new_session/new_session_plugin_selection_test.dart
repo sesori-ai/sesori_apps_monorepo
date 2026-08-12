@@ -920,13 +920,24 @@ void main() {
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
       cubit.selectVariant(const SessionVariant(id: "high"));
-      await cubit.refreshOptions();
+      final logLines = <String>[];
+      await runZoned(
+        cubit.refreshOptions,
+        zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logLines.add(line)),
+      );
 
       final afterRefresh = cubit.state.agentModelData!;
       expect(afterRefresh.optionsState, isA<NewSessionOptionsRefreshFailureUnavailableState>());
       expect(afterRefresh.providers, isEmpty);
       expect(afterRefresh.agentModel, isNull);
       expect(afterRefresh.availableVariants, isEmpty);
+      expect(
+        logLines,
+        contains(
+          "New session: options unavailable for plugin plugin-a "
+          "(source: aggregate, mode: forcedRefresh, result: NewSessionOptionsRefreshFailureUnavailable)",
+        ),
+      );
     });
 
     test("failed provider load after a plugin switch does not restore the prior plugin catalog", () async {

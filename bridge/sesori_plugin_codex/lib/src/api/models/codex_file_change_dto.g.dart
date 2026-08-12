@@ -18,8 +18,8 @@ _CodexFileChangeParamsDto _$CodexFileChangeParamsDtoFromJson(Map json) =>
 Map<String, dynamic> _$CodexFileChangeParamsDtoToJson(
   _CodexFileChangeParamsDto instance,
 ) => <String, dynamic>{
-  'threadId': instance.threadId,
-  'turnId': instance.turnId,
+  'threadId': ?instance.threadId,
+  'turnId': ?instance.turnId,
   'item': instance.item.toJson(),
 };
 
@@ -40,7 +40,7 @@ Map<String, dynamic> _$CodexFileChangeItemDtoToJson(
   _CodexFileChangeItemDto instance,
 ) => <String, dynamic>{
   'type': _$CodexFileChangeItemTypeEnumMap[instance.type]!,
-  'id': instance.id,
+  'id': ?instance.id,
   'status': _$CodexFileChangeStatusEnumMap[instance.status]!,
 };
 

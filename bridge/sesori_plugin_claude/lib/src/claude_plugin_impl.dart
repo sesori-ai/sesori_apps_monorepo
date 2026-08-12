@@ -43,7 +43,6 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
        _eventBuffer = eventBuffer,
        _clock = clock,
        _generateSessionId = generateSessionId,
-       _catalogSessionId = generateSessionId(),
        _launchDirectory = normalizeProjectDirectory(directory: launchDirectory) {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
     _processes.events.listen(_handleProcessEvent).addTo(_subscriptions);
@@ -61,12 +60,10 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final ServerClock _clock;
   final ClaudeSessionIdGenerator _generateSessionId;
-  final String _catalogSessionId;
   final String _launchDirectory;
   final Map<String, PluginSession> _createdSessions = {};
   final Set<String> _unstartedSessions = {};
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  ClaudeBackendCatalog? _catalog;
   Future<void>? _disposeFuture;
   bool _disposed = false;
   int _messageSequence = 0;
@@ -98,15 +95,19 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   );
 
   @override
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<List<PluginCommand>> getCommands({required String? projectId}) async =>
-      (await _getCatalog(refresh: false)).commands;
+      (await _catalogService.getCatalog(refresh: false)).commands;
 
   @override
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
-    final catalog = await _getCatalog(refresh: discoveryMode == PluginSessionOptionsDiscoveryMode.refresh);
+    final catalog = await _catalogService.getCatalog(
+      refresh: discoveryMode == PluginSessionOptionsDiscoveryMode.refresh,
+    );
     return PluginSessionOptionsDiscoveryResult.observed(
       options: PluginSessionOptions(
         agents: catalog.agents,
@@ -295,7 +296,9 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   Future<void> abortSession({required String sessionId}) => _sessions.abort(sessionId: sessionId);
 
   @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async => (await _getCatalog(refresh: false)).agents;
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
+  Future<List<PluginAgent>> getAgents({required String projectId}) async =>
+      (await _catalogService.getCatalog(refresh: false)).agents;
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async =>
@@ -319,11 +322,30 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     required String sessionId,
     required List<List<String>> answers,
   }) async {
+    final exitsPlanMode = _approvals.isExitPlanModeQuestion(id: questionId);
     if (!_approvals.hasQuestion(id: questionId)) {
       throw const PluginOperationException.notFound("replyToQuestion", message: "question not found");
     }
     if (!_approvals.replyQuestion(id: questionId, answers: answers)) {
       throw const PluginOperationException("replyToQuestion", message: "Claude rejected the question response");
+    }
+    if (exitsPlanMode) {
+      final applied = _processes.appliedSelection(sessionId: sessionId);
+      if (applied != null) {
+        _processes.recordAppliedSelection(
+          sessionId: sessionId,
+          model: applied.model,
+          effort: applied.effort,
+          permissionMode: ClaudePermissionMode.auto,
+        );
+      }
+      _eventBuffer.add(
+        BridgeSseSessionPromptDefaultsChanged(
+          sessionID: sessionId,
+          agent: "Default",
+          model: null,
+        ),
+      );
     }
   }
 
@@ -355,8 +377,9 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
   Future<bool> healthCheck() async => !_disposed;
 
   @override
+  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      (await _getCatalog(refresh: false)).providers;
+      (await _catalogService.getCatalog(refresh: false)).providers;
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
@@ -396,26 +419,7 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     await _sessions.dispose();
     _createdSessions.clear();
     _unstartedSessions.clear();
-    _eventDispatcher.forgetSession(sessionId: _catalogSessionId);
     await _eventBuffer.close();
-  }
-
-  Future<ClaudeBackendCatalog> _getCatalog({required bool refresh}) async {
-    final cached = _catalog;
-    if (!refresh && cached != null) return cached;
-    await _processes.ensureResident(
-      sessionId: _catalogSessionId,
-      directory: _launchDirectory,
-      createNew: true,
-      model: null,
-      effort: null,
-      permissionMode: null,
-      allowedTools: const [],
-    );
-    return _catalog = await _catalogService.getCatalog(
-      sessionId: _catalogSessionId,
-      refresh: refresh,
-    );
   }
 
   Future<void> _enqueue({

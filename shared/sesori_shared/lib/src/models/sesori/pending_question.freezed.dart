@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'pending_question.dart';
@@ -9,6 +9,7 @@ part of 'pending_question.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$PendingQuestionResponseCopyWithImpl<$Res>
 /// Create a copy of PendingQuestionResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
-  return _then(_self.copyWith(
+  return _then(PendingQuestionResponse(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<PendingQuestion>,
   ));
@@ -80,7 +81,7 @@ as List<PendingQuestion>,
 @JsonSerializable()
 
 class _PendingQuestionResponse implements PendingQuestionResponse {
-  const _PendingQuestionResponse({required final  List<PendingQuestion> data}): _data = data;
+  const _PendingQuestionResponse({required  List<PendingQuestion> data}): _data = data;
   factory _PendingQuestionResponse.fromJson(Map<String, dynamic> json) => _$PendingQuestionResponseFromJson(json);
 
  final  List<PendingQuestion> _data;
@@ -209,7 +210,7 @@ class _$PendingQuestionCopyWithImpl<$Res>
 /// Create a copy of PendingQuestion
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? questions = null,}) {
-  return _then(_self.copyWith(
+  return _then(PendingQuestion(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
@@ -226,7 +227,7 @@ as List<QuestionInfo>,
 @JsonSerializable()
 
 class _PendingQuestion implements PendingQuestion {
-  const _PendingQuestion({required this.id, required this.sessionID, required this.displaySessionId, required final  List<QuestionInfo> questions}): _questions = questions;
+  const _PendingQuestion({required this.id, required this.sessionID, required this.displaySessionId, required  List<QuestionInfo> questions}): _questions = questions;
   factory _PendingQuestion.fromJson(Map<String, dynamic> json) => _$PendingQuestionFromJson(json);
 
 @override final  String id;

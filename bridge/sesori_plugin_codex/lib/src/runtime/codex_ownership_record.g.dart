@@ -28,13 +28,13 @@ Map<String, dynamic> _$CodexOwnershipRecordToJson(
 ) => <String, dynamic>{
   'ownerSessionId': instance.ownerSessionId,
   'codexPid': instance.codexPid,
-  'codexStartMarker': instance.codexStartMarker,
+  'codexStartMarker': ?instance.codexStartMarker,
   'codexExecutablePath': instance.codexExecutablePath,
   'codexCommand': instance.codexCommand,
   'codexArgs': instance.codexArgs,
   'port': instance.port,
   'bridgePid': instance.bridgePid,
-  'bridgeStartMarker': instance.bridgeStartMarker,
+  'bridgeStartMarker': ?instance.bridgeStartMarker,
   'startedAt': instance.startedAt.toIso8601String(),
   'status': _$CodexOwnershipStatusEnumMap[instance.status]!,
 };

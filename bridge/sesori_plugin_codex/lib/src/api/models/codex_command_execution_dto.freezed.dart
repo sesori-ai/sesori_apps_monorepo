@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'codex_command_execution_dto.dart';
@@ -9,6 +9,7 @@ part of 'codex_command_execution_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$CodexCommandExecutionParamsDtoCopyWithImpl<$Res>
 /// Create a copy of CodexCommandExecutionParamsDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? threadId = freezed,Object? turnId = freezed,Object? item = null,}) {
-  return _then(_self.copyWith(
+  return _then(CodexCommandExecutionParamsDto(
 threadId: freezed == threadId ? _self.threadId : threadId // ignore: cast_nullable_to_non_nullable
 as String?,turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
 as String?,item: null == item ? _self.item : item // ignore: cast_nullable_to_non_nullable
@@ -224,7 +225,7 @@ class _$CodexCommandExecutionItemDtoCopyWithImpl<$Res>
 /// Create a copy of CodexCommandExecutionItemDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? id = freezed,Object? command = freezed,Object? aggregatedOutput = freezed,Object? status = null,Object? exitCode = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CodexCommandExecutionItemDto(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexCommandExecutionItemType,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'gh_pull_request_batch.dart';
@@ -9,6 +9,7 @@ part of 'gh_pull_request_batch.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$GhPullRequestBatchResponseCopyWithImpl<$Res>
 /// Create a copy of GhPullRequestBatchResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? errorCount = null,Object? viewerLogin = null,Object? pages = null,}) {
-  return _then(_self.copyWith(
+  return _then(GhPullRequestBatchResponse(
 errorCount: null == errorCount ? _self.errorCount : errorCount // ignore: cast_nullable_to_non_nullable
 as int,viewerLogin: null == viewerLogin ? _self.viewerLogin : viewerLogin // ignore: cast_nullable_to_non_nullable
 as String,pages: null == pages ? _self.pages : pages // ignore: cast_nullable_to_non_nullable
@@ -82,7 +83,7 @@ as List<GhPullRequestCandidatePage>,
 @JsonSerializable()
 
 class _GhPullRequestBatchResponse implements GhPullRequestBatchResponse {
-  const _GhPullRequestBatchResponse({required this.errorCount, required this.viewerLogin, required final  List<GhPullRequestCandidatePage> pages}): _pages = pages;
+  const _GhPullRequestBatchResponse({required this.errorCount, required this.viewerLogin, required  List<GhPullRequestCandidatePage> pages}): _pages = pages;
   factory _GhPullRequestBatchResponse.fromJson(Map<String, dynamic> json) => _$GhPullRequestBatchResponseFromJson(json);
 
 @override final  int errorCount;
@@ -212,7 +213,7 @@ class _$GhPullRequestCandidatePageCopyWithImpl<$Res>
 /// Create a copy of GhPullRequestCandidatePage
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? requestIndex = null,Object? stateGroup = null,Object? repositoryIdentity = null,Object? connection = null,}) {
-  return _then(_self.copyWith(
+  return _then(GhPullRequestCandidatePage(
 requestIndex: null == requestIndex ? _self.requestIndex : requestIndex // ignore: cast_nullable_to_non_nullable
 as int,stateGroup: null == stateGroup ? _self.stateGroup : stateGroup // ignore: cast_nullable_to_non_nullable
 as GhPullRequestStateGroup,repositoryIdentity: null == repositoryIdentity ? _self.repositoryIdentity : repositoryIdentity // ignore: cast_nullable_to_non_nullable
@@ -373,7 +374,7 @@ class _$GhPullRequestConnectionCopyWithImpl<$Res>
 /// Create a copy of GhPullRequestConnection
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? nodes = null,Object? pageInfo = null,}) {
-  return _then(_self.copyWith(
+  return _then(GhPullRequestConnection(
 nodes: null == nodes ? _self.nodes : nodes // ignore: cast_nullable_to_non_nullable
 as List<GhPullRequest>,pageInfo: null == pageInfo ? _self.pageInfo : pageInfo // ignore: cast_nullable_to_non_nullable
 as GhPullRequestPageInfo,
@@ -397,7 +398,7 @@ $GhPullRequestPageInfoCopyWith<$Res> get pageInfo {
 @JsonSerializable()
 
 class _GhPullRequestConnection implements GhPullRequestConnection {
-  const _GhPullRequestConnection({required final  List<GhPullRequest> nodes, required this.pageInfo}): _nodes = nodes;
+  const _GhPullRequestConnection({required  List<GhPullRequest> nodes, required this.pageInfo}): _nodes = nodes;
   factory _GhPullRequestConnection.fromJson(Map<String, dynamic> json) => _$GhPullRequestConnectionFromJson(json);
 
  final  List<GhPullRequest> _nodes;
@@ -534,7 +535,7 @@ class _$GhPullRequestPageInfoCopyWithImpl<$Res>
 /// Create a copy of GhPullRequestPageInfo
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? hasNextPage = null,Object? endCursor = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(GhPullRequestPageInfo(
 hasNextPage: null == hasNextPage ? _self.hasNextPage : hasNextPage // ignore: cast_nullable_to_non_nullable
 as bool,endCursor: freezed == endCursor ? _self.endCursor : endCursor // ignore: cast_nullable_to_non_nullable
 as String?,

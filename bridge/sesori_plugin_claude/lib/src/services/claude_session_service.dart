@@ -161,6 +161,11 @@ final class ClaudeSessionService {
       await _processes.interrupt(sessionId: sessionId);
     } on Object catch (error, stack) {
       Log.w("[claude] interrupt failed for $sessionId", error, stack);
+    } finally {
+      // Claude can emit recovery/meta turns after an acknowledged interrupt.
+      // Resume from the persisted transcript in a fresh process instead of
+      // allowing that transport backlog to enter the next user turn.
+      await _processes.teardown(sessionId: sessionId);
     }
   }
 

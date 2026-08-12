@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'claude_backend_catalog_dto.dart';
@@ -9,6 +9,7 @@ part of 'claude_backend_catalog_dto.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -60,7 +61,7 @@ class _$ClaudeBackendCatalogDtoCopyWithImpl<$Res>
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? commands = null,Object? models = null,}) {
-  return _then(_self.copyWith(
+  return _then(ClaudeBackendCatalogDto(
 commands: null == commands ? _self.commands : commands // ignore: cast_nullable_to_non_nullable
 as List<ClaudeCommandDto>,models: null == models ? _self.models : models // ignore: cast_nullable_to_non_nullable
 as List<ClaudeModelDto>,
@@ -75,7 +76,7 @@ as List<ClaudeModelDto>,
 @JsonSerializable(createToJson: false)
 
 class _ClaudeBackendCatalogDto implements ClaudeBackendCatalogDto {
-  const _ClaudeBackendCatalogDto({@JsonKey(fromJson: _commandsOrEmpty) required final  List<ClaudeCommandDto> commands, @JsonKey(fromJson: _modelsOrEmpty) required final  List<ClaudeModelDto> models}): _commands = commands,_models = models;
+  const _ClaudeBackendCatalogDto({@JsonKey(fromJson: _commandsOrEmpty) required  List<ClaudeCommandDto> commands, @JsonKey(fromJson: _modelsOrEmpty) required  List<ClaudeModelDto> models}): _commands = commands,_models = models;
   factory _ClaudeBackendCatalogDto.fromJson(Map<String, dynamic> json) => _$ClaudeBackendCatalogDtoFromJson(json);
 
  final  List<ClaudeCommandDto> _commands;
@@ -196,7 +197,7 @@ class _$ClaudeCommandDtoCopyWithImpl<$Res>
 /// Create a copy of ClaudeCommandDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = freezed,Object? description = freezed,Object? argumentHint = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(ClaudeCommandDto(
 name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,argumentHint: freezed == argumentHint ? _self.argumentHint : argumentHint // ignore: cast_nullable_to_non_nullable
@@ -323,7 +324,7 @@ class _$ClaudeModelDtoCopyWithImpl<$Res>
 /// Create a copy of ClaudeModelDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? value = freezed,Object? resolvedModel = freezed,Object? displayName = freezed,Object? supportsEffort = freezed,Object? supportedEffortLevels = null,}) {
-  return _then(_self.copyWith(
+  return _then(ClaudeModelDto(
 value: freezed == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
 as String?,resolvedModel: freezed == resolvedModel ? _self.resolvedModel : resolvedModel // ignore: cast_nullable_to_non_nullable
 as String?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -341,7 +342,7 @@ as List<String>,
 @JsonSerializable(createToJson: false)
 
 class _ClaudeModelDto implements ClaudeModelDto {
-  const _ClaudeModelDto({@JsonKey(fromJson: _stringOrNull) required this.value, @JsonKey(fromJson: _stringOrNull) required this.resolvedModel, @JsonKey(fromJson: _stringOrNull) required this.displayName, @JsonKey(fromJson: _boolOrNull) required this.supportsEffort, @JsonKey(fromJson: _stringsOrEmpty) required final  List<String> supportedEffortLevels}): _supportedEffortLevels = supportedEffortLevels;
+  const _ClaudeModelDto({@JsonKey(fromJson: _stringOrNull) required this.value, @JsonKey(fromJson: _stringOrNull) required this.resolvedModel, @JsonKey(fromJson: _stringOrNull) required this.displayName, @JsonKey(fromJson: _boolOrNull) required this.supportsEffort, @JsonKey(fromJson: _stringsOrEmpty) required  List<String> supportedEffortLevels}): _supportedEffortLevels = supportedEffortLevels;
   factory _ClaudeModelDto.fromJson(Map<String, dynamic> json) => _$ClaudeModelDtoFromJson(json);
 
 @override@JsonKey(fromJson: _stringOrNull) final  String? value;

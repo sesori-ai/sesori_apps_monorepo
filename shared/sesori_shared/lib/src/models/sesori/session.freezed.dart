@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'session.dart';
@@ -9,6 +9,7 @@ part of 'session.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$SessionListResponseCopyWithImpl<$Res>
 /// Create a copy of SessionListResponse
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? items = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionListResponse(
 items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<Session>,
   ));
@@ -80,7 +81,7 @@ as List<Session>,
 @JsonSerializable()
 
 class _SessionListResponse implements SessionListResponse {
-  const _SessionListResponse({required final  List<Session> items}): _items = items;
+  const _SessionListResponse({required  List<Session> items}): _items = items;
   factory _SessionListResponse.fromJson(Map<String, dynamic> json) => _$SessionListResponseFromJson(json);
 
  final  List<Session> _items;
@@ -206,7 +207,7 @@ class _$SessionListRequestCopyWithImpl<$Res>
 /// Create a copy of SessionListRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? start = freezed,Object? limit = freezed,Object? waitForPrData = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionListRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,start: freezed == start ? _self.start : start // ignore: cast_nullable_to_non_nullable
 as int?,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
@@ -298,16 +299,7 @@ as bool,
 /// @nodoc
 mixin _$Session {
 
- String get id;// COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
- String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; PullRequestInfo? get pullRequest;// COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
- List<PullRequestInfo> get pullRequestHistory; SessionPromptDefaults? get promptDefaults;// The branch the bridge created for this session's dedicated worktree.
-// Null means the session has no dedicated worktree or came from a bridge
-// that predates branch reporting.
- String? get branchName; bool get hasWorktree;// Whether this session has unseen activity (new changes the user has not
-// viewed). Backend-computed; advances on activity and is cleared by viewing
-// the session or an explicit mark-as-read. Defaults to false so older
-// payloads (and the baseline) deserialize as "seen".
- bool get unseen;
+ String get id; String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; PullRequestInfo? get pullRequest; List<PullRequestInfo> get pullRequestHistory; SessionPromptDefaults? get promptDefaults; String? get branchName; bool get hasWorktree; bool get unseen;
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -358,7 +350,7 @@ class _$SessionCopyWithImpl<$Res>
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? pluginId = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? pullRequest = freezed,Object? pullRequestHistory = null,Object? promptDefaults = freezed,Object? branchName = freezed,Object? hasWorktree = null,Object? unseen = null,}) {
-  return _then(_self.copyWith(
+  return _then(Session(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
@@ -420,11 +412,10 @@ $SessionPromptDefaultsCopyWith<$Res>? get promptDefaults {
 @JsonSerializable()
 
 class _Session implements Session {
-  const _Session({required this.id, this.pluginId = legacyMissingPluginId, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.pullRequest, final  List<PullRequestInfo> pullRequestHistory = const <PullRequestInfo>[], required this.promptDefaults, required this.branchName, this.hasWorktree = false, this.unseen = false}): _pullRequestHistory = pullRequestHistory;
+  const _Session({required this.id, this.pluginId = legacyMissingPluginId, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.pullRequest,  List<PullRequestInfo> pullRequestHistory = const <PullRequestInfo>[], required this.promptDefaults, required this.branchName, this.hasWorktree = false, this.unseen = false}): _pullRequestHistory = pullRequestHistory;
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;
-// COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
 @override@JsonKey() final  String pluginId;
 @override final  String projectID;
 @override final  String directory;
@@ -432,9 +423,7 @@ class _Session implements Session {
 @override final  String? title;
 @override final  SessionTime? time;
 @override final  PullRequestInfo? pullRequest;
-// COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
  final  List<PullRequestInfo> _pullRequestHistory;
-// COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
 @override@JsonKey() List<PullRequestInfo> get pullRequestHistory {
   if (_pullRequestHistory is EqualUnmodifiableListView) return _pullRequestHistory;
   // ignore: implicit_dynamic_type
@@ -442,15 +431,8 @@ class _Session implements Session {
 }
 
 @override final  SessionPromptDefaults? promptDefaults;
-// The branch the bridge created for this session's dedicated worktree.
-// Null means the session has no dedicated worktree or came from a bridge
-// that predates branch reporting.
 @override final  String? branchName;
 @override@JsonKey() final  bool hasWorktree;
-// Whether this session has unseen activity (new changes the user has not
-// viewed). Backend-computed; advances on activity and is cleared by viewing
-// the session or an explicit mark-as-read. Defaults to false so older
-// payloads (and the baseline) deserialize as "seen".
 @override@JsonKey() final  bool unseen;
 
 /// Create a copy of Session
@@ -616,7 +598,7 @@ class _$SessionPromptDefaultsCopyWithImpl<$Res>
 /// Create a copy of SessionPromptDefaults
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? agent = freezed,Object? model = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(SessionPromptDefaults(
 agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as AgentModel?,
@@ -777,7 +759,7 @@ class _$SessionTimeCopyWithImpl<$Res>
 /// Create a copy of SessionTime
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? updated = null,Object? archived = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(SessionTime(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
 as int,archived: freezed == archived ? _self.archived : archived // ignore: cast_nullable_to_non_nullable
@@ -917,7 +899,7 @@ class _$GlobalSessionCopyWithImpl<$Res>
 /// Create a copy of GlobalSession
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? project = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(GlobalSession(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
 as String,directory: null == directory ? _self.directory : directory // ignore: cast_nullable_to_non_nullable
@@ -1117,7 +1099,7 @@ class _$SessionProjectCopyWithImpl<$Res>
 /// Create a copy of SessionProject
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? worktree = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionProject(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,worktree: null == worktree ? _self.worktree : worktree // ignore: cast_nullable_to_non_nullable
@@ -1257,7 +1239,7 @@ class _$SessionIdRequestCopyWithImpl<$Res>
 /// Create a copy of SessionIdRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionIdRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -1342,11 +1324,9 @@ mixin _$SessionMessagesRequest {
 
  String get sessionId;/// Maximum messages to return, newest-first from [before]. Null means the
 /// full transcript.
-// COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
  int? get limit;/// Exclusive cursor: return messages ordered strictly before this one.
 /// Null starts from the newest message.
- int? get before;// COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
- MessageAttachmentDelivery get attachmentDelivery;
+ int? get before; MessageAttachmentDelivery get attachmentDelivery;
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1397,7 +1377,7 @@ class _$SessionMessagesRequestCopyWithImpl<$Res>
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,}) {
-  return _then(_self.copyWith(
+  return _then(SessionMessagesRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
@@ -1420,12 +1400,10 @@ class _SessionMessagesRequest implements SessionMessagesRequest {
 @override final  String sessionId;
 /// Maximum messages to return, newest-first from [before]. Null means the
 /// full transcript.
-// COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
 @override final  int? limit;
 /// Exclusive cursor: return messages ordered strictly before this one.
 /// Null starts from the newest message.
 @override final  int? before;
-// COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
 @override@JsonKey() final  MessageAttachmentDelivery attachmentDelivery;
 
 /// Create a copy of SessionMessagesRequest
