@@ -122,14 +122,16 @@
   parts projected from the complete stored collection, and gave each SSE
   subscriber and orphan queue its own attachment delivery mode with
   matching-mode adoption. `dart analyze --fatal-infos` passes in the bridge app;
-  66 focused tests and all 2,584 bridge-app tests pass, including new coverage for the predicate,
+  67 focused tests and all 2,587 bridge-app tests pass, including new coverage for the predicate,
   one-write dual shaping, cross-part legacy budgeting, capture failure fallback,
   listener ownership, mixed old/new subscribers, orphan mode matching, and
   orchestrator store-before-deliver, ordering, invisible parts, and generation
   fencing. Architecture implementation review approved after moving finalized
   part wire visibility and event construction fully behind `BridgeEventMapper`.
-  The complete diff has 1,247 additions and 87 deletions across 16 files (1,334
-  changed lines), within the 1,100-1,500 target; `git diff --check` passes.
+  After synchronization with `origin/main` at `82ab02c1`, the final diff has
+  1,259 additions and 93 deletions across 17 files (1,352 changed lines), within
+  the 1,100-1,500 target; `git diff --check origin/main...HEAD` passes.
+  Implementation was committed as `c9d012fb` and synchronized in `23cc34ef`.
 
 ## Findings And Plan Deltas
 
