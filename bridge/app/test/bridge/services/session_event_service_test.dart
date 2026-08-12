@@ -119,6 +119,38 @@ void main() {
       );
     });
 
+    test("persists backend-originated prompt defaults under the stable session", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+
+      final normalized = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 1,
+          event: const BridgeSseSessionPromptDefaultsChanged(
+            sessionID: "backend-root",
+            agent: "Default",
+            providerID: null,
+            modelID: null,
+            variant: null,
+          ),
+        ),
+      );
+
+      final event = normalized.single as BridgeSseSessionPromptDefaultsChanged;
+      expect(event.sessionID, "stable-root");
+      expect(event.agent, "Default");
+      final stored = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(stored?.lastAgent, "Default");
+      expect(stored?.lastAgentModel, isNull);
+    });
+
     test("only runtime-authorized terminal provenance passes a stopped generation fence", () async {
       await _insertRoot(
         database: database,

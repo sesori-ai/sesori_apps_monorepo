@@ -328,6 +328,39 @@ void main() {
       await subscription.cancel();
     });
 
+    test("publishes Default prompt defaults after approving ExitPlanMode", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "exit-plan-1",
+        "request": {
+          "subtype": "can_use_tool",
+          "tool_name": "ExitPlanMode",
+          "tool_use_id": "toolu-exit-plan",
+          "requires_user_interaction": true,
+          "input": const <String, Object?>{},
+        },
+      });
+      await pump();
+
+      await harness.plugin.replyToQuestion(
+        questionId: "br-1",
+        sessionId: testSessionId,
+        answers: const [[]],
+      );
+      await pump();
+
+      final defaults = events.whereType<BridgeSseSessionPromptDefaultsChanged>().single;
+      expect(defaults.sessionID, testSessionId);
+      expect(defaults.agent, "Default");
+      expect(defaults.modelID, isNull);
+      await subscription.cancel();
+    });
+
     test("suppresses the terminal result after an explicit interruption", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);

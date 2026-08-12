@@ -37,6 +37,26 @@ void main() {
       );
     });
 
+    test("maps backend-originated prompt defaults to the existing wire event", () {
+      final result = mapEvent(
+        const BridgeSseSessionPromptDefaultsChanged(
+          sessionID: "stable-session",
+          agent: "Default",
+          providerID: null,
+          modelID: null,
+          variant: null,
+        ),
+      );
+
+      expect(
+        result,
+        const SesoriSessionPromptDefaultsChanged(
+          sessionID: "stable-session",
+          promptDefaults: SessionPromptDefaults(agent: "Default", model: null),
+        ),
+      );
+    });
+
     test("attributes command catalog updates to their source plugin", () {
       final result = mapper.map(
         event: const BridgeSseCommandCatalogUpdated(),

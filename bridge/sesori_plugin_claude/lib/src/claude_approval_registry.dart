@@ -264,6 +264,8 @@ final class ClaudeApprovalRegistry {
 
   bool hasQuestion({required String id}) => _pending[id] is _PendingQuestion;
 
+  bool isExitPlanModeQuestion({required String id}) => _pending[id] is _ExitPlanMode;
+
   bool replyPermission({required String id, required PluginPermissionReply reply}) {
     final entry = _pending[id];
     if (entry is! _PendingPermission) return false;

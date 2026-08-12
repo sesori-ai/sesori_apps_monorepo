@@ -440,6 +440,25 @@ class SessionEventService {
 
     final translatedSession = _eventMapper.sessionInfo(event: translated);
     return switch (translated) {
+      BridgeSseSessionPromptDefaultsChanged(
+        :final sessionID,
+        :final agent,
+        :final providerID,
+        :final modelID,
+        :final variant,
+      ) => () async {
+        final model = providerID == null || modelID == null
+            ? null
+            : AgentModel(providerID: providerID, modelID: modelID, variant: variant?.id);
+        await _sessionRepository.updatePromptDefaults(sessionId: sessionID, agent: agent, agentModel: model);
+        return BridgeSseSessionPromptDefaultsChanged(
+          sessionID: sessionID,
+          agent: agent,
+          providerID: providerID,
+          modelID: modelID,
+          variant: variant,
+        );
+      }(),
       BridgeSseSessionCreated() => switch (translatedSession) {
         final session? => switch (await _catalogSession(session: session)) {
           final catalogSession? => BridgeSseSessionCreated(info: catalogSession.toJson()),

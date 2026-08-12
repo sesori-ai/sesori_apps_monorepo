@@ -19,10 +19,15 @@ defaults and queued client sends coherent.
   sessions, other plugins, the relay read loop, or catalog reads.
 - Streaming produces incremental message and part events and a terminal status
   transition back to idle; retry carries attempt, message, and timing, and
-  finalized messages enter durable history matching a history read.
+  finalized messages enter durable history matching a history read. Internal
+  backend command records are not rendered as conversation messages or used as
+  assistant model attribution.
 - Prompt defaults update after a successful send and are published so other
-  surfaces converge; a defaults-write failure must not fail the send. Abort
-  stops the turn with an observable outcome and no completion notification.
+  surfaces converge. Backend-originated mode changes such as an approved plan
+  exit also persist and publish their effective defaults. A defaults-write
+  failure must not fail the send. Abort stops the turn with an observable
+  outcome and no completion notification, and the next turn starts without
+  recovery output from the interrupted backend process.
 - While the session-detail cubit remains alive, queued client sends preserve order,
   survive a transient disconnection, can be cancelled individually, and are never
   dropped. A turn started on one client is visible to every other client of that bridge.
