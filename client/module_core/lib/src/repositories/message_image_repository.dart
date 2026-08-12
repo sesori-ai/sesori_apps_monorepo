@@ -126,6 +126,8 @@ class MessageImageRepository {
 
   bool canLoadOriginal({required MessageAttachment attachment}) =>
       attachment is MessageAttachmentStoredImage &&
+      attachment.byteLength >= 0 &&
+      attachment.byteLength <= maxTranscriptImageBytes &&
       _supportedRasterMimes.contains(_normalizedMime(mime: attachment.mime));
 
   Future<MessageImageLoadResult> load({
@@ -237,7 +239,8 @@ class MessageImageRepository {
     if (accountId.trim().isEmpty ||
         attachment.bridgeId.trim().isEmpty ||
         attachment.attachmentId.trim().isEmpty ||
-        attachment.byteLength < 0) {
+        attachment.byteLength < 0 ||
+        (rendition == SessionAttachmentRendition.original && attachment.byteLength > maxTranscriptImageBytes)) {
       return const MessageImageLoadRejected();
     }
 
@@ -348,29 +351,32 @@ class MessageImageRepository {
         statusCode: null,
         innerError: innerError,
       ),
-      JsonParsingError() || EmptyResponseError() => const MessageImageRequestException(
+      JsonParsingError() || EmptyResponseError() => MessageImageRequestException(
         kind: MessageImageRequestFailureKind.invalidResponse,
         statusCode: null,
-        innerError: null,
+        innerError: error,
       ),
-      NotAuthenticatedError() => const MessageImageRequestException(
+      NotAuthenticatedError() => MessageImageRequestException(
         kind: MessageImageRequestFailureKind.unauthenticated,
         statusCode: null,
-        innerError: null,
+        innerError: error,
       ),
       NonSuccessCodeError(:final errorCode) => MessageImageRequestException(
         kind: MessageImageRequestFailureKind.rejected,
         statusCode: errorCode,
-        innerError: null,
+        innerError: error,
       ),
-      GenericError() => const MessageImageRequestException(
+      GenericError() => MessageImageRequestException(
         kind: MessageImageRequestFailureKind.unknown,
         statusCode: null,
-        innerError: null,
+        innerError: error,
       ),
     };
     final innerError = cause.innerError;
-    final stackTrace = innerError is Error ? innerError.stackTrace ?? StackTrace.current : StackTrace.current;
+    final stackTrace = switch (innerError) {
+      final Error error => error.stackTrace ?? StackTrace.current,
+      _ => error.stackTrace ?? StackTrace.current,
+    };
     return MessageImageLoadFailure(cause: cause, stackTrace: stackTrace);
   }
 

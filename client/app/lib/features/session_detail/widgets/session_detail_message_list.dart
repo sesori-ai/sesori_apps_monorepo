@@ -59,7 +59,6 @@ import "user_message_card.dart";
 /// detached snapshot, and the follow/chat controller lifecycles.
 class SessionDetailMessageList extends StatefulWidget {
   final String? projectId;
-  final String sessionId;
   final List<MessageWithParts> messages;
   final Map<String, String> streamingText;
   final List<Session> children;
@@ -87,7 +86,6 @@ class SessionDetailMessageList extends StatefulWidget {
   const SessionDetailMessageList({
     super.key,
     required this.projectId,
-    required this.sessionId,
     required this.messages,
     required this.streamingText,
     required this.children,

@@ -390,6 +390,15 @@ void main() {
     expect(valid, isA<MessageImageLoadSuccess>());
     expect(mismatchedClaim, isA<MessageImageLoadRejected>());
     expect(oversizedClaim, isA<MessageImageLoadRejected>());
+    expect(repository.canLoadOriginal(attachment: _stored), isTrue);
+    expect(repository.canLoadOriginal(attachment: _stored.copyWith(byteLength: maxTranscriptImageBytes + 1)), isFalse);
+    verify(
+      () => sessionApi.getAttachment(
+        sessionId: "session-1",
+        attachmentId: "attachment-1",
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).called(2);
   });
 
   test("returns privacy-safe typed transport failure with inner cause", () async {
@@ -414,6 +423,29 @@ void main() {
     expect(cause.innerError, same(inner));
     expect(failure.stackTrace, isNotNull);
     expect(cause.toString(), isNot(contains("socket failed")));
+  });
+
+  test("preserves typed non-network failure as the inner cause", () async {
+    final apiError = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null);
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: any(named: "rendition"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.error(apiError));
+
+    final result = await repository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+
+    final failure = result as MessageImageLoadFailure;
+    final cause = failure.cause as MessageImageRequestException;
+    expect(cause.kind, MessageImageRequestFailureKind.rejected);
+    expect(cause.innerError, same(apiError));
+    expect(failure.stackTrace, isNotNull);
   });
 
   test("does not request stored data without authenticated account", () async {

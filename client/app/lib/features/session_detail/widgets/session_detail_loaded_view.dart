@@ -112,7 +112,6 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                         valueListenable: _bottomControlsHeight,
                         builder: (context, bottomControlsHeight, _) => SessionDetailMessageList(
                           projectId: widget.projectId,
-                          sessionId: widget.sessionId,
                           messages: state.messages,
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
                           streamingText: state.streamingText,
