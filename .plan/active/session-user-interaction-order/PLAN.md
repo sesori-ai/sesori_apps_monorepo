@@ -237,9 +237,12 @@ backend session ID is known.
 - A bridge-owned manual compact is one action. Its optional instruction prompt
   receives the correlated message ID and is marked as compact guidance so its
   raw text part cannot emit independently. Summarize has no upstream caller-ID,
-  so raw manual compactions never consume its bridge fallback. Emit that
-  fallback only when no raw manual compact was observed during the bridge call;
-  concurrent laptop compaction therefore cannot suppress a lost bridge fact.
+  so no raw compaction can authoritatively satisfy its bridge fallback. Emit the
+  fallback for every accepted bridge compact; raw manual compactions remain
+  independent observable facts. This may produce duplicate same-session
+  evidence for one bridge compact, but cannot lose the accepted bridge action or
+  misattribute a concurrent laptop compact. Exact coalescing waits for upstream
+  summarize identity rather than guessing by timing.
 - Remove pending/suppression state when the tracker observes session deletion;
   call its `reset` from the existing OpenCode reconnect/reset path and its
   `dispose` during plugin disposal. Do not add a transcript-sized dedupe set;
@@ -248,7 +251,8 @@ backend session ID is known.
   one fact for its accepted action.
 - Raw `question.replied` and `question.rejected` events are authoritative and
   cover laptop replies. Bridge calls coordinate by request ID and emit a
-  successful-call fallback only when the exact raw event was not observed.
+  successful-call fallback only when the exact raw event was not observed. A
+  reconciled 404 returns not-accepted and emits no fallback.
 - Raw `permission.replied` is not authoritative: OpenCode emits the same event
   for `always` cascades. Emit one fact only from a successful manual
   `replyToPermission` 2xx outcome; a reconciled 404 returns not-accepted and
@@ -426,8 +430,8 @@ ordering, or child-task ordering.
   alongside its current PR metadata merge; and
 - `mergeRestSnapshot` treats fetched membership and ordinary fields as
   authoritative while max-merging markers from matching sessions already held
-  and from the existing `SessionUnseenTracker`, so an in-flight or initial fetch
-  cannot roll back a live patch.
+  and from the cached marker map supplied by the Cubit, so an in-flight or
+  initial fetch cannot roll back a live patch.
 
 `SessionListCubit` only validates the SSE project/state, delegates
 `SesoriSessionUnseenChanged` to `applyInteractionPatch`, delegates successful
@@ -437,7 +441,8 @@ per-project tick and session map to retain the nullable marker from
 `SesoriSessionUnseenChanged` alongside unseen state. It performs no ordering or
 merge decision; `SessionListService` consumes its cached marker map. This reuses
 the tracker that already receives patches before a list Cubit is loaded rather
-than adding another long-lived owner.
+than adding another long-lived owner. The Cubit reads that map and passes it to
+the service; peer Layer-3 collaborators do not depend on each other.
 
 No new long-lived tracker, Cubit generation, tick map, or optimistic interaction
 state is required. Bridge markers are monotonic, so a per-session max at the two
@@ -497,13 +502,14 @@ existing merge seams is sufficient.
 | Duplicate OpenCode envelope/part delivery | Ordinary transport duplicate | Retain one most-recent classified message ID per session and consume each pending envelope once |
 | Accepted OpenCode write loses SSE pair | Ordinary disconnect window | Correlate with caller-supplied message ID and emit one successful null-time fallback only when that exact raw message did not satisfy it |
 | Concurrent laptop and Sesori writes | First-class multi-surface flow | Correlate pending bridge action by message ID; unrelated raw facts emit independently and cannot satisfy it |
-| Manual compact with instructions | Ordinary compact command flow | Mark guidance non-emitting; raw compact cannot consume fallback; fallback only when no raw compact was observed during the call |
-| OpenCode reply disconnect/reconciliation | Ordinary race flow | Request-ID fallback for accepted questions; reconciled permission 404 emits no fact |
+| Manual compact with instructions | Ordinary compact command flow | Mark guidance non-emitting; accepted bridge compact always emits fallback; raw compact remains independent until upstream exposes identity |
+| OpenCode reply disconnect/reconciliation | Ordinary race flow | Request-ID fallback for accepted questions; reconciled question/permission 404 emits no fact |
 | Backend clock rollback | Ordinary clock-adjustment flow | OpenCode uses null occurred-at and bridge monotonic stamping; known times remain only for authoritative plugin sources |
 | REST/SSE replacement race | Ordinary initial/in-flight refresh flow | Existing unseen tracker retains the patch; service maxes it at client replacement seams |
 | Reversed OpenCode message/part order | Theoretical against current upstream order | Accepted; no timer or history lookup. Missing one reorder self-heals on the next genuine interaction |
 | Direct laptop interaction in a separate ACP/Claude process | Unobservable by current architecture | Accepted limitation; keep marker unchanged rather than guess |
 | Direct OpenCode permission decision | Event cannot distinguish one choice from `always` cascade | Accepted limitation; only Sesori manual decisions count until upstream adds provenance |
+| Bridge OpenCode compact also arrives raw | Summarize exposes no caller identity | Accept duplicate same-session evidence rather than lose or misattribute either concurrent surface; remove when upstream identity exists |
 | Existing null markers after migration | Required honest migration state | Fall back to `time.updated` until the first authoritative interaction |
 | Paged third-party root requests | No current in-repository consumer and server lacks running state | Keep existing server order; visible app fetch remains complete and client-owned |
 

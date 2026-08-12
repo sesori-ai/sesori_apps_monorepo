@@ -54,6 +54,10 @@
 
 - [x] Direct laptop OpenCode permission replies are unknown because upstream
   does not distinguish one manual decision from an `always` cascade.
+- [x] OpenCode summarize exposes no caller identity; an accepted bridge compact
+  always emits its fallback while raw manual compacts remain independent, so
+  duplicate same-session evidence is accepted rather than misattributing a
+  concurrent surface.
 - [x] Separate ACP/Cursor and Claude laptop processes are not observable by the
   bridge-owned process.
 - [x] A theoretical OpenCode part-before-envelope sequence can miss one marker;
@@ -107,9 +111,10 @@
 - [ ] Prove one fact across ordinary raw delivery, lost-SSE fallback, and backend
   clock rollback.
 - [ ] Prove concurrent laptop/Sesori writes cannot cross-satisfy, instructed
-  compact fallback cannot be consumed by another raw compact, and immediate
-  complete-message duplicates are rejected.
-- [ ] Prove request-ID question fallback and reconciled permission 404 exclusion.
+  compact fallback always records acceptance, and immediate complete-message
+  duplicates are rejected.
+- [ ] Prove request-ID question fallback and reconciled question/permission 404
+  exclusion.
 - [ ] Prove manual versus automatic/cancelled reply behavior.
 - [ ] Prove internal event ID/display-root translation and no public wire event.
 - [ ] Run focused plugin/interface/app tests and strict analysis.
@@ -219,7 +224,7 @@
   through initial REST load. The stale tracker-state finding was already fixed
   in `c8aed9ee5`. Against merge base `88059e200`,
   `git diff --numstat $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`
-  reports PLAN `+784/-0` and TRACKER `+236/-0`, totaling `+1,020/-0` within the
+  reports PLAN `+790/-0` and TRACKER `+246/-0`, totaling `+1,036/-0` within the
   revised 550-1,050 target. The same range passes
   `git diff --check $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`.
 - **2026-08-13 Step 1 second review:** consolidated four OpenCode comments at
@@ -234,3 +239,8 @@
   boundary, question fallback, permission 404 exclusion, Codex completion
   idempotency/coordinator ownership, and stable equal-known-marker ties. The
   repeated unseen-owner rename remains declined.
+- **2026-08-13 final bot follow-up:** recorded the honest summarize limitation:
+  accepted bridge compact fallback is unconditional and raw compacts remain
+  independent until upstream provides identity. Also excluded reconciled
+  question 404s and kept Layer-3 peers independent by having the Cubit pass the
+  tracker's cached marker map into `SessionListService`.
