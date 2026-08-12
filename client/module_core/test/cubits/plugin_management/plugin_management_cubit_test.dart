@@ -178,6 +178,32 @@ void main() {
     );
   });
 
+  test("a stale browser failure cannot overwrite terminal settlement", () async {
+    final launch = Completer<bool>();
+    when(
+      () => urlLauncher.launch(any(), mode: any(named: "mode")),
+    ).thenAnswer((_) => launch.future);
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await _settle();
+    await cubit.startAuthentication(pluginId: "codex");
+    final launching = cubit.launchAuthenticationBrowser();
+    authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
+    await _settle();
+    launch.complete(false);
+    await launching;
+
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      const PluginAuthenticationPresentationState.idle(),
+    );
+  });
+
   test("a stale same-plugin start response cannot overwrite a newer attempt", () async {
     final first = Completer<PluginAuthenticationStartResult>();
     var call = 0;
@@ -235,6 +261,34 @@ void main() {
     );
     authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.cancelled()));
     await _settle();
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      const PluginAuthenticationPresentationState.idle(),
+    );
+  });
+
+  test("authentication cancellation blocks re-entry and ignores a stale response", () async {
+    final cancel = Completer<PluginAuthenticationCancelResult>();
+    when(
+      () => service.cancelAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) => cancel.future);
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await _settle();
+    await cubit.startAuthentication(pluginId: "codex");
+    final firstCancel = cubit.cancelAuthentication();
+    await cubit.cancelAuthentication();
+    verify(() => service.cancelAuthentication(pluginId: "codex")).called(1);
+    authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.cancelled()));
+    await _settle();
+    cancel.complete(const PluginAuthenticationCancelResult.uncertain());
+    await firstCancel;
+
     expect(
       (cubit.state as PluginManagementReady).authentication,
       const PluginAuthenticationPresentationState.idle(),

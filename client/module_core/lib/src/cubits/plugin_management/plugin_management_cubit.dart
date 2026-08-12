@@ -102,6 +102,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     if (isClosed || current is! PluginManagementReady) return;
     final challenge = _authenticationChallengeData(current.authentication);
     if (challenge == null) return;
+    final generation = _authenticationGeneration;
     bool launched;
     try {
       launched = await _urlLauncher.launch(challenge.verificationUri);
@@ -110,7 +111,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     }
     if (isClosed) return;
     final latest = state;
-    if (launched || latest is! PluginManagementReady) return;
+    if (launched || generation != _authenticationGeneration || latest is! PluginManagementReady) return;
     final latestChallenge = _authenticationChallengeData(latest.authentication);
     if (latestChallenge?.pluginId != challenge.pluginId) return;
     emit(
@@ -127,8 +128,10 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   Future<void> cancelAuthentication() async {
     final current = state;
     if (isClosed || current is! PluginManagementReady) return;
+    if (current.authentication is PluginAuthenticationPresentationCancelling) return;
     final challenge = _authenticationChallengeData(current.authentication);
     if (challenge == null) return;
+    final generation = _authenticationGeneration;
     _setAuthentication(
       PluginAuthenticationPresentationState.cancelling(
         pluginId: challenge.pluginId,
@@ -137,7 +140,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
       ),
     );
     final result = await _service.cancelAuthentication(pluginId: challenge.pluginId);
-    if (isClosed) return;
+    if (isClosed || generation != _authenticationGeneration) return;
     switch (result) {
       case PluginAuthenticationCancelSuccess():
         break;

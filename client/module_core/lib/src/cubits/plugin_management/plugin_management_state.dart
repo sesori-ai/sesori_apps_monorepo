@@ -72,8 +72,6 @@ sealed class PluginAuthenticationPresentationError with _$PluginAuthenticationPr
   const factory PluginAuthenticationPresentationError.uncertain() = PluginAuthenticationPresentationUncertain;
   const factory PluginAuthenticationPresentationError.invalidChallenge() =
       PluginAuthenticationPresentationInvalidChallenge;
-  const factory PluginAuthenticationPresentationError.browserLaunchFailed() =
-      PluginAuthenticationPresentationBrowserLaunchFailed;
   const factory PluginAuthenticationPresentationError.remote({required String message}) =
       PluginAuthenticationPresentationRemoteError;
   const factory PluginAuthenticationPresentationError.request({required ApiError error}) =

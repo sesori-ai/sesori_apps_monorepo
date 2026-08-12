@@ -69,35 +69,40 @@ class PluginRepository {
   }
 
   PluginAuthenticationStartResult _mapAuthenticationConflict({required String? body}) {
-    if (body != null) {
-      try {
-        final conflict = PluginAuthenticationConflict.fromJson(jsonDecodeMap(body));
-        return conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
+    final conflict = _parseAuthenticationConflict(body: body);
+    return switch (conflict) {
+      _AuthenticationConflictParsed(:final conflict) =>
+        conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
             ? const PluginAuthenticationStartResult.unsupported()
-            : PluginAuthenticationStartResult.conflict(conflict: conflict);
-      } on Object {
-        return PluginAuthenticationStartResult.failure(error: ApiError.jsonParsing(body));
-      }
-    }
-    return PluginAuthenticationStartResult.failure(
-      error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body),
-    );
+            : PluginAuthenticationStartResult.conflict(conflict: conflict),
+      _AuthenticationConflictParseFailure(:final error) => PluginAuthenticationStartResult.failure(error: error),
+    };
   }
 
   PluginAuthenticationCancelResult _mapAuthenticationCancelConflict({required String? body}) {
-    if (body != null) {
-      try {
-        final conflict = PluginAuthenticationConflict.fromJson(jsonDecodeMap(body));
-        return conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
+    final conflict = _parseAuthenticationConflict(body: body);
+    return switch (conflict) {
+      _AuthenticationConflictParsed(:final conflict) =>
+        conflict.reasons.contains(PluginAuthenticationConflictReason.unsupported)
             ? const PluginAuthenticationCancelResult.unsupported()
-            : PluginAuthenticationCancelResult.conflict(conflict: conflict);
-      } on Object {
-        return PluginAuthenticationCancelResult.failure(error: ApiError.jsonParsing(body));
-      }
+            : PluginAuthenticationCancelResult.conflict(conflict: conflict),
+      _AuthenticationConflictParseFailure(:final error) => PluginAuthenticationCancelResult.failure(error: error),
+    };
+  }
+
+  _AuthenticationConflictParseResult _parseAuthenticationConflict({required String? body}) {
+    if (body == null) {
+      return _AuthenticationConflictParseFailure(
+        error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: null),
+      );
     }
-    return PluginAuthenticationCancelResult.failure(
-      error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body),
-    );
+    try {
+      return _AuthenticationConflictParsed(
+        conflict: PluginAuthenticationConflict.fromJson(jsonDecodeMap(body)),
+      );
+    } on Object {
+      return _AuthenticationConflictParseFailure(error: ApiError.jsonParsing(body));
+    }
   }
 
   Future<PluginManagementMutationResult> _mapMutation({
@@ -180,4 +185,18 @@ class PluginRepository {
       ErrorResponse(:final error) => ApiResponse.error(error),
     };
   }
+}
+
+sealed class _AuthenticationConflictParseResult {
+  const _AuthenticationConflictParseResult();
+}
+
+final class _AuthenticationConflictParsed extends _AuthenticationConflictParseResult {
+  const _AuthenticationConflictParsed({required this.conflict});
+  final PluginAuthenticationConflict conflict;
+}
+
+final class _AuthenticationConflictParseFailure extends _AuthenticationConflictParseResult {
+  const _AuthenticationConflictParseFailure({required this.error});
+  final ApiError error;
 }

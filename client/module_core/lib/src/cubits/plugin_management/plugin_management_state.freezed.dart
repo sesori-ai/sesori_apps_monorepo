@@ -1097,38 +1097,6 @@ String toString() {
 /// @nodoc
 
 
-class PluginAuthenticationPresentationBrowserLaunchFailed implements PluginAuthenticationPresentationError {
-  const PluginAuthenticationPresentationBrowserLaunchFailed();
-  
-
-
-
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserLaunchFailed);
-}
-
-
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'PluginAuthenticationPresentationError.browserLaunchFailed()';
-}
-
-
-}
-
-
-
-
-/// @nodoc
-
-
 class PluginAuthenticationPresentationRemoteError implements PluginAuthenticationPresentationError {
   const PluginAuthenticationPresentationRemoteError({required this.message});
   
