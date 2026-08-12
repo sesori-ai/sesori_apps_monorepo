@@ -86,10 +86,23 @@ void main() {
       expect(processes.environments.single, const {"OMP_PROFILE": "work"});
     });
 
+    test("uses the shared token-based version parsing", () async {
+      final result = await OmpPluginDescriptor.production().inspectSetup(
+        config: config,
+        processes: _Processes(
+          outputs: const [_Output(stdout: "Oh My Pi omp/17.2.13 stable\n", exitCode: 0)],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, const PluginSetupReady());
+    });
+
     test("reports an installable missing runtime after PATH and managed probes", () async {
       final result = await OmpPluginDescriptor.production().inspectSetup(
         config: config,
-        processes: _Processes(spawnError: StateError("missing")),
+        processes: _Processes(spawnError: const ProcessException("omp", ["--version"], "missing")),
         environment: const {},
         stateDirectory: "/state",
       );
@@ -105,7 +118,7 @@ void main() {
       );
       final result = await descriptor.inspectSetup(
         config: explicit,
-        processes: _Processes(spawnError: StateError("missing")),
+        processes: _Processes(spawnError: const ProcessException("/custom/omp", ["--version"], "missing")),
         environment: const {},
         stateDirectory: "/state",
       );
@@ -134,6 +147,18 @@ void main() {
 
       expect(outdated, isA<PluginSetupUnavailable>());
       expect(unknown, isA<PluginSetupUnknown>());
+    });
+
+    test("classifies non-process probe failures as unknown", () async {
+      const explicit = PluginConfig(values: {OmpPluginDescriptor.binOption: "/custom/omp"});
+      final result = await OmpPluginDescriptor.production().inspectSetup(
+        config: explicit,
+        processes: _Processes(spawnError: StateError("process service unavailable")),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
     });
   });
 

@@ -101,7 +101,9 @@ abstract class RuntimeManifest {
   /// one scheme per runtime.
   RuntimeVersion? parseVersion({required String value});
 
-  /// The pinned asset for [target], or `null` when the platform is unsupported.
+  /// The pinned asset for [target], or `null` when the platform is unsupported
+  /// or requires asynchronous host-specific selection by the installer's
+  /// [RuntimeAssetResolver].
   RuntimeAsset? assetFor({required PlatformTarget target});
 
   /// The download URL for [asset] at [bundledVersion].

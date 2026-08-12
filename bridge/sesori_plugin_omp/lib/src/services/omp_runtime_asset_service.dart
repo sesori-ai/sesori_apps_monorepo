@@ -14,8 +14,6 @@ class OmpRuntimeAssetService {
   final OmpRuntimeAssetRepository _repository;
   final OmpRuntimeManifest _manifest;
 
-  bool supportsTarget({required PlatformTarget target}) => _manifest.supportsTarget(target: target);
-
   Future<RuntimeAsset?> resolve({required PlatformTarget target}) {
     if (target.os == PlatformOs.linux) return _repository.resolveLinux(arch: target.arch);
     return Future.value(_manifest.assetFor(target: target));

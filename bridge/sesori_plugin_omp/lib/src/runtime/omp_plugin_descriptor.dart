@@ -119,13 +119,8 @@ final class OmpPluginDescriptor extends BridgePluginDescriptor {
   @override
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
     if (_explicitBin(config) != null) return super.managementCapabilities(config: config);
-    try {
-      final target = PlatformTarget.current();
-      if (const OmpRuntimeManifest().supportsTarget(target: target)) {
-        return {...super.managementCapabilities(config: config), PluginControlCapability.install};
-      }
-    } on Object catch (error, stackTrace) {
-      Log.w("[omp] platform detection failed; managed install unavailable", error, stackTrace);
+    if (_supportsManagedInstall()) {
+      return {...super.managementCapabilities(config: config), PluginControlCapability.install};
     }
     return super.managementCapabilities(config: config);
   }
@@ -228,9 +223,20 @@ final class OmpPluginDescriptor extends BridgePluginDescriptor {
         actionHint: "Oh My Pi setup could not be determined. Verify the local CLI and retry.",
       );
     }
-    return const PluginSetupRuntimeMissing(
-      actionHint: "Install Oh My Pi from Sesori, or install it locally and retry setup detection.",
+    return PluginSetupRuntimeMissing(
+      actionHint: _supportsManagedInstall()
+          ? "Install Oh My Pi from Sesori, or install it locally and retry setup detection."
+          : "Install Oh My Pi locally, then retry setup detection.",
     );
+  }
+
+  bool _supportsManagedInstall() {
+    try {
+      return const OmpRuntimeManifest().hasAssetFor(target: PlatformTarget.current());
+    } on Object catch (error, stackTrace) {
+      Log.w("[omp] platform detection failed; managed install unavailable", error, stackTrace);
+      return false;
+    }
   }
 
   Future<_OmpRuntimeProbe> _probeRuntime({
@@ -255,11 +261,14 @@ final class OmpPluginDescriptor extends BridgePluginDescriptor {
       );
     } on TimeoutException {
       return _OmpRuntimeProbe.unknown;
-    } on Object {
+    } on io.ProcessException {
       return _OmpRuntimeProbe.missing;
+    } on Object catch (error, stackTrace) {
+      Log.w("[omp] runtime version probe failed", error, stackTrace);
+      return _OmpRuntimeProbe.unknown;
     }
     if (result.exitCode != 0) return _OmpRuntimeProbe.unknown;
-    final version = const OmpRuntimeManifest().parseVersion(value: result.stdout.trim());
+    final version = _versionValidator(processes: processes).parseVersionOutput(output: result.stdout);
     if (version == null) return _OmpRuntimeProbe.unknown;
     final comparison = version.compareTo(expectedVersion);
     return (exactVersion ? comparison == 0 : comparison >= 0) ? _OmpRuntimeProbe.ready : _OmpRuntimeProbe.outdated;

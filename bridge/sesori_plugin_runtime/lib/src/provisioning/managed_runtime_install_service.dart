@@ -73,7 +73,10 @@ class ManagedRuntimeInstallService {
     final RuntimeAsset? asset;
     try {
       asset = await _assetResolver(target: target);
+    } on PluginStartAbortedException {
+      rethrow;
     } on Object catch (error, stackTrace) {
+      _throwIfAborted(startAborted: startAborted);
       Log.w("[$id] managed $name runtime asset resolution failed", error, stackTrace);
       yield ProvisionFailed(
         message: "Could not select the $name runtime for this machine. Check the bridge logs for details.",

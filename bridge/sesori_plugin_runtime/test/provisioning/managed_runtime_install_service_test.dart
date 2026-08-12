@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -194,6 +195,25 @@ void main() {
     final message = (events.last as ProvisionFailed).message;
     expect(message, contains("Could not select the OpenCode runtime"));
     expect(message, isNot(contains("private host evidence")));
+  });
+
+  test("preserves an abort that occurs before asset resolution fails", () async {
+    final aborted = StartAbortController();
+    final resolverStarted = Completer<void>();
+    final resolverMayFail = Completer<void>();
+    final events = build(
+      assetResolver: ({required target}) async {
+        resolverStarted.complete();
+        await resolverMayFail.future;
+        throw StateError("resolver stopped");
+      },
+    ).install(environment: const {}, stateDirectory: stateDir.path, startAborted: aborted.signal).toList();
+
+    await resolverStarted.future;
+    aborted.abort();
+    resolverMayFail.complete();
+
+    await expectLater(events, throwsA(isA<PluginStartAbortedException>()));
   });
 
   test("maps a checksum failure to a sanitized ProvisionFailed", () async {
