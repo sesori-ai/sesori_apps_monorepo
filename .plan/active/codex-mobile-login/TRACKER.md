@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `codex-mobile-login`
-- **Series state:** Steps 1-2 merged; Step 3 PR open
-- **Current step:** 3/8
+- **Series state:** Step 3 PR open; Step 4 in local development
+- **Current step:** 4/8 locally, blocked from publication on Step 3 merge
 - **Implementation base:** Step 2 merge commit `67310433`
 - **Plan PR:** [#824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824)
 - **Current PR:** [#833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833)
-- **Next action:** Monitor Step 3 review/CI and begin Step 4 locally
+- **Next action:** Monitor Step 3 review/CI and implement Step 4 locally
 
 ## Plan Review
 
@@ -29,7 +29,7 @@
 | [x] | 1/8 | `🌱 [codex-mobile-login] docs: plan mobile Codex login [step 1/8]` | 450-850 | [PR #824](https://github.com/sesori-ai/sesori_apps_monorepo/pull/824) merged |
 | [x] | 2/8 | `⚙️ [codex-mobile-login] refactor(codex): prepare authentication primitives [step 2/8]` | 850-1,400 | [PR #827](https://github.com/sesori-ai/sesori_apps_monorepo/pull/827) merged |
 | [ ] | 3/8 | `🚧 [codex-mobile-login] feat(codex): implement device authentication [step 3/8]` | 850-1,450 | [PR #833](https://github.com/sesori-ai/sesori_apps_monorepo/pull/833) open |
-| [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Pending |
+| [ ] | 4/8 | `⚙️ [codex-mobile-login] feat(protocol): describe harness authentication [step 4/8]` | 650-1,200 | Local development |
 | [ ] | 5/8 | `🚧 [codex-mobile-login] feat(bridge): expose harness authentication [step 5/8]` | 950-1,500 | Pending |
 | [ ] | 6/8 | `🚧 [codex-mobile-login] feat(client): orchestrate harness authentication [step 6/8]` | 900-1,500 | Pending |
 | [ ] | 7/8 | `⚙️ [codex-mobile-login] feat(app): add mobile Codex login [step 7/8]` | 750-1,350 | Pending |
@@ -118,3 +118,6 @@
   Service ownership with private login-ID correlation, HTTPS validation,
   abort-driven upstream cancellation, sanitized remote failures, and awaited
   child cleanup. No route or client capability is exposed yet.
+- **2026-08-12 - Step 4 started:** Created local branch
+  `codex-mobile-login-shared-contracts` from the Step 3 PR branch. It remains
+  local until Step 3 merges.
