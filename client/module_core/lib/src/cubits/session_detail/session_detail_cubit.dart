@@ -1170,8 +1170,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       final existing = messages[index].info;
       final existingCreated = existing.time?.created;
       if (existingCreated == null) continue;
-      if (existingCreated > created ||
-          (existingCreated == created && message is MessageUser && existing is MessageAssistant)) {
+      if (existingCreated > created) {
         return index;
       }
     }
@@ -1501,6 +1500,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
     final submission = _promptQueue.beginSend();
     if (submission == null) return;
+    final sendConnectionGeneration = _connectionGeneration;
 
     _emitQueueUpdate(current);
 
@@ -1534,6 +1534,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     _emitQueueUpdate(_latestLoadedState());
 
+    if (!sendSucceeded && sendConnectionGeneration != _connectionGeneration && _isConnected) {
+      unawaited(_drainQueuedMessages());
+      return;
+    }
     if (sendSucceeded) {
       final latest = state;
       if (latest is SessionDetailLoaded && _isConnected) {

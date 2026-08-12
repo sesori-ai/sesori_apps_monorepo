@@ -633,6 +633,93 @@ void main() {
       expect(state.queuedMessages, isEmpty);
     });
 
+    test("a send failed after reconnect is retried on the replacement connection", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      final firstAttempt = Completer<ApiResponse<void>>();
+      const snapshot = SessionDetailSnapshot(
+        projectId: "project-1",
+        pluginId: "opencode",
+        supportsPromptAttachments: false,
+        messages: <MessageWithParts>[],
+        olderMessagesCursor: null,
+        pendingQuestions: <PendingQuestion>[],
+        pendingPermissions: <PendingPermission>[],
+        childSessions: <Session>[],
+        statuses: <String, SessionStatus>{},
+        agents: <AgentInfo?>[],
+        providerData: null,
+        commands: <CommandInfo>[],
+        canonicalSessionTitle: null,
+        promptDefaults: null,
+        isRootSession: true,
+        isArchived: false,
+      );
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: snapshot,
+          isBridgeConnected: true,
+        ),
+      );
+      when(
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: snapshot,
+          isBridgeConnected: true,
+        ),
+      );
+      var sendCalls = 0;
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) {
+        sendCalls++;
+        return sendCalls == 1 ? firstAttempt.future : Future.value(ApiResponse.success(null));
+      });
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+      unawaited(
+        cubit.sendMessage(
+          text: "Retry me",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        ),
+      );
+      await _awaitCondition(() => sendCalls == 1);
+
+      connectionStatus.add(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      connectionStatus.add(connectedStatus);
+      await Future<void>.delayed(Duration.zero);
+      expect(sendCalls, 1);
+
+      firstAttempt.complete(ApiResponse.error(ApiError.generic()));
+      await _awaitCondition(() => sendCalls == 2);
+
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+    });
+
     test("stale pre-disconnect refresh cannot authorize a queued attachment", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const supportedSnapshot = SessionDetailSnapshot(
@@ -1415,7 +1502,7 @@ void main() {
       );
     });
 
-    test("keeps a same-time user envelope before its assistant response", () async {
+    test("appends a late envelope when its timestamp ties existing messages", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const assistant = MessageWithParts(
         info: Message.assistant(
@@ -1473,7 +1560,80 @@ void main() {
 
       expect(
         (cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id),
-        ["z-user", "a-assistant"],
+        ["a-assistant", "z-user"],
+      );
+    });
+
+    test("appends a later same-time user envelope after an existing turn", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      const messages = <MessageWithParts>[
+        MessageWithParts(
+          info: Message.user(
+            id: "user-1",
+            sessionID: _sessionId,
+            agent: "build",
+            time: MessageTime(created: 100, completed: null),
+          ),
+          parts: <MessagePart>[],
+        ),
+        MessageWithParts(
+          info: Message.assistant(
+            id: "assistant-1",
+            sessionID: _sessionId,
+            agent: "build",
+            modelID: "gpt-4",
+            providerID: "openai",
+            time: MessageTime(created: 100, completed: null),
+          ),
+          parts: <MessagePart>[],
+        ),
+      ];
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: messages,
+            olderMessagesCursor: null,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "user-2",
+            sessionID: _sessionId,
+            agent: "build",
+            time: MessageTime(created: 100, completed: null),
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id),
+        ["user-1", "assistant-1", "user-2"],
       );
     });
 

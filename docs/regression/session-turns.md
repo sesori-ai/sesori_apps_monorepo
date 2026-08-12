@@ -36,10 +36,10 @@ defaults and queued client sends coherent.
   returns it to the head of the queue. A turn started on one client is visible to
   every other client of that bridge.
 - Live message envelopes render in transcript timestamp order even when events
-  arrive out of order; when a user prompt and assistant response share a
-  timestamp, the prompt remains first. Finalized parts that arrive before their
-  envelope are retained and reconciled without showing an empty user bubble or
-  switching the composer to follow-up wording.
+  arrive out of order; late envelopes append after existing envelopes with the
+  same timestamp rather than reordering an established turn. Finalized parts
+  that arrive before their envelope are retained and reconciled without showing
+  an empty user bubble or switching the composer to follow-up wording.
 
 ## Regression Levels
 
