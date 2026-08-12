@@ -212,7 +212,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   removed. Second review: approved with no findings.
 - No user-visible, database, persisted-data, client/bridge wire-contract, or
   client-UI change; app registration remains Step 18.
-- `git diff --check`: pass.
+- `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
 - Diff: +666/-12 = 678 changed lines; generated lines: 0; tests run: 11.
 
 ## Findings And Plan Deltas
