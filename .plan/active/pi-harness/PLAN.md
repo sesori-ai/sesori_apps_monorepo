@@ -1053,7 +1053,7 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 ### Step 6/21: Add the OMP ACP plugin core
 
-- Create `sesori_plugin_omp`, public/testing barrels, `OmpBinary` launch spec,
+- Create `sesori_plugin_omp`, its public barrel, `OmpBinary` launch spec,
   `OmpPlugin` over `AcpPlugin`, OMP event/failure mapping, and only this step's
   dependencies.
 - Preserve inherited profiles, credentials, project config, plugins, and

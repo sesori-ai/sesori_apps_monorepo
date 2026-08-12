@@ -3,15 +3,17 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `82351fc2`
-- **Series state:** Step 5/21 ACP form and close support in progress
-- **Current step:** 5/21, bridge ACP form elicitations
+- **Implementation base:** Step 5 head `2ea15e83`; merge current `origin/main`
+  before publishing Step 6
+- **Series state:** Step 5/21 open; Step 6/21 local successor verified
+- **Current step:** 6/21, add the OMP ACP plugin core
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
 - **Step 4 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/829
 - **Step 5 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/832
-- **Next action:** monitor Step 5 review and CI to merge
+- **Step 6 PR:** not opened; keep local until Step 5 merges
+- **Next action:** publish Step 6 after Step 5 merges, then start Step 7 locally
 
 ## Locked Decisions
 
@@ -44,7 +46,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 3/21 | `🚧 [pi-harness] feat(pi): add the JSONL RPC transport [step 3/21]` | 1,200-1,500 (recorded overage) | Merged as PR #820; title normalized |
 | [x] | 4/21 | `🌱 [pi-harness] docs: expand the plan to Oh My Pi [step 4/21]` | 1,500-1,600 (recorded overage) | Merged as PR #829 |
 | [ ] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 | Open as PR #832 |
-| [ ] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Not started |
+| [ ] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Local successor verified; waiting on Step 5 merge |
 | [ ] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 | Not started |
 | [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Blocked on runtime dependency |
 | [ ] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Blocked on Step 8 |
@@ -182,7 +184,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   close-capable deletion.
 - `dart analyze --fatal-infos` from `bridge/sesori_plugin_acp/` and
   `bridge/sesori_plugin_cursor/`: pass.
-- `dart test` from `bridge/sesori_plugin_acp/`: pass, 237 tests.
+- `dart test` from `bridge/sesori_plugin_acp/`: pass, 240 tests.
 - `dart test` from `bridge/sesori_plugin_cursor/`: pass, 126 tests.
 - Architecture implementation review rejected three duplicated connection/lane
   ownership and target-settlement gaps; all were corrected. Second review:
@@ -190,7 +192,29 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - No database, persisted-data, client/bridge wire-contract, or client-UI change. Existing
   Cursor selection and elicitation advertisement remain unchanged.
 - `git diff --check $(git merge-base origin/main HEAD)..HEAD`: pass.
-- Diff: +1,201/-98 = 1,299 changed lines; generated lines: 0; tests run: 363.
+- Diff: +1,304/-99 = 1,403 changed lines; generated lines: 0; tests run: 366.
+- Recorded overage: review fixes for required-property validation, malformed
+  session identifiers, exact enum values, bounded labels, stack preservation,
+  and the regression contract belong to the same ACP form/close seam.
+
+### Step 6/21
+
+- Added the app-invisible `sesori_plugin_omp` package over `AcpPlugin`, with the
+  `omp acp` launch contract, inherited environment/configuration, local `agent`
+  authentication, form elicitation, process-wide prompts, fail-closed selection,
+  and privacy-safe local `/login` guidance for OMP's demonstrated no-model error.
+- Added workspace, Makefile, CI, architecture/module documentation, and
+  dependency-update inventory entries without registering OMP in bridge `app`.
+- `dart pub get` from `bridge/sesori_plugin_omp/`: pass.
+- `dart analyze --fatal-infos` from `bridge/sesori_plugin_omp/`: pass.
+- `dart test` from `bridge/sesori_plugin_omp/`: pass, 11 tests.
+- Architecture implementation review rejected an empty event-mapper subclass,
+  consumerless testing re-export, and premature foundation dependency; all were
+  removed. Second review: approved with no findings.
+- No user-visible, database, persisted-data, client/bridge wire-contract, or
+  client-UI change; app registration remains Step 18.
+- `git diff --check`: pass.
+- Diff: +652/-9 = 661 changed lines; generated lines: 0; tests run: 11.
 
 ## Findings And Plan Deltas
 
