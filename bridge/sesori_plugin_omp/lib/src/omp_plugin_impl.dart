@@ -10,7 +10,7 @@ class OmpPlugin extends AcpPlugin {
   factory OmpPlugin({
     String binaryPath = OmpBinary.defaultBinary,
     String? launchDirectory,
-    AcpProcessFactory? processFactory,
+    required AcpProcessFactory processFactory,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
     final configurationTracker = AcpSessionConfigurationTracker();
