@@ -13,19 +13,17 @@ import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_provider_mapper.dart";
 import "models/session_options_cache_key.dart";
 
-enum SessionOptionsCaptureActivation { mayActivate, activeOnly }
+enum SessionOptionsCaptureActivation() { mayActivate, activeOnly }
 
-enum SessionOptionsRuntimeOperation { capture, commit }
+enum SessionOptionsRuntimeOperation() { capture, commit }
 
-class SessionOptionsCacheEntry {
-  const SessionOptionsCacheEntry({
+class const SessionOptionsCacheEntry({
     required this.key,
     required this.revision,
     required this.capturedAt,
     required this.completeness,
     required this.response,
-  });
-
+  }) {
   final SessionOptionsCacheKey key;
   final int revision;
   final DateTime capturedAt;
@@ -33,37 +31,27 @@ class SessionOptionsCacheEntry {
   final SessionOptionsResponse response;
 }
 
-sealed class SessionOptionsCaptureResult {
-  const SessionOptionsCaptureResult();
-}
+sealed class const SessionOptionsCaptureResult();
 
-final class SessionOptionsCaptureObserved extends SessionOptionsCaptureResult {
-  const SessionOptionsCaptureObserved({
+final class const SessionOptionsCaptureObserved({
     required this.response,
     required this.completeness,
     required this.generation,
-  });
-
+  }) extends SessionOptionsCaptureResult {
   final SessionOptionsResponse response;
   final PluginSessionOptionsCompleteness completeness;
   final int generation;
 }
 
-final class SessionOptionsCaptureFailed extends SessionOptionsCaptureResult {
-  const SessionOptionsCaptureFailed();
-}
+final class const SessionOptionsCaptureFailed() extends SessionOptionsCaptureResult;
 
-final class SessionOptionsCaptureInactive extends SessionOptionsCaptureResult {
-  const SessionOptionsCaptureInactive();
-}
+final class const SessionOptionsCaptureInactive() extends SessionOptionsCaptureResult;
 
-final class SessionOptionsCacheDecodingException implements Exception {
-  const SessionOptionsCacheDecodingException({
+final class const SessionOptionsCacheDecodingException({
     required this.cause,
     required this.causeStackTrace,
     required this.revision,
-  });
-
+  }) implements Exception {
   final Object cause;
   final StackTrace causeStackTrace;
   final int? revision;
@@ -72,13 +60,13 @@ final class SessionOptionsCacheDecodingException implements Exception {
   String toString() => "SessionOptionsCacheDecodingException: invalid persisted session options cache";
 }
 
-class SessionOptionsRepository {
-  SessionOptionsRepository({
+class SessionOptionsRepository({
     required PluginRuntime runtime,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required SessionOptionsCacheDao cacheDao,
-  }) : _runtime = runtime,
+  }) {
+  this : _runtime = runtime,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _cacheDao = cacheDao;
@@ -300,17 +288,11 @@ class SessionOptionsRepository {
   }
 }
 
-sealed class _ActiveCapture {
-  const _ActiveCapture();
-}
+sealed class const _ActiveCapture();
 
-final class _ActiveCaptureResult extends _ActiveCapture {
-  const _ActiveCaptureResult({required this.result, required this.generation});
-
+final class const _ActiveCaptureResult({required this.result, required this.generation}) extends _ActiveCapture {
   final PluginSessionOptionsDiscoveryResult result;
   final int generation;
 }
 
-final class _ActiveCaptureInactive extends _ActiveCapture {
-  const _ActiveCaptureInactive();
-}
+final class const _ActiveCaptureInactive() extends _ActiveCapture;

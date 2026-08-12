@@ -35,11 +35,11 @@ PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> plugi
   );
 }
 
-class TestPluginRuntime extends PluginRuntime {
-  TestPluginRuntime({
+class TestPluginRuntime({
     required Map<String, BridgePluginApi> plugins,
     required Set<String>? eligiblePluginIds,
-  }) : _eligiblePluginIds = Set<String>.unmodifiable(eligiblePluginIds ?? plugins.keys),
+  }) extends PluginRuntime {
+  this : _eligiblePluginIds = Set<String>.unmodifiable(eligiblePluginIds ?? plugins.keys),
        _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
        super(
          registrations: const [],
@@ -289,8 +289,8 @@ class TestPluginRuntime extends PluginRuntime {
   }
 }
 
-class _AlwaysCurrentTestPluginRuntime extends TestPluginRuntime {
-  _AlwaysCurrentTestPluginRuntime() : super(plugins: const {}, eligiblePluginIds: null);
+class _AlwaysCurrentTestPluginRuntime() extends TestPluginRuntime {
+  this : super(plugins: const {}, eligiblePluginIds: null);
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) => generation == 1;
@@ -306,9 +306,7 @@ class _AlwaysCurrentTestPluginRuntime extends TestPluginRuntime {
   }) => generation == 1;
 }
 
-class _UnusedGenerationFactory implements PluginGenerationFactory {
-  const _UnusedGenerationFactory();
-
+class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   @override
   Future<void> enforceBridgeOwnership() async {}
 
@@ -319,9 +317,7 @@ class _UnusedGenerationFactory implements PluginGenerationFactory {
   }) => throw UnsupportedError("test runtime is already active");
 }
 
-class _TestDescriptor extends BridgePluginDescriptor {
-  const _TestDescriptor({required this.id});
-
+class const _TestDescriptor({required this.id}) extends BridgePluginDescriptor {
   @override
   final String id;
 
@@ -341,9 +337,7 @@ class _TestDescriptor extends BridgePluginDescriptor {
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("unused");
 }
 
-class _UnusedHostProcessService implements HostProcessService {
-  const _UnusedHostProcessService();
-
+class const _UnusedHostProcessService() implements HostProcessService {
   @override
   Future<ProcessIdentity?> inspect({required int pid}) => throw UnsupportedError("unused");
 

@@ -6,13 +6,13 @@ import "../omp_identity.dart";
 import "../repositories/omp_session_cleanup_repository.dart";
 
 /// Finds and deletes OMP-owned persisted session artifacts through ACP.
-class OmpSessionCleanupService {
-  OmpSessionCleanupService({
+class OmpSessionCleanupService({
     required OmpSessionCleanupRepository repository,
     required String launchDirectory,
     required Duration totalTimeout,
     required int maxPages,
-  }) : _repository = repository,
+  }) {
+  this : _repository = repository,
        _launchDirectory = launchDirectory,
        _totalTimeout = totalTimeout,
        _maxPages = maxPages;

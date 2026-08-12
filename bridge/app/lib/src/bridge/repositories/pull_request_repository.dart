@@ -9,18 +9,18 @@ import "../../repositories/models/pull_request_target.dart";
 import "models/stored_session.dart";
 import "models/verified_github_login.dart";
 
-class PullRequestRepository {
+class PullRequestRepository({
+    required AppDatabase database,
+    required PullRequestDao pullRequestDao,
+    required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
+  }) {
   final AppDatabase _database;
   final PullRequestDao _pullRequestDao;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
 
-  PullRequestRepository({
-    required AppDatabase database,
-    required PullRequestDao pullRequestDao,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-  }) : _database = database,
+  this : _database = database,
        _pullRequestDao = pullRequestDao,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;

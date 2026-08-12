@@ -47,7 +47,7 @@ Future<void> openOAuthBrowser(String url) async {
 }
 
 /// Confidence that a URL can be opened in a graphical browser on this host.
-enum BrowserOpenability {
+enum BrowserOpenability() {
   /// A graphical browser is almost certainly reachable — open it confidently.
   yes,
 
@@ -132,7 +132,15 @@ bool _isWindowsSubsystemForLinux(Map<String, String> env) {
   }
 }
 
-class LoginOAuthService {
+class LoginOAuthService({
+    required LoginOAuthApi api,
+    required Future<void> Function(String url) browserLauncher,
+    required BrowserOpenability Function() browserOpenability,
+    @visibleForTesting Duration pollInterval = _defaultPollInterval,
+    @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
+    @visibleForTesting Duration perRequestTimeout = _defaultPerRequestTimeout,
+    @visibleForTesting Future<void> Function(Duration duration)? delay,
+  }) {
   final LoginOAuthApi _api;
   final Future<void> Function(String url) _browserLauncher;
   final BrowserOpenability Function() _browserOpenability;
@@ -141,15 +149,7 @@ class LoginOAuthService {
   final Duration _perRequestTimeout;
   final Future<void> Function(Duration duration) _delay;
 
-  LoginOAuthService({
-    required LoginOAuthApi api,
-    required Future<void> Function(String url) browserLauncher,
-    required BrowserOpenability Function() browserOpenability,
-    @visibleForTesting Duration pollInterval = _defaultPollInterval,
-    @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
-    @visibleForTesting Duration perRequestTimeout = _defaultPerRequestTimeout,
-    @visibleForTesting Future<void> Function(Duration duration)? delay,
-  }) : _api = api,
+  this : _api = api,
        _browserLauncher = browserLauncher,
        _browserOpenability = browserOpenability,
        _pollInterval = pollInterval,

@@ -14,7 +14,12 @@ import "models/session_operation.dart";
 ///
 /// Delegates to the plugin and maps the plugin-contract models to the shared
 /// wire models so routing handlers stay plugin-agnostic.
-class QuestionRepository {
+class QuestionRepository({
+    required PluginRuntime runtime,
+    required SessionDao sessionDao,
+    required ProjectsDao projectsDao,
+    required Duration aggregateSourceDeadline,
+  }) {
   static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
 
   final PluginRuntime _runtime;
@@ -22,12 +27,7 @@ class QuestionRepository {
   final ProjectsDao _projectsDao;
   final Duration _aggregateSourceDeadline;
 
-  QuestionRepository({
-    required PluginRuntime runtime,
-    required SessionDao sessionDao,
-    required ProjectsDao projectsDao,
-    required Duration aggregateSourceDeadline,
-  }) : _runtime = runtime,
+  this : _runtime = runtime,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
        _aggregateSourceDeadline = aggregateSourceDeadline;

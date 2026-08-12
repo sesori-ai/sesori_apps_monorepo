@@ -9,10 +9,8 @@ import "session_view_tracker.dart";
 /// Thrown by [SessionUnseenService.markUnread] when the target session has no
 /// row (deleted / never learned). Rethrown so the requesting client receives a
 /// non-2xx and refreshes its (optimistic) state from the authoritative list.
-class SessionUnseenRowMissingException implements Exception {
+class SessionUnseenRowMissingException({required this.sessionId}) implements Exception {
   final String sessionId;
-
-  SessionUnseenRowMissingException({required this.sessionId});
 }
 
 /// A single emitted unseen-state change for one session, plus the recomputed
@@ -33,7 +31,12 @@ typedef UnseenChange = ({
 ///
 /// It also owns unseen-row deletion for live `session.deleted` events via
 /// [recordSessionDeleted].
-class SessionUnseenService {
+class SessionUnseenService({
+    required SessionUnseenRepository unseenRepository,
+    required ProjectRepository projectRepository,
+    required SessionViewTracker viewTracker,
+    int Function()? now,
+  }) {
   final SessionUnseenRepository _unseenRepository;
   final ProjectRepository _projectRepository;
   final SessionViewTracker _viewTracker;
@@ -57,12 +60,7 @@ class SessionUnseenService {
   /// infrequent DB writes, so the reduced concurrency is irrelevant.
   Future<void> _writeTail = Future<void>.value();
 
-  SessionUnseenService({
-    required SessionUnseenRepository unseenRepository,
-    required ProjectRepository projectRepository,
-    required SessionViewTracker viewTracker,
-    int Function()? now,
-  }) : _unseenRepository = unseenRepository,
+  this : _unseenRepository = unseenRepository,
        _projectRepository = projectRepository,
        _viewTracker = viewTracker,
        _wallClock = now ?? (() => DateTime.now().millisecondsSinceEpoch) {

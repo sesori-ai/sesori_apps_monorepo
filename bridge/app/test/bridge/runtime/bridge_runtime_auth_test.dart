@@ -150,7 +150,7 @@ BridgeCliOptions _options({required String authBackendUrl}) {
   );
 }
 
-class _FakeLoginEmailRepository implements LoginEmailRepository {
+class _FakeLoginEmailRepository() implements LoginEmailRepository {
   @override
   LoginEmailApi get emailAuthApi => throw UnimplementedError();
 
@@ -163,19 +163,19 @@ class _FakeLoginEmailRepository implements LoginEmailRepository {
   }
 }
 
-class _FakeLoginOAuthService implements LoginOAuthService {
+class _FakeLoginOAuthService({
+    ({TokenData tokens, String sessionToken})? result,
+    Object? error,
+    Object? ackError,
+    void Function(String sessionToken)? onAck,
+  }) implements LoginOAuthService {
   final ({TokenData tokens, String sessionToken})? _result;
   final Object? _error;
   final Object? _ackError;
   final void Function(String sessionToken)? _onAck;
   final List<String> ackCalls = [];
 
-  _FakeLoginOAuthService({
-    ({TokenData tokens, String sessionToken})? result,
-    Object? error,
-    Object? ackError,
-    void Function(String sessionToken)? onAck,
-  }) : _result = result,
+  this : _result = result,
        _error = error,
        _ackError = ackError,
        _onAck = onAck;
@@ -204,10 +204,10 @@ class _FakeLoginOAuthService implements LoginOAuthService {
   }
 }
 
-class _InvalidTokenAuthBackend {
+class _InvalidTokenAuthBackend._(this._server) {
   final HttpServer _server;
 
-  _InvalidTokenAuthBackend._(this._server) {
+  this {
     _listen();
   }
 

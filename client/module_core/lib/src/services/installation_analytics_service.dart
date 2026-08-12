@@ -7,17 +7,17 @@ import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 
-enum LoginAttemptFailureCause { authentication, launch, cancelled, timeout, unknown }
+enum LoginAttemptFailureCause() { authentication, launch, cancelled, timeout, unknown }
 
 @lazySingleton
-class InstallationAnalyticsService {
+class InstallationAnalyticsService({
+    required AnalyticsRuntimeCapability capability,
+    required AnalyticsRepository repository,
+  }) {
   final AnalyticsRuntimeCapability _capability;
   final AnalyticsRepository _repository;
 
-  InstallationAnalyticsService({
-    required AnalyticsRuntimeCapability capability,
-    required AnalyticsRepository repository,
-  }) : _capability = capability,
+  this : _capability = capability,
        _repository = repository;
 
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AuthProvider provider}) {

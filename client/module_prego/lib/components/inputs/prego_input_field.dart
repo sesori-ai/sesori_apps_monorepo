@@ -42,8 +42,7 @@ const double _trailingSlotSize = 44.0;
 ///   validator: _validateEmail,
 /// )
 /// ```
-class PregoInputField extends StatelessWidget {
-  const PregoInputField({
+class const PregoInputField({
     super.key,
     required this.controller,
     required this.label,
@@ -63,8 +62,7 @@ class PregoInputField extends StatelessWidget {
     this.onSubmitted,
     this.onChanged,
     this.trailing,
-  });
-
+  }) extends StatelessWidget {
   /// Holds the field's text. The caller owns its lifecycle.
   final TextEditingController controller;
 

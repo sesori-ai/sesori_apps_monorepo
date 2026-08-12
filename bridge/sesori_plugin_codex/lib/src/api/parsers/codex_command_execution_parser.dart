@@ -4,9 +4,7 @@ import "../../codex_app_server_client.dart";
 import "../models/codex_command_execution_dto.dart";
 import "../models/codex_correlatable_item_event_dto.dart";
 
-class CodexCommandExecutionParser {
-  const CodexCommandExecutionParser();
-
+class const CodexCommandExecutionParser() {
   CodexCommandExecutionEventDto? parse({
     required CodexServerNotification notification,
   }) {

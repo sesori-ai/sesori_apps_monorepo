@@ -48,13 +48,13 @@ ClaudeBridgePlugin _defaultBuildBridgePlugin({
 );
 
 /// Descriptor and composition root for the local Claude Code CLI plugin.
-final class ClaudePluginDescriptor extends BridgePluginDescriptor {
-  const ClaudePluginDescriptor({
+final class const ClaudePluginDescriptor({
     Duration probeTimeout = const Duration(seconds: 10),
     Duration sessionIdleTimeout = const Duration(minutes: 5),
     Duration statusDebounce = const Duration(seconds: 5),
     ClaudeBridgePluginFactory? buildBridgePlugin,
-  }) : _probeTimeout = probeTimeout,
+  }) extends BridgePluginDescriptor {
+  this : _probeTimeout = probeTimeout,
        _sessionIdleTimeout = sessionIdleTimeout,
        _statusDebounce = statusDebounce,
        _buildBridgePlugin = buildBridgePlugin;

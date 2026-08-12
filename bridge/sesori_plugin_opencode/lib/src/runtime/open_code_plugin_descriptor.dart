@@ -18,7 +18,7 @@ import "open_code_runtime_policy.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
-abstract final class _OpenCodeConfigKey {
+abstract final class _OpenCodeConfigKey() {
   static const String port = "port";
   static const String host = "host";
   static const String noAutoStart = "no-auto-start";
@@ -69,8 +69,7 @@ OpenCodeManagedApi _defaultBuildApi({
 /// The optional constructor parameters are test seams (and the random/candidate
 /// sources the supervisor needs); the registered descriptor is `const
 /// OpenCodePluginDescriptor()`.
-class OpenCodePluginDescriptor extends BridgePluginDescriptor {
-  const OpenCodePluginDescriptor({
+class const OpenCodePluginDescriptor({
     OpenCodeManagedApiFactory? buildApi,
     http.Client Function()? probeClientFactory,
     Iterable<int>? candidatePorts,
@@ -79,7 +78,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     Duration coldStartBudget = openCodeColdStartBudget,
     Duration versionProbeTimeout = openCodeVersionProbeTimeout,
     ManagedRuntimeProvisionService? provisionService,
-  }) : _buildApi = buildApi,
+  }) extends BridgePluginDescriptor {
+  this : _buildApi = buildApi,
        _probeClientFactory = probeClientFactory,
        _candidatePorts = candidatePorts,
        _random = random,

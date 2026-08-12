@@ -22,12 +22,10 @@ const double _leadingSlotWidth = 24.0;
 const double _leadingIconSize = 20.0;
 
 /// A solid rounded card hosting grouped settings rows (Figma "Grouped Rows").
-class PregoGroupedRows extends StatelessWidget {
-  const PregoGroupedRows({
+class const PregoGroupedRows({
     super.key,
     required this.children,
-  });
-
+  }) extends StatelessWidget {
   /// The rows, typically [PregoGroupedRow]s. Mark the final row with
   /// [PregoGroupedRow.isLast] so it drops its bottom divider.
   final List<Widget> children;
@@ -52,8 +50,7 @@ class PregoGroupedRows extends StatelessWidget {
 ///
 /// Rows compose a hairline divider below themselves aligned with the title
 /// column; set [isLast] on the final row of a [PregoGroupedRows] card.
-class PregoGroupedRow extends StatelessWidget {
-  const PregoGroupedRow({
+class const PregoGroupedRow({
     super.key,
     this.icon,
     this.leading,
@@ -62,8 +59,7 @@ class PregoGroupedRow extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.isLast = false,
-  });
-
+  }) extends StatelessWidget {
   /// Leading glyph rendered at 20px in the tertiary text colour. Ignored when
   /// [leading] is provided.
   final IconData? icon;

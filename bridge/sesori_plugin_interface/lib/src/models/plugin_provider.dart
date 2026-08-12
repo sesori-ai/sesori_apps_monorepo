@@ -5,7 +5,7 @@ part "plugin_provider.freezed.dart";
 part "plugin_provider.g.dart";
 
 /// The authentication mechanism required by a provider to connect.
-enum PluginProviderAuthType {
+enum PluginProviderAuthType() {
   apiKey,
   oauth,
   unknown,

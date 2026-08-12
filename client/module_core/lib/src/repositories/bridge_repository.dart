@@ -6,10 +6,10 @@ import "../api/bridge_api.dart";
 
 /// Layer 2 access to the bridges registered with the user's account.
 @lazySingleton
-class BridgeRepository {
+class BridgeRepository({required BridgeApi api}) {
   final BridgeApi _api;
 
-  BridgeRepository({required BridgeApi api}) : _api = api;
+  this : _api = api;
 
   /// The bridges registered with the user's account, as reported by the auth
   /// server (`/auth/bridges`). An empty list means the user has never set up

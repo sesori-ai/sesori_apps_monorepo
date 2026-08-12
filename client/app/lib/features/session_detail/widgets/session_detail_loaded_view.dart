@@ -46,7 +46,7 @@ class SessionDetailLoadedView extends StatefulWidget {
   State<SessionDetailLoadedView> createState() => _SessionDetailLoadedViewState();
 }
 
-class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
+class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   /// Measured height of the floating bottom controls overlaying the bottom of
   /// the chat — the background-tasks bar, queued messages and the composer. Fed
   /// to the message list so the newest message rests just above them (and the
@@ -294,9 +294,7 @@ bool hasActiveWork({
 /// Used to feed the floating composer's height to the message list so the
 /// newest message and the "jump to latest" pill rest clear of it. [onChange]
 /// is invoked post-frame so listeners may safely call `setState`.
-class _MeasureSize extends SingleChildRenderObjectWidget {
-  const _MeasureSize({required this.onChange, required super.child});
-
+class const _MeasureSize({required this.onChange, required super.child}) extends SingleChildRenderObjectWidget {
   final ValueChanged<Size> onChange;
 
   @override
@@ -308,9 +306,7 @@ class _MeasureSize extends SingleChildRenderObjectWidget {
   }
 }
 
-class _MeasureSizeRenderBox extends RenderProxyBox {
-  _MeasureSizeRenderBox(this.onChange);
-
+class _MeasureSizeRenderBox(this.onChange) extends RenderProxyBox {
   ValueChanged<Size> onChange;
   Size? _lastReported;
 

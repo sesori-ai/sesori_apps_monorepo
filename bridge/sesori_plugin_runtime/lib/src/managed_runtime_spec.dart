@@ -7,9 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// [detail] are surfaced through the resulting [ManagedRuntimeHandle] for
 /// diagnostics, and [error] carries the failure cause when a probe reports
 /// unhealthy (so a start failure can name why).
-class RuntimeHealthProbe {
-  const RuntimeHealthProbe({required this.healthy, this.version, this.detail, this.error});
-
+class const RuntimeHealthProbe({required this.healthy, this.version, this.detail, this.error}) {
   /// A probe that failed, carrying its [error] cause.
   const RuntimeHealthProbe.unhealthy({Object? error}) : this(healthy: false, error: error);
 
@@ -25,15 +23,13 @@ class RuntimeHealthProbe {
 /// The supervisor stays generic over the record type `R`; the plugin's
 /// [ManagedRuntimeSpec.buildRecord] maps these facts — plus its own knowledge
 /// of the command line it spawned — into `R` at the "starting" status.
-class RuntimeRecordDraft {
-  const RuntimeRecordDraft({
+class const RuntimeRecordDraft({
     required this.ownerSessionId,
     required this.runtimeIdentity,
     required this.port,
     required this.bridgeIdentity,
     required this.startedAt,
-  });
-
+  }) {
   /// Stable identifier of the bridge run that owns the runtime.
   final String ownerSessionId;
 
@@ -59,9 +55,7 @@ class RuntimeRecordDraft {
 /// only when the real descriptor opts in at the flip. The legacy test suite
 /// hard-asserts exact delay sequences, so pacing must be configurable rather
 /// than replaced.
-sealed class RuntimeHealthPolicy {
-  const RuntimeHealthPolicy();
-
+sealed class const RuntimeHealthPolicy() {
   /// Legacy pacing: up to [attempts] probes, each preceded by [delay].
   const factory RuntimeHealthPolicy.attemptCount({
     required int attempts,
@@ -76,8 +70,8 @@ sealed class RuntimeHealthPolicy {
   }) = HealthDeadlinePolicy;
 }
 
-class HealthAttemptCountPolicy extends RuntimeHealthPolicy {
-  const HealthAttemptCountPolicy({required this.attempts, required this.delay})
+class const HealthAttemptCountPolicy({required this.attempts, required this.delay}) extends RuntimeHealthPolicy {
+  this
     : assert(attempts > 0, "attempts must be positive"),
       super();
 
@@ -85,10 +79,10 @@ class HealthAttemptCountPolicy extends RuntimeHealthPolicy {
   final Duration delay;
 }
 
-class HealthDeadlinePolicy extends RuntimeHealthPolicy {
+class HealthDeadlinePolicy({required this.deadline, required this.pollInterval}) extends RuntimeHealthPolicy {
   // Not const: the parameter guards below compare Durations, which is not a
   // constant-evaluable operation. The policy is built at runtime anyway.
-  HealthDeadlinePolicy({required this.deadline, required this.pollInterval})
+  this
     : assert(!deadline.isNegative, "deadline must be non-negative"),
       assert(pollInterval > Duration.zero, "pollInterval must be positive"),
       super();
@@ -98,7 +92,7 @@ class HealthDeadlinePolicy extends RuntimeHealthPolicy {
 }
 
 /// When the supervisor writes the ownership record relative to spawn.
-enum RuntimeRecordTiming {
+enum RuntimeRecordTiming() {
   /// Legacy: the record is written only after spawn, once a real pid exists.
   /// The frozen schema's runtime pid is required non-null, so there is no
   /// representable pre-spawn state in the ownership file itself.
@@ -111,9 +105,7 @@ enum RuntimeRecordTiming {
 }
 
 /// Where the supervisor obtains the listening port for a start.
-sealed class RuntimePortPolicy {
-  const RuntimePortPolicy();
-
+sealed class const RuntimePortPolicy() {
   /// A single, caller-chosen port.
   const factory RuntimePortPolicy.explicit({
     required int port,
@@ -132,8 +124,8 @@ sealed class RuntimePortPolicy {
   }) = DynamicPortPolicy;
 }
 
-class ExplicitPortPolicy extends RuntimePortPolicy {
-  const ExplicitPortPolicy({required this.port, this.preProbeBindable = false}) : super();
+class const ExplicitPortPolicy({required this.port, this.preProbeBindable = false}) extends RuntimePortPolicy {
+  this : super();
 
   final int port;
 
@@ -143,15 +135,15 @@ class ExplicitPortPolicy extends RuntimePortPolicy {
   final bool preProbeBindable;
 }
 
-class DynamicPortPolicy extends RuntimePortPolicy {
-  const DynamicPortPolicy({
+class const DynamicPortPolicy({
     required this.candidates,
     required this.maxAttempts,
     required this.reservedPort,
     required this.minPort,
     required this.maxPort,
     this.failFastOnSpawnError = false,
-  }) : assert(maxAttempts > 0, "maxAttempts must be positive"),
+  }) extends RuntimePortPolicy {
+  this : assert(maxAttempts > 0, "maxAttempts must be positive"),
        super();
 
   /// Candidate ports to consider, in order. May be a lazy or unbounded
@@ -188,8 +180,7 @@ class DynamicPortPolicy extends RuntimePortPolicy {
 /// functions rather than service objects so a plugin (or a legacy adapter)
 /// owns exactly how a runtime is launched and inspected. The supervisor
 /// trusts the identity its [spawn] seam returns and never re-inspects it.
-class ManagedRuntimeSpec<R> {
-  const ManagedRuntimeSpec({
+class const ManagedRuntimeSpec<R>({
     required this.spawn,
     required this.probeHealth,
     required this.probePortBindable,
@@ -199,8 +190,7 @@ class ManagedRuntimeSpec<R> {
     this.recordTiming = RuntimeRecordTiming.afterSpawn,
     this.validateRuntime,
     this.failOnEarlyChildExit = false,
-  });
-
+  }) {
   /// Launches the runtime on [port] and returns the spawned process with its
   /// captured identity. Contract: the returned [SpawnedProcess.identity] is
   /// authoritative — the supervisor does not re-inspect it.
@@ -241,15 +231,13 @@ class ManagedRuntimeSpec<R> {
 /// populated); an attached runtime is not ([isOwned] is false and those
 /// fields are null — the bridge never kills or records a server it merely
 /// connected to).
-class ManagedRuntimeHandle<R> {
-  const ManagedRuntimeHandle({
+class const ManagedRuntimeHandle<R>({
     required this.port,
     required this.record,
     required this.process,
     required this.identity,
     required this.health,
-  });
-
+  }) {
   final int port;
   final R? record;
   final SpawnedProcess? process;

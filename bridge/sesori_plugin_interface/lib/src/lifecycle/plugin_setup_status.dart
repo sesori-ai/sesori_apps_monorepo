@@ -5,17 +5,13 @@ import "package:meta/meta.dart";
 /// Setup inspection runs before availability, provisioning, or plugin start. It
 /// must never install a runtime, start a backend, or initiate authentication.
 @immutable
-sealed class PluginSetupStatus {
-  const PluginSetupStatus();
-
+sealed class const PluginSetupStatus() {
   /// Generic, user-facing guidance authored by the plugin.
   String? get actionHint;
 }
 
 /// Setup was deliberately not inspected because the plugin is disabled.
-final class PluginSetupNotInspected extends PluginSetupStatus {
-  const PluginSetupNotInspected();
-
+final class const PluginSetupNotInspected() extends PluginSetupStatus {
   @override
   String? get actionHint => null;
 
@@ -30,9 +26,7 @@ final class PluginSetupNotInspected extends PluginSetupStatus {
 }
 
 /// The required runtime and authentication are already available.
-final class PluginSetupReady extends PluginSetupStatus {
-  const PluginSetupReady();
-
+final class const PluginSetupReady() extends PluginSetupStatus {
   @override
   String? get actionHint => null;
 
@@ -47,8 +41,8 @@ final class PluginSetupReady extends PluginSetupStatus {
 }
 
 /// No usable backend runtime was found.
-final class PluginSetupRuntimeMissing extends PluginSetupStatus {
-  const PluginSetupRuntimeMissing({required this.actionHint})
+final class const PluginSetupRuntimeMissing({required this.actionHint}) extends PluginSetupStatus {
+  this
     : assert(actionHint != "", "PluginSetupRuntimeMissing.actionHint must not be empty");
 
   @override
@@ -65,8 +59,8 @@ final class PluginSetupRuntimeMissing extends PluginSetupStatus {
 }
 
 /// The runtime exists, but the backend requires authentication.
-final class PluginSetupAuthenticationRequired extends PluginSetupStatus {
-  const PluginSetupAuthenticationRequired({required this.actionHint})
+final class const PluginSetupAuthenticationRequired({required this.actionHint}) extends PluginSetupStatus {
+  this
     : assert(actionHint != "", "PluginSetupAuthenticationRequired.actionHint must not be empty");
 
   @override
@@ -83,8 +77,8 @@ final class PluginSetupAuthenticationRequired extends PluginSetupStatus {
 }
 
 /// The backend is present but unsupported or otherwise unusable.
-final class PluginSetupUnavailable extends PluginSetupStatus {
-  const PluginSetupUnavailable({required this.actionHint})
+final class const PluginSetupUnavailable({required this.actionHint}) extends PluginSetupStatus {
+  this
     : assert(actionHint != "", "PluginSetupUnavailable.actionHint must not be empty");
 
   @override
@@ -101,8 +95,8 @@ final class PluginSetupUnavailable extends PluginSetupStatus {
 }
 
 /// Setup could not be determined safely after a transient or ambiguous probe.
-final class PluginSetupUnknown extends PluginSetupStatus {
-  const PluginSetupUnknown({required this.actionHint})
+final class const PluginSetupUnknown({required this.actionHint}) extends PluginSetupStatus {
+  this
     : assert(actionHint != "", "PluginSetupUnknown.actionHint must not be empty");
 
   @override

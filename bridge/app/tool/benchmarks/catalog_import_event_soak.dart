@@ -51,15 +51,13 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({
+class const _BenchmarkConfiguration({
     required this.projectCount,
     required this.sessionCount,
     required this.eventCount,
     required this.warmupCount,
     required this.readSampleCount,
-  });
-
+  }) {
   final int projectCount;
   final int sessionCount;
   final int eventCount;
@@ -104,8 +102,8 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _CatalogImportEventSoak {
-  const _CatalogImportEventSoak({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
+class const _CatalogImportEventSoak({required _BenchmarkConfiguration configuration}) {
+  this : _configuration = configuration;
 
   final _BenchmarkConfiguration _configuration;
 
@@ -750,8 +748,8 @@ class _CatalogImportEventSoak {
   }
 }
 
-class _PeakRssSampler {
-  _PeakRssSampler({required int initialRss}) : _peakRss = initialRss;
+class _PeakRssSampler({required int initialRss}) {
+  this : _peakRss = initialRss;
 
   int _peakRss;
   Timer? _timer;
@@ -791,7 +789,7 @@ int _nearestRank({required List<int> sortedSamples, required double percentile})
   return sortedSamples[rank - 1];
 }
 
-class _SchedulingLagProbe {
+class _SchedulingLagProbe() {
   final List<int> samples = <int>[];
   final Completer<void> _firstSample = Completer<void>();
   final Stopwatch _stopwatch = Stopwatch();
@@ -826,13 +824,11 @@ class _SchedulingLagProbe {
   }
 }
 
-class _BenchmarkPlugin implements BridgeDerivedProjectsPluginApi {
-  _BenchmarkPlugin({
+class _BenchmarkPlugin({
     required this.launchDirectory,
     required this.sessions,
     required this.releaseEnumeration,
-  });
-
+  }) implements BridgeDerivedProjectsPluginApi {
   @override
   final String launchDirectory;
   final List<PluginSession> sessions;
@@ -876,8 +872,8 @@ class _BenchmarkPlugin implements BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _CountingSSEManager extends SSEManager {
-  _CountingSSEManager({required super.failureReporter})
+class _CountingSSEManager({required super.failureReporter}) extends SSEManager {
+  this
     : super(
         replayWindow: const Duration(minutes: 1),
         onBytesSent: (_) {},
@@ -892,7 +888,7 @@ class _CountingSSEManager extends SSEManager {
   }
 }
 
-class _ExistingFilesystemApi implements FilesystemApi {
+class _ExistingFilesystemApi() implements FilesystemApi {
   @override
   bool directoryExists(String path) => true;
 
@@ -900,7 +896,7 @@ class _ExistingFilesystemApi implements FilesystemApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _BenchmarkFailureReporter implements FailureReporter {
+class _BenchmarkFailureReporter() implements FailureReporter {
   @override
   void log({required String message}) {}
 

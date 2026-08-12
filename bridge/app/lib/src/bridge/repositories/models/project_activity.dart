@@ -2,9 +2,7 @@ import "package:meta/meta.dart";
 
 /// Persisted project activity timestamps.
 @immutable
-class ProjectActivity {
-  const ProjectActivity({required this.createdAt, required this.updatedAt});
-
+class const ProjectActivity({required this.createdAt, required this.updatedAt}) {
   final int createdAt;
   final int updatedAt;
 
@@ -18,9 +16,7 @@ class ProjectActivity {
 }
 
 @immutable
-class ProjectActivityChange {
-  const ProjectActivityChange({required this.projectId, required this.updatedAt});
-
+class const ProjectActivityChange({required this.projectId, required this.updatedAt}) {
   final String projectId;
   final int updatedAt;
 
@@ -34,9 +30,7 @@ class ProjectActivityChange {
 }
 
 @immutable
-class StoredProjectActivity {
-  const StoredProjectActivity({required this.projectId, required this.activity});
-
+class const StoredProjectActivity({required this.projectId, required this.activity}) {
   final String projectId;
   final ProjectActivity activity;
 }

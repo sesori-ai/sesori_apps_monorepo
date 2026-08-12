@@ -8,11 +8,11 @@ import 'update_service.dart';
 /// Consumers drive the whole update subsystem through this one object instead of
 /// reaching into the individual services, so disposal stays encapsulated here —
 /// the single owner that knows what needs tearing down.
-class UpdateLifecycleService {
-  UpdateLifecycleService({
+class UpdateLifecycleService({
     required UpdateService updateService,
     required UpdateReconciliationService reconciliationService,
-  }) : _updateService = updateService,
+  }) {
+  this : _updateService = updateService,
        _reconciliationService = reconciliationService;
 
   final UpdateService _updateService;

@@ -70,7 +70,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
 
-class RunCommand extends cli.Command<void> {
+class RunCommand() extends cli.Command<void> {
   @override
   final name = 'run';
 
@@ -81,7 +81,7 @@ class RunCommand extends cli.Command<void> {
   /// under its id (e.g. `--opencode-host`).
   final Map<String, PluginCliOptionsMapper> _pluginCliMappers;
 
-  RunCommand()
+  this
     : _pluginCliMappers = {
         for (final plugin in knownPlugins) plugin.id: PluginCliOptionsMapper(pluginId: plugin.id),
       } {
@@ -203,14 +203,14 @@ class RunCommand extends cli.Command<void> {
   }
 }
 
-class LogoutCommand extends cli.Command<void> {
+class LogoutCommand() extends cli.Command<void> {
   @override
   final name = 'logout';
 
   @override
   final description = 'Clear stored authentication tokens';
 
-  LogoutCommand() {
+  this {
     argParser
       ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
       ..addOption(
@@ -379,14 +379,14 @@ Future<void> _unregisterBridgeRegistration({
   }
 }
 
-class ConfigCommand extends cli.Command<void> {
+class ConfigCommand() extends cli.Command<void> {
   @override
   final name = 'config';
 
   @override
   final description = 'Manage bridge configuration';
 
-  ConfigCommand() {
+  this {
     addSubcommand(ConfigTrackCommand());
     addSubcommand(ConfigYoloCommand());
     addSubcommand(ConfigPluginsCommand());
@@ -394,7 +394,7 @@ class ConfigCommand extends cli.Command<void> {
   }
 }
 
-class ConfigEditCommand extends cli.Command<void> {
+class ConfigEditCommand() extends cli.Command<void> {
   @override
   final name = 'edit';
 
@@ -420,7 +420,7 @@ class ConfigEditCommand extends cli.Command<void> {
   }
 }
 
-class ConfigPluginsCommand extends cli.Command<void> {
+class ConfigPluginsCommand() extends cli.Command<void> {
   @override
   final name = 'plugins';
 
@@ -479,7 +479,7 @@ class ConfigPluginsCommand extends cli.Command<void> {
   }
 }
 
-class ConfigTrackCommand extends cli.Command<void> {
+class ConfigTrackCommand() extends cli.Command<void> {
   @override
   final name = 'track';
 
@@ -529,7 +529,7 @@ class ConfigTrackCommand extends cli.Command<void> {
   }
 }
 
-class ConfigYoloCommand extends cli.Command<void> {
+class ConfigYoloCommand() extends cli.Command<void> {
   @override
   final name = 'yolo';
 
@@ -578,14 +578,14 @@ class ConfigYoloCommand extends cli.Command<void> {
   }
 }
 
-class UpdateCommand extends cli.Command<void> {
+class UpdateCommand() extends cli.Command<void> {
   @override
   final name = 'update';
 
   @override
   final description = 'Update the bridge to the latest release on your track, then exit';
 
-  UpdateCommand() {
+  this {
     argParser.addFlag(
       'force',
       abbr: 'f',

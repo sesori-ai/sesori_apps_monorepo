@@ -13,21 +13,19 @@ import "../../core/extensions/build_context_x.dart";
 /// The menu's header repeats the section name and hangs the settings shortcut
 /// off it, so a harness that needs setting up is one tap from where the user
 /// noticed the problem.
-class NewSessionPluginChooser extends StatelessWidget {
-  final List<PluginMetadata> plugins;
-  final String? selectedPluginId;
-  final bool isSelectionEnabled;
-  final ValueChanged<String> onSelected;
-  final VoidCallback onSettingsPressed;
-
-  const NewSessionPluginChooser({
+class const NewSessionPluginChooser({
     super.key,
     required this.plugins,
     required this.selectedPluginId,
     required this.isSelectionEnabled,
     required this.onSelected,
     required this.onSettingsPressed,
-  });
+  }) extends StatelessWidget {
+  final List<PluginMetadata> plugins;
+  final String? selectedPluginId;
+  final bool isSelectionEnabled;
+  final ValueChanged<String> onSelected;
+  final VoidCallback onSettingsPressed;
 
   /// Height of the trigger row and of the menu's header row (Figma: 40 / 52).
   static const double _triggerHeight = 40;
@@ -102,18 +100,16 @@ class NewSessionPluginChooser extends StatelessWidget {
 }
 
 /// The picked harness' mark and name over an unfold caret.
-class _HarnessTrigger extends StatelessWidget {
-  final String? pluginId;
-  final String label;
-  final double height;
-  final VoidCallback onPressed;
-
-  const _HarnessTrigger({
+class const _HarnessTrigger({
     required this.pluginId,
     required this.label,
     required this.height,
     required this.onPressed,
-  });
+  }) extends StatelessWidget {
+  final String? pluginId;
+  final String label;
+  final double height;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -166,11 +162,9 @@ class _HarnessTrigger extends StatelessWidget {
 
 /// The menu's first row: the section name and the shortcut into harness
 /// settings, where harnesses are enabled, restarted and set up.
-class _HarnessesMenuHeader extends StatelessWidget {
+class const _HarnessesMenuHeader({required this.height, required this.onSettingsPressed}) extends StatelessWidget {
   final double height;
   final VoidCallback onSettingsPressed;
-
-  const _HarnessesMenuHeader({required this.height, required this.onSettingsPressed});
 
   @override
   Widget build(BuildContext context) {

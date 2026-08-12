@@ -3,15 +3,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 const int _maxTextLength = 500;
 const String _suggestedTextLabel = "Use suggested text";
 
-sealed class AcpElicitationForm {
-  const AcpElicitationForm();
-}
+sealed class const AcpElicitationForm();
 
-final class AcpSupportedElicitationForm extends AcpElicitationForm {
-  const AcpSupportedElicitationForm({
+final class const AcpSupportedElicitationForm({
     required this.questions,
     required List<AcpElicitationField> fields,
-  }) : _fields = fields;
+  }) extends AcpElicitationForm {
+  this : _fields = fields;
 
   final List<PluginQuestionInfo> questions;
   final List<AcpElicitationField> _fields;
@@ -29,25 +27,19 @@ final class AcpSupportedElicitationForm extends AcpElicitationForm {
   }
 }
 
-final class AcpUnsupportedElicitationForm extends AcpElicitationForm {
-  const AcpUnsupportedElicitationForm({required this.reason});
-
+final class const AcpUnsupportedElicitationForm({required this.reason}) extends AcpElicitationForm {
   /// Privacy-safe structural reason. Never contains labels, defaults, or text.
   final String reason;
 }
 
-sealed class AcpElicitationField {
-  const AcpElicitationField({required this.key, required this.required});
-
+sealed class const AcpElicitationField({required this.key, required this.required}) {
   final String key;
   final bool required;
 
   Object? encode({required List<String> selected});
 }
 
-final class _StringField extends AcpElicitationField {
-  const _StringField({required super.key, required super.required, required this.suggestedText});
-
+final class const _StringField({required super.key, required super.required, required this.suggestedText}) extends AcpElicitationField {
   final String? suggestedText;
 
   @override
@@ -59,9 +51,7 @@ final class _StringField extends AcpElicitationField {
   }
 }
 
-final class _BooleanField extends AcpElicitationField {
-  const _BooleanField({required super.key, required super.required});
-
+final class const _BooleanField({required super.key, required super.required}) extends AcpElicitationField {
   @override
   Object? encode({required List<String> selected}) {
     if (selected.isEmpty) return null;
@@ -73,9 +63,7 @@ final class _BooleanField extends AcpElicitationField {
   }
 }
 
-final class _EnumField extends AcpElicitationField {
-  const _EnumField({required super.key, required super.required, required this.valuesByLabel});
-
+final class const _EnumField({required super.key, required super.required, required this.valuesByLabel}) extends AcpElicitationField {
   final Map<String, String> valuesByLabel;
 
   @override
@@ -83,9 +71,7 @@ final class _EnumField extends AcpElicitationField {
 }
 
 /// Maps the standard ACP v1 `elicitation/create` form shape to Sesori questions.
-class AcpElicitationMapper {
-  const AcpElicitationMapper();
-
+class const AcpElicitationMapper() {
   AcpElicitationForm parse({required Map<String, dynamic> params}) {
     final mode = params["mode"];
     if (mode != "form") {

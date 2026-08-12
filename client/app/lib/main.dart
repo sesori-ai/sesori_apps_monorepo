@@ -255,9 +255,7 @@ bool get _supportsFirebaseCrashlytics {
   };
 }
 
-class SesoriApp extends StatelessWidget {
-  const SesoriApp({required this.initialAppearance, required this.initialChatInputMode, super.key});
-
+class const SesoriApp({required this.initialAppearance, required this.initialChatInputMode, super.key}) extends StatelessWidget {
   /// The persisted appearance, read before the first frame.
   final AppearanceMode initialAppearance;
 
@@ -288,9 +286,7 @@ class SesoriApp extends StatelessWidget {
   }
 }
 
-class _SesoriAppShell extends StatelessWidget {
-  const _SesoriAppShell();
-
+class const _SesoriAppShell() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeMode = context.watch<AppearanceCubit>().state.themeMode;

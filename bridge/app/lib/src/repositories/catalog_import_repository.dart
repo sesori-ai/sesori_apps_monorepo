@@ -23,14 +23,14 @@ import "project_catalog_identity_calculator.dart";
 /// history store stale after an ordinary rename and cold-start the backend.
 typedef SessionBackendActivity = ({String sessionId, int activityAt});
 
-class CatalogImportRepository {
-  CatalogImportRepository({
+class CatalogImportRepository({
     required PluginRuntime runtime,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required CatalogHydrationsDao catalogHydrationsDao,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-  }) : _runtime = runtime,
+  }) {
+  this : _runtime = runtime,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _catalogHydrationsDao = catalogHydrationsDao,
@@ -684,17 +684,15 @@ class CatalogImportRepository {
   }
 }
 
-enum _CatalogOperation { importCatalog }
+enum _CatalogOperation() { importCatalog }
 
-class _ObservedProject {
-  _ObservedProject({
+class _ObservedProject({
     required this.preferredId,
     required this.path,
     required this.displayName,
     required this.createdAt,
     required this.updatedAt,
-  });
-
+  }) {
   final String preferredId;
   final String path;
   String? displayName;
@@ -702,15 +700,12 @@ class _ObservedProject {
   int? updatedAt;
 }
 
-class _ObservedSession {
-  _ObservedSession({required this.session, required this.rootProjectPath});
-
+class _ObservedSession({required this.session, required this.rootProjectPath}) {
   final PluginSession session;
   String? rootProjectPath;
 }
 
-class _CatalogImportObservation {
-  const _CatalogImportObservation({
+class const _CatalogImportObservation({
     required this.pluginId,
     required this.generation,
     required this.projectOwnership,
@@ -719,8 +714,7 @@ class _CatalogImportObservation {
     required this.observedSessions,
     required this.derivedLaunchDirectory,
     required this.sessionsSeen,
-  });
-
+  }) {
   final String pluginId;
   final int generation;
   final PluginProjectOwnership projectOwnership;

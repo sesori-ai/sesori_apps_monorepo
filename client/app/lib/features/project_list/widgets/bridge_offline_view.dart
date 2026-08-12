@@ -19,9 +19,7 @@ part of "../project_list_screen.dart";
 /// [ProjectListScreen]) so the expanded install commands scroll under a fixed
 /// bar. Anchored to the top of that page at the design's offset; the enclosing
 /// sliver grows past the viewport once the body outgrows it.
-class _BridgeOfflineView extends StatefulWidget {
-  const _BridgeOfflineView({required this.bridge});
-
+class const _BridgeOfflineView({required this.bridge}) extends StatefulWidget {
   /// The machine the app is trying to reach — the account's most recently seen
   /// registered bridge. Null while the lookup has no answer, or when it failed
   /// (e.g. the phone itself is offline); the machine row is hidden then.
@@ -31,7 +29,7 @@ class _BridgeOfflineView extends StatefulWidget {
   State<_BridgeOfflineView> createState() => _BridgeOfflineViewState();
 }
 
-class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
+class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
   /// Whether the "Install commands" disclosure is expanded.
   bool _showInstallCommands = false;
 
@@ -144,9 +142,7 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
 ///
 /// Reads in `text-primary`: it is the headline of the offline body, with the
 /// status line beneath it as the quiet second read.
-class _MachineNameRow extends StatelessWidget {
-  const _MachineNameRow({required this.name});
-
+class const _MachineNameRow({required this.name}) extends StatelessWidget {
   /// The registered bridge's machine name.
   final String name;
 

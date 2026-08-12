@@ -34,9 +34,7 @@ sealed class NotificationPreferencesApiNotifications with _$NotificationPreferen
 }
 
 @Freezed(fromJson: false, toJson: false)
-sealed class NotificationPreferencePatchApiRequest with _$NotificationPreferencePatchApiRequest {
-  const NotificationPreferencePatchApiRequest._();
-
+sealed class const NotificationPreferencePatchApiRequest._() with _$NotificationPreferencePatchApiRequest {
   const factory NotificationPreferencePatchApiRequest.aiInteraction({required bool enabled}) =
       NotificationPreferencePatchAiInteraction;
   const factory NotificationPreferencePatchApiRequest.sessionMessage({required bool enabled}) =
@@ -57,10 +55,10 @@ sealed class NotificationPreferencePatchApiRequest with _$NotificationPreference
 }
 
 @lazySingleton
-class NotificationPreferencesApi {
+class NotificationPreferencesApi({required AuthenticatedHttpApiClient client}) {
   final AuthenticatedHttpApiClient _client;
 
-  NotificationPreferencesApi({required AuthenticatedHttpApiClient client}) : _client = client;
+  this : _client = client;
 
   Future<NotificationPreferencesApiRecord> getPreferences({
     required String userId,

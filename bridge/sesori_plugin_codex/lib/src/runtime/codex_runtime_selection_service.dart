@@ -8,9 +8,9 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "codex_desktop_app_locator.dart";
 import "codex_runtime_manifest.dart";
 
-enum CodexRuntimeSource { explicit, path, desktopApp, managed }
+enum CodexRuntimeSource() { explicit, path, desktopApp, managed }
 
-enum CodexRuntimeSelectionFailure {
+enum CodexRuntimeSelectionFailure() {
   executableMissing,
   probeTimedOut,
   probeFailed,
@@ -19,59 +19,47 @@ enum CodexRuntimeSelectionFailure {
   unsupportedVersion,
 }
 
-sealed class CodexRuntimeSelection {
-  const CodexRuntimeSelection();
-}
+sealed class const CodexRuntimeSelection();
 
-final class CodexRuntimeSelected extends CodexRuntimeSelection {
-  const CodexRuntimeSelected({
+final class const CodexRuntimeSelected({
     required this.binaryPath,
     required this.source,
     required this.version,
     required this.rejectedPathVersion,
-  });
-
+  }) extends CodexRuntimeSelection {
   final String binaryPath;
   final CodexRuntimeSource source;
   final SemanticVersion version;
   final SemanticVersion? rejectedPathVersion;
 }
 
-final class CodexRuntimeNotSelected extends CodexRuntimeSelection {
-  const CodexRuntimeNotSelected({
+final class const CodexRuntimeNotSelected({
     required this.failure,
     required this.hasExplicitBinary,
-  });
-
+  }) extends CodexRuntimeSelection {
   final CodexRuntimeSelectionFailure failure;
   final bool hasExplicitBinary;
 }
 
-sealed class _VersionProbe {
-  const _VersionProbe();
-}
+sealed class const _VersionProbe();
 
-final class _VersionProbeSucceeded extends _VersionProbe {
-  const _VersionProbeSucceeded({required this.version});
-
+final class const _VersionProbeSucceeded({required this.version}) extends _VersionProbe {
   final SemanticVersion version;
 }
 
-final class _VersionProbeFailed extends _VersionProbe {
-  const _VersionProbeFailed({required this.failure});
-
+final class const _VersionProbeFailed({required this.failure}) extends _VersionProbe {
   final CodexRuntimeSelectionFailure failure;
 }
 
 /// Selects the Codex executable shared by setup inspection, startup, and
 /// interactive authentication without installing or mutating runtime files.
-class CodexRuntimeSelectionService {
-  CodexRuntimeSelectionService({
+class CodexRuntimeSelectionService({
     required HostProcessService processes,
     required Duration versionProbeTimeout,
     required int? maxCapturedOutputCharactersPerStream,
     required List<String>? desktopAppCliCandidates,
-  }) : _versionProbeTimeout = versionProbeTimeout,
+  }) {
+  this : _versionProbeTimeout = versionProbeTimeout,
        _desktopAppCliCandidates = desktopAppCliCandidates,
        _commandExecutor = HostProcessCommandExecutor(
          processes: processes,

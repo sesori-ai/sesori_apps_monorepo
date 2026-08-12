@@ -6,10 +6,10 @@ import "request_handler.dart";
 /// Handles `POST /session/questions` — returns the pending questions to surface
 /// on a session's screen: its own plus any descendant (sub-agent) session whose
 /// top-most root resolves to this session.
-class GetSessionQuestionsHandler extends BodyRequestHandler<SessionIdRequest, PendingQuestionResponse> {
+class GetSessionQuestionsHandler({required QuestionRepository questionRepository}) extends BodyRequestHandler<SessionIdRequest, PendingQuestionResponse> {
   final QuestionRepository _questionRepository;
 
-  GetSessionQuestionsHandler({required QuestionRepository questionRepository})
+  this
     : _questionRepository = questionRepository,
       super(
         HttpMethod.post,

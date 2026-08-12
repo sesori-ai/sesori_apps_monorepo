@@ -3,13 +3,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 import "../foundation/process_match.dart";
 import "../repositories/process_repository.dart";
 
-class BridgeHostInfoImpl implements BridgeHostInfo {
-  BridgeHostInfoImpl({
+class BridgeHostInfoImpl({
     required this.identity,
     required this.ownerSessionId,
     required List<ProcessIdentity> terminatedBridgeIdentities,
     required ProcessRepository processRepository,
-  }) : terminatedBridgeIdentities = List<ProcessIdentity>.unmodifiable(terminatedBridgeIdentities),
+  }) implements BridgeHostInfo {
+  this : terminatedBridgeIdentities = List<ProcessIdentity>.unmodifiable(terminatedBridgeIdentities),
        _processRepository = processRepository;
 
   @override

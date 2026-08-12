@@ -3,9 +3,7 @@ import "package:sesori_auth/sesori_auth.dart";
 
 const httpMethodConverter = HttpMethodConverter();
 
-class HttpMethodConverter implements JsonConverter<HttpMethod, String> {
-  const HttpMethodConverter();
-
+class const HttpMethodConverter() implements JsonConverter<HttpMethod, String> {
   @override
   HttpMethod fromJson(String json) {
     for (final method in HttpMethod.values) {

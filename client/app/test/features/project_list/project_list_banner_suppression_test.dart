@@ -135,6 +135,6 @@ void main() {
   });
 }
 
-class _MutableConnectionOverlayCubit extends StubConnectionOverlayCubit {
+class _MutableConnectionOverlayCubit() extends StubConnectionOverlayCubit {
   void setOverlayState(ConnectionOverlayState next) => emit(next);
 }

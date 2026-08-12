@@ -23,7 +23,10 @@ import "../server/foundation/terminal_prompt_decision.dart";
 /// [TerminalPromptDecision.nonInteractive], mirroring the terminal path's
 /// "couldn't ask" semantics, and is logged since the transport failure is
 /// otherwise swallowed into a decision.
-class ControlPromptService implements BridgeReplacePrompt {
+class ControlPromptService({
+    required ControlChannelClient client,
+    Duration responseTimeout = _defaultResponseTimeout,
+  }) implements BridgeReplacePrompt {
   /// A human answers these through a GUI dialog, so the wait is generous —
   /// unlike the token pull's machine-speed timeout.
   static const Duration _defaultResponseTimeout = Duration(minutes: 2);
@@ -34,10 +37,7 @@ class ControlPromptService implements BridgeReplacePrompt {
   int _nextId = 0;
   bool _disposed = false;
 
-  ControlPromptService({
-    required ControlChannelClient client,
-    Duration responseTimeout = _defaultResponseTimeout,
-  })  : _client = client,
+  this  : _client = client,
         _responseTimeout = responseTimeout;
 
   @override

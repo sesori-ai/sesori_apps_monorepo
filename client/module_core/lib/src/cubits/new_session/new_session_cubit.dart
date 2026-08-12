@@ -25,8 +25,7 @@ import "../../services/new_session_selection_tracker.dart";
 import "../../services/product_analytics_service.dart";
 import "new_session_state.dart";
 
-class NewSessionCubit extends Cubit<NewSessionState> {
-  NewSessionCubit({
+class NewSessionCubit({
     required ConnectionService connectionService,
     required SessionService sessionService,
     required NewSessionPluginService newSessionPluginService,
@@ -37,7 +36,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required ProductAnalyticsService productAnalyticsService,
     required String projectId,
     required bool? initialSupportsDedicatedWorktrees,
-  }) : _connectionService = connectionService,
+  }) extends Cubit<NewSessionState> {
+  this : _connectionService = connectionService,
        _sessionService = sessionService,
        _newSessionPluginService = newSessionPluginService,
        _newSessionOptionsService = newSessionOptionsService,

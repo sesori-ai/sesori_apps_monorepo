@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "product_analytics_preference_update_request.freezed.dart";
 part "product_analytics_preference_update_request.g.dart";
 
-enum ProductAnalyticsPreferenceUpdateValue {
+enum ProductAnalyticsPreferenceUpdateValue() {
   @JsonValue("enabled")
   enabled,
   @JsonValue("disabled")

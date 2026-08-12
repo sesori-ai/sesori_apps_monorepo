@@ -209,7 +209,7 @@ void main() {
 Iterable<ControlProvisionProgress> _sentProgress(_FakeControlChannelClient client) =>
     client.sentMessages.map((message) => (message as ControlProvisionProgressMessage).progress);
 
-class _FakeControlChannelClient implements ControlChannelClient {
+class _FakeControlChannelClient() implements ControlChannelClient {
   final List<String> sentFrames = <String>[];
 
   /// Mimics [ControlChannelClient.send] throwing when the channel is down.

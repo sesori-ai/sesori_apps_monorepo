@@ -5,8 +5,8 @@ import "dart:io";
 import "../api/claude_process_factory.dart";
 
 /// In-memory [ClaudeProcessHandle] for transport and plugin tests.
-class FakeClaudeProcess implements ClaudeProcessHandle {
-  FakeClaudeProcess({bool stdinCloseCompletes = true}) : _stdin = CapturingIOSink(closeCompletes: stdinCloseCompletes);
+class FakeClaudeProcess({bool stdinCloseCompletes = true}) implements ClaudeProcessHandle {
+  this : _stdin = CapturingIOSink(closeCompletes: stdinCloseCompletes);
 
   final StreamController<List<int>> _stdout = StreamController<List<int>>();
   final StreamController<List<int>> _stderr = StreamController<List<int>>();
@@ -103,8 +103,8 @@ class FakeClaudeProcess implements ClaudeProcessHandle {
 
 /// Minimal [IOSink] capturing `add`-ed bytes and decoding complete ndjson lines
 /// into [frames]. Only [add] and [close] are exercised by the transport.
-class CapturingIOSink implements IOSink {
-  CapturingIOSink({bool closeCompletes = true}) : _closeCompleter = closeCompletes ? null : Completer<void>();
+class CapturingIOSink({bool closeCompletes = true}) implements IOSink {
+  this : _closeCompleter = closeCompletes ? null : Completer<void>();
 
   final Completer<void>? _closeCompleter;
   final List<int> _buffer = [];

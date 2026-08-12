@@ -382,27 +382,25 @@ void main() {
   });
 }
 
-class _ThrowingClient extends http.BaseClient {
+class _ThrowingClient() extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     throw Exception("network error");
   }
 }
 
-class _RefreshTestServer {
+class _RefreshTestServer._(
+    this._server,
+    this._statusCode,
+    this._responseDelay,
+    this._onRequest,
+  ) {
   final HttpServer _server;
   final int _statusCode;
   final Duration _responseDelay;
   final void Function(HttpRequest request, String body)? _onRequest;
 
   int requestCount = 0;
-
-  _RefreshTestServer._(
-    this._server,
-    this._statusCode,
-    this._responseDelay,
-    this._onRequest,
-  );
 
   static Future<_RefreshTestServer> start({
     int statusCode = 200,

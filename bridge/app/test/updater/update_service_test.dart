@@ -16,7 +16,7 @@ import 'package:test/test.dart';
 
 const String _managedPath = '/usr/local/bin/sesori-bridge';
 
-class _FakeReleaseRepository implements ReleaseRepository {
+class _FakeReleaseRepository() implements ReleaseRepository {
   int checkCount = 0;
   Future<ReleaseInfo?> Function()? onCheck;
   final List<String> advancedBaselines = <String>[];
@@ -34,7 +34,7 @@ class _FakeReleaseRepository implements ReleaseRepository {
   Future<UpdateResolution> resolveUpdate() => throw UnimplementedError();
 }
 
-class _FakeInstallService implements UpdateInstallService {
+class _FakeInstallService() implements UpdateInstallService {
   UpdateInstallResult result = const UpdateInstallResult.staged(stagingPath: '/tmp/staging');
   int stageCount = 0;
 
@@ -45,7 +45,7 @@ class _FakeInstallService implements UpdateInstallService {
   }
 }
 
-class _FakeApplyService implements UpdateApplyService {
+class _FakeApplyService() implements UpdateApplyService {
   final List<String> appliedVersions = <String>[];
   UpdateApplyOutcome Function(ReleaseInfo release)? onApply;
 
@@ -62,7 +62,7 @@ class _FakeApplyService implements UpdateApplyService {
   }
 }
 
-class _FakeLogRepository implements UpdateLogRepository {
+class _FakeLogRepository() implements UpdateLogRepository {
   final List<String> messages = <String>[];
 
   @override

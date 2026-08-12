@@ -5,34 +5,28 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/models/catalog_import_control.dart";
 
-enum CatalogImportTrigger { automatic, explicit, headless }
+enum CatalogImportTrigger() { automatic, explicit, headless }
 
-enum CatalogEmptyHydrationPolicy { complete, retry }
+enum CatalogEmptyHydrationPolicy() { complete, retry }
 
-class CatalogImportPluginUnknownException implements Exception {
-  CatalogImportPluginUnknownException({required this.pluginId});
-
+class CatalogImportPluginUnknownException({required this.pluginId}) implements Exception {
   final String pluginId;
 }
 
-class CatalogImportPluginNotEnabledException implements Exception {
-  CatalogImportPluginNotEnabledException({required this.pluginId});
-
+class CatalogImportPluginNotEnabledException({required this.pluginId}) implements Exception {
   final String pluginId;
 }
 
-class CatalogImportPluginUnavailableException implements Exception {
-  CatalogImportPluginUnavailableException({required this.pluginId});
-
+class CatalogImportPluginUnavailableException({required this.pluginId}) implements Exception {
   final String pluginId;
 }
 
-class CatalogImportService {
-  CatalogImportService({
+class CatalogImportService({
     required CatalogImportRepository repository,
     required List<String> orderedPluginIds,
     required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
-  }) : _repository = repository,
+  }) {
+  this : _repository = repository,
        _orderedPluginIds = List<String>.unmodifiable(orderedPluginIds),
        _knownPluginIds = Set<String>.unmodifiable(orderedPluginIds),
        _emptyHydrationPolicies = Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);

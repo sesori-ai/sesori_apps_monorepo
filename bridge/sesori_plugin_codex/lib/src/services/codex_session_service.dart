@@ -14,12 +14,12 @@ import "../repositories/codex_thread_repository.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
 
-final class CodexSessionMessageRead {
-  const CodexSessionMessageRead._({
+final class const CodexSessionMessageRead._({
     required CodexPreparedMessageRead messages,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     required CodexConfigDefaults config,
-  }) : _messages = messages,
+  }) {
+  this : _messages = messages,
        _structuredToolStatusByCallId = structuredToolStatusByCallId,
        _config = config;
 
@@ -29,7 +29,13 @@ final class CodexSessionMessageRead {
 }
 
 /// Layer-3 coordination for the migrated Codex session operations.
-class CodexSessionService {
+class CodexSessionService({
+    required CodexCatalogRepository catalogRepository,
+    required CodexMessageRepository messageRepository,
+    required CodexMetadataRepository metadataRepository,
+    required CodexToolOutcomeRepository toolOutcomeRepository,
+    required String launchDirectory,
+  }) {
   static const String compactionCommandName = "compact";
 
   static const PluginCommand _compactionCommand = PluginCommand(
@@ -39,13 +45,7 @@ class CodexSessionService {
     source: PluginCommandSource.command,
   );
 
-  CodexSessionService({
-    required CodexCatalogRepository catalogRepository,
-    required CodexMessageRepository messageRepository,
-    required CodexMetadataRepository metadataRepository,
-    required CodexToolOutcomeRepository toolOutcomeRepository,
-    required String launchDirectory,
-  }) : _catalogRepository = catalogRepository,
+  this : _catalogRepository = catalogRepository,
        _messageRepository = messageRepository,
        _metadataRepository = metadataRepository,
        _toolOutcomeRepository = toolOutcomeRepository,

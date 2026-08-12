@@ -75,10 +75,10 @@ void main() {
   });
 }
 
-class _FakeLoopbackPortApi implements LoopbackPortApi {
-  _FakeLoopbackPortApi({
+class _FakeLoopbackPortApi({
     required Map<int, bool> availabilityByPort,
-  }) : _availabilityByPort = availabilityByPort;
+  }) implements LoopbackPortApi {
+  this : _availabilityByPort = availabilityByPort;
 
   final Map<int, bool> _availabilityByPort;
   final List<_ProbeInvocation> invocations = <_ProbeInvocation>[];
@@ -103,12 +103,10 @@ class _FakeLoopbackPortApi implements LoopbackPortApi {
 }
 
 @immutable
-class _ProbeInvocation {
-  const _ProbeInvocation({
+class const _ProbeInvocation({
     required this.host,
     required this.port,
-  });
-
+  }) {
   final String host;
   final int port;
 

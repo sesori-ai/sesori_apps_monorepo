@@ -1,5 +1,4 @@
-class CodexSessionRecord {
-  const CodexSessionRecord({
+class const CodexSessionRecord({
     required this.id,
     required this.rolloutPath,
     required this.cwd,
@@ -9,8 +8,7 @@ class CodexSessionRecord {
     required this.cliVersion,
     required this.modelProvider,
     required this.model,
-  });
-
+  }) {
   final String id;
   final String rolloutPath;
   final String? cwd;

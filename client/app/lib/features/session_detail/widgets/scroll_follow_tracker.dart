@@ -8,7 +8,7 @@ import "package:flutter/widgets.dart";
 ///   `reverse: true` ListView (newest-at-bottom chat list).
 /// - [max] — follows `maxScrollExtent`. Matches the visual bottom of a
 ///   normal non-reversed ListView (growing output tailed from the end).
-enum ScrollFollowEdge { min, max }
+enum ScrollFollowEdge() { min, max }
 
 /// Maintains the "following vs detached" state of a scrollable derived
 /// from scroll and pointer events, and exposes snapshot access via
@@ -35,11 +35,11 @@ enum ScrollFollowEdge { min, max }
 ///   content, and serves as a belt-and-braces pin for
 ///   [ScrollFollowEdge.min] in case `reverse: true` sliver correction
 ///   leaves `pixels` even slightly off `0` after an append.
-class ScrollFollowTracker extends ChangeNotifier {
-  ScrollFollowTracker({
+class ScrollFollowTracker({
     required this.edge,
     double edgeTolerance = 20.0,
-  }) : _edgeTolerance = edgeTolerance,
+  }) extends ChangeNotifier {
+  this : _edgeTolerance = edgeTolerance,
        scrollController = ScrollController();
 
   final ScrollFollowEdge edge;

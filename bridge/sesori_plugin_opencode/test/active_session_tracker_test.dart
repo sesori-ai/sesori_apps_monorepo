@@ -2776,16 +2776,16 @@ Future<ActiveSessionTracker> _coldStartedTracker({
   return tracker;
 }
 
-class _FakeApi implements OpenCodeApi {
+class _FakeApi({
+    List<Project>? projects,
+    List<Session>? sessions,
+    Map<String, SessionStatus>? statuses,
+  }) implements OpenCodeApi {
   final List<Project> _projects;
   final List<Session> _sessions;
   final Map<String, SessionStatus> _statuses;
 
-  _FakeApi({
-    List<Project>? projects,
-    List<Session>? sessions,
-    Map<String, SessionStatus>? statuses,
-  }) : _projects = projects ?? [],
+  this : _projects = projects ?? [],
        _sessions = sessions ?? [],
        _statuses = statuses ?? {};
 
@@ -2937,8 +2937,8 @@ class _FakeApi implements OpenCodeApi {
   }) async => throw UnimplementedError();
 }
 
-class _GatedStatusApi extends _FakeApi {
-  _GatedStatusApi() : super(statuses: {"session": const SessionStatusIdle()});
+class _GatedStatusApi() extends _FakeApi {
+  this : super(statuses: {"session": const SessionStatusIdle()});
 
   final Completer<void> statusRequested = Completer<void>();
   final Completer<void> statusRelease = Completer<void>();

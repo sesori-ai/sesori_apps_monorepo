@@ -287,10 +287,8 @@ void main() {
   });
 }
 
-class _FailingInitializationWorktreeRepository implements WorktreeRepository {
+class _FailingInitializationWorktreeRepository({required this.addUnknownFile}) implements WorktreeRepository {
   final bool addUnknownFile;
-
-  _FailingInitializationWorktreeRepository({required this.addUnknownFile});
 
   @override
   Future<bool> initRepository({required String path}) async => true;
@@ -307,10 +305,8 @@ class _FailingInitializationWorktreeRepository implements WorktreeRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ThrowingInitializationWorktreeRepository implements WorktreeRepository {
+class _ThrowingInitializationWorktreeRepository({required this.cause}) implements WorktreeRepository {
   final Object cause;
-
-  _ThrowingInitializationWorktreeRepository({required this.cause});
 
   @override
   Future<bool> initRepository({required String path}) => Future.error(cause);

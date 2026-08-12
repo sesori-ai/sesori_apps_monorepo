@@ -201,7 +201,7 @@ void main() {
   });
 }
 
-class _FakeAppOnboardingStateRepository implements AppOnboardingStateRepository {
+class _FakeAppOnboardingStateRepository() implements AppOnboardingStateRepository {
   int clearCalls = 0;
   Object? clearError;
   void Function()? onClear;
@@ -236,7 +236,7 @@ ProcessIdentity _candidate({required int pid}) {
   );
 }
 
-class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
+class _FakeBridgeInstanceRepository() implements BridgeInstanceRepository {
   List<ProcessIdentity> liveBridges = <ProcessIdentity>[];
   int listCalls = 0;
 
@@ -247,7 +247,7 @@ class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
   }
 }
 
-class _FakeBridgeInstanceService implements BridgeInstanceService {
+class _FakeBridgeInstanceService() implements BridgeInstanceService {
   @override
   Future<void> awaitPredecessorBridgeExit({
     required int predecessorPid,
@@ -281,7 +281,7 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
   }
 }
 
-class _FakeTerminalPromptRepository implements TerminalPromptRepository {
+class _FakeTerminalPromptRepository() implements TerminalPromptRepository {
   TerminalPromptDecision decision = TerminalPromptDecision.replace;
   int askCount = 0;
   final List<int> bridgeCounts = <int>[];

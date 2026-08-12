@@ -252,7 +252,20 @@ void main() {
   });
 }
 
-class _ConcurrencyHarness {
+class _ConcurrencyHarness._({
+    required this.plugin,
+    required this.composition,
+    required this.runFuture,
+    required this.relayServer,
+    required this.database,
+    required this.lifecycleService,
+    required this.httpClient,
+    required this.runtime,
+    required this.relayClient,
+    required this.restartService,
+    required WebSocket socket,
+    required StreamIterator<dynamic> messages,
+  }) {
   final _BlockingMessagesPlugin plugin;
   final OrchestratorComposition composition;
   final Future<void> runFuture;
@@ -267,20 +280,7 @@ class _ConcurrencyHarness {
   WebSocket _socket;
   StreamIterator<dynamic> _messages;
 
-  _ConcurrencyHarness._({
-    required this.plugin,
-    required this.composition,
-    required this.runFuture,
-    required this.relayServer,
-    required this.database,
-    required this.lifecycleService,
-    required this.httpClient,
-    required this.runtime,
-    required this.relayClient,
-    required this.restartService,
-    required WebSocket socket,
-    required StreamIterator<dynamic> messages,
-  }) : _socket = socket,
+  this : _socket = socket,
        _messages = messages;
 
   static Future<_ConcurrencyHarness> start() async {
@@ -476,7 +476,7 @@ class _ConcurrencyHarness {
   }
 }
 
-class _BlockingMessagesPlugin extends FakeBridgePlugin {
+class _BlockingMessagesPlugin() extends FakeBridgePlugin {
   Completer<void>? messagesStarted;
   Future<void>? messagesDelay;
 
@@ -490,13 +490,11 @@ class _BlockingMessagesPlugin extends FakeBridgePlugin {
   }
 }
 
-class _RecordingRelayClient extends RelayClient {
-  _RecordingRelayClient({
+class _RecordingRelayClient({
     required super.relayURL,
     required super.accessTokenProvider,
     required super.bridgeIdProvider,
-  });
-
+  }) extends RelayClient {
   final List<({RelayConnection connection, int connId})> sendAttempts = [];
   final List<RelayConnection> closeAttempts = [];
   final Completer<void> closeStarted = Completer<void>();
@@ -535,9 +533,7 @@ class _RecordingRelayClient extends RelayClient {
   }
 }
 
-class _RecordingRestartService implements BridgeRestartService {
-  _RecordingRestartService({required this.relayClient});
-
+class _RecordingRestartService({required this.relayClient}) implements BridgeRestartService {
   final _RecordingRelayClient relayClient;
   final Completer<void> handoffPerformed = Completer<void>();
   bool restartable = false;

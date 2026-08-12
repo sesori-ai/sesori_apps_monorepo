@@ -6,23 +6,21 @@ import "session_split_scope.dart";
 
 /// Adaptive shell that renders either a single-pane narrow layout or a
 /// two-pane wide layout for session routes.
-class SessionSplitShell extends StatefulWidget {
-  final Widget list;
-  final Widget child;
-  final ProjectViewingService projectViewingService;
-
-  const SessionSplitShell({
+class const SessionSplitShell({
     super.key,
     required this.list,
     required this.child,
     required this.projectViewingService,
-  });
+  }) extends StatefulWidget {
+  final Widget list;
+  final Widget child;
+  final ProjectViewingService projectViewingService;
 
   @override
   State<SessionSplitShell> createState() => _SessionSplitShellState();
 }
 
-class _SessionSplitShellState extends State<SessionSplitShell> {
+class _SessionSplitShellState() extends State<SessionSplitShell> {
   late ProjectViewingService _projectViewingService;
   late ProjectViewPaneClaim _paneClaim;
   bool _listPaneVisible = false;

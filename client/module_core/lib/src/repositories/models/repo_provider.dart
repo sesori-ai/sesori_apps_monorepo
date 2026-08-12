@@ -2,7 +2,7 @@
 ///
 /// Drives provider-specific presentation (brand icons); [other] covers hosts
 /// with no recognised provider and remotes whose host is unknown.
-enum RepoProvider {
+enum RepoProvider() {
   github,
   gitlab,
   bitbucket,

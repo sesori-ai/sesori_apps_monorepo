@@ -16,10 +16,10 @@ const _worktreeDir = ".worktrees";
 /// directory before every git operation (a moved folder keeps its identity
 /// but git must run where the folder actually is), while database writes
 /// (base-branch override) stay keyed on the identifier.
-class WorktreeService {
+class WorktreeService({required WorktreeRepository worktreeRepository}) {
   final WorktreeRepository _worktreeRepository;
 
-  WorktreeService({required WorktreeRepository worktreeRepository}) : _worktreeRepository = worktreeRepository;
+  this : _worktreeRepository = worktreeRepository;
 
   static final _random = Random.secure();
   static final _safeNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');

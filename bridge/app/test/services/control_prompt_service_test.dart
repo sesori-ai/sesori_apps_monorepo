@@ -147,7 +147,7 @@ void main() {
 
 ControlMessage _decode(String frame) => ControlMessage.fromJson(jsonDecodeMap(frame));
 
-class _FakeControlChannelClient implements ControlChannelClient {
+class _FakeControlChannelClient() implements ControlChannelClient {
   final List<String> sentFrames = <String>[];
 
   /// Mimics [ControlChannelClient.send] throwing when the channel is down.

@@ -8,14 +8,12 @@ import "package:web_socket_channel/web_socket_channel.dart";
 ///
 /// Fields mirror codex's `InitializeResponse` shape (see codex's
 /// `app-server generate-json-schema` output for the source of truth).
-class CodexInitializeResult {
-  const CodexInitializeResult({
+class const CodexInitializeResult({
     required this.userAgent,
     required this.codexHome,
     required this.platformOs,
     required this.platformFamily,
-  });
-
+  }) {
   final String userAgent;
   final String codexHome;
   final String platformOs;
@@ -32,13 +30,11 @@ class CodexInitializeResult {
 }
 
 /// A JSON-RPC error returned by codex app-server.
-class CodexRpcException implements Exception {
-  CodexRpcException({
+class CodexRpcException({
     required this.method,
     required this.code,
     required this.message,
-  });
-
+  }) implements Exception {
   final String method;
   final int code;
   final String message;
@@ -53,9 +49,7 @@ class CodexRpcException implements Exception {
 /// a `method` (e.g. `"thread/started"`, `"item/agentMessage/delta"`) and
 /// a free-form `params` object. We keep the raw map here and let endpoint APIs
 /// decode typed notifications where Codex exposes structured payloads.
-class CodexServerNotification {
-  const CodexServerNotification({required this.method, required this.params});
-
+class const CodexServerNotification({required this.method, required this.params}) {
   final String method;
   final Map<String, dynamic> params;
 
@@ -67,13 +61,11 @@ class CodexServerNotification {
 /// elicitations, user-input requests). Phase 2 records and logs these but
 /// does not yet route them; later phases will turn them into
 /// [PluginPendingQuestion]s on the bridge stream.
-class CodexServerRequest {
-  const CodexServerRequest({
+class const CodexServerRequest({
     required this.id,
     required this.method,
     required this.params,
-  });
-
+  }) {
   /// JSON-RPC `id` — caller must use this when sending a response.
   final Object id;
   final String method;
@@ -81,7 +73,7 @@ class CodexServerRequest {
 }
 
 /// Request and notification surface shared by Codex App Server transports.
-abstract interface class CodexAppServerTransport {
+abstract interface class CodexAppServerTransport() {
   Stream<CodexServerNotification> get notifications;
 
   Future<dynamic> request({
@@ -109,13 +101,13 @@ WebSocketChannel _defaultConnect(Uri uri) => WebSocketChannel.connect(uri);
 ///      by JSON-RPC `id`.
 ///   4. Listen on [notifications] and [serverRequests] for streaming events.
 ///   5. Call [dispose] to close the socket and fail any in-flight requests.
-class CodexAppServerClient implements CodexAppServerTransport {
-  CodexAppServerClient({
+class CodexAppServerClient({
     required String serverUrl,
     String? capabilityToken,
     CodexWebSocketChannelFactory? channelFactory,
     void Function()? onDisconnected,
-  }) : _serverUrl = serverUrl,
+  }) implements CodexAppServerTransport {
+  this : _serverUrl = serverUrl,
        _capabilityToken = capabilityToken,
        _channelFactory = channelFactory ?? _defaultConnect,
        _onDisconnected = onDisconnected;

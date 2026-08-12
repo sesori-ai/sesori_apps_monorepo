@@ -17,7 +17,10 @@ import "../bridge/services/session_event_dispatcher.dart";
 /// before its live event can advertise a reference. Capturing ordinary parts
 /// here as well would let a later part enter the session queue ahead of an
 /// awaited image part and reverse persisted part order.
-class ChatHistoryListener {
+class ChatHistoryListener({
+    required Stream<NormalizedSourcedBridgeEvent> source,
+    required ChatHistoryService chatHistoryService,
+  }) {
   final Stream<NormalizedSourcedBridgeEvent> _source;
   final ChatHistoryService _chatHistoryService;
   StreamSubscription<NormalizedSourcedBridgeEvent>? _subscription;
@@ -25,10 +28,7 @@ class ChatHistoryListener {
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
-  ChatHistoryListener({
-    required Stream<NormalizedSourcedBridgeEvent> source,
-    required ChatHistoryService chatHistoryService,
-  }) : _source = source,
+  this : _source = source,
        _chatHistoryService = chatHistoryService;
 
   void start() {

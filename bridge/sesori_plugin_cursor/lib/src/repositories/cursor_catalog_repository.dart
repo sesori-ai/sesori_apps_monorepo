@@ -9,11 +9,11 @@ import "../models/cursor_catalog_models.dart";
 import "mappers/cursor_catalog_mapper.dart";
 
 /// Layer-2 aggregation and mapping for Cursor catalog discovery.
-class CursorCatalogRepository {
-  CursorCatalogRepository({
+class CursorCatalogRepository({
     required CursorCatalogProbeApi api,
     required String launchScope,
-  }) : _api = api,
+  }) {
+  this : _api = api,
        _launchScope = normalizeProjectDirectory(directory: launchScope);
 
   final CursorCatalogProbeApi _api;

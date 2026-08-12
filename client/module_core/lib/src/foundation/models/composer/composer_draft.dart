@@ -1,10 +1,10 @@
 import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 
-enum ComposerInputMode { typed, voiceAssisted }
+enum ComposerInputMode() { typed, voiceAssisted }
 
 @immutable
-final class VoiceOriginSpan {
+final class const VoiceOriginSpan._({required this.start, required this.end}) {
   final int start;
   final int end;
 
@@ -14,8 +14,6 @@ final class VoiceOriginSpan {
     }
     return VoiceOriginSpan._(start: start, end: end);
   }
-
-  const VoiceOriginSpan._({required this.start, required this.end});
 
   @override
   bool operator ==(Object other) =>
@@ -27,7 +25,7 @@ final class VoiceOriginSpan {
 
 /// Immutable composer text plus compact half-open ranges contributed by voice.
 @immutable
-final class ComposerDraft {
+final class const ComposerDraft._({required this.text, required this.voiceSpans}) {
   final String text;
   final List<VoiceOriginSpan> voiceSpans;
 
@@ -53,8 +51,6 @@ final class ComposerDraft {
   }
 
   factory ComposerDraft.typed({required String text}) => ComposerDraft(text: text, voiceSpans: const []);
-
-  const ComposerDraft._({required this.text, required this.voiceSpans});
 
   ComposerInputMode get inputMode => voiceSpans.isEmpty ? ComposerInputMode.typed : ComposerInputMode.voiceAssisted;
 

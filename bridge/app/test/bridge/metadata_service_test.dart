@@ -10,15 +10,15 @@ import "package:test/test.dart";
 
 // ── Fakes ────────────────────────────────────────────────────────────────────
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher({
+    required String token,
+    String? forceRefreshedToken,
+  }) implements TokenRefresher {
   final String _token;
   final String _forceRefreshedToken;
   int forceRefreshCallCount = 0;
 
-  _FakeTokenRefresher({
-    required String token,
-    String? forceRefreshedToken,
-  }) : _token = token,
+  this : _token = token,
        _forceRefreshedToken = forceRefreshedToken ?? token;
 
   @override
@@ -31,7 +31,7 @@ class _FakeTokenRefresher implements TokenRefresher {
   }
 }
 
-class _SocketErrorClient extends http.BaseClient {
+class _SocketErrorClient() extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     throw const SocketException("Connection refused");

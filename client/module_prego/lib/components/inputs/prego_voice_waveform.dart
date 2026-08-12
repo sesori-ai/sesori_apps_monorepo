@@ -32,8 +32,7 @@ import "../../utils/lerp_utils.dart";
 ///
 /// The waveform is decorative — the composer carries the recording semantics —
 /// so it is excluded from semantics.
-class PregoVoiceWaveform extends StatefulWidget {
-  const PregoVoiceWaveform({
+class const PregoVoiceWaveform({
     super.key,
     required this.amplitudeStream,
     required this.barColor,
@@ -41,8 +40,7 @@ class PregoVoiceWaveform extends StatefulWidget {
     this.flattenProgress,
     this.height = 24,
     this.sampleInterval = const Duration(milliseconds: 100),
-  });
-
+  }) extends StatefulWidget {
   /// Normalized microphone amplitude samples in [0, 1], one per
   /// [sampleInterval] while the recorder listens.
   final Stream<double> amplitudeStream;
@@ -70,7 +68,7 @@ class PregoVoiceWaveform extends StatefulWidget {
   State<PregoVoiceWaveform> createState() => _PregoVoiceWaveformState();
 }
 
-class _PregoVoiceWaveformState extends State<PregoVoiceWaveform>
+class _PregoVoiceWaveformState() extends State<PregoVoiceWaveform>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// Only the trailing ~2× a composer width of history can ever be visible;
   /// older samples have scrolled off and are dropped.
@@ -176,8 +174,7 @@ class _PregoVoiceWaveformState extends State<PregoVoiceWaveform>
 
 /// Paints the waveform grid: right-aligned recorded bars, resting dots for the
 /// unrecorded remainder.
-class _VoiceWaveformPainter extends CustomPainter {
-  _VoiceWaveformPainter({
+class _VoiceWaveformPainter({
     required super.repaint,
     required this.samples,
     required this.slidePhase,
@@ -185,8 +182,7 @@ class _VoiceWaveformPainter extends CustomPainter {
     required this.flattenProgress,
     required this.barColor,
     required this.dotColor,
-  });
-
+  }) extends CustomPainter {
   /// Live view of the recorded history — newest last. Owned and mutated by the
   /// state; the repaint listenable ticks after every change.
   final List<double> samples;

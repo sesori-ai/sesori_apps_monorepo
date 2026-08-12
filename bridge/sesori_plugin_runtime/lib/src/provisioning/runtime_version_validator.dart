@@ -7,16 +7,16 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 /// as-is, or whether the bridge should fall back to the managed runtime, and to
 /// confirm a freshly-installed managed binary actually runs and reports the
 /// expected version.
-class RuntimeVersionValidator {
+class RuntimeVersionValidator({
+    required CommandExecutor commandExecutor,
+    required String runtimeId,
+    Duration probeTimeout = const Duration(seconds: 10),
+  }) {
   final CommandExecutor _commandExecutor;
   final String _runtimeId;
   final Duration _probeTimeout;
 
-  RuntimeVersionValidator({
-    required CommandExecutor commandExecutor,
-    required String runtimeId,
-    Duration probeTimeout = const Duration(seconds: 10),
-  }) : _commandExecutor = commandExecutor,
+  this : _commandExecutor = commandExecutor,
        _runtimeId = runtimeId,
        _probeTimeout = probeTimeout;
 

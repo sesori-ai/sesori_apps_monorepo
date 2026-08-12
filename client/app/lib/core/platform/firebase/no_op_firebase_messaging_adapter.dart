@@ -2,8 +2,8 @@ import "package:firebase_core/firebase_core.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 
 /// Type-compatible Firebase Messaging implementation for Firebase-disabled builds.
-class NoOpFirebaseMessagingAdapter implements FirebaseMessaging {
-  NoOpFirebaseMessagingAdapter({required FirebaseApp app}) : _app = app;
+class NoOpFirebaseMessagingAdapter({required FirebaseApp app}) implements FirebaseMessaging {
+  this : _app = app;
 
   static const NotificationSettings _notificationSettings = NotificationSettings(
     alert: AppleNotificationSetting.notSupported,

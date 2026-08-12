@@ -9,27 +9,25 @@ import '../repositories/process_repository.dart';
 
 const Duration _bridgeShutdownWait = Duration(seconds: 5);
 
-enum BridgeInstanceResolutionStatus { allowed, declined, nonInteractive }
+enum BridgeInstanceResolutionStatus() { allowed, declined, nonInteractive }
 
-class BridgeInstanceResolution {
-  const BridgeInstanceResolution({
+class const BridgeInstanceResolution({
     required this.status,
     required this.existingBridges,
     required this.terminatedBridges,
-  });
-
+  }) {
   final BridgeInstanceResolutionStatus status;
   final List<ProcessIdentity> existingBridges;
   final List<ProcessIdentity> terminatedBridges;
 }
 
-class BridgeInstanceService {
-  BridgeInstanceService({
+class BridgeInstanceService({
     required BridgeInstanceRepository bridgeInstanceRepository,
     required BridgeReplacePrompt replacePrompt,
     required ProcessRepository processRepository,
     required ServerClock clock,
-  }) : _bridgeInstanceRepository = bridgeInstanceRepository,
+  }) {
+  this : _bridgeInstanceRepository = bridgeInstanceRepository,
        _replacePrompt = replacePrompt,
        _processRepository = processRepository,
        _clock = clock;

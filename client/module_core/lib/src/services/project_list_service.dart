@@ -7,14 +7,14 @@ import "models/session_activity_info.dart";
 import "session_activity_calculator.dart";
 
 @lazySingleton
-class ProjectListService {
+class ProjectListService({
+    required ProjectRepository repository,
+    required SessionActivityCalculator activityCalculator,
+  }) {
   final ProjectRepository _repository;
   final SessionActivityCalculator _activityCalculator;
 
-  ProjectListService({
-    required ProjectRepository repository,
-    required SessionActivityCalculator activityCalculator,
-  }) : _repository = repository,
+  this : _repository = repository,
        _activityCalculator = activityCalculator;
 
   Future<ApiResponse<Projects>> listProjects() async {

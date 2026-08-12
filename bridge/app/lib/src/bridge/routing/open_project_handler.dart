@@ -9,10 +9,10 @@ import "../services/project_mutation_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/open` — opens an existing directory as a project.
-class OpenProjectHandler extends BodyRequestHandler<OpenProjectRequest, Project> {
+class OpenProjectHandler({required ProjectMutationService projectMutationService}) extends BodyRequestHandler<OpenProjectRequest, Project> {
   final ProjectMutationService _projectMutationService;
 
-  OpenProjectHandler({required ProjectMutationService projectMutationService})
+  this
     : _projectMutationService = projectMutationService,
       super(
         HttpMethod.post,

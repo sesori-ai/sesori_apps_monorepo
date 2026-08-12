@@ -4,12 +4,12 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import '../api/process_id_lookup_api.dart';
 import '../api/system_process_api.dart';
 
-class BridgeInstanceRepository {
-  BridgeInstanceRepository({
+class BridgeInstanceRepository({
     required ProcessIdLookupApi processIdLookupApi,
     required SystemProcessApi processApi,
     required ProcessUser? currentUser,
-  }) : _processIdLookupApi = processIdLookupApi,
+  }) {
+  this : _processIdLookupApi = processIdLookupApi,
        _processApi = processApi,
        _currentUser = currentUser;
 

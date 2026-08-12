@@ -11,7 +11,7 @@ import 'package:sesori_bridge/src/server/services/bridge_restart_service.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show ServerClock;
 import 'package:test/test.dart';
 
-class _RecordingProcessRunner implements ProcessRunner {
+class _RecordingProcessRunner() implements ProcessRunner {
   final List<({String executable, List<String> arguments, Map<String, String>? environment})> detachedCalls = [];
   bool throwOnSpawn = false;
 

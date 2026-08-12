@@ -1,5 +1,5 @@
 /// A Pi RPC command used by the Sesori integration.
-enum PiRpcCommand {
+enum PiRpcCommand(this.wireValue) {
   prompt("prompt"),
   abort("abort"),
   getState("get_state"),
@@ -11,8 +11,6 @@ enum PiRpcCommand {
   getEntries("get_entries"),
   getTree("get_tree"),
   setSessionName("set_session_name");
-
-  PiRpcCommand(this.wireValue);
 
   final String wireValue;
 

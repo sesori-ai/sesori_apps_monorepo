@@ -16,11 +16,11 @@ import "models/session_operation.dart";
 /// Also maps the wire-format [PermissionReply] (from `sesori_shared`) to the
 /// plugin-contract [plugin_interface.PermissionReply] to keep the two enums
 /// decoupled.
-class PermissionRepository {
+class PermissionRepository({required PluginRuntime runtime, required SessionDao sessionDao}) {
   final PluginRuntime _runtime;
   final SessionDao _sessionDao;
 
-  PermissionRepository({required PluginRuntime runtime, required SessionDao sessionDao})
+  this
     : _runtime = runtime,
       _sessionDao = sessionDao;
 

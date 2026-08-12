@@ -5,30 +5,25 @@ import "../repositories/project_repository.dart";
 import "project_activity_service.dart";
 import "project_initialization_service.dart";
 
-sealed class OpenProjectOutcome {
-  const OpenProjectOutcome();
-}
+sealed class const OpenProjectOutcome();
 
-final class OpenProjectSuccess extends OpenProjectOutcome {
+final class const OpenProjectSuccess({required this.project}) extends OpenProjectOutcome {
   final Project project;
-
-  const OpenProjectSuccess({required this.project});
 }
 
-final class OpenProjectDirectoryNotFound extends OpenProjectOutcome {
-  const OpenProjectDirectoryNotFound();
-}
+final class const OpenProjectDirectoryNotFound() extends OpenProjectOutcome;
 
-final class OpenProjectPathNotDirectory extends OpenProjectOutcome {
-  const OpenProjectPathNotDirectory();
-}
+final class const OpenProjectPathNotDirectory() extends OpenProjectOutcome;
 
-final class OpenProjectGitChoiceRequired extends OpenProjectOutcome {
-  const OpenProjectGitChoiceRequired();
-}
+final class const OpenProjectGitChoiceRequired() extends OpenProjectOutcome;
 
 /// Owns complete create, open, and hide workflows under one bridge-wide FIFO.
-class ProjectMutationService {
+class ProjectMutationService({
+    required FilesystemRepository filesystemRepository,
+    required ProjectInitializationService projectInitializationService,
+    required ProjectActivityService projectActivityService,
+    required ProjectRepository projectRepository,
+  }) {
   final FilesystemRepository _filesystemRepository;
   final ProjectInitializationService _projectInitializationService;
   final ProjectActivityService _projectActivityService;
@@ -36,12 +31,7 @@ class ProjectMutationService {
 
   Future<void> _tail = Future<void>.value();
 
-  ProjectMutationService({
-    required FilesystemRepository filesystemRepository,
-    required ProjectInitializationService projectInitializationService,
-    required ProjectActivityService projectActivityService,
-    required ProjectRepository projectRepository,
-  }) : _filesystemRepository = filesystemRepository,
+  this : _filesystemRepository = filesystemRepository,
        _projectInitializationService = projectInitializationService,
        _projectActivityService = projectActivityService,
        _projectRepository = projectRepository;

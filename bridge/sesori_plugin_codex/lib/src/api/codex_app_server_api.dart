@@ -11,8 +11,8 @@ import "models/codex_turn_dto.dart";
 import "models/codex_turn_input_dto.dart";
 
 /// Layer-1 typed boundary for migrated Codex app-server operations.
-class CodexAppServerApi {
-  CodexAppServerApi({required CodexAppServerTransport client}) : _client = client;
+class CodexAppServerApi({required CodexAppServerTransport client}) {
+  this : _client = client;
 
   final CodexAppServerTransport _client;
 

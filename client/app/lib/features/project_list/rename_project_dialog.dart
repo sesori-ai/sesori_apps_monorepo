@@ -25,21 +25,19 @@ Future<void> showRenameProjectDialog({
 }
 
 @visibleForTesting
-class RenameProjectDialog extends StatefulWidget {
-  final Project project;
-  final ProjectListCubit cubit;
-
-  const RenameProjectDialog({
+class const RenameProjectDialog({
     required this.project,
     required this.cubit,
     super.key,
-  });
+  }) extends StatefulWidget {
+  final Project project;
+  final ProjectListCubit cubit;
 
   @override
   State<RenameProjectDialog> createState() => _RenameProjectDialogState();
 }
 
-class _RenameProjectDialogState extends State<RenameProjectDialog> {
+class _RenameProjectDialogState() extends State<RenameProjectDialog> {
   late final TextEditingController _nameController;
   bool _actionLoading = false;
 

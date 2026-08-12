@@ -5,9 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _FakeCommandExecutor implements CommandExecutor {
-  _FakeCommandExecutor({this.result, this.error});
-
+class _FakeCommandExecutor({this.result, this.error}) implements CommandExecutor {
   final CommandResult? result;
   final Object? error;
   String? ranExecutable;
@@ -130,9 +128,7 @@ void main() {
   });
 }
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.lines);
-
+class _CapturingStdout(this.lines) implements Stdout {
   final List<String> lines;
 
   @override

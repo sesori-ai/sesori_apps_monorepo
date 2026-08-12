@@ -17,21 +17,19 @@ import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _AssistantMessageCardHarness extends StatefulWidget {
-  final MessageWithParts message;
-  final Map<String, String> streamingText;
-
-  const _AssistantMessageCardHarness({
+class const _AssistantMessageCardHarness({
     super.key,
     required this.message,
     required this.streamingText,
-  });
+  }) extends StatefulWidget {
+  final MessageWithParts message;
+  final Map<String, String> streamingText;
 
   @override
   State<_AssistantMessageCardHarness> createState() => _AssistantMessageCardHarnessState();
 }
 
-class _AssistantMessageCardHarnessState extends State<_AssistantMessageCardHarness> {
+class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHarness> {
   late Map<String, String> _streamingText;
 
   @override

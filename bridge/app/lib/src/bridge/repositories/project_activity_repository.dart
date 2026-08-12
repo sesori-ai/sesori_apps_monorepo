@@ -16,14 +16,14 @@ typedef ProjectActivityObservation = ({
 });
 
 /// Collects plugin evidence used to reconcile bridge-owned project activity.
-class ProjectActivityRepository {
-  ProjectActivityRepository({
+class ProjectActivityRepository({
     required PluginRuntime runtime,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
-  }) : _runtime = runtime,
+  }) {
+  this : _runtime = runtime,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
@@ -213,31 +213,25 @@ class ProjectActivityRepository {
   }
 }
 
-enum _ProjectActivityOperation { listProjectActivityEvidence, commitActivities }
+enum _ProjectActivityOperation() { listProjectActivityEvidence, commitActivities }
 
-sealed class _ProjectActivitySource {
-  const _ProjectActivitySource({required this.pluginId, required this.generation});
-
+sealed class const _ProjectActivitySource({required this.pluginId, required this.generation}) {
   final String pluginId;
   final int generation;
 }
 
-final class _NativeProjectActivitySource extends _ProjectActivitySource {
-  const _NativeProjectActivitySource({
+final class const _NativeProjectActivitySource({
     required super.pluginId,
     required super.generation,
     required this.projects,
-  });
-
+  }) extends _ProjectActivitySource {
   final List<PluginProject> projects;
 }
 
-final class _ResolvedProjectActivitySource extends _ProjectActivitySource {
-  const _ResolvedProjectActivitySource({
+final class const _ResolvedProjectActivitySource({
     required super.pluginId,
     required super.generation,
     required this.evidence,
-  });
-
+  }) extends _ProjectActivitySource {
   final List<ProjectActivityEvidence> evidence;
 }

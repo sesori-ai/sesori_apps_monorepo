@@ -1221,7 +1221,7 @@ Future<String> _captureLogOutput({
   return stderrBuffer.text;
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();
@@ -1236,26 +1236,22 @@ class _BufferingStdout implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-class _FixedClock extends ServerClock {
-  const _FixedClock({required this.nowValue});
-
+class const _FixedClock({required this.nowValue}) extends ServerClock {
   final DateTime nowValue;
 
   @override
   DateTime now() => nowValue;
 }
 
-class _MutableClock extends ServerClock {
-  _MutableClock({required this.nowValue});
-
+class _MutableClock({required this.nowValue}) extends ServerClock {
   DateTime nowValue;
 
   @override
   DateTime now() => nowValue;
 }
 
-class _AdvancingClock extends ServerClock {
-  _AdvancingClock({required DateTime now}) : _now = now;
+class _AdvancingClock({required DateTime now}) extends ServerClock {
+  this : _now = now;
 
   DateTime _now;
 
@@ -1269,15 +1265,13 @@ class _AdvancingClock extends ServerClock {
 
 typedef _CacheIdentity = ({String pluginId, PluginSessionOptionsScope scope, String ownerId});
 
-class _CaptureCall {
-  const _CaptureCall({
+class const _CaptureCall({
     required this.key,
     required this.projectPath,
     required this.activation,
     required this.discoveryMode,
     required this.expectedGeneration,
-  });
-
+  }) {
   final SessionOptionsCacheKey key;
   final String projectPath;
   final SessionOptionsCaptureActivation activation;
@@ -1285,26 +1279,22 @@ class _CaptureCall {
   final int? expectedGeneration;
 }
 
-class _CommitCall {
-  const _CommitCall({
+class const _CommitCall({
     required this.candidate,
     required this.expectedRevision,
     required this.generation,
-  });
-
+  }) {
   final SessionOptionsCacheEntry candidate;
   final int? expectedRevision;
   final int generation;
 }
 
-class _ConditionalDeleteCall {
-  const _ConditionalDeleteCall({required this.key, required this.expectedRevision});
-
+class const _ConditionalDeleteCall({required this.key, required this.expectedRevision}) {
   final SessionOptionsCacheKey key;
   final int expectedRevision;
 }
 
-class _FakeSessionOptionsRepository implements SessionOptionsRepository {
+class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
   final Map<String, String> projectPaths = {};
   final Map<String, String> backendBindings = {};
   final Map<_CacheIdentity, SessionOptionsCacheEntry> _cache = {};

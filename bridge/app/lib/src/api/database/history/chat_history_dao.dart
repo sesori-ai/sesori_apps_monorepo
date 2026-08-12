@@ -8,9 +8,7 @@ import "tables/history_sync_state_table.dart";
 part "chat_history_dao.g.dart";
 
 @DriftAccessor(tables: [HistoryMessagesTable, HistoryPartsTable, HistorySyncStateTable])
-class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHistoryDaoMixin {
-  ChatHistoryDao(super.attachedDatabase);
-
+class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHistoryDaoMixin {
   Future<HistorySyncStateTableData?> getSyncState({required String sessionId}) {
     return (select(historySyncStateTable)..where((table) => table.sessionId.equals(sessionId))).getSingleOrNull();
   }

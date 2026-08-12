@@ -13,7 +13,7 @@ import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockBridgeSettingsService extends Mock implements BridgeSettingsService;
+class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 
 void main() {
   late _MockBridgeSettingsService service;
@@ -295,8 +295,8 @@ Future<void> _waitUntil(bool Function() predicate) async {
   fail("Condition was not reached");
 }
 
-final class _FakeConnectionService implements ConnectionService {
-  _FakeConnectionService({required ConnectionStatus initialStatus}) : _statuses = BehaviorSubject.seeded(initialStatus);
+final class _FakeConnectionService({required ConnectionStatus initialStatus}) implements ConnectionService {
+  this : _statuses = BehaviorSubject.seeded(initialStatus);
 
   final BehaviorSubject<ConnectionStatus> _statuses;
 

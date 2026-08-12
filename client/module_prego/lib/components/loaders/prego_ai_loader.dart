@@ -18,14 +18,12 @@ import "../../utils/lerp_utils.dart";
 ///
 /// The sparkle is decorative — it always accompanies a label that carries the
 /// meaning, so it is excluded from semantics.
-class PregoAiLoader extends StatefulWidget {
-  const PregoAiLoader({
+class const PregoAiLoader({
     super.key,
     this.size = 16,
     this.animate = true,
     this.phase = 0,
-  });
-
+  }) extends StatefulWidget {
   /// Side of the square the sparkle is painted into. Defaults to the 16px the
   /// design uses inline with a text-sm label.
   final double size;
@@ -53,7 +51,7 @@ class PregoAiLoader extends StatefulWidget {
   State<PregoAiLoader> createState() => _PregoAiLoaderState();
 }
 
-class _PregoAiLoaderState extends State<PregoAiLoader>
+class _PregoAiLoaderState() extends State<PregoAiLoader>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// One full twinkle. Slow enough to read as breathing rather than blinking.
   static const Duration _period = Duration(milliseconds: 1400);
@@ -120,14 +118,14 @@ class _PregoAiLoaderState extends State<PregoAiLoader>
 /// listens to the animation and repaints, without rebuilding an element sixty
 /// times a second. The cost is that [shouldRepaint] is only consulted when the
 /// widget rebuilds, so it must compare everything *except* the animation.
-class _AiLoaderPainter extends CustomPainter {
-  _AiLoaderPainter({
+class _AiLoaderPainter({
     required Animation<double> repaint,
     required this.phase,
     required this.solid,
     required this.outline,
     required this.faded,
-  }) : _progress = repaint,
+  }) extends CustomPainter {
+  this : _progress = repaint,
        super(repaint: repaint);
 
   final double phase;

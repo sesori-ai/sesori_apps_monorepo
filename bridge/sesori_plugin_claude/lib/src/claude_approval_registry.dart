@@ -9,22 +9,19 @@ typedef ClaudeApprovalResponder =
       required Map<String, Object?> payload,
     });
 
-sealed class _PendingApproval {
-  const _PendingApproval({
+sealed class const _PendingApproval({
     required this.id,
     required this.requestId,
     required this.sessionId,
     required this.toolUseId,
-  });
-
+  }) {
   final String id;
   final String requestId;
   final String sessionId;
   final String? toolUseId;
 }
 
-final class _PendingPermission extends _PendingApproval {
-  const _PendingPermission({
+final class const _PendingPermission({
     required super.id,
     required super.requestId,
     required super.sessionId,
@@ -34,8 +31,7 @@ final class _PendingPermission extends _PendingApproval {
     required this.input,
     required this.suggestions,
     required this.allowAlways,
-  });
-
+  }) extends _PendingApproval {
   final String tool;
   final String description;
   final Map<String, Object?> input;
@@ -43,32 +39,28 @@ final class _PendingPermission extends _PendingApproval {
   final bool allowAlways;
 }
 
-sealed class _PendingQuestion extends _PendingApproval {
-  const _PendingQuestion({
+sealed class const _PendingQuestion({
     required super.id,
     required super.requestId,
     required super.sessionId,
     required super.toolUseId,
     required this.input,
     required this.questions,
-  });
-
+  }) extends _PendingApproval {
   final Map<String, Object?> input;
   final List<PluginQuestionInfo> questions;
 
   Map<String, Object?> updatedInput({required List<List<String>> answers});
 }
 
-final class _AskUserQuestion extends _PendingQuestion {
-  const _AskUserQuestion({
+final class const _AskUserQuestion({
     required super.id,
     required super.requestId,
     required super.sessionId,
     required super.toolUseId,
     required super.input,
     required super.questions,
-  });
-
+  }) extends _PendingQuestion {
   @override
   Map<String, Object?> updatedInput({required List<List<String>> answers}) => {
     ...input,
@@ -79,60 +71,50 @@ final class _AskUserQuestion extends _PendingQuestion {
   };
 }
 
-final class _ExitPlanMode extends _PendingQuestion {
-  const _ExitPlanMode({
+final class const _ExitPlanMode({
     required super.id,
     required super.requestId,
     required super.sessionId,
     required super.toolUseId,
     required super.input,
     required super.questions,
-  });
-
+  }) extends _PendingQuestion {
   @override
   Map<String, Object?> updatedInput({required List<List<String>> answers}) => input;
 }
 
-final class _UnknownInteraction extends _PendingQuestion {
-  const _UnknownInteraction({
+final class const _UnknownInteraction({
     required super.id,
     required super.requestId,
     required super.sessionId,
     required super.toolUseId,
     required super.input,
     required super.questions,
-  });
-
+  }) extends _PendingQuestion {
   @override
   Map<String, Object?> updatedInput({required List<List<String>> answers}) => input;
 }
 
-sealed class _ClaudePermissionSuggestion {
-  const _ClaudePermissionSuggestion();
-
+sealed class const _ClaudePermissionSuggestion() {
   factory _ClaudePermissionSuggestion.parse(Map<String, Object?> raw) =>
       raw["type"] == "addRules" && raw["destination"] == "session"
       ? _SessionAddRules(raw: raw)
       : const _IneligiblePermissionSuggestion();
 }
 
-final class _SessionAddRules extends _ClaudePermissionSuggestion {
-  const _SessionAddRules({required this.raw});
-
+final class const _SessionAddRules({required this.raw}) extends _ClaudePermissionSuggestion {
   final Map<String, Object?> raw;
 }
 
-final class _IneligiblePermissionSuggestion extends _ClaudePermissionSuggestion {
-  const _IneligiblePermissionSuggestion();
-}
+final class const _IneligiblePermissionSuggestion() extends _ClaudePermissionSuggestion;
 
 /// Owns pending Claude permission and interaction requests until the phone
 /// answers them or their session is torn down.
-final class ClaudeApprovalRegistry {
-  ClaudeApprovalRegistry({
+final class ClaudeApprovalRegistry({
     required void Function(BridgeSseEvent event) emit,
     required ClaudeApprovalResponder respond,
-  }) : _emit = emit,
+  }) {
+  this : _emit = emit,
        _respond = respond;
 
   final void Function(BridgeSseEvent event) _emit;

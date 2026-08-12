@@ -4,11 +4,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../services/catalog_import_service.dart";
 
-class PluginCatalogHydrationListener {
-  PluginCatalogHydrationListener({
+class PluginCatalogHydrationListener({
     required Stream<List<String>> readyPluginIds,
     required CatalogImportService catalogImportService,
-  }) : _readyPluginIds = readyPluginIds,
+  }) {
+  this : _readyPluginIds = readyPluginIds,
        _catalogImportService = catalogImportService;
 
   final Stream<List<String>> _readyPluginIds;

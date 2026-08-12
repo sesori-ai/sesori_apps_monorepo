@@ -9,7 +9,7 @@ import "../buttons/prego_buttons_solid.dart";
 ///
 /// Each value selects the leading status icon, the warm accent gradient, and
 /// the fill of the primary action button.
-enum PregoInlineAlertsNotificationsType {
+enum PregoInlineAlertsNotificationsType() {
   /// Neutral / informational — `circle-info` icon, brand-blue action button,
   /// neutral (dark→white) accent glow.
   info,
@@ -37,13 +37,11 @@ enum PregoInlineAlertsNotificationsType {
 /// Used for both the primary ("Learn more") and secondary buttons. Pass `null`
 /// for the corresponding [PregoInlineAlertsNotifications] field to omit a
 /// button.
-class PregoInlineAlertsNotificationsAction {
-  const PregoInlineAlertsNotificationsAction({
+class const PregoInlineAlertsNotificationsAction({
     required this.label,
     required this.onPressed,
     this.icon,
-  });
-
+  }) {
   /// Button label.
   final String label;
 
@@ -83,8 +81,7 @@ class PregoInlineAlertsNotificationsAction {
 ///   onClose: _dismiss,
 /// )
 /// ```
-class PregoInlineAlertsNotifications extends StatelessWidget {
-  const PregoInlineAlertsNotifications({
+class const PregoInlineAlertsNotifications({
     super.key,
     required this.title,
     this.type = PregoInlineAlertsNotificationsType.info,
@@ -94,8 +91,7 @@ class PregoInlineAlertsNotifications extends StatelessWidget {
     this.secondaryAction,
     this.onClose,
     this.additionalContent,
-  });
-
+  }) extends StatelessWidget {
   /// Bold headline text shown on the first row. Long titles ellipsize on a
   /// single line so the actions stay aligned to the trailing edge.
   final String title;
@@ -403,9 +399,7 @@ class PregoInlineAlertsNotifications extends StatelessWidget {
 /// loading-type `primaryAlt` fill — are tuned for the page background, so they
 /// sit on the wrong side of this inverted surface. Wrapping them in the
 /// opposite-brightness palette puts every token back on the correct side.
-class _InvertedSurfaceTheme extends StatelessWidget {
-  const _InvertedSurfaceTheme({required this.child});
-
+class const _InvertedSurfaceTheme({required this.child}) extends StatelessWidget {
   final Widget child;
 
   @override
@@ -430,9 +424,7 @@ class _InvertedSurfaceTheme extends StatelessWidget {
 /// circular iso-colour rings into ellipses [scaleX] times wider than they are
 /// tall. The warm overlay then fans out almost horizontally, as if its centre
 /// sat far above the card — matching the Figma radial.
-class _WideEllipseGradientTransform extends GradientTransform {
-  const _WideEllipseGradientTransform(this.scaleX);
-
+class const _WideEllipseGradientTransform(this.scaleX) extends GradientTransform {
   /// How many times wider than tall each iso-colour ring is drawn.
   final double scaleX;
 

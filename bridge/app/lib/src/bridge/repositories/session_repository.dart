@@ -51,7 +51,7 @@ import "models/stored_session.dart";
 import "models/verified_github_login.dart";
 import "session_unseen_calculator.dart";
 
-enum SessionBindingCommitKind { sessionCreation, catalogSync }
+enum SessionBindingCommitKind() { sessionCreation, catalogSync }
 
 typedef SessionBindingsCommitted = ({
   String pluginId,
@@ -66,7 +66,16 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
 
-class SessionRepository {
+class SessionRepository({
+    required PluginRuntime runtime,
+    required Set<String> bridgeDerivedProjectPluginIds,
+    required SessionDao sessionDao,
+    required ProjectsDao projectsDao,
+    required PullRequestDao pullRequestDao,
+    required SessionUnseenCalculator unseenCalculator,
+    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
+    required Duration aggregateSourceDeadline,
+  }) {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
   final PluginRuntime _runtime;
@@ -85,16 +94,7 @@ class SessionRepository {
   final Set<String> _tombstonesLoaded = <String>{};
   int _lastProjectionTimestamp = 0;
 
-  SessionRepository({
-    required PluginRuntime runtime,
-    required Set<String> bridgeDerivedProjectPluginIds,
-    required SessionDao sessionDao,
-    required ProjectsDao projectsDao,
-    required PullRequestDao pullRequestDao,
-    required SessionUnseenCalculator unseenCalculator,
-    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-    required Duration aggregateSourceDeadline,
-  }) : _runtime = runtime,
+  this : _runtime = runtime,
        _bridgeDerivedProjectPluginIds = Set<String>.unmodifiable(bridgeDerivedProjectPluginIds),
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
@@ -1561,28 +1561,24 @@ class SessionRepository {
   }
 }
 
-class _PluginActivityObservation {
-  const _PluginActivityObservation({
+class const _PluginActivityObservation({
     required this.pluginId,
     required this.summaries,
     required this.backendSessionIds,
     required this.hydrations,
-  });
-
+  }) {
   final String pluginId;
   final List<PluginProjectActivitySummary> summaries;
   final Set<String> backendSessionIds;
   final List<_ActiveRootHydration> hydrations;
 }
 
-class _ActiveRootHydration {
-  const _ActiveRootHydration({
+class const _ActiveRootHydration({
     required this.summaryId,
     required this.preferredProjectId,
     required this.projectDirectory,
     required this.sessions,
-  });
-
+  }) {
   final String summaryId;
   final String preferredProjectId;
   final String projectDirectory;

@@ -4,12 +4,10 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../logging/logging.dart";
 
 /// Which theme the app renders in: the device setting, or a pinned choice.
-enum AppearanceMode {
+enum AppearanceMode({required this.storageValue}) {
   light(storageValue: "light"),
   dark(storageValue: "dark"),
   system(storageValue: "system");
-
-  AppearanceMode({required this.storageValue});
 
   /// The persisted spelling of this mode. Pinned here rather than derived from
   /// the enum name so renaming a case cannot orphan a stored preference.
@@ -31,12 +29,12 @@ enum AppearanceMode {
 /// pulling in a second storage plugin. It survives logout by design: the theme
 /// is a device preference, not account state.
 @lazySingleton
-class AppearanceStore {
+class AppearanceStore({required SecureStorage secureStorage}) {
   static const _storageKey = "appearance_mode";
 
   final SecureStorage _storage;
 
-  AppearanceStore({required SecureStorage secureStorage}) : _storage = secureStorage;
+  this : _storage = secureStorage;
 
   /// The stored appearance preference, or [AppearanceMode.system] when nothing
   /// was ever chosen, the stored value is unreadable, or storage fails. A

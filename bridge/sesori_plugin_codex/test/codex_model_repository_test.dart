@@ -189,8 +189,8 @@ void main() {
   });
 }
 
-class _StubClient extends CodexAppServerClient {
-  _StubClient({required this.response}) : super(serverUrl: "ws://127.0.0.1:0");
+class _StubClient({required this.response}) extends CodexAppServerClient {
+  this : super(serverUrl: "ws://127.0.0.1:0");
 
   final Object? response;
   String? method;
@@ -208,8 +208,8 @@ class _StubClient extends CodexAppServerClient {
   }
 }
 
-class _StubAppServerApi extends CodexAppServerApi {
-  _StubAppServerApi({required this.response})
+class _StubAppServerApi({required this.response}) extends CodexAppServerApi {
+  this
     : super(
         client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
       );

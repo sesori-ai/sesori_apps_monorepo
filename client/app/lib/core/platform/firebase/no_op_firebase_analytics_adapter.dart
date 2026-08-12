@@ -2,8 +2,8 @@ import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
 
 /// Type-compatible Firebase Analytics implementation for Firebase-disabled builds.
-class NoOpFirebaseAnalyticsAdapter implements FirebaseAnalytics {
-  NoOpFirebaseAnalyticsAdapter({required FirebaseApp app}) : _app = app;
+class NoOpFirebaseAnalyticsAdapter({required FirebaseApp app}) implements FirebaseAnalytics {
+  this : _app = app;
 
   FirebaseApp _app;
 

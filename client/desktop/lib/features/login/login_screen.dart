@@ -10,9 +10,7 @@ import "../../core/di/injection.dart";
 ///
 /// GitHub and Google only for now — mobile's Apple path is native-iOS-only,
 /// and email login is not part of the desktop browser-poll slice.
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
-
+class const LoginScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<LoginCubit>(
@@ -30,9 +28,7 @@ class LoginScreen extends StatelessWidget {
 
 /// Renders the [LoginState]; split from [LoginScreen] so tests can drive it
 /// with a stubbed cubit.
-class LoginView extends StatelessWidget {
-  const LoginView({super.key});
-
+class const LoginView({super.key}) extends StatelessWidget {
   static const String _title = "Sesori";
   static const String _subtitle = "Sign in to continue";
   static const String _githubButton = "Continue with GitHub";
@@ -86,9 +82,7 @@ class LoginView extends StatelessWidget {
   }
 }
 
-class _LoginStatus extends StatelessWidget {
-  const _LoginStatus({required this.state});
-
+class const _LoginStatus({required this.state}) extends StatelessWidget {
   final LoginState state;
 
   static const String _authenticating = "Contacting Sesori…";
@@ -124,9 +118,7 @@ class _LoginStatus extends StatelessWidget {
   }
 }
 
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({required this.message});
-
+class const _StatusRow({required this.message}) extends StatelessWidget {
   final String message;
 
   @override

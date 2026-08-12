@@ -6,11 +6,11 @@ import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
 
 /// Dispatches Claude stream-json frames as bridge-neutral live events.
-final class ClaudeEventDispatcher {
-  ClaudeEventDispatcher({
+final class ClaudeEventDispatcher({
     required ClaudeContentMapper content,
     required ClaudeToolTracker tools,
-  }) : _content = content,
+  }) {
+  this : _content = content,
        _tools = tools;
 
   final ClaudeContentMapper _content;

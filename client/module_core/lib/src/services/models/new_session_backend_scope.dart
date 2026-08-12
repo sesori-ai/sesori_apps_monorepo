@@ -3,9 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "new_session_backend_scope.freezed.dart";
 
 @Freezed()
-sealed class NewSessionBackendScopeTransition with _$NewSessionBackendScopeTransition {
-  const NewSessionBackendScopeTransition._();
-
+sealed class const NewSessionBackendScopeTransition._() with _$NewSessionBackendScopeTransition {
   const factory NewSessionBackendScopeTransition.retained({required String bridgeId}) =
       NewSessionBackendScopeRetainedTransition;
 
@@ -23,9 +21,7 @@ sealed class NewSessionBackendScopeTransition with _$NewSessionBackendScopeTrans
 }
 
 @Freezed()
-sealed class NewSessionBackendScope with _$NewSessionBackendScope {
-  const NewSessionBackendScope._();
-
+sealed class const NewSessionBackendScope._() with _$NewSessionBackendScope {
   const factory NewSessionBackendScope.unverified({required String? lastIdentifiedBridgeId}) =
       NewSessionBackendScopeUnverified;
 

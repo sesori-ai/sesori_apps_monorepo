@@ -13,25 +13,29 @@ import "room_key_storage.dart";
 /// Transport state of the relay WebSocket. This is deliberately about the
 /// socket only — it carries no notion of bridge presence or plugin status,
 /// which are tracked separately ([BridgeStatus] / the session encryptor).
-enum RelayClientConnectionState { disconnected, connecting, connected, disconnecting }
+enum RelayClientConnectionState() { disconnected, connecting, connected, disconnecting }
 
 /// Represents whether the bridge (desktop process) is reachable via the relay.
-enum BridgeStatus { online, offline }
+enum BridgeStatus() { online, offline }
 
-final class RelayMessageTooLargeException implements Exception {
-  final int plaintextBytes;
-  final int maxPlaintextBytes;
-
-  const RelayMessageTooLargeException({
+final class const RelayMessageTooLargeException({
     required this.plaintextBytes,
     required this.maxPlaintextBytes,
-  });
+  }) implements Exception {
+  final int plaintextBytes;
+  final int maxPlaintextBytes;
 
   @override
   String toString() => "Relay message is too large ($plaintextBytes bytes; maximum $maxPlaintextBytes bytes)";
 }
 
-class RelayClient {
+class RelayClient._({
+    required this.relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required this.authToken,
+    required WebSocketChannel Function(Uri uri) channelConnector,
+  }) {
   final String relayHost;
   final String? authToken;
 
@@ -91,13 +95,7 @@ class RelayClient {
          channelConnector: channelConnector,
        );
 
-  RelayClient._({
-    required this.relayHost,
-    required RelayCryptoService cryptoService,
-    required RoomKeyStorage roomKeyStorage,
-    required this.authToken,
-    required WebSocketChannel Function(Uri uri) channelConnector,
-  }) : _cryptoService = cryptoService,
+  this : _cryptoService = cryptoService,
        _roomKeyStorage = roomKeyStorage,
        _channelConnector = channelConnector;
 
@@ -788,17 +786,13 @@ class RelayClient {
 /// fatal connection error so [RelayClient.connect] resolves into
 /// [RelayConnectOutcome.bridgeAbsent] and keeps the socket open instead of
 /// tearing it down.
-class _BridgeOfflineDuringHandshake implements Exception {
-  const _BridgeOfflineDuringHandshake();
-}
+class const _BridgeOfflineDuringHandshake() implements Exception;
 
 /// A request frame was sent (or may have been sent) but its response can no
 /// longer arrive because the relay connection ended. Callers must treat the
 /// outcome as uncertain rather than as proof the request never executed.
-final class RelayResponseLostException implements Exception {
+final class const RelayResponseLostException({required this.message}) implements Exception {
   final String message;
-
-  const RelayResponseLostException({required this.message});
 
   @override
   String toString() => message;

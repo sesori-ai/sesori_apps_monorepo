@@ -5,9 +5,9 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
-class PatchPluginIdleTimeoutHandler
+class PatchPluginIdleTimeoutHandler({required PluginLifecycleService lifecycleService})
     extends BodyRequestHandler<PluginIdleTimeoutUpdateRequest, PluginManagementResponse> {
-  PatchPluginIdleTimeoutHandler({required PluginLifecycleService lifecycleService})
+  this
     : _lifecycleService = lifecycleService,
       super(
         HttpMethod.patch,

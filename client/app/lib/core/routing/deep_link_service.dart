@@ -10,12 +10,12 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// updates auth state from [LoginCubit]. This service logs and ignores any
 /// remaining OAuth callback deep links.
 @lazySingleton
-class DeepLinkService {
+class DeepLinkService(DeepLinkSource deepLinkSource) {
   final DeepLinkSource _deepLinkSource;
   StreamSubscription<Uri>? _sub;
   bool _processing = false;
 
-  DeepLinkService(DeepLinkSource deepLinkSource) : _deepLinkSource = deepLinkSource;
+  this : _deepLinkSource = deepLinkSource;
 
   /// Start listening for deep links. Call once during app initialization.
   ///

@@ -10,10 +10,10 @@ import "models/plugin_discovery_snapshot.dart";
 import "models/plugin_management_result.dart";
 
 @lazySingleton
-class PluginRepository {
+class PluginRepository({required PluginApi api}) {
   final PluginApi _api;
 
-  PluginRepository({required PluginApi api}) : _api = api;
+  this : _api = api;
 
   Future<PluginManagementLoadResult> getManagement() async {
     return switch (await _api.getManagement()) {
@@ -187,16 +187,12 @@ class PluginRepository {
   }
 }
 
-sealed class _AuthenticationConflictParseResult {
-  const _AuthenticationConflictParseResult();
-}
+sealed class const _AuthenticationConflictParseResult();
 
-final class _AuthenticationConflictParsed extends _AuthenticationConflictParseResult {
-  const _AuthenticationConflictParsed({required this.conflict});
+final class const _AuthenticationConflictParsed({required this.conflict}) extends _AuthenticationConflictParseResult {
   final PluginAuthenticationConflict conflict;
 }
 
-final class _AuthenticationConflictParseFailure extends _AuthenticationConflictParseResult {
-  const _AuthenticationConflictParseFailure({required this.error});
+final class const _AuthenticationConflictParseFailure({required this.error}) extends _AuthenticationConflictParseResult {
   final ApiError error;
 }

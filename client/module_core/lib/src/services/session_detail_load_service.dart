@@ -12,7 +12,12 @@ import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 
 @lazySingleton
-class SessionDetailLoadService {
+class SessionDetailLoadService({
+    required SessionRepository repository,
+    required ProjectRepository projectRepository,
+    required PluginRepository pluginRepository,
+    required ConnectionService connectionService,
+  }) {
   /// Messages fetched when a session opens. Large enough that most sessions
   /// arrive complete in one page, small enough that a very long one does not
   /// ship in full before anything renders.
@@ -26,12 +31,7 @@ class SessionDetailLoadService {
   final PluginRepository _pluginRepository;
   final ConnectionService _connectionService;
 
-  SessionDetailLoadService({
-    required SessionRepository repository,
-    required ProjectRepository projectRepository,
-    required PluginRepository pluginRepository,
-    required ConnectionService connectionService,
-  }) : _repository = repository,
+  this : _repository = repository,
        _projectRepository = projectRepository,
        _pluginRepository = pluginRepository,
        _connectionService = connectionService;
@@ -324,7 +324,24 @@ class SessionDetailLoadService {
   }
 }
 
-class SessionDetailSnapshot {
+class const SessionDetailSnapshot({
+    required this.projectId,
+    required this.pluginId,
+    required this.supportsPromptAttachments,
+    required this.messages,
+    required this.olderMessagesCursor,
+    required this.pendingQuestions,
+    required this.pendingPermissions,
+    required this.childSessions,
+    required this.statuses,
+    required this.agents,
+    required this.providerData,
+    required this.commands,
+    required this.canonicalSessionTitle,
+    required this.promptDefaults,
+    required this.isRootSession,
+    required this.isArchived,
+  }) {
   final String? projectId;
 
   /// The harness running this session, or `null` when neither the session nor
@@ -355,25 +372,6 @@ class SessionDetailSnapshot {
   /// `null` when the session metadata lookup failed, so we cannot tell.
   final bool? isRootSession;
   final bool isArchived;
-
-  const SessionDetailSnapshot({
-    required this.projectId,
-    required this.pluginId,
-    required this.supportsPromptAttachments,
-    required this.messages,
-    required this.olderMessagesCursor,
-    required this.pendingQuestions,
-    required this.pendingPermissions,
-    required this.childSessions,
-    required this.statuses,
-    required this.agents,
-    required this.providerData,
-    required this.commands,
-    required this.canonicalSessionTitle,
-    required this.promptDefaults,
-    required this.isRootSession,
-    required this.isArchived,
-  });
 }
 
 /// One page of history plus the cursor for the page before it.
@@ -385,26 +383,19 @@ typedef _SessionDetailOptions = ({
   List<CommandInfo> commands,
 });
 
-sealed class _SessionDetailOptionsResult {
-  const _SessionDetailOptionsResult();
-}
+sealed class const _SessionDetailOptionsResult();
 
-final class _SessionDetailOptionsAvailable extends _SessionDetailOptionsResult {
-  const _SessionDetailOptionsAvailable({required this.options});
-
+final class const _SessionDetailOptionsAvailable({required this.options}) extends _SessionDetailOptionsResult {
   final _SessionDetailOptions options;
 }
 
-final class _SessionDetailOptionsFailure extends _SessionDetailOptionsResult {
-  const _SessionDetailOptionsFailure({required this.error, required this.stackTrace});
-
-  // ignore: no_slop_linter/prefer_specific_type, transport and internal option failures share this outcome
+final class const _SessionDetailOptionsFailure({required this.error, required this.stackTrace}) extends _SessionDetailOptionsResult {
   final Object error;
   final StackTrace stackTrace;
 }
 
-final class _LegacySessionOptionsLoadError implements Exception {
-  _LegacySessionOptionsLoadError({required List<LegacySessionOptionError> errors}) : errors = List.unmodifiable(errors);
+final class _LegacySessionOptionsLoadError({required List<LegacySessionOptionError> errors}) implements Exception {
+  this : errors = List.unmodifiable(errors);
 
   final List<LegacySessionOptionError> errors;
 
@@ -412,9 +403,7 @@ final class _LegacySessionOptionsLoadError implements Exception {
   String toString() => errors.map((failure) => "${failure.source.name}: ${failure.error.toString()}").join("; ");
 }
 
-sealed class SessionDetailLoadResult {
-  const SessionDetailLoadResult();
-
+sealed class const SessionDetailLoadResult() {
   const factory SessionDetailLoadResult.loaded({
     required SessionDetailSnapshot snapshot,
     required bool isBridgeConnected,
@@ -429,21 +418,15 @@ sealed class SessionDetailLoadResult {
   }) = SessionDetailLoadResultFailed;
 }
 
-final class SessionDetailLoadResultLoaded extends SessionDetailLoadResult {
+final class const SessionDetailLoadResultLoaded({required this.snapshot, required this.isBridgeConnected}) extends SessionDetailLoadResult {
   final SessionDetailSnapshot snapshot;
   final bool isBridgeConnected;
-
-  const SessionDetailLoadResultLoaded({required this.snapshot, required this.isBridgeConnected});
 }
 
-final class SessionDetailLoadResultWaitingForConnection extends SessionDetailLoadResult {
-  const SessionDetailLoadResultWaitingForConnection();
-}
+final class const SessionDetailLoadResultWaitingForConnection() extends SessionDetailLoadResult;
 
-final class SessionDetailLoadResultFailed extends SessionDetailLoadResult {
+final class const SessionDetailLoadResultFailed({required this.error, required this.stackTrace}) extends SessionDetailLoadResult {
   // ignore: no_slop_linter/prefer_specific_type
   final Object error;
   final StackTrace? stackTrace;
-
-  const SessionDetailLoadResultFailed({required this.error, required this.stackTrace});
 }

@@ -3,8 +3,8 @@ import '../models/update_attempt.dart';
 
 /// Layer 2 wrapper over [UpdateAttemptApi]. Delegates persistence of the single
 /// [UpdateAttempt] record used to reconcile in-place updates across launches.
-class UpdateAttemptRepository {
-  UpdateAttemptRepository({required UpdateAttemptApi api}) : _api = api;
+class UpdateAttemptRepository({required UpdateAttemptApi api}) {
+  this : _api = api;
 
   final UpdateAttemptApi _api;
 

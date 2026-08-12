@@ -7,7 +7,7 @@ import "package:url_launcher/url_launcher.dart";
 /// The OAuth browser open goes through this adapter; the bridge workspace's
 /// own browser opener must never be imported by the desktop shell.
 @LazySingleton(as: UrlLauncher)
-class DesktopUrlLauncher implements UrlLauncher {
+class DesktopUrlLauncher() implements UrlLauncher {
   /// Desktop platforms have no in-app browser surface, so
   /// [UrlLaunchMode.inAppBrowser] degrades to the system browser.
   @override

@@ -24,9 +24,7 @@ const double _labelGap = PregoSpacing.sm;
 ///
 /// Reads and writes the app-wide [AppearanceCubit] the shell resolves its
 /// [ThemeMode] from, so a tap re-themes the whole app immediately.
-class AppearancePicker extends StatelessWidget {
-  const AppearancePicker({super.key});
-
+class const AppearancePicker({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -60,14 +58,12 @@ class AppearancePicker extends StatelessWidget {
 }
 
 /// One theme choice: a preview tile in a selection ring, with its label below.
-class _AppearanceOption extends StatelessWidget {
-  const _AppearanceOption({
+class const _AppearanceOption({
     required this.mode,
     required this.label,
     required this.isSelected,
     required this.onTap,
-  });
-
+  }) extends StatelessWidget {
   final AppearanceMode mode;
   final String label;
   final bool isSelected;
@@ -134,9 +130,7 @@ class _AppearanceOption extends StatelessWidget {
 ///
 /// Drawn from [palette] rather than the ambient theme — a preview has to show
 /// its own theme regardless of which one the app is currently rendering in.
-class _ThemePreview extends StatelessWidget {
-  const _ThemePreview({required this.palette});
-
+class const _ThemePreview({required this.palette}) extends StatelessWidget {
   final PregoColors palette;
 
   /// Fractions of the tile, measured off the Figma tile. Everything is
@@ -225,9 +219,7 @@ class _ThemePreview extends StatelessWidget {
 
 /// The "system" tile: the dark preview masked to the top-left triangle over
 /// the light one, so the tile shows both themes split along the diagonal.
-class _SystemThemePreview extends StatelessWidget {
-  const _SystemThemePreview();
-
+class const _SystemThemePreview() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Stack(
@@ -244,9 +236,7 @@ class _SystemThemePreview extends StatelessWidget {
 }
 
 /// Clips to the triangle above the top-right/bottom-left diagonal.
-class _TopLeftTriangleClipper extends CustomClipper<Path> {
-  const _TopLeftTriangleClipper();
-
+class const _TopLeftTriangleClipper() extends CustomClipper<Path> {
   @override
   Path getClip(Size size) => Path()
     ..lineTo(size.width, 0)

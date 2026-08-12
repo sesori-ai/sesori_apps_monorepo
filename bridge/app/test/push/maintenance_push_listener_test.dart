@@ -91,10 +91,8 @@ void main() {
   });
 }
 
-class _Harness {
+class _Harness({required this.listener}) {
   final MaintenancePushListener listener;
-
-  _Harness({required this.listener});
 
   void dispose() {
     listener.dispose();

@@ -4,10 +4,10 @@ import "../repositories/question_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/questions` — returns all pending questions for a project.
-class GetProjectQuestionsHandler extends BodyRequestHandler<ProjectIdRequest, PendingQuestionResponse> {
+class GetProjectQuestionsHandler({required QuestionRepository questionRepository}) extends BodyRequestHandler<ProjectIdRequest, PendingQuestionResponse> {
   final QuestionRepository _questionRepository;
 
-  GetProjectQuestionsHandler({required QuestionRepository questionRepository})
+  this
     : _questionRepository = questionRepository,
       super(
         HttpMethod.post,

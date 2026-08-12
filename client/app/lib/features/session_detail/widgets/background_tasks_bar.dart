@@ -20,25 +20,23 @@ import "background_tasks_list.dart";
 ///
 /// Running tasks are always shown first. Completed tasks are hidden behind a
 /// "Show N completed" toggle.
-class BackgroundTasksBar extends StatefulWidget {
-  final PregoComposerSurfaceStyle surfaceStyle;
-  final String? projectId;
-  final List<Session> children;
-  final Map<String, SessionStatus> childStatuses;
-
-  const BackgroundTasksBar({
+class const BackgroundTasksBar({
     super.key,
     required this.surfaceStyle,
     required this.projectId,
     required this.children,
     required this.childStatuses,
-  });
+  }) extends StatefulWidget {
+  final PregoComposerSurfaceStyle surfaceStyle;
+  final String? projectId;
+  final List<Session> children;
+  final Map<String, SessionStatus> childStatuses;
 
   @override
   State<BackgroundTasksBar> createState() => _BackgroundTasksBarState();
 }
 
-class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
+class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
   final OverlayPortalController _overlayController = OverlayPortalController();
 
   /// Links the floating expanded card to the in-flow collapsed header so it

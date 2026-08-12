@@ -14,14 +14,14 @@ typedef TemporaryDirectoryLoader = Future<Directory> Function();
 /// the composer mounts, so the platform call normally finishes before the
 /// user's first recording gesture.
 @lazySingleton
-class TemporaryDirectoryClient {
+class TemporaryDirectoryClient.forTesting({required TemporaryDirectoryLoader load}) {
   final TemporaryDirectoryLoader _load;
   Future<Directory>? _directory;
 
   TemporaryDirectoryClient() : this.forTesting(load: path_provider.getTemporaryDirectory);
 
   @visibleForTesting
-  TemporaryDirectoryClient.forTesting({required TemporaryDirectoryLoader load}) : _load = load;
+  this : _load = load;
 
   Future<Directory> get directory {
     final cached = _directory;

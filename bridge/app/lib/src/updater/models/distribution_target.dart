@@ -3,7 +3,7 @@ import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 /// Maps the host [PlatformTarget] to the bridge's own published release asset
 /// (name + archive format). Platform detection and the os/arch vocabulary are
 /// shared via [PlatformTarget]; the bridge-specific asset table lives here.
-final class DistributionTarget {
+final class const DistributionTarget._({required this.platform}) {
   factory DistributionTarget({
     required PlatformOs os,
     required PlatformArch arch,
@@ -14,8 +14,6 @@ final class DistributionTarget {
   factory DistributionTarget.current() {
     return DistributionTarget._(platform: PlatformTarget.current());
   }
-
-  const DistributionTarget._({required this.platform});
 
   final PlatformTarget platform;
 

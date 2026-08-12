@@ -2323,7 +2323,7 @@ String _captureWarnings(
   return stderr.text;
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();

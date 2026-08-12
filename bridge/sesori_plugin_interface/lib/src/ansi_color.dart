@@ -3,13 +3,11 @@ import "dart:io";
 import "terminal_color_validator.dart";
 
 /// ANSI foreground colors used to highlight terminal output.
-enum AnsiColor {
+enum AnsiColor(this.code) {
   red("\x1B[31m"),
   yellow("\x1B[33m"),
   blue("\x1B[94m"),
   gray("\x1B[90m");
-
-  AnsiColor(this.code);
 
   /// The escape sequence that activates this color.
   final String code;
@@ -22,9 +20,7 @@ enum AnsiColor {
 /// color is not supported — output redirected to a file or pipe, a non-terminal
 /// stream, or an explicit opt-out — [colorize] returns the text unchanged so
 /// escape sequences never pollute captured logs.
-class AnsiColorFormatter {
-  AnsiColorFormatter._();
-
+class AnsiColorFormatter._() {
   static const String _reset = "\x1B[0m";
 
   /// Returns [text] wrapped in [color] when [TerminalColorValidator] reports

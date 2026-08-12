@@ -863,8 +863,7 @@ Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
 /// [AcpPlugin] that captures the approval registry built at connect so tests
 /// can register pending questions directly (the base registry only creates
 /// questions through harness extension handlers).
-class _RegistryCapturingAcpPlugin extends TestAcpPlugin {
-  _RegistryCapturingAcpPlugin({
+class _RegistryCapturingAcpPlugin({
     required super.id,
     required super.agentDisplayName,
     required super.launchSpec,
@@ -874,8 +873,7 @@ class _RegistryCapturingAcpPlugin extends TestAcpPlugin {
     required super.commandTracker,
     required super.sessionOptionsService,
     super.processFactory,
-  });
-
+  }) extends TestAcpPlugin {
   AcpApprovalRegistry? registry;
 
   @override

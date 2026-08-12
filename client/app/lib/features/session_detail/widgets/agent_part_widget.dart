@@ -3,10 +3,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
-class AgentPartWidget extends StatelessWidget {
+class const AgentPartWidget({super.key, required this.agentName}) extends StatelessWidget {
   final String? agentName;
-
-  const AgentPartWidget({super.key, required this.agentName});
 
   @override
   Widget build(BuildContext context) {

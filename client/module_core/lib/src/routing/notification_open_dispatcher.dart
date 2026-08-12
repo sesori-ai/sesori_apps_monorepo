@@ -12,7 +12,13 @@ import "../platform/route_source.dart";
 import "app_routes.dart";
 
 @lazySingleton
-class NotificationOpenDispatcher {
+class NotificationOpenDispatcher({
+    required AuthSession authSession,
+    required PushMessagingSource pushMessagingSource,
+    required LocalNotificationClient localNotificationClient,
+    required RouteDispatcher routeDispatcher,
+    required RouteSource routeSource,
+  }) {
   final AuthSession _authSession;
   final PushMessagingSource _pushMessagingSource;
   final LocalNotificationClient _localNotificationClient;
@@ -26,13 +32,7 @@ class NotificationOpenDispatcher {
   bool _started = false;
   bool _disposed = false;
 
-  NotificationOpenDispatcher({
-    required AuthSession authSession,
-    required PushMessagingSource pushMessagingSource,
-    required LocalNotificationClient localNotificationClient,
-    required RouteDispatcher routeDispatcher,
-    required RouteSource routeSource,
-  }) : _authSession = authSession,
+  this : _authSession = authSession,
        _pushMessagingSource = pushMessagingSource,
        _localNotificationClient = localNotificationClient,
        _routeDispatcher = routeDispatcher,

@@ -10,19 +10,17 @@ import "../../../l10n/app_localizations.dart";
 /// A single background task as a row inside the tasks card. Shows the
 /// session's status icon, title + status text, and a disclosure chevron that
 /// opens the (read-only) session detail.
-class BackgroundTaskRow extends StatelessWidget {
-  final String? projectId;
-  final Session session;
-  final SessionStatus? status;
-  final bool isLast;
-
-  const BackgroundTaskRow({
+class const BackgroundTaskRow({
     super.key,
     required this.projectId,
     required this.session,
     this.status,
     this.isLast = false,
-  });
+  }) extends StatelessWidget {
+  final String? projectId;
+  final Session session;
+  final SessionStatus? status;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {

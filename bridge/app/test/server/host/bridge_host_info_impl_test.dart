@@ -136,7 +136,7 @@ ProcessIdentity _identity({
   );
 }
 
-class _FakeProcessRepository implements ProcessRepository {
+class _FakeProcessRepository() implements ProcessRepository {
   @override
   Future<int> startDetached({
     required String executable,

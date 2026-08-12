@@ -7,14 +7,14 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../omp_binary.dart";
 
 /// Layer-1 ACP operations used by OMP's bounded isolated workflows.
-class OmpAcpApi {
-  OmpAcpApi({
+class OmpAcpApi({
     required String binaryPath,
     required AcpProcessFactory processFactory,
     required String logTag,
     required bool isolateSessionHistory,
     required String? scratchParent,
-  }) : _binaryPath = binaryPath,
+  }) {
+  this : _binaryPath = binaryPath,
        _processFactory = processFactory,
        _logTag = logTag,
        _isolateSessionHistory = isolateSessionHistory,

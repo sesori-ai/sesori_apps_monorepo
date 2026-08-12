@@ -4,13 +4,13 @@ import "package:sesori_shared/sesori_shared.dart" show parseJwtUserId;
 import "../repositories/app_client_status_repository.dart";
 import "../repositories/app_onboarding_state_repository.dart";
 
-enum AppClientOnboardingDecision { skip, prompt }
+enum AppClientOnboardingDecision() { skip, prompt }
 
-class AppClientOnboardingService {
-  AppClientOnboardingService({
+class AppClientOnboardingService({
     required AppClientStatusRepository statusRepository,
     required AppOnboardingStateRepository stateRepository,
-  }) : _statusRepository = statusRepository,
+  }) {
+  this : _statusRepository = statusRepository,
        _stateRepository = stateRepository;
 
   final AppClientStatusRepository _statusRepository;

@@ -8,14 +8,14 @@ import '../models/checksum_manifest.dart';
 
 const Duration _kChecksumManifestTimeout = Duration(seconds: 10);
 
-class ChecksumManifestApi {
+class ChecksumManifestApi({
+    required http.Client httpClient,
+    Duration requestTimeout = _kChecksumManifestTimeout,
+  }) {
   final http.Client _httpClient;
   final Duration _requestTimeout;
 
-  ChecksumManifestApi({
-    required http.Client httpClient,
-    Duration requestTimeout = _kChecksumManifestTimeout,
-  }) : _httpClient = httpClient,
+  this : _httpClient = httpClient,
        _requestTimeout = requestTimeout;
 
   Future<ChecksumManifest?> fetchManifest({required String url}) async {

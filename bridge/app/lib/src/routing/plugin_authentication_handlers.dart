@@ -6,8 +6,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
-class PostPluginAuthenticationHandler extends RequestHandlerBase {
-  PostPluginAuthenticationHandler({required PluginLifecycleService lifecycleService})
+class PostPluginAuthenticationHandler({required PluginLifecycleService lifecycleService}) extends RequestHandlerBase {
+  this
     : _lifecycleService = lifecycleService,
       super(HttpMethod.post, "/plugin/:id/authentication");
 
@@ -42,8 +42,8 @@ class PostPluginAuthenticationHandler extends RequestHandlerBase {
   }
 }
 
-class DeletePluginAuthenticationHandler extends RequestHandlerBase {
-  DeletePluginAuthenticationHandler({required PluginLifecycleService lifecycleService})
+class DeletePluginAuthenticationHandler({required PluginLifecycleService lifecycleService}) extends RequestHandlerBase {
+  this
     : _lifecycleService = lifecycleService,
       super(HttpMethod.delete, "/plugin/:id/authentication");
 

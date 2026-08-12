@@ -3,14 +3,14 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 @LazySingleton(as: AnalyticsClient)
-class FirebaseAnalyticsClient implements AnalyticsClient {
+class FirebaseAnalyticsClient({
+    required FirebaseAnalytics analytics,
+    required AnalyticsRuntimeCapability capability,
+  }) implements AnalyticsClient {
   final FirebaseAnalytics _analytics;
   final AnalyticsRuntimeCapability _capability;
 
-  FirebaseAnalyticsClient({
-    required FirebaseAnalytics analytics,
-    required AnalyticsRuntimeCapability capability,
-  }) : _analytics = analytics,
+  this : _analytics = analytics,
        _capability = capability;
 
   @override

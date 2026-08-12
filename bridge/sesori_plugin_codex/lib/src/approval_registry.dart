@@ -46,20 +46,18 @@ const String _userInputMethod = "item/tool/requestUserInput";
 
 const String _elicitationApprovalKindKey = "codex_approval_kind";
 
-enum _ElicitationApprovalKind { mcpToolCall, toolSuggestion }
+enum _ElicitationApprovalKind() { mcpToolCall, toolSuggestion }
 
 /// A pending codex approval, kept until the user answers or codex
 /// rescinds it.
-class _PendingApproval {
-  _PendingApproval({
+class _PendingApproval({
     required this.bridgeRequestId,
     required this.codexId,
     required this.sessionId,
     required this.method,
     required this.params,
     required this.kind,
-  });
-
+  }) {
   /// Stable id the bridge surfaces to mobile.
   final String bridgeRequestId;
 
@@ -80,7 +78,7 @@ class _PendingApproval {
   final _PendingKind kind;
 }
 
-enum _PendingKind { permission, question }
+enum _PendingKind() { permission, question }
 
 /// Per-request reply functions injected at construction time so the
 /// registry stays decoupled from [CodexAppServerClient].
@@ -91,13 +89,13 @@ typedef ApprovalErrorResponder = void Function(Object id, int code, String messa
 /// stream and answers them when the bridge consumer replies.
 ///
 /// Subscribe with [attach]. Detach + free pending state with [dispose].
-class ApprovalRegistry {
-  ApprovalRegistry({
+class ApprovalRegistry({
     required void Function(BridgeSseEvent event) emit,
     required ApprovalResponder respond,
     required ApprovalErrorResponder respondError,
     String Function()? idGenerator,
-  }) : _emit = emit,
+  }) {
+  this : _emit = emit,
        _respond = respond,
        _respondError = respondError,
        _injectedIdGenerator = idGenerator;

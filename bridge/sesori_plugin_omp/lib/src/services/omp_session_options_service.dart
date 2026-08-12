@@ -9,14 +9,14 @@ import "../trackers/omp_catalog_tracker.dart";
 import "omp_catalog_service.dart";
 
 /// Owns OMP's project-scoped options and exact turn-selection writes.
-class OmpSessionOptionsService {
-  OmpSessionOptionsService({
+class OmpSessionOptionsService({
     required OmpCatalogService catalogService,
     required OmpCatalogTracker tracker,
     required OmpCatalogRepository repository,
     required AcpSessionConfigurationTracker configurationTracker,
     required String launchDirectory,
-  }) : _catalogService = catalogService,
+  }) {
+  this : _catalogService = catalogService,
        _tracker = tracker,
        _repository = repository,
        _configurationTracker = configurationTracker,

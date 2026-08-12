@@ -43,20 +43,18 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
 /// - **Create new folder** — makes an empty folder here and steps into it, so
 ///   the user can then add *it*.
 @visibleForTesting
-class AddProjectDialog extends StatefulWidget {
+class const AddProjectDialog({required this.cubit, required this.topInset, super.key}) extends StatefulWidget {
   final ProjectListCubit cubit;
 
   /// The status-bar inset captured from the presenting context — the modal
   /// route strips it from the sheet's own MediaQuery.
   final double topInset;
 
-  const AddProjectDialog({required this.cubit, required this.topInset, super.key});
-
   @override
   State<AddProjectDialog> createState() => _AddProjectDialogState();
 }
 
-class _AddProjectDialogState extends State<AddProjectDialog> {
+class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// The messenger this sheet presents its own messages on — see
   /// [_showSnackBar]. Keyed because it is built below this state, so
   /// `ScaffoldMessenger.of` from here would find the screen's instead.
@@ -428,11 +426,9 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
 
 /// One folder in the browser: its name, a tag when it already holds a git
 /// repository, and a chevron into it.
-class _FolderTile extends StatelessWidget {
+class const _FolderTile({required this.entry, required this.onTap}) extends StatelessWidget {
   final FilesystemSuggestion entry;
   final VoidCallback onTap;
-
-  const _FolderTile({required this.entry, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -509,9 +505,7 @@ class _FolderTile extends StatelessWidget {
 
 /// The listing's loading state: the row geometry with the names replaced by
 /// bars, so nothing jumps when the folders land.
-class _FolderListSkeleton extends StatelessWidget {
-  const _FolderListSkeleton({required this.semanticLabel});
-
+class const _FolderListSkeleton({required this.semanticLabel}) extends StatelessWidget {
   final String semanticLabel;
 
   /// Name-bar widths cycled across rows so the placeholder does not read as a
@@ -556,9 +550,7 @@ class _FolderListSkeleton extends StatelessWidget {
 
 /// The listing's failure state — the folder could not be read, either because
 /// the host denied access or because the bridge could not list it.
-class _BrowseError extends StatelessWidget {
-  const _BrowseError({required this.permissionDenied, required this.onRetry});
-
+class const _BrowseError({required this.permissionDenied, required this.onRetry}) extends StatelessWidget {
   final bool permissionDenied;
   final VoidCallback onRetry;
 
@@ -608,13 +600,11 @@ class _BrowseError extends StatelessWidget {
 /// folders dissolve as they scroll past — the same treatment the chat composer
 /// uses (`PromptInput`), and the mirror of the scroll-edge fade the sheet header
 /// paints at the top.
-class _ActionMenu extends StatelessWidget {
-  const _ActionMenu({
+class const _ActionMenu({
     required this.onAdd,
     required this.onCreateFolder,
     required this.inFlight,
-  });
-
+  }) extends StatelessWidget {
   /// Null while an action is in flight or before the browser knows its folder.
   final VoidCallback? onAdd;
 
@@ -704,9 +694,7 @@ class _ActionMenu extends StatelessWidget {
 /// granted to the terminal running the bridge). It is scoped to this sheet —
 /// where the user is browsing directories — rather than shown app-wide, since
 /// it is only actionable here.
-class _FilesystemAccessBanner extends StatelessWidget {
-  const _FilesystemAccessBanner();
-
+class const _FilesystemAccessBanner() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connectionService = GetIt.instance<ConnectionService>();
@@ -744,7 +732,7 @@ class _FilesystemAccessBanner extends StatelessWidget {
 
 /// The sheet's two bridge-bound actions, so the one that is running can be told
 /// apart from the one that is merely blocked while it runs.
-enum _AddProjectAction { add, createFolder }
+enum _AddProjectAction() { add, createFolder }
 
 const double _folderIconSize = 16;
 const double _chevronSize = 16;

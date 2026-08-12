@@ -8,7 +8,7 @@
 ///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 6.
-enum ClaudePermissionMode {
+enum ClaudePermissionMode({required this.cliValue, required this.controlValue}) {
   /// Prompts before dangerous operations. `manual` on the CLI, `default` in the
   /// control protocol.
   standard(cliValue: "manual", controlValue: "default"),
@@ -29,8 +29,6 @@ enum ClaudePermissionMode {
   /// Uses a model classifier to approve or deny prompts. This is the CLI's own
   /// default when no mode is passed.
   auto(cliValue: "auto", controlValue: "auto");
-
-  ClaudePermissionMode({required this.cliValue, required this.controlValue});
 
   /// Spelling accepted by the `--permission-mode` command-line flag.
   final String cliValue;

@@ -4,10 +4,10 @@ import "../repositories/agent_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /agent` — returns the agents available for the project.
-class PostAgentsHandler extends BodyRequestHandler<PluginProjectIdRequest, Agents> {
+class PostAgentsHandler(this._repository) extends BodyRequestHandler<PluginProjectIdRequest, Agents> {
   final AgentRepository _repository;
 
-  PostAgentsHandler(this._repository)
+  this
     : super(
         HttpMethod.post,
         "/agent",

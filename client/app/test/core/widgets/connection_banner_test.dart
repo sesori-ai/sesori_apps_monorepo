@@ -13,9 +13,7 @@ import "../../helpers/test_helpers.dart";
 
 /// A [StubConnectionOverlayCubit] whose state can be driven mid-test and that
 /// counts `reconnect()` calls (the connection-lost banner's Retry action).
-class _MutableConnectionOverlayCubit extends StubConnectionOverlayCubit {
-  _MutableConnectionOverlayCubit({super.initialState});
-
+class _MutableConnectionOverlayCubit({super.initialState}) extends StubConnectionOverlayCubit {
   int reconnectCount = 0;
 
   void setOverlayState(ConnectionOverlayState next) => emit(next);
@@ -24,7 +22,7 @@ class _MutableConnectionOverlayCubit extends StubConnectionOverlayCubit {
   void reconnect() => reconnectCount++;
 }
 
-class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
 
 Widget _app({required ConnectionOverlayCubit cubit, required Widget home}) {
   return BlocProvider<ConnectionOverlayCubit>.value(

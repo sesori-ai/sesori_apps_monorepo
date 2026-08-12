@@ -23,7 +23,7 @@ import "plugin_permission_reply.dart";
 /// plugin's sessions). Bridge code switches over the two subtypes — there is
 /// no capability enum to keep in sync and no `UnsupportedError` stubs for
 /// members a plugin cannot honour.
-sealed class BridgePluginApi {
+sealed class BridgePluginApi() {
   /// Unique plugin identifier (e.g., "opencode", "codex")
   String get id;
 
@@ -217,7 +217,7 @@ sealed class BridgePluginApi {
 /// A plugin whose backend owns the project list natively (e.g. OpenCode's
 /// `/project` API). The bridge calls [getProjects] and treats the result as
 /// authoritative.
-abstract class NativeProjectsPluginApi extends BridgePluginApi {
+abstract class NativeProjectsPluginApi() extends BridgePluginApi {
   /// Get the list of projects from the backend.
   Future<List<PluginProject>> getProjects();
 
@@ -232,7 +232,7 @@ abstract class NativeProjectsPluginApi extends BridgePluginApi {
 /// backend): the bridge derives the project list by grouping the plugin's
 /// sessions by directory, and owns opened-folder and rename-override
 /// persistence itself — so this subtype carries no project members at all.
-abstract class BridgeDerivedProjectsPluginApi extends BridgePluginApi {
+abstract class BridgeDerivedProjectsPluginApi() extends BridgePluginApi {
   /// Every session this plugin knows about, across all projects. The bridge
   /// groups the result by [PluginSession.directory] to build the project list,
   /// so each returned session must carry its real working directory.

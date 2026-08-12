@@ -18,12 +18,12 @@ import "open_code_ownership_record.dart";
 /// writes go through [PluginStatusController.trySet], so a degrade that races a
 /// monitor-emitted [PluginFailed] or a deliberate shutdown is dropped by the
 /// state machine.
-class OpenCodeRuntimeStatusReporter {
-  OpenCodeRuntimeStatusReporter({
+class OpenCodeRuntimeStatusReporter({
     required PluginStatusController status,
     required ServerClock clock,
     Duration degradedDebounce = const Duration(seconds: 5),
-  }) : _status = status,
+  }) {
+  this : _status = status,
        _clock = clock,
        _degradedDebounce = degradedDebounce;
 
@@ -102,8 +102,7 @@ class OpenCodeRuntimeStatusReporter {
 /// a [PluginStatusController] fed by both the SSE transport (via
 /// [OpenCodeRuntimeStatusReporter]) and the exit monitor, plus an ordered,
 /// idempotent [shutdown].
-class OpenCodeBridgePlugin implements BridgePlugin {
-  OpenCodeBridgePlugin({
+class OpenCodeBridgePlugin({
     required this.api,
     required OpenCodeRuntimeStatusReporter reporter,
     required ManagedRuntimeMonitor<OpenCodeOwnershipRecord> monitor,
@@ -111,7 +110,8 @@ class OpenCodeBridgePlugin implements BridgePlugin {
     required OpenCodeOwnershipRecord? ownedRecord,
     required this.port,
     required this.serverUrl,
-  }) : _reporter = reporter,
+  }) implements BridgePlugin {
+  this : _reporter = reporter,
        _monitor = monitor,
        _service = service,
        _ownedRecord = ownedRecord;

@@ -22,13 +22,11 @@ import "../../theme/prego_theme.dart";
 ///
 /// Pointer-transparent by design: the popup's dismiss barrier sits below it in
 /// the route and must keep receiving tap-outside.
-class AnchoredSpotlightBackdrop extends StatelessWidget {
-  const AnchoredSpotlightBackdrop({
+class const AnchoredSpotlightBackdrop({
     super.key,
     required this.spotlightRect,
     required this.borderRadius,
-  });
-
+  }) extends StatelessWidget {
   /// Screen-space rectangle left sharp — the anchored widget's bounds, already
   /// inset by the caller.
   final Rect spotlightRect;
@@ -118,9 +116,7 @@ class AnchoredSpotlightBackdrop extends StatelessWidget {
 
 /// Clips to the whole layer *minus* [hole] — so the blur and scrim it wraps
 /// never paint over the anchored widget.
-class _SpotlightHoleClipper extends CustomClipper<Path> {
-  const _SpotlightHoleClipper({required this.hole});
-
+class const _SpotlightHoleClipper({required this.hole}) extends CustomClipper<Path> {
   final RRect hole;
 
   @override

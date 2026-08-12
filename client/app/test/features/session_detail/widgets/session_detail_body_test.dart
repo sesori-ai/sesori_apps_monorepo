@@ -29,13 +29,13 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
 
-class MockSessionDetailCubit extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService;
+class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
 
-class MockComposerImagePicker extends Mock implements ComposerImagePicker;
+class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
 
-class MockImageClipboard extends Mock implements ImageClipboard;
+class MockImageClipboard() extends Mock implements ImageClipboard;
 
 /// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
 final Uint8List _tinyPng = Uint8List.fromList(const [

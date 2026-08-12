@@ -5,11 +5,9 @@ import "package:sesori_auth/sesori_auth.dart";
 ///
 /// The same documents are also served as web pages on `sesori.com`; the app
 /// renders the markdown in-place instead of leaving for the browser.
-enum LegalDocument {
+enum LegalDocument(this.path) {
   terms("/terms"),
   privacy("/privacy");
-
-  LegalDocument(this.path);
 
   /// Path of the document's markdown endpoint, relative to [authBaseUrl].
   final String path;
@@ -20,10 +18,10 @@ enum LegalDocument {
 /// The endpoints serve raw markdown and need no token, so this uses the
 /// unauthenticated [HttpApiClient] rather than [AuthenticatedHttpApiClient].
 @lazySingleton
-class LegalApi {
+class LegalApi({required HttpApiClient client}) {
   final HttpApiClient _client;
 
-  LegalApi({required HttpApiClient client}) : _client = client;
+  this : _client = client;
 
   Future<ApiResponse<String>> fetchMarkdown({required LegalDocument document}) {
     return _client.getText(url: Uri.parse("$authBaseUrl${document.path}"));

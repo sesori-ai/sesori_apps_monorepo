@@ -5,9 +5,18 @@ import "package:theme_prego/icons/vespr_icons.g.dart";
 import "../../core/extensions/build_context_x.dart";
 
 /// The login options whose button can show an in-flight loading spinner.
-enum LoginOption { github, apple, google }
+enum LoginOption() { github, apple, google }
 
-class LoginProviderButtons extends StatelessWidget {
+class const LoginProviderButtons({
+    super.key,
+    required this.isLoading,
+    required this.loadingOption,
+    required this.showApple,
+    required this.onGithubSelected,
+    required this.onAppleSelected,
+    required this.onGoogleSelected,
+    required this.onShowEmailForm,
+  }) extends StatelessWidget {
   final bool isLoading;
 
   /// Which option's button swaps its provider logo for the loading spinner
@@ -19,17 +28,6 @@ class LoginProviderButtons extends StatelessWidget {
   final VoidCallback onAppleSelected;
   final VoidCallback onGoogleSelected;
   final VoidCallback onShowEmailForm;
-
-  const LoginProviderButtons({
-    super.key,
-    required this.isLoading,
-    required this.loadingOption,
-    required this.showApple,
-    required this.onGithubSelected,
-    required this.onAppleSelected,
-    required this.onGoogleSelected,
-    required this.onShowEmailForm,
-  });
 
   @override
   Widget build(BuildContext context) {

@@ -7,15 +7,7 @@ import "background_tasks_toggle.dart";
 /// The expandable body of the background-tasks card: a divider under the
 /// header, then the scrollable list of task rows. Running tasks come first;
 /// completed tasks appear after a "Show N completed" toggle.
-class BackgroundTasksList extends StatelessWidget {
-  final String? projectId;
-  final List<Session> runningTasks;
-  final List<Session> completedTasks;
-  final Map<String, SessionStatus> childStatuses;
-  final bool showCompleted;
-  final VoidCallback onToggleCompleted;
-
-  const BackgroundTasksList({
+class const BackgroundTasksList({
     super.key,
     required this.projectId,
     required this.runningTasks,
@@ -23,7 +15,13 @@ class BackgroundTasksList extends StatelessWidget {
     required this.childStatuses,
     required this.showCompleted,
     required this.onToggleCompleted,
-  });
+  }) extends StatelessWidget {
+  final String? projectId;
+  final List<Session> runningTasks;
+  final List<Session> completedTasks;
+  final Map<String, SessionStatus> childStatuses;
+  final bool showCompleted;
+  final VoidCallback onToggleCompleted;
 
   @override
   Widget build(BuildContext context) {

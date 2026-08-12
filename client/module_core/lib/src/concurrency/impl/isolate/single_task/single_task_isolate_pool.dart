@@ -2,7 +2,14 @@
 import "../isolate.dart";
 import "../multi_task/mulit_task_isolate_pool.dart";
 
-class SingleTaskIsolatePoolImpl<IN, OUT> implements SingleTaskIsolate<IN, OUT> {
+class SingleTaskIsolatePoolImpl<IN, OUT>({
+    required IsolateTask<IN, OUT> task,
+    required int minPoolSize,
+    required int maxPoolSize,
+    required Duration timeout,
+    required int minTasksPerActiveIsolateToSpinTransientIsolate,
+    String? debugName,
+  }) implements SingleTaskIsolate<IN, OUT> {
   final MultiTaskIsolatePoolImpl _pool;
   final IsolateTask<IN, OUT> _task;
 
@@ -18,14 +25,7 @@ class SingleTaskIsolatePoolImpl<IN, OUT> implements SingleTaskIsolate<IN, OUT> {
   @override
   Future<OUT> run(IN arg) => _pool.run(_task, arg);
 
-  SingleTaskIsolatePoolImpl({
-    required IsolateTask<IN, OUT> task,
-    required int minPoolSize,
-    required int maxPoolSize,
-    required Duration timeout,
-    required int minTasksPerActiveIsolateToSpinTransientIsolate,
-    String? debugName,
-  }) : _task = task,
+  this : _task = task,
        _pool = MultiTaskIsolatePoolImpl(
          minPoolSize: minPoolSize,
          maxPoolSize: maxPoolSize,

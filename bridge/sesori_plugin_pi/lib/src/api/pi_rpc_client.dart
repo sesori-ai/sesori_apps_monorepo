@@ -11,14 +11,10 @@ import "pi_launch_spec.dart";
 import "pi_process_factory.dart";
 
 /// A typed Pi RPC transport failure.
-sealed class PiRpcException implements Exception {
-  const PiRpcException();
-}
+sealed class const PiRpcException() implements Exception;
 
 /// Pi rejected a command with untyped prose.
-final class PiRpcCommandFailureException extends PiRpcException {
-  const PiRpcCommandFailureException({required this.command, required this.error});
-
+final class const PiRpcCommandFailureException({required this.command, required this.error}) extends PiRpcException {
   final PiRpcCommand command;
   final String error;
 
@@ -27,9 +23,7 @@ final class PiRpcCommandFailureException extends PiRpcException {
 }
 
 /// A command could not be written to Pi's stdin.
-final class PiRpcWriteException extends PiRpcException {
-  const PiRpcWriteException({required this.command, required this.cause});
-
+final class const PiRpcWriteException({required this.command, required this.cause}) extends PiRpcException {
   final PiRpcCommand command;
   final Object cause;
 
@@ -38,9 +32,7 @@ final class PiRpcWriteException extends PiRpcException {
 }
 
 /// Pi's stdout stream failed before the process exited.
-final class PiRpcStdoutException extends PiRpcException {
-  const PiRpcStdoutException({required this.cause});
-
+final class const PiRpcStdoutException({required this.cause}) extends PiRpcException {
   final Object cause;
 
   @override
@@ -48,9 +40,7 @@ final class PiRpcStdoutException extends PiRpcException {
 }
 
 /// Pi's stdin failed asynchronously after accepting a write.
-final class PiRpcStdinException extends PiRpcException {
-  const PiRpcStdinException({required this.cause});
-
+final class const PiRpcStdinException({required this.cause}) extends PiRpcException {
   final Object cause;
 
   @override
@@ -58,9 +48,7 @@ final class PiRpcStdinException extends PiRpcException {
 }
 
 /// The Pi process exited.
-final class PiRpcProcessExitException extends PiRpcException {
-  const PiRpcProcessExitException({required this.exitCode});
-
+final class const PiRpcProcessExitException({required this.exitCode}) extends PiRpcException {
   final int exitCode;
 
   @override
@@ -68,9 +56,7 @@ final class PiRpcProcessExitException extends PiRpcException {
 }
 
 /// A command was sent before a Pi process was started.
-final class PiRpcNotRunningException extends PiRpcException {
-  const PiRpcNotRunningException({required this.command});
-
+final class const PiRpcNotRunningException({required this.command}) extends PiRpcException {
   final PiRpcCommand command;
 
   @override
@@ -78,24 +64,18 @@ final class PiRpcNotRunningException extends PiRpcException {
 }
 
 /// The transport was disposed while work was pending.
-final class PiRpcDisposedException extends PiRpcException {
-  const PiRpcDisposedException();
-
+final class const PiRpcDisposedException() extends PiRpcException {
   @override
   String toString() => "PiRpcDisposedException";
 }
 
 /// What Sesori answers a blocking Pi extension dialog with.
-sealed class PiExtensionUiReply {
-  const PiExtensionUiReply();
-
+sealed class const PiExtensionUiReply() {
   Map<String, Object?> get fields;
 }
 
 /// Answers a `select`, `input`, or `editor` dialog.
-final class PiExtensionUiValueReply extends PiExtensionUiReply {
-  const PiExtensionUiValueReply({required this.value});
-
+final class const PiExtensionUiValueReply({required this.value}) extends PiExtensionUiReply {
   final String value;
 
   @override
@@ -103,9 +83,7 @@ final class PiExtensionUiValueReply extends PiExtensionUiReply {
 }
 
 /// Answers a `confirm` dialog.
-final class PiExtensionUiConfirmationReply extends PiExtensionUiReply {
-  const PiExtensionUiConfirmationReply({required this.confirmed});
-
+final class const PiExtensionUiConfirmationReply({required this.confirmed}) extends PiExtensionUiReply {
   final bool confirmed;
 
   @override
@@ -113,9 +91,7 @@ final class PiExtensionUiConfirmationReply extends PiExtensionUiReply {
 }
 
 /// Dismisses any dialog without a value.
-final class PiExtensionUiCancelledReply extends PiExtensionUiReply {
-  const PiExtensionUiCancelledReply();
-
+final class const PiExtensionUiCancelledReply() extends PiExtensionUiReply {
   @override
   Map<String, Object?> get fields => const {"cancelled": true};
 }
@@ -136,11 +112,11 @@ final class PiExtensionUiCancelledReply extends PiExtensionUiReply {
 /// nothing consumes.
 ///
 /// No prompt, transcript, tool, dialog, or raw frame content is ever logged.
-class PiRpcClient {
-  PiRpcClient({
+class PiRpcClient({
     required PiLaunchSpec launchSpec,
     required PiProcessFactory processFactory,
-  }) : _launchSpec = launchSpec,
+  }) {
+  this : _launchSpec = launchSpec,
        _processFactory = processFactory;
 
   /// How many parsed frames are held while no router has attached yet.

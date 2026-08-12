@@ -7,7 +7,13 @@ import "../isolate.dart";
 import "multi_task_isolate.dart";
 import "multi_task_transient_isolate.dart";
 
-class MultiTaskIsolatePoolImpl implements MultiTaskIsolate {
+class MultiTaskIsolatePoolImpl({
+    required int minPoolSize,
+    required int maxPoolSize,
+    required Duration timeout,
+    required String debugName,
+    required this.minTasksPerActiveIsolateToSpinTransientIsolate,
+  }) implements MultiTaskIsolate {
   final UnmodifiableListView<MultiTaskIsolate> _isolates;
   bool _disposed = false;
 
@@ -19,13 +25,7 @@ class MultiTaskIsolatePoolImpl implements MultiTaskIsolate {
   @override
   bool get disposed => _disposed;
 
-  MultiTaskIsolatePoolImpl({
-    required int minPoolSize,
-    required int maxPoolSize,
-    required Duration timeout,
-    required String debugName,
-    required this.minTasksPerActiveIsolateToSpinTransientIsolate,
-  }) : assert(maxPoolSize > 0),
+  this : assert(maxPoolSize > 0),
        assert(minTasksPerActiveIsolateToSpinTransientIsolate > 0),
        assert(minPoolSize <= maxPoolSize),
        _isolates = UnmodifiableListView(

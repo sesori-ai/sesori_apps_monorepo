@@ -292,11 +292,11 @@ PluginSession _session({
 
 /// Minimal [BridgePluginApi] fake that only implements identity and [getProjects].
 /// Every other member throws [UnimplementedError] so accidental use is loud.
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+class _FakeBridgePlugin({required List<PluginProject> projects, required List<PluginSession> sessions}) implements NativeProjectsPluginApi {
   final List<PluginProject> _projects;
   final List<PluginSession> _sessions;
 
-  _FakeBridgePlugin({required List<PluginProject> projects, required List<PluginSession> sessions})
+  this
     : _projects = projects,
       _sessions = sessions;
 

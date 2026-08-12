@@ -16,13 +16,13 @@ import "../trackers/bridge_status_tracker.dart";
 /// prompts land in the prompt tracker. It never touches cubits or UI — those
 /// read the same trackers.
 @lazySingleton
-class ControlMessageDispatcher {
-  ControlMessageDispatcher({
+class ControlMessageDispatcher({
     required ControlChannelServer server,
     required AuthTokenProvider tokenProvider,
     required BridgeStatusTracker statusTracker,
     required BridgePromptTracker promptTracker,
-  }) : _server = server,
+  }) {
+  this : _server = server,
        _tokenProvider = tokenProvider,
        _statusTracker = statusTracker,
        _promptTracker = promptTracker;

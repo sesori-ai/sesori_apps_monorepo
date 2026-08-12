@@ -5,62 +5,50 @@ import "../bridge/api/gh_pull_request.dart";
 part "gh_pull_request_batch.freezed.dart";
 part "gh_pull_request_batch.g.dart";
 
-enum GhPullRequestStateGroup { open, terminal }
+enum GhPullRequestStateGroup() { open, terminal }
 
-final class GhPullRequestTarget {
-  final String repositoryOwner;
-  final String repositoryName;
-  final String branchName;
-
-  const GhPullRequestTarget({
+final class const GhPullRequestTarget({
     required this.repositoryOwner,
     required this.repositoryName,
     required this.branchName,
-  });
+  }) {
+  final String repositoryOwner;
+  final String repositoryName;
+  final String branchName;
 }
 
-final class GhPullRequestCursorRequest {
-  final GhPullRequestTarget target;
-  final GhPullRequestStateGroup stateGroup;
-  final String cursor;
-
-  const GhPullRequestCursorRequest({
+final class const GhPullRequestCursorRequest({
     required this.target,
     required this.stateGroup,
     required this.cursor,
-  });
+  }) {
+  final GhPullRequestTarget target;
+  final GhPullRequestStateGroup stateGroup;
+  final String cursor;
 }
 
-sealed class GhPullRequestQueryException implements Exception {
-  const GhPullRequestQueryException();
-}
+sealed class const GhPullRequestQueryException() implements Exception;
 
-final class GhPullRequestProcessExitException extends GhPullRequestQueryException {
+final class const GhPullRequestProcessExitException({required this.exitCode}) extends GhPullRequestQueryException {
   final int exitCode;
-
-  const GhPullRequestProcessExitException({required this.exitCode});
 
   @override
   String toString() => "GitHub pull request query failed with exit code $exitCode";
 }
 
-final class GhPullRequestGraphqlException extends GhPullRequestQueryException {
+final class const GhPullRequestGraphqlException({required this.errorCount}) extends GhPullRequestQueryException {
   final int errorCount;
-
-  const GhPullRequestGraphqlException({required this.errorCount});
 
   @override
   String toString() => "GitHub pull request query returned $errorCount GraphQL error${errorCount == 1 ? "" : "s"}";
 }
 
-final class GhPullRequestWrappedException extends GhPullRequestQueryException {
-  final Object innerError;
-  final StackTrace innerStackTrace;
-
-  const GhPullRequestWrappedException({
+final class const GhPullRequestWrappedException({
     required this.innerError,
     required this.innerStackTrace,
-  });
+  }) extends GhPullRequestQueryException {
+  final Object innerError;
+  final StackTrace innerStackTrace;
 
   @override
   String toString() => "GitHub pull request query failed while handling ${innerError.runtimeType}";

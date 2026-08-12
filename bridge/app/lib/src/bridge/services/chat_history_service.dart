@@ -12,62 +12,46 @@ import "../repositories/chat_history_repository.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 
-sealed class SessionAttachmentResult {
-  const SessionAttachmentResult();
-}
+sealed class const SessionAttachmentResult();
 
-final class SessionAttachmentFound extends SessionAttachmentResult {
+final class const SessionAttachmentFound({required this.bytes, required this.mime}) extends SessionAttachmentResult {
   final Uint8List bytes;
   final String mime;
-
-  const SessionAttachmentFound({required this.bytes, required this.mime});
 }
 
-final class SessionAttachmentMissing extends SessionAttachmentResult {
-  const SessionAttachmentMissing();
-}
+final class const SessionAttachmentMissing() extends SessionAttachmentResult;
 
-final class SessionAttachmentUnsupported extends SessionAttachmentResult {
-  const SessionAttachmentUnsupported();
-}
+final class const SessionAttachmentUnsupported() extends SessionAttachmentResult;
 
-final class SessionAttachmentTooLarge extends SessionAttachmentResult {
-  const SessionAttachmentTooLarge();
-}
+final class const SessionAttachmentTooLarge() extends SessionAttachmentResult;
 
 /// The outcome of storing one finalized part whose delivery shape depends on
 /// that write having landed.
-sealed class CapturedPartDelivery {
-  const CapturedPartDelivery();
-}
+sealed class const CapturedPartDelivery();
 
 /// The part as stored, projected once per delivery mode.
-final class CapturedPartShapes extends CapturedPartDelivery {
+final class const CapturedPartShapes({required this.inlinePart, required this.storedReferencePart}) extends CapturedPartDelivery {
   /// The released shape: bounded inline images, excess degraded to metadata.
   final MessagePart inlinePart;
 
   /// The capable shape: stored images carry an identifier instead of bytes.
   final MessagePart storedReferencePart;
-
-  const CapturedPartShapes({required this.inlinePart, required this.storedReferencePart});
 }
 
 /// The write did not land, so no reference may be advertised for it.
-final class CapturedPartUnavailable extends CapturedPartDelivery {
-  const CapturedPartUnavailable();
-}
+final class const CapturedPartUnavailable() extends CapturedPartDelivery;
 
 /// The single writer of the chat history store.
 ///
 /// Every mutation runs through a per-session queue so writes for one session
 /// never interleave, while unrelated sessions stay independent.
-class ChatHistoryService {
-  ChatHistoryService({
+class ChatHistoryService({
     required ChatHistoryRepository chatHistoryRepository,
     required SessionRepository sessionRepository,
     required AttachmentThumbnailBuilder attachmentThumbnailBuilder,
     required BridgeIdProvider bridgeIdProvider,
-  }) : _chatHistoryRepository = chatHistoryRepository,
+  }) {
+  this : _chatHistoryRepository = chatHistoryRepository,
        _sessionRepository = sessionRepository,
        _attachmentThumbnailBuilder = attachmentThumbnailBuilder,
        _bridgeIdProvider = bridgeIdProvider;

@@ -27,8 +27,7 @@ import 'update_install_service.dart';
 /// [UpdateApplyService.apply] to install it. It returns an
 /// [ExplicitUpdateOutcome] as pure data — the command renders it and never the
 /// service.
-class ManualUpdateService {
-  ManualUpdateService({
+class ManualUpdateService({
     required ReleaseRepository releaseRepository,
     required UpdateInstallService updateInstallService,
     required UpdateApplyService updateApplyService,
@@ -36,7 +35,8 @@ class ManualUpdateService {
     required String installRoot,
     required String executablePath,
     required String managedExecutablePath,
-  }) : _releaseRepository = releaseRepository,
+  }) {
+  this : _releaseRepository = releaseRepository,
        _updateInstallService = updateInstallService,
        _updateApplyService = updateApplyService,
        _track = track,

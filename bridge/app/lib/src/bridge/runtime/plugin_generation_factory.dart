@@ -17,13 +17,11 @@ import "../../server/services/bridge_instance_service.dart";
 import "../../updater/models/managed_runtime_paths.dart";
 import "bridge_runtime_server_exception.dart";
 
-class PluginRuntimeRegistration {
-  const PluginRuntimeRegistration({
+class const PluginRuntimeRegistration({
     required this.descriptor,
     required this.config,
     required this.stateDirectory,
-  });
-
+  }) {
   final BridgePluginDescriptor descriptor;
   final PluginConfig config;
   final String stateDirectory;
@@ -34,12 +32,10 @@ class PluginRuntimeRegistration {
 /// Shared startup infrastructure failures, such as bridge ownership or mutex
 /// contention, are deliberately not wrapped so the composition root can abort
 /// the whole bridge with their original typed exception.
-class PluginGenerationStartFailedException implements Exception {
-  const PluginGenerationStartFailedException({
+class const PluginGenerationStartFailedException({
     required this.pluginId,
     required this.cause,
-  });
-
+  }) implements Exception {
   final String pluginId;
   final Object cause;
 
@@ -47,24 +43,17 @@ class PluginGenerationStartFailedException implements Exception {
   String toString() => 'PluginGenerationStartFailedException: Plugin "$pluginId" failed to start: $cause';
 }
 
-sealed class PluginGenerationStartEvent {
-  const PluginGenerationStartEvent();
-}
+sealed class const PluginGenerationStartEvent();
 
-final class PluginGenerationProvisionProgress extends PluginGenerationStartEvent {
-  const PluginGenerationProvisionProgress({required this.event});
-
+final class const PluginGenerationProvisionProgress({required this.event}) extends PluginGenerationStartEvent {
   final RuntimeProvisionProgress event;
 }
 
-final class PluginGenerationStarted extends PluginGenerationStartEvent {
-  const PluginGenerationStarted({required this.plugin});
-
+final class const PluginGenerationStarted({required this.plugin}) extends PluginGenerationStartEvent {
   final BridgePlugin plugin;
 }
 
-class PluginGenerationFactory {
-  PluginGenerationFactory({
+class PluginGenerationFactory({
     required ManagedRuntimePaths managedRuntimePaths,
     required ProcessIdentity currentBridgeIdentity,
     required String ownerSessionId,
@@ -75,7 +64,8 @@ class PluginGenerationFactory {
     required ServerClock clock,
     required Map<String, String> environment,
     required ProcessUser? currentUser,
-  }) : _managedRuntimePaths = managedRuntimePaths,
+  }) {
+  this : _managedRuntimePaths = managedRuntimePaths,
        _currentBridgeIdentity = currentBridgeIdentity,
        _ownerSessionId = ownerSessionId,
        _startupMutexRepository = startupMutexRepository,
@@ -307,13 +297,11 @@ class PluginGenerationFactory {
   }
 }
 
-class _GenerationStartRequest {
-  const _GenerationStartRequest({
+class const _GenerationStartRequest({
     required this.registration,
     required this.startAborted,
     required this.controller,
-  });
-
+  }) {
   final PluginRuntimeRegistration registration;
   final StartAbortSignal startAborted;
   final StreamController<PluginGenerationStartEvent> controller;

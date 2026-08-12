@@ -10,9 +10,7 @@
 /// `PluginValueOption.integer`) or from `validateConfig`. Exercise every
 /// typed accessor in `validateConfig`; one thrown later, from `start()`,
 /// still fails the start but only after irreversible steps may have run.
-class PluginConfigException implements Exception {
-  const PluginConfigException(this.message);
-
+class const PluginConfigException(this.message) implements Exception {
   /// Human-readable description of what is wrong and how to fix it.
   final String message;
 

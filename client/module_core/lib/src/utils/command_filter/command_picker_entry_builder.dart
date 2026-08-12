@@ -1,7 +1,12 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 /// A command row in the command picker, pre-shaped for display.
-class CommandPickerEntry {
+class const CommandPickerEntry({
+    required this.command,
+    required this.displayDescription,
+    required this.displayHints,
+    required this.searchText,
+  }) {
   /// The command reported back when the entry is selected.
   final CommandInfo command;
 
@@ -15,13 +20,6 @@ class CommandPickerEntry {
   /// Lowercase search haystack (command name, description, hints) matched
   /// against the lowercased search query with a plain `contains`.
   final String searchText;
-
-  const CommandPickerEntry({
-    required this.command,
-    required this.displayDescription,
-    required this.displayHints,
-    required this.searchText,
-  });
 }
 
 /// Shapes raw [CommandInfo] catalogs into the entries displayed by the
@@ -31,9 +29,7 @@ class CommandPickerEntry {
 /// widget so it can run in a background isolate: sorting and display-string
 /// preparation for large command/skill catalogs would otherwise run during
 /// the sheet's opening frame (and again on every rebuild).
-class CommandPickerEntryBuilder {
-  const CommandPickerEntryBuilder();
-
+class const CommandPickerEntryBuilder() {
   /// Caps precomputed display strings. The tiles show at most two ellipsized
   /// lines, which can never render this many characters — but without a cap
   /// the text engine lays out the full string before truncating, and some

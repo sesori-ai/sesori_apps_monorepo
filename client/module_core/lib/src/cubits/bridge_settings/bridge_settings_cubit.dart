@@ -9,8 +9,8 @@ import "../../repositories/models/bridge_settings_result.dart";
 import "../../services/bridge_settings_service.dart";
 import "bridge_settings_state.dart";
 
-class BridgeSettingsCubit extends Cubit<BridgeSettingsState> {
-  BridgeSettingsCubit({required BridgeSettingsService service, required ConnectionService connectionService})
+class BridgeSettingsCubit({required BridgeSettingsService service, required ConnectionService connectionService}) extends Cubit<BridgeSettingsState> {
+  this
     : _service = service,
       _connected = connectionService.currentStatus is ConnectionConnected,
       super(
@@ -368,6 +368,6 @@ class BridgeSettingsCubit extends Cubit<BridgeSettingsState> {
   }
 }
 
-enum PullRequestRefreshInputValidation { valid, invalid }
+enum PullRequestRefreshInputValidation() { valid, invalid }
 
-enum BridgeSettingsUpdateAcceptance { accepted, rejected }
+enum BridgeSettingsUpdateAcceptance() { accepted, rejected }

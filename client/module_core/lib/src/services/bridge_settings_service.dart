@@ -4,8 +4,8 @@ import "../repositories/bridge_settings_repository.dart";
 import "../repositories/models/bridge_settings_result.dart";
 
 @lazySingleton
-class BridgeSettingsService {
-  BridgeSettingsService({required BridgeSettingsRepository repository}) : _repository = repository;
+class BridgeSettingsService({required BridgeSettingsRepository repository}) {
+  this : _repository = repository;
 
   final BridgeSettingsRepository _repository;
 
@@ -30,16 +30,10 @@ class BridgeSettingsService {
   }
 }
 
-sealed class PullRequestRefreshSettingsUpdatePlan {
-  const PullRequestRefreshSettingsUpdatePlan();
-}
+sealed class const PullRequestRefreshSettingsUpdatePlan();
 
-final class PullRequestRefreshSettingsUpdateRequest extends PullRequestRefreshSettingsUpdatePlan {
-  const PullRequestRefreshSettingsUpdateRequest({required this.intervalSeconds});
-
+final class const PullRequestRefreshSettingsUpdateRequest({required this.intervalSeconds}) extends PullRequestRefreshSettingsUpdatePlan {
   final int intervalSeconds;
 }
 
-final class PullRequestRefreshSettingsUpdateInvalid extends PullRequestRefreshSettingsUpdatePlan {
-  const PullRequestRefreshSettingsUpdateInvalid();
-}
+final class const PullRequestRefreshSettingsUpdateInvalid() extends PullRequestRefreshSettingsUpdatePlan;

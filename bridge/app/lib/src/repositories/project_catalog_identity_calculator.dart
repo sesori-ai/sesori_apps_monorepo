@@ -3,9 +3,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "../api/database/tables/projects_table.dart" show ProjectDto;
 
 /// Selects the existing bridge-owned catalog row for an observed project.
-class ProjectCatalogIdentityCalculator {
-  const ProjectCatalogIdentityCalculator();
-
+class const ProjectCatalogIdentityCalculator() {
   /// Indexes projects by normalized path. When legacy rows collide, the row
   /// with the lexicographically smallest project id is the stable winner.
   Map<String, ProjectDto> buildProjectsByNormalizedPath({

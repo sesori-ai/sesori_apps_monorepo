@@ -16,9 +16,7 @@ Future<void> _writeJsonFile({
   await File(path).writeAsString('$formatted\n');
 }
 
-class _FixtureApp {
-  _FixtureApp({required this.rootPath, required this.oldVersion});
-
+class _FixtureApp({required this.rootPath, required this.oldVersion}) {
   final String rootPath;
   final String oldVersion;
 

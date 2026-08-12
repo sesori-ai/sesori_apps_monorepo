@@ -239,19 +239,17 @@ void main() {
   });
 }
 
-class Invocation {
-  final String executable;
-  final List<String> arguments;
-  final String? workingDirectory;
-
-  const Invocation({
+class const Invocation({
     required this.executable,
     required this.arguments,
     required this.workingDirectory,
-  });
+  }) {
+  final String executable;
+  final List<String> arguments;
+  final String? workingDirectory;
 }
 
-class FakeProcessRunner implements ProcessRunner {
+class FakeProcessRunner(this._runImpl) implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -271,8 +269,6 @@ class FakeProcessRunner implements ProcessRunner {
   _runImpl;
 
   final List<Invocation> invocations = <Invocation>[];
-
-  FakeProcessRunner(this._runImpl);
 
   factory FakeProcessRunner.result({required int exitCode, required String stdout}) {
     return FakeProcessRunner((

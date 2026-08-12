@@ -1,9 +1,7 @@
 import "../foundation/models/composer/composer_draft.dart";
 
 /// Pure edit transformations for composer text and voice-origin spans.
-final class ComposerDraftCalculator {
-  const ComposerDraftCalculator();
-
+final class const ComposerDraftCalculator() {
   ComposerDraft applyTypedEdit({
     required ComposerDraft draft,
     required String newText,

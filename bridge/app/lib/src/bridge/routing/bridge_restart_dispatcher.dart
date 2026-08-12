@@ -5,11 +5,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Conso
 import "../../server/services/bridge_restart_service.dart";
 import "routed_request.dart";
 
-enum BridgeShutdownRequest { restart }
+enum BridgeShutdownRequest() { restart }
 
 /// Owns the single restart handoff shared by relay and debug route consumers.
-class BridgeRestartDispatcher {
-  BridgeRestartDispatcher({required BridgeRestartService restartService}) : _restartService = restartService;
+class BridgeRestartDispatcher({required BridgeRestartService restartService}) {
+  this : _restartService = restartService;
 
   final BridgeRestartService _restartService;
   final StreamController<BridgeShutdownRequest> _shutdownRequests = StreamController<BridgeShutdownRequest>.broadcast(

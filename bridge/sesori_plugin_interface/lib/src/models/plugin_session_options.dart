@@ -6,9 +6,9 @@ import "plugin_provider.dart";
 
 part "plugin_session_options.freezed.dart";
 
-enum PluginSessionOptionsCompleteness { partial, complete }
+enum PluginSessionOptionsCompleteness() { partial, complete }
 
-enum PluginSessionOptionsDiscoveryMode { reuse, refresh }
+enum PluginSessionOptionsDiscoveryMode() { reuse, refresh }
 
 @Freezed(toJson: false)
 sealed class PluginSessionOptions with _$PluginSessionOptions {

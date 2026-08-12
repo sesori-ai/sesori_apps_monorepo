@@ -274,7 +274,10 @@ void main() {
 const _defaultJson =
     '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable",\n  "pullRequestRefreshIntervalSeconds": 30\n}';
 
-class FakeBridgeSettingsApi implements BridgeSettingsApi {
+class FakeBridgeSettingsApi({
+    required this.readResult,
+    this.configFilePath = '/tmp/config.json',
+  }) implements BridgeSettingsApi {
   @override
   final String configFilePath;
 
@@ -283,11 +286,6 @@ class FakeBridgeSettingsApi implements BridgeSettingsApi {
   int writeCount = 0;
   Completer<void>? writeGate;
   final Completer<void> writeStarted = Completer<void>();
-
-  FakeBridgeSettingsApi({
-    required this.readResult,
-    this.configFilePath = '/tmp/config.json',
-  });
 
   @override
   Future<String?> readConfig() async => readResult;

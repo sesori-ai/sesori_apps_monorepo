@@ -2,10 +2,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show HostP
 
 import "../api/loopback_port_api.dart";
 
-class BridgeHostPortService implements HostPortService {
-  const BridgeHostPortService({
+class const BridgeHostPortService({
     required LoopbackPortApi loopbackPortApi,
-  }) : _loopbackPortApi = loopbackPortApi;
+  }) implements HostPortService {
+  this : _loopbackPortApi = loopbackPortApi;
 
   final LoopbackPortApi _loopbackPortApi;
 

@@ -15,10 +15,10 @@ const _uploadTimeout = Duration(seconds: 30);
 /// Uses [AuthenticatedHttpApiClient] which handles token injection, proactive refresh,
 /// and 401 retry automatically — this class never touches tokens directly.
 @lazySingleton
-class VoiceApi {
+class VoiceApi(AuthenticatedHttpApiClient client) {
   final AuthenticatedHttpApiClient _client;
 
-  VoiceApi(AuthenticatedHttpApiClient client) : _client = client;
+  this : _client = client;
 
   /// Uploads an audio file for transcription.
   ///

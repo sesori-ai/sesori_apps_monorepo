@@ -8,7 +8,7 @@ import "session_encryptor.dart";
 /// E2E encryption service for the relay protocol.
 /// Uses X25519 for key exchange, HKDF-SHA256 for key derivation,
 /// and XChaCha20-Poly1305 for symmetric encryption.
-class RelayCryptoService {
+class RelayCryptoService() {
   final _x25519 = X25519();
   final _cipher = Xchacha20.poly1305Aead();
 

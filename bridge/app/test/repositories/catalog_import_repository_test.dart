@@ -839,8 +839,8 @@ void main() {
   });
 }
 
-class _BlockingProjectsDao extends ProjectsDao {
-  _BlockingProjectsDao({required AppDatabase database}) : super(database);
+class _BlockingProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
 
   final Completer<void> readStarted = Completer<void>();
   final Completer<void> _readGate = Completer<void>();
@@ -855,11 +855,11 @@ class _BlockingProjectsDao extends ProjectsDao {
   }
 }
 
-class _RecordingSessionDao extends SessionDao {
-  _RecordingSessionDao({
+class _RecordingSessionDao({
     required AppDatabase database,
     required this.failOnWriteCall,
-  }) : super(database);
+  }) extends SessionDao {
+  this : super(database);
 
   final int? failOnWriteCall;
   final List<int> writeBatchSizes = [];
@@ -886,9 +886,7 @@ class _RecordingSessionDao extends SessionDao {
   }
 }
 
-class _TrackingProjectCatalogIdentityCalculator extends ProjectCatalogIdentityCalculator {
-  _TrackingProjectCatalogIdentityCalculator({required this.firstProjectId, required this.firstPath});
-
+class _TrackingProjectCatalogIdentityCalculator({required this.firstProjectId, required this.firstPath}) extends ProjectCatalogIdentityCalculator {
   final String firstProjectId;
   final String firstPath;
   Map<String, ProjectDto>? _firstProjectsById;
@@ -1007,15 +1005,13 @@ PluginSession _pluginSession({
   );
 }
 
-class _NativeImportPlugin implements NativeProjectsPluginApi {
-  _NativeImportPlugin({
+class _NativeImportPlugin({
     required this.projects,
     required this.rootsByProject,
     required this.childrenByParent,
     this.getProjectsGate,
     this.onGetSessions,
-  });
-
+  }) implements NativeProjectsPluginApi {
   final List<PluginProject> projects;
   final Map<String, List<PluginSession>> rootsByProject;
   final Map<String, List<PluginSession>> childrenByParent;
@@ -1054,9 +1050,7 @@ class _NativeImportPlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _DerivedImportPlugin implements BridgeDerivedProjectsPluginApi {
-  _DerivedImportPlugin({required this.launchDirectory, required this.sessions});
-
+class _DerivedImportPlugin({required this.launchDirectory, required this.sessions}) implements BridgeDerivedProjectsPluginApi {
   @override
   final String launchDirectory;
   final List<PluginSession> sessions;

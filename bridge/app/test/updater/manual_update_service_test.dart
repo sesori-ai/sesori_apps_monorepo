@@ -34,7 +34,7 @@ UpdateResolution _resolution({
   latestVersion: latest == null ? null : SemanticVersion.parse(value: latest),
 );
 
-class _FakeReleaseRepository implements ReleaseRepository {
+class _FakeReleaseRepository() implements ReleaseRepository {
   UpdateResolution Function()? onResolve;
   Object? resolveError;
 
@@ -53,7 +53,7 @@ class _FakeReleaseRepository implements ReleaseRepository {
   void advanceBaselineTo({required String version}) => throw UnimplementedError();
 }
 
-class _FakeInstallService implements UpdateInstallService {
+class _FakeInstallService() implements UpdateInstallService {
   UpdateInstallResult result = const UpdateInstallResult.staged(stagingPath: '/tmp/staging');
   int stageCount = 0;
 
@@ -64,7 +64,7 @@ class _FakeInstallService implements UpdateInstallService {
   }
 }
 
-class _FakeApplyService implements UpdateApplyService {
+class _FakeApplyService() implements UpdateApplyService {
   UpdateApplyOutcome Function(ReleaseInfo release)? onApply;
   int applyCount = 0;
 

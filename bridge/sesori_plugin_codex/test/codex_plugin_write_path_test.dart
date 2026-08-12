@@ -2018,8 +2018,7 @@ const Map<String, dynamic> _initOk = {
   "platformFamily": "unix",
 };
 
-class _Response {
-  const _Response({this.result, this.error, this.respond = true});
+class const _Response({this.result, this.error, this.respond = true}) {
   final Object? result;
   final Map<String, dynamic>? error;
   final bool respond;
@@ -2128,8 +2127,8 @@ String _processOutput({
 /// Fake app-server that records every method/params it received and
 /// replies in the order [respondInOrder] queued. Lets us push
 /// server-originated notifications via [pushNotification].
-class _FakeAppServer {
-  _FakeAppServer() {
+class _FakeAppServer() {
+  this {
     _clientToServer = StreamController<Object?>.broadcast();
     _serverToClient = StreamController<Object?>.broadcast();
     channel = _StubChannel(
@@ -2243,15 +2242,12 @@ class _FakeAppServer {
   }
 }
 
-class _SentFrame {
-  _SentFrame({required this.method, required this.params});
+class _SentFrame({required this.method, required this.params}) {
   final String method;
   final Map<String, dynamic>? params;
 }
 
-class _StubChannel implements WebSocketChannel {
-  _StubChannel({required this.stream, required this.sink});
-
+class _StubChannel({required this.stream, required this.sink}) implements WebSocketChannel {
   @override
   final Stream<dynamic> stream;
 
@@ -2271,8 +2267,7 @@ class _StubChannel implements WebSocketChannel {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SinkAdapter implements WebSocketSink {
-  _SinkAdapter(this._controller);
+class _SinkAdapter(this._controller) implements WebSocketSink {
   final StreamController<Object?> _controller;
 
   @override

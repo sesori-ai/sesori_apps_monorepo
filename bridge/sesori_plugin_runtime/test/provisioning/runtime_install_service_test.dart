@@ -6,9 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _FakeDownloadClient implements BinaryDownloadClient {
-  _FakeDownloadClient({this.exception});
-
+class _FakeDownloadClient({this.exception}) implements BinaryDownloadClient {
   static const int _byteCount = 4;
   static const List<int> _bytes = [1, 2, 3, 4];
   final DownloadException? exception;
@@ -24,9 +22,7 @@ class _FakeDownloadClient implements BinaryDownloadClient {
   }
 }
 
-class _FakeChecksumValidator implements ChecksumValidator {
-  _FakeChecksumValidator({required this.valid});
-
+class _FakeChecksumValidator({required this.valid}) implements ChecksumValidator {
   final bool valid;
 
   @override
@@ -36,9 +32,7 @@ class _FakeChecksumValidator implements ChecksumValidator {
   Future<String> computeSha256({required String filePath}) async => "deadbeef";
 }
 
-class _FakeArchiveExtractor implements ArchiveExtractor {
-  _FakeArchiveExtractor({required this.success});
-
+class _FakeArchiveExtractor({required this.success}) implements ArchiveExtractor {
   final bool success;
 
   @override
@@ -56,7 +50,7 @@ class _FakeArchiveExtractor implements ArchiveExtractor {
   }
 }
 
-class _FakeCommandExecutor implements CommandExecutor {
+class _FakeCommandExecutor() implements CommandExecutor {
   int chmodCalls = 0;
 
   @override

@@ -5,17 +5,15 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 
-class SessionListCubitProvider extends StatelessWidget {
-  final String projectId;
-  final bool? initialSupportsDedicatedWorktrees;
-  final Widget child;
-
-  const SessionListCubitProvider({
+class const SessionListCubitProvider({
     super.key,
     required this.projectId,
     required this.initialSupportsDedicatedWorktrees,
     required this.child,
-  });
+  }) extends StatelessWidget {
+  final String projectId;
+  final bool? initialSupportsDedicatedWorktrees;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {

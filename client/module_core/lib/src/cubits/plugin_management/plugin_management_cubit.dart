@@ -9,8 +9,8 @@ import "../../repositories/models/plugin_management_result.dart";
 import "../../services/plugin_management_service.dart";
 import "plugin_management_state.dart";
 
-class PluginManagementCubit extends Cubit<PluginManagementState> {
-  PluginManagementCubit({required PluginManagementService service, required UrlLauncher urlLauncher})
+class PluginManagementCubit({required PluginManagementService service, required UrlLauncher urlLauncher}) extends Cubit<PluginManagementState> {
+  this
     : _service = service,
       _urlLauncher = urlLauncher,
       super(const PluginManagementState.loading()) {

@@ -31,16 +31,14 @@ import "../prego_rolling_text.dart";
 ///   direction: PregoRollingTextDirection.up,
 /// )
 /// ```
-class PregoTotalBalance extends StatelessWidget {
-  const PregoTotalBalance({
+class const PregoTotalBalance({
     super.key,
     required this.currencySymbol,
     required this.integerPart,
     required this.fractionalPart,
     required this.collapseProgress,
     required this.direction,
-  });
-
+  }) extends StatelessWidget {
   /// The currency symbol displayed before the integer part (e.g. `$`).
   final String currencySymbol;
 

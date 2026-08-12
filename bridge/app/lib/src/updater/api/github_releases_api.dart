@@ -13,11 +13,11 @@ const _kGithubApiBaseUrl = 'https://api.github.com/repos/sesori-ai/sesori_apps_m
 const _kGithubReleasesPerPage = 100;
 const _kGithubReleasesMaxPages = 1;
 
-class GitHubReleasesApi {
+class GitHubReleasesApi({required http.Client httpClient, required String? authToken}) {
   final http.Client _httpClient;
   final String? _authToken;
 
-  GitHubReleasesApi({required http.Client httpClient, required String? authToken})
+  this
     : _httpClient = httpClient,
       _authToken = authToken;
 

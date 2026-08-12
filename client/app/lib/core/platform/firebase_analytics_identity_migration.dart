@@ -1,10 +1,10 @@
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-class FirebaseAnalyticsIdentityMigration {
+class const FirebaseAnalyticsIdentityMigration({required FirebaseAnalytics analytics}) {
   final FirebaseAnalytics _analytics;
 
-  const FirebaseAnalyticsIdentityMigration({required FirebaseAnalytics analytics}) : _analytics = analytics;
+  this : _analytics = analytics;
 
   Future<AnalyticsRuntimeCapability> clearLegacyIdentity({
     required AnalyticsRuntimeDisabledReason? disabledReasonAfterSuccess,

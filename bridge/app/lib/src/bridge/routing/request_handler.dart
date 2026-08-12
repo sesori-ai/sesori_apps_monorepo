@@ -10,10 +10,10 @@ import "routed_request.dart";
 
 export "http_method.dart";
 
-abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase {
-  GetRequestHandler(
+abstract class GetRequestHandler<RES extends Object>(
     String path,
-  ) : super(HttpMethod.get, path);
+  ) extends RequestHandlerBase {
+  this : super(HttpMethod.get, path);
 
   Future<RES> handle(
     RelayRequest request, {
@@ -61,14 +61,14 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
   }
 }
 
-abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandlerBase {
-  final REQ Function(Map<String, dynamic> json) _fromJson;
-
-  BodyRequestHandler(
+abstract class BodyRequestHandler<REQ, RES extends Object>(
     super.method,
     super.path, {
     required REQ Function(Map<String, dynamic> json) fromJson,
-  }) : _fromJson = fromJson;
+  }) extends RequestHandlerBase {
+  final REQ Function(Map<String, dynamic> json) _fromJson;
+
+  this : _fromJson = fromJson;
 
   @override
   Future<RelayResponse> handleInternal(
@@ -147,7 +147,7 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
 ///       : super(HttpMethod.get, "/session/:id/message");
 /// }
 /// ```
-abstract class RequestHandlerBase {
+abstract class const RequestHandlerBase(this.method, this.path) {
   /// HTTP method this handler responds to.
   final HttpMethod method;
 
@@ -156,8 +156,6 @@ abstract class RequestHandlerBase {
   ///
   /// Examples: `"/project"`, `"/session/:id/message"`.
   final String path;
-
-  const RequestHandlerBase(this.method, this.path);
 
   String get diagnosticLabel => "${method.diagnosticLabel} $path";
 

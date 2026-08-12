@@ -6,7 +6,7 @@ import "package:package_info_plus/package_info_plus.dart";
 import "package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-class _MockDeviceInfoPlugin extends Mock implements DeviceInfoPlugin;
+class _MockDeviceInfoPlugin() extends Mock implements DeviceInfoPlugin;
 
 MacOsDeviceInfo _macOsInfo({required String computerName}) {
   return MacOsDeviceInfo.setMockInitialValues(

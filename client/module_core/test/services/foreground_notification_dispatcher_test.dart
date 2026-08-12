@@ -92,7 +92,7 @@ void main() {
   });
 }
 
-class FakeNotificationPreferencesService extends Mock implements NotificationPreferencesService {
+class FakeNotificationPreferencesService() extends Mock implements NotificationPreferencesService {
   final Map<NotificationCategory, bool> enabledCategories = <NotificationCategory, bool>{};
 
   @override
@@ -101,7 +101,7 @@ class FakeNotificationPreferencesService extends Mock implements NotificationPre
   }
 }
 
-class RecordingLocalNotificationClient implements LocalNotificationClient {
+class RecordingLocalNotificationClient() implements LocalNotificationClient {
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
       StreamController<NotificationOpenRequest>.broadcast();
   final List<ShownNotification> shownNotifications = <ShownNotification>[];
@@ -142,7 +142,7 @@ class RecordingLocalNotificationClient implements LocalNotificationClient {
   }
 }
 
-class FakePushMessagingSource implements PushMessagingSource {
+class FakePushMessagingSource() implements PushMessagingSource {
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
@@ -181,22 +181,20 @@ class FakePushMessagingSource implements PushMessagingSource {
 }
 
 @immutable
-class ShownNotification {
-  final String title;
-  final String body;
-  final NotificationCategory category;
-  final String? sessionId;
-  final String? projectId;
-  final String? sessionTitle;
-
-  const ShownNotification({
+class const ShownNotification({
     required this.title,
     required this.body,
     required this.category,
     required this.sessionId,
     required this.projectId,
     required this.sessionTitle,
-  });
+  }) {
+  final String title;
+  final String body;
+  final NotificationCategory category;
+  final String? sessionId;
+  final String? projectId;
+  final String? sessionTitle;
 
   @override
   bool operator ==(Object other) {

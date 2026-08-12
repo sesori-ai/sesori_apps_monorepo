@@ -4,10 +4,10 @@ import "../repositories/provider_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /provider` — returns providers and their models.
-class GetProvidersHandler extends BodyRequestHandler<PluginProjectIdRequest, ProviderListResponse> {
+class GetProvidersHandler(this._repository) extends BodyRequestHandler<PluginProjectIdRequest, ProviderListResponse> {
   final ProviderRepository _repository;
 
-  GetProvidersHandler(this._repository)
+  this
     : super(
         HttpMethod.post,
         "/provider",

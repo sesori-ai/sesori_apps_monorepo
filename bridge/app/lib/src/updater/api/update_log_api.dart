@@ -11,12 +11,12 @@ import 'package:path/path.dart' as p;
 /// default level). The file is capped at [_maxBytes] with a single rotation to
 /// `.log.1`, and every line is passed through [_redact] so tokens/auth headers
 /// never land on disk.
-class UpdateLogApi {
-  UpdateLogApi({
+class UpdateLogApi({
     required this.installRoot,
     required this.clock,
     int maxBytes = 512 * 1024,
-  }) : _maxBytes = maxBytes;
+  }) {
+  this : _maxBytes = maxBytes;
 
   final String installRoot;
   final Clock clock;

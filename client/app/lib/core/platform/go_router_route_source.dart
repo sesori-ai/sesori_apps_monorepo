@@ -10,7 +10,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../routing/app_router.dart";
 
 @Singleton(as: RouteSource)
-class GoRouterRouteSource implements RouteSource, Disposable {
+class GoRouterRouteSource._({required GoRouterDelegate routerDelegate}) implements RouteSource, Disposable {
   final GoRouterDelegate _routerDelegate;
   final BehaviorSubject<AppRouteDef?> _currentRouteStream;
 
@@ -19,7 +19,7 @@ class GoRouterRouteSource implements RouteSource, Disposable {
   @visibleForTesting
   GoRouterRouteSource.test({required GoRouter router}) : this._(routerDelegate: router.routerDelegate);
 
-  GoRouterRouteSource._({required GoRouterDelegate routerDelegate})
+  this
     : _routerDelegate = routerDelegate,
       _currentRouteStream = BehaviorSubject.seeded(_matchRoute(_currentPath(routerDelegate.currentConfiguration))) {
     routerDelegate.addListener(_onRouteChanged);

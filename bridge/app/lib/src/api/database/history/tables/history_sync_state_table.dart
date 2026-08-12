@@ -7,7 +7,7 @@ import "package:drift/drift.dart";
 /// be a complete transcript. `backendActivityAt` is the staleness comparison
 /// target and is advanced only by observed backend activity — never by
 /// bridge-local metadata writes such as a rename.
-class HistorySyncStateTable extends Table {
+class HistorySyncStateTable() extends Table {
   @override
   String get tableName => "history_sync_state";
 

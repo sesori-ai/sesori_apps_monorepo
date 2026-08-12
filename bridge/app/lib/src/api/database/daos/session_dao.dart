@@ -45,11 +45,9 @@ typedef SessionPullRequestScopeUpdate = ({
 });
 
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
-class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
+class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
   static const _writeBatchSize = 500;
-
-  SessionDao(super.attachedDatabase);
 
   /// Sets the bridge-owned title copy for [sessionId] (null removes the copy).
   /// No-op for rowless sessions.

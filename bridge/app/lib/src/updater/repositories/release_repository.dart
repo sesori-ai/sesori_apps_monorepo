@@ -11,20 +11,20 @@ import '../models/github_release_dto.dart';
 import '../models/release_info.dart';
 import '../models/update_resolution.dart';
 
-class ReleaseRepository {
+class ReleaseRepository({
+    required GitHubReleasesApi api,
+    required UpdateCacheApi cache,
+    required String currentVersion,
+    required DistributionTarget target,
+    required ReleaseTrack track,
+  }) {
   final GitHubReleasesApi _api;
   final UpdateCacheApi _cache;
   SemanticVersion _currentVersion;
   final DistributionTarget _target;
   final ReleaseTrack _track;
 
-  ReleaseRepository({
-    required GitHubReleasesApi api,
-    required UpdateCacheApi cache,
-    required String currentVersion,
-    required DistributionTarget target,
-    required ReleaseTrack track,
-  }) : _api = api,
+  this : _api = api,
        _cache = cache,
        _currentVersion = SemanticVersion.parse(value: currentVersion),
        _target = target,

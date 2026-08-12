@@ -120,8 +120,8 @@ void main() {
 
 typedef _TransportCall = ({String method, Object? params});
 
-class _FakeTransport implements CodexAppServerTransport {
-  _FakeTransport({required List<Object?> responses}) : _responses = List<Object?>.of(responses);
+class _FakeTransport({required List<Object?> responses}) implements CodexAppServerTransport {
+  this : _responses = List<Object?>.of(responses);
 
   final List<Object?> _responses;
   final List<_TransportCall> calls = <_TransportCall>[];

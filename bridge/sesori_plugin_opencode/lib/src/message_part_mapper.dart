@@ -23,11 +23,7 @@ import "models/openapi/tool_state_error.g.dart";
 import "models/openapi/tool_state_pending.g.dart";
 import "models/openapi/tool_state_running.g.dart";
 
-class MessagePartMapper {
-  const MessagePartMapper();
-
-  // OpenCode emits compaction as a user message without text, so restore the
-  // equivalent built-in command for both manual and automatic compaction.
+class const MessagePartMapper() {
   static const String _compactionCommandText = "/compact";
   static const int _maxDataUrlHeaderCharacters = 256;
   static const int _maxRemoteUrlCharacters = 4096;

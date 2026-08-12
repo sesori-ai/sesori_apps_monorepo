@@ -206,7 +206,7 @@ final _isNotFound = isA<PluginOperationException>().having((error) => error.isNo
 
 Future<void> _flushEvents() => Future<void>.delayed(Duration.zero);
 
-class _Fixture {
+class _Fixture() {
   late final _FamilyRepository repository;
   late final SessionOperationDispatcher operations;
   late final SessionMutationDispatcher mutations;
@@ -215,7 +215,7 @@ class _Fixture {
   late final SessionDeletionService deletions;
   late final TestChatHistory chatHistory;
 
-  _Fixture() {
+  this {
     repository = _FamilyRepository();
     operations = SessionOperationDispatcher(sessionRepository: repository);
     mutations = SessionMutationDispatcher(
@@ -273,7 +273,7 @@ class _Fixture {
   }
 }
 
-class _FamilyRepository implements SessionRepository {
+class _FamilyRepository() implements SessionRepository {
   final Map<String, _SessionRecord> _sessions = {
     "root": _SessionRecord(id: "root", rootId: "root", parentId: null, pluginId: "one"),
     "child": _SessionRecord(id: "child", rootId: "root", parentId: "root", pluginId: "one"),
@@ -412,7 +412,12 @@ class _FamilyRepository implements SessionRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SessionRecord {
+class _SessionRecord({
+    required this.id,
+    required this.rootId,
+    required this.parentId,
+    required this.pluginId,
+  }) {
   final String id;
   final String rootId;
   final String? parentId;
@@ -420,12 +425,7 @@ class _SessionRecord {
   String? title;
   int? archivedAt;
 
-  _SessionRecord({
-    required this.id,
-    required this.rootId,
-    required this.parentId,
-    required this.pluginId,
-  }) : title = id;
+  this : title = id;
 
   StoredSession get stored => StoredSession(
     id: id,
@@ -456,7 +456,7 @@ class _SessionRecord {
   );
 }
 
-class _FamilyWorktreeService implements WorktreeService {
+class _FamilyWorktreeService() implements WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
 
   @override
@@ -484,7 +484,7 @@ class _FamilyWorktreeService implements WorktreeService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _MissingFilesystemRepository implements FilesystemRepository {
+class _MissingFilesystemRepository() implements FilesystemRepository {
   @override
   bool directoryExists({required String path}) => false;
 

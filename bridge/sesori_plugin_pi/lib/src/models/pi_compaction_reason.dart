@@ -1,10 +1,8 @@
 /// Why Pi started a compaction, from Pi v0.84.1's closed reason set.
-enum PiCompactionReason {
+enum PiCompactionReason(this.wireValue) {
   manual("manual"),
   threshold("threshold"),
   overflow("overflow");
-
-  PiCompactionReason(this.wireValue);
 
   final String wireValue;
 

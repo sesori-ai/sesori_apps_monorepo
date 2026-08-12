@@ -31,10 +31,8 @@ int decodedBase64Length({required String base64Data}) {
   return (base64Data.length * 3 ~/ 4) - padding;
 }
 
-final class _MalformedMessageAttachmentError implements Exception {
+final class const _MalformedMessageAttachmentError({required this.innerError}) implements Exception {
   final Object innerError;
-
-  const _MalformedMessageAttachmentError({required this.innerError});
 
   @override
   String toString() => "Malformed message attachment payload";
@@ -74,7 +72,7 @@ List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
 }
 
 @JsonEnum()
-enum MessagePartType {
+enum MessagePartType() {
   @JsonValue("text")
   text,
   @JsonValue("reasoning")
@@ -102,7 +100,7 @@ enum MessagePartType {
 }
 
 @JsonEnum()
-enum MessageAttachmentDelivery { inline, storedReference }
+enum MessageAttachmentDelivery() { inline, storedReference }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class MessagePart with _$MessagePart {
@@ -196,7 +194,7 @@ extension MessageAttachmentSafety on MessageAttachment {
 /// `status` discriminator 1:1; [unknown] is the forward-compatible fallback for
 /// any status a newer bridge emits that this client does not yet model.
 @JsonEnum()
-enum ToolStatus {
+enum ToolStatus() {
   @JsonValue("pending")
   pending,
   @JsonValue("running")

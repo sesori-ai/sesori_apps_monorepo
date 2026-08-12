@@ -19,7 +19,13 @@ import "../../../core/extensions/build_context_x.dart";
 ///
 /// Rows without a timestamp ([createdAtMs] is null — e.g. the synthetic
 /// retry-error row) still translate in lockstep but render no gutter.
-class MessageTimestampReveal extends StatelessWidget {
+class const MessageTimestampReveal({
+    super.key,
+    required this.progress,
+    required this.maxReveal,
+    required this.createdAtMs,
+    required this.child,
+  }) extends StatelessWidget {
   /// Shared reveal progress, clamped to `[0, 1]` at use.
   final Animation<double> progress;
 
@@ -32,14 +38,6 @@ class MessageTimestampReveal extends StatelessWidget {
   final int? createdAtMs;
 
   final Widget child;
-
-  const MessageTimestampReveal({
-    super.key,
-    required this.progress,
-    required this.maxReveal,
-    required this.createdAtMs,
-    required this.child,
-  });
 
   @override
   Widget build(BuildContext context) {

@@ -2,8 +2,8 @@ import "dart:async";
 
 import "package:test/test.dart";
 
-class _SocketMessageHarness {
-  _SocketMessageHarness({required Object encryptor}) : _sessionEncryptor = encryptor;
+class _SocketMessageHarness({required Object encryptor}) {
+  this : _sessionEncryptor = encryptor;
 
   Object? _sessionEncryptor;
   bool _disposed = false;

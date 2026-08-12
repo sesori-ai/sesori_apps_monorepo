@@ -9,12 +9,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 /// Interactive capable terminals receive an in-place spinner. Redirected or
 /// limited terminals receive one static status line instead, so the bridge's
 /// state remains understandable without ANSI cursor control.
-class AppConnectionWaitIndicator {
-  AppConnectionWaitIndicator({
+class AppConnectionWaitIndicator({
     required Stdout out,
     required Map<String, String> environment,
     required Duration frameInterval,
-  }) : _out = out,
+  }) {
+  this : _out = out,
        _frameInterval = frameInterval,
        _unicode = TerminalGlyphValidator.isSupported(environment: environment),
        _animated = _canAnimate(out: out, environment: environment);

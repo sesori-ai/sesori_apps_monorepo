@@ -20,7 +20,14 @@ import '../models/update_result.dart';
 /// terminal output. Composition wires a sink backed by a rendering listener
 /// (the explicit `update` command) or a no-listener drain (the background
 /// updater).
-class UpdateArtifactRepository {
+class UpdateArtifactRepository({
+    required BinaryDownloadClient downloadClient,
+    required ChecksumManifestApi checksumManifestApi,
+    required ChecksumValidator checksumValidator,
+    required ArchiveExtractor archiveExtractor,
+    required ArchiveFormat archiveFormat,
+    required StreamSink<DownloadProgress> progressSink,
+  }) {
   final BinaryDownloadClient _downloadClient;
   final ChecksumManifestApi _checksumManifestApi;
   final ChecksumValidator _checksumValidator;
@@ -28,14 +35,7 @@ class UpdateArtifactRepository {
   final ArchiveFormat _archiveFormat;
   final StreamSink<DownloadProgress> _progressSink;
 
-  UpdateArtifactRepository({
-    required BinaryDownloadClient downloadClient,
-    required ChecksumManifestApi checksumManifestApi,
-    required ChecksumValidator checksumValidator,
-    required ArchiveExtractor archiveExtractor,
-    required ArchiveFormat archiveFormat,
-    required StreamSink<DownloadProgress> progressSink,
-  }) : _downloadClient = downloadClient,
+  this : _downloadClient = downloadClient,
        _checksumManifestApi = checksumManifestApi,
        _checksumValidator = checksumValidator,
        _archiveExtractor = archiveExtractor,

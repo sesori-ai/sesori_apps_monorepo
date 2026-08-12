@@ -7,14 +7,14 @@ import "../capabilities/notifications/register_token_request.dart";
 import "../logging/logging.dart";
 
 @lazySingleton
-class NotificationRepository {
+class NotificationRepository({
+    required NotificationApi api,
+    required NotificationPreferencesDeviceIdStorage deviceIdStorage,
+  }) {
   final NotificationApi _api;
   final NotificationPreferencesDeviceIdStorage _deviceIdStorage;
 
-  NotificationRepository({
-    required NotificationApi api,
-    required NotificationPreferencesDeviceIdStorage deviceIdStorage,
-  }) : _api = api,
+  this : _api = api,
        _deviceIdStorage = deviceIdStorage;
 
   /// Sends the same device ID the notification settings are stored under, so the

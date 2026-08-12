@@ -1396,7 +1396,7 @@ void main() {
   });
 }
 
-class _FakeCursorSessionCleanupService implements CursorSessionCleanupService {
+class _FakeCursorSessionCleanupService() implements CursorSessionCleanupService {
   final List<String> deletedSessionIds = [];
 
   @override

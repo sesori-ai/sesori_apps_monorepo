@@ -6,38 +6,24 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/session_options_cache_key.dart";
 import "../repositories/session_options_repository.dart";
 
-sealed class SessionOptionsOutcome {
-  const SessionOptionsOutcome();
-}
+sealed class const SessionOptionsOutcome();
 
-final class SessionOptionsAvailable extends SessionOptionsOutcome {
-  const SessionOptionsAvailable({required this.response});
-
+final class const SessionOptionsAvailable({required this.response}) extends SessionOptionsOutcome {
   final SessionOptionsResponse response;
 }
 
-final class SessionOptionsCacheUnavailable extends SessionOptionsOutcome {
-  const SessionOptionsCacheUnavailable();
-}
+final class const SessionOptionsCacheUnavailable() extends SessionOptionsOutcome;
 
-final class SessionOptionsProjectNotFound extends SessionOptionsOutcome {
-  const SessionOptionsProjectNotFound();
-}
+final class const SessionOptionsProjectNotFound() extends SessionOptionsOutcome;
 
-sealed class SessionOptionsRefreshFailure {
-  const SessionOptionsRefreshFailure();
-}
+sealed class const SessionOptionsRefreshFailure();
 
-final class SessionOptionsKnownRefreshFailure extends SessionOptionsRefreshFailure {
-  const SessionOptionsKnownRefreshFailure();
-}
+final class const SessionOptionsKnownRefreshFailure() extends SessionOptionsRefreshFailure;
 
-final class SessionOptionsCaughtRefreshFailure extends SessionOptionsRefreshFailure {
-  const SessionOptionsCaughtRefreshFailure({
+final class const SessionOptionsCaughtRefreshFailure({
     required this.cause,
     required this.causeStackTrace,
-  });
-
+  }) extends SessionOptionsRefreshFailure {
   final Object cause;
   final StackTrace causeStackTrace;
 
@@ -45,29 +31,23 @@ final class SessionOptionsCaughtRefreshFailure extends SessionOptionsRefreshFail
   String toString() => "SessionOptionsCaughtRefreshFailure";
 }
 
-final class SessionOptionsRefreshFailedRetained extends SessionOptionsOutcome {
-  const SessionOptionsRefreshFailedRetained({required this.failure});
-
+final class const SessionOptionsRefreshFailedRetained({required this.failure}) extends SessionOptionsOutcome {
   final SessionOptionsRefreshFailure failure;
 }
 
-final class SessionOptionsRefreshFailedUnavailable extends SessionOptionsOutcome {
-  const SessionOptionsRefreshFailedUnavailable({required this.failure});
-
+final class const SessionOptionsRefreshFailedUnavailable({required this.failure}) extends SessionOptionsOutcome {
   final SessionOptionsRefreshFailure failure;
 }
 
-final class SessionOptionsAutomaticNoOp extends SessionOptionsOutcome {
-  const SessionOptionsAutomaticNoOp();
-}
+final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 
-class SessionOptionsService {
-  SessionOptionsService({
+class SessionOptionsService({
     required SessionOptionsRepository repository,
     required Map<String, PluginSessionOptionsScope> pluginScopes,
     required ServerClock clock,
     required Duration retention,
-  }) : _repository = repository,
+  }) {
+  this : _repository = repository,
        _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes),
        _clock = clock,
        _retention = retention {
@@ -633,27 +613,23 @@ class SessionOptionsService {
   }
 }
 
-final class _ResolvedSessionOptions {
-  const _ResolvedSessionOptions({
+final class const _ResolvedSessionOptions({
     required this.key,
     required this.projectId,
     required this.projectPath,
-  });
-
+  }) {
   final SessionOptionsCacheKey key;
   final String projectId;
   final String projectPath;
 }
 
-enum _RefreshIntent { reuse, forced }
+enum _RefreshIntent() { reuse, forced }
 
-final class _RefreshCoordinator {
-  _RefreshCoordinator({
+final class _RefreshCoordinator({
     required this.intent,
     required this.generation,
     required this.running,
-  });
-
+  }) {
   _RefreshIntent intent;
   int? generation;
   Future<SessionOptionsOutcome> running;
@@ -662,20 +638,12 @@ final class _RefreshCoordinator {
   Future<SessionOptionsOutcome>? forcedTail;
 }
 
-sealed class _CommitAttempt {
-  const _CommitAttempt();
-}
+sealed class const _CommitAttempt();
 
-final class _CommitSucceeded extends _CommitAttempt {
-  const _CommitSucceeded();
-}
+final class const _CommitSucceeded() extends _CommitAttempt;
 
-final class _CommitConflict extends _CommitAttempt {
-  const _CommitConflict();
-}
+final class const _CommitConflict() extends _CommitAttempt;
 
-final class _CommitFailed extends _CommitAttempt {
-  const _CommitFailed({required this.outcome});
-
+final class const _CommitFailed({required this.outcome}) extends _CommitAttempt {
   final SessionOptionsOutcome outcome;
 }

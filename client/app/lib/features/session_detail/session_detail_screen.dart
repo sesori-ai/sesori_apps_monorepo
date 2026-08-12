@@ -8,21 +8,19 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/di/injection.dart";
 import "widgets/session_detail_body.dart";
 
-class SessionDetailScreen extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final String sessionId;
-  final String? sessionTitle;
-  final bool readOnly;
-
-  const SessionDetailScreen({
+class const SessionDetailScreen({
     super.key,
     required this.projectId,
     required this.projectName,
     required this.sessionId,
     this.sessionTitle,
     this.readOnly = false,
-  });
+  }) extends StatelessWidget {
+  final String projectId;
+  final String? projectName;
+  final String sessionId;
+  final String? sessionTitle;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -55,16 +53,14 @@ class SessionDetailScreen extends StatelessWidget {
   }
 }
 
-class _SessionActivityAnalyticsOwner extends StatefulWidget {
+class const _SessionActivityAnalyticsOwner({required this.child}) extends StatefulWidget {
   final Widget child;
-
-  const _SessionActivityAnalyticsOwner({required this.child});
 
   @override
   State<_SessionActivityAnalyticsOwner> createState() => _SessionActivityAnalyticsOwnerState();
 }
 
-class _SessionActivityAnalyticsOwnerState extends State<_SessionActivityAnalyticsOwner> {
+class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
   SessionActivityAnalyticsListener? _listener;
 
   @override

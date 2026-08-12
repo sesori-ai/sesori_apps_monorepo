@@ -5,8 +5,8 @@ import "dart:io";
 import "../api/pi_process_factory.dart";
 
 /// In-memory [PiProcessHandle] for Pi transport and plugin tests.
-class FakePiProcess implements PiProcessHandle {
-  FakePiProcess({bool stdinCloseCompletes = true, bool stdinWritesFail = false})
+class FakePiProcess({bool stdinCloseCompletes = true, bool stdinWritesFail = false}) implements PiProcessHandle {
+  this
     : _stdin = CapturingIOSink(closeCompletes: stdinCloseCompletes, writesFail: stdinWritesFail);
 
   final StreamController<List<int>> _stdout = StreamController<List<int>>();
@@ -104,8 +104,8 @@ class FakePiProcess implements PiProcessHandle {
 /// Minimal [IOSink] capturing `add`-ed bytes and decoding complete JSONL
 /// records into [frames]. Only `add` and `close` are exercised by the
 /// transport.
-class CapturingIOSink implements IOSink {
-  CapturingIOSink({bool closeCompletes = true, bool writesFail = false})
+class CapturingIOSink({bool closeCompletes = true, bool writesFail = false}) implements IOSink {
+  this
     : _closeCompleter = closeCompletes ? null : Completer<void>(),
       _writesFail = writesFail;
 

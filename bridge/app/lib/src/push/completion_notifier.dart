@@ -9,7 +9,10 @@ import "push_session_state_tracker.dart";
 /// Tracks when session groups transition from busy to idle and fires
 /// a stream event after a debounce period, provided no pending interactions
 /// (questions/permissions) block it.
-class CompletionNotifier {
+class CompletionNotifier({
+    required PushSessionStateTracker tracker,
+    Duration debounceDuration = const Duration(milliseconds: 500),
+  }) {
   final PushSessionStateTracker _tracker;
   final Duration _debounceDuration;
   final StreamController<String> _completionController = StreamController<String>.broadcast();
@@ -28,10 +31,7 @@ class CompletionNotifier {
 
   int get abortedRootCount => _abortedRoots.length;
 
-  CompletionNotifier({
-    required PushSessionStateTracker tracker,
-    Duration debounceDuration = const Duration(milliseconds: 500),
-  }) : _tracker = tracker,
+  this : _tracker = tracker,
        _debounceDuration = debounceDuration;
 
   void markSessionAbortPending(String sessionId) {

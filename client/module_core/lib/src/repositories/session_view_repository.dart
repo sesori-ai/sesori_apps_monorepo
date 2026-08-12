@@ -6,10 +6,10 @@ import "../api/session_view_api.dart";
 /// [SessionViewApi] — present to satisfy the mandatory repository boundary
 /// between services (Layer 3) and APIs (Layer 1).
 @lazySingleton
-class SessionViewRepository {
+class SessionViewRepository({required SessionViewApi api}) {
   final SessionViewApi _api;
 
-  SessionViewRepository({required SessionViewApi api}) : _api = api;
+  this : _api = api;
 
   Future<void> sendSessionView({required String? sessionId}) {
     return _api.sendSessionView(sessionId: sessionId);

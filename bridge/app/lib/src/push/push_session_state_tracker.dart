@@ -4,13 +4,13 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "push_session_state_tracker_types.dart";
 
-class PushSessionStateTracker {
+class PushSessionStateTracker({required DateTime Function() now}) {
   final Map<String, _PushTrackedSessionState> _sessions = {};
   final Map<String, _PushTrackedMessageRole> _messageRoles = {};
   final Map<String, String> _permissionRequestToSession = {};
   final DateTime Function() _now;
 
-  PushSessionStateTracker({required DateTime Function() now}) : _now = now;
+  this : _now = now;
 
   void handleEvent(SesoriSseEvent event) {
     final now = _now();
@@ -532,7 +532,7 @@ class PushSessionStateTracker {
   }
 }
 
-final class _PushTrackedSessionState {
+final class _PushTrackedSessionState() {
   String? parentId;
   String? projectId;
   String? title;
@@ -546,14 +546,12 @@ final class _PushTrackedSessionState {
   DateTime? lastTouchedAt;
 }
 
-final class _PushTrackedMessageRole {
-  final String role;
-  final String sessionId;
-  final DateTime updatedAt;
-
-  const _PushTrackedMessageRole({
+final class const _PushTrackedMessageRole({
     required this.role,
     required this.sessionId,
     required this.updatedAt,
-  });
+  }) {
+  final String role;
+  final String sessionId;
+  final DateTime updatedAt;
 }

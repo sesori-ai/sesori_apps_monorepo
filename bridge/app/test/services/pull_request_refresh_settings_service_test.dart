@@ -134,9 +134,7 @@ void main() {
   });
 }
 
-class _MemoryBridgeSettingsApi implements BridgeSettingsApi {
-  _MemoryBridgeSettingsApi({required this.config});
-
+class _MemoryBridgeSettingsApi({required this.config}) implements BridgeSettingsApi {
   String? config;
   int writeCount = 0;
   Completer<void>? writeStarted;

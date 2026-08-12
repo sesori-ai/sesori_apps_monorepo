@@ -11,9 +11,7 @@ import "open_code_ownership_record.dart";
 /// accessors extract the identity fields the supervisor uses for process
 /// matching and stale-cleanup authorization, and the `mark*` helpers flip the
 /// status field via freezed `copyWith`.
-class OpenCodeRecordMapper implements RuntimeRecordMapper<OpenCodeOwnershipRecord> {
-  const OpenCodeRecordMapper();
-
+class const OpenCodeRecordMapper() implements RuntimeRecordMapper<OpenCodeOwnershipRecord> {
   @override
   Map<String, dynamic> toJson({required OpenCodeOwnershipRecord record}) => record.toJson();
 

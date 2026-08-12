@@ -33,7 +33,7 @@ const _defaultOptions = (
   warmup: 2,
 );
 
-enum _Implementation { sync, isolate }
+enum _Implementation() { sync, isolate }
 
 Future<void> main(List<String> arguments) async {
   Directory? codexHome;

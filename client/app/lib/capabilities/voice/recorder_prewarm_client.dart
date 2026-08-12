@@ -3,7 +3,7 @@ import "package:injectable/injectable.dart";
 import "package:universal_platform/universal_platform.dart";
 
 @lazySingleton
-class RecorderPrewarmClient {
+class RecorderPrewarmClient() {
   static const _channel = MethodChannel("com.sesori.app/recorder-prewarm");
 
   Future<void> prewarm({

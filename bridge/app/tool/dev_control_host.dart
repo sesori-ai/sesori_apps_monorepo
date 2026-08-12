@@ -144,13 +144,13 @@ Future<Never> _flushAndExit(int code) async {
 /// the single connected helper socket, and the pending-prompt bookkeeping. It
 /// speaks the real [ControlMessage] wire protocol so it stays on the exact
 /// GUI<->helper contract the desktop app will implement in Phase 2.
-class _DevControlHost {
-  _DevControlHost({
+class _DevControlHost({
     required String bridgePath,
     required List<String> bridgeArgs,
     required String? token,
     required bool denyToken,
-  })  : _bridgePath = bridgePath,
+  }) {
+  this  : _bridgePath = bridgePath,
         _bridgeArgs = bridgeArgs,
         _token = token,
         _denyToken = denyToken,

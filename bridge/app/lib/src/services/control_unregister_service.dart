@@ -19,7 +19,11 @@ import "../auth/bridge_registration_service.dart";
 /// this class owns no subscription or correlation state of its own. The
 /// process-termination effect is injected ([_terminate]) so the composition root
 /// keeps ownership of the graceful-shutdown-then-exit path.
-class ControlUnregisterService {
+class ControlUnregisterService({
+    required BridgeRegistrationService registrationService,
+    required Future<void> Function() terminate,
+    Duration unregisterTimeout = _defaultUnregisterTimeout,
+  }) {
   /// The unregister DELETE is a single machine-to-server call with a
   /// GUI-supplied (already cached) token, so it should be quick. Bounding it
   /// keeps a stalled network (silent packet loss / blackhole) from hanging the
@@ -32,11 +36,7 @@ class ControlUnregisterService {
   final Future<void> Function() _terminate;
   final Duration _unregisterTimeout;
 
-  ControlUnregisterService({
-    required BridgeRegistrationService registrationService,
-    required Future<void> Function() terminate,
-    Duration unregisterTimeout = _defaultUnregisterTimeout,
-  })  : _registrationService = registrationService,
+  this  : _registrationService = registrationService,
         _terminate = terminate,
         _unregisterTimeout = unregisterTimeout;
 

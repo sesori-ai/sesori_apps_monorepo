@@ -5,30 +5,27 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "plugin_generation_factory.dart";
 
-enum PluginRuntimeAccessGate { enabled, draining, disabled }
+enum PluginRuntimeAccessGate() { enabled, draining, disabled }
 
-class PluginRuntimeAccess {
-  const PluginRuntimeAccess({
+class const PluginRuntimeAccess({
     required this.pluginId,
     required this.gate,
     required this.startAllowed,
-  });
-
+  }) {
   final String pluginId;
   final PluginRuntimeAccessGate gate;
   final bool startAllowed;
 }
 
-enum PluginRuntimeState { disabled, blocked, dormant, starting, active, degraded, stopping, failed }
+enum PluginRuntimeState() { disabled, blocked, dormant, starting, active, degraded, stopping, failed }
 
-enum PluginRuntimeTransition { none, starting, stopping, restarting }
+enum PluginRuntimeTransition() { none, starting, stopping, restarting }
 
-enum PluginStopIntent { safe, force }
+enum PluginStopIntent() { safe, force }
 
-enum PluginRuntimeConflictReason { inFlight, busy, workStateUnknown, transitioning, notEligible }
+enum PluginRuntimeConflictReason() { inFlight, busy, workStateUnknown, transitioning, notEligible }
 
-class PluginRuntimeSnapshot {
-  const PluginRuntimeSnapshot({
+class const PluginRuntimeSnapshot({
     required this.pluginId,
     required this.projectOwnership,
     required this.setup,
@@ -39,8 +36,7 @@ class PluginRuntimeSnapshot {
     required this.workState,
     required this.leaseCount,
     required this.transition,
-  });
-
+  }) {
   final String pluginId;
   final PluginProjectOwnership projectOwnership;
   final PluginSetupStatus setup;
@@ -63,48 +59,36 @@ typedef SourcedPluginRuntimeEvent = ({
 });
 typedef SourcedPluginProvisionProgress = ({String pluginId, RuntimeProvisionProgress event});
 
-class PluginRuntimeAuthenticationOperation {
-  const PluginRuntimeAuthenticationOperation({required this.events, required this.abort});
-
+class const PluginRuntimeAuthenticationOperation({required this.events, required this.abort}) {
   final Stream<PluginAuthenticationEvent> events;
   final void Function() abort;
 }
 
-sealed class PluginRuntimeCommandResult {
-  const PluginRuntimeCommandResult({required this.snapshot});
-
+sealed class const PluginRuntimeCommandResult({required this.snapshot}) {
   final PluginRuntimeSnapshot snapshot;
 }
 
-final class PluginRuntimeCommandApplied extends PluginRuntimeCommandResult {
-  const PluginRuntimeCommandApplied({required super.snapshot});
-}
+final class const PluginRuntimeCommandApplied({required super.snapshot}) extends PluginRuntimeCommandResult;
 
-final class PluginRuntimeCommandCurrent extends PluginRuntimeCommandResult {
-  const PluginRuntimeCommandCurrent({required super.snapshot});
-}
+final class const PluginRuntimeCommandCurrent({required super.snapshot}) extends PluginRuntimeCommandResult;
 
-final class PluginRuntimeCommandConflict extends PluginRuntimeCommandResult {
-  const PluginRuntimeCommandConflict({required super.snapshot, required this.reasons});
-
+final class const PluginRuntimeCommandConflict({required super.snapshot, required this.reasons}) extends PluginRuntimeCommandResult {
   final List<PluginRuntimeConflictReason> reasons;
 }
 
-final class PluginRuntimeCommandFailed extends PluginRuntimeCommandResult {
-  const PluginRuntimeCommandFailed({required super.snapshot, required this.message});
-
+final class const PluginRuntimeCommandFailed({required super.snapshot, required this.message}) extends PluginRuntimeCommandResult {
   final String message;
 }
 
-class PluginRuntime {
-  PluginRuntime({
+class PluginRuntime({
     required List<PluginRuntimeRegistration> registrations,
     required PluginGenerationFactory generationFactory,
     required HostProcessService setupProcesses,
     required Map<String, String> environment,
     required ServerClock clock,
     required Duration shutdownBudget,
-  }) : _generationFactory = generationFactory,
+  }) {
+  this : _generationFactory = generationFactory,
        _setupProcesses = setupProcesses,
        _environment = Map<String, String>.unmodifiable(environment),
        _clock = clock,
@@ -1872,9 +1856,7 @@ class PluginRuntime {
   }
 }
 
-class _PluginRuntimeSlot {
-  _PluginRuntimeSlot({required this.registration});
-
+class _PluginRuntimeSlot({required this.registration}) {
   final PluginRuntimeRegistration registration;
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);
   PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.disabled;
@@ -1904,9 +1886,7 @@ class _PluginRuntimeSlot {
   final Set<Future<void> Function()> operationStreamCancellations = <Future<void> Function()>{};
 }
 
-class _PluginLease {
-  const _PluginLease({required this.slot, required this.generation, required this.api});
-
+class const _PluginLease({required this.slot, required this.generation, required this.api}) {
   final _PluginRuntimeSlot slot;
   final int generation;
   final BridgePluginApi api;

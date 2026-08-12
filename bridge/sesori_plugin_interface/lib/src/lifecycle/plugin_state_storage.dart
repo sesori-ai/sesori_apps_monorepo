@@ -1,5 +1,5 @@
 /// On-disk storage layouts a plugin can request from the bridge host.
-enum PluginStateStorage {
+enum PluginStateStorage() {
   /// Private state under `<installRoot>/plugins/<pluginId>`.
   isolated,
 

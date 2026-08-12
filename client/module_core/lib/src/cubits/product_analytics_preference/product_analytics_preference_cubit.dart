@@ -6,11 +6,11 @@ import "../../foundation/models/product_analytics/product_analytics_preference.d
 import "../../services/models/product_analytics_state.dart";
 import "../../services/product_analytics_service.dart";
 
-class ProductAnalyticsPreferenceCubit extends Cubit<ProductAnalyticsState> {
+class ProductAnalyticsPreferenceCubit({required ProductAnalyticsService service}) extends Cubit<ProductAnalyticsState> {
   final ProductAnalyticsService _service;
   late final StreamSubscription<ProductAnalyticsState> _subscription;
 
-  ProductAnalyticsPreferenceCubit({required ProductAnalyticsService service})
+  this
     : _service = service,
       super(service.state) {
     _subscription = service.stateStream.skip(1).listen((state) {

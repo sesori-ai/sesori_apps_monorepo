@@ -17,7 +17,21 @@ import "services/cursor_session_options_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
-class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
+class CursorPlugin._({
+    required super.launchSpec,
+    required super.launchDirectory,
+    required super.contentMapper,
+    required CursorEventMapper mapper,
+    required CursorCatalogService catalogService,
+    required AcpCommandListener catalogCommandListener,
+    required CursorCatalogTracker catalogTracker,
+    required CursorSessionOptionsService cursorSessionOptionsService,
+    required AcpSessionConfigurationTracker configurationTracker,
+    required super.commandTracker,
+    required super.sessionOptionsService,
+    required CursorSessionCleanupService sessionCleanupService,
+    super.processFactory,
+  }) extends AcpPlugin implements PersistedSessionCleanupApi {
   static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
 
@@ -103,21 +117,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     );
   }
 
-  CursorPlugin._({
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.contentMapper,
-    required CursorEventMapper mapper,
-    required CursorCatalogService catalogService,
-    required AcpCommandListener catalogCommandListener,
-    required CursorCatalogTracker catalogTracker,
-    required CursorSessionOptionsService cursorSessionOptionsService,
-    required AcpSessionConfigurationTracker configurationTracker,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    required CursorSessionCleanupService sessionCleanupService,
-    super.processFactory,
-  }) : _catalogService = catalogService,
+  this : _catalogService = catalogService,
        _catalogCommandListener = catalogCommandListener,
        _catalogTracker = catalogTracker,
        _sessionOptionsService = cursorSessionOptionsService,

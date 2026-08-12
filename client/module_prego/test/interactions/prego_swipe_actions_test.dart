@@ -21,7 +21,7 @@ const double _revealWidth = 204;
 const double _primaryWidth = 136;
 const double _leadingWidth = 120;
 
-class _Counters {
+class _Counters() {
   int contentTaps = 0;
   int actionTaps = 0;
   int primaryTaps = 0;

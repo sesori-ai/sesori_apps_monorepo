@@ -50,22 +50,20 @@ typedef PluginInstallProgressUpdate = ({
 
 typedef PluginAuthenticationProgressUpdate = ({String pluginId, PluginAuthenticationProgress progress});
 
-class PluginIdleTimerScheduler {
-  const PluginIdleTimerScheduler();
-
+class const PluginIdleTimerScheduler() {
   Timer schedule({required Duration duration, required void Function() onElapsed}) {
     return Timer(duration, onElapsed);
   }
 }
 
-class PluginLifecycleService {
-  PluginLifecycleService({
+class PluginLifecycleService({
     required PluginLifecycleRepository lifecycleRepository,
     required String preferredDefaultPluginId,
     required BridgeSettingsRepository bridgeSettingsRepository,
     required PluginIdleTimerScheduler idleTimerScheduler,
     required BridgeIdProvider bridgeIdProvider,
-  }) : _lifecycleRepository = lifecycleRepository,
+  }) {
+  this : _lifecycleRepository = lifecycleRepository,
        _preferredDefaultPluginId = preferredDefaultPluginId,
        _bridgeSettingsRepository = bridgeSettingsRepository,
        _idleTimerScheduler = idleTimerScheduler,
@@ -1422,20 +1420,18 @@ class PluginLifecycleService {
 }
 
 @immutable
-final class _PluginManagementSnapshot {
+final class const _PluginManagementSnapshot({
+    required this.snapshotToken,
+    required this.defaultPluginId,
+    required this.defaultIdleTimeoutMins,
+    required this.plugins,
+  }) {
   static const _pluginsEquality = ListEquality<PluginManagementMetadata>();
 
   final String? snapshotToken;
   final String? defaultPluginId;
   final int defaultIdleTimeoutMins;
   final List<PluginManagementMetadata> plugins;
-
-  const _PluginManagementSnapshot({
-    required this.snapshotToken,
-    required this.defaultPluginId,
-    required this.defaultIdleTimeoutMins,
-    required this.plugins,
-  });
 
   _PluginManagementSnapshot withSnapshotToken({required String snapshotToken}) {
     return _PluginManagementSnapshot(
@@ -1467,51 +1463,35 @@ final class _PluginManagementSnapshot {
   }
 }
 
-class PluginManagementPluginNotFoundException implements Exception {
-  const PluginManagementPluginNotFoundException(this.pluginId);
-
+class const PluginManagementPluginNotFoundException(this.pluginId) implements Exception {
   final String pluginId;
 }
 
-class PluginManagementConflictException implements Exception {
-  const PluginManagementConflictException(this.conflict);
-
+class const PluginManagementConflictException(this.conflict) implements Exception {
   final PluginLifecycleConflict conflict;
 }
 
-class PluginAuthenticationConflictException implements Exception {
-  const PluginAuthenticationConflictException(this.conflict);
-
+class const PluginAuthenticationConflictException(this.conflict) implements Exception {
   final PluginAuthenticationConflict conflict;
 }
 
-class PluginAuthenticationChallengeUnavailableException implements Exception {
-  const PluginAuthenticationChallengeUnavailableException();
-}
+class const PluginAuthenticationChallengeUnavailableException() implements Exception;
 
-class PluginManagementCommandFailedException implements Exception {
-  const PluginManagementCommandFailedException(this.message);
-
+class const PluginManagementCommandFailedException(this.message) implements Exception {
   final String message;
 
   @override
   String toString() => message;
 }
 
-class PluginManagementMutationOutcomeUncertainException implements Exception {
-  const PluginManagementMutationOutcomeUncertainException();
-}
+class const PluginManagementMutationOutcomeUncertainException() implements Exception;
 
-class _ActivePluginCommand {
-  _ActivePluginCommand({required this.request});
-
+class _ActivePluginCommand({required this.request}) {
   final PluginLifecycleCommandRequest request;
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }
 
-class _ActivePluginAuthentication {
-  _ActivePluginAuthentication({required this.operation});
-
+class _ActivePluginAuthentication({required this.operation}) {
   final PluginRuntimeAuthenticationOperation operation;
   final Completer<PluginAuthenticationChallengeResponse> challenge = Completer<PluginAuthenticationChallengeResponse>();
   final Completer<void> settled = Completer<void>();

@@ -5,7 +5,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _HangingClient extends http.BaseClient {
+class _HangingClient() extends http.BaseClient {
   bool aborted = false;
 
   @override

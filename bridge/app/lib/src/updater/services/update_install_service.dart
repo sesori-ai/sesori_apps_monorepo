@@ -22,12 +22,12 @@ import '../repositories/update_artifact_repository.dart';
 /// resident bridge's background updater is mid-stage — passes a distinct
 /// [workspaceLabel] so the two do not clobber each other's archive/staging on
 /// the way to the lock-guarded swap.
-class UpdateInstallService {
-  UpdateInstallService({
+class UpdateInstallService({
     required UpdateArtifactRepository updateArtifactRepository,
     required FilesystemCleaner filesystemCleaner,
     required String? workspaceLabel,
-  }) : _updateArtifactRepository = updateArtifactRepository,
+  }) {
+  this : _updateArtifactRepository = updateArtifactRepository,
        _filesystemCleaner = filesystemCleaner,
        _workspaceLabel = workspaceLabel;
 

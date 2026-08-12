@@ -1,4 +1,9 @@
-enum CodexCollaborationMode {
+enum CodexCollaborationMode({
+    required this.agentName,
+    required this.wireValue,
+    required this.description,
+    required this.defaultReasoningEffort,
+  }) {
   defaultMode(
     agentName: "Default",
     wireValue: "default",
@@ -11,13 +16,6 @@ enum CodexCollaborationMode {
     description: "Researches without making changes and creates an implementation plan",
     defaultReasoningEffort: "medium",
   );
-
-  CodexCollaborationMode({
-    required this.agentName,
-    required this.wireValue,
-    required this.description,
-    required this.defaultReasoningEffort,
-  });
 
   final String agentName;
   final String wireValue;

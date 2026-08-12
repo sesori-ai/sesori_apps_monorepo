@@ -4,9 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _StubManifest implements RuntimeManifest {
-  const _StubManifest();
-
+class const _StubManifest() implements RuntimeManifest {
   static const RuntimeAsset _asset = RuntimeAsset(
     assetName: "opencode-test.zip",
     format: ArchiveFormat.zip,
@@ -47,14 +45,12 @@ class _StubManifest implements RuntimeManifest {
   }
 }
 
-class _FakeValidator implements RuntimeVersionValidator {
-  _FakeValidator({
+class _FakeValidator({
     required this.pathVersion,
     required this.managedVersion,
     this.candidateVersions = const {},
     this.onDetect,
-  });
-
+  }) implements RuntimeVersionValidator {
   final SemanticVersion? pathVersion;
   final SemanticVersion? managedVersion;
   final Map<String, SemanticVersion?> candidateVersions;
@@ -79,12 +75,10 @@ class _FakeValidator implements RuntimeVersionValidator {
   }
 }
 
-class _FakeHost implements PluginHost {
-  const _FakeHost({
+class const _FakeHost({
     required this.stateDirectory,
     required this.abortSignal,
-  });
-
+  }) implements PluginHost {
   @override
   final String stateDirectory;
 

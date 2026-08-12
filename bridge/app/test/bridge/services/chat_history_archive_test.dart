@@ -479,9 +479,7 @@ MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   parts: [_part(id: "$id-p1", messageId: id)],
 );
 
-class _FakeSessionRepository implements SessionRepository {
-  _FakeSessionRepository({required this.transcript});
-
+class _FakeSessionRepository({required this.transcript}) implements SessionRepository {
   final List<MessageWithParts> transcript;
   Object? error;
   Set<String> existingSessionIds = const {};

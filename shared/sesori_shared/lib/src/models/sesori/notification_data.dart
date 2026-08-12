@@ -16,7 +16,12 @@ sealed class NotificationData with _$NotificationData {
   factory NotificationData.fromJson(Map<String, dynamic> json) => _$NotificationDataFromJson(json);
 }
 
-enum NotificationCategory {
+enum NotificationCategory({
+    required this.id,
+    required this.displayName,
+    required this.description,
+    required this.importance,
+  }) {
   @JsonValue("ai_interaction")
   aiInteraction(
     id: "ai_interaction",
@@ -59,16 +64,9 @@ enum NotificationCategory {
   final String displayName;
   final String description;
   final NotificationImportance importance;
-
-  NotificationCategory({
-    required this.id,
-    required this.displayName,
-    required this.description,
-    required this.importance,
-  });
 }
 
-enum NotificationEventType {
+enum NotificationEventType() {
   @JsonValue("question_asked")
   questionAsked,
   @JsonValue("permission_asked")
@@ -82,7 +80,7 @@ enum NotificationEventType {
   unknown,
 }
 
-enum NotificationImportance {
+enum NotificationImportance() {
   @JsonValue("unspecified")
   unspecified(),
   @JsonValue("none")

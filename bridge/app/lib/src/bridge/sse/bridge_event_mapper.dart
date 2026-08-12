@@ -9,12 +9,12 @@ import "../plugin_to_shared_mapping.dart";
 ///
 /// Handles all event type conversions and builds the projects summary event
 /// from already-fetched summary data (the orchestrator owns fetching it).
-class BridgeEventMapper {
+class BridgeEventMapper({
+    required FailureReporter failureReporter,
+  }) {
   final FailureReporter _failureReporter;
 
-  BridgeEventMapper({
-    required FailureReporter failureReporter,
-  }) : _failureReporter = failureReporter;
+  this : _failureReporter = failureReporter;
 
   /// Maps a [BridgeSseEvent] to a [SesoriSseEvent], or null if unmappable.
   SesoriSseEvent? map({required BridgeSseEvent event, required String pluginId}) {

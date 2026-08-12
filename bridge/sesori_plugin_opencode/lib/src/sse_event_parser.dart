@@ -2,7 +2,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "models/sse_event_data.g.dart";
 
-enum SseParseOutcome {
+enum SseParseOutcome() {
   validKnownEvent,
   ignoredKnownEvent,
   unknownEventType,
@@ -11,7 +11,13 @@ enum SseParseOutcome {
 }
 
 /// Result of parsing a raw OpenCode SSE event string.
-class SseParseResult {
+class const SseParseResult({
+    required this.outcome,
+    this.event,
+    this.eventType,
+    this.directory,
+    required this.rawData,
+  }) {
   /// The parsed event, or null if parsing failed.
   final SseEventData? event;
 
@@ -26,14 +32,6 @@ class SseParseResult {
 
   /// Categorized parser outcome for callers that need more than null/non-null.
   final SseParseOutcome outcome;
-
-  const SseParseResult({
-    required this.outcome,
-    this.event,
-    this.eventType,
-    this.directory,
-    required this.rawData,
-  });
 }
 
 /// Parses raw OpenCode SSE event strings into typed [SseEventData] objects.
@@ -50,7 +48,7 @@ class SseParseResult {
 /// Never throws. Callers get categorized outcomes for unknown event types,
 /// malformed envelopes, and malformed known payloads while rawData is always
 /// preserved for forwarding.
-class SseEventParser {
+class SseEventParser() {
   SseParseResult parse(String rawData) {
     if (rawData.isEmpty) {
       return SseParseResult(

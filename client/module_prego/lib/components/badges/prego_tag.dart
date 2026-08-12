@@ -7,13 +7,11 @@ import "../../theme/prego_theme.dart";
 /// Renders an optional 14px leading glyph and a tertiary `text-xs` caption
 /// inside a hairline-bordered rounded rectangle, e.g. the auth-provider badge
 /// beside the account name in settings.
-class PregoTag extends StatelessWidget {
-  const PregoTag({
+class const PregoTag({
     super.key,
     this.icon,
     required this.label,
-  });
-
+  }) extends StatelessWidget {
   /// Optional leading glyph, rendered at 14px in the tertiary text colour.
   final IconData? icon;
 

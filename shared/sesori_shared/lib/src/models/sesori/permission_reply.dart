@@ -1,6 +1,6 @@
 import "package:json_annotation/json_annotation.dart";
 
-enum PermissionReply {
+enum PermissionReply() {
   @JsonValue("once")
   once,
   @JsonValue("always")

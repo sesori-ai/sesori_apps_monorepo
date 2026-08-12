@@ -4,7 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 part "codex_image_bearing_item_dto.freezed.dart";
 part "codex_image_bearing_item_dto.g.dart";
 
-enum CodexImageGenerationStatus {
+enum CodexImageGenerationStatus() {
   @JsonValue("in_progress")
   inProgress,
   completed,
@@ -12,7 +12,7 @@ enum CodexImageGenerationStatus {
   unknown,
 }
 
-enum CodexToolCallStatus {
+enum CodexToolCallStatus() {
   inProgress,
   completed,
   failed,
@@ -113,9 +113,7 @@ sealed class CodexImageBearingContentDto with _$CodexImageBearingContentDto {
       _$CodexImageBearingContentDtoFromJson(json);
 }
 
-class CodexImageBearingContentListConverter implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
-  const CodexImageBearingContentListConverter();
-
+class const CodexImageBearingContentListConverter() implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
   @override
   List<CodexImageBearingContentDto> fromJson(Object? json) {
     if (json == null) return const [];
@@ -142,9 +140,7 @@ class CodexImageBearingContentListConverter implements JsonConverter<List<CodexI
   Object toJson(List<CodexImageBearingContentDto> object) => throw UnsupportedError("decode only");
 }
 
-class CodexMcpResultContentConverter extends CodexImageBearingContentListConverter {
-  const CodexMcpResultContentConverter();
-
+class const CodexMcpResultContentConverter() extends CodexImageBearingContentListConverter {
   @override
   List<CodexImageBearingContentDto> fromJson(Object? json) {
     if (json == null) return const [];
@@ -156,9 +152,7 @@ class CodexMcpResultContentConverter extends CodexImageBearingContentListConvert
   }
 }
 
-class CodexToolErrorConverter implements JsonConverter<String?, Object?> {
-  const CodexToolErrorConverter();
-
+class const CodexToolErrorConverter() implements JsonConverter<String?, Object?> {
   @override
   String? fromJson(Object? json) {
     if (json == null) return null;
@@ -173,9 +167,7 @@ class CodexToolErrorConverter implements JsonConverter<String?, Object?> {
   Object? toJson(String? object) => throw UnsupportedError("decode only");
 }
 
-class CodexToolNameConverter implements JsonConverter<String, Object?> {
-  const CodexToolNameConverter();
-
+class const CodexToolNameConverter() implements JsonConverter<String, Object?> {
   @override
   String fromJson(Object? json) {
     if (json is String && json.isNotEmpty) return json;

@@ -503,8 +503,8 @@ ProcessIdentity _identity({required int pid, required String? executablePath, re
   );
 }
 
-class _SpawnFakeHost implements PluginHost {
-  _SpawnFakeHost({required HostProcessService processes, required Map<String, String> environment})
+class _SpawnFakeHost({required HostProcessService processes, required Map<String, String> environment}) implements PluginHost {
+  this
     : _processes = processes,
       _environment = environment;
 
@@ -523,7 +523,7 @@ class _SpawnFakeHost implements PluginHost {
 
 /// Accepts the request and returns 200 headers, but the body stream never
 /// emits and never closes — a drain on it hangs forever.
-class _HangingBodyClient extends http.BaseClient {
+class _HangingBodyClient() extends http.BaseClient {
   final StreamController<List<int>> _body = StreamController<List<int>>();
 
   @override
@@ -538,7 +538,7 @@ class _HangingBodyClient extends http.BaseClient {
   }
 }
 
-class _RecordingHostProcessService implements HostProcessService {
+class _RecordingHostProcessService() implements HostProcessService {
   String? executable;
   List<String>? arguments;
   Map<String, String>? environment;
@@ -565,9 +565,7 @@ class _RecordingHostProcessService implements HostProcessService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeSpawnedProcess implements SpawnedProcess {
-  _FakeSpawnedProcess({required this.pid});
-
+class _FakeSpawnedProcess({required this.pid}) implements SpawnedProcess {
   @override
   final int pid;
 
@@ -605,8 +603,8 @@ class _FakeSpawnedProcess implements SpawnedProcess {
 /// assert the caller never runs two probes concurrently. Each probe yields to
 /// the event loop while "in flight", so any concurrent caller would observe an
 /// overlap.
-class _RecordingHostPortService implements HostPortService {
-  _RecordingHostPortService({required Set<String> unbindableHosts}) : _unbindableHosts = unbindableHosts;
+class _RecordingHostPortService({required Set<String> unbindableHosts}) implements HostPortService {
+  this : _unbindableHosts = unbindableHosts;
 
   final Set<String> _unbindableHosts;
   final List<String> probedHosts = <String>[];

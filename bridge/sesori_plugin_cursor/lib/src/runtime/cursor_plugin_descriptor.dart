@@ -53,12 +53,12 @@ CursorPlugin _defaultBuildPlugin({
 ///
 /// The optional constructor parameters are test seams; the registered instance
 /// is `const CursorPluginDescriptor()`.
-class CursorPluginDescriptor extends BridgePluginDescriptor {
-  const CursorPluginDescriptor({
+class const CursorPluginDescriptor({
     CursorPluginFactory? buildPlugin,
     Duration connectBudget = const Duration(seconds: 15),
     Duration versionProbeTimeout = const Duration(seconds: 10),
-  }) : _buildPlugin = buildPlugin,
+  }) extends BridgePluginDescriptor {
+  this : _buildPlugin = buildPlugin,
        _connectBudget = connectBudget,
        _versionProbeTimeout = versionProbeTimeout;
 
@@ -315,14 +315,12 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   }
 }
 
-enum _CursorRuntimeProbeState { ready, missing, outdated, unknown, unrecognized }
+enum _CursorRuntimeProbeState() { ready, missing, outdated, unknown, unrecognized }
 
 /// A Cursor CLI calendar version (`YYYY.MM.DD`, the leading component of a
 /// build string like `2026.06.15-18-00-12-6f5a2cf`). Parsed once into a typed
 /// [Comparable] rather than comparing version strings ad hoc.
-class _CalVer implements Comparable<_CalVer> {
-  const _CalVer(this.year, this.month, this.day);
-
+class const _CalVer(this.year, this.month, this.day) implements Comparable<_CalVer> {
   final int year;
   final int month;
   final int day;

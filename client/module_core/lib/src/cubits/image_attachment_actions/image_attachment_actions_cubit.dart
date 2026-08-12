@@ -8,7 +8,14 @@ import "../../foundation/platform/image_sharer.dart";
 import "../../logging/logging.dart";
 import "image_attachment_actions_state.dart";
 
-class ImageAttachmentActionsCubit extends Cubit<ImageAttachmentActionsState> {
+class ImageAttachmentActionsCubit({
+    required ImageSaver imageSaver,
+    required ImageClipboard imageClipboard,
+    required ImageSharer imageSharer,
+    required Uint8List bytes,
+    required String mime,
+    required String actionFilename,
+  }) extends Cubit<ImageAttachmentActionsState> {
   final ImageSaver _imageSaver;
   final ImageClipboard _imageClipboard;
   final ImageSharer _imageSharer;
@@ -16,14 +23,7 @@ class ImageAttachmentActionsCubit extends Cubit<ImageAttachmentActionsState> {
   final String _mime;
   final String _filename;
 
-  ImageAttachmentActionsCubit({
-    required ImageSaver imageSaver,
-    required ImageClipboard imageClipboard,
-    required ImageSharer imageSharer,
-    required Uint8List bytes,
-    required String mime,
-    required String actionFilename,
-  }) : _imageSaver = imageSaver,
+  this : _imageSaver = imageSaver,
        _imageClipboard = imageClipboard,
        _imageSharer = imageSharer,
        _bytes = bytes,

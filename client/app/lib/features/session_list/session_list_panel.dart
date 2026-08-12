@@ -9,15 +9,7 @@ import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
 
-class SessionListPanel extends StatelessWidget {
-  final String? projectName;
-  final String? selectedSessionId;
-  final ValueChanged<Session> onSessionTap;
-  final SessionMenuEntriesBuilder sessionMenuEntries;
-  final VoidCallback onNewSession;
-  final VoidCallback? onBack;
-
-  const SessionListPanel({
+class const SessionListPanel({
     super.key,
     this.projectName,
     this.selectedSessionId,
@@ -25,7 +17,13 @@ class SessionListPanel extends StatelessWidget {
     required this.sessionMenuEntries,
     required this.onNewSession,
     this.onBack,
-  });
+  }) extends StatelessWidget {
+  final String? projectName;
+  final String? selectedSessionId;
+  final ValueChanged<Session> onSessionTap;
+  final SessionMenuEntriesBuilder sessionMenuEntries;
+  final VoidCallback onNewSession;
+  final VoidCallback? onBack;
 
   /// Header width below which the labelled "New session" button collapses to an
   /// icon-only button so the title keeps a usable width.

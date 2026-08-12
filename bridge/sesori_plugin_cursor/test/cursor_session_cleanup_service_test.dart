@@ -270,7 +270,7 @@ void main() {
   });
 }
 
-class _DisappearingSessionStorageRepository implements CursorSessionStorageRepository {
+class _DisappearingSessionStorageRepository() implements CursorSessionStorageRepository {
   var _typeReads = 0;
 
   @override

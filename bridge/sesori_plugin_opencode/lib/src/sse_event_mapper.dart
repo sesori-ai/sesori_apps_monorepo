@@ -12,8 +12,8 @@ import "question_info_mapper.dart";
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
 /// This class is stateless — all methods are pure transformations.
-class SseEventMapper {
-  SseEventMapper({AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper()})
+class SseEventMapper({AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper()}) {
+  this
     : _assistantMessageMapper = assistantMessageMapper;
 
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();

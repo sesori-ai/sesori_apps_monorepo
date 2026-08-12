@@ -6,10 +6,10 @@ import "../api/models/codex_correlatable_item_event_dto.dart";
 import "../api/models/codex_tool_outcome_dto.dart";
 
 /// Layer-2 decisions over persisted structured tool failures.
-class CodexToolOutcomeRepository {
-  CodexToolOutcomeRepository({
+class CodexToolOutcomeRepository({
     required CodexToolOutcomeStorage storage,
-  }) : _storage = storage;
+  }) {
+  this : _storage = storage;
 
   final CodexToolOutcomeStorage _storage;
 

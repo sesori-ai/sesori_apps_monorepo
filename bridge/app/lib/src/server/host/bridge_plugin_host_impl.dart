@@ -34,8 +34,7 @@ import "bridge_host_process_service.dart";
 /// `<cacheDir>/runtime`), wire through the plain constructor with a store
 /// over the shared instance instead — `RuntimeFileApi.updateFile`'s mutual
 /// exclusion is only guaranteed within one instance per directory.
-class BridgePluginHostImpl implements PluginHost {
-  BridgePluginHostImpl({
+class BridgePluginHostImpl({
     required this.config,
     required this.stateDirectory,
     required this.environment,
@@ -45,8 +44,7 @@ class BridgePluginHostImpl implements PluginHost {
     required this.processes,
     required this.ports,
     required this.store,
-  });
-
+  }) implements PluginHost {
   static Future<BridgePluginHostImpl> create({
     required PluginConfig config,
     required String stateDirectory,

@@ -8,7 +8,7 @@ import "../../utils/lerp_utils.dart";
 /// Each value maps to an SVG asset in `assets/svgs/hero_icons/`.
 /// These are the default profile icons assigned to new wallets
 /// before the user sets a custom icon.
-enum PregoHeroIconType {
+enum PregoHeroIconType(this.id) {
   icon1("hero_icon_1"),
   icon2("hero_icon_2"),
   icon3("hero_icon_3"),
@@ -20,8 +20,6 @@ enum PregoHeroIconType {
   icon9("hero_icon_9"),
   icon10("hero_icon_10"),
   ;
-
-  PregoHeroIconType(this.id);
 
   /// Stable string identifier for database persistence.
   ///
@@ -60,14 +58,12 @@ enum PregoHeroIconType {
 ///   size: 48,
 /// )
 /// ```
-class PregoHeroIcon extends StatelessWidget {
-  const PregoHeroIcon({
+class const PregoHeroIcon({
     super.key,
     required this.type,
     required this.color,
     this.size,
-  });
-
+  }) extends StatelessWidget {
   /// Which hero icon shape to display.
   final PregoHeroIconType type;
 
@@ -104,12 +100,10 @@ class PregoHeroIcon extends StatelessWidget {
 ///
 /// Must be `@immutable` because `flutter_svg` uses it as part of a cache key.
 @immutable
-class _HeroIconColorMapper extends ColorMapper {
-  const _HeroIconColorMapper({
+class const _HeroIconColorMapper({
     required this.gradientStart,
     required this.gradientEnd,
-  });
-
+  }) extends ColorMapper {
   /// Computes gradient stops appropriate for the given [brightness].
   factory _HeroIconColorMapper.fromBrightness({
     required Color color,

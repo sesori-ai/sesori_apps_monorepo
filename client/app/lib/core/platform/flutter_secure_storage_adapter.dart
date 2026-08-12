@@ -3,10 +3,10 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 @LazySingleton(as: SecureStorage)
-class FlutterSecureStorageAdapter implements SecureStorage {
+class FlutterSecureStorageAdapter(FlutterSecureStorage storage) implements SecureStorage {
   final FlutterSecureStorage _storage;
 
-  FlutterSecureStorageAdapter(FlutterSecureStorage storage) : _storage = storage;
+  this : _storage = storage;
 
   @override
   Future<String?> read({required String key}) => _storage.read(key: key);

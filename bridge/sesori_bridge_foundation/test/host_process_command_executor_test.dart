@@ -26,9 +26,7 @@ void main() {
   });
 }
 
-class _FakeHostProcessService implements HostProcessService {
-  const _FakeHostProcessService({required this.process});
-
+class const _FakeHostProcessService({required this.process}) implements HostProcessService {
   final SpawnedProcess process;
 
   @override
@@ -50,9 +48,7 @@ class _FakeHostProcessService implements HostProcessService {
   Future<SignalResult> signalGraceful({required int pid}) => throw UnsupportedError("not used");
 }
 
-class _FakeSpawnedProcess implements SpawnedProcess {
-  _FakeSpawnedProcess({required this.stdoutChunks, required this.stderrChunks});
-
+class _FakeSpawnedProcess({required this.stdoutChunks, required this.stderrChunks}) implements SpawnedProcess {
   final List<List<int>> stdoutChunks;
   final List<List<int>> stderrChunks;
   int stdoutChunksDelivered = 0;

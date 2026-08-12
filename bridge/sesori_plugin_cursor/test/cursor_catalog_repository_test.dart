@@ -267,7 +267,7 @@ AcpNewSessionResult _catalogResult({
   });
 }
 
-class _FakeCursorCatalogProbeApi implements CursorCatalogProbeApi {
+class _FakeCursorCatalogProbeApi() implements CursorCatalogProbeApi {
   final Map<String?, List<AcpSessionInfo>> sessionsByScope = {};
   final Map<String?, Object> errorsByScope = {};
   final List<String?> listedScopes = [];

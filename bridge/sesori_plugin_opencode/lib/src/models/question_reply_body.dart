@@ -1,7 +1,5 @@
-class QuestionReplyBody {
+class const QuestionReplyBody({required this.answers}) {
   final List<List<String>> answers;
-
-  const QuestionReplyBody({required this.answers});
 
   Map<String, dynamic> toJson() {
     return {"answers": answers};

@@ -20,8 +20,7 @@ import "services/claude_session_service.dart";
 typedef ClaudeSessionIdGenerator = String Function();
 
 /// Backend-neutral Claude Code plugin API over the stream-json components.
-final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi {
-  ClaudePlugin({
+final class ClaudePlugin({
     required ClaudeSessionProcessRepository processes,
     required ClaudeTranscriptCatalogRepository transcripts,
     required ClaudeSessionService sessions,
@@ -33,7 +32,8 @@ final class ClaudePlugin extends BridgeDerivedProjectsPluginApi implements Persi
     required ServerClock clock,
     required ClaudeSessionIdGenerator generateSessionId,
     required String launchDirectory,
-  }) : _processes = processes,
+  }) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi {
+  this : _processes = processes,
        _transcripts = transcripts,
        _sessions = sessions,
        _catalogService = catalogService,

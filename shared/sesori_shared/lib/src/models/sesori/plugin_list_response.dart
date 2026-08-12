@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "plugin_list_response.freezed.dart";
 part "plugin_list_response.g.dart";
 
-enum PluginLifecycleState {
+enum PluginLifecycleState() {
   unavailable,
   ready,
   degraded,

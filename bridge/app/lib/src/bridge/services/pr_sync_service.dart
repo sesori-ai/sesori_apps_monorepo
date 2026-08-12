@@ -11,13 +11,19 @@ import "../repositories/pr_source_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 
-enum PrRefreshOutcome { completed, failed }
+enum PrRefreshOutcome() { completed, failed }
 
-enum PrRefreshPolicy { background, explicit, viewedProject }
+enum PrRefreshPolicy() { background, explicit, viewedProject }
 
 typedef PullRequestRenderedChange = ({String projectId});
 
-class PrSyncService {
+class PrSyncService({
+    required PrSourceRepository prSource,
+    required PullRequestRepository pullRequestRepository,
+    required SessionRepository sessionRepository,
+    required Clock clock,
+    Duration debounceWindow = const Duration(seconds: 30),
+  }) {
   final PrSourceRepository _prSource;
   final PullRequestRepository _pullRequestRepository;
   final SessionRepository _sessionRepository;
@@ -39,13 +45,7 @@ class PrSyncService {
 
   static const _githubCliCapabilityCacheTtl = Duration(seconds: 30);
 
-  PrSyncService({
-    required PrSourceRepository prSource,
-    required PullRequestRepository pullRequestRepository,
-    required SessionRepository sessionRepository,
-    required Clock clock,
-    Duration debounceWindow = const Duration(seconds: 30),
-  }) : _prSource = prSource,
+  this : _prSource = prSource,
        _pullRequestRepository = pullRequestRepository,
        _sessionRepository = sessionRepository,
        _clock = clock,
@@ -373,12 +373,12 @@ class PrSyncService {
   }
 }
 
-final class _PrRefreshWaiter {
+final class _PrRefreshWaiter({required Map<String, int> requiredGenerations}) {
   final Map<String, int> _remainingGenerations;
   final Completer<PrRefreshOutcome> _completer = Completer<PrRefreshOutcome>();
   bool _failed = false;
 
-  _PrRefreshWaiter({required Map<String, int> requiredGenerations})
+  this
     : _remainingGenerations = Map<String, int>.from(requiredGenerations);
 
   Future<PrRefreshOutcome> get future => _completer.future;

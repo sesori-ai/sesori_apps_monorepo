@@ -9,8 +9,8 @@ typedef CodexModelCatalog = ({
 });
 
 /// Maps Codex's app-server model catalog into selectable plugin models.
-class CodexModelRepository {
-  CodexModelRepository({required CodexAppServerApi appServerApi}) : _appServerApi = appServerApi;
+class CodexModelRepository({required CodexAppServerApi appServerApi}) {
+  this : _appServerApi = appServerApi;
 
   final CodexAppServerApi _appServerApi;
 

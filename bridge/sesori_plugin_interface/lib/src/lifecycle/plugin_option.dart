@@ -16,9 +16,7 @@ typedef PluginOptionValueValidator = void Function(String name, String value);
 /// and hands the values back through a `PluginConfig`. Declaring an option
 /// has no side effects — descriptors stay inert until started.
 @immutable
-sealed class PluginOption {
-  const PluginOption({required this.name, required this.help, this.deprecatedAliases = const <String>[]});
-
+sealed class const PluginOption({required this.name, required this.help, this.deprecatedAliases = const <String>[]}) {
   /// The option's local name, without dashes or a plugin prefix
   /// (e.g. `"port"`). The bridge namespaces this to `--<pluginId>-<name>`
   /// when registering it, so plugins never spell their own prefix.
@@ -37,15 +35,13 @@ sealed class PluginOption {
 }
 
 /// A boolean CLI flag (e.g. `--no-auto-start`).
-final class PluginFlagOption extends PluginOption {
-  const PluginFlagOption({
+final class const PluginFlagOption({
     required super.name,
     required super.help,
     required this.defaultsTo,
     required this.negatable,
     super.deprecatedAliases,
-  });
-
+  }) extends PluginOption {
   /// Value when the flag is not passed.
   final bool defaultsTo;
 
@@ -54,8 +50,7 @@ final class PluginFlagOption extends PluginOption {
 }
 
 /// A CLI option that takes a string value (e.g. `--port 4096`).
-final class PluginValueOption extends PluginOption {
-  const PluginValueOption({
+final class const PluginValueOption({
     required super.name,
     required super.help,
     required this.defaultsTo,
@@ -63,8 +58,7 @@ final class PluginValueOption extends PluginOption {
     required this.valueHelp,
     required this.validate,
     super.deprecatedAliases,
-  });
-
+  }) extends PluginOption {
   /// An option whose value must parse as an integer (e.g. `--port`).
   ///
   /// The typed-parse hook so plugins don't re-implement the

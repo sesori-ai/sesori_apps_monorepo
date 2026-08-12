@@ -38,7 +38,7 @@ import "package:test/test.dart";
 
 /// A [LifecycleSource] seeded as resumed, for cubits that subscribe to
 /// lifecycle. Call [emitState] to drive transitions in tests.
-class FakeLifecycleSource implements LifecycleSource {
+class FakeLifecycleSource() implements LifecycleSource {
   final BehaviorSubject<LifecycleState> _state = BehaviorSubject.seeded(LifecycleState.resumed);
 
   @override
@@ -49,7 +49,7 @@ class FakeLifecycleSource implements LifecycleSource {
   void close() => _state.close();
 }
 
-class MockSessionViewingService extends Mock implements SessionViewingService;
+class MockSessionViewingService() extends Mock implements SessionViewingService;
 
 /// A [MockSessionViewingService] with its void methods pre-stubbed, for cubits
 /// that declare a viewing session on load/close.
@@ -60,7 +60,7 @@ MockSessionViewingService stubbedSessionViewingService() {
   return mock;
 }
 
-class MockProjectViewingService extends Mock implements ProjectViewingService;
+class MockProjectViewingService() extends Mock implements ProjectViewingService;
 
 MockProjectViewingService stubbedProjectViewingService() {
   final mock = MockProjectViewingService();
@@ -95,7 +95,7 @@ MockProjectViewingService stubbedProjectViewingService() {
 /// In-memory [SessionUnseenTracker] stand-in mirroring its lean contract:
 /// overwrite-only maps plus a tick guard. Tests drive it via [emitProjectUnseen]
 /// / [emitSessionUnseen] or the real seed/apply methods.
-class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
+class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
   final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
 
@@ -151,19 +151,19 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
   void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
 }
 
-class MockProjectApi extends Mock implements ProjectApi;
+class MockProjectApi() extends Mock implements ProjectApi;
 
-class MockFilesystemApi extends Mock implements FilesystemApi;
+class MockFilesystemApi() extends Mock implements FilesystemApi;
 
-class MockProjectRepository extends Mock implements ProjectRepository;
+class MockProjectRepository() extends Mock implements ProjectRepository;
 
-class MockSessionApi extends Mock implements SessionApi;
+class MockSessionApi() extends Mock implements SessionApi;
 
-class MockSessionService extends Mock implements SessionService;
+class MockSessionService() extends Mock implements SessionService;
 
-class MockSessionRepository extends Mock implements SessionRepository;
+class MockSessionRepository() extends Mock implements SessionRepository;
 
-class MockProductAnalyticsService extends Mock implements ProductAnalyticsService;
+class MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 MockProductAnalyticsService stubbedProductAnalyticsService() {
   final mock = MockProductAnalyticsService();
@@ -182,9 +182,9 @@ MockProductAnalyticsService stubbedProductAnalyticsService() {
 
 ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
 
-class MockBridgeRepository extends Mock implements BridgeRepository;
+class MockBridgeRepository() extends Mock implements BridgeRepository;
 
-class MockPluginRepository extends Mock implements PluginRepository;
+class MockPluginRepository() extends Mock implements PluginRepository;
 
 MockPluginRepository stubbedPluginRepository({
   List<PluginMetadata> plugins = const <PluginMetadata>[],
@@ -202,15 +202,15 @@ MockPluginRepository stubbedPluginRepository({
   return mock;
 }
 
-class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository;
+class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceRepository;
 
-class MockRegisteredBridgesStore extends Mock implements RegisteredBridgesStore;
+class MockRegisteredBridgesStore() extends Mock implements RegisteredBridgesStore;
 
-class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService;
+class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
 
-class MockFailureReporter extends Mock implements FailureReporter;
+class MockFailureReporter() extends Mock implements FailureReporter;
 
-class MockConnectionService extends Mock implements ConnectionService {
+class MockConnectionService() extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
 
   @override
@@ -219,10 +219,10 @@ class MockConnectionService extends Mock implements ConnectionService {
   void emitDataMayBeStale() => _dataMayBeStale.add(null);
 }
 
-class MockRouteSource extends Mock implements RouteSource {
+class MockRouteSource({AppRouteDef? initialRoute, this.currentLocation}) extends Mock implements RouteSource {
   final BehaviorSubject<AppRouteDef?> _currentRoute;
 
-  MockRouteSource({AppRouteDef? initialRoute, this.currentLocation}) : _currentRoute = BehaviorSubject.seeded(initialRoute);
+  this : _currentRoute = BehaviorSubject.seeded(initialRoute);
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
@@ -235,7 +235,7 @@ class MockRouteSource extends Mock implements RouteSource {
   void emitRoute(AppRouteDef? route) => _currentRoute.add(route);
 }
 
-class MockSseEventTracker extends Mock implements SseEventTracker {
+class MockSseEventTracker() extends Mock implements SseEventTracker {
   final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, Map<String, SessionActivityInfo>>> _sessionActivity = BehaviorSubject.seeded(
     const {},
@@ -267,7 +267,7 @@ class MockSseEventTracker extends Mock implements SseEventTracker {
   void emitProjectTimestampUpdate(Map<String, int> update) => _projectTimestampUpdates.add(update);
 }
 
-class FakeUri extends Fake implements Uri;
+class FakeUri() extends Fake implements Uri;
 
 void delegateSessionRepositoryToService({
   required MockSessionRepository repository,

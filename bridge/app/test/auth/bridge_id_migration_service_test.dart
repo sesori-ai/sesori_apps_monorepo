@@ -56,7 +56,7 @@ void main() {
   });
 }
 
-class _RecordingLegacyReader {
+class _RecordingLegacyReader() {
   String? value;
   int callCount = 0;
 

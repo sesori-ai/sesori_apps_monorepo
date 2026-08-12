@@ -16,13 +16,13 @@ import "../routing/bridge_restart_dispatcher.dart";
 import "../routing/routed_request_dispatcher.dart";
 import "bridge_shutdown_coordinator.dart";
 
-class BridgeRuntime {
-  BridgeRuntime({
+class BridgeRuntime({
     required AppDatabase database,
     required ChatHistoryDatabase chatHistoryDatabase,
     required FailureReporter failureReporter,
     required OrchestratorComposition composition,
-  }) : _database = database,
+  }) {
+  this : _database = database,
        _chatHistoryDatabase = chatHistoryDatabase,
        _failureReporter = failureReporter,
        _restartDispatcher = composition.restartDispatcher,

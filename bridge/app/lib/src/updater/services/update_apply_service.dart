@@ -20,8 +20,7 @@ import '../repositories/update_log_repository.dart';
 /// so a failure is never silent, then returns an [UpdateApplyOutcome] describing
 /// what happened. Presentation lives with the caller — this service never writes
 /// to `Console`.
-class UpdateApplyService {
-  UpdateApplyService({
+class UpdateApplyService({
     required UpdateInstallationRepository installationRepository,
     required UpdateAttemptRepository attemptRepository,
     required UpdateLogRepository logRepository,
@@ -30,7 +29,8 @@ class UpdateApplyService {
     required Clock clock,
     required String currentVersion,
     required String installRoot,
-  }) : _installationRepository = installationRepository,
+  }) {
+  this : _installationRepository = installationRepository,
        _attemptRepository = attemptRepository,
        _logRepository = logRepository,
        _updateLock = updateLock,

@@ -4,7 +4,7 @@ import "dart:io";
 
 import "api_response.dart";
 
-enum HttpMethod {
+enum HttpMethod(this.dioName) {
   get("GET"),
   post("POST"),
   put("PUT"),
@@ -13,11 +13,9 @@ enum HttpMethod {
   ;
 
   final String dioName;
-
-  HttpMethod(this.dioName);
 }
 
-abstract class SafeApiClient {
+abstract class SafeApiClient() {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> get<T>(
     Uri url, {

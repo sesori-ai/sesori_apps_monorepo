@@ -7,14 +7,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "acp_process_factory.dart";
 
 /// A JSON-RPC error returned by an ACP agent.
-class AcpRpcException implements Exception {
-  AcpRpcException({
+class AcpRpcException({
     required this.method,
     required this.code,
     required this.message,
     this.data,
-  });
-
+  }) implements Exception {
   final String method;
   final int code;
   final String message;
@@ -25,9 +23,7 @@ class AcpRpcException implements Exception {
 }
 
 /// A server-originated notification (no `id`), e.g. `session/update`.
-class AcpNotification {
-  const AcpNotification({required this.method, required this.params});
-
+class const AcpNotification({required this.method, required this.params}) {
   final String method;
   final Map<String, dynamic> params;
 
@@ -37,13 +33,11 @@ class AcpNotification {
 
 /// A server-originated request that expects a response, e.g.
 /// `session/request_permission` or Cursor's `cursor/ask_question`.
-class AcpServerRequest {
-  const AcpServerRequest({
+class const AcpServerRequest({
     required this.id,
     required this.method,
     required this.params,
-  });
-
+  }) {
   /// JSON-RPC `id` — echo this when responding.
   final Object id;
   final String method;
@@ -60,12 +54,12 @@ class AcpServerRequest {
 /// spawns on [connect], reaps on [dispose], and can send id-less
 /// notifications ([notify], e.g. `session/cancel`) which the WebSocket client
 /// never needed.
-class AcpStdioClient {
-  AcpStdioClient({
+class AcpStdioClient({
     required AcpLaunchSpec launchSpec,
     AcpProcessFactory? processFactory,
     String logTag = "acp",
-  }) : _launchSpec = launchSpec,
+  }) {
+  this : _launchSpec = launchSpec,
        _processFactory = processFactory ?? defaultAcpProcessFactory,
        _logTag = logTag;
 

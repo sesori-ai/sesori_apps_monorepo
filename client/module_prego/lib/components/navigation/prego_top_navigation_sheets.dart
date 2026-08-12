@@ -6,7 +6,7 @@ import "../../module_prego.dart";
 /// How the [PregoTopNavigationSheets] title (and subtitle) are aligned across the
 /// bar: [center] mirrors [PregoTopNavigation]'s centred title, [start] pins the
 /// block to the leading edge (the Figma "Title 2 Line Left" style).
-enum PregoSheetTitleAlignment { center, start }
+enum PregoSheetTitleAlignment() { center, start }
 
 /// The header of [PregoBottomSheet] — the Figma `pregoTopNavigationSheets`
 /// component: a drag [showGrabber] pill above a fixed nav row with an optional
@@ -31,8 +31,7 @@ enum PregoSheetTitleAlignment { center, start }
 ///
 /// The back/close affordances announce the platform's standard
 /// back/close tooltips so screen readers describe them without a bespoke string.
-class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeWidget {
-  const PregoTopNavigationSheets({
+class const PregoTopNavigationSheets({
     super.key,
     required this.title,
     this.subtitle,
@@ -42,8 +41,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
     this.onBack,
     this.actions,
     this.leading,
-  });
-
+  }) extends StatelessWidget implements PreferredSizeWidget {
   /// Primary title, in `text-primary`. [alignment] picks the scale:
   /// `text-lg / bold` centred, the quieter `text-md / medium` start-aligned.
   final String title;
@@ -226,14 +224,12 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
 ///
 /// Distinct from [PregoNavTitle] (which is `text-lg / medium`, centre-only,
 /// tuned for the taller top bar) by this bar's tighter [lineHeight].
-class _SheetTitle extends StatelessWidget {
-  const _SheetTitle({
+class const _SheetTitle({
     required this.title,
     required this.subtitle,
     required this.alignment,
     required this.lineHeight,
-  });
-
+  }) extends StatelessWidget {
   final String title;
   final String? subtitle;
   final PregoSheetTitleAlignment alignment;

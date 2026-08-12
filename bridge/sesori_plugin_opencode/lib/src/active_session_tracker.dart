@@ -8,7 +8,7 @@ import "models/openapi/session_status.g.dart";
 import "models/sse_event_data.g.dart";
 import "opencode_repository.dart";
 
-class ActiveSessionTracker {
+class ActiveSessionTracker(this._repository) {
   final OpenCodeRepository _repository;
 
   final Set<String> _projectWorktrees = {};
@@ -44,8 +44,6 @@ class ActiveSessionTracker {
   Map<String, int> _lastEmittedActiveSessions = {};
   Set<String> _lastEmittedRetrySessions = {};
   Set<String> _lastEmittedPendingInputSessions = {};
-
-  ActiveSessionTracker(this._repository);
 
   Future<void> coldStart() async {
     _workStateBaselineTrusted = true;

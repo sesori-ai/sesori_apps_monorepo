@@ -131,7 +131,7 @@ import "runtime_provision_formatter.dart";
 /// The deliberate exit outcomes of a supervised bridge, each carrying the
 /// process exit [code] the desktop GUI supervisor keys its respawn policy on.
 /// Anything not represented here reads to the GUI as a crash (backoff respawn).
-enum SupervisedExitCode {
+enum SupervisedExitCode(this.code) {
   /// A phone-triggered restart handed off by exiting: the GUI must respawn.
   /// Distinct from a clean stop (0), a crash (other non-zero), and
   /// control-channel loss (1) so the GUI supervisor can tell an intentional
@@ -164,13 +164,11 @@ enum SupervisedExitCode {
   /// clean stop even when the shutdown itself completes fine.
   controlChannelLost(1);
 
-  SupervisedExitCode(this.code);
-
   /// The process exit code reported to the GUI supervisor.
   final int code;
 }
 
-enum _PhoneConnectionWaitOutcome { connected, sessionStopped }
+enum _PhoneConnectionWaitOutcome() { connected, sessionStopped }
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
@@ -182,9 +180,7 @@ Future<int> runBridgeApp({
   );
 }
 
-class BridgeRuntimeRunner {
-  const BridgeRuntimeRunner._();
-
+class const BridgeRuntimeRunner._() {
   /// Soft deadline granted to the plugin's ordered `shutdown()` step. The
   /// shutdown coordinator's backstop is sized from it (budget + slack).
   static const Duration _pluginShutdownBudget = Duration(seconds: 10);

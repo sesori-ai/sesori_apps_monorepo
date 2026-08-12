@@ -3,9 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 
-sealed class QueuedSessionSubmission {
-  const QueuedSessionSubmission();
-
+sealed class const QueuedSessionSubmission() {
   const factory QueuedSessionSubmission.text({
     required String text,
     required ComposerInputMode inputMode,
@@ -42,7 +40,13 @@ sealed class QueuedSessionSubmission {
   bool get isCommand => command != null;
 }
 
-final class QueuedTextSubmission extends QueuedSessionSubmission {
+final class const QueuedTextSubmission({
+    required this.text,
+    required this.inputMode,
+    required this.attachments,
+    required this.agent,
+    required this.agentModel,
+  }) extends QueuedSessionSubmission {
   @override
   final String text;
   @override
@@ -54,19 +58,16 @@ final class QueuedTextSubmission extends QueuedSessionSubmission {
   @override
   final AgentModel? agentModel;
 
-  const QueuedTextSubmission({
-    required this.text,
-    required this.inputMode,
-    required this.attachments,
-    required this.agent,
-    required this.agentModel,
-  });
-
   @override
   String? get command => null;
 }
 
-final class QueuedCommandSubmission extends QueuedSessionSubmission {
+final class const QueuedCommandSubmission({
+    required this.text,
+    required this.command,
+    required this.agent,
+    required this.agentModel,
+  }) extends QueuedSessionSubmission {
   @override
   final String text;
   @override
@@ -75,13 +76,6 @@ final class QueuedCommandSubmission extends QueuedSessionSubmission {
   final String? agent;
   @override
   final AgentModel? agentModel;
-
-  const QueuedCommandSubmission({
-    required this.text,
-    required this.command,
-    required this.agent,
-    required this.agentModel,
-  });
 
   @override
   ComposerInputMode get inputMode => ComposerInputMode.typed;

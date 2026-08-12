@@ -8,12 +8,12 @@ import "../foundation/models/session_options/session_options_request_mode.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
-class SessionRepository {
+class SessionRepository({
+    required SessionApi api,
+  }) {
   final SessionApi _api;
 
-  SessionRepository({
-    required SessionApi api,
-  }) : _api = api;
+  this : _api = api;
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,

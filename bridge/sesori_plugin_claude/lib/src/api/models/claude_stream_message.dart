@@ -14,9 +14,7 @@ import "../../models/claude_permission_mode.dart";
 ///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 2.
-sealed class ClaudeStreamMessage {
-  const ClaudeStreamMessage({required this.sessionId, required this.uuid, required this.raw});
-
+sealed class const ClaudeStreamMessage({required this.sessionId, required this.uuid, required this.raw}) {
   /// The session this frame belongs to. Present on every observed frame, but
   /// nullable because the transport must not drop a frame that omits it.
   final String? sessionId;
@@ -103,8 +101,7 @@ List<String> _stringList(Object? value) => value is List
     : const <String>[];
 
 /// `system`/`init` — the per-process handshake frame.
-final class ClaudeInitMessage extends ClaudeStreamMessage {
-  const ClaudeInitMessage({
+final class const ClaudeInitMessage({
     required this.model,
     required this.permissionMode,
     required this.capabilities,
@@ -115,8 +112,7 @@ final class ClaudeInitMessage extends ClaudeStreamMessage {
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   factory ClaudeInitMessage.fromJson(
     Map<String, Object?> json, {
     required String? sessionId,
@@ -155,18 +151,16 @@ final class ClaudeInitMessage extends ClaudeStreamMessage {
 }
 
 /// `system`/`status` — a coarse work-state signal such as `requesting`.
-final class ClaudeStatusMessage extends ClaudeStreamMessage {
-  const ClaudeStatusMessage({
+final class const ClaudeStatusMessage({
     required this.status,
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   final String? status;
 }
 
-enum ClaudeAssistantError {
+enum ClaudeAssistantError() {
   authenticationFailed,
   oauthOrgNotAllowed,
   billingError,
@@ -193,8 +187,7 @@ enum ClaudeAssistantError {
 }
 
 /// `system`/`api_retry` — a retryable API failure with a scheduled retry.
-final class ClaudeApiRetryMessage extends ClaudeStreamMessage {
-  const ClaudeApiRetryMessage({
+final class const ClaudeApiRetryMessage({
     required this.attempt,
     required this.maxRetries,
     required this.retryDelayMs,
@@ -203,8 +196,7 @@ final class ClaudeApiRetryMessage extends ClaudeStreamMessage {
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   factory ClaudeApiRetryMessage.fromJson(
     Map<String, Object?> json, {
     required String? sessionId,
@@ -231,8 +223,7 @@ final class ClaudeApiRetryMessage extends ClaudeStreamMessage {
 ///
 /// Ordering trap: this frame arrives *before* the turn's `content_block_stop`,
 /// `message_delta`, and `message_stop` stream events, not after them.
-final class ClaudeAssistantMessage extends ClaudeStreamMessage {
-  const ClaudeAssistantMessage({
+final class const ClaudeAssistantMessage({
     required this.message,
     required this.messageId,
     required this.model,
@@ -242,8 +233,7 @@ final class ClaudeAssistantMessage extends ClaudeStreamMessage {
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   factory ClaudeAssistantMessage.fromJson(
     Map<String, Object?> json, {
     required String? sessionId,
@@ -280,22 +270,20 @@ final class ClaudeAssistantMessage extends ClaudeStreamMessage {
 }
 
 /// A user frame. Also carries `tool_result` blocks that complete tool calls.
-final class ClaudeUserMessage extends ClaudeStreamMessage {
-  const ClaudeUserMessage({
+final class const ClaudeUserMessage({
     required this.message,
     required this.parentToolUseId,
     required this.timestamp,
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   final Map<String, Object?> message;
   final String? parentToolUseId;
   final DateTime? timestamp;
 }
 
-enum ClaudeStreamEventType {
+enum ClaudeStreamEventType() {
   messageStart,
   contentBlockStart,
   contentBlockDelta,
@@ -311,7 +299,7 @@ enum ClaudeStreamEventType {
   };
 }
 
-enum ClaudeStreamDeltaType {
+enum ClaudeStreamDeltaType() {
   text,
   thinking,
   inputJson,
@@ -325,7 +313,7 @@ enum ClaudeStreamDeltaType {
   };
 }
 
-enum ClaudeResultSubtype {
+enum ClaudeResultSubtype() {
   success,
   errorDuringExecution,
   errorMaxTurns,
@@ -343,7 +331,7 @@ enum ClaudeResultSubtype {
   };
 }
 
-enum ClaudeTerminalReason {
+enum ClaudeTerminalReason() {
   blockingLimit,
   rapidRefillBreaker,
   promptTooLong,
@@ -390,16 +378,14 @@ enum ClaudeTerminalReason {
 }
 
 /// A raw Anthropic streaming event carrying token-level deltas.
-final class ClaudeStreamEventMessage extends ClaudeStreamMessage {
-  const ClaudeStreamEventMessage({
+final class const ClaudeStreamEventMessage({
     required this.event,
     required this.eventType,
     required this.parentToolUseId,
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   factory ClaudeStreamEventMessage.fromJson(
     Map<String, Object?> json, {
     required String? sessionId,
@@ -431,8 +417,7 @@ final class ClaudeStreamEventMessage extends ClaudeStreamMessage {
 }
 
 /// The end of a turn.
-final class ClaudeResultMessage extends ClaudeStreamMessage {
-  const ClaudeResultMessage({
+final class const ClaudeResultMessage({
     required this.subtype,
     required this.isError,
     required this.result,
@@ -444,8 +429,7 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   factory ClaudeResultMessage.fromJson(
     Map<String, Object?> json, {
     required String? sessionId,
@@ -489,16 +473,14 @@ final class ClaudeResultMessage extends ClaudeStreamMessage {
 }
 
 /// A CLI-originated control request, notably `can_use_tool`.
-final class ClaudeControlRequestMessage extends ClaudeStreamMessage {
-  const ClaudeControlRequestMessage({
+final class const ClaudeControlRequestMessage({
     required this.requestId,
     required this.subtype,
     required this.request,
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   factory ClaudeControlRequestMessage.fromJson(
     Map<String, Object?> json, {
     required String? sessionId,
@@ -523,8 +505,7 @@ final class ClaudeControlRequestMessage extends ClaudeStreamMessage {
 }
 
 /// A reply to a control request we sent.
-final class ClaudeControlResponseMessage extends ClaudeStreamMessage {
-  const ClaudeControlResponseMessage({
+final class const ClaudeControlResponseMessage({
     required this.requestId,
     required this.isSuccess,
     required this.payload,
@@ -532,8 +513,7 @@ final class ClaudeControlResponseMessage extends ClaudeStreamMessage {
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   factory ClaudeControlResponseMessage.fromJson(
     Map<String, Object?> json, {
     required String? sessionId,
@@ -561,14 +541,12 @@ final class ClaudeControlResponseMessage extends ClaudeStreamMessage {
 }
 
 /// Rate-limit state pushed alongside a turn.
-final class ClaudeRateLimitMessage extends ClaudeStreamMessage {
-  const ClaudeRateLimitMessage({
+final class const ClaudeRateLimitMessage({
     required this.info,
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   final Map<String, Object?> info;
 
   String? get status => _stringOrNull(info["status"]);
@@ -578,15 +556,13 @@ final class ClaudeRateLimitMessage extends ClaudeStreamMessage {
 ///
 /// Absorbed deliberately: `rate_limit_event` and `system`/`status` were both
 /// absent from the protocol research and present in the first live capture.
-final class ClaudeUnknownMessage extends ClaudeStreamMessage {
-  const ClaudeUnknownMessage({
+final class const ClaudeUnknownMessage({
     required this.type,
     required this.subtype,
     required super.sessionId,
     required super.uuid,
     required super.raw,
-  });
-
+  }) extends ClaudeStreamMessage {
   final String? type;
   final String? subtype;
 }

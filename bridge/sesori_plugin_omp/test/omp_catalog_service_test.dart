@@ -198,9 +198,7 @@ AcpNewSessionResult _result({
   raw: const {},
 );
 
-class _FakeCatalogRepository implements OmpCatalogRepository {
-  _FakeCatalogRepository({required this.created, required this.selections});
-
+class _FakeCatalogRepository({required this.created, required this.selections}) implements OmpCatalogRepository {
   AcpNewSessionResult created;
   final Map<String, AcpNewSessionResult> selections;
   final StreamController<AcpNotification> _notifications = StreamController.broadcast();
@@ -297,7 +295,7 @@ class _FakeCatalogRepository implements OmpCatalogRepository {
   Future<void> dispose() async => _notifications.close();
 }
 
-class _UnusedAcpApi implements OmpAcpApi {
+class _UnusedAcpApi() implements OmpAcpApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

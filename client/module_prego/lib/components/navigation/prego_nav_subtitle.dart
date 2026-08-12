@@ -3,7 +3,7 @@ import "package:flutter/material.dart";
 import "../../module_prego.dart";
 
 /// The connection state the [PregoNavSubtitle] status dot reports.
-enum PregoNavStatus {
+enum PregoNavStatus() {
   /// Connected — a green dot.
   online,
 
@@ -26,16 +26,14 @@ enum PregoNavStatus {
 /// hand the finished widget to [PregoGlassScaffold.subtitle] /
 /// [PregoTopNavigation.subtitle] instead of threading row parts through the
 /// bar's API.
-class PregoNavSubtitle extends StatelessWidget {
-  const PregoNavSubtitle({
+class const PregoNavSubtitle({
     super.key,
     required this.text,
     this.icon,
     this.status,
     this.infoMessage,
     this.infoSemanticLabel,
-  });
-
+  }) extends StatelessWidget {
   /// The row's text, in `text-xs / medium / text-secondary`, clipped to a
   /// single ellipsised line.
   final String text;
@@ -134,9 +132,7 @@ class PregoNavSubtitle extends StatelessWidget {
 /// join a body skeleton's sweep region — and inherits the shimmer's anti-flash
 /// appear delay, keeping fast loads from blinking a placeholder. Like all
 /// skeletons it is decorative: [PregoShimmer] excludes it from semantics.
-class PregoNavSubtitleSkeleton extends StatelessWidget {
-  const PregoNavSubtitleSkeleton({super.key});
-
+class const PregoNavSubtitleSkeleton({super.key}) extends StatelessWidget {
   /// The real row's height: the `text-xs` line box (12px glyphs, 18px line).
   static const double _rowHeight = 18;
 

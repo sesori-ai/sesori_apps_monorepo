@@ -7,10 +7,10 @@ import "request_handler.dart";
 
 /// Handles `POST /project/base-branch` — returns the project's git context:
 /// its configured base branch and the repository slug of its git remote.
-class GetBaseBranchHandler extends BodyRequestHandler<ProjectIdRequest, BaseBranchResponse> {
+class GetBaseBranchHandler({required ProjectRepository projectRepository}) extends BodyRequestHandler<ProjectIdRequest, BaseBranchResponse> {
   final ProjectRepository _projectRepository;
 
-  GetBaseBranchHandler({required ProjectRepository projectRepository})
+  this
     : _projectRepository = projectRepository,
       super(
         HttpMethod.post,

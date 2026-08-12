@@ -6,17 +6,15 @@ import "../../../core/extensions/build_context_x.dart";
 /// "N Tasks Running" (or a check + "Completed") and a chevron that rotates as
 /// the card expands. Rendered as a [PregoListTile] so it shares the card's
 /// surface and press feedback with the task rows below it.
-class BackgroundTasksHeader extends StatelessWidget {
-  final int runningCount;
-  final bool expanded;
-  final VoidCallback onTap;
-
-  const BackgroundTasksHeader({
+class const BackgroundTasksHeader({
     super.key,
     required this.runningCount,
     required this.expanded,
     required this.onTap,
-  });
+  }) extends StatelessWidget {
+  final int runningCount;
+  final bool expanded;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

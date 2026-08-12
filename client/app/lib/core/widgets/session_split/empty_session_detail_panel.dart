@@ -7,9 +7,7 @@ import "../sesori_background_widget.dart";
 
 /// Placeholder panel shown in the right pane when no session is selected
 /// in wide split mode.
-class EmptySessionDetailPanel extends StatelessWidget {
-  const EmptySessionDetailPanel({super.key});
-
+class const EmptySessionDetailPanel({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

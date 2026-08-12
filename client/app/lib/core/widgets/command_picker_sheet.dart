@@ -11,13 +11,11 @@ import "package:theme_prego/module_prego.dart";
 import "../../l10n/app_localizations.dart";
 import "../extensions/build_context_x.dart";
 
-class CommandPickerSheet extends StatefulWidget {
-  final List<CommandInfo> commands;
-
-  const CommandPickerSheet({
+class const CommandPickerSheet({
     super.key,
     required this.commands,
-  });
+  }) extends StatefulWidget {
+  final List<CommandInfo> commands;
 
   static Future<CommandInfo?> show(
     BuildContext context, {
@@ -57,7 +55,7 @@ class CommandPickerSheet extends StatefulWidget {
   State<CommandPickerSheet> createState() => _CommandPickerSheetState();
 }
 
-class _CommandPickerSheetState extends State<CommandPickerSheet> {
+class _CommandPickerSheetState() extends State<CommandPickerSheet> {
   String _query = "";
 
   /// Precomputed picker entries; `null` while the background isolate is

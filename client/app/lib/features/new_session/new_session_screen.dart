@@ -21,17 +21,15 @@ import "new_session_no_harness_notice.dart";
 import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
 
-class NewSessionScreen extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final bool? initialSupportsDedicatedWorktrees;
-
-  const NewSessionScreen({
+class const NewSessionScreen({
     super.key,
     required this.projectId,
     required this.projectName,
     required this.initialSupportsDedicatedWorktrees,
-  });
+  }) extends StatelessWidget {
+  final String projectId;
+  final String? projectName;
+  final bool? initialSupportsDedicatedWorktrees;
 
   @override
   Widget build(BuildContext context) {
@@ -53,11 +51,9 @@ class NewSessionScreen extends StatelessWidget {
   }
 }
 
-class _NewSessionBody extends StatefulWidget {
+class const _NewSessionBody({required this.projectId, required this.projectName}) extends StatefulWidget {
   final String projectId;
   final String? projectName;
-
-  const _NewSessionBody({required this.projectId, required this.projectName});
 
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
@@ -96,7 +92,7 @@ double _refreshBandHeight(BuildContext context) {
   return PregoSpacing.md * 2 + math.max(contentHeight, scaledContent) + _refreshBottomGap;
 }
 
-class _NewSessionBodyState extends State<_NewSessionBody> {
+class _NewSessionBodyState() extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
@@ -502,11 +498,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
 /// Whether the session gets a git worktree of its own instead of working in
 /// the project checkout everyone shares.
-class _DedicatedWorkspaceRow extends StatelessWidget {
+class const _DedicatedWorkspaceRow({required this.value, required this.onChanged}) extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
-
-  const _DedicatedWorkspaceRow({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {

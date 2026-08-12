@@ -254,8 +254,8 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
 /// once armed (e.g. to log stderr); output produced before that is consumed by
 /// the always-present internal drain. Everything else delegates to the wrapped
 /// process.
-class _DrainingOpenCodeProcess implements SpawnedProcess {
-  _DrainingOpenCodeProcess(this._inner)
+class _DrainingOpenCodeProcess(this._inner) implements SpawnedProcess {
+  this
     : _stdout = _inner.stdout.asBroadcastStream(),
       _stderr = _inner.stderr.asBroadcastStream() {
     _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);

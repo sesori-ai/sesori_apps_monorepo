@@ -1,11 +1,11 @@
 import "dart:async";
 
-enum PluginWorkState { idle, busy, unknown }
+enum PluginWorkState() { idle, busy, unknown }
 
 /// Publishes replay-latest generic work state without exposing backend-specific
 /// turn, process, or session status values to bridge core.
-class PluginWorkStateController {
-  PluginWorkStateController({required PluginWorkState initial}) : _current = initial;
+class PluginWorkStateController({required PluginWorkState initial}) {
+  this : _current = initial;
 
   final StreamController<PluginWorkState> _updates = StreamController<PluginWorkState>.broadcast();
   PluginWorkState _current;

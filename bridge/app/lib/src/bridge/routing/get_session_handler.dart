@@ -8,16 +8,16 @@ import "../services/pr_sync_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/detail` — returns a single enriched session by ID.
-class GetSessionHandler extends BodyRequestHandler<SessionIdRequest, Session> {
+class GetSessionHandler({
+    required SessionRepository sessionRepository,
+    required PrSyncService prSyncService,
+    Duration identityVerificationTimeout = const Duration(seconds: 5),
+  }) extends BodyRequestHandler<SessionIdRequest, Session> {
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final Duration _identityVerificationTimeout;
 
-  GetSessionHandler({
-    required SessionRepository sessionRepository,
-    required PrSyncService prSyncService,
-    Duration identityVerificationTimeout = const Duration(seconds: 5),
-  }) : _sessionRepository = sessionRepository,
+  this : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _identityVerificationTimeout = identityVerificationTimeout,
        super(

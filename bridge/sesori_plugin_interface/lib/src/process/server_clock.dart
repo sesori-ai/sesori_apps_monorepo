@@ -1,6 +1,4 @@
-class ServerClock {
-  const ServerClock();
-
+class const ServerClock() {
   DateTime now() {
     return DateTime.now().toUtc();
   }

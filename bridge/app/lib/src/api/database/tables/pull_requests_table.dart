@@ -12,7 +12,7 @@ part "pull_requests_table.freezed.dart";
   columns: {#projectId, #githubRepositoryIdentity, #branchName, #githubLogin},
 )
 @UseRowClass(PullRequestDto)
-class PullRequestsTable extends Table {
+class PullRequestsTable() extends Table {
   @override
   String get tableName => "pull_requests_table";
 
@@ -38,7 +38,7 @@ class PullRequestsTable extends Table {
 }
 
 @freezed
-sealed class PullRequestDto with _$PullRequestDto, $PullRequestsTableTableToColumns {
+sealed class const PullRequestDto._() with _$PullRequestDto, $PullRequestsTableTableToColumns {
   const factory PullRequestDto({
     required String projectId,
     required String githubRepositoryIdentity,
@@ -54,6 +54,4 @@ sealed class PullRequestDto with _$PullRequestDto, $PullRequestsTableTableToColu
     required int lastCheckedAt,
     required int createdAt,
   }) = _PullRequestDto;
-
-  const PullRequestDto._();
 }

@@ -17,13 +17,11 @@ import "../../../core/extensions/build_context_x.dart";
 ///
 /// Driven by [progress] straight into the painter, so the drag scrubs colour
 /// without rebuilding the composer.
-class VoiceCancelButton extends StatelessWidget {
-  const VoiceCancelButton({
+class const VoiceCancelButton({
     super.key,
     required this.progress,
     required this.onCancel,
-  });
-
+  }) extends StatelessWidget {
   /// 0 → resting dashed ghost, 1 → solid destructive fill under the finger.
   final ValueListenable<double> progress;
 
@@ -85,14 +83,12 @@ class VoiceCancelButton extends StatelessWidget {
 
 /// Paints the dashed resting ring, cross-fading into the solid destructive
 /// disc as [engaged] rises.
-class _CancelTargetPainter extends CustomPainter {
-  _CancelTargetPainter({
+class _CancelTargetPainter({
     required this.engaged,
     required this.dashColor,
     required this.fillColor,
     required this.ringColor,
-  });
-
+  }) extends CustomPainter {
   final double engaged;
   final Color dashColor;
   final Color fillColor;

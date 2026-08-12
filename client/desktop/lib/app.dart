@@ -6,9 +6,7 @@ import "features/auth_gate/auth_gate.dart";
 ///
 /// Renders the sign-in gate; the real v1 window contents (status, bridge
 /// on/off) arrive with the tray + window slices.
-class SesoriDesktopApp extends StatelessWidget {
-  const SesoriDesktopApp({super.key});
-
+class const SesoriDesktopApp({super.key}) extends StatelessWidget {
   static const String _appTitle = "Sesori";
 
   @override

@@ -5,19 +5,17 @@ const int defaultPullRequestRefreshIntervalSeconds = 30;
 const int minimumPullRequestRefreshIntervalSeconds = 15;
 const int maximumPullRequestRefreshIntervalSeconds = 3600;
 
-enum SleepPreventionMode {
+enum SleepPreventionMode() {
   off,
   always,
 }
 
-class PluginLifecycleSettings {
-  final int? idleTimeoutMins;
-  final Map<String, Object?> additionalProperties;
-
-  const PluginLifecycleSettings({
+class const PluginLifecycleSettings({
     required this.idleTimeoutMins,
     this.additionalProperties = const {},
-  });
+  }) {
+  final int? idleTimeoutMins;
+  final Map<String, Object?> additionalProperties;
 
   factory PluginLifecycleSettings.fromJson({
     required String entryName,
@@ -53,16 +51,14 @@ class PluginLifecycleSettings {
   }
 }
 
-class BridgePluginSettings {
-  final Set<String> disabledPluginIds;
-  final PluginLifecycleSettings defaults;
-  final Map<String, PluginLifecycleSettings> settingsByPluginId;
-
-  const BridgePluginSettings({
+class const BridgePluginSettings({
     this.disabledPluginIds = const {},
     this.defaults = const PluginLifecycleSettings(idleTimeoutMins: null),
     this.settingsByPluginId = const {},
-  });
+  }) {
+  final Set<String> disabledPluginIds;
+  final PluginLifecycleSettings defaults;
+  final Map<String, PluginLifecycleSettings> settingsByPluginId;
 
   factory BridgePluginSettings.fromJson({required Object? rawValue}) {
     if (rawValue is! Map || rawValue.keys.any((key) => key is! String)) {
@@ -173,7 +169,13 @@ class BridgePluginSettings {
   }
 }
 
-class BridgeSettings {
+class const BridgeSettings({
+    this.sleepPrevention = SleepPreventionMode.always,
+    this.yolo = false,
+    this.plugins = const BridgePluginSettings(),
+    this.releaseTrack = ReleaseTrack.stable,
+    this.pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
+  }) {
   final SleepPreventionMode sleepPrevention;
 
   /// Automatically approves permission requests at the bridge without
@@ -188,14 +190,6 @@ class BridgeSettings {
 
   /// Polling cadence while at least one client views a project.
   final int pullRequestRefreshIntervalSeconds;
-
-  const BridgeSettings({
-    this.sleepPrevention = SleepPreventionMode.always,
-    this.yolo = false,
-    this.plugins = const BridgePluginSettings(),
-    this.releaseTrack = ReleaseTrack.stable,
-    this.pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
-  });
 
   factory BridgeSettings.fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
@@ -264,19 +258,17 @@ class BridgeSettings {
   }
 }
 
-class PluginSettingsFormatException extends FormatException {
-  const PluginSettingsFormatException(super.message);
-}
+class const PluginSettingsFormatException(super.message) extends FormatException;
 
-class PluginIdleTimeoutFormatException extends PluginSettingsFormatException {
+class PluginIdleTimeoutFormatException({required this.entryName}) extends PluginSettingsFormatException {
   final String entryName;
 
-  PluginIdleTimeoutFormatException({required this.entryName})
+  this
     : super('"plugins.$entryName.idleTimeoutMins" must be an integer');
 }
 
-class PullRequestRefreshIntervalFormatException extends FormatException {
-  const PullRequestRefreshIntervalFormatException()
+class const PullRequestRefreshIntervalFormatException() extends FormatException {
+  this
     : super(
         '"pullRequestRefreshIntervalSeconds" must be an integer between '
         '$minimumPullRequestRefreshIntervalSeconds and $maximumPullRequestRefreshIntervalSeconds',

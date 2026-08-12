@@ -41,9 +41,7 @@ const _specPathInRepo = 'packages/sdk/openapi.json';
 /// Resolved upstream ref description passed to the codegen. Exactly one
 /// of [tag], [branch], [commit] is non-null. [commitSha] is the 40-char
 /// hex commit SHA the ref points at (always populated when [kind] is set).
-class SourceRef {
-  SourceRef({required this.kind, required this.value, required this.commitSha});
-
+class SourceRef({required this.kind, required this.value, required this.commitSha}) {
   /// One of 'tag', 'branch', 'commit'.
   final String kind;
 
@@ -301,15 +299,13 @@ Future<SourceRef> _resolveAndFetch({
   return SourceRef(kind: kind, value: value, commitSha: sha);
 }
 
-class Codegen {
-  Codegen({
+class Codegen({
     required this.spec,
     required this.outDir,
     required this.verbose,
     required this.withClient,
     this.sourceRef,
-  });
-
+  }) {
   final Map<String, dynamic> spec;
   final String outDir;
   final bool verbose;
@@ -1126,12 +1122,12 @@ String _schemaNameFromRef(String ref) {
 // Operation / Parameter / Response models
 // ---------------------------------------------------------------------------
 
-class Operation {
-  Operation.fromOpenApi({
+class Operation.fromOpenApi({
     required this.path,
     required this.method,
     required this.op,
   }) {
+  this {
     operationId = op['operationId'] as String?;
     summary = op['summary'] as String?;
     description = op['description'] as String?;
@@ -1202,12 +1198,10 @@ class Operation {
   }
 }
 
-class SurfaceSpec {
-  SurfaceSpec({
+class SurfaceSpec({
     required this.operations,
     required this.extraSchemas,
-  });
-
+  }) {
   factory SurfaceSpec.fromJson(Map<String, dynamic> json) {
     return SurfaceSpec(
       operations: (json['operations'] as List).cast<String>(),
@@ -1219,8 +1213,8 @@ class SurfaceSpec {
   final List<String> extraSchemas;
 }
 
-class Parameter {
-  Parameter.fromOpenApi(Map<String, dynamic> p) {
+class Parameter.fromOpenApi(Map<String, dynamic> p) {
+  this {
     name = p['name'] as String;
     inBody = p['in'] as String;
     required = (p['required'] as bool?) ?? false;
@@ -1232,8 +1226,8 @@ class Parameter {
   Map<String, dynamic>? schema;
 }
 
-class ResponseSpec {
-  ResponseSpec.fromOpenApi(Map<String, dynamic> r) {
+class ResponseSpec.fromOpenApi(Map<String, dynamic> r) {
+  this {
     description = r['description'] as String?;
     final content = r['content'] as Map<String, dynamic>?;
     if (content != null) {
@@ -1288,16 +1282,14 @@ class ResponseSpec {
 // Model writer
 // ---------------------------------------------------------------------------
 
-class ModelWriter {
-  ModelWriter({
+class ModelWriter({
     required this.name,
     required this.rawName,
     required this.schema,
     required this.schemas,
     this.implementsClass,
     this.sourceHeader,
-  });
-
+  }) {
   /// Cleaned, valid Dart class name.
   final String name;
 
@@ -2937,11 +2929,10 @@ class ModelWriter {
 /// class. The actual class body is emitted by
 /// [ModelWriter._emitInlineVariantClass] so it can reuse the
 /// schema-reading helpers.
-class _InlineVariantClassEntry {
-  _InlineVariantClassEntry({
+class _InlineVariantClassEntry({
     required this.className,
     required this.schema,
-  });
+  }) {
   final String className;
   final Map<String, dynamic> schema;
 }
@@ -2949,11 +2940,10 @@ class _InlineVariantClassEntry {
 /// A class synthesized for an inline `type: object` property schema
 /// (e.g. `Session.time` → `SessionTime`). Emitted as a sibling of the
 /// owning class by [ModelWriter.emit].
-class _InlineObjectEntry {
-  _InlineObjectEntry({
+class _InlineObjectEntry({
     required this.className,
     required this.schema,
-  });
+  }) {
   final String className;
   final Map<String, dynamic> schema;
 }
@@ -2961,16 +2951,14 @@ class _InlineObjectEntry {
 /// Everything the object-class emitter needs to know about one field,
 /// computed once so the constructor, fromJson, toJson, `==`, hashCode,
 /// and field declaration all agree.
-class _FieldRecord {
-  _FieldRecord({
+class _FieldRecord({
     required this.jsonName,
     required this.safeName,
     required this.schema,
     required this.isRequired,
     required this.dartType,
     required this.context,
-  });
-
+  }) {
   /// JSON object key as it appears in the spec.
   final String jsonName;
 
@@ -2996,8 +2984,7 @@ class _FieldRecord {
 }
 
 /// An enum class synthesized for an inline enum in a property.
-class InlineEnum {
-  InlineEnum({required this.className, required this.values});
+class InlineEnum({required this.className, required this.values}) {
   final String className;
   final List<String> values;
 

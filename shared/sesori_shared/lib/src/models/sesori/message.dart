@@ -22,9 +22,7 @@ part "message.g.dart";
 /// `errorName` and `errorMessage` fields before constructing a
 /// [MessageError].
 @Freezed(unionKey: "role", fromJson: true, toJson: true)
-sealed class Message with _$Message {
-  const Message._();
-
+sealed class const Message._() with _$Message {
   const factory Message.user({
     required String id,
     required String sessionID,

@@ -11,14 +11,14 @@ import "bridge_id_storage.dart";
 /// before the first authentication, and its failures propagate so startup
 /// retries the copy instead of proceeding with an empty storage.
 // COMPATIBILITY 2026-06-30 (v1.3.0): Old installs persist bridgeId inside token.json. Remove this service and startup invocation once those installs are unsupported.
-class BridgeIdMigrationService {
+class BridgeIdMigrationService({
+    required BridgeIdStorage bridgeIdStorage,
+    required Future<String?> Function() readLegacyBridgeId,
+  }) {
   final BridgeIdStorage _bridgeIdStorage;
   final Future<String?> Function() _readLegacyBridgeId;
 
-  BridgeIdMigrationService({
-    required BridgeIdStorage bridgeIdStorage,
-    required Future<String?> Function() readLegacyBridgeId,
-  }) : _bridgeIdStorage = bridgeIdStorage,
+  this : _bridgeIdStorage = bridgeIdStorage,
        _readLegacyBridgeId = readLegacyBridgeId;
 
   /// Adopts the legacy bridge id when [BridgeIdStorage] is empty.

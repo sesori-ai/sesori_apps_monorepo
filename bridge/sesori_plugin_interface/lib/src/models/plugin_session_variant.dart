@@ -1,10 +1,8 @@
 import "package:meta/meta.dart";
 
 @immutable
-final class PluginSessionVariant {
+final class const PluginSessionVariant({required this.id}) {
   final String id;
-
-  const PluginSessionVariant({required this.id});
 
   @override
   bool operator ==(Object other) =>

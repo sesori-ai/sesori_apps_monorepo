@@ -221,9 +221,7 @@ void main() {
   });
 }
 
-class _MinimalDescriptor extends BridgePluginDescriptor {
-  const _MinimalDescriptor();
-
+class const _MinimalDescriptor() extends BridgePluginDescriptor {
   @override
   String get id => 'noop';
 
@@ -247,9 +245,7 @@ class _MinimalDescriptor extends BridgePluginDescriptor {
 
 /// The default setup inspection ignores its process service, so this fake
 /// throws on every call to prove the default never touches it.
-class _UnusedProcessService implements HostProcessService {
-  const _UnusedProcessService();
-
+class const _UnusedProcessService() implements HostProcessService {
   @override
   Future<SpawnedProcess> spawn({
     required String executable,
@@ -269,9 +265,7 @@ class _UnusedProcessService implements HostProcessService {
   Future<SignalResult> signalForce({required int pid}) => throw UnimplementedError();
 }
 
-class _ValidatingDescriptor extends BridgePluginDescriptor {
-  const _ValidatingDescriptor();
-
+class const _ValidatingDescriptor() extends BridgePluginDescriptor {
   @override
   String get id => 'validating';
 

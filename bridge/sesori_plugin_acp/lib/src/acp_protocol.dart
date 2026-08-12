@@ -13,7 +13,7 @@ part "acp_protocol.g.dart";
 const int acpProtocolVersion = 1;
 
 /// Standard ACP JSON-RPC method names.
-abstract final class AcpMethods {
+abstract final class AcpMethods() {
   static const String initialize = "initialize";
   static const String authenticate = "authenticate";
   static const String sessionNew = "session/new";
@@ -30,9 +30,7 @@ abstract final class AcpMethods {
 }
 
 /// An auth method advertised by the agent in the `initialize` result.
-class AcpAuthMethod {
-  const AcpAuthMethod({required this.id, this.name, this.description});
-
+class const AcpAuthMethod({required this.id, this.name, this.description}) {
   final String id;
   final String? name;
   final String? description;
@@ -45,15 +43,13 @@ class AcpAuthMethod {
 }
 
 /// Capabilities the agent reports at `initialize`.
-class AcpAgentCapabilities {
-  const AcpAgentCapabilities({
+class const AcpAgentCapabilities({
     required this.loadSession,
     required this.listSessions,
     required this.resumeSession,
     required this.closeSession,
     required this.raw,
-  });
-
+  }) {
   /// Whether `session/load` (history replay) is supported.
   final bool loadSession;
 
@@ -91,14 +87,12 @@ class AcpAgentCapabilities {
 }
 
 /// Parsed result of the `initialize` handshake.
-class AcpInitializeResult {
-  const AcpInitializeResult({
+class const AcpInitializeResult({
     required this.protocolVersion,
     required this.agentCapabilities,
     required this.authMethods,
     required this.raw,
-  });
-
+  }) {
   final int protocolVersion;
   final AcpAgentCapabilities agentCapabilities;
   final List<AcpAuthMethod> authMethods;
@@ -127,9 +121,7 @@ class AcpInitializeResult {
 /// Converts an ACP `updatedAt` value to epoch milliseconds: the spec sends an
 /// ISO 8601 string, while live cursor-agent builds have shipped epoch
 /// numbers — both are accepted, anything else is null.
-class AcpTimestampMsConverter implements JsonConverter<int?, Object?> {
-  const AcpTimestampMsConverter();
-
+class const AcpTimestampMsConverter() implements JsonConverter<int?, Object?> {
   @override
   int? fromJson(Object? json) {
     if (json is num) return json.round();
@@ -194,14 +186,12 @@ sealed class AcpSessionListResult with _$AcpSessionListResult {
 }
 
 /// Result of `session/new`.
-class AcpNewSessionResult {
-  const AcpNewSessionResult({
+class const AcpNewSessionResult({
     required this.sessionId,
     required this.modes,
     required this.configOptions,
     required this.raw,
-  });
-
+  }) {
   final String sessionId;
 
   /// Optional session modes (plan/ask/agent) — raw, harness-specific.
@@ -223,7 +213,7 @@ class AcpNewSessionResult {
 }
 
 /// Why a `session/prompt` turn ended.
-enum AcpStopReason {
+enum AcpStopReason() {
   endTurn,
   maxTokens,
   maxTurnRequests,
@@ -244,9 +234,7 @@ enum AcpStopReason {
 }
 
 /// Result of `session/prompt`.
-class AcpPromptResult {
-  const AcpPromptResult({required this.stopReason});
-
+class const AcpPromptResult({required this.stopReason}) {
   final AcpStopReason stopReason;
 
   factory AcpPromptResult.fromJson(Map<String, dynamic> json) =>

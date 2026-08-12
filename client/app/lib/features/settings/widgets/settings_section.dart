@@ -5,13 +5,11 @@ import "package:theme_prego/module_prego.dart";
 const double _headerGap = 10.0;
 
 /// A titled settings section: a secondary `text-md` header above its card.
-class SettingsSection extends StatelessWidget {
-  const SettingsSection({
+class const SettingsSection({
     super.key,
     required this.title,
     required this.child,
-  });
-
+  }) extends StatelessWidget {
   final String title;
 
   /// The section body, typically a [PregoGroupedRows] card.

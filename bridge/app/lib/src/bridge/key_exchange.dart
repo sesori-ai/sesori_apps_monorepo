@@ -2,11 +2,11 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-class KeyExchangeManager {
+class KeyExchangeManager(List<int> roomKey, {RelayCryptoService? cryptoService}) {
   final List<int> _roomKey;
   final RelayCryptoService _cryptoService;
 
-  KeyExchangeManager(List<int> roomKey, {RelayCryptoService? cryptoService})
+  this
     : _roomKey = List<int>.from(roomKey),
       _cryptoService = cryptoService ?? RelayCryptoService();
 

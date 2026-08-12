@@ -63,14 +63,12 @@ String _toPosix(String path) => path.replaceAll(r"\", "/");
 /// which for a full-width row reads as the row collapsing into a small panel,
 /// and it allocates a ticker, a scroll controller and an unaspected MediaQuery
 /// dependency for every realised row of the list.
-class ProjectTile extends StatelessWidget {
-  const ProjectTile({
+class const ProjectTile({
     super.key,
     required this.project,
     required this.activeSessions,
     required this.unseen,
-  });
-
+  }) extends StatelessWidget {
   final Project project;
 
   /// How many of the project's sessions an agent is working in right now.
@@ -340,13 +338,11 @@ class ProjectTile extends StatelessWidget {
 /// The status is a single slot with one occupant. A project can be both running
 /// and unseen; a live turn is the more informative of the two, so it wins, and
 /// the unseen state still shows through the title's weight.
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({
+class const _StatusRow({
     required this.project,
     required this.activeSessions,
     required this.unseen,
-  });
-
+  }) extends StatelessWidget {
   final Project project;
   final int activeSessions;
   final bool unseen;
@@ -409,13 +405,11 @@ class _StatusRow extends StatelessWidget {
 }
 
 /// An icon and its label, as one status.
-class _StatusLabel extends StatelessWidget {
-  const _StatusLabel({
+class const _StatusLabel({
     required this.icon,
     required this.label,
     this.emphasis = false,
-  });
-
+  }) extends StatelessWidget {
   final Widget icon;
   final String label;
 
@@ -455,9 +449,7 @@ class _StatusLabel extends StatelessWidget {
 ///
 /// Decorative on its own — wrap a column of these in a single [PregoShimmer],
 /// never one per row.
-class ProjectTileSkeleton extends StatelessWidget {
-  const ProjectTileSkeleton({super.key});
-
+class const ProjectTileSkeleton({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

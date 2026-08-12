@@ -1633,7 +1633,7 @@ void main() {
   });
 }
 
-enum _TestOperation {
+enum _TestOperation() {
   use,
   capture,
   read,
@@ -1688,14 +1688,12 @@ Future<void> _waitUntil(bool Function() predicate) async {
   throw StateError("condition did not become true");
 }
 
-class _FakeGenerationFactory implements PluginGenerationFactory {
-  _FakeGenerationFactory({
+class _FakeGenerationFactory({
     required this.startGate,
     this.pluginFactory,
     this.startError,
     this.honorAbort = true,
-  });
-
+  }) implements PluginGenerationFactory {
   final Future<void> startGate;
   final _FakePlugin Function(int generation)? pluginFactory;
   final Object? startError;
@@ -1723,9 +1721,7 @@ class _FakeGenerationFactory implements PluginGenerationFactory {
   }
 }
 
-class _FakeDescriptor extends BridgePluginDescriptor {
-  const _FakeDescriptor({this.inspect, this.install});
-
+class const _FakeDescriptor({this.inspect, this.install}) extends BridgePluginDescriptor {
   final Future<PluginSetupStatus> Function()? inspect;
   final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install;
 
@@ -1779,10 +1775,10 @@ class _FakeDescriptor extends BridgePluginDescriptor {
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("fake factory owns construction");
 }
 
-class _AuthenticationDescriptor extends _FakeDescriptor implements InteractivePluginAuthenticationDescriptor {
-  const _AuthenticationDescriptor({
+class const _AuthenticationDescriptor({
     required Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) authenticate,
-  }) : _authenticate = authenticate;
+  }) extends _FakeDescriptor implements InteractivePluginAuthenticationDescriptor {
+  this : _authenticate = authenticate;
 
   final Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) _authenticate;
 
@@ -1796,9 +1792,7 @@ class _AuthenticationDescriptor extends _FakeDescriptor implements InteractivePl
   }) => _authenticate(aborted);
 }
 
-class _FakePlugin implements BridgePlugin {
-  _FakePlugin({required this.api, this.shutdownGate, this.shutdownError});
-
+class _FakePlugin({required this.api, this.shutdownGate, this.shutdownError}) implements BridgePlugin {
   final BehaviorSubject<PluginStatus> statuses = BehaviorSubject.seeded(const PluginReady());
   final BehaviorSubject<PluginWorkState> workStates = BehaviorSubject.seeded(PluginWorkState.idle);
   final Future<void>? shutdownGate;
@@ -1850,13 +1844,11 @@ class _FakePlugin implements BridgePlugin {
   }
 }
 
-class _FakeApi extends NativeProjectsPluginApi {
-  _FakeApi({
+class _FakeApi({
     this.id = "one",
     this.closeEventsOnDispose = false,
     this.activeSessionsSummary = const [],
-  });
-
+  }) extends NativeProjectsPluginApi {
   final StreamController<BridgeSseEvent> eventsController = StreamController.broadcast();
   final bool closeEventsOnDispose;
   final List<PluginProjectActivitySummary> activeSessionsSummary;
@@ -1891,9 +1883,7 @@ class _FakeApi extends NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _UnusedHostProcessService implements HostProcessService {
-  const _UnusedHostProcessService();
-
+class const _UnusedHostProcessService() implements HostProcessService {
   @override
   Future<ProcessIdentity?> inspect({required int pid}) => throw UnsupportedError("unused");
 

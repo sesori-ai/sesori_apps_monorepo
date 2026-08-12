@@ -2,13 +2,13 @@ import "dart:io" show FileSystemEntityType;
 
 import "../api/cursor_session_storage_api.dart";
 
-enum CursorSessionStorageEntryType { missing, directory, nonDirectory }
+enum CursorSessionStorageEntryType() { missing, directory, nonDirectory }
 
 /// Layer-2 access to Cursor's persisted ACP session storage.
-class CursorSessionStorageRepository {
-  CursorSessionStorageRepository({
+class CursorSessionStorageRepository({
     required CursorSessionStorageApi api,
-  }) : _api = api;
+  }) {
+  this : _api = api;
 
   final CursorSessionStorageApi _api;
 

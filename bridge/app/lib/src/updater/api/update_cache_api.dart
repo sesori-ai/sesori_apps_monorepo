@@ -8,14 +8,12 @@ import 'package:sesori_shared/sesori_shared.dart';
 import '../models/cached_release.dart';
 
 /// File-based JSON cache for storing update check results with TTL expiration.
-class UpdateCacheApi {
-  final String cacheDirectory;
-  final Clock clock;
-
-  UpdateCacheApi({
+class UpdateCacheApi({
     required this.cacheDirectory,
     required this.clock,
-  });
+  }) {
+  final String cacheDirectory;
+  final Clock clock;
 
   String get _cacheFilePath => p.join(cacheDirectory, 'update_cache.json');
 

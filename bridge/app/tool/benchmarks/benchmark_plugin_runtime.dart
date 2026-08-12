@@ -12,8 +12,8 @@ BenchmarkPluginRuntime createBenchmarkPluginRuntime({required Iterable<BridgePlu
   return BenchmarkPluginRuntime(plugins: {for (final plugin in pluginList) plugin.id: plugin});
 }
 
-class BenchmarkPluginRuntime extends PluginRuntime {
-  BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins})
+class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) extends PluginRuntime {
+  this
     : _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
       super(
         registrations: const [],
@@ -150,9 +150,7 @@ class BenchmarkPluginRuntime extends PluginRuntime {
   }
 }
 
-class _UnusedGenerationFactory implements PluginGenerationFactory {
-  const _UnusedGenerationFactory();
-
+class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   @override
   Future<void> enforceBridgeOwnership() async {}
 
@@ -163,9 +161,7 @@ class _UnusedGenerationFactory implements PluginGenerationFactory {
   }) => throw UnsupportedError("benchmark runtime is already active");
 }
 
-class _UnusedHostProcessService implements HostProcessService {
-  const _UnusedHostProcessService();
-
+class const _UnusedHostProcessService() implements HostProcessService {
   @override
   Future<ProcessIdentity?> inspect({required int pid}) => throw UnsupportedError("unused");
 

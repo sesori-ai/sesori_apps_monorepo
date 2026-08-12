@@ -458,8 +458,8 @@ void main() {
   });
 }
 
-final class _PluginHarness {
-  _PluginHarness({this.failInitialize = false, bool failTranscriptDelete = false}) {
+final class _PluginHarness({this.failInitialize = false, bool failTranscriptDelete = false}) {
+  this {
     temporary = Directory.systemTemp.createTempSync("claude-plugin-test-");
     final eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
     processRepository = ClaudeSessionProcessRepository(
@@ -540,9 +540,7 @@ final class _PluginHarness {
   }
 }
 
-final class _NeverIdleClock extends ServerClock {
-  const _NeverIdleClock();
-
+final class const _NeverIdleClock() extends ServerClock {
   @override
   DateTime now() => DateTime.utc(2026, 8, 11, 12);
 
@@ -612,8 +610,8 @@ Map<String, Object?> _result() => {
   "is_error": false,
 };
 
-final class _ThrowingDeleteTranscriptApi extends ClaudeTranscriptApi {
-  _ThrowingDeleteTranscriptApi() : super(environment: const {});
+final class _ThrowingDeleteTranscriptApi() extends ClaudeTranscriptApi {
+  this : super(environment: const {});
 
   bool deleteAttempted = false;
 

@@ -6,19 +6,17 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
 
-class SubtaskPartWidget extends StatelessWidget {
-  final String? projectId;
-  final MessagePart part;
-  final List<Session> children;
-  final Map<String, SessionStatus> childStatuses;
-
-  const SubtaskPartWidget({
+class const SubtaskPartWidget({
     super.key,
     required this.projectId,
     required this.part,
     required this.children,
     required this.childStatuses,
-  });
+  }) extends StatelessWidget {
+  final String? projectId;
+  final MessagePart part;
+  final List<Session> children;
+  final Map<String, SessionStatus> childStatuses;
 
   @override
   Widget build(BuildContext context) {

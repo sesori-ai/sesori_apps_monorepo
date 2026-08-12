@@ -7,7 +7,7 @@ import "package:sesori_mobile/core/platform/firebase_analytics_client.dart";
 const _serverDerivedUserKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const _occurredAtMicros = 1720000000123456;
 
-class MockFirebaseAnalytics extends Mock implements FirebaseAnalytics;
+class MockFirebaseAnalytics() extends Mock implements FirebaseAnalytics;
 
 void main() {
   late MockFirebaseAnalytics analytics;

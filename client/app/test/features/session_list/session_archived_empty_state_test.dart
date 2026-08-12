@@ -22,7 +22,7 @@ void main() {
           // context.isDarkMode — and so the artwork choice — goes by.
           colorScheme: (isDark ? PregoColors.dark : PregoColors.light).toFlutterColorScheme(),
           textTheme: (isDark ? PregoTextTheme.dark : PregoTextTheme.light).asFlutterTextTheme(),
-          extensions: [if (isDark) PregoDesignSystem.dark else PregoDesignSystem.light],
+          extensions: [isDark ? PregoDesignSystem.dark : PregoDesignSystem.light],
         ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

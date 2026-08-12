@@ -3,7 +3,7 @@
 /// This is the byte-compatibility seam for managed plugin runtimes. At PR 11 the
 /// OpenCode plugin supplies its existing Freezed ownership model verbatim through
 /// this seam, writing byte-compatible JSON to the frozen legacy path.
-abstract class RuntimeRecordMapper<R> {
+abstract class RuntimeRecordMapper<R>() {
   Map<String, dynamic> toJson({required R record});
 
   R fromJson({required Map<String, dynamic> json});

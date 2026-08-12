@@ -1,8 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-class PushNotificationContentBuilder {
-  const PushNotificationContentBuilder();
-
+class const PushNotificationContentBuilder() {
   String truncateTitle(String title, {int maxChars = 50}) {
     final normalized = title.trim();
     if (normalized.length <= maxChars) {

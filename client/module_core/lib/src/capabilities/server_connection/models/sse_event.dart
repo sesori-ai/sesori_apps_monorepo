@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-class SseEvent {
+class SseEvent({required this.data, this.directory}) {
   final SesoriSseEvent data;
   final String? directory;
 
@@ -64,6 +64,4 @@ class SseEvent {
     SesoriWorktreeReady() ||
     SesoriWorktreeFailed() => null,
   };
-
-  SseEvent({required this.data, this.directory});
 }

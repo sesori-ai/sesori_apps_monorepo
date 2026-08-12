@@ -5,7 +5,7 @@ import "package:drift/drift.dart";
 /// `partJson` holds the shared `MessagePart` wire model with inline attachment
 /// bytes replaced by a spill-file reference (see `AttachmentSpillStorage`).
 @TableIndex(name: "idx_history_parts_order", columns: {#sessionId, #messageId, #orderIndex})
-class HistoryPartsTable extends Table {
+class HistoryPartsTable() extends Table {
   @override
   String get tableName => "history_parts";
 

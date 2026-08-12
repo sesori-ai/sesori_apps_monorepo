@@ -12,14 +12,14 @@ import "legal_document_state.dart";
 ///
 /// The documents are static, so this fetches once on creation; [retry] re-runs
 /// the request after a failure.
-class LegalDocumentCubit extends Cubit<LegalDocumentState> {
+class LegalDocumentCubit({
+    required LegalRepository repository,
+    required this.document,
+  }) extends Cubit<LegalDocumentState> {
   final LegalRepository _repository;
   final LegalDocument document;
 
-  LegalDocumentCubit({
-    required LegalRepository repository,
-    required this.document,
-  }) : _repository = repository,
+  this : _repository = repository,
        super(const LegalDocumentState.loading()) {
     unawaited(_load());
   }

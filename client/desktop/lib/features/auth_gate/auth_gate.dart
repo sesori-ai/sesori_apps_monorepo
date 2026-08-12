@@ -8,9 +8,7 @@ import "../login/login_screen.dart";
 
 /// Root gate: constructs the [AuthGateCubit] and renders the surface that
 /// matches the signed-in/out truth.
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
-
+class const AuthGate({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<AuthGateCubit>(
@@ -22,9 +20,7 @@ class AuthGate extends StatelessWidget {
 
 /// Renders the current [AuthGateState]; split from [AuthGate] so tests can
 /// drive it with a stubbed cubit.
-class AuthGateView extends StatelessWidget {
-  const AuthGateView({super.key});
-
+class const AuthGateView({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthGateCubit, AuthGateState>(

@@ -1,9 +1,9 @@
 import 'dart:io';
 
-class BridgeSettingsApi {
+class BridgeSettingsApi({String? homeDirectory}) {
   final String _homeDirectory;
 
-  BridgeSettingsApi({String? homeDirectory})
+  this
       : _homeDirectory = homeDirectory ?? _resolveHomeDirectory();
 
   String get configFilePath =>

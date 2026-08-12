@@ -2,7 +2,7 @@ import "dart:async";
 
 import "../repositories/models/analytics_delivery_result.dart";
 
-final class ProductAnalyticsGenerationEventDispatcher {
+final class ProductAnalyticsGenerationEventDispatcher() {
   int? _readyGeneration;
   ({int generation, Future<AnalyticsDeliveryResult> future})? _activeDelivery;
 

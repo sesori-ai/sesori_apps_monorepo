@@ -31,9 +31,7 @@ part "widgets/error_view.dart";
 /// Enough placeholder rows to fill a phone screen while the first page loads.
 const int _skeletonRows = 6;
 
-class ProjectListScreen extends StatelessWidget {
-  const ProjectListScreen({super.key});
-
+class const ProjectListScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -66,14 +64,12 @@ class ProjectListScreen extends StatelessWidget {
   }
 }
 
-class _ProjectListBody extends StatefulWidget {
-  const _ProjectListBody();
-
+class const _ProjectListBody() extends StatefulWidget {
   @override
   State<_ProjectListBody> createState() => _ProjectListBodyState();
 }
 
-class _ProjectListBodyState extends State<_ProjectListBody> {
+class _ProjectListBodyState() extends State<_ProjectListBody> {
   late final Timer _ticker;
 
   @override

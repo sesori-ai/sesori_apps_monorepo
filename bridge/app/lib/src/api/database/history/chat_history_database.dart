@@ -24,9 +24,7 @@ part "chat_history_database.g.dart";
   tables: [HistoryMessagesTable, HistoryPartsTable, HistorySyncStateTable],
   daos: [ChatHistoryDao],
 )
-class ChatHistoryDatabase extends _$ChatHistoryDatabase {
-  ChatHistoryDatabase(super.e);
-
+class ChatHistoryDatabase(super.e) extends _$ChatHistoryDatabase {
   @override
   int get schemaVersion => 1;
 

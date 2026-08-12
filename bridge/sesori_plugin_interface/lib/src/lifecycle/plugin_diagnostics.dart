@@ -6,13 +6,11 @@ import "package:meta/meta.dart";
 /// startup "Target:" log line and for debugging output; it must never block
 /// or touch the network.
 @immutable
-class PluginDiagnostics {
-  const PluginDiagnostics({
+class const PluginDiagnostics({
     required this.pluginId,
     required this.endpoint,
     required this.details,
-  });
-
+  }) {
   /// The plugin's stable identifier (e.g. `"opencode"`).
   final String pluginId;
 

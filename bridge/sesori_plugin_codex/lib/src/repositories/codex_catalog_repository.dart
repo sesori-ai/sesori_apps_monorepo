@@ -9,8 +9,8 @@ import "../api/models/codex_rollout_dto.dart";
 import "models/codex_session_record.dart";
 
 /// Layer-2 aggregation, mapping, selection, and deletion for the rollout catalog.
-class CodexCatalogRepository {
-  CodexCatalogRepository({required CodexRolloutApi rolloutApi}) : _rolloutApi = rolloutApi;
+class CodexCatalogRepository({required CodexRolloutApi rolloutApi}) {
+  this : _rolloutApi = rolloutApi;
 
   final CodexRolloutApi _rolloutApi;
 
@@ -320,16 +320,14 @@ class CodexCatalogRepository {
   }
 }
 
-class _CodexSessionMetadata {
-  const _CodexSessionMetadata({
+class const _CodexSessionMetadata({
     required this.id,
     required this.cwd,
     required this.timestamp,
     required this.modelProvider,
     required this.model,
     required this.cliVersion,
-  });
-
+  }) {
   final String id;
   final String? cwd;
   final DateTime? timestamp;

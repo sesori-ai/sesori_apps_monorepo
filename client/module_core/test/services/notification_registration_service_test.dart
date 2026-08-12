@@ -295,14 +295,12 @@ void main() {
   });
 }
 
-class RecordingNotificationRepository implements NotificationRepository {
+class RecordingNotificationRepository({required this.operations}) implements NotificationRepository {
   final List<RegisteredToken> registeredTokens = <RegisteredToken>[];
   final List<String> unregisteredTokens = <String>[];
   final List<String> operations;
   bool failNextRegisterToken = false;
   bool failNextUnregisterToken = false;
-
-  RecordingNotificationRepository({required this.operations});
 
   @override
   Future<void> registerToken({required String token, required DevicePlatform platform}) async {
@@ -326,11 +324,9 @@ class RecordingNotificationRepository implements NotificationRepository {
 }
 
 @immutable
-class RegisteredToken {
+class const RegisteredToken({required this.token, required this.platform}) {
   final String token;
   final DevicePlatform platform;
-
-  const RegisteredToken({required this.token, required this.platform});
 
   @override
   bool operator ==(Object other) {
@@ -341,10 +337,10 @@ class RegisteredToken {
   int get hashCode => Object.hash(token, platform);
 }
 
-class FakeAuthSession implements AuthSession {
+class FakeAuthSession({required AuthState initialState}) implements AuthSession {
   final BehaviorSubject<AuthState> _authStates;
 
-  FakeAuthSession({required AuthState initialState}) : _authStates = BehaviorSubject<AuthState>.seeded(initialState);
+  this : _authStates = BehaviorSubject<AuthState>.seeded(initialState);
 
   @override
   ValueStream<AuthState> get authStateStream => _authStates.stream;
@@ -385,7 +381,11 @@ class FakeAuthSession implements AuthSession {
   }
 }
 
-class FakePushMessagingSource implements PushMessagingSource {
+class FakePushMessagingSource({
+    required String? initialToken,
+    required this.devicePlatform,
+    required this.operations,
+  }) implements PushMessagingSource {
   final StreamController<String> _tokenRefreshController = StreamController<String>.broadcast();
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
@@ -401,11 +401,7 @@ class FakePushMessagingSource implements PushMessagingSource {
   int deleteTokenCalls = 0;
   bool failNextDeleteToken = false;
 
-  FakePushMessagingSource({
-    required String? initialToken,
-    required this.devicePlatform,
-    required this.operations,
-  }) : currentToken = initialToken;
+  this : currentToken = initialToken;
 
   @override
   Stream<PushNotificationMessage> get foregroundMessageStream => _foregroundMessageController.stream;

@@ -1,6 +1,6 @@
 import 'package:rxdart/rxdart.dart';
 
-abstract interface class LifecycleSource {
+abstract interface class LifecycleSource() {
   ValueStream<LifecycleState> get lifecycleStateStream;
 }
 
@@ -8,7 +8,7 @@ extension LifecycleSourceX on LifecycleSource {
   LifecycleState get lifecycleState => lifecycleStateStream.value;
 }
 
-enum LifecycleState {
+enum LifecycleState() {
   // Engine with no view. All platforms start in this state.
   // * Android & iOS & Web -> can re-enter this state (engine with no view)
   // * Desktop -> NEVER RE-ENTERS THIS STATE

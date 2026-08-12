@@ -12,14 +12,14 @@ import "safe_api_client.dart";
 
 /// Decorates [HttpApiClient] with bearer-token injection and one-time retry on 401.
 @lazySingleton
-class AuthenticatedHttpApiClient implements SafeApiClient {
+class AuthenticatedHttpApiClient(
+    HttpApiClient client,
+    AuthManager authManager,
+  ) implements SafeApiClient {
   final HttpApiClient _client;
   final AuthManager _authManager;
 
-  AuthenticatedHttpApiClient(
-    HttpApiClient client,
-    AuthManager authManager,
-  ) : _client = client,
+  this : _client = client,
       _authManager = authManager;
 
   @override

@@ -7,14 +7,14 @@ import "package:sesori_shared/sesori_shared.dart" show AuthUser, jsonDecodeMap, 
 import "../platform/secure_storage.dart";
 
 @lazySingleton
-class TokenStorageService {
+class TokenStorageService(SecureStorage storage) {
   static const _accessTokenKey = "access_token";
   static const _refreshTokenKey = "refresh_token";
   static const _userKey = "auth_user";
 
   final SecureStorage _storage;
 
-  TokenStorageService(SecureStorage storage) : _storage = storage;
+  this : _storage = storage;
 
   Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
     try {

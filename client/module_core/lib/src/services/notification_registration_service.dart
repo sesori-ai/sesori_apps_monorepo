@@ -8,7 +8,11 @@ import "../platform/push_messaging_source.dart";
 import "../repositories/notification_repository.dart";
 
 @lazySingleton
-class NotificationRegistrationService {
+class NotificationRegistrationService({
+    required NotificationRepository repository,
+    required AuthSession authSession,
+    required PushMessagingSource pushMessagingSource,
+  }) {
   final NotificationRepository _repository;
   final AuthSession _authSession;
   final PushMessagingSource _pushMessagingSource;
@@ -24,11 +28,7 @@ class NotificationRegistrationService {
   bool _started = false;
   bool _disposed = false;
 
-  NotificationRegistrationService({
-    required NotificationRepository repository,
-    required AuthSession authSession,
-    required PushMessagingSource pushMessagingSource,
-  }) : _repository = repository,
+  this : _repository = repository,
        _authSession = authSession,
        _pushMessagingSource = pushMessagingSource;
 

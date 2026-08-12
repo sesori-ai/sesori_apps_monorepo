@@ -27,55 +27,39 @@ sealed class NewSessionOptionsData with _$NewSessionOptionsData {
   }) = _NewSessionOptionsData;
 }
 
-sealed class NewSessionOptionsLoadResult {
-  const NewSessionOptionsLoadResult();
-}
+sealed class const NewSessionOptionsLoadResult();
 
-enum NewSessionOptionsLoadMode { dynamicLoad, forcedRefresh }
+enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh }
 
-final class NewSessionOptionsLoaded extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsLoaded({required this.options, required this.source});
-
+final class const NewSessionOptionsLoaded({required this.options, required this.source}) extends NewSessionOptionsLoadResult {
   final NewSessionOptionsData options;
   final NewSessionOptionsSource source;
 }
 
-final class NewSessionOptionsUnsupported extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsUnsupported();
-}
+final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
-final class NewSessionOptionsUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsUnavailable();
-}
+final class const NewSessionOptionsUnavailable() extends NewSessionOptionsLoadResult;
 
-final class NewSessionOptionsLoadFailureUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsLoadFailureUnavailable();
-}
+final class const NewSessionOptionsLoadFailureUnavailable() extends NewSessionOptionsLoadResult;
 
-final class NewSessionOptionsFailureRetained extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsFailureRetained({required this.options, required this.source});
-
+final class const NewSessionOptionsFailureRetained({required this.options, required this.source}) extends NewSessionOptionsLoadResult {
   final NewSessionOptionsData options;
   final NewSessionOptionsSource source;
 }
 
-final class NewSessionOptionsFailureUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsFailureUnavailable({required this.error, required this.source});
-
+final class const NewSessionOptionsFailureUnavailable({required this.error, required this.source}) extends NewSessionOptionsLoadResult {
   final ApiError error;
   final NewSessionOptionsSource source;
 }
 
-final class NewSessionOptionsRefreshFailureUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsRefreshFailureUnavailable();
-}
+final class const NewSessionOptionsRefreshFailureUnavailable() extends NewSessionOptionsLoadResult;
 
 @lazySingleton
-class NewSessionOptionsService {
-  NewSessionOptionsService({
+class NewSessionOptionsService({
     required SessionRepository sessionRepository,
     required DefaultModelSelector defaultModelSelector,
-  }) : _sessionRepository = sessionRepository,
+  }) {
+  this : _sessionRepository = sessionRepository,
        _defaultModelSelector = defaultModelSelector;
 
   final SessionRepository _sessionRepository;

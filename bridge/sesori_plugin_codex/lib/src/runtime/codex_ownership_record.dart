@@ -5,7 +5,7 @@ part "codex_ownership_record.g.dart";
 
 /// Lifecycle status of an owned `codex app-server` process, as persisted in the
 /// `codex-processes.json` ownership file.
-enum CodexOwnershipStatus {
+enum CodexOwnershipStatus() {
   starting,
   ready,
   stopping,

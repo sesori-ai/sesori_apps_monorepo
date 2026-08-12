@@ -35,10 +35,8 @@ part "database.g.dart";
   ],
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
-class AppDatabase extends _$AppDatabase {
+class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
-
-  AppDatabase(super.e);
 
   @override
   int get schemaVersion => 13;

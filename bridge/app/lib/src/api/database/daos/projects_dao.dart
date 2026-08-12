@@ -6,18 +6,7 @@ import "../tables/projects_table.dart";
 part "projects_dao.g.dart";
 
 @DriftAccessor(tables: [ProjectsTable])
-class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
-  ProjectsDao(super.attachedDatabase);
-
-  // `path` is the project's live directory; `projectId` is its stable bridge
-  // catalog identifier and may be opaque. They can also diverge when a
-  // folder is moved on disk and re-opened — [recordOpenedProject] is the writer
-  // that updates an existing row's path.
-  // Inserts without an explicit path stamp the project id as the row's `path`
-  // purely as the new-row default (correct until a move is recorded); none of
-  // their conflict clauses touch `path`, so an existing recorded path is
-  // preserved.
-
+class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   /// Returns every stored project row.
   Future<List<ProjectDto>> getAllProjects() async {
     return select(projectsTable).get();

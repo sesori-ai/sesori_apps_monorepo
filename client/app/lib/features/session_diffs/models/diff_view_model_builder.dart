@@ -8,7 +8,7 @@ import 'diff_file_view_model.dart';
 
 /// Builds view models for file diffs.
 /// Runs DiffEngine.computeDiff in an isolate via compute() for each file.
-class DiffViewModelBuilder {
+class DiffViewModelBuilder() {
   /// Builds view models for a list of file diffs.
   /// Runs DiffEngine.computeDiff in an isolate via compute() for each file.
   /// Pre-computes syntax highlighting spans via [DiffHighlighter] if initialized.

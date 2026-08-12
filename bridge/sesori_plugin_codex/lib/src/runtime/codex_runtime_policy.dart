@@ -193,8 +193,8 @@ ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
 /// spawn, for the child's whole lifetime, so the OS pipe can never fill. The
 /// streams are exposed as broadcast so the exit monitor can still attach once
 /// armed; output produced before that is consumed by the internal drain.
-class _DrainingCodexProcess implements SpawnedProcess {
-  _DrainingCodexProcess(this._inner)
+class _DrainingCodexProcess(this._inner) implements SpawnedProcess {
+  this
     : _stdout = _inner.stdout.asBroadcastStream(),
       _stderr = _inner.stderr.asBroadcastStream() {
     _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);

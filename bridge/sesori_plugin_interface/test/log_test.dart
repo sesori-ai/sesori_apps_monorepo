@@ -126,14 +126,12 @@ void main() {
 }
 
 /// Helper whose class name should appear in the resolved log prefix.
-class _LogCaller {
+class _LogCaller() {
   void emit() => Log.i("from-caller");
 }
 
 /// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.lines);
-
+class _CapturingStdout(this.lines) implements Stdout {
   final List<String> lines;
 
   @override

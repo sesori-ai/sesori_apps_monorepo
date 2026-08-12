@@ -6,11 +6,11 @@ import "../bridge/routing/request_handler.dart";
 import "../services/pull_request_refresh_settings_service.dart";
 import "../services/yolo_settings_service.dart";
 
-class PatchBridgeSettingsHandler extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
-  PatchBridgeSettingsHandler({
+class PatchBridgeSettingsHandler({
     required PullRequestRefreshSettingsService pullRequestRefreshSettingsService,
     required YoloSettingsService yoloSettingsService,
-  }) : _pullRequestRefreshSettingsService = pullRequestRefreshSettingsService,
+  }) extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
+  this : _pullRequestRefreshSettingsService = pullRequestRefreshSettingsService,
        _yoloSettingsService = yoloSettingsService,
        super(
          HttpMethod.patch,

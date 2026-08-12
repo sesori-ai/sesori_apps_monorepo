@@ -2,8 +2,7 @@
 ///
 /// Hand-written and dependency-free because it crosses an isolate boundary and
 /// is internal to the plugin; nothing outside this package sees it.
-class ClaudeSessionRecord {
-  const ClaudeSessionRecord({
+class const ClaudeSessionRecord({
     required this.id,
     required this.transcriptPath,
     required this.cwd,
@@ -12,8 +11,7 @@ class ClaudeSessionRecord {
     required this.updatedAt,
     required this.gitBranch,
     required this.cliVersion,
-  });
-
+  }) {
   /// The transcript filename minus `.jsonl`, validated as a UUID.
   final String id;
 

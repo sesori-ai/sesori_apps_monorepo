@@ -1,60 +1,42 @@
-enum ImageAttachmentAction { copy, share, save }
+enum ImageAttachmentAction() { copy, share, save }
 
-sealed class ImageAttachmentActionsState {
-  const ImageAttachmentActionsState();
-}
+sealed class const ImageAttachmentActionsState();
 
-final class ImageAttachmentActionsIdle extends ImageAttachmentActionsState {
-  const ImageAttachmentActionsIdle();
-}
+final class const ImageAttachmentActionsIdle() extends ImageAttachmentActionsState;
 
-final class ImageAttachmentActionRunning extends ImageAttachmentActionsState {
+final class const ImageAttachmentActionRunning({required this.action}) extends ImageAttachmentActionsState {
   final ImageAttachmentAction action;
-
-  const ImageAttachmentActionRunning({required this.action});
 }
 
-final class ImageAttachmentSaved extends ImageAttachmentActionsState {
-  const ImageAttachmentSaved();
-}
+final class const ImageAttachmentSaved() extends ImageAttachmentActionsState;
 
-final class ImageAttachmentCopied extends ImageAttachmentActionsState {
-  const ImageAttachmentCopied();
-}
+final class const ImageAttachmentCopied() extends ImageAttachmentActionsState;
 
-final class ImageAttachmentSaveAccessDenied extends ImageAttachmentActionsState {
-  const ImageAttachmentSaveAccessDenied();
-}
+final class const ImageAttachmentSaveAccessDenied() extends ImageAttachmentActionsState;
 
-final class ImageAttachmentShareFailed extends ImageAttachmentActionsState {
+final class const ImageAttachmentShareFailed({
+    required this.cause,
+    required this.stackTrace,
+  }) extends ImageAttachmentActionsState {
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   final Object cause;
   final StackTrace stackTrace;
-
-  const ImageAttachmentShareFailed({
-    required this.cause,
-    required this.stackTrace,
-  });
 }
 
-final class ImageAttachmentCopyFailed extends ImageAttachmentActionsState {
+final class const ImageAttachmentCopyFailed({
+    required this.cause,
+    required this.stackTrace,
+  }) extends ImageAttachmentActionsState {
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   final Object cause;
   final StackTrace stackTrace;
-
-  const ImageAttachmentCopyFailed({
-    required this.cause,
-    required this.stackTrace,
-  });
 }
 
-final class ImageAttachmentSaveFailed extends ImageAttachmentActionsState {
+final class const ImageAttachmentSaveFailed({
+    required this.cause,
+    required this.stackTrace,
+  }) extends ImageAttachmentActionsState {
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   final Object cause;
   final StackTrace stackTrace;
-
-  const ImageAttachmentSaveFailed({
-    required this.cause,
-    required this.stackTrace,
-  });
 }

@@ -1,6 +1,6 @@
 import "package:json_annotation/json_annotation.dart";
 
-enum DevicePlatform {
+enum DevicePlatform() {
   @JsonValue("ios")
   ios,
   @JsonValue("android")

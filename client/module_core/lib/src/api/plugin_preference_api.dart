@@ -2,10 +2,10 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
 @lazySingleton
-class PluginPreferenceApi {
+class PluginPreferenceApi({required SecureStorage storage}) {
   final SecureStorage _storage;
 
-  PluginPreferenceApi({required SecureStorage storage}) : _storage = storage;
+  this : _storage = storage;
 
   Future<String?> readPluginId({required String bridgeId}) {
     return _storage.read(key: _storageKey(bridgeId: bridgeId));

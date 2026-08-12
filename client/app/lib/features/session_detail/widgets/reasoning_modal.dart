@@ -31,7 +31,12 @@ import "scroll_follow_tracker.dart";
 ///   updates keep arriving but the scroll position is left alone.
 /// - The "Follow" button tap performs one explicit animated scroll to
 ///   the tail via [ScrollFollowTracker.animateToEdge].
-class ReasoningModal extends StatefulWidget {
+class const ReasoningModal({
+    super.key,
+    required this.partId,
+    required this.messageId,
+    required this.topInset,
+  }) extends StatefulWidget {
   final String partId;
   final String messageId;
 
@@ -40,13 +45,6 @@ class ReasoningModal extends StatefulWidget {
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
   final double topInset;
-
-  const ReasoningModal({
-    super.key,
-    required this.partId,
-    required this.messageId,
-    required this.topInset,
-  });
 
   /// Opens the reasoning modal as a bottom sheet, forwarding the presenting
   /// context's [SessionDetailCubit] into the sheet's own route.
@@ -83,7 +81,7 @@ class ReasoningModal extends StatefulWidget {
   State<ReasoningModal> createState() => _ReasoningModalState();
 }
 
-class _ReasoningModalState extends State<ReasoningModal> {
+class _ReasoningModalState() extends State<ReasoningModal> {
   static const _kListViewKey = Key("reasoning-modal-list-view");
   static const _kFollowOutputKey = Key("reasoning-modal-follow-output");
 

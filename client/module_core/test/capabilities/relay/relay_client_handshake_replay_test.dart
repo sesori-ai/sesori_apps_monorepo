@@ -9,7 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
-class _MockRoomKeyStorage extends Mock implements RoomKeyStorage;
+class _MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
 
 void main() {
   test("replays resume when the bridge reconnects during handshake", () async {
@@ -59,8 +59,8 @@ void main() {
   });
 }
 
-class _FakeWebSocket {
-  _FakeWebSocket()
+class _FakeWebSocket() {
+  this
     : _clientToServer = StreamController<Object?>.broadcast(),
       _serverToClient = StreamController<Object?>.broadcast() {
     channel = _StubChannel(
@@ -82,9 +82,7 @@ class _FakeWebSocket {
   }
 }
 
-class _StubChannel implements WebSocketChannel {
-  _StubChannel({required this.stream, required this.sink});
-
+class _StubChannel({required this.stream, required this.sink}) implements WebSocketChannel {
   @override
   final Stream<dynamic> stream;
 
@@ -107,9 +105,7 @@ class _StubChannel implements WebSocketChannel {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SinkAdapter implements WebSocketSink {
-  _SinkAdapter(this._controller);
-
+class _SinkAdapter(this._controller) implements WebSocketSink {
   final StreamController<Object?> _controller;
 
   @override

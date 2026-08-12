@@ -8,7 +8,7 @@ import '../../server/repositories/bridge_instance_repository.dart';
 import '../../server/repositories/terminal_prompt_repository.dart';
 import '../../server/services/bridge_instance_service.dart';
 
-enum BridgeLogoutStatus {
+enum BridgeLogoutStatus() {
   /// Tokens cleared; no bridge instances left running.
   loggedOut,
 
@@ -23,27 +23,25 @@ enum BridgeLogoutStatus {
   failed,
 }
 
-class BridgeLogoutResult {
-  const BridgeLogoutResult({
+class const BridgeLogoutResult({
     required this.status,
     this.runningBridgeCount = 0,
     this.error,
-  });
-
+  }) {
   final BridgeLogoutStatus status;
   final int runningBridgeCount;
   final Object? error;
 }
 
-class BridgeLogoutRunner {
-  BridgeLogoutRunner({
+class BridgeLogoutRunner({
     required BridgeInstanceRepository bridgeInstanceRepository,
     required BridgeInstanceService bridgeInstanceService,
     required TerminalPromptRepository terminalPromptRepository,
     required Future<void> Function() unregisterBridge,
     required AppOnboardingStateRepository appOnboardingStateRepository,
     required Future<void> Function() clearTokens,
-  }) : _bridgeInstanceRepository = bridgeInstanceRepository,
+  }) {
+  this : _bridgeInstanceRepository = bridgeInstanceRepository,
        _bridgeInstanceService = bridgeInstanceService,
        _terminalPromptRepository = terminalPromptRepository,
        _unregisterBridge = unregisterBridge,

@@ -441,7 +441,7 @@ SessionOptionsResponse _response({required String marker}) {
   );
 }
 
-class _FakePlugin implements BridgeDerivedProjectsPluginApi {
+class _FakePlugin() implements BridgeDerivedProjectsPluginApi {
   PluginSessionOptionsDiscoveryResult result = PluginSessionOptionsDiscoveryResult.observed(
     options: _pluginOptions(marker: "default"),
   );
@@ -473,9 +473,7 @@ class _FakePlugin implements BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _RecordingPluginRuntime implements PluginRuntime {
-  _RecordingPluginRuntime({required this.plugin});
-
+class _RecordingPluginRuntime({required this.plugin}) implements PluginRuntime {
   final BridgePluginApi plugin;
   bool active = true;
   bool generationCurrent = true;

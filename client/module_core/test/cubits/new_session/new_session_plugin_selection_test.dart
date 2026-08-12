@@ -51,8 +51,8 @@ PluginDiscoverySnapshot _pluginSnapshot({
   plugins: plugins,
 );
 
-final class _AggregateTestOptionsService extends NewSessionOptionsService {
-  _AggregateTestOptionsService({required MockSessionRepository sessionRepository})
+final class _AggregateTestOptionsService({required MockSessionRepository sessionRepository}) extends NewSessionOptionsService {
+  this
     : super(
         sessionRepository: sessionRepository,
         defaultModelSelector: const DefaultModelSelector(),
@@ -413,7 +413,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-a",
             supportsSessionOptions: true,
-            plugins: [if (discoveryCalls == 1) pluginA else refreshedA],
+            plugins: [discoveryCalls == 1 ? pluginA : refreshedA],
           ),
         );
       });

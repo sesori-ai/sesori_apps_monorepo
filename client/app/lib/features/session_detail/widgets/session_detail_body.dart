@@ -18,27 +18,25 @@ import "question_modal.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 
-class SessionDetailBody extends StatefulWidget {
-  final String projectId;
-  final String? projectName;
-  final String sessionId;
-  final String? sessionTitle;
-  final bool readOnly;
-
-  const SessionDetailBody({
+class const SessionDetailBody({
     super.key,
     required this.projectId,
     required this.projectName,
     required this.sessionId,
     required this.sessionTitle,
     required this.readOnly,
-  });
+  }) extends StatefulWidget {
+  final String projectId;
+  final String? projectName;
+  final String sessionId;
+  final String? sessionTitle;
+  final bool readOnly;
 
   @override
   State<SessionDetailBody> createState() => _SessionDetailBodyState();
 }
 
-class _SessionDetailBodyState extends State<SessionDetailBody> {
+class _SessionDetailBodyState() extends State<SessionDetailBody> {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
   StreamSubscription<SesoriPermissionAsked>? _permissionSub;
 

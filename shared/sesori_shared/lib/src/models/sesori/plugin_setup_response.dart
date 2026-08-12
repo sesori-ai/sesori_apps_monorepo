@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "plugin_setup_response.freezed.dart";
 part "plugin_setup_response.g.dart";
 
-enum PluginSetupState {
+enum PluginSetupState() {
   notInspected,
   ready,
   runtimeMissing,

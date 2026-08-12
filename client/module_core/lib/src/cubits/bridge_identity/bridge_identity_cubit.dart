@@ -19,14 +19,14 @@ import "bridge_identity_state.dart";
 /// Owning it here keeps it steady across the list's own loading → loaded →
 /// failed churn, so the bar's subtitle row resolves once and then stays put
 /// instead of blinking back to a placeholder on every reload.
-class BridgeIdentityCubit extends Cubit<BridgeIdentityState> {
+class BridgeIdentityCubit({
+    required RegisteredBridgesService registeredBridgesService,
+    required ConnectionService connectionService,
+  }) extends Cubit<BridgeIdentityState> {
   final RegisteredBridgesService _registeredBridgesService;
   StreamSubscription<ConnectionStatus>? _statusSubscription;
 
-  BridgeIdentityCubit({
-    required RegisteredBridgesService registeredBridgesService,
-    required ConnectionService connectionService,
-  }) : _registeredBridgesService = registeredBridgesService,
+  this : _registeredBridgesService = registeredBridgesService,
        super(const BridgeIdentityState.pending()) {
     // Resolve immediately rather than waiting for a connection: the offline
     // surfaces name the machine they are trying to reach, and they are exactly

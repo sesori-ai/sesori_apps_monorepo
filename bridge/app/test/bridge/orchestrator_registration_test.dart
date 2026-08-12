@@ -494,21 +494,7 @@ Future<void> _waitFor(bool Function() condition, {required String reason}) async
   }
 }
 
-class _RegistrationHarness {
-  final FakeBridgePlugin plugin;
-  final FakeBridgeIdStorage bridgeIdStorage;
-  final OrchestratorSession session;
-  final Future<OrchestratorSessionStartResult> startFuture;
-  final Future<void> runFuture;
-  final _CountingRelayServer relayServer;
-  final AppDatabase database;
-  final PluginLifecycleService lifecycleService;
-  final http.Client httpClient;
-  final _RecordingRelayClient relayClient;
-  final _RecordingRestartService restartService;
-  final BridgeRestartDispatcher restartDispatcher;
-
-  _RegistrationHarness._({
+class _RegistrationHarness._({
     required this.plugin,
     required this.bridgeIdStorage,
     required this.session,
@@ -521,7 +507,19 @@ class _RegistrationHarness {
     required this.relayClient,
     required this.restartService,
     required this.restartDispatcher,
-  });
+  }) {
+  final FakeBridgePlugin plugin;
+  final FakeBridgeIdStorage bridgeIdStorage;
+  final OrchestratorSession session;
+  final Future<OrchestratorSessionStartResult> startFuture;
+  final Future<void> runFuture;
+  final _CountingRelayServer relayServer;
+  final AppDatabase database;
+  final PluginLifecycleService lifecycleService;
+  final http.Client httpClient;
+  final _RecordingRelayClient relayClient;
+  final _RecordingRestartService restartService;
+  final BridgeRestartDispatcher restartDispatcher;
 
   static Future<_RegistrationHarness> start({
     required FakeBridgeRegistrationRepository repository,
@@ -622,14 +620,12 @@ class _RegistrationHarness {
   }
 }
 
-class _RecordingRelayClient extends RelayClient {
-  _RecordingRelayClient({
+class _RecordingRelayClient({
     required super.relayURL,
     required super.accessTokenProvider,
     required super.bridgeIdProvider,
     required this.connectReturnDelay,
-  });
-
+  }) extends RelayClient {
   int sendCount = 0;
   int? lastConnId;
   bool failNextSend = false;
@@ -687,9 +683,7 @@ class _RecordingRelayClient extends RelayClient {
   }
 }
 
-class _RecordingRestartService implements BridgeRestartService {
-  _RecordingRestartService({required this.relayClient});
-
+class _RecordingRestartService({required this.relayClient}) implements BridgeRestartService {
   final _RecordingRelayClient relayClient;
   bool restartable = false;
   int handoffCalls = 0;
@@ -781,7 +775,7 @@ Future<RelayResponse> _nextResponse({
   throw StateError("relay closed before response $requestId");
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();
@@ -809,11 +803,9 @@ Future<String> _captureLogOutput(Future<void> Function() action) async {
 }
 
 /// A [TestRelayServer] that also counts how many clients ever connected.
-class _CountingRelayServer {
+class _CountingRelayServer._(this._inner) {
   final TestRelayServer _inner;
   int connectedClientCount = 0;
-
-  _CountingRelayServer._(this._inner);
 
   static Future<_CountingRelayServer> start() async {
     return _CountingRelayServer._(await TestRelayServer.start());

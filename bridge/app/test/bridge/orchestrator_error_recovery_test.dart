@@ -291,16 +291,7 @@ void main() {
   });
 }
 
-class _TestHarness {
-  final _ThrowingSummaryPlugin plugin;
-  final OrchestratorSession session;
-  final Future<void> runFuture;
-  final TestRelayServer relayServer;
-  final AppDatabase database;
-  final PluginLifecycleService lifecycleService;
-  final http.Client httpClient;
-
-  _TestHarness._({
+class _TestHarness._({
     required this.plugin,
     required this.session,
     required this.runFuture,
@@ -308,7 +299,14 @@ class _TestHarness {
     required this.database,
     required this.lifecycleService,
     required this.httpClient,
-  });
+  }) {
+  final _ThrowingSummaryPlugin plugin;
+  final OrchestratorSession session;
+  final Future<void> runFuture;
+  final TestRelayServer relayServer;
+  final AppDatabase database;
+  final PluginLifecycleService lifecycleService;
+  final http.Client httpClient;
 
   static Future<_TestHarness> start({
     required _ThrowingSummaryPlugin plugin,
@@ -393,7 +391,7 @@ class _TestHarness {
   }
 }
 
-class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
+class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   int subscribeCount = 0;
@@ -575,8 +573,8 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   Future<void> dispose() async {}
 }
 
-class _ThrowingConnectRelayClient extends RelayClient {
-  _ThrowingConnectRelayClient({required Future<void> connectGate})
+class _ThrowingConnectRelayClient({required Future<void> connectGate}) extends RelayClient {
+  this
     : _connectGate = connectGate,
       super(
         relayURL: "ws://127.0.0.1:1",
@@ -593,7 +591,7 @@ class _ThrowingConnectRelayClient extends RelayClient {
   }
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

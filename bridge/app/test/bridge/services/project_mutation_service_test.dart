@@ -138,7 +138,7 @@ void main() {
   });
 }
 
-class _Fixture {
+class _Fixture() {
   final List<String> events = [];
   late final _FilesystemRepository filesystem = _FilesystemRepository(events: events);
   late final _ProjectInitializationService initialization = _ProjectInitializationService(events: events);
@@ -155,12 +155,10 @@ class _Fixture {
   );
 }
 
-class _FilesystemRepository implements FilesystemRepository {
+class _FilesystemRepository({required this.events}) implements FilesystemRepository {
   final List<String> events;
   final Map<String, FilesystemEntityKind> kinds = {};
   final List<String> classifiedPaths = [];
-
-  _FilesystemRepository({required this.events});
 
   @override
   FilesystemEntityKind classifyPath({required String path}) {
@@ -173,14 +171,12 @@ class _FilesystemRepository implements FilesystemRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ProjectInitializationService implements ProjectInitializationService {
+class _ProjectInitializationService({required this.events}) implements ProjectInitializationService {
   final List<String> events;
   final Completer<void> initializeStarted = Completer<void>();
   final Map<String, ExistingProjectPreparationOutcome> preparations = {};
   Completer<void>? initializeGate;
   Object? initializeError;
-
-  _ProjectInitializationService({required this.events});
 
   @override
   Future<void> initializeProject({required String path}) async {
@@ -205,14 +201,12 @@ class _ProjectInitializationService implements ProjectInitializationService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ProjectActivityService implements ProjectActivityService {
+class _ProjectActivityService({required this.events, required this.projects}) implements ProjectActivityService {
   final List<String> events;
   final _ProjectRepository projects;
   final Completer<void> openStarted = Completer<void>();
   final List<String> openedPaths = [];
   Completer<void>? openGate;
-
-  _ProjectActivityService({required this.events, required this.projects});
 
   @override
   Future<Project> openProject({required String path}) async {
@@ -235,14 +229,12 @@ class _ProjectActivityService implements ProjectActivityService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ProjectRepository implements ProjectRepository {
+class _ProjectRepository({required this.events}) implements ProjectRepository {
   final List<String> events;
   final Completer<void> hideStarted = Completer<void>();
   final List<String> hideCalls = [];
   Completer<void>? hideGate;
   bool hidden = false;
-
-  _ProjectRepository({required this.events});
 
   @override
   Future<void> hideProject({required String projectId}) async {

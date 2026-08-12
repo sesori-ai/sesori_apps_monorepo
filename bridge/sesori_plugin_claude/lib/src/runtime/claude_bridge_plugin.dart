@@ -7,14 +7,14 @@ import "../claude_plugin_impl.dart";
 import "../services/claude_session_service.dart";
 
 /// Lifecycle surface for the direct-CLI Claude stream-json plugin.
-final class ClaudeBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
-  ClaudeBridgePlugin({
+final class ClaudeBridgePlugin({
     required ClaudePlugin plugin,
     required ClaudeSessionService sessions,
     required HostClaudeProcessFactory processFactory,
     required ServerClock clock,
     required Duration statusDebounce,
-  }) : _plugin = plugin,
+  }) with SteadyPluginLifecycle implements BridgePlugin {
+  this : _plugin = plugin,
        _sessions = sessions,
        _processFactory = processFactory,
        _clock = clock,

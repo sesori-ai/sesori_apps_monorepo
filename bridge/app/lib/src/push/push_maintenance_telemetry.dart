@@ -4,21 +4,7 @@ import "completion_notifier.dart";
 import "push_rate_limiter.dart";
 import "push_session_state_tracker_types.dart";
 
-class PushMaintenanceTelemetrySnapshot {
-  final double? rssMb;
-  final int sessions;
-  final int idleRoots;
-  final int prunableRoots;
-  final int messageRoles;
-  final int assistantTextSessions;
-  final int assistantTextChars;
-  final int trackerPermissionRequests;
-  final int notifierPermissionRequests;
-  final int completionSentRoots;
-  final int abortedRoots;
-  final int rateLimiterKeys;
-
-  const PushMaintenanceTelemetrySnapshot({
+class const PushMaintenanceTelemetrySnapshot({
     required this.rssMb,
     required this.sessions,
     required this.idleRoots,
@@ -31,7 +17,19 @@ class PushMaintenanceTelemetrySnapshot {
     required this.completionSentRoots,
     required this.abortedRoots,
     required this.rateLimiterKeys,
-  });
+  }) {
+  final double? rssMb;
+  final int sessions;
+  final int idleRoots;
+  final int prunableRoots;
+  final int messageRoles;
+  final int assistantTextSessions;
+  final int assistantTextChars;
+  final int trackerPermissionRequests;
+  final int notifierPermissionRequests;
+  final int completionSentRoots;
+  final int abortedRoots;
+  final int rateLimiterKeys;
 
   Map<String, Object?> toDebugFields() {
     return {
@@ -56,16 +54,16 @@ class PushMaintenanceTelemetrySnapshot {
   }
 }
 
-class PushMaintenanceTelemetryBuilder {
+class const PushMaintenanceTelemetryBuilder({
+    required CompletionNotifier completionNotifier,
+    required PushRateLimiter rateLimiter,
+    required int? Function() rssBytesReader,
+  }) {
   final CompletionNotifier _completionNotifier;
   final PushRateLimiter _rateLimiter;
   final int? Function() _rssBytesReader;
 
-  const PushMaintenanceTelemetryBuilder({
-    required CompletionNotifier completionNotifier,
-    required PushRateLimiter rateLimiter,
-    required int? Function() rssBytesReader,
-  }) : _completionNotifier = completionNotifier,
+  this : _completionNotifier = completionNotifier,
        _rateLimiter = rateLimiter,
        _rssBytesReader = rssBytesReader;
 

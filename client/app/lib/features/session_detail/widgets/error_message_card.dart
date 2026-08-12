@@ -6,13 +6,11 @@ import "package:theme_prego/module_prego.dart";
 ///
 /// Renders as a center-aligned red text row with no bubble, distinct
 /// from regular assistant/user messages.
-class ErrorMessageCard extends StatelessWidget {
-  final MessageError message;
-
-  const ErrorMessageCard({
+class const ErrorMessageCard({
     super.key,
     required this.message,
-  });
+  }) extends StatelessWidget {
+  final MessageError message;
 
   @override
   Widget build(BuildContext context) {

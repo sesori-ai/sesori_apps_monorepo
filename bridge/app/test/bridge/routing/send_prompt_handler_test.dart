@@ -649,7 +649,7 @@ Future<void> _insertStoredSession({
   );
 }
 
-class _ThrowingSendPromptPlugin extends FakeBridgePlugin {
+class _ThrowingSendPromptPlugin() extends FakeBridgePlugin {
   @override
   Future<void> sendPrompt({
     required String sessionId,
@@ -662,7 +662,7 @@ class _ThrowingSendPromptPlugin extends FakeBridgePlugin {
   }
 }
 
-class _ThrowingSendCommandPlugin extends FakeBridgePlugin {
+class _ThrowingSendCommandPlugin() extends FakeBridgePlugin {
   @override
   Future<void> sendCommand({
     required String sessionId,
@@ -677,14 +677,14 @@ class _ThrowingSendCommandPlugin extends FakeBridgePlugin {
   }
 }
 
-class _ThrowingUpdateSessionRepository extends SessionRepository {
-  int updatePromptDefaultsCallCount = 0;
-
-  _ThrowingUpdateSessionRepository({
+class _ThrowingUpdateSessionRepository({
     required BridgePluginApi plugin,
     required AppDatabase database,
     required super.unseenCalculator,
-  }) : super(
+  }) extends SessionRepository {
+  int updatePromptDefaultsCallCount = 0;
+
+  this : super(
          runtime: createTestPluginRuntime(plugins: [plugin]),
          bridgeDerivedProjectPluginIds: {
            if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,

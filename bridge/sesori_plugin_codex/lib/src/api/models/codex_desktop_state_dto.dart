@@ -16,9 +16,7 @@ sealed class CodexDesktopStateDto with _$CodexDesktopStateDto {
 
 /// Reads only useful string ids from Codex Desktop's independently-versioned
 /// state while ignoring missing, malformed, and future-shaped entries.
-class CodexProjectlessThreadIdsConverter implements JsonConverter<Set<String>, Object?> {
-  const CodexProjectlessThreadIdsConverter();
-
+class const CodexProjectlessThreadIdsConverter() implements JsonConverter<Set<String>, Object?> {
   @override
   Set<String> fromJson(Object? json) {
     if (json is! List) return const {};

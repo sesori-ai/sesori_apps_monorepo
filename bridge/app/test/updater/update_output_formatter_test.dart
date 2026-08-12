@@ -3,9 +3,7 @@ import 'dart:io';
 import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
 import 'package:test/test.dart';
 
-class _FakeStdout implements Stdout {
-  _FakeStdout({required this.supportsAnsiEscapes});
-
+class _FakeStdout({required this.supportsAnsiEscapes}) implements Stdout {
   @override
   final bool supportsAnsiEscapes;
 

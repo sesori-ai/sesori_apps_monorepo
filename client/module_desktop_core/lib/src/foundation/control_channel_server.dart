@@ -8,9 +8,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 /// Thrown by [ControlChannelServer.send] when no helper is connected.
-class ControlHelperNotConnectedException implements Exception {
-  const ControlHelperNotConnectedException();
-
+class const ControlHelperNotConnectedException() implements Exception {
   @override
   String toString() => "ControlHelperNotConnectedException: no helper is connected to the control channel";
 }
@@ -21,24 +19,16 @@ class ControlHelperNotConnectedException implements Exception {
 /// order the socket produced them — so a consumer can never observe a frame
 /// and a connection change out of order (e.g. a status frame after the
 /// disconnect it preceded).
-sealed class ControlChannelEvent {
-  const ControlChannelEvent();
-}
+sealed class const ControlChannelEvent();
 
 /// An authenticated helper attached to the control channel.
-final class ControlChannelConnected extends ControlChannelEvent {
-  const ControlChannelConnected();
-}
+final class const ControlChannelConnected() extends ControlChannelEvent;
 
 /// The helper's socket dropped (or the server stopped).
-final class ControlChannelDisconnected extends ControlChannelEvent {
-  const ControlChannelDisconnected();
-}
+final class const ControlChannelDisconnected() extends ControlChannelEvent;
 
 /// A text frame from the authenticated helper.
-final class ControlChannelFrame extends ControlChannelEvent {
-  const ControlChannelFrame({required this.text});
-
+final class const ControlChannelFrame({required this.text}) extends ControlChannelEvent {
   final String text;
 }
 
@@ -54,7 +44,7 @@ final class ControlChannelFrame extends ControlChannelEvent {
 ///   second connection is rejected 409), but a dropped socket is cleared so
 ///   the helper's auto-reconnect is accepted.
 @lazySingleton
-class ControlChannelServer {
+class ControlChannelServer() {
   HttpServer? _server;
   WebSocket? _socket;
   String? _secret;

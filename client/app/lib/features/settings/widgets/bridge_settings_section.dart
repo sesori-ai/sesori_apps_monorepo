@@ -10,9 +10,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "settings_section.dart";
 
-class BridgeSettingsSection extends StatelessWidget {
-  const BridgeSettingsSection({super.key});
-
+class const BridgeSettingsSection({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
@@ -48,9 +46,7 @@ class BridgeSettingsSection extends StatelessWidget {
   }
 }
 
-class _YoloSettingsRow extends StatelessWidget {
-  const _YoloSettingsRow();
-
+class const _YoloSettingsRow() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
@@ -210,13 +206,11 @@ Future<void> _editInterval({
     ..showSnackBar(SnackBar(content: Text(context.loc.settingsPullRequestRefreshStateChanged)));
 }
 
-class _RefreshIntervalSheet extends StatefulWidget {
-  const _RefreshIntervalSheet({
+class const _RefreshIntervalSheet({
     required this.cubit,
     required this.initialSeconds,
     required this.validationBounds,
-  });
-
+  }) extends StatefulWidget {
   final BridgeSettingsCubit cubit;
   final int initialSeconds;
   final PullRequestRefreshSettingsBounds? validationBounds;
@@ -225,7 +219,7 @@ class _RefreshIntervalSheet extends StatefulWidget {
   State<_RefreshIntervalSheet> createState() => _RefreshIntervalSheetState();
 }
 
-class _RefreshIntervalSheetState extends State<_RefreshIntervalSheet> {
+class _RefreshIntervalSheetState() extends State<_RefreshIntervalSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _controller = TextEditingController(text: widget.initialSeconds.toString());
 

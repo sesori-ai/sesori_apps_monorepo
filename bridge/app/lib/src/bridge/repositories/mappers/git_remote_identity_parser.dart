@@ -19,9 +19,7 @@ typedef GitRemoteIdentity = ({String host, String slug});
 /// are stripped from the slug; nested paths (e.g. GitLab subgroups
 /// `org/group/repo`) are kept whole. Hosts are case-insensitive per RFC and
 /// normalised to lowercase; the slug's case is preserved.
-class GitRemoteIdentityParser {
-  const GitRemoteIdentityParser();
-
+class const GitRemoteIdentityParser() {
   /// Remote-URL schemes whose path is a forge-style repository slug.
   /// `file://` is deliberately absent — a filesystem remote has no slug.
   static const Set<String> _forgeSchemes = {"http", "https", "ssh", "git", "git+ssh"};

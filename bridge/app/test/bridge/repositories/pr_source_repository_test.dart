@@ -696,7 +696,11 @@ ProcessResult _result({required String stdout}) {
   return ProcessResult(1, 0, stdout, "");
 }
 
-final class _FakeGhCliApi implements GhCliApi {
+final class _FakeGhCliApi({
+    required List<GhPullRequestBatchResponse> initialResponses,
+    List<GhPullRequestBatchResponse> cursorResponses = const [],
+    this.finalIdentityLogin = "octocat",
+  }) implements GhCliApi {
   final Queue<GhPullRequestBatchResponse> _initialResponses;
   final Queue<GhPullRequestBatchResponse> _cursorResponses;
   final List<List<GhPullRequestTarget>> initialCalls = <List<GhPullRequestTarget>>[];
@@ -704,11 +708,7 @@ final class _FakeGhCliApi implements GhCliApi {
   String finalIdentityLogin;
   int identityCalls = 0;
 
-  _FakeGhCliApi({
-    required List<GhPullRequestBatchResponse> initialResponses,
-    List<GhPullRequestBatchResponse> cursorResponses = const [],
-    this.finalIdentityLogin = "octocat",
-  }) : _initialResponses = Queue<GhPullRequestBatchResponse>.from(initialResponses),
+  this : _initialResponses = Queue<GhPullRequestBatchResponse>.from(initialResponses),
        _cursorResponses = Queue<GhPullRequestBatchResponse>.from(cursorResponses);
 
   @override
@@ -740,10 +740,10 @@ final class _FakeGhCliApi implements GhCliApi {
   }
 }
 
-class _QueueProcessRunner extends ProcessRunner {
+class _QueueProcessRunner({required List<ProcessResult> results}) extends ProcessRunner {
   final Queue<ProcessResult> _results;
 
-  _QueueProcessRunner({required List<ProcessResult> results}) : _results = Queue<ProcessResult>.from(results);
+  this : _results = Queue<ProcessResult>.from(results);
 
   @override
   Future<ProcessResult> run(
@@ -760,13 +760,11 @@ class _QueueProcessRunner extends ProcessRunner {
   }
 }
 
-final class _CompletingGitCliApi implements GitCliApi {
+final class _CompletingGitCliApi({required this.branchResults}) implements GitCliApi {
   final Map<String, Completer<GitCurrentBranchResult>> branchResults;
   final List<String> branchCalls = <String>[];
   final Completer<void> resolutionLimitReached = Completer<void>();
   final Completer<void> nextChunkStarted = Completer<void>();
-
-  _CompletingGitCliApi({required this.branchResults});
 
   @override
   Future<GitCurrentBranchResult> getCurrentBranch({required String projectPath}) {
@@ -783,7 +781,7 @@ final class _CompletingGitCliApi implements GitCliApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _BranchChangingGitCliApi implements GitCliApi {
+final class _BranchChangingGitCliApi() implements GitCliApi {
   final Completer<void> remoteReadStarted = Completer<void>();
   final Completer<void> allowRemoteRead = Completer<void>();
   int branchCalls = 0;

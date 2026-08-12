@@ -2,12 +2,12 @@ import 'dart:io';
 
 import '../../bridge/foundation/legacy_post_update_relaunch.dart';
 
-class TerminalPromptApi {
-  TerminalPromptApi({
+class TerminalPromptApi({
     required Stdin stdin,
     required Stdout stdout,
     required Map<String, String> environment,
-  }) : _stdin = stdin,
+  }) {
+  this : _stdin = stdin,
        _stdout = stdout,
        _environment = environment;
 

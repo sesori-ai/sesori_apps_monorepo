@@ -6,10 +6,10 @@ import "../../foundation/models/composer/composer_attachment.dart";
 import "../../repositories/session_repository.dart";
 
 @lazySingleton
-class SessionService {
+class SessionService({required SessionRepository repository}) {
   final SessionRepository _repository;
 
-  SessionService({required SessionRepository repository}) : _repository = repository;
+  this : _repository = repository;
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,

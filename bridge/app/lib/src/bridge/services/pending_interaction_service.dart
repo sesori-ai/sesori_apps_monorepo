@@ -7,7 +7,13 @@ import "../repositories/question_repository.dart";
 import "archived_session_validator.dart";
 import "session_operation_dispatcher.dart";
 
-class PendingInteractionService {
+class PendingInteractionService({
+    required PermissionRepository permissionRepository,
+    required QuestionRepository questionRepository,
+    required SessionOperationDispatcher dispatcher,
+    required ArchivedSessionValidator archivedSessionValidator,
+    required String legacyMissingPluginId,
+  }) {
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
   final SessionOperationDispatcher _dispatcher;
@@ -15,13 +21,7 @@ class PendingInteractionService {
   final String _legacyMissingPluginId;
   var _disposed = false;
 
-  PendingInteractionService({
-    required PermissionRepository permissionRepository,
-    required QuestionRepository questionRepository,
-    required SessionOperationDispatcher dispatcher,
-    required ArchivedSessionValidator archivedSessionValidator,
-    required String legacyMissingPluginId,
-  }) : _permissionRepository = permissionRepository,
+  this : _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
        _dispatcher = dispatcher,
        _archivedSessionValidator = archivedSessionValidator,

@@ -1072,16 +1072,14 @@ void main() {
   });
 }
 
-class _Harness {
-  final PushSessionStateTracker tracker;
-  final CompletionNotifier notifier;
-  final List<String> completedRoots;
-
-  _Harness({
+class _Harness({
     required this.tracker,
     required this.notifier,
     required this.completedRoots,
-  });
+  }) {
+  final PushSessionStateTracker tracker;
+  final CompletionNotifier notifier;
+  final List<String> completedRoots;
 
   void dispatch(SesoriSseEvent event) {
     tracker.handleEvent(event);

@@ -9,7 +9,7 @@ import "../../utils/color_extensions.dart";
 
 /// Where [PregoGlassScaffold] parks its
 /// [PregoGlassScaffold.floatingActionButton].
-enum PregoFloatingActionAlignment {
+enum PregoFloatingActionAlignment() {
   /// Trailing edge — Flutter's [FloatingActionButtonLocation.endFloat], the
   /// placement for a corner action such as add-project or new-session.
   end,
@@ -77,8 +77,7 @@ enum PregoFloatingActionAlignment {
 ///   slivers: [SliverList.builder(...)],
 /// )
 /// ```
-class PregoGlassScaffold extends StatefulWidget {
-  const PregoGlassScaffold({
+class const PregoGlassScaffold({
     super.key,
     required this.title,
     required this.slivers,
@@ -99,7 +98,8 @@ class PregoGlassScaffold extends StatefulWidget {
     this.extendBodyBehindBar = true,
     this.reserveBarSpace = true,
     this.scrollable = true,
-  }) : assert(
+  }) extends StatefulWidget {
+  this : assert(
          scrollable || onRefresh == null,
          "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
        );
@@ -205,7 +205,7 @@ class PregoGlassScaffold extends StatefulWidget {
   State<PregoGlassScaffold> createState() => _PregoGlassScaffoldState();
 }
 
-class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
+class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   final ScrollController _scrollController = ScrollController();
 
   /// The banner slot's currently rendered height, measured after each layout.
@@ -511,9 +511,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 /// The first layout adopts the banner's size without animating (AnimatedSize
 /// semantics), so a screen pushed while a banner condition already holds shows
 /// it in place rather than replaying the entrance.
-class _AnimatedBannerSlot extends StatefulWidget {
-  const _AnimatedBannerSlot({required this.banner, required this.onHeightChanged});
-
+class const _AnimatedBannerSlot({required this.banner, required this.onHeightChanged}) extends StatefulWidget {
   /// The current banner, or `null` when nothing should show.
   final Widget? banner;
 
@@ -528,7 +526,7 @@ class _AnimatedBannerSlot extends StatefulWidget {
   State<_AnimatedBannerSlot> createState() => _AnimatedBannerSlotState();
 }
 
-class _AnimatedBannerSlotState extends State<_AnimatedBannerSlot> {
+class _AnimatedBannerSlotState() extends State<_AnimatedBannerSlot> {
   /// The last non-null banner. Kept while the exit animation runs so the real
   /// content is what slides away; cleared once the collapse lands.
   Widget? _retained;
@@ -604,9 +602,7 @@ class _AnimatedBannerSlotState extends State<_AnimatedBannerSlot> {
 /// changes. The callback is invoked post-frame so listeners may safely call
 /// `setState`/notify — the same measure-and-report pattern as the session
 /// detail composer measurement.
-class _HeightObserver extends SingleChildRenderObjectWidget {
-  const _HeightObserver({required this.onHeightChanged, required super.child});
-
+class const _HeightObserver({required this.onHeightChanged, required super.child}) extends SingleChildRenderObjectWidget {
   final ValueChanged<double> onHeightChanged;
 
   @override
@@ -618,9 +614,7 @@ class _HeightObserver extends SingleChildRenderObjectWidget {
   }
 }
 
-class _RenderHeightObserver extends RenderProxyBox {
-  _RenderHeightObserver(this.onHeightChanged);
-
+class _RenderHeightObserver(this.onHeightChanged) extends RenderProxyBox {
   ValueChanged<double> onHeightChanged;
   double? _lastReportedHeight;
 
@@ -640,9 +634,7 @@ class _RenderHeightObserver extends RenderProxyBox {
 /// offset while converting overscroll into a held refresh extent. A widget-level
 /// transform rebuilt during that correction can observe the new scroll offset
 /// with the old sliver geometry for one frame, making the title jump.
-class _OverscrollPinnedBox extends SingleChildRenderObjectWidget {
-  const _OverscrollPinnedBox({required this.pulledExtent, required super.child});
-
+class const _OverscrollPinnedBox({required this.pulledExtent, required super.child}) extends SingleChildRenderObjectWidget {
   final ValueGetter<double> pulledExtent;
 
   @override
@@ -654,9 +646,7 @@ class _OverscrollPinnedBox extends SingleChildRenderObjectWidget {
   }
 }
 
-class _RenderOverscrollPinnedBox extends RenderProxyBox {
-  _RenderOverscrollPinnedBox(this._pulledExtent);
-
+class _RenderOverscrollPinnedBox(this._pulledExtent) extends RenderProxyBox {
   ValueGetter<double> _pulledExtent;
 
   void updatePulledExtent(ValueGetter<double> value) {
@@ -698,13 +688,11 @@ class _RenderOverscrollPinnedBox extends RenderProxyBox {
 /// animation, so depending on this scope alone never causes per-frame
 /// rebuilds — [PregoTopBarInsetBuilder] subscribes to the listenable where
 /// per-frame tracking is wanted.
-class _TopBarInsetScope extends InheritedWidget {
-  const _TopBarInsetScope({
+class const _TopBarInsetScope({
     required this.baseInset,
     required this.bannerHeight,
     required super.child,
-  });
-
+  }) extends InheritedWidget {
   /// Status-bar inset plus the bar row height — the top inset with no banner.
   final double baseInset;
 
@@ -730,9 +718,7 @@ class _TopBarInsetScope extends InheritedWidget {
 ///
 /// Without an enclosing [PregoGlassScaffold] (e.g. a body pumped alone in a
 /// widget test), [builder] gets the static bar inset.
-class PregoTopBarInsetBuilder extends StatelessWidget {
-  const PregoTopBarInsetBuilder({super.key, required this.builder, this.child});
-
+class const PregoTopBarInsetBuilder({super.key, required this.builder, this.child}) extends StatelessWidget {
   /// Built with the current top inset; re-invoked as the banner animates.
   final Widget Function(BuildContext context, double topInset, Widget? child) builder;
 
@@ -753,19 +739,18 @@ class PregoTopBarInsetBuilder extends StatelessWidget {
   }
 }
 
-class _LargeTitleSliver extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final ScrollController scrollController;
-  final ValueChanged<double> onHeightChanged;
-  final ValueGetter<double>? pulledExtent;
-  const _LargeTitleSliver({
+class const _LargeTitleSliver({
     required this.title,
     required this.subtitle,
     required this.scrollController,
     required this.onHeightChanged,
     required this.pulledExtent,
-  });
+  }) extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final ScrollController scrollController;
+  final ValueChanged<double> onHeightChanged;
+  final ValueGetter<double>? pulledExtent;
 
   @override
   Widget build(BuildContext context) {

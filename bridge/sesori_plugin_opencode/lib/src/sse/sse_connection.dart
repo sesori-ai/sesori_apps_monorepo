@@ -4,7 +4,14 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-class SseConnection {
+class SseConnection({
+    required String targetUrl,
+    required String? password,
+    required void Function(String rawData) onEvent,
+    Future<void> Function()? onReconnect,
+    void Function()? onConnected,
+    void Function()? onDisconnected,
+  }) {
   final String _targetUrl;
   final String? _password;
   final void Function(String rawData) _onEvent;
@@ -19,14 +26,7 @@ class SseConnection {
 
   Future<void> get firstConnected => _firstConnected.future;
 
-  SseConnection({
-    required String targetUrl,
-    required String? password,
-    required void Function(String rawData) onEvent,
-    Future<void> Function()? onReconnect,
-    void Function()? onConnected,
-    void Function()? onDisconnected,
-  }) : _targetUrl = targetUrl,
+  this : _targetUrl = targetUrl,
        _password = password,
        _onEvent = onEvent,
        _onReconnect = onReconnect,

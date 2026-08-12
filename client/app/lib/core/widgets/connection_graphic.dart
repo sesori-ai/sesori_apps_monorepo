@@ -3,7 +3,7 @@ import "package:flutter/material.dart";
 import "../extensions/build_context_x.dart";
 
 /// The connection state a [ConnectionGraphic] depicts.
-enum _ConnectionGraphicState { off, on }
+enum _ConnectionGraphicState() { off, on }
 
 /// Laptop illustration of the bridge connection state, exported as PNGs from
 /// the Figma "Connection Graphic" component (node `3773:10041`).

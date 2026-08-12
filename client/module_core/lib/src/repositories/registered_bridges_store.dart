@@ -29,7 +29,10 @@ import "../logging/logging.dart";
 /// store listens to [AuthSession.authStateStream]) so a different account
 /// signing in on the same device never inherits this one's answer.
 @lazySingleton
-class RegisteredBridgesStore {
+class RegisteredBridgesStore({
+    required SecureStorage secureStorage,
+    required AuthSession authSession,
+  }) {
   static const _storageKey = "has_registered_bridges";
   static const _storedValue = "true";
 
@@ -40,10 +43,7 @@ class RegisteredBridgesStore {
   /// registered bridge; `false` means "not yet known" — never "no bridges".
   bool _knownRegistered = false;
 
-  RegisteredBridgesStore({
-    required SecureStorage secureStorage,
-    required AuthSession authSession,
-  }) : _storage = secureStorage {
+  this : _storage = secureStorage {
     _authSubscription = authSession.authStateStream.listen((state) {
       // Logout: drop the latch so the next account starts from scratch.
       // clear() handles its own errors, so this stays fire-and-forget.

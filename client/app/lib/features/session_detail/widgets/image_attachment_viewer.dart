@@ -10,14 +10,18 @@ import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/external_link.dart";
 
-sealed class MessageImageViewerImage {
+sealed class const MessageImageViewerImage() {
   ImageProvider get provider;
   Uri? get originalUri;
-
-  const MessageImageViewerImage();
 }
 
-final class LoadedMessageImage extends MessageImageViewerImage {
+final class const LoadedMessageImage({
+    required this.bytes,
+    required this.provider,
+    required this.mime,
+    required this.actionFilename,
+    required this.originalUri,
+  }) extends MessageImageViewerImage {
   final Uint8List bytes;
   @override
   final ImageProvider provider;
@@ -26,25 +30,19 @@ final class LoadedMessageImage extends MessageImageViewerImage {
   @override
   final Uri? originalUri;
 
-  const LoadedMessageImage({
-    required this.bytes,
-    required this.provider,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-  }) : super();
+  this : super();
 }
 
-final class ViewOnlyMessageImage extends MessageImageViewerImage {
+final class const ViewOnlyMessageImage({
+    required this.provider,
+    required this.originalUri,
+  }) extends MessageImageViewerImage {
   @override
   final ImageProvider provider;
   @override
   final Uri? originalUri;
 
-  const ViewOnlyMessageImage({
-    required this.provider,
-    required this.originalUri,
-  }) : super();
+  this : super();
 }
 
 Future<void> showImageAttachmentViewer({
@@ -104,25 +102,23 @@ Future<void> showImageAttachmentViewer({
   });
 }
 
-class ImageAttachmentViewer extends StatefulWidget {
+class const ImageAttachmentViewer({
+    super.key,
+    required this.image,
+    required this.filename,
+    required this.heroTag,
+  }) extends StatefulWidget {
   static const imageKey = ValueKey("imageAttachmentViewer.image");
 
   final MessageImageViewerImage image;
   final String? filename;
   final Key heroTag;
 
-  const ImageAttachmentViewer({
-    super.key,
-    required this.image,
-    required this.filename,
-    required this.heroTag,
-  });
-
   @override
   State<ImageAttachmentViewer> createState() => _ImageAttachmentViewerState();
 }
 
-class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with TickerProviderStateMixin {
+class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with TickerProviderStateMixin {
   static const _doubleTapScale = 2.5;
   static const _baseScaleTolerance = 0.01;
   static const _dismissVelocity = 900.0;

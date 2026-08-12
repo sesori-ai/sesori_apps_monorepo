@@ -7,8 +7,7 @@ import "package:test/test.dart";
 
 /// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
 /// so a test can land an abort while a turn is mid-selection.
-class _GatedSelectionPlugin extends TestAcpPlugin {
-  _GatedSelectionPlugin({
+class _GatedSelectionPlugin({
     required super.id,
     required super.agentDisplayName,
     required super.launchSpec,
@@ -18,8 +17,7 @@ class _GatedSelectionPlugin extends TestAcpPlugin {
     required super.commandTracker,
     required super.sessionOptionsService,
     required AcpProcessFactory super.processFactory,
-  });
-
+  }) extends TestAcpPlugin {
   Completer<void>? selectionGate;
 
   @override

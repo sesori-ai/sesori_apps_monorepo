@@ -127,9 +127,7 @@ OmpSessionCleanupService _service({required _FakeCleanupRepository repository, r
       maxPages: maxPages,
     );
 
-class _FakeCleanupRepository implements OmpSessionCleanupRepository {
-  _FakeCleanupRepository({required this.pages});
-
+class _FakeCleanupRepository({required this.pages}) implements OmpSessionCleanupRepository {
   final List<OmpCleanupPage> pages;
   final List<Object> operations = [];
   Object? deleteError;
@@ -192,7 +190,7 @@ class _FakeCleanupRepository implements OmpSessionCleanupRepository {
   Future<void> dispose() async {}
 }
 
-class _CancelledDeleteAcpApi implements OmpAcpApi {
+class _CancelledDeleteAcpApi() implements OmpAcpApi {
   @override
   Future<AcpPromptResult> prompt({
     required String sessionId,

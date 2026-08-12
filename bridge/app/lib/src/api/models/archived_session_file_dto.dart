@@ -11,7 +11,7 @@ part "archived_session_file_dto.g.dart";
 /// have: archiving proceeds even when the backend cannot be consulted, because
 /// refusing would trap the session.
 @JsonEnum()
-enum ArchivedSessionCompleteness {
+enum ArchivedSessionCompleteness() {
   /// The store was brought current from the backend before the export.
   @JsonValue("complete")
   complete,

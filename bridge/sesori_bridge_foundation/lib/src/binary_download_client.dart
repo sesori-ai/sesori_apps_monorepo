@@ -14,18 +14,16 @@ const Duration _kDownloadInactivityTimeout = Duration(seconds: 30);
 ///   request timeout, or a dropped connection mid-body). Stay quiet and retry.
 /// - [failed]: a genuine failure (a non-retryable status such as 404, or an
 ///   unexpected local error) that will not fix itself on the next attempt.
-enum DownloadFailureKind { network, failed }
+enum DownloadFailureKind() { network, failed }
 
 /// Raised by [BinaryDownloadClient.download] (as a stream error) when a download
 /// cannot complete. Carries a neutral [kind] so each consumer maps it to its own
 /// result type at its boundary rather than the client knowing about them.
-class DownloadException implements Exception {
-  const DownloadException({
+class const DownloadException({
     required this.kind,
     required this.message,
     this.statusCode,
-  });
-
+  }) implements Exception {
   final DownloadFailureKind kind;
   final String message;
   final int? statusCode;
@@ -35,12 +33,10 @@ class DownloadException implements Exception {
 }
 
 /// A byte-progress update emitted while a download streams to disk.
-class DownloadProgress {
-  const DownloadProgress({
+class const DownloadProgress({
     required this.receivedBytes,
     required this.totalBytes,
-  });
-
+  }) {
   final int receivedBytes;
 
   /// Total expected bytes from `Content-Length`, or `null` when the server did
@@ -63,16 +59,16 @@ class DownloadProgress {
 /// failure should be surfaced. The returned stream emits a [DownloadProgress]
 /// per body chunk, completes when the file is fully written, and raises a
 /// [DownloadException] (carrying a neutral [DownloadFailureKind]) on failure.
-class BinaryDownloadClient {
+class BinaryDownloadClient({
+    required http.Client httpClient,
+    Duration requestTimeout = _kDownloadRequestTimeout,
+    Duration streamInactivityTimeout = _kDownloadInactivityTimeout,
+  }) {
   final http.Client _httpClient;
   final Duration _requestTimeout;
   final Duration _streamInactivityTimeout;
 
-  BinaryDownloadClient({
-    required http.Client httpClient,
-    Duration requestTimeout = _kDownloadRequestTimeout,
-    Duration streamInactivityTimeout = _kDownloadInactivityTimeout,
-  }) : _httpClient = httpClient,
+  this : _httpClient = httpClient,
        _requestTimeout = requestTimeout,
        _streamInactivityTimeout = streamInactivityTimeout;
 

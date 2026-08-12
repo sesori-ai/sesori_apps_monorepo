@@ -12,9 +12,7 @@ import "dart:convert" show LineSplitter;
 /// Returns null when no meaningful version can be parsed, so the cosmetic
 /// field is simply omitted rather than echoing the OS family already conveyed
 /// by `clientType`. The result is trimmed and clamped to [maxLength].
-class OsVersionFormatter {
-  const OsVersionFormatter();
-
+class const OsVersionFormatter() {
   /// Hard limit matching the auth server's `device.osVersion` schema (<= 40).
   static const int maxLength = 40;
 

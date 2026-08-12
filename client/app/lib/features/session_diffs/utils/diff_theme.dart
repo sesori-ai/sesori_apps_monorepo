@@ -2,10 +2,8 @@ import "package:flutter/material.dart";
 
 /// Theme-aware colors for diff rendering. Returns appropriate colors based on
 /// the current [Brightness] (light or dark mode).
-class DiffTheme {
+class const DiffTheme._({required this.brightness}) {
   final Brightness brightness;
-
-  const DiffTheme._({required this.brightness});
 
   factory DiffTheme.of(BuildContext context) => DiffTheme._(brightness: Theme.of(context).brightness);
 

@@ -1,42 +1,37 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-class OmpCatalogOption {
-  const OmpCatalogOption({required this.value, required this.name, required this.description});
-
+class const OmpCatalogOption({required this.value, required this.name, required this.description}) {
   final String value;
   final String name;
   final String? description;
 }
 
 /// One exact OMP `<provider>/<model-id>` config value.
-class OmpCatalogModel {
-  const OmpCatalogModel({
+class const OmpCatalogModel({
     required this.value,
     required this.providerId,
     required this.modelId,
     required this.name,
-  });
-
+  }) {
   final String value;
   final String providerId;
   final String modelId;
   final String name;
 }
 
-class OmpThinkingOptions {
-  OmpThinkingOptions({
+class OmpThinkingOptions({
     required this.configId,
     required List<String> variants,
     required this.currentValue,
-  }) : variants = List.unmodifiable(variants);
+  }) {
+  this : variants = List.unmodifiable(variants);
 
   final String configId;
   final List<String> variants;
   final String? currentValue;
 }
 
-class OmpSessionConfigSnapshot {
-  OmpSessionConfigSnapshot({
+class OmpSessionConfigSnapshot({
     required this.modelConfigId,
     required List<OmpCatalogModel> models,
     required this.currentModelValue,
@@ -44,7 +39,8 @@ class OmpSessionConfigSnapshot {
     required List<OmpCatalogOption> modes,
     required this.currentModeValue,
     required this.thinking,
-  }) : models = List.unmodifiable(models),
+  }) {
+  this : models = List.unmodifiable(models),
        modes = List.unmodifiable(modes);
 
   final String? modelConfigId;
@@ -56,15 +52,12 @@ class OmpSessionConfigSnapshot {
   final OmpThinkingOptions? thinking;
 }
 
-class OmpCatalogSession {
-  const OmpCatalogSession({required this.sessionId, required this.snapshot});
-
+class const OmpCatalogSession({required this.sessionId, required this.snapshot}) {
   final String sessionId;
   final OmpSessionConfigSnapshot snapshot;
 }
 
-class OmpProjectCatalog {
-  OmpProjectCatalog({
+class OmpProjectCatalog({
     required this.modelConfigId,
     required List<OmpCatalogModel> models,
     required this.defaultModelValue,
@@ -74,7 +67,8 @@ class OmpProjectCatalog {
     required Map<String, OmpThinkingOptions> thinkingByModel,
     required List<PluginCommand> commands,
     required this.completeness,
-  }) : models = List.unmodifiable(models),
+  }) {
+  this : models = List.unmodifiable(models),
        modes = List.unmodifiable(modes),
        thinkingByModel = Map.unmodifiable(thinkingByModel),
        commands = List.unmodifiable(commands);
@@ -90,38 +84,22 @@ class OmpProjectCatalog {
   final PluginSessionOptionsCompleteness completeness;
 }
 
-sealed class OmpCatalogDiscoveryResult {
-  const OmpCatalogDiscoveryResult();
-}
+sealed class const OmpCatalogDiscoveryResult();
 
-final class OmpCatalogObserved extends OmpCatalogDiscoveryResult {
-  const OmpCatalogObserved({required this.catalog});
-
+final class const OmpCatalogObserved({required this.catalog}) extends OmpCatalogDiscoveryResult {
   final OmpProjectCatalog catalog;
 }
 
-final class OmpCatalogNoModels extends OmpCatalogDiscoveryResult {
-  const OmpCatalogNoModels();
-}
+final class const OmpCatalogNoModels() extends OmpCatalogDiscoveryResult;
 
-final class OmpCatalogDiscoveryFailed extends OmpCatalogDiscoveryResult {
-  const OmpCatalogDiscoveryFailed();
-}
+final class const OmpCatalogDiscoveryFailed() extends OmpCatalogDiscoveryResult;
 
-sealed class OmpOptionsDiscoveryResult {
-  const OmpOptionsDiscoveryResult();
-}
+sealed class const OmpOptionsDiscoveryResult();
 
-final class OmpOptionsObserved extends OmpOptionsDiscoveryResult {
-  const OmpOptionsObserved({required this.options});
-
+final class const OmpOptionsObserved({required this.options}) extends OmpOptionsDiscoveryResult {
   final PluginSessionOptions options;
 }
 
-final class OmpOptionsNoModels extends OmpOptionsDiscoveryResult {
-  const OmpOptionsNoModels();
-}
+final class const OmpOptionsNoModels() extends OmpOptionsDiscoveryResult;
 
-final class OmpOptionsDiscoveryFailed extends OmpOptionsDiscoveryResult {
-  const OmpOptionsDiscoveryFailed();
-}
+final class const OmpOptionsDiscoveryFailed() extends OmpOptionsDiscoveryResult;

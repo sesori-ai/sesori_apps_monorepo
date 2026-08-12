@@ -7,48 +7,36 @@ import "../foundation/process_runner.dart";
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
-sealed class GitCurrentBranchResult {
-  const GitCurrentBranchResult();
-}
+sealed class const GitCurrentBranchResult();
 
-final class GitCurrentBranchNamed extends GitCurrentBranchResult {
+final class const GitCurrentBranchNamed({required this.branchName}) extends GitCurrentBranchResult {
   final String branchName;
-
-  const GitCurrentBranchNamed({required this.branchName});
 }
 
-final class GitCurrentBranchDetached extends GitCurrentBranchResult {
-  const GitCurrentBranchDetached();
-}
+final class const GitCurrentBranchDetached() extends GitCurrentBranchResult;
 
-final class GitCurrentBranchMissingDirectory extends GitCurrentBranchResult {
-  const GitCurrentBranchMissingDirectory();
-}
+final class const GitCurrentBranchMissingDirectory() extends GitCurrentBranchResult;
 
-final class GitCurrentBranchNotRepository extends GitCurrentBranchResult {
-  const GitCurrentBranchNotRepository();
-}
+final class const GitCurrentBranchNotRepository() extends GitCurrentBranchResult;
 
-class GitWorktreeSafetySnapshot {
-  final bool worktreeExists;
-  final bool hasUnstagedChanges;
-  final String actualBranch;
-
-  GitWorktreeSafetySnapshot({
+class GitWorktreeSafetySnapshot({
     required this.worktreeExists,
     required this.hasUnstagedChanges,
     required this.actualBranch,
-  });
+  }) {
+  final bool worktreeExists;
+  final bool hasUnstagedChanges;
+  final String actualBranch;
 }
 
-class GitCliApi {
+class GitCliApi({
+    required ProcessRunner processRunner,
+    required GitPathExistsChecker gitPathExists,
+  }) {
   final ProcessRunner _processRunner;
   final GitPathExistsChecker _gitPathExists;
 
-  GitCliApi({
-    required ProcessRunner processRunner,
-    required GitPathExistsChecker gitPathExists,
-  }) : _processRunner = processRunner,
+  this : _processRunner = processRunner,
        _gitPathExists = gitPathExists;
 
   Future<bool> isGitInitialized({required String projectPath}) async {
@@ -547,7 +535,7 @@ class GitCliApi {
   }) async {
     final result = await runGit(
       projectPath: projectPath,
-      arguments: ["branch", if (force) "-D" else "-d", "--", branchName],
+      arguments: ["branch", force ? "-D" : "-d", "--", branchName],
     );
     return result.exitCode == 0;
   }

@@ -28,7 +28,15 @@ String formatDroppedSseFrameLog({
   return "[opencode][sse][$category]$suffix $message";
 }
 
-class OpenCodePlugin implements OpenCodeManagedApi {
+class OpenCodePlugin._({
+    required OpenCodeService service,
+    required io.HttpClient httpClient,
+    required String serverUrl,
+    required String? password,
+    required bool autoInitialize,
+    void Function()? onConnected,
+    void Function()? onDisconnected,
+  }) implements OpenCodeManagedApi {
   final OpenCodeService _service;
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
@@ -85,15 +93,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     );
   }
 
-  OpenCodePlugin._({
-    required OpenCodeService service,
-    required io.HttpClient httpClient,
-    required String serverUrl,
-    required String? password,
-    required bool autoInitialize,
-    void Function()? onConnected,
-    void Function()? onDisconnected,
-  }) : _service = service,
+  this : _service = service,
        _httpClient = httpClient,
        _parser = SseEventParser(),
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {

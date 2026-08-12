@@ -16,8 +16,8 @@ import "package:sesori_shared/sesori_shared.dart";
 /// (platform-default name, null version fields). Values are clamped to the auth
 /// server's schema limits.
 @LazySingleton(as: OAuthDeviceDescriptorProvider)
-class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
-  FlutterOAuthDeviceDescriptorProvider(DeviceInfoPlugin deviceInfo) : _deviceInfo = deviceInfo;
+class FlutterOAuthDeviceDescriptorProvider(DeviceInfoPlugin deviceInfo) implements OAuthDeviceDescriptorProvider {
+  this : _deviceInfo = deviceInfo;
 
   final DeviceInfoPlugin _deviceInfo;
   static const _deviceInfoBuilder = AuthDeviceInfoBuilder();

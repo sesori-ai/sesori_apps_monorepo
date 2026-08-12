@@ -59,7 +59,7 @@ void main() {
   });
 }
 
-class _FakePermissionAutoApprovalService implements PermissionAutoApprovalService {
+class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalService {
   int approvePendingCalls = 0;
 
   @override
@@ -69,7 +69,7 @@ class _FakePermissionAutoApprovalService implements PermissionAutoApprovalServic
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _MemoryBridgeSettingsApi implements BridgeSettingsApi {
+class _MemoryBridgeSettingsApi() implements BridgeSettingsApi {
   String? config = '{"yolo":false,"pullRequestRefreshIntervalSeconds":30}';
   int writeCount = 0;
 

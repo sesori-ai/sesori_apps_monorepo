@@ -1,3 +1,3 @@
-abstract class DeepLinkSource {
+abstract class DeepLinkSource() {
   Stream<Uri> get linkStream;
 }

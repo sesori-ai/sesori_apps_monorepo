@@ -5,7 +5,7 @@ part 'update_attempt.g.dart';
 
 /// The pipeline stage an [UpdateAttempt] reached. Recorded so a failure or an
 /// interrupted (crashed) attempt can be described precisely on the next launch.
-enum UpdateStage {
+enum UpdateStage() {
   downloading,
   verifying,
   extracting,
@@ -15,7 +15,7 @@ enum UpdateStage {
 }
 
 /// Lifecycle status of a persisted [UpdateAttempt].
-enum UpdateAttemptStatus {
+enum UpdateAttemptStatus() {
   /// The apply is in progress (binary/lib swap underway). A record left in
   /// this state across a restart means the process died mid-apply.
   inFlight,

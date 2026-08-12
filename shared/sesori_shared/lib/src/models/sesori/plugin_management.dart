@@ -5,7 +5,7 @@ import "plugin_setup_response.dart";
 part "plugin_management.freezed.dart";
 part "plugin_management.g.dart";
 
-enum PluginRuntimeState {
+enum PluginRuntimeState() {
   disabled,
   blocked,
   dormant,
@@ -40,23 +40,23 @@ enum PluginRuntimeState {
   };
 }
 
-enum PluginManagementWorkState { idle, busy, unknown }
+enum PluginManagementWorkState() { idle, busy, unknown }
 
-enum PluginManagementCapability { lifecycle, setupRefresh, idleTimeout, install, authentication, unknown }
+enum PluginManagementCapability() { lifecycle, setupRefresh, idleTimeout, install, authentication, unknown }
 
-enum PluginAuthenticationState { idle, inProgress, unknown }
+enum PluginAuthenticationState() { idle, inProgress, unknown }
 
-enum PluginStopMode { safe, force }
+enum PluginStopMode() { safe, force }
 
 /// Phase of a phone-triggered managed runtime install, streamed via the
 /// `plugin.install.progress` SSE event. `completed` and `failed` are terminal.
-enum PluginInstallPhase { downloading, verifying, extracting, finalizing, completed, failed, unknown }
+enum PluginInstallPhase() { downloading, verifying, extracting, finalizing, completed, failed, unknown }
 
-enum PluginLifecycleConflictReason { inFlight, busy, workStateUnknown, transitioning, notEnabled, unsupported, unknown }
+enum PluginLifecycleConflictReason() { inFlight, busy, workStateUnknown, transitioning, notEnabled, unsupported, unknown }
 
-enum PluginAuthenticationConflictReason { inFlight, setupNotRequired, unsupported, unknown }
+enum PluginAuthenticationConflictReason() { inFlight, setupNotRequired, unsupported, unknown }
 
-enum PluginAuthenticationChallengeType { deviceCode }
+enum PluginAuthenticationChallengeType() { deviceCode }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginManagementMetadata with _$PluginManagementMetadata {

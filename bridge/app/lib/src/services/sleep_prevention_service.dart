@@ -7,18 +7,18 @@ import '../repositories/wake_lock_repository.dart';
 
 typedef WarningLogger = void Function(String message);
 
-class SleepPreventionService {
+class SleepPreventionService({
+    required BridgeSettingsRepository bridgeSettingsRepository,
+    required WakeLockRepository wakeLockRepository,
+    required DeviceTypeDetector deviceTypeDetector,
+    WarningLogger? warningLogger,
+  }) {
   final BridgeSettingsRepository _bridgeSettingsRepository;
   final WakeLockRepository _wakeLockRepository;
   final DeviceTypeDetector _deviceTypeDetector;
   final WarningLogger _warningLogger;
 
-  SleepPreventionService({
-    required BridgeSettingsRepository bridgeSettingsRepository,
-    required WakeLockRepository wakeLockRepository,
-    required DeviceTypeDetector deviceTypeDetector,
-    WarningLogger? warningLogger,
-  }) : _bridgeSettingsRepository = bridgeSettingsRepository,
+  this : _bridgeSettingsRepository = bridgeSettingsRepository,
        _wakeLockRepository = wakeLockRepository,
        _deviceTypeDetector = deviceTypeDetector,
        _warningLogger = warningLogger ?? Log.w;

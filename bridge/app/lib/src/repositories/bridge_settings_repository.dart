@@ -9,7 +9,7 @@ import '../api/bridge_settings_api.dart';
 import '../updater/foundation/release_track.dart';
 import 'bridge_settings.dart';
 
-class BridgeSettingsRepository {
+class BridgeSettingsRepository({required BridgeSettingsApi api}) {
   static const JsonEncoder _jsonEncoder = JsonEncoder.withIndent('  ');
 
   final BridgeSettingsApi _api;
@@ -21,7 +21,7 @@ class BridgeSettingsRepository {
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
-  BridgeSettingsRepository({required BridgeSettingsApi api}) : _api = api;
+  this : _api = api;
 
   String get configFilePath => _api.configFilePath;
 
@@ -184,9 +184,7 @@ class BridgeSettingsRepository {
   }
 }
 
-class BridgeSettingsChange {
+class const BridgeSettingsChange({required this.previous, required this.current}) {
   final BridgeSettings previous;
   final BridgeSettings current;
-
-  const BridgeSettingsChange({required this.previous, required this.current});
 }

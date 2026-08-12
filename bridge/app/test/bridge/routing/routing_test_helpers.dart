@@ -120,7 +120,7 @@ extension RequestHandlerTestMatching on RequestHandlerBase {
 }
 
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
-class FakeBridgePlugin implements NativeProjectsPluginApi {
+class FakeBridgePlugin() implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   // ── Configurable return values ───────────────────────────────────────────
@@ -484,7 +484,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 }
 
 /// Hand-written fake [SessionDao] for testing.
-class FakeSessionDao {
+class FakeSessionDao() {
   final Map<String, SessionDto> _sessions = {};
 
   /// Set up a session in the fake database.
@@ -568,7 +568,7 @@ class FakeSessionDao {
 }
 
 /// Hand-written fake [MetadataService] for testing.
-class FakeMetadataService implements MetadataService {
+class FakeMetadataService() implements MetadataService {
   bridge_metadata.SessionMetadata? generateResult;
   String? lastGenerateMessage;
 
@@ -579,11 +579,9 @@ class FakeMetadataService implements MetadataService {
   }
 }
 
-class FakePullRequestRepository implements PullRequestRepository {
+class FakePullRequestRepository() implements PullRequestRepository {
   final Map<String, List<PullRequestDto>> _prsBySessionId = <String, List<PullRequestDto>>{};
   final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
-
-  FakePullRequestRepository();
 
   void setPr({required String sessionId, required PullRequestDto pullRequest}) {
     _prsBySessionId.putIfAbsent(sessionId, () => <PullRequestDto>[]).add(pullRequest);
@@ -665,17 +663,7 @@ class FakePullRequestRepository implements PullRequestRepository {
   }) async => const <String>{};
 }
 
-class FakePrSyncService extends PrSyncService {
-  final List<({Set<String> projectIds, PrRefreshPolicy refreshPolicy})> calls = [];
-  final Duration? delay;
-  final Object? refreshError;
-  final PrRefreshOutcome refreshOutcome;
-  final List<Duration> identityVerificationDelays;
-  final FutureOr<void> Function()? refreshAction;
-  VerifiedGithubLogin? verifiedGithubLogin;
-  int identityVerificationCallCount = 0;
-
-  FakePrSyncService({
+class FakePrSyncService({
     this.delay,
     this.refreshError,
     this.refreshOutcome = PrRefreshOutcome.completed,
@@ -685,7 +673,17 @@ class FakePrSyncService extends PrSyncService {
     PrSourceRepository? prSource,
     PullRequestRepository? pullRequestRepository,
     SessionRepository? sessionRepository,
-  }) : verifiedGithubLogin = verifiedGithubLogin ?? VerifiedGithubLogin.tryParse(rawLogin: "octocat"),
+  }) extends PrSyncService {
+  final List<({Set<String> projectIds, PrRefreshPolicy refreshPolicy})> calls = [];
+  final Duration? delay;
+  final Object? refreshError;
+  final PrRefreshOutcome refreshOutcome;
+  final List<Duration> identityVerificationDelays;
+  final FutureOr<void> Function()? refreshAction;
+  VerifiedGithubLogin? verifiedGithubLogin;
+  int identityVerificationCallCount = 0;
+
+  this : verifiedGithubLogin = verifiedGithubLogin ?? VerifiedGithubLogin.tryParse(rawLogin: "octocat"),
        super(
          prSource: prSource ?? _AlwaysReadyPrSource(),
          pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
@@ -723,7 +721,7 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
-class _AlwaysReadyPrSource implements PrSourceRepository {
+class _AlwaysReadyPrSource() implements PrSourceRepository {
   @override
   Future<bool> isGithubCliAvailable() async => true;
   @override
@@ -748,7 +746,7 @@ class _AlwaysReadyPrSource implements PrSourceRepository {
   );
 }
 
-class _NoopPullRequestRepository implements PullRequestRepository {
+class _NoopPullRequestRepository() implements PullRequestRepository {
   @override
   Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
@@ -828,7 +826,7 @@ Future<void> recordSessionBinding({
   );
 }
 
-class _NoopSessionRepository implements SessionRepository {
+class _NoopSessionRepository() implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
@@ -1085,7 +1083,12 @@ class _NoopSessionRepository implements SessionRepository {
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
 /// and [FakeSessionDao], so handler tests can configure plugin/DAO behaviour
 /// without needing real implementations.
-class FakeSessionRepository implements SessionRepository {
+class FakeSessionRepository({
+    required FakeBridgePlugin plugin,
+    FakeSessionDao? sessionDao,
+    FakePullRequestRepository? pullRequestRepository,
+    AppDatabase? persistenceDatabase,
+  }) implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
@@ -1110,12 +1113,7 @@ class FakeSessionRepository implements SessionRepository {
   String? projectPathResult;
   Object? publicationError;
 
-  FakeSessionRepository({
-    required FakeBridgePlugin plugin,
-    FakeSessionDao? sessionDao,
-    FakePullRequestRepository? pullRequestRepository,
-    AppDatabase? persistenceDatabase,
-  }) : _plugin = plugin,
+  this : _plugin = plugin,
        _sessionDao = sessionDao ?? FakeSessionDao(),
        _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository(),
        _persistenceDatabase = persistenceDatabase;

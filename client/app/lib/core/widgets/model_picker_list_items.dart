@@ -2,10 +2,8 @@ import "package:flutter/material.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Provider name header above a group of models in the model picker list.
-class ModelPickerProviderHeader extends StatelessWidget {
+class const ModelPickerProviderHeader({super.key, required this.name}) extends StatelessWidget {
   final String name;
-
-  const ModelPickerProviderHeader({super.key, required this.name});
 
   @override
   Widget build(BuildContext context) {
@@ -24,19 +22,17 @@ class ModelPickerProviderHeader extends StatelessWidget {
 }
 
 /// A single selectable model row in the model picker list.
-class ModelPickerModelTile extends StatelessWidget {
-  final String name;
-  final String? subtitle;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const ModelPickerModelTile({
+class const ModelPickerModelTile({
     super.key,
     required this.name,
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
-  });
+  }) extends StatelessWidget {
+  final String name;
+  final String? subtitle;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

@@ -5,10 +5,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
-class ProjectApi {
+class ProjectApi({required RelayHttpApiClient client}) {
   final RelayHttpApiClient _client;
 
-  ProjectApi({required RelayHttpApiClient client}) : _client = client;
+  this : _client = client;
 
   Future<ApiResponse<Projects>> listProjects() {
     return _client.get("/projects", fromJson: Projects.fromJson);

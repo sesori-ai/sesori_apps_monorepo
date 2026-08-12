@@ -41,7 +41,10 @@ import "../foundation/control_channel_client.dart";
 /// decode, delivering token-class messages through the typed delegates
 /// [handleTokenResponse] and [handleTokenUpdate]. The request-correlation state
 /// and the `token_request` send path stay here.
-class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher {
+class ControlChannelTokenService({
+    required ControlChannelClient client,
+    Duration requestTimeout = _defaultRequestTimeout,
+  }) implements AccessTokenProvider, TokenRefresher {
   static const Duration _defaultRequestTimeout = Duration(seconds: 30);
 
   final ControlChannelClient _client;
@@ -67,10 +70,7 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   bool _disposed = false;
   Future<void>? _disposeFuture;
 
-  ControlChannelTokenService({
-    required ControlChannelClient client,
-    Duration requestTimeout = _defaultRequestTimeout,
-  })  : _client = client,
+  this  : _client = client,
         _requestTimeout = requestTimeout;
 
   /// The most recently cached access token. Only valid after the first token is

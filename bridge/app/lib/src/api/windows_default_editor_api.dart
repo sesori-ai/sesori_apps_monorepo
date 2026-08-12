@@ -1,12 +1,12 @@
 import '../bridge/foundation/process_runner.dart';
 import 'default_editor_api.dart';
 
-class WindowsDefaultEditorApi implements DefaultEditorApi {
+class WindowsDefaultEditorApi({
+    required ProcessRunner processRunner,
+  }) implements DefaultEditorApi {
   final ProcessRunner _processRunner;
 
-  WindowsDefaultEditorApi({
-    required ProcessRunner processRunner,
-  }) : _processRunner = processRunner;
+  this : _processRunner = processRunner;
 
   @override
   Future<void> openFile(String filePath) async {

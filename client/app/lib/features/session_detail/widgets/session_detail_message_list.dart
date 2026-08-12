@@ -57,7 +57,19 @@ import "user_message_card.dart";
 /// Gesture plumbing and the detached overlay toggle live in
 /// [FollowDetachScrollable]; this widget owns message rendering, the
 /// detached snapshot, and the follow/chat controller lifecycles.
-class SessionDetailMessageList extends StatefulWidget {
+class const SessionDetailMessageList({
+    super.key,
+    required this.projectId,
+    required this.messages,
+    required this.streamingText,
+    required this.children,
+    required this.childStatuses,
+    required this.onLoadOlderMessages,
+    required this.isLoadingOlderMessages,
+    this.retryErrorMessage,
+    this.bottomInset = 0,
+    this.topInset = 0,
+  }) extends StatefulWidget {
   final String? projectId;
   final List<MessageWithParts> messages;
   final Map<String, String> streamingText;
@@ -83,20 +95,6 @@ class SessionDetailMessageList extends StatefulWidget {
   /// start of the transcript is already loaded.
   final Future<void> Function()? onLoadOlderMessages;
 
-  const SessionDetailMessageList({
-    super.key,
-    required this.projectId,
-    required this.messages,
-    required this.streamingText,
-    required this.children,
-    required this.childStatuses,
-    required this.onLoadOlderMessages,
-    required this.isLoadingOlderMessages,
-    this.retryErrorMessage,
-    this.bottomInset = 0,
-    this.topInset = 0,
-  });
-
   @override
   State<SessionDetailMessageList> createState() => _SessionDetailMessageListState();
 }
@@ -112,7 +110,7 @@ typedef _DetachedSnapshot = ({
   String? retryErrorMessage,
 });
 
-class _SessionDetailMessageListState extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
+class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
   static const _kJumpToLatestKey = Key("session-detail-jump-to-latest");
 

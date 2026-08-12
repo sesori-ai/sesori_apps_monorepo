@@ -13,18 +13,18 @@ import "models/project_not_found_exception.dart";
 
 const _worktreeDir = ".worktrees";
 
-class WorktreeRepository {
+class WorktreeRepository({
+    required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
+    required GitCliApi gitApi,
+    required PluginRuntime runtime,
+  }) {
   final GitCliApi _gitApi;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final PluginRuntime _runtime;
 
-  WorktreeRepository({
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required GitCliApi gitApi,
-    required PluginRuntime runtime,
-  }) : _gitApi = gitApi,
+  this : _gitApi = gitApi,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _runtime = runtime;
@@ -285,4 +285,4 @@ class WorktreeRepository {
   }
 }
 
-enum _WorktreeOperation { deleteWorkspace }
+enum _WorktreeOperation() { deleteWorkspace }

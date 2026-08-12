@@ -29,9 +29,7 @@ const double _contentTopPadding = 10.0;
 /// Shows the signed-in account (navigating to the profile screen), a
 /// notifications row (navigating to notification preferences), and the app
 /// version footer.
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
-
+class const SettingsScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -55,9 +53,7 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class _SettingsBody extends StatelessWidget {
-  const _SettingsBody();
-
+class const _SettingsBody() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -205,14 +201,12 @@ class _SettingsBody extends StatelessWidget {
 
 /// A support-channel row. The destinations are apps of their own (mail client,
 /// Discord, X), so they hand off externally rather than opening in-app.
-class _SupportRow extends StatelessWidget {
-  const _SupportRow({
+class const _SupportRow({
     required this.icon,
     required this.title,
     required this.url,
     this.isLast = false,
-  });
-
+  }) extends StatelessWidget {
   final IconData icon;
   final String title;
   final String url;
@@ -234,14 +228,12 @@ class _SupportRow extends StatelessWidget {
 
 /// A legal-document row. The backend serves these documents as markdown, so
 /// they open in a bottom sheet instead of handing off to a web page.
-class _LegalRow extends StatelessWidget {
-  const _LegalRow({
+class const _LegalRow({
     required this.icon,
     required this.title,
     required this.document,
     this.isLast = false,
-  });
-
+  }) extends StatelessWidget {
   final IconData icon;
   final String title;
   final LegalDocument document;
@@ -261,9 +253,7 @@ class _LegalRow extends StatelessWidget {
 
 /// The Figma footer: the app icon above the product name and the
 /// "v1.2.3 (456)" build line sourced from the platform package info.
-class _AppFooter extends StatelessWidget {
-  const _AppFooter();
-
+class const _AppFooter() extends StatelessWidget {
   /// Edge length of the icon's rounded square, per Figma.
   static const double _logoSquare = 52.0;
 

@@ -4,10 +4,10 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../capabilities/notifications/register_token_request.dart";
 
 @lazySingleton
-class NotificationApi {
+class NotificationApi({required AuthenticatedHttpApiClient client}) {
   final AuthenticatedHttpApiClient _client;
 
-  NotificationApi({required AuthenticatedHttpApiClient client}) : _client = client;
+  this : _client = client;
 
   Future<void> registerToken({required RegisterTokenRequest request}) async {
     final response = await _client.post(

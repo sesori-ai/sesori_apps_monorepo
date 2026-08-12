@@ -11,14 +11,12 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 /// that must be normalized to a plain `codex`. For publishers whose archive
 /// member already matches the canonical name (e.g. OpenCode's `opencode`), the
 /// two are equal.
-final class RuntimeAsset {
-  const RuntimeAsset({
+final class const RuntimeAsset({
     required this.assetName,
     required this.format,
     required this.sha256,
     required this.archiveBinaryName,
-  });
-
+  }) {
   final String assetName;
   final ArchiveFormat format;
   final String sha256;
@@ -39,9 +37,7 @@ final class RuntimeAsset {
 ///   the managed runtime (so a too-old install can't break the bridge, and a
 ///   newer one is never downgraded).
 /// - [bundledVersion] is the exact version the managed runtime downloads.
-abstract class RuntimeManifest {
-  const RuntimeManifest();
-
+abstract class const RuntimeManifest() {
   /// Stable runtime identifier. Doubles as the managed-runtime subdirectory name
   /// under `PluginHost.stateDirectory` and the log tag (e.g. `"opencode"`,
   /// `"codex"`).

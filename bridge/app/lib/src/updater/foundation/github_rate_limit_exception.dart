@@ -5,7 +5,7 @@
 /// Unauthenticated requests share a budget of 60 requests/hour per source IP,
 /// so this is commonly hit from behind shared/NAT'd networks even when this
 /// bridge itself only checks for updates a handful of times per day.
-class GitHubRateLimitException implements Exception {
+class const GitHubRateLimitException({required this.resetAt, required this.authenticated}) implements Exception {
   /// When the rate-limit window resets, in local time, when the response
   /// advertised it via `retry-after` (seconds) or `x-ratelimit-reset` (epoch
   /// seconds). Null when the response carried no usable reset hint.
@@ -16,8 +16,6 @@ class GitHubRateLimitException implements Exception {
   /// token, whereas an authenticated caller hit the larger token budget (or a
   /// secondary limit) and must not be told to do something already done.
   final bool authenticated;
-
-  const GitHubRateLimitException({required this.resetAt, required this.authenticated});
 
   @override
   String toString() {

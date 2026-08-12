@@ -95,9 +95,7 @@ void main() {
 
 /// Returns a 2xx [http.StreamedResponse] whose body stream immediately errors,
 /// simulating a connection reset after the response headers arrive.
-class _StreamErrorClient extends http.BaseClient {
-  _StreamErrorClient(this._streamError);
-
+class _StreamErrorClient(this._streamError) extends http.BaseClient {
   final Object _streamError;
 
   @override
@@ -111,9 +109,7 @@ class _StreamErrorClient extends http.BaseClient {
 
 /// Throws from `send`, simulating a connection-phase transport failure (before
 /// any response headers arrive).
-class _SendErrorClient extends http.BaseClient {
-  _SendErrorClient(this._sendError);
-
+class _SendErrorClient(this._sendError) extends http.BaseClient {
   final Object _sendError;
 
   @override

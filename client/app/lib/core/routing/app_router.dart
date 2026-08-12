@@ -425,16 +425,14 @@ List<RouteBase> _buildAppRoutes({
   ];
 }
 
-class _SessionListPane extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final String? selectedSessionId;
-
-  const _SessionListPane({
+class const _SessionListPane({
     required this.projectId,
     required this.projectName,
     required this.selectedSessionId,
-  });
+  }) extends StatelessWidget {
+  final String projectId;
+  final String? projectName;
+  final String? selectedSessionId;
 
   @override
   Widget build(BuildContext context) {

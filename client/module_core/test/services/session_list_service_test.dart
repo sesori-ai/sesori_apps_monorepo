@@ -6,7 +6,7 @@ import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockProjectRepository extends Mock implements ProjectRepository;
+class _MockProjectRepository() extends Mock implements ProjectRepository;
 
 void main() {
   test("running sessions form an alphabetical prefix while the tail stays timestamp ordered", () {

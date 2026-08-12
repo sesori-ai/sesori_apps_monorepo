@@ -9,9 +9,7 @@ import "dart:io";
 /// filesystem calls fail with `EPERM`/`EACCES`. This validator recognises those
 /// denials so callers can surface an actionable message instead of a generic
 /// I/O error.
-class FilesystemPermissionValidator {
-  const FilesystemPermissionValidator();
-
+class const FilesystemPermissionValidator() {
   /// `errno` for "operation not permitted" — the typical macOS TCC denial.
   static const int _ePerm = 1;
 

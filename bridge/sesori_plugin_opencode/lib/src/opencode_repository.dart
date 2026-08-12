@@ -65,14 +65,12 @@ const String _globalProjectId = "global";
 ///    sessions but no real project entry (e.g., a non-git directory that was
 ///    used once), we create a virtual project so the mobile app can still
 ///    display those sessions.
-class OpenCodeRepository {
+class OpenCodeRepository(this._api) {
   final OpenCodeApi _api;
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
     maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes,
   );
-
-  OpenCodeRepository(this._api);
 
   OpenCodeApi get api => _api;
 

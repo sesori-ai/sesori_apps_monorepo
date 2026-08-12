@@ -4,10 +4,10 @@ import "../services/session_mutation_dispatcher.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/title` — renames a session.
-class RenameSessionHandler extends BodyRequestHandler<RenameSessionRequest, Session> {
+class RenameSessionHandler({required SessionMutationDispatcher sessionMutationDispatcher}) extends BodyRequestHandler<RenameSessionRequest, Session> {
   final SessionMutationDispatcher _sessionMutationDispatcher;
 
-  RenameSessionHandler({required SessionMutationDispatcher sessionMutationDispatcher})
+  this
     : _sessionMutationDispatcher = sessionMutationDispatcher,
       super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
 

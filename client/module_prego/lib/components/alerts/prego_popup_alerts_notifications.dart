@@ -8,7 +8,7 @@ import "../../theme/prego_theme.dart";
 ///
 /// Each variant pairs a leading icon with an accent colour used for the
 /// radial gradient overlay and the icon tint.
-enum PregoPopupAlertsNotificationsVariant {
+enum PregoPopupAlertsNotificationsVariant() {
   /// Error / failure — red circle-exclamation icon, error-red gradient.
   error,
 }
@@ -31,15 +31,13 @@ enum PregoPopupAlertsNotificationsVariant {
 /// ```
 ///
 /// Passing `onClose: null` hides the close button.
-class PregoPopupAlertsNotifications extends StatelessWidget {
-  const PregoPopupAlertsNotifications({
+class const PregoPopupAlertsNotifications({
     super.key,
     required this.title,
     this.message,
     this.onClose,
     this.variant = PregoPopupAlertsNotificationsVariant.error,
-  });
-
+  }) extends StatelessWidget {
   /// Bold headline text shown on the first line.
   final String title;
 
@@ -161,9 +159,7 @@ class PregoPopupAlertsNotifications extends StatelessWidget {
 
 /// Round, translucent close button rendered in the alert's top-trailing
 /// corner. Tap target is 36×36 (8px padding around a 20px icon).
-class _CloseButton extends StatelessWidget {
-  const _CloseButton({required this.onPressed});
-
+class const _CloseButton({required this.onPressed}) extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override

@@ -13,15 +13,15 @@ import "repositories/cursor_generated_image_reader.dart";
 /// those into the notification pipeline (see
 /// [AcpApprovalRegistry.fireAndForgetExtensionMethods]), so this mapper is the
 /// single handling site for both wire shapes.
-class CursorEventMapper extends AcpEventMapper {
-  CursorEventMapper({
+class CursorEventMapper({
     required super.launchDirectory,
     required super.pluginId,
     required super.configurationTracker,
     required super.contentMapper,
     required CursorGeneratedImageReader generatedImageReader,
     required String? Function() activeSessionResolver,
-  }) : _generatedImageReader = generatedImageReader,
+  }) extends AcpEventMapper {
+  this : _generatedImageReader = generatedImageReader,
        _activeSessionResolver = activeSessionResolver,
        super(agentId: pluginId);
 

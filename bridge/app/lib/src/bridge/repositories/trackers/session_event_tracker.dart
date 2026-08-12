@@ -1,51 +1,45 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-sealed class PendingTrackedEvent {
+sealed class const PendingTrackedEvent({
+    required this.pluginId,
+    required this.generation,
+    required this.event,
+    required this.projectionUpdatedAt,
+  }) {
   final String pluginId;
   final int generation;
   final BridgeSseEvent event;
   final int projectionUpdatedAt;
 
-  const PendingTrackedEvent({
-    required this.pluginId,
-    required this.generation,
-    required this.event,
-    required this.projectionUpdatedAt,
-  });
-
   String get backendSessionId;
 }
 
-final class PendingSessionEvent extends PendingTrackedEvent {
-  final Session session;
-
-  const PendingSessionEvent({
+final class const PendingSessionEvent({
     required super.pluginId,
     required super.generation,
     required super.event,
     required this.session,
     required super.projectionUpdatedAt,
-  });
+  }) extends PendingTrackedEvent {
+  final Session session;
 
   @override
   String get backendSessionId => session.id;
 }
 
-final class PendingTranslationEvent extends PendingTrackedEvent {
-  @override
-  final String backendSessionId;
-
-  const PendingTranslationEvent({
+final class const PendingTranslationEvent({
     required super.pluginId,
     required super.generation,
     required super.event,
     required this.backendSessionId,
     required super.projectionUpdatedAt,
-  });
+  }) extends PendingTrackedEvent {
+  @override
+  final String backendSessionId;
 }
 
-class SessionEventTracker {
+class SessionEventTracker({required this.maxPendingEntriesPerPlugin}) {
   static const defaultMaxPendingEntries = 1024;
 
   final int maxPendingEntriesPerPlugin;
@@ -54,7 +48,7 @@ class SessionEventTracker {
   final Map<({String pluginId, String backendParentId}), List<PendingSessionEvent>> _children = {};
   final Map<({String pluginId, String backendSessionId}), List<PendingTranslationEvent>> _translations = {};
 
-  SessionEventTracker({required this.maxPendingEntriesPerPlugin}) {
+  this {
     if (maxPendingEntriesPerPlugin < 1) {
       throw ArgumentError.value(maxPendingEntriesPerPlugin, "maxPendingEntriesPerPlugin", "must be positive");
     }

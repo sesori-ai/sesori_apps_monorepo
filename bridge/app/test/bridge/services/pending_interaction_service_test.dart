@@ -154,11 +154,9 @@ void main() {
   });
 }
 
-class _FamilyRepository implements SessionRepository {
+class _FamilyRepository(this.scopes) implements SessionRepository {
   final Map<String, SessionFamilyScope> scopes;
   List<ProjectActivitySummary> activitySummaries = const [];
-
-  _FamilyRepository(this.scopes);
 
   @override
   Future<SessionFamilyScope> resolveSessionFamily({
@@ -179,7 +177,7 @@ class _FamilyRepository implements SessionRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _PermissionRepository implements PermissionRepository {
+class _PermissionRepository() implements PermissionRepository {
   final List<PermissionReply> calls = [];
   final List<String> requestIds = [];
   List<PendingPermission> pendingPermissions = const [];
@@ -202,7 +200,7 @@ class _PermissionRepository implements PermissionRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _QuestionRepository implements QuestionRepository {
+class _QuestionRepository() implements QuestionRepository {
   final List<String> calls = [];
   Future<void> Function({required String questionId, required String sessionId, required List<ReplyAnswer> answers})?
   onReply;
@@ -225,7 +223,7 @@ class _QuestionRepository implements QuestionRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _BridgeSettingsApi implements BridgeSettingsApi {
+class _BridgeSettingsApi() implements BridgeSettingsApi {
   String config = '{"yolo":true,"pullRequestRefreshIntervalSeconds":30}';
 
   @override

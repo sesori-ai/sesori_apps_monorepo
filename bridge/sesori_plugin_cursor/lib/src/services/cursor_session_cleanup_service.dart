@@ -6,11 +6,11 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "../repositories/cursor_session_storage_repository.dart";
 
 /// Resolves and safely removes Cursor's persisted storage for one session.
-class CursorSessionCleanupService {
-  CursorSessionCleanupService({
+class CursorSessionCleanupService({
     required CursorSessionStorageRepository repository,
     required Map<String, String> environment,
-  }) : _repository = repository,
+  }) {
+  this : _repository = repository,
        _environment = Map<String, String>.unmodifiable(environment);
 
   static const String _sessionsDirectoryName = "acp-sessions";

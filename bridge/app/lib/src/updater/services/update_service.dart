@@ -27,8 +27,7 @@ import 'update_install_service.dart';
 /// release, offline, rate-limited, disabled) stay quiet; genuine failures are
 /// surfaced on stderr (branded, not gated by `--log-level`) and the durable
 /// update log.
-class UpdateService {
-  UpdateService({
+class UpdateService({
     required ReleaseRepository releaseRepository,
     required UpdateInstallService updateInstallService,
     required UpdateApplyService updateApplyService,
@@ -39,7 +38,8 @@ class UpdateService {
     required String managedExecutablePath,
     required Map<String, String> environment,
     required bool isSupervised,
-  }) : _releaseRepository = releaseRepository,
+  }) {
+  this : _releaseRepository = releaseRepository,
        _updateInstallService = updateInstallService,
        _updateApplyService = updateApplyService,
        _logRepository = logRepository,

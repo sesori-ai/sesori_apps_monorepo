@@ -13,9 +13,7 @@
 /// Glyph support is independent of the output stream, so [isSupported] takes
 /// only the [environment]; callers pair the result with their own glyph and
 /// ASCII-fallback sets.
-class TerminalGlyphValidator {
-  TerminalGlyphValidator._();
-
+class TerminalGlyphValidator._() {
   /// Whether unicode glyphs may be emitted under [environment].
   static bool isSupported({required Map<String, String> environment}) {
     if (environment["TERM"] == "dumb") {

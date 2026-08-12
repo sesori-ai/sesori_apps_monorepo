@@ -5,7 +5,7 @@ import "../../theme/prego_theme.dart";
 import "../../utils/lerp_utils.dart";
 
 /// Size variants for [PregoQuickActionButton].
-enum PregoQuickActionButtonSize {
+enum PregoQuickActionButtonSize() {
   /// 110x110, icon + label, 20px padding.
   full,
 
@@ -98,15 +98,13 @@ class PregoQuickActionButton extends StatelessWidget {
 }
 
 /// The core rendering widget. Always receives a concrete [collapseProgress].
-class _PregoQuickActionButtonCore extends StatelessWidget {
-  const _PregoQuickActionButtonCore({
+class const _PregoQuickActionButtonCore({
     required this.collapseProgress,
     required this.icon,
     required this.label,
     required this.curve,
     required this.onTap,
-  });
-
+  }) extends StatelessWidget {
   final Curve curve;
   final double collapseProgress;
   final IconData icon;
@@ -189,14 +187,12 @@ class _PregoQuickActionButtonCore extends StatelessWidget {
   );
 }
 
-class _PregoQuickActionButtonContentWidget extends StatelessWidget {
-  const _PregoQuickActionButtonContentWidget({
+class const _PregoQuickActionButtonContentWidget({
     required this.collapseProgress,
     required this.isEnabled,
     required this.icon,
     required this.label,
-  });
-
+  }) extends StatelessWidget {
   final double collapseProgress;
   final bool isEnabled;
   final IconData icon;
@@ -247,18 +243,16 @@ class _PregoQuickActionButtonContentWidget extends StatelessWidget {
   }
 }
 
-enum _BorderPosition { inside, center, outside }
+enum _BorderPosition() { inside, center, outside }
 
 /// Paints a gradient stroke following a [RoundedSuperellipseBorder] shape.
-class _GradientBorderPainter extends CustomPainter {
-  _GradientBorderPainter({
+class _GradientBorderPainter({
     required this.topColor,
     required this.bottomColor,
     required this.borderRadius,
     required this.strokeWidth,
     required this.position,
-  });
-
+  }) extends CustomPainter {
   final Color topColor;
   final Color bottomColor;
   final double borderRadius;

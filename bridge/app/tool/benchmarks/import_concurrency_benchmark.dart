@@ -35,14 +35,12 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({
+class const _BenchmarkConfiguration({
     required this.projectCount,
     required this.sessionCount,
     required this.warmupCount,
     required this.sampleCount,
-  });
-
+  }) {
   final int projectCount;
   final int sessionCount;
   final int warmupCount;
@@ -80,8 +78,8 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _ImportConcurrencyBenchmark {
-  const _ImportConcurrencyBenchmark({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
+class const _ImportConcurrencyBenchmark({required _BenchmarkConfiguration configuration}) {
+  this : _configuration = configuration;
 
   final _BenchmarkConfiguration _configuration;
 
@@ -339,7 +337,7 @@ class _ImportConcurrencyBenchmark {
   }
 }
 
-class _SchedulingLagProbe {
+class _SchedulingLagProbe() {
   final List<int> samples = <int>[];
   Timer? _timer;
   final Stopwatch _stopwatch = Stopwatch();
@@ -368,13 +366,11 @@ class _SchedulingLagProbe {
   }
 }
 
-class _BenchmarkProjectsDao extends ProjectsDao {
-  _BenchmarkProjectsDao(
+class _BenchmarkProjectsDao(
     super.attachedDatabase, {
     required this.publicationStarted,
     required this.releasePublication,
-  });
-
+  }) extends ProjectsDao {
   final Completer<void> publicationStarted;
   final Completer<void> releasePublication;
 
@@ -386,13 +382,11 @@ class _BenchmarkProjectsDao extends ProjectsDao {
   }
 }
 
-class _BenchmarkPlugin implements BridgeDerivedProjectsPluginApi {
-  _BenchmarkPlugin({
+class _BenchmarkPlugin({
     required this.launchDirectory,
     required this.sessions,
     required this.releaseEnumeration,
-  });
-
+  }) implements BridgeDerivedProjectsPluginApi {
   @override
   final String launchDirectory;
   final List<PluginSession> sessions;

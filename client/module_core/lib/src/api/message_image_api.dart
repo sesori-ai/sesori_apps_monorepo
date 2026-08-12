@@ -4,49 +4,37 @@ import "dart:typed_data";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 
-sealed class MessageImageApiResult {
-  const MessageImageApiResult();
-}
+sealed class const MessageImageApiResult();
 
-final class MessageImageApiSuccess extends MessageImageApiResult {
+final class const MessageImageApiSuccess({required this.bytes}) extends MessageImageApiResult {
   final Uint8List bytes;
-
-  const MessageImageApiSuccess({required this.bytes});
 }
 
-final class MessageImageApiHttpFailure extends MessageImageApiResult {
+final class const MessageImageApiHttpFailure({required this.statusCode}) extends MessageImageApiResult {
   final int statusCode;
-
-  const MessageImageApiHttpFailure({required this.statusCode});
 }
 
-final class MessageImageApiTooLarge extends MessageImageApiResult {
-  const MessageImageApiTooLarge();
-}
+final class const MessageImageApiTooLarge() extends MessageImageApiResult;
 
-final class MessageImageApiInvalidRedirect extends MessageImageApiResult {
-  const MessageImageApiInvalidRedirect();
-}
+final class const MessageImageApiInvalidRedirect() extends MessageImageApiResult;
 
-final class MessageImageApiNetworkFailure extends MessageImageApiResult {
+final class const MessageImageApiNetworkFailure({
+    required this.cause,
+    required this.stackTrace,
+  }) extends MessageImageApiResult {
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   final Object cause;
   final StackTrace stackTrace;
-
-  const MessageImageApiNetworkFailure({
-    required this.cause,
-    required this.stackTrace,
-  });
 }
 
 /// Layer-1 HTTP access for bounded remote message images.
 @lazySingleton
-class MessageImageApi {
+class MessageImageApi({required http.Client client}) {
   static const _maxRedirects = 5;
 
   final http.Client _client;
 
-  MessageImageApi({required http.Client client}) : _client = client;
+  this : _client = client;
 
   Future<MessageImageApiResult> fetch({
     required Uri url,

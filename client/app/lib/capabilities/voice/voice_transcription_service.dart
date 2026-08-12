@@ -25,7 +25,14 @@ const _recorderPrewarmTimeout = Duration(seconds: 2);
 const double _amplitudeFloor = -60.0;
 
 @lazySingleton
-class VoiceTranscriptionService {
+class VoiceTranscriptionService({
+    required VoiceApi voiceApi,
+    required AudioRecorder recorder,
+    required RecorderPrewarmClient recorderPrewarmClient,
+    required RecordingFileProvider fileProvider,
+    required WakeLockService wakeLockService,
+    required AudioFormatConfig audioFormat,
+  }) {
   final VoiceApi _voiceApi;
   final AudioRecorder _recorder;
   final RecorderPrewarmClient _recorderPrewarmClient;
@@ -42,14 +49,7 @@ class VoiceTranscriptionService {
   final _amplitudeController = StreamController<double>.broadcast();
   final _maxDurationReachedController = StreamController<void>.broadcast();
 
-  VoiceTranscriptionService({
-    required VoiceApi voiceApi,
-    required AudioRecorder recorder,
-    required RecorderPrewarmClient recorderPrewarmClient,
-    required RecordingFileProvider fileProvider,
-    required WakeLockService wakeLockService,
-    required AudioFormatConfig audioFormat,
-  }) : _voiceApi = voiceApi,
+  this : _voiceApi = voiceApi,
        _recorder = recorder,
        _recorderPrewarmClient = recorderPrewarmClient,
        _fileProvider = fileProvider,
@@ -352,10 +352,8 @@ class VoiceTranscriptionService {
   }
 }
 
-sealed class VoiceTranscriptionError implements Exception {
+sealed class const VoiceTranscriptionError._(this.message) implements Exception {
   final String message;
-
-  const VoiceTranscriptionError._(this.message);
 
   factory VoiceTranscriptionError.microphonePermissionDenied() = MicrophonePermissionDeniedError._;
 
@@ -377,36 +375,36 @@ sealed class VoiceTranscriptionError implements Exception {
   String toString() => "VoiceTranscriptionError: $message";
 }
 
-class MicrophonePermissionDeniedError extends VoiceTranscriptionError {
-  const MicrophonePermissionDeniedError._() : super._("Microphone permission denied");
+class const MicrophonePermissionDeniedError._() extends VoiceTranscriptionError {
+  this : super._("Microphone permission denied");
 }
 
-class RecordingFailedError extends VoiceTranscriptionError {
-  const RecordingFailedError._() : super._("Recording failed");
+class const RecordingFailedError._() extends VoiceTranscriptionError {
+  this : super._("Recording failed");
 }
 
-class NotRecordingError extends VoiceTranscriptionError {
-  const NotRecordingError._() : super._("Not currently recording");
+class const NotRecordingError._() extends VoiceTranscriptionError {
+  this : super._("Not currently recording");
 }
 
-class NotAuthenticatedVoiceError extends VoiceTranscriptionError {
-  const NotAuthenticatedVoiceError._() : super._("Not authenticated");
+class const NotAuthenticatedVoiceError._() extends VoiceTranscriptionError {
+  this : super._("Not authenticated");
 }
 
-class ServerVoiceError extends VoiceTranscriptionError {
+class ServerVoiceError._(this.statusCode) extends VoiceTranscriptionError {
   final int statusCode;
 
-  ServerVoiceError._(this.statusCode) : super._("Server error ($statusCode)");
+  this : super._("Server error ($statusCode)");
 }
 
-class EmptyTranscriptError extends VoiceTranscriptionError {
-  const EmptyTranscriptError._() : super._("Server returned empty transcript");
+class const EmptyTranscriptError._() extends VoiceTranscriptionError {
+  this : super._("Server returned empty transcript");
 }
 
-class NetworkVoiceError extends VoiceTranscriptionError {
-  const NetworkVoiceError._() : super._("Network error");
+class const NetworkVoiceError._() extends VoiceTranscriptionError {
+  this : super._("Network error");
 }
 
-class TranscriptionCancelledError extends VoiceTranscriptionError {
-  const TranscriptionCancelledError._() : super._("Transcription cancelled");
+class const TranscriptionCancelledError._() extends VoiceTranscriptionError {
+  this : super._("Transcription cancelled");
 }

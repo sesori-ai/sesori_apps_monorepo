@@ -46,7 +46,7 @@ void main() {
   });
 }
 
-class _FakeSesoriServerApi implements SesoriServerApi {
+class _FakeSesoriServerApi() implements SesoriServerApi {
   AppClientStatusResponse response = const AppClientStatusResponse(registered: false);
   Object? error;
   final List<String> accessTokens = [];

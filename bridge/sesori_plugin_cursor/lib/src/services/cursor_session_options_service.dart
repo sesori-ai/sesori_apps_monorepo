@@ -6,13 +6,13 @@ import "../trackers/cursor_catalog_tracker.dart";
 import "cursor_catalog_service.dart";
 
 /// Owns Cursor's coherent command, mode, and model option snapshot.
-class CursorSessionOptionsService {
-  CursorSessionOptionsService({
+class CursorSessionOptionsService({
     required CursorCatalogService catalogService,
     required CursorCatalogTracker catalogTracker,
     required AcpCommandTracker commandTracker,
     required String launchDirectory,
-  }) : _catalogService = catalogService,
+  }) {
+  this : _catalogService = catalogService,
        _catalogTracker = catalogTracker,
        _commandTracker = commandTracker,
        _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);

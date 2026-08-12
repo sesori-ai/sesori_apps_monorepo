@@ -4,13 +4,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 part "codex_rollout_dto.freezed.dart";
 part "codex_rollout_dto.g.dart";
 
-enum CodexRolloutRole {
+enum CodexRolloutRole() {
   user,
   assistant,
   unknown,
 }
 
-enum CodexRolloutImageGenerationStatus {
+enum CodexRolloutImageGenerationStatus() {
   @JsonValue("in_progress")
   inProgress,
   completed,
@@ -250,9 +250,7 @@ sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
 
 /// Decodes typed rollout content without dropping an otherwise valid record
 /// when one nested item has drifted.
-class CodexRolloutContentListConverter implements JsonConverter<List<CodexRolloutContentDto>, Object?> {
-  const CodexRolloutContentListConverter();
-
+class const CodexRolloutContentListConverter() implements JsonConverter<List<CodexRolloutContentDto>, Object?> {
   @override
   List<CodexRolloutContentDto> fromJson(Object? json) {
     if (json == null) return const [];
@@ -288,9 +286,7 @@ class CodexRolloutContentListConverter implements JsonConverter<List<CodexRollou
 /// Legacy function-call records store output as a string, while current custom
 /// tool-call records store a typed content array. The DTO exposes one typed
 /// representation to the rest of the plugin.
-class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
-  const CodexRolloutOutputConverter();
-
+class const CodexRolloutOutputConverter() extends CodexRolloutContentListConverter {
   @override
   List<CodexRolloutContentDto> fromJson(Object? json) {
     if (json is String) {

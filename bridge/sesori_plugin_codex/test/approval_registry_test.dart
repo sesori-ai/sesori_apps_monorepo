@@ -657,14 +657,12 @@ void main() {
   });
 }
 
-class _RespondCall {
-  _RespondCall(this.id, this.result);
+class _RespondCall(this.id, this.result) {
   final Object id;
   final Object? result;
 }
 
-class _RespondError {
-  _RespondError(this.id, this.code, this.message);
+class _RespondError(this.id, this.code, this.message) {
   final Object id;
   final int code;
   final String message;

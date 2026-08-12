@@ -555,7 +555,7 @@ Future<void> _waitForSendCount(_RecordingRelayClient client, int count) async {
 
 Future<void> _pumpEventLoop() => Future<void>.delayed(const Duration(milliseconds: 30));
 
-class _RecordingRelayClient extends RelayClient {
+class _RecordingRelayClient() extends RelayClient {
   final List<int> sentConnIDs = <int>[];
   final List<List<int>> sentPayloads = <List<int>>[];
   RelaySendOutcome nextOutcome = RelaySendOutcome.sent;
@@ -566,7 +566,7 @@ class _RecordingRelayClient extends RelayClient {
   /// sends without polling.
   Stream<int> get sends => _sends.stream;
 
-  _RecordingRelayClient()
+  this
     : super(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -588,8 +588,8 @@ class _RecordingRelayClient extends RelayClient {
   }
 }
 
-class _ThrowingRelayClient extends RelayClient {
-  _ThrowingRelayClient()
+class _ThrowingRelayClient() extends RelayClient {
+  this
     : super(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -608,8 +608,8 @@ class _ThrowingRelayClient extends RelayClient {
 
 /// A [CapturingFailureReporter] that completes a completer on the first
 /// recorded failure, so tests await the report instead of polling.
-class _CompletingFailureReporter extends CapturingFailureReporter {
-  _CompletingFailureReporter({required Completer<void> reported})
+class _CompletingFailureReporter({required Completer<void> reported}) extends CapturingFailureReporter {
+  this
     : _reported = reported;
 
   final Completer<void> _reported;

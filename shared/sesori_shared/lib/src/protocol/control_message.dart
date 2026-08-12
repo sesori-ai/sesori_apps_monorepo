@@ -94,7 +94,7 @@ sealed class ControlMessage with _$ControlMessage {
 
 /// Relay connection state reported in a [ControlStatus]. [unknown] is the
 /// forward-compat fallback for values a newer helper might add.
-enum ControlRelayConnectionState {
+enum ControlRelayConnectionState() {
   @JsonValue("connected")
   connected,
   @JsonValue("connecting")
@@ -113,7 +113,7 @@ enum ControlRelayConnectionState {
 
 /// Plugin (backend) health reported in a [ControlStatus]. [unknown] is the
 /// forward-compat fallback.
-enum ControlPluginHealthState {
+enum ControlPluginHealthState() {
   @JsonValue("healthy")
   healthy,
   @JsonValue("degraded")
@@ -126,7 +126,7 @@ enum ControlPluginHealthState {
 
 /// The kind of prompt a [ControlPromptRequest] surfaces. [unknown] is the
 /// forward-compat fallback.
-enum ControlPromptKind {
+enum ControlPromptKind() {
   @JsonValue("replace_bridge")
   replaceBridge,
   @JsonValue("login_needed")

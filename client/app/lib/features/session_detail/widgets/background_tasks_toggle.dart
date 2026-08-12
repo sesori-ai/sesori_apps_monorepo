@@ -5,17 +5,15 @@ import "../../../core/extensions/build_context_x.dart";
 /// The "Show / Hide N completed" toggle row at the bottom of the tasks card.
 /// Rendered as a brand-tinted [PregoListTile] so it aligns with the task rows
 /// above it but reads as an action rather than a navigable task.
-class BackgroundTasksToggle extends StatelessWidget {
-  final int completedCount;
-  final bool showCompleted;
-  final VoidCallback onTap;
-
-  const BackgroundTasksToggle({
+class const BackgroundTasksToggle({
     super.key,
     required this.completedCount,
     required this.showCompleted,
     required this.onTap,
-  });
+  }) extends StatelessWidget {
+  final int completedCount;
+  final bool showCompleted;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

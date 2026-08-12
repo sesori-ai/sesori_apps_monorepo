@@ -3,8 +3,8 @@ import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter/foundation.dart";
 
 /// Type-compatible Crashlytics implementation for Firebase-disabled builds.
-class NoOpFirebaseCrashlyticsAdapter implements FirebaseCrashlytics {
-  NoOpFirebaseCrashlyticsAdapter({required FirebaseApp app}) : _app = app;
+class NoOpFirebaseCrashlyticsAdapter({required FirebaseApp app}) implements FirebaseCrashlytics {
+  this : _app = app;
 
   FirebaseApp _app;
 

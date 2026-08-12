@@ -1062,19 +1062,17 @@ ProcessResult _fail({required int exitCode, String stderr = ""}) {
   return ProcessResult(1, exitCode, "", stderr);
 }
 
-class _Invocation {
-  final String command;
-  final List<String> arguments;
-  final String? workingDirectory;
-
-  const _Invocation({
+class const _Invocation({
     required this.command,
     required this.arguments,
     required this.workingDirectory,
-  });
+  }) {
+  final String command;
+  final List<String> arguments;
+  final String? workingDirectory;
 }
 
-class _FakeProcessRunner implements ProcessRunner {
+class _FakeProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -1123,7 +1121,7 @@ class _FakeProcessRunner implements ProcessRunner {
   }
 }
 
-class _FakeBridgePluginApi implements NativeProjectsPluginApi {
+class _FakeBridgePluginApi() implements NativeProjectsPluginApi {
   @override
   String get id => "fake";
 

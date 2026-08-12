@@ -2,9 +2,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../api/database/tables/session_table.dart";
 
-class SessionCatalogMapper {
-  const SessionCatalogMapper();
-
+class const SessionCatalogMapper() {
   Session map({
     required SessionDto row,
     required PullRequestInfo? pullRequest,

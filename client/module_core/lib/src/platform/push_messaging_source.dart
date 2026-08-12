@@ -3,7 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "notification_open_request.dart";
 import "push_notification_message.dart";
 
-abstract interface class PushMessagingSource {
+abstract interface class PushMessagingSource() {
   Future<void> initialize();
 
   DevicePlatform get devicePlatform;

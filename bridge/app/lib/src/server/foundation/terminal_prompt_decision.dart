@@ -1,1 +1,1 @@
-enum TerminalPromptDecision { replace, decline, nonInteractive }
+enum TerminalPromptDecision() { replace, decline, nonInteractive }

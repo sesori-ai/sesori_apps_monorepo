@@ -83,8 +83,8 @@ void main() {
   });
 }
 
-class _StubAppServerApi extends CodexAppServerApi {
-  _StubAppServerApi({required this.response})
+class _StubAppServerApi({required this.response}) extends CodexAppServerApi {
+  this
     : super(
         client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
       );

@@ -13,21 +13,26 @@ import "../../services/installation_analytics_service.dart";
 import "login_failed_reason.dart";
 import "login_state.dart";
 
-enum _LoginAnalyticsOutcome { open, terminal }
+enum _LoginAnalyticsOutcome() { open, terminal }
 
-final class _LoginAttempt {
+final class _LoginAttempt({required this.provider}) {
   final AuthProvider provider;
   _LoginAnalyticsOutcome analyticsOutcome = _LoginAnalyticsOutcome.open;
-  _LoginAttempt({required this.provider});
 }
 
 /// Opaque ownership token for one native Apple sign-in operation.
-final class AppleLoginAttempt {
+final class AppleLoginAttempt._({required _LoginAttempt attempt}) {
   final _LoginAttempt _attempt;
-  AppleLoginAttempt._({required _LoginAttempt attempt}) : _attempt = attempt;
+  this : _attempt = attempt;
 }
 
-class LoginCubit extends Cubit<LoginState> {
+class LoginCubit({
+    required OAuthFlowProvider oAuthFlowProvider,
+    required UrlLauncher urlLauncher,
+    required AuthSession authSession,
+    required LifecycleSource lifecycleSource,
+    required InstallationAnalyticsService installationAnalyticsService,
+  }) extends Cubit<LoginState> {
   final OAuthFlowProvider _oAuthFlowProvider;
   final UrlLauncher _urlLauncher;
   final AuthSession _authSession;
@@ -49,13 +54,7 @@ class LoginCubit extends Cubit<LoginState> {
   /// app has already returned to the foreground before the Future completes.
   bool _didActivePollEnterBackground = false;
 
-  LoginCubit({
-    required OAuthFlowProvider oAuthFlowProvider,
-    required UrlLauncher urlLauncher,
-    required AuthSession authSession,
-    required LifecycleSource lifecycleSource,
-    required InstallationAnalyticsService installationAnalyticsService,
-  }) : _oAuthFlowProvider = oAuthFlowProvider,
+  this : _oAuthFlowProvider = oAuthFlowProvider,
        _urlLauncher = urlLauncher,
        _authSession = authSession,
        _lifecycleSource = lifecycleSource,

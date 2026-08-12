@@ -380,9 +380,8 @@ StartupLockRejection _startupLockRejection({String lockFilePath = "/tmp/bridge-s
 
 /// Records the host every `start()` receives and returns a steady fake plugin,
 /// so the tests can assert exactly what the runner wires up.
-class _RecordingDescriptor extends BridgePluginDescriptor {
-  _RecordingDescriptor();
-
+// ignore: prefer_const_constructors_in_immutables, mutable test logs prevent a const primary constructor
+class _RecordingDescriptor() extends BridgePluginDescriptor {
   final List<PluginHost> startedHosts = <PluginHost>[];
   final List<String> operations = <String>[];
   final _FakeBridgePlugin startedPlugin = _FakeBridgePlugin();
@@ -428,7 +427,7 @@ class _RecordingDescriptor extends BridgePluginDescriptor {
   }
 }
 
-class _FakeBridgePlugin implements BridgePlugin {
+class _FakeBridgePlugin() implements BridgePlugin {
   final PluginStatusController _status = PluginStatusController(initial: const PluginReady());
   final BridgePluginApi _api = _FakeBridgePluginApi();
 
@@ -459,7 +458,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> shutdown({required Duration? budget}) async {}
 }
 
-class _FakeBridgePluginApi extends NativeProjectsPluginApi {
+class _FakeBridgePluginApi() extends NativeProjectsPluginApi {
   @override
   String get id => "fake";
 
@@ -481,7 +480,7 @@ class _FakeBridgePluginApi extends NativeProjectsPluginApi {
 
 /// Never invoked in these tests: the host's process service is constructed
 /// but the fake descriptor short-circuits before any process work.
-class _FakeProcessRepository implements ProcessRepository {
+class _FakeProcessRepository() implements ProcessRepository {
   @override
   Future<int> startDetached({
     required String executable,
@@ -495,7 +494,7 @@ class _FakeProcessRepository implements ProcessRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeStartupMutexRepository implements StartupMutexRepository {
+class _FakeStartupMutexRepository() implements StartupMutexRepository {
   bool rejectLock = false;
   List<bool>? rejectSequence;
   StartupLockRejection? rejection;
@@ -526,7 +525,7 @@ class _FakeStartupMutexRepository implements StartupMutexRepository {
   }
 }
 
-class _FakeBridgeInstanceService implements BridgeInstanceService {
+class _FakeBridgeInstanceService() implements BridgeInstanceService {
   @override
   Future<void> awaitPredecessorBridgeExit({
     required int predecessorPid,

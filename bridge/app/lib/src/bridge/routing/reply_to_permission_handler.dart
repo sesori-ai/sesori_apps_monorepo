@@ -6,10 +6,10 @@ import "request_handler.dart";
 /// Handles `POST /permission/reply` — replies to a pending permission request.
 ///
 /// The [reply] field accepts "once", "always", or "reject".
-class ReplyToPermissionHandler extends BodyRequestHandler<ReplyToPermissionRequest, SuccessEmptyResponse> {
+class ReplyToPermissionHandler({required PendingInteractionService pendingInteractionService}) extends BodyRequestHandler<ReplyToPermissionRequest, SuccessEmptyResponse> {
   final PendingInteractionService _pendingInteractionService;
 
-  ReplyToPermissionHandler({required PendingInteractionService pendingInteractionService})
+  this
     : _pendingInteractionService = pendingInteractionService,
       super(
         HttpMethod.post,

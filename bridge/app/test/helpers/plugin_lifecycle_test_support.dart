@@ -88,11 +88,9 @@ PluginRuntime runtimeForLifecycleService({required PluginLifecycleService servic
   return runtime;
 }
 
-enum _TestPluginOperation { activate }
+enum _TestPluginOperation() { activate }
 
-class _TestBridgeSettingsRepository implements BridgeSettingsRepository {
-  _TestBridgeSettingsRepository({required this.settings});
-
+class _TestBridgeSettingsRepository({required this.settings}) implements BridgeSettingsRepository {
   BridgeSettings settings;
 
   @override

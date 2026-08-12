@@ -5,7 +5,7 @@ import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 
 /// Direction of the price change indicator.
-enum PregoPriceDirection { up, down }
+enum PregoPriceDirection() { up, down }
 
 /// Displays a price change indicator with percentage, balance change,
 /// and an optional eye toggle button for balance visibility.
@@ -26,8 +26,7 @@ enum PregoPriceDirection { up, down }
 ///   onToggleBalanceVisibility: () {},
 /// )
 /// ```
-class PregoPrice extends StatelessWidget {
-  const PregoPrice({
+class const PregoPrice({
     super.key,
     required this.direction,
     required this.percentageText,
@@ -35,8 +34,7 @@ class PregoPrice extends StatelessWidget {
     required this.isBalanceHidden,
     this.onToggleBalanceVisibility,
     this.opacity = 1.0,
-  });
-
+  }) extends StatelessWidget {
   /// Whether the price is trending up or down.
   final PregoPriceDirection direction;
 
@@ -119,13 +117,11 @@ class PregoPrice extends StatelessWidget {
 /// Renders a 36×36 hit area with the 12px eye icon centred inside,
 /// ensuring the button is comfortable to tap without artificially
 /// clipping the parent row's height.
-class _EyeToggleButton extends StatelessWidget {
-  const _EyeToggleButton({
+class const _EyeToggleButton({
     required this.isBalanceHidden,
     required this.onTap,
     required this.iconColor,
-  });
-
+  }) extends StatelessWidget {
   final bool isBalanceHidden;
   final VoidCallback? onTap;
   final Color iconColor;

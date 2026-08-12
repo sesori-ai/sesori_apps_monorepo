@@ -5,9 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "app_client_status_response.dart";
 
-class SesoriServerApiException implements Exception {
-  SesoriServerApiException({required this.statusCode, required this.uri});
-
+class SesoriServerApiException({required this.statusCode, required this.uri}) implements Exception {
   final int statusCode;
   final Uri uri;
 
@@ -18,12 +16,12 @@ class SesoriServerApiException implements Exception {
 /// Provider-level HTTP boundary for new Sesori auth-server operations.
 ///
 /// Existing auth APIs remain in their current use-case-specific boundaries.
-class SesoriServerApi {
-  SesoriServerApi({
+class SesoriServerApi({
     required String authBackendUrl,
     required http.Client client,
     required Duration requestDeadline,
-  }) : _authBackendUrl = authBackendUrl.replaceFirst(RegExp(r"/+$"), ""),
+  }) {
+  this : _authBackendUrl = authBackendUrl.replaceFirst(RegExp(r"/+$"), ""),
        _client = client,
        _requestDeadline = requestDeadline;
 

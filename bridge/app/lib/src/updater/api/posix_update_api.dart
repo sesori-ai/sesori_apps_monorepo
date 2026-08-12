@@ -11,8 +11,8 @@ import 'platform_update_api.dart';
 /// memory-mapped by the running process, so the swap renames the binary and the
 /// `lib/` directory wholesale, keeping the displaced originals as `.rollback`
 /// siblings until the swap succeeds.
-class PosixUpdateApi implements PlatformUpdateApi {
-  PosixUpdateApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
+class PosixUpdateApi({required ProcessRunner processRunner}) implements PlatformUpdateApi {
+  this : _processRunner = processRunner;
 
   final ProcessRunner _processRunner;
 

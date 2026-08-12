@@ -17,18 +17,14 @@ void tapDownFeedback() => HapticFeedback.selectionClick();
 ///
 /// [_SimpleBuilders]: default constructor — static child, interaction handled via overlay.
 /// [_StateAwareBuilders]: `.stateAware` constructor — builders receive interaction state set.
-sealed class _TappableBuilders {
-  const _TappableBuilders();
-}
+sealed class const _TappableBuilders();
 
-final class _SimpleBuilders extends _TappableBuilders {
-  const _SimpleBuilders({required this.child, required this.containerBuilder});
+final class const _SimpleBuilders({required this.child, required this.containerBuilder}) extends _TappableBuilders {
   final Widget child;
   final Widget Function(Widget child) containerBuilder;
 }
 
-final class _StateAwareBuilders extends _TappableBuilders {
-  const _StateAwareBuilders({required this.childBuilder, required this.containerBuilder});
+final class const _StateAwareBuilders({required this.childBuilder, required this.containerBuilder}) extends _TappableBuilders {
   final Widget Function({required Set<WidgetState> state}) childBuilder;
   final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
 }
@@ -184,8 +180,7 @@ class PregoTappable extends StatelessWidget {
 // Android
 // ---------------------------------------------------------------------------
 
-class _AndroidTappable extends StatefulWidget {
-  const _AndroidTappable({
+class const _AndroidTappable({
     required this.childBuilder,
     required this.containerBuilder,
     required this.onTap,
@@ -193,8 +188,7 @@ class _AndroidTappable extends StatefulWidget {
     required this.borderRadius,
     required this.useSuperellipse,
     required this.overlayInset,
-  });
-
+  }) extends StatefulWidget {
   final Widget Function({required Set<WidgetState> state}) childBuilder;
   final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
   final VoidCallback onTap;
@@ -207,7 +201,7 @@ class _AndroidTappable extends StatefulWidget {
   State<_AndroidTappable> createState() => _AndroidTappableState();
 }
 
-class _AndroidTappableState extends State<_AndroidTappable> {
+class _AndroidTappableState() extends State<_AndroidTappable> {
   final Set<WidgetState> _state = {};
 
   BorderRadius _rippleBorderRadius = .zero;
@@ -289,8 +283,7 @@ class _AndroidTappableState extends State<_AndroidTappable> {
 // Web
 // ---------------------------------------------------------------------------
 
-class _WebTappable extends StatefulWidget {
-  const _WebTappable({
+class const _WebTappable({
     required this.childBuilder,
     required this.containerBuilder,
     required this.onTap,
@@ -298,8 +291,7 @@ class _WebTappable extends StatefulWidget {
     required this.borderRadius,
     required this.useSuperellipse,
     required this.overlayInset,
-  });
-
+  }) extends StatefulWidget {
   final Widget Function({required Set<WidgetState> state}) childBuilder;
   final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
   final VoidCallback onTap;
@@ -312,7 +304,7 @@ class _WebTappable extends StatefulWidget {
   State<_WebTappable> createState() => _WebTappableState();
 }
 
-class _WebTappableState extends State<_WebTappable> {
+class _WebTappableState() extends State<_WebTappable> {
   static const _minFeedbackDuration = Duration(milliseconds: 150);
 
   bool _isPressed = false;
@@ -434,8 +426,9 @@ class _WebTappableState extends State<_WebTappable> {
 ///
 /// Internally converts [peak] to the easeOutBack tension parameter _s_ via
 /// Newton's method on: `peak = 1 + 4s³ / (27(s+1)²)`.
-class _OvershootCurve extends Curve {
-  _OvershootCurve({required double peak}) : assert(peak > 1.0, 'peak must be > 1.0 for overshoot'), _s = _solveS(peak);
+// ignore: prefer_const_constructors_in_immutables, the solved tension is not a constant expression
+class _OvershootCurve({required double peak}) extends Curve {
+  this : assert(peak > 1.0, 'peak must be > 1.0 for overshoot'), _s = _solveS(peak);
 
   final double _s;
 
@@ -544,8 +537,7 @@ mixin _ScalePulseMixin<T extends StatefulWidget> on State<T>, TickerProvider {
   }
 }
 
-class _IosTappable extends StatefulWidget {
-  const _IosTappable({
+class const _IosTappable({
     required this.childBuilder,
     required this.containerBuilder,
     required this.onTap,
@@ -553,8 +545,7 @@ class _IosTappable extends StatefulWidget {
     required this.borderRadius,
     required this.useSuperellipse,
     required this.overlayInset,
-  });
-
+  }) extends StatefulWidget {
   final Widget Function({required Set<WidgetState> state}) childBuilder;
   final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
   final VoidCallback onTap;
@@ -567,7 +558,7 @@ class _IosTappable extends StatefulWidget {
   State<_IosTappable> createState() => _IosTappableState();
 }
 
-class _IosTappableState extends State<_IosTappable>
+class _IosTappableState() extends State<_IosTappable>
     with SingleTickerProviderStateMixin, _ScalePulseMixin<_IosTappable> {
   /// Border radius for the overlay, used to align it with the inner edge of the border when
   /// [PregoTappable.overlayInset] is set. Will be set in [initState] and [didUpdateWidget].

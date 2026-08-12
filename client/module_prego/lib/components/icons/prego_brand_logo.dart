@@ -15,14 +15,12 @@ import "../../theme/prego_theme.dart";
 ///
 /// The mark is decorative. Callers that lean on it to identify the harness
 /// must say so in words themselves; [displayNameFor] gives them the name.
-class PregoBrandLogo extends StatelessWidget {
-  const PregoBrandLogo({
+class const PregoBrandLogo({
     super.key,
     required this.pluginId,
     this.size = 20,
     required this.color,
-  });
-
+  }) extends StatelessWidget {
   final String pluginId;
   final double size;
 

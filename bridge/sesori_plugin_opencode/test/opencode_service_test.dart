@@ -1890,13 +1890,11 @@ SseEventData _questionAsked(String id, String sessionId) {
   );
 }
 
-class FakeOpenCodeApi implements OpenCodeApi {
+class FakeOpenCodeApi({this.messages = const [], this.messagesError}) implements OpenCodeApi {
   List<SessionMessagesResponseItem> messages;
   Object? messagesError;
   String? lastRequestedSessionId;
   String? lastRequestedDirectory;
-
-  FakeOpenCodeApi({this.messages = const [], this.messagesError});
 
   @override
   Future<bool> healthCheck() async => true;
@@ -2038,7 +2036,24 @@ class FakeOpenCodeApi implements OpenCodeApi {
   }) async => throw UnimplementedError();
 }
 
-class FakeOpenCodeRepository extends OpenCodeRepository {
+class FakeOpenCodeRepository._({
+    required this.api,
+    required List<Project> projects,
+    required List<Session> sessions,
+    required List<PluginCommand> commands,
+    required List<PluginAgent> agents,
+    required PluginProvidersResult providers,
+    required List<String>? optionStarts,
+    required Completer<void>? optionsRelease,
+    required PluginSession? createdSession,
+    required PluginProject? currentProject,
+    required this.providersError,
+    this.replyToQuestionError,
+    this.rejectQuestionError,
+    this.replyToPermissionError,
+    required Map<String, List<QuestionRequest>> pendingQuestionsByDirectory,
+    required Map<String, List<PermissionRequest>> pendingPermissionsByDirectory,
+  }) extends OpenCodeRepository {
   @override
   final FakeOpenCodeApi api;
 
@@ -2145,24 +2160,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     );
   }
 
-  FakeOpenCodeRepository._({
-    required this.api,
-    required List<Project> projects,
-    required List<Session> sessions,
-    required List<PluginCommand> commands,
-    required List<PluginAgent> agents,
-    required PluginProvidersResult providers,
-    required List<String>? optionStarts,
-    required Completer<void>? optionsRelease,
-    required PluginSession? createdSession,
-    required PluginProject? currentProject,
-    required this.providersError,
-    this.replyToQuestionError,
-    this.rejectQuestionError,
-    this.replyToPermissionError,
-    required Map<String, List<QuestionRequest>> pendingQuestionsByDirectory,
-    required Map<String, List<PermissionRequest>> pendingPermissionsByDirectory,
-  }) : _projects = projects,
+  this : _projects = projects,
        _sessions = sessions,
        _commands = commands,
        _agents = agents,
@@ -2408,7 +2406,16 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }
 }
 
-class FakeActiveSessionTracker extends ActiveSessionTracker {
+class FakeActiveSessionTracker({
+    this.summary = const [],
+    Map<String, String> sessionDirectories = const {},
+    this.resolvedWorktree,
+    this.clearPendingQuestionFound = false,
+    this.clearPendingQuestionResolvedSessionId,
+    this.clearPendingQuestionChanged = false,
+    this.clearPendingPermissionFound = false,
+    this.clearPendingPermissionChanged = false,
+  }) extends ActiveSessionTracker {
   int coldStartCalls = 0;
   int resetCalls = 0;
   int buildSummaryCalls = 0;
@@ -2440,16 +2447,7 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   final List<({String directory, String worktree})> registeredAliases = [];
   bool registerWorktreeAliasReturns = false;
 
-  FakeActiveSessionTracker({
-    this.summary = const [],
-    Map<String, String> sessionDirectories = const {},
-    this.resolvedWorktree,
-    this.clearPendingQuestionFound = false,
-    this.clearPendingQuestionResolvedSessionId,
-    this.clearPendingQuestionChanged = false,
-    this.clearPendingPermissionFound = false,
-    this.clearPendingPermissionChanged = false,
-  }) : _sessionDirectories = Map<String, String>.from(sessionDirectories),
+  this : _sessionDirectories = Map<String, String>.from(sessionDirectories),
        super(OpenCodeRepository(FakeOpenCodeApi()));
 
   @override

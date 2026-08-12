@@ -15,12 +15,11 @@ typedef AcpErrorResponder = void Function(Object id, int code, String message);
 typedef AcpQuestionReplyBuilder = Object? Function(List<List<String>> answers);
 typedef AcpQuestionResolutionBuilder = Object? Function(AcpQuestionResolution resolution);
 
-enum AcpQuestionResolution { declined, cancelled }
+enum AcpQuestionResolution() { declined, cancelled }
 
-enum _PendingKind { permission, question }
+enum _PendingKind() { permission, question }
 
-class _PendingApproval {
-  _PendingApproval({
+class _PendingApproval({
     required this.bridgeRequestId,
     required this.acpId,
     required this.sessionId,
@@ -29,8 +28,7 @@ class _PendingApproval {
     this.questions = const [],
     this.replyBuilder,
     this.resolutionBuilder,
-  });
-
+  }) {
   final String bridgeRequestId;
 
   /// Original JSON-RPC `id` — echoed when responding.
@@ -59,15 +57,15 @@ class _PendingApproval {
 /// server-supplied `optionId`). Harness extensions (e.g. Cursor's
 /// `cursor/ask_question`) are caught by overriding [handleExtensionRequest]
 /// and registering a pending question via [addPendingQuestion].
-class AcpApprovalRegistry {
-  AcpApprovalRegistry({
+class AcpApprovalRegistry({
     required void Function(BridgeSseEvent event) emit,
     required AcpResponder respond,
     required AcpErrorResponder respondError,
     required void Function(AcpNotification notification) onFireAndForgetNotification,
     String Function()? idGenerator,
     String? Function()? activeSessionResolver,
-  }) : _emit = emit,
+  }) {
+  this : _emit = emit,
        _respond = respond,
        _respondError = respondError,
        _onFireAndForgetNotification = onFireAndForgetNotification,

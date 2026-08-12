@@ -165,7 +165,7 @@ void main() {
   });
 }
 
-class _GatedSessionEventService implements SessionEventService {
+class _GatedSessionEventService({required Future<void> normalizeGate}) implements SessionEventService {
   final Future<void> _normalizeGate;
   bool createdIsPublishable = true;
   bool generationCurrent = true;
@@ -173,7 +173,7 @@ class _GatedSessionEventService implements SessionEventService {
   int currentGeneration = 1;
   List<NormalizedRuntimeEvent> bindingOutputs = const [];
 
-  _GatedSessionEventService({required Future<void> normalizeGate}) : _normalizeGate = normalizeGate;
+  this : _normalizeGate = normalizeGate;
 
   @override
   SourcedBridgeEvent captureSource({

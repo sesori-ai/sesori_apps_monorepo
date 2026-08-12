@@ -1509,11 +1509,11 @@ void main() {
   });
 }
 
-class _ToolLifecycleHarness {
-  _ToolLifecycleHarness({
+class _ToolLifecycleHarness({
     required CodexEventMapper eventMapper,
     required CodexToolLifecycleTracker toolTracker,
-  }) : _eventMapper = eventMapper,
+  }) {
+  this : _eventMapper = eventMapper,
        _toolTracker = toolTracker;
 
   final CodexEventMapper _eventMapper;
@@ -1580,7 +1580,7 @@ String _captureWarnings(void Function() action) {
   return stderr.text;
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();

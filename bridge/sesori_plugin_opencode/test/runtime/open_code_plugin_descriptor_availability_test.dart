@@ -242,8 +242,8 @@ void main() {
 /// A [HostProcessService] that either throws on [spawn] (to simulate ENOENT) or
 /// returns a single canned [_ProbeProcess]. Records the spawn arguments and any
 /// force-kill it is asked to deliver.
-class _ProbeProcessService implements HostProcessService {
-  _ProbeProcessService({this.spawnError, this.process, List<Object>? spawnOutcomes}) : _spawnOutcomes = spawnOutcomes;
+class _ProbeProcessService({this.spawnError, this.process, List<Object>? spawnOutcomes}) implements HostProcessService {
+  this : _spawnOutcomes = spawnOutcomes;
 
   final Object? spawnError;
   final _ProbeProcess? process;
@@ -299,8 +299,8 @@ class _ProbeProcessService implements HostProcessService {
 
 /// A canned [SpawnedProcess] with a fixed stdout payload and a caller-supplied
 /// [exitCode] future (which may never complete, to simulate a hang).
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required this.pid, required List<int> stdoutBytes, required Future<int> exitCode})
+class _ProbeProcess({required this.pid, required List<int> stdoutBytes, required Future<int> exitCode}) implements SpawnedProcess {
+  this
     : _stdoutBytes = stdoutBytes,
       _exitCode = exitCode;
 

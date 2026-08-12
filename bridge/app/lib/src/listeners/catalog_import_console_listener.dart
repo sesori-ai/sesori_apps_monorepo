@@ -3,8 +3,8 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console;
 import "package:sesori_shared/sesori_shared.dart";
 
-class CatalogImportConsoleListener {
-  CatalogImportConsoleListener({required Stream<CatalogImportProgress> progress}) : _progress = progress;
+class CatalogImportConsoleListener({required Stream<CatalogImportProgress> progress}) {
+  this : _progress = progress;
 
   final Stream<CatalogImportProgress> _progress;
   StreamSubscription<CatalogImportProgress>? _subscription;

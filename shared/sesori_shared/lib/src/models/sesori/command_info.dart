@@ -4,7 +4,7 @@ part "command_info.freezed.dart";
 
 part "command_info.g.dart";
 
-enum CommandSource {
+enum CommandSource() {
   command,
   mcp,
   skill,

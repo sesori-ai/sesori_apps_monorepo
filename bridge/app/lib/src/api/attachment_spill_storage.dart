@@ -8,17 +8,15 @@ import "package:path/path.dart" as path;
 
 import "data_directory_hardening.dart";
 
-final class AttachmentStorageScope {
-  final String pluginId;
-  final String backendSessionId;
-
-  const AttachmentStorageScope({
+final class const AttachmentStorageScope({
     required this.pluginId,
     required this.backendSessionId,
-  });
+  }) {
+  final String pluginId;
+  final String backendSessionId;
 }
 
-enum AttachmentThumbnailFormat {
+enum AttachmentThumbnailFormat() {
   jpeg,
   png;
 
@@ -39,8 +37,8 @@ enum AttachmentThumbnailFormat {
 /// durable plugin/backend-session scope shared by every bridge data directory.
 /// Their lifetime is manual because independent databases may reference the
 /// same scope.
-class AttachmentSpillStorage {
-  AttachmentSpillStorage({required String directoryPath}) : _directoryPath = directoryPath;
+class AttachmentSpillStorage({required String directoryPath}) {
+  this : _directoryPath = directoryPath;
 
   final String _directoryPath;
 

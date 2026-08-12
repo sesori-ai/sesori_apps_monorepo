@@ -4,7 +4,7 @@ import "dart:io" as io;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginStartAbortedException, StartAbortSignal;
 
-enum BridgeShutdownPhase {
+enum BridgeShutdownPhase() {
   signal,
   drain,
   pluginDispose,
@@ -12,13 +12,13 @@ enum BridgeShutdownPhase {
   shared,
 }
 
-class BridgeShutdownCoordinator {
-  BridgeShutdownCoordinator({
+class BridgeShutdownCoordinator({
     required StartAbortSignal startAbortSignal,
     int Function()? backstopExitCode,
     void Function(int code)? exitProcess,
     Future<void> Function()? emergencyDisposal,
-  }) : _backstopExitCode = backstopExitCode ?? _alwaysZero,
+  }) {
+  this : _backstopExitCode = backstopExitCode ?? _alwaysZero,
        _exitProcess = exitProcess ?? io.exit,
        _startAbortSignal = startAbortSignal,
        _emergencyDisposal = emergencyDisposal;
@@ -131,9 +131,7 @@ class BridgeShutdownCoordinator {
   }
 }
 
-class _ShutdownAction {
-  const _ShutdownAction({required this.action, required this.budget});
-
+class const _ShutdownAction({required this.action, required this.budget}) {
   final FutureOr<void> Function() action;
   final Duration budget;
 }

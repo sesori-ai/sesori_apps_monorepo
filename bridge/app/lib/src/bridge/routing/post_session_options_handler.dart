@@ -6,11 +6,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../services/session_options_service.dart";
 import "request_handler.dart";
 
-class PostSessionOptionsHandler extends RequestHandlerBase {
-  PostSessionOptionsHandler({
+class PostSessionOptionsHandler({
     required SessionOptionsService service,
     required Set<String> pluginIds,
-  }) : _service = service,
+  }) extends RequestHandlerBase {
+  this : _service = service,
        _pluginIds = Set.unmodifiable(pluginIds),
        super(HttpMethod.post, "/session/options");
 

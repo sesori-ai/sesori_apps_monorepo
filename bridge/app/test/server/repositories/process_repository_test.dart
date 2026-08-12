@@ -105,7 +105,7 @@ void main() {
   });
 }
 
-class _FakeSystemProcessApi implements SystemProcessApi {
+class _FakeSystemProcessApi() implements SystemProcessApi {
   @override
   Future<int> startDetached({
     required String executable,

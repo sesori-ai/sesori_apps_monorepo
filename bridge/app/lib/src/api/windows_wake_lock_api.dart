@@ -6,12 +6,10 @@ typedef ExecutionStateSetter = EXECUTION_STATE Function(EXECUTION_STATE flags);
 typedef WarningLogger = void Function(String message);
 
 /// Windows wake lock implementation backed by `SetThreadExecutionState`.
-class WindowsWakeLockApi implements WakeLockClient {
-  WindowsWakeLockApi({
+class WindowsWakeLockApi({
     required this.executionStateSetter,
     required this.warningLogger,
-  });
-
+  }) implements WakeLockClient {
   final ExecutionStateSetter executionStateSetter;
   final WarningLogger warningLogger;
 

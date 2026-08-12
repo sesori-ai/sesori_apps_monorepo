@@ -2,8 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../bridge/runtime/plugin_runtime.dart";
 
-class PluginLifecycleSnapshot {
-  const PluginLifecycleSnapshot({
+class const PluginLifecycleSnapshot({
     required this.pluginId,
     required this.projectOwnership,
     required this.setup,
@@ -13,8 +12,7 @@ class PluginLifecycleSnapshot {
     required this.workState,
     required this.leaseCount,
     required this.transitionSettled,
-  });
-
+  }) {
   final String pluginId;
   final PluginProjectOwnership projectOwnership;
   final PluginSetupStatus setup;
@@ -27,8 +25,8 @@ class PluginLifecycleSnapshot {
   final bool transitionSettled;
 }
 
-class PluginLifecycleRepository {
-  PluginLifecycleRepository({required PluginRuntime runtime}) : _runtime = runtime;
+class PluginLifecycleRepository({required PluginRuntime runtime}) {
+  this : _runtime = runtime;
 
   final PluginRuntime _runtime;
 

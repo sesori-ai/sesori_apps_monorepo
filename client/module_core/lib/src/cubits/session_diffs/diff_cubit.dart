@@ -12,9 +12,14 @@ import "../../repositories/session_repository.dart";
 import "../../services/product_analytics_service.dart";
 import "diff_state.dart";
 
-enum _DiffAnalyticsGuard { ready, inFlight, consumed }
+enum _DiffAnalyticsGuard() { ready, inFlight, consumed }
 
-class DiffCubit extends Cubit<DiffState> {
+class DiffCubit({
+    required SessionRepository sessionRepository,
+    required ConnectionService connectionService,
+    required ProductAnalyticsService productAnalyticsService,
+    required this.sessionId,
+  }) extends Cubit<DiffState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final ProductAnalyticsService _productAnalyticsService;
@@ -26,12 +31,7 @@ class DiffCubit extends Cubit<DiffState> {
   _DiffAnalyticsGuard _emptyDiffAnalytics = _DiffAnalyticsGuard.ready;
   _DiffAnalyticsGuard _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
 
-  DiffCubit({
-    required SessionRepository sessionRepository,
-    required ConnectionService connectionService,
-    required ProductAnalyticsService productAnalyticsService,
-    required this.sessionId,
-  }) : _sessionRepository = sessionRepository,
+  this : _sessionRepository = sessionRepository,
        _connectionService = connectionService,
        _productAnalyticsService = productAnalyticsService,
        super(const DiffState.loading()) {

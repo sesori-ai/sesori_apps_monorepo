@@ -44,15 +44,13 @@ sealed class ProductAnalyticsPreferenceApiResult with _$ProductAnalyticsPreferen
 }
 
 @Freezed(fromJson: true, toJson: false)
-sealed class ProductAnalyticsPreferenceConflictResponse with _$ProductAnalyticsPreferenceConflictResponse {
+sealed class const ProductAnalyticsPreferenceConflictResponse._() with _$ProductAnalyticsPreferenceConflictResponse {
   const factory ProductAnalyticsPreferenceConflictResponse({
     required ProductAnalyticsPreferenceConflictError error,
     required ProductAnalyticsPreference preference,
     required int revision,
     required String userKey,
   }) = _ProductAnalyticsPreferenceConflictResponse;
-
-  const ProductAnalyticsPreferenceConflictResponse._();
 
   factory ProductAnalyticsPreferenceConflictResponse.fromJson(Map<String, dynamic> json) {
     if (json["revision"] is! int) {
@@ -73,19 +71,18 @@ sealed class ProductAnalyticsPreferenceConflictResponse with _$ProductAnalyticsP
 }
 
 @JsonEnum(valueField: "wireValue")
-enum ProductAnalyticsPreferenceConflictError {
+enum ProductAnalyticsPreferenceConflictError({required this.wireValue}) {
   conflict(wireValue: "conflict");
 
   final String wireValue;
-  ProductAnalyticsPreferenceConflictError({required this.wireValue});
 }
 
 @lazySingleton
-class ProductAnalyticsPreferenceApi {
+class ProductAnalyticsPreferenceApi({required AuthenticatedHttpApiClient client}) {
   final AuthenticatedHttpApiClient _client;
   final Uri _url;
 
-  ProductAnalyticsPreferenceApi({required AuthenticatedHttpApiClient client})
+  this
     : _client = client,
       _url = Uri.parse("$authBaseUrl/product-analytics/preference");
 

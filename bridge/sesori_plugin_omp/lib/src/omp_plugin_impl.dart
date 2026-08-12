@@ -14,7 +14,18 @@ import "services/omp_session_cleanup_service.dart";
 import "services/omp_session_options_service.dart";
 import "trackers/omp_catalog_tracker.dart";
 
-class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
+class OmpPlugin._({
+    required super.launchSpec,
+    required super.launchDirectory,
+    required super.contentMapper,
+    required super.eventMapper,
+    required super.commandTracker,
+    required super.sessionOptionsService,
+    required OmpCatalogService catalogService,
+    required OmpSessionOptionsService ompSessionOptionsService,
+    required OmpSessionCleanupService cleanupService,
+    super.processFactory,
+  }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory OmpPlugin({
     String binaryPath = OmpBinary.defaultBinary,
     String? launchDirectory,
@@ -91,18 +102,7 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     );
   }
 
-  OmpPlugin._({
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.contentMapper,
-    required super.eventMapper,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    required OmpCatalogService catalogService,
-    required OmpSessionOptionsService ompSessionOptionsService,
-    required OmpSessionCleanupService cleanupService,
-    super.processFactory,
-  }) : _catalogService = catalogService,
+  this : _catalogService = catalogService,
        _ompSessionOptionsService = ompSessionOptionsService,
        _cleanupService = cleanupService,
        super(

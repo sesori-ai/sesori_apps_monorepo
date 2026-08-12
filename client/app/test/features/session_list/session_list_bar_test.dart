@@ -10,7 +10,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
 
 /// The sessions-list top bar (Figma "Back Leading" type): project name over
 /// the repo-slug subtitle row, connection dot bound to the overlay cubit, and

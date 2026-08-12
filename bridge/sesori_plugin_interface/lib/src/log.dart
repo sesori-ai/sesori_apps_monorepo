@@ -6,7 +6,7 @@ import "ansi_color.dart";
 ///
 /// The [index] of each value determines filtering: messages with a level
 /// below [Log.level] are silently discarded.
-enum LogLevel {
+enum LogLevel() {
   verbose,
   debug,
   info,
@@ -22,9 +22,7 @@ enum LogLevel {
 /// without affecting user-facing output. For messages the user must see to
 /// operate the bridge — prompts, requests, essential status — use [Console]
 /// instead; it always writes to stdout regardless of [Log.level].
-class Log {
-  Log._();
-
+class Log._() {
   /// Current minimum log level. Defaults to [LogLevel.info].
   static LogLevel level = LogLevel.info;
 

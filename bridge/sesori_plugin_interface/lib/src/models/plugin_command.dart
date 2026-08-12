@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "plugin_command.freezed.dart";
 part "plugin_command.g.dart";
 
-enum PluginCommandSource {
+enum PluginCommandSource() {
   command,
   mcp,
   skill,

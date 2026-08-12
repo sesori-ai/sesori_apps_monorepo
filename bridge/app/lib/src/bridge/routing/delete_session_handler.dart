@@ -7,10 +7,10 @@ import "../services/session_deletion_service.dart";
 import "request_handler.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
-class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
+class DeleteSessionHandler({required SessionDeletionService sessionDeletionService}) extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
   final SessionDeletionService _sessionDeletionService;
 
-  DeleteSessionHandler({required SessionDeletionService sessionDeletionService})
+  this
     : _sessionDeletionService = sessionDeletionService,
       super(
         HttpMethod.delete,

@@ -8,7 +8,12 @@ import "platform/isolate_multi_task_stub.dart"
     if (dart.library.js_interop) "platform/isolate_multi_task_web.dart"
     if (dart.library.html) "platform/isolate_multi_task_web.dart";
 
-class MultiTaskTransientIsolate implements MultiTaskIsolate {
+class MultiTaskTransientIsolate({
+    required Duration timeout,
+    required bool eagerStart,
+    required String debugName,
+    int debugIndex = 0,
+  }) implements MultiTaskIsolate {
   Timer? _inactivityTimer;
   final Duration _timeout;
 
@@ -28,12 +33,7 @@ class MultiTaskTransientIsolate implements MultiTaskIsolate {
   @override
   int get activeTaskCount => _isolate?.activeTaskCount ?? 0;
 
-  MultiTaskTransientIsolate({
-    required Duration timeout,
-    required bool eagerStart,
-    required String debugName,
-    int debugIndex = 0,
-  }) : _timeout = timeout,
+  this : _timeout = timeout,
        _debugName = debugName,
        _debugIndex = debugIndex {
     if (eagerStart) {

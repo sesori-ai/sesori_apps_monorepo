@@ -34,8 +34,7 @@ import "repositories/mappers/acp_content_mapper.dart";
 /// Unlike the codex plugin (which connects to a process listening on a ws
 /// port), this owns the agent subprocess: it spawns lazily on first use and
 /// reaps it on [dispose].
-abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
-  AcpPlugin({
+abstract class AcpPlugin({
     required this.id,
     required this.agentDisplayName,
     required this.launchSpec,
@@ -45,7 +44,8 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required AcpCommandTracker commandTracker,
     required AcpSessionOptionsService sessionOptionsService,
     AcpProcessFactory? processFactory,
-  }) : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
+  }) extends BridgeDerivedProjectsPluginApi {
+  this : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
        _processFactory = processFactory,
        _contentMapper = contentMapper,
        _commandTracker = commandTracker,
@@ -1731,7 +1731,7 @@ abstract class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 /// this only carries the chain tail the session's turns serialize behind, the
 /// count of unfinished turns, and the abort generation used to drop
 /// queued-but-undispatched turns.
-class _SessionTurnState {
+class _SessionTurnState() {
   /// Completion of the session's most recently queued turn.
   Future<void> tail = Future<void>.value();
 
@@ -1748,13 +1748,11 @@ class _SessionTurnState {
   int generation = 0;
 }
 
-class _TurnSelection {
-  const _TurnSelection({
+class const _TurnSelection({
     required this.model,
     required this.variant,
     required this.agent,
-  });
-
+  }) {
   final ({String providerID, String modelID})? model;
   final PluginSessionVariant? variant;
   final String? agent;

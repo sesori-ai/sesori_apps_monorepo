@@ -32,32 +32,26 @@ typedef _CapturedManagementRequest = ({
 
 typedef PluginAuthenticationTerminalUpdate = ({String pluginId, PluginAuthenticationProgress progress});
 
-sealed class PluginManagementIdleTimeoutInput {
-  const PluginManagementIdleTimeoutInput();
-
+sealed class const PluginManagementIdleTimeoutInput() {
   const factory PluginManagementIdleTimeoutInput.noTimeout() = PluginManagementIdleTimeoutInputNoTimeout;
 
   const factory PluginManagementIdleTimeoutInput.custom({required String input}) =
       PluginManagementIdleTimeoutInputCustom;
 }
 
-final class PluginManagementIdleTimeoutInputNoTimeout extends PluginManagementIdleTimeoutInput {
-  const PluginManagementIdleTimeoutInputNoTimeout();
-}
+final class const PluginManagementIdleTimeoutInputNoTimeout() extends PluginManagementIdleTimeoutInput;
 
-final class PluginManagementIdleTimeoutInputCustom extends PluginManagementIdleTimeoutInput {
-  const PluginManagementIdleTimeoutInputCustom({required this.input});
-
+final class const PluginManagementIdleTimeoutInputCustom({required this.input}) extends PluginManagementIdleTimeoutInput {
   final String input;
 }
 
 @lazySingleton
-class PluginManagementService with Disposable {
-  PluginManagementService({
+class PluginManagementService({
     required PluginRepository pluginRepository,
     required ConnectionService connectionService,
     required ProductAnalyticsService productAnalyticsService,
-  }) : _pluginRepository = pluginRepository,
+  }) with Disposable {
+  this : _pluginRepository = pluginRepository,
        _connectionService = connectionService,
        _productAnalyticsService = productAnalyticsService,
        _connected = connectionService.currentStatus is ConnectionConnected,
@@ -738,9 +732,7 @@ int? _parseIdleTimeoutMins({required PluginManagementIdleTimeoutInput input}) {
 
 /// One harness' in-flight managed runtime install, as last reported.
 @immutable
-class PluginInstallProgress {
-  const PluginInstallProgress({required this.phase, required this.percent});
-
+class const PluginInstallProgress({required this.phase, required this.percent}) {
   final PluginInstallPhase phase;
 
   /// Download completion, only present while downloading with a known total.
@@ -754,9 +746,7 @@ class PluginInstallProgress {
 }
 
 @immutable
-class PluginAuthenticationChallenge {
-  const PluginAuthenticationChallenge({required this.verificationUri, required this.userCode});
-
+class const PluginAuthenticationChallenge({required this.verificationUri, required this.userCode}) {
   final Uri verificationUri;
   final String userCode;
 
@@ -768,13 +758,11 @@ class PluginAuthenticationChallenge {
   int get hashCode => Object.hash(verificationUri, userCode);
 }
 
-enum _RefreshOutcome { applied, failed, superseded, fenced }
+enum _RefreshOutcome() { applied, failed, superseded, fenced }
 
-enum _PublicationOutcome { applied, fenced, superseded, identitySuperseded }
+enum _PublicationOutcome() { applied, fenced, superseded, identitySuperseded }
 
-sealed class PluginManagementCommandPlan {
-  const PluginManagementCommandPlan();
-
+sealed class const PluginManagementCommandPlan() {
   const factory PluginManagementCommandPlan.request({
     required PluginIdleTimeoutUpdateRequest request,
   }) = PluginManagementCommandPlanRequest;
@@ -782,21 +770,15 @@ sealed class PluginManagementCommandPlan {
   const factory PluginManagementCommandPlan.invalidInput() = PluginManagementCommandPlanInvalidInput;
 }
 
-final class PluginManagementCommandPlanRequest extends PluginManagementCommandPlan {
-  const PluginManagementCommandPlanRequest({required this.request});
-
+final class const PluginManagementCommandPlanRequest({required this.request}) extends PluginManagementCommandPlan {
   final PluginIdleTimeoutUpdateRequest request;
 }
 
-final class PluginManagementCommandPlanInvalidInput extends PluginManagementCommandPlan {
-  const PluginManagementCommandPlanInvalidInput();
-}
+final class const PluginManagementCommandPlanInvalidInput() extends PluginManagementCommandPlan;
 
-enum PluginManagementForceAction { disable, restart }
+enum PluginManagementForceAction() { disable, restart }
 
-sealed class PluginManagementForceAssessment {
-  const PluginManagementForceAssessment();
-
+sealed class const PluginManagementForceAssessment() {
   const factory PluginManagementForceAssessment.requiresConfirmation({
     required PluginLifecycleCommandRequest request,
   }) = PluginManagementForceAssessmentRequiresConfirmation;
@@ -804,15 +786,11 @@ sealed class PluginManagementForceAssessment {
   const factory PluginManagementForceAssessment.notForceable() = PluginManagementForceAssessmentNotForceable;
 }
 
-final class PluginManagementForceAssessmentRequiresConfirmation extends PluginManagementForceAssessment {
-  const PluginManagementForceAssessmentRequiresConfirmation({required this.request});
-
+final class const PluginManagementForceAssessmentRequiresConfirmation({required this.request}) extends PluginManagementForceAssessment {
   final PluginLifecycleCommandRequest request;
 }
 
-final class PluginManagementForceAssessmentNotForceable extends PluginManagementForceAssessment {
-  const PluginManagementForceAssessmentNotForceable();
-}
+final class const PluginManagementForceAssessmentNotForceable() extends PluginManagementForceAssessment;
 
 const _forceableConflictReasons = {
   PluginLifecycleConflictReason.inFlight,

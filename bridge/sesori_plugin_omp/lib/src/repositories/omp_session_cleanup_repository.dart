@@ -4,15 +4,13 @@ import "package:acp_plugin/acp_plugin.dart" show AcpStopReason;
 
 import "../api/omp_acp_api.dart";
 
-class OmpCleanupSession {
-  const OmpCleanupSession({required this.sessionId, required this.cwd});
-
+class const OmpCleanupSession({required this.sessionId, required this.cwd}) {
   final String sessionId;
   final String? cwd;
 }
 
-class OmpCleanupPage {
-  OmpCleanupPage({required List<OmpCleanupSession> sessions, required this.nextCursor})
+class OmpCleanupPage({required List<OmpCleanupSession> sessions, required this.nextCursor}) {
+  this
     : sessions = List.unmodifiable(sessions);
 
   final List<OmpCleanupSession> sessions;
@@ -20,8 +18,8 @@ class OmpCleanupPage {
 }
 
 /// Layer-2 ACP operations used by OMP persisted-session cleanup.
-class OmpSessionCleanupRepository {
-  OmpSessionCleanupRepository({required OmpAcpApi api}) : _api = api;
+class OmpSessionCleanupRepository({required OmpAcpApi api}) {
+  this : _api = api;
 
   final OmpAcpApi _api;
   Directory? _scratchDirectory;

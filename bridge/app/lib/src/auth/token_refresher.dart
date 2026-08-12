@@ -1,4 +1,4 @@
-abstract interface class TokenRefresher {
+abstract interface class TokenRefresher() {
   Future<String> getAccessToken({bool forceRefresh = false});
 }
 
@@ -11,9 +11,8 @@ abstract interface class TokenRefresher {
 /// (e.g. the standalone auth-refresh endpoint being momentarily down while a
 /// valid cached token is still on hand), which callers may recover from by
 /// reconnecting with the cached token.
-class ControlTokenUnavailableException implements Exception {
+class const ControlTokenUnavailableException(this.reason) implements Exception {
   final String reason;
-  const ControlTokenUnavailableException(this.reason);
   @override
   String toString() => "ControlTokenUnavailableException: $reason";
 }

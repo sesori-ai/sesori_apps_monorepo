@@ -18,20 +18,20 @@ typedef SourcedBridgeEvent = ({
 typedef NormalizedRuntimeEvent = ({int generation, BridgeSseEvent event});
 typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
-class SessionEventService {
+class SessionEventService({
+    required SessionRepository sessionRepository,
+    required PluginRuntime pluginRuntime,
+    required SessionEventMapper eventMapper,
+    required SessionEventTracker eventTracker,
+    required FailureReporter failureReporter,
+  }) {
   final SessionRepository _sessionRepository;
   final PluginRuntime _pluginRuntime;
   final SessionEventMapper _eventMapper;
   final SessionEventTracker _eventTracker;
   final FailureReporter _failureReporter;
 
-  SessionEventService({
-    required SessionRepository sessionRepository,
-    required PluginRuntime pluginRuntime,
-    required SessionEventMapper eventMapper,
-    required SessionEventTracker eventTracker,
-    required FailureReporter failureReporter,
-  }) : _sessionRepository = sessionRepository,
+  this : _sessionRepository = sessionRepository,
        _pluginRuntime = pluginRuntime,
        _eventMapper = eventMapper,
        _eventTracker = eventTracker,

@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "session_options_error_response.freezed.dart";
 part "session_options_error_response.g.dart";
 
-enum SessionOptionsErrorCode {
+enum SessionOptionsErrorCode() {
   cacheUnavailable,
   projectNotFound,
   refreshFailedRetained,

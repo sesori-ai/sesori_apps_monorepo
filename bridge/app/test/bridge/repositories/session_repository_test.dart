@@ -2453,8 +2453,8 @@ void main() {
   });
 }
 
-class _GenerationReplacingRuntime extends TestPluginRuntime {
-  _GenerationReplacingRuntime({required BridgePluginApi plugin})
+class _GenerationReplacingRuntime({required BridgePluginApi plugin}) extends TestPluginRuntime {
+  this
     : super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
 
   final Completer<void> observationCollected = Completer<void>();
@@ -2478,11 +2478,11 @@ class _GenerationReplacingRuntime extends TestPluginRuntime {
   }
 }
 
-class _CapabilityProbeFailingRuntime extends TestPluginRuntime {
-  _CapabilityProbeFailingRuntime({
+class _CapabilityProbeFailingRuntime({
     required Iterable<BridgePluginApi> plugins,
     required String failingPluginId,
-  }) : _failingPluginId = failingPluginId,
+  }) extends TestPluginRuntime {
+  this : _failingPluginId = failingPluginId,
        super(
          plugins: {for (final plugin in plugins) plugin.id: plugin},
          eligiblePluginIds: null,
@@ -2507,7 +2507,7 @@ class _CapabilityProbeFailingRuntime extends TestPluginRuntime {
   }
 }
 
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
@@ -2664,7 +2664,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakePersistedCleanupPlugin extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
+class _FakePersistedCleanupPlugin() extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
   final List<String> persistedDeleteCalls = [];
 
   @override
@@ -2673,13 +2673,11 @@ class _FakePersistedCleanupPlugin extends _FakeBridgePlugin implements Persisted
   }
 }
 
-class _CountingSessionDao implements SessionDao {
+class _CountingSessionDao({required this.tombstones, required this.readBlock}) implements SessionDao {
   final Set<String> tombstones;
   final Completer<void>? readBlock;
   int bulkReadCount = 0;
   int failuresRemaining = 0;
-
-  _CountingSessionDao({required this.tombstones, required this.readBlock});
 
   @override
   Future<Set<String>> getTombstonedSessionIds({required String pluginId}) async {
@@ -2728,8 +2726,8 @@ class _CountingSessionDao implements SessionDao {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _BlockingSnapshotProjectsDao extends ProjectsDao {
-  _BlockingSnapshotProjectsDao({required AppDatabase database}) : super(database);
+class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
 
   final Completer<void> snapshotTaken = Completer<void>();
   final Completer<void> releaseSnapshot = Completer<void>();
@@ -2749,9 +2747,7 @@ class _BlockingSnapshotProjectsDao extends ProjectsDao {
 /// [BridgeDerivedProjectsPluginApi.listAllSessions]. `id` is "codex" so the
 /// repository's stored-attribution lookup
 /// (`getSessionProjectPaths(pluginId: ...)`) matches the seeded session rows.
-class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
-  _FakeDerivedPlugin({required this.launchDirectory, required this.allSessions});
-
+class _FakeDerivedPlugin({required this.launchDirectory, required this.allSessions}) implements BridgeDerivedProjectsPluginApi {
   @override
   final String launchDirectory;
 

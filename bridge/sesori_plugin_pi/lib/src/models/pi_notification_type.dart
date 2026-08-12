@@ -1,10 +1,8 @@
 /// The severity Pi assigns to an extension notification.
-enum PiNotificationType {
+enum PiNotificationType(this.wireValue) {
   info("info"),
   warning("warning"),
   error("error");
-
-  PiNotificationType(this.wireValue);
 
   final String wireValue;
 

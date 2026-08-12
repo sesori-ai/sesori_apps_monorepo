@@ -10,7 +10,7 @@ import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dar
 import 'package:sesori_bridge/src/updater/services/update_reconciliation_service.dart';
 import 'package:test/test.dart';
 
-class _FakeAttemptRepository implements UpdateAttemptRepository {
+class _FakeAttemptRepository() implements UpdateAttemptRepository {
   UpdateAttempt? stored;
   bool cleared = false;
 
@@ -24,7 +24,7 @@ class _FakeAttemptRepository implements UpdateAttemptRepository {
   Future<void> clearAttempt() async => cleared = true;
 }
 
-class _FakeLogRepository implements UpdateLogRepository {
+class _FakeLogRepository() implements UpdateLogRepository {
   final List<String> messages = <String>[];
 
   @override
@@ -37,7 +37,7 @@ class _FakeLogRepository implements UpdateLogRepository {
   Future<void> log({required String message}) async => messages.add(message);
 }
 
-class _FakeInstallationRepository implements UpdateInstallationRepository {
+class _FakeInstallationRepository() implements UpdateInstallationRepository {
   int sweepCount = 0;
   String? recordedVersion;
 
@@ -58,7 +58,7 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
   }
 }
 
-class _FakeUpdateLock implements UpdateLock {
+class _FakeUpdateLock() implements UpdateLock {
   LockAcquireResult outcome = LockAcquireResult.acquired;
 
   @override

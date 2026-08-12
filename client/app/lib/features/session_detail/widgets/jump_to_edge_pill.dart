@@ -11,7 +11,13 @@ import "package:theme_prego/module_prego.dart";
 /// [tapTargetKey] is applied to the `InkWell` so tests can locate the
 /// tappable region directly; the widget's own [key] is for outer
 /// element reconciliation.
-class JumpToEdgePill extends StatelessWidget {
+class const JumpToEdgePill({
+    super.key,
+    required this.tapTargetKey,
+    required this.label,
+    required this.onTap,
+    required this.bottomInset,
+  }) extends StatelessWidget {
   final Key? tapTargetKey;
   final String label;
   final VoidCallback onTap;
@@ -20,14 +26,6 @@ class JumpToEdgePill extends StatelessWidget {
   /// composer overlaid on the scrollable. Zero when nothing overlays the bottom
   /// (e.g. the read-only variant).
   final double bottomInset;
-
-  const JumpToEdgePill({
-    super.key,
-    required this.tapTargetKey,
-    required this.label,
-    required this.onTap,
-    required this.bottomInset,
-  });
 
   @override
   Widget build(BuildContext context) {

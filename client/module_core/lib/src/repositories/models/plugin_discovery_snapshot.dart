@@ -1,11 +1,11 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-final class PluginDiscoverySnapshot {
-  PluginDiscoverySnapshot({
+final class PluginDiscoverySnapshot({
     required this.bridgeId,
     required this.supportsSessionOptions,
     required List<PluginMetadata> plugins,
-  }) : plugins = List.unmodifiable(plugins);
+  }) {
+  this : plugins = List.unmodifiable(plugins);
 
   final String? bridgeId;
   final bool supportsSessionOptions;

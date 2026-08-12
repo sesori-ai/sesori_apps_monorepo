@@ -24,9 +24,7 @@ import "../../core/widgets/sesori_logo.dart";
 import "email_login_sheet.dart";
 import "login_provider_buttons.dart";
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
-
+class const LoginScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -42,14 +40,12 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-class _LoginScreenBody extends StatefulWidget {
-  const _LoginScreenBody();
-
+class const _LoginScreenBody() extends StatefulWidget {
   @override
   State<_LoginScreenBody> createState() => _LoginScreenBodyState();
 }
 
-class _LoginScreenBodyState extends State<_LoginScreenBody> {
+class _LoginScreenBodyState() extends State<_LoginScreenBody> {
   /// While the email sheet is up it renders failures inline, next to the form.
   /// The screen's own banner would otherwise show the same error a second time
   /// over the scrim, so it stands down for the duration.
@@ -333,16 +329,14 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 /// [LoginFailed], and slides back up out of view otherwise. The last
 /// failure reason is retained so the message stays readable during the
 /// slide-out animation.
-class _LoginErrorBanner extends StatefulWidget {
-  const _LoginErrorBanner({required this.state});
-
+class const _LoginErrorBanner({required this.state}) extends StatefulWidget {
   final LoginState state;
 
   @override
   State<_LoginErrorBanner> createState() => _LoginErrorBannerState();
 }
 
-class _LoginErrorBannerState extends State<_LoginErrorBanner> {
+class _LoginErrorBannerState() extends State<_LoginErrorBanner> {
   static const _animationDuration = Duration(milliseconds: 250);
 
   LoginFailedReason? _lastReason;

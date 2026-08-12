@@ -117,7 +117,7 @@ Future<Process> _failingStarter(
   throw StateError('This test never spawns');
 }
 
-class _UnusedProcessRepository implements ProcessRepository {
+class _UnusedProcessRepository() implements ProcessRepository {
   @override
   Future<int> startDetached({
     required String executable,

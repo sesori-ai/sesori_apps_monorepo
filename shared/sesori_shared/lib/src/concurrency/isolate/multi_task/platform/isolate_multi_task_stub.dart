@@ -2,12 +2,10 @@
 
 import "../../isolate.dart";
 
-class MultiTaskIsolateImpl implements MultiTaskIsolate {
-  MultiTaskIsolateImpl({
+class MultiTaskIsolateImpl({
     required void Function(int)? onActiveTaskCountChanged,
     required String debugName,
-  });
-
+  }) implements MultiTaskIsolate {
   @override
   int get activeTaskCount => throw UnimplementedError("stub: activeTaskCount");
 

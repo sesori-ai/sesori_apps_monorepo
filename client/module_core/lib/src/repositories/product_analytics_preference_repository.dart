@@ -9,14 +9,14 @@ import "../logging/logging.dart";
 import "models/product_analytics_preference_models.dart";
 
 @lazySingleton
-class ProductAnalyticsPreferenceRepository {
+class ProductAnalyticsPreferenceRepository({
+    required ProductAnalyticsPreferenceApi api,
+    required ProductAnalyticsPreferenceStorage storage,
+  }) {
   final ProductAnalyticsPreferenceApi _api;
   final ProductAnalyticsPreferenceStorage _storage;
 
-  ProductAnalyticsPreferenceRepository({
-    required ProductAnalyticsPreferenceApi api,
-    required ProductAnalyticsPreferenceStorage storage,
-  }) : _api = api,
+  this : _api = api,
        _storage = storage;
 
   Future<LocalProductAnalyticsPreference?> loadLocal({required String userId}) async {
@@ -347,10 +347,8 @@ class ProductAnalyticsPreferenceRepository {
   }
 }
 
-final class _ProductAnalyticsPreferenceStorageException implements Exception {
+final class const _ProductAnalyticsPreferenceStorageException({required this.innerError}) implements Exception {
   final Object innerError;
-
-  const _ProductAnalyticsPreferenceStorageException({required this.innerError});
 
   @override
   String toString() => "Product analytics preference storage operation failed";

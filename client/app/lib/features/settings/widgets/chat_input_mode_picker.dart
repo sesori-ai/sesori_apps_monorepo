@@ -14,9 +14,7 @@ const double _composerWidth = 370.0;
 const double _composerInset = PregoSpacing.md;
 
 /// The two default composer input choices shown on the dedicated settings page.
-class ChatInputModePicker extends StatelessWidget {
-  const ChatInputModePicker({super.key});
-
+class const ChatInputModePicker({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -43,14 +41,12 @@ class ChatInputModePicker extends StatelessWidget {
   }
 }
 
-class _ChatInputModeOption extends StatelessWidget {
-  const _ChatInputModeOption({
+class const _ChatInputModeOption({
     required this.mode,
     required this.label,
     required this.isSelected,
     required this.onTap,
-  });
-
+  }) extends StatelessWidget {
   final ChatInputMode mode;
   final String label;
   final bool isSelected;
@@ -120,9 +116,7 @@ class _ChatInputModeOption extends StatelessWidget {
   }
 }
 
-class _ComposerPreview extends StatelessWidget {
-  const _ComposerPreview({required this.mode, required this.isSelected});
-
+class const _ComposerPreview({required this.mode, required this.isSelected}) extends StatelessWidget {
   final ChatInputMode mode;
   final bool isSelected;
 
@@ -162,9 +156,7 @@ class _ComposerPreview extends StatelessWidget {
   }
 }
 
-class _ComposerPill extends StatelessWidget {
-  const _ComposerPill({required this.mode, required this.isSelected});
-
+class const _ComposerPill({required this.mode, required this.isSelected}) extends StatelessWidget {
   final ChatInputMode mode;
   final bool isSelected;
 
@@ -214,9 +206,7 @@ class _ComposerPill extends StatelessWidget {
   }
 }
 
-class _Waveform extends StatelessWidget {
-  const _Waveform({required this.isSelected});
-
+class const _Waveform({required this.isSelected}) extends StatelessWidget {
   final bool isSelected;
 
   static const _barHeights = <double>[
@@ -269,9 +259,7 @@ class _Waveform extends StatelessWidget {
   }
 }
 
-class _TextPreview extends StatelessWidget {
-  const _TextPreview({required this.isSelected});
-
+class const _TextPreview({required this.isSelected}) extends StatelessWidget {
   final bool isSelected;
 
   @override

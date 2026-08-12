@@ -4,11 +4,11 @@ import '../api/platform_update_api.dart';
 /// Layer 2 aggregator for the installed managed runtime: the platform-specific
 /// in-place applier plus the version manifest the npm bootstrap reads. Exposes
 /// the swap/sweep/record operations the apply/reconcile services depend on.
-class UpdateInstallationRepository {
-  UpdateInstallationRepository({
+class UpdateInstallationRepository({
     required PlatformUpdateApi platformUpdateApi,
     required ManagedRuntimeManifestApi manifestApi,
-  }) : _platformUpdateApi = platformUpdateApi,
+  }) {
+  this : _platformUpdateApi = platformUpdateApi,
        _manifestApi = manifestApi;
 
   final PlatformUpdateApi _platformUpdateApi;

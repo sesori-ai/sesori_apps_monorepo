@@ -9,7 +9,12 @@ import "push_dispatcher.dart";
 import "push_notification_content_builder.dart";
 import "push_session_state_tracker.dart";
 
-class CompletionPushListener {
+class CompletionPushListener({
+    required PushSessionStateTracker tracker,
+    required CompletionNotifier completionNotifier,
+    required PushNotificationContentBuilder contentBuilder,
+    required PushDispatcher dispatcher,
+  }) {
   final PushSessionStateTracker _tracker;
   final CompletionNotifier _completionNotifier;
   final PushNotificationContentBuilder _contentBuilder;
@@ -18,12 +23,7 @@ class CompletionPushListener {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   bool _isStarted = false;
 
-  CompletionPushListener({
-    required PushSessionStateTracker tracker,
-    required CompletionNotifier completionNotifier,
-    required PushNotificationContentBuilder contentBuilder,
-    required PushDispatcher dispatcher,
-  }) : _tracker = tracker,
+  this : _tracker = tracker,
        _completionNotifier = completionNotifier,
        _contentBuilder = contentBuilder,
        _dispatcher = dispatcher;

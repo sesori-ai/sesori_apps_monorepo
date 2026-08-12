@@ -52,13 +52,11 @@ const Duration _animationDuration = Duration(milliseconds: 200);
 ///   onChanged: null,
 /// )
 /// ```
-class PregoSwitch extends StatefulWidget {
-  const PregoSwitch({
+class const PregoSwitch({
     super.key,
     required this.value,
     required this.onChanged,
-  });
-
+  }) extends StatefulWidget {
   /// Whether the switch is on (`true`) or off (`false`).
   final bool value;
 
@@ -71,7 +69,7 @@ class PregoSwitch extends StatefulWidget {
   State<PregoSwitch> createState() => _PregoSwitchState();
 }
 
-class _PregoSwitchState extends State<PregoSwitch> with SingleTickerProviderStateMixin {
+class _PregoSwitchState() extends State<PregoSwitch> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final CurvedAnimation _curvedAnimation;
 

@@ -10,7 +10,7 @@ import "package:test/test.dart";
 const _userKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const _userId = "user-a";
 
-class _RecordingAuthenticatedClient extends Mock implements AuthenticatedHttpApiClient {
+class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpApiClient {
   Object? getJson;
   Object? putJson;
   ApiError? getError;

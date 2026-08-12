@@ -1,4 +1,4 @@
-enum SessionOperation {
+enum SessionOperation() {
   createSession,
   renameSession,
   getCommands,

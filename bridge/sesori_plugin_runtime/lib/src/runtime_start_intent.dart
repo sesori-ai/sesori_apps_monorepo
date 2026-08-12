@@ -52,8 +52,8 @@ sealed class RuntimeStartIntent with _$RuntimeStartIntent {
 /// the intent targets its own file, so there is nothing to serialize against,
 /// and nesting an `update()` inside the ownership store's locked critical
 /// section would deadlock.
-class RuntimeStartIntentStore {
-  RuntimeStartIntentStore({required HostJsonStore store, required String fileName})
+class RuntimeStartIntentStore({required HostJsonStore store, required String fileName}) {
+  this
     : _store = store,
       _fileName = fileName;
 

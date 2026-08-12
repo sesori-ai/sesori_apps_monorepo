@@ -280,21 +280,21 @@ void main() {
   });
 }
 
-class _FakeCatalogImportRepository implements CatalogImportRepository {
-  @override
-  Stream<List<SessionBackendActivity>> get backendActivity => const Stream.empty();
-
-  @override
-  Future<void> dispose() async {}
-
-  _FakeCatalogImportRepository({
+class _FakeCatalogImportRepository({
     required this.completion,
     required this.hydrationGate,
     required this.releaseImport,
     required this.importError,
     required Set<String>? eligiblePluginIds,
     required Set<String>? importEligiblePluginIds,
-  }) : eligiblePluginIds = eligiblePluginIds ?? <String>{"selected"},
+  }) implements CatalogImportRepository {
+  @override
+  Stream<List<SessionBackendActivity>> get backendActivity => const Stream.empty();
+
+  @override
+  Future<void> dispose() async {}
+
+  this : eligiblePluginIds = eligiblePluginIds ?? <String>{"selected"},
        importEligiblePluginIds = importEligiblePluginIds ?? eligiblePluginIds ?? <String>{"selected"};
 
   final CatalogHydrationDto? completion;

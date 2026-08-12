@@ -6,9 +6,7 @@ import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/explicit_update_outcome.dart';
 import 'package:test/test.dart';
 
-class _FakeStdout implements Stdout {
-  _FakeStdout({required this.supportsAnsiEscapes});
-
+class _FakeStdout({required this.supportsAnsiEscapes}) implements Stdout {
   @override
   final bool supportsAnsiEscapes;
 

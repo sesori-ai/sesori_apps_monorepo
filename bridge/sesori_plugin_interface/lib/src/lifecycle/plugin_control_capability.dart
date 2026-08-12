@@ -1,6 +1,6 @@
 /// Operations that Sesori may perform for a plugin under its current
 /// configuration.
-enum PluginControlCapability {
+enum PluginControlCapability() {
   /// Enable, disable, and restart the plugin runtime.
   lifecycle,
 

@@ -4,18 +4,14 @@ import "../api/models/claude_backend_catalog_dto.dart";
 import "../models/claude_agent_selection.dart";
 import "../models/claude_effort_level.dart";
 
-final class ClaudeBackendCatalog {
-  const ClaudeBackendCatalog({required this.agents, required this.providers, required this.commands});
-
+final class const ClaudeBackendCatalog({required this.agents, required this.providers, required this.commands}) {
   final List<PluginAgent> agents;
   final PluginProvidersResult providers;
   final List<PluginCommand> commands;
 }
 
 /// Maps Claude's backend catalog into the backend-neutral plugin contract.
-final class ClaudeBackendCatalogRepository {
-  const ClaudeBackendCatalogRepository();
-
+final class const ClaudeBackendCatalogRepository() {
   static const String providerId = "anthropic";
 
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {

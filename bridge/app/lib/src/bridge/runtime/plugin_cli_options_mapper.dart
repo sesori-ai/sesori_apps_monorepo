@@ -10,9 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 /// can't collide when multiple plugins are active. Pre-namespacing spellings
 /// declared via [PluginOption.deprecatedAliases] are registered as hidden flags
 /// and reported as deprecated when used, so existing invocations keep working.
-final class PluginCliOptionsMapper {
-  const PluginCliOptionsMapper({required this.pluginId});
-
+final class const PluginCliOptionsMapper({required this.pluginId}) {
   /// The plugin id every option is namespaced under.
   final String pluginId;
 

@@ -14,7 +14,7 @@ part "deleted_sessions_table.freezed.dart";
 /// permanent — session ids are UUIDs and never reused — and bounded by
 /// actual deletions.
 @UseRowClass(DeletedSessionDto)
-class DeletedSessionsTable extends Table {
+class DeletedSessionsTable() extends Table {
   @override
   String get tableName => "deleted_sessions_table";
 
@@ -38,13 +38,11 @@ class DeletedSessionsTable extends Table {
 }
 
 @freezed
-sealed class DeletedSessionDto with _$DeletedSessionDto, $DeletedSessionsTableTableToColumns {
+sealed class const DeletedSessionDto._() with _$DeletedSessionDto, $DeletedSessionsTableTableToColumns {
   const factory DeletedSessionDto({
     required String ownerIdentity,
     required String backendSessionId,
     required String pluginId,
     required int deletedAt,
   }) = _DeletedSessionDto;
-
-  const DeletedSessionDto._();
 }

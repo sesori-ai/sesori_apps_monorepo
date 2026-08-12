@@ -218,16 +218,12 @@ bool _equalLists<T>(List<T> left, List<T> right) {
 
 int _max(int left, int right) => left > right ? left : right;
 
-class _UnusedHostProcessService implements HostProcessService {
-  const _UnusedHostProcessService();
-
+class const _UnusedHostProcessService() implements HostProcessService {
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError("setup inspection is not benchmarked");
 }
 
-class _StartupProbe {
-  _StartupProbe({required this.stopwatch});
-
+class _StartupProbe({required this.stopwatch}) {
   final Stopwatch stopwatch;
   final List<String> provisioningOrder = <String>[];
   final List<String> operations = <String>[];
@@ -238,8 +234,7 @@ class _StartupProbe {
   int? firstOperationalMicros;
 }
 
-class _StartupSample {
-  const _StartupSample({
+class const _StartupSample({
     required this.totalMicros,
     required this.firstOperationalMicros,
     required this.startMicros,
@@ -248,8 +243,7 @@ class _StartupSample {
     required this.singletonEnforcementCount,
     required this.stateDirectories,
     required this.provisioningOrder,
-  });
-
+  }) {
   final int totalMicros;
   final int firstOperationalMicros;
   final Map<String, int> startMicros;
@@ -260,8 +254,8 @@ class _StartupSample {
   final List<String> provisioningOrder;
 }
 
-class _FakeDescriptor extends BridgePluginDescriptor {
-  const _FakeDescriptor({required this.id, required _StartupProbe probe}) : _probe = probe;
+class const _FakeDescriptor({required this.id, required _StartupProbe probe}) extends BridgePluginDescriptor {
+  this : _probe = probe;
 
   @override
   final String id;
@@ -302,8 +296,8 @@ class _FakeDescriptor extends BridgePluginDescriptor {
   }
 }
 
-class _FakePlugin implements BridgePlugin {
-  _FakePlugin({required String id})
+class _FakePlugin({required String id}) implements BridgePlugin {
+  this
     : _api = _FakePluginApi(id),
       _statusController = StreamController<PluginStatus>()..add(const PluginReady());
 
@@ -342,9 +336,7 @@ class _FakePlugin implements BridgePlugin {
   ]);
 }
 
-class _FakePluginApi extends NativeProjectsPluginApi {
-  _FakePluginApi(this.id);
-
+class _FakePluginApi(this.id) extends NativeProjectsPluginApi {
   final StreamController<BridgeSseEvent> _eventsController = StreamController<BridgeSseEvent>();
 
   @override
@@ -366,7 +358,7 @@ class _FakePluginApi extends NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeStartupMutexRepository implements StartupMutexRepository {
+class _FakeStartupMutexRepository() implements StartupMutexRepository {
   int acquisitionCount = 0;
 
   @override
@@ -381,7 +373,7 @@ class _FakeStartupMutexRepository implements StartupMutexRepository {
   }
 }
 
-class _FakeBridgeInstanceService implements BridgeInstanceService {
+class _FakeBridgeInstanceService() implements BridgeInstanceService {
   int enforcementCount = 0;
 
   @override
@@ -398,7 +390,7 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeProcessRepository implements ProcessRepository {
+class _FakeProcessRepository() implements ProcessRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

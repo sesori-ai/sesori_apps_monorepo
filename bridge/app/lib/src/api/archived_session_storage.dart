@@ -20,8 +20,8 @@ String archiveDirectoryPath({required String dataDirectory}) => path.join(dataDi
 /// platform-specific rename fallback, and a displaced-copy slot that had to be
 /// settled on every code path. Making the filename carry the generation
 /// removes those states rather than coordinating them.
-class ArchivedSessionStorage {
-  ArchivedSessionStorage({required String directoryPath}) : _directoryPath = directoryPath;
+class ArchivedSessionStorage({required String directoryPath}) {
+  this : _directoryPath = directoryPath;
 
   final String _directoryPath;
 

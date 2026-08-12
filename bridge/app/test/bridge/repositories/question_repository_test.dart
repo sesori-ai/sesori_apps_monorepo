@@ -689,14 +689,12 @@ PluginSession _session(String directory, {required String id}) => PluginSession(
 
 /// A derive-style plugin whose pending questions are keyed per session, so the
 /// repository must resolve the project's sessions (worktree-aware) and ask each.
-class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
-  _FakeDerivedQuestionPlugin({
+class _FakeDerivedQuestionPlugin({
     required this.launchDirectory,
     required this.allSessions,
     required this.questionsBySession,
     this.ownProjectQuestions = const [],
-  });
-
+  }) implements BridgeDerivedProjectsPluginApi {
   @override
   final String launchDirectory;
 
@@ -748,12 +746,10 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeNativeQuestionPlugin implements NativeProjectsPluginApi {
-  _FakeNativeQuestionPlugin({
+class _FakeNativeQuestionPlugin({
     required this.id,
     required this.projectQuestions,
-  });
-
+  }) implements NativeProjectsPluginApi {
   @override
   final String id;
 
@@ -772,9 +768,7 @@ class _FakeNativeQuestionPlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.output);
-
+class _CapturingStdout(this.output) implements Stdout {
   final List<String> output;
 
   @override

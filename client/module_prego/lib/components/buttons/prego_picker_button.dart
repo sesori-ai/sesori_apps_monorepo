@@ -19,15 +19,13 @@ import "../surfaces/prego_surfaces.dart";
 ///   onPressed: toggle,
 /// )
 /// ```
-class PregoPickerButton extends StatelessWidget {
-  const PregoPickerButton({
+class const PregoPickerButton({
     super.key,
     required this.leadingIcon,
     required this.label,
     required this.surfaceStyle,
     required this.onPressed,
-  });
-
+  }) extends StatelessWidget {
   /// The glyph rendered before the label.
   final IconData leadingIcon;
 

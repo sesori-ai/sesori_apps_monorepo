@@ -5,8 +5,8 @@ import "package:path/path.dart" as path;
 String appOnboardingStateDirectoryPath({required String dataDirectory}) => path.join(dataDirectory, "app_onboarding");
 
 /// Raw file boundary for opaque app-onboarding completion markers.
-class AppOnboardingStateStorage {
-  AppOnboardingStateStorage({required String directoryPath}) : _directoryPath = directoryPath;
+class AppOnboardingStateStorage({required String directoryPath}) {
+  this : _directoryPath = directoryPath;
 
   final String _directoryPath;
 

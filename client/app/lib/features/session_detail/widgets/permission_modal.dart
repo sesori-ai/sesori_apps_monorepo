@@ -16,7 +16,12 @@ import "pending_request_auto_dismiss.dart";
 ///
 /// Displays the tool name and description, and offers three actions:
 /// reject, allow once, or always allow.
-class PermissionModal extends StatelessWidget {
+class const PermissionModal({
+    super.key,
+    required this.permission,
+    required this.onReply,
+    required this.topInset,
+  }) extends StatelessWidget {
   final SesoriPermissionAsked permission;
   final void Function({
     required String requestId,
@@ -30,13 +35,6 @@ class PermissionModal extends StatelessWidget {
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
   final double topInset;
-
-  const PermissionModal({
-    super.key,
-    required this.permission,
-    required this.onReply,
-    required this.topInset,
-  });
 
   /// Opens the permission modal as a bottom sheet.
   ///

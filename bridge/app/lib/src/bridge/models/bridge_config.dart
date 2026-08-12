@@ -1,4 +1,9 @@
-class BridgeConfig {
+class const BridgeConfig({
+    required this.relayURL,
+    required this.authBackendURL,
+    required this.sseReplayWindow,
+    required this.yolo,
+  }) {
   final String relayURL;
 
   final String authBackendURL;
@@ -9,11 +14,4 @@ class BridgeConfig {
   /// Whether permission requests are approved at the bridge instead of being
   /// forwarded to clients.
   final bool yolo;
-
-  const BridgeConfig({
-    required this.relayURL,
-    required this.authBackendURL,
-    required this.sseReplayWindow,
-    required this.yolo,
-  });
 }

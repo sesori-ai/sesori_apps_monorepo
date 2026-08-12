@@ -63,8 +63,8 @@ void main() {
 }
 
 /// Stdout whose ANSI support can be controlled.
-class _FakeStdout implements Stdout {
-  _FakeStdout({required bool supportsAnsiEscapes}) : _supportsAnsiEscapes = supportsAnsiEscapes;
+class _FakeStdout({required bool supportsAnsiEscapes}) implements Stdout {
+  this : _supportsAnsiEscapes = supportsAnsiEscapes;
 
   final bool _supportsAnsiEscapes;
 
@@ -76,7 +76,7 @@ class _FakeStdout implements Stdout {
 }
 
 /// Stdout whose capability probe throws, mimicking exotic platforms.
-class _ThrowingStdout implements Stdout {
+class _ThrowingStdout() implements Stdout {
   @override
   bool get supportsAnsiEscapes => throw UnsupportedError("no terminal");
 

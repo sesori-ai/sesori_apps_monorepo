@@ -3,8 +3,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/catalog_import_service.dart";
 
-class GetCatalogImportStatusesHandler extends GetRequestHandler<CatalogImportStatusesResponse> {
-  GetCatalogImportStatusesHandler({required CatalogImportService service})
+class GetCatalogImportStatusesHandler({required CatalogImportService service}) extends GetRequestHandler<CatalogImportStatusesResponse> {
+  this
     : _service = service,
       super("/plugin/import");
 

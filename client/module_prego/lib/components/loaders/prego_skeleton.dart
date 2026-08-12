@@ -30,8 +30,7 @@ import "../../theme/prego_theme.dart";
 ///
 /// Skeletons are decorative: descendants are excluded from semantics, and
 /// [semanticLabel] (when given) is announced in their place.
-class PregoShimmer extends StatefulWidget {
-  const PregoShimmer({
+class const PregoShimmer({
     super.key,
     required this.child,
     this.enabled = true,
@@ -39,8 +38,7 @@ class PregoShimmer extends StatefulWidget {
     this.appearDelay = const Duration(milliseconds: 300),
     this.highlightColor,
     this.semanticLabel,
-  });
-
+  }) extends StatefulWidget {
   final Widget child;
 
   /// Whether the sheen sweeps. The skeleton shapes render either way.
@@ -64,7 +62,7 @@ class PregoShimmer extends StatefulWidget {
   State<PregoShimmer> createState() => _PregoShimmerState();
 }
 
-class _PregoShimmerState extends State<PregoShimmer>
+class _PregoShimmerState() extends State<PregoShimmer>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// Sweep position in multiples of the child's width. The band (20% wide,
   /// centred at 0.5 + value) is fully off-screen outside [-0.6, 0.6]; the
@@ -183,9 +181,7 @@ class _PregoShimmerState extends State<PregoShimmer>
 
 /// Translates the sweep gradient horizontally by [slidePercent] of the
 /// masked area's width.
-class _SlidingGradientTransform extends GradientTransform {
-  const _SlidingGradientTransform({required this.slidePercent});
-
+class const _SlidingGradientTransform({required this.slidePercent}) extends GradientTransform {
   final double slidePercent;
 
   @override
@@ -194,14 +190,12 @@ class _SlidingGradientTransform extends GradientTransform {
 }
 
 /// A single pill-shaped skeleton bar that fades toward its trailing edge.
-class PregoSkeletonBar extends StatelessWidget {
-  const PregoSkeletonBar({
+class const PregoSkeletonBar({
     super.key,
     required this.height,
     this.width,
     this.color,
-  });
-
+  }) extends StatelessWidget {
   final double height;
 
   /// Fixed width; null fills the available width.
@@ -231,12 +225,10 @@ class PregoSkeletonBar extends StatelessWidget {
 
 /// A two-line list-row skeleton: a title bar over a shorter indented detail
 /// bar, closed by the hairline bottom border list rows carry.
-class PregoSkeletonListTile extends StatelessWidget {
-  const PregoSkeletonListTile({
+class const PregoSkeletonListTile({
     super.key,
     this.titleWidthFraction = 1.0,
-  });
-
+  }) extends StatelessWidget {
   /// Fraction of the row's content width the title bar spans. Varying this
   /// across rows keeps the placeholder list looking organic.
   final double titleWidthFraction;
@@ -284,14 +276,12 @@ class PregoSkeletonListTile extends StatelessWidget {
 
 /// The ready-made shimmering list skeleton: [itemCount] two-line rows with a
 /// varied title-width rhythm, wrapped in a [PregoShimmer].
-class PregoSkeletonList extends StatelessWidget {
-  const PregoSkeletonList({
+class const PregoSkeletonList({
     super.key,
     this.itemCount = 6,
     this.padding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl, vertical: 10),
     this.semanticLabel,
-  });
-
+  }) extends StatelessWidget {
   final int itemCount;
 
   final EdgeInsetsGeometry padding;

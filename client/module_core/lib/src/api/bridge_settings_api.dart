@@ -8,8 +8,8 @@ import "../capabilities/relay/relay_client.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
-class BridgeSettingsApi {
-  BridgeSettingsApi({required RelayHttpApiClient client}) : _client = client;
+class BridgeSettingsApi({required RelayHttpApiClient client}) {
+  this : _client = client;
 
   final RelayHttpApiClient _client;
 
@@ -53,29 +53,21 @@ class BridgeSettingsApi {
   }
 }
 
-sealed class BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiResult();
-}
+sealed class const BridgeSettingUpdateApiResult();
 
-final class BridgeSettingUpdateApiCommitted extends BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiCommitted({required this.update});
-
+final class const BridgeSettingUpdateApiCommitted({required this.update}) extends BridgeSettingUpdateApiResult {
   final BridgeSettingUpdate update;
 }
 
-final class BridgeSettingUpdateApiRejected extends BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiRejected({
+final class const BridgeSettingUpdateApiRejected({
     required this.rejection,
     required this.error,
-  });
-
+  }) extends BridgeSettingUpdateApiResult {
   final BridgeSettingUpdateRejection rejection;
   final NonSuccessCodeError error;
 }
 
-final class BridgeSettingUpdateApiFailure extends BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiFailure({required this.error});
-
+final class const BridgeSettingUpdateApiFailure({required this.error}) extends BridgeSettingUpdateApiResult {
   final ApiError error;
 
   bool get isCommitUncertain => switch (error) {

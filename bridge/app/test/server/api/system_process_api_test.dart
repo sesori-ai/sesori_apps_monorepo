@@ -177,17 +177,13 @@ void main() {
   });
 }
 
-class _RecordedCall {
-  _RecordedCall({required this.executable, required this.arguments, required this.environment});
-
+class _RecordedCall({required this.executable, required this.arguments, required this.environment}) {
   final String executable;
   final List<String> arguments;
   final Map<String, String>? environment;
 }
 
-class _RecordingProcessRunner implements ProcessRunner {
-  _RecordingProcessRunner({this.exitCode = 0, this.stdout = "", this.stderr = ""});
-
+class _RecordingProcessRunner({this.exitCode = 0, this.stdout = "", this.stderr = ""}) implements ProcessRunner {
   final int exitCode;
   final String stdout;
   final String stderr;

@@ -282,8 +282,7 @@ PluginMessagePart _pluginPart({
   attachment: attachment,
 );
 
-class _LiveAttachmentHarness {
-  _LiveAttachmentHarness({
+class _LiveAttachmentHarness({
     required this.plugin,
     required this.lifecycleService,
     required this.composition,
@@ -294,7 +293,8 @@ class _LiveAttachmentHarness {
     required this.stopped,
     required StreamSubscription<SesoriSseEvent> subscription,
     required this.deliveredPartIds,
-  }) : _subscription = subscription;
+  }) {
+  this : _subscription = subscription;
 
   final FakeBridgePlugin plugin;
   final PluginLifecycleService lifecycleService;
@@ -440,16 +440,14 @@ Future<void> _insertRootSession({required AppDatabase database}) async {
   );
 }
 
-class _SourcedPlugin extends FakeBridgePlugin {
-  _SourcedPlugin(this.pluginId);
-
+class _SourcedPlugin(this.pluginId) extends FakeBridgePlugin {
   final String pluginId;
 
   @override
   String get id => pluginId;
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

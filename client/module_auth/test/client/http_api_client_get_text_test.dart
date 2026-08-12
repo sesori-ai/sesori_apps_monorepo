@@ -11,9 +11,7 @@ import "package:test/test.dart";
 final _url = Uri.parse("https://api.example.com/terms");
 
 /// Answers every request with a fixed status and body.
-class _StubClient extends http.BaseClient {
-  _StubClient({required this.statusCode, required this.body});
-
+class _StubClient({required this.statusCode, required this.body}) extends http.BaseClient {
   final int statusCode;
   final String body;
 
@@ -25,7 +23,7 @@ class _StubClient extends http.BaseClient {
 
 /// A server that never answers. Only the request's own abort trigger ends it —
 /// the same way `IOClient` fails a request whose trigger fires.
-class _HangingClient extends http.BaseClient {
+class _HangingClient() extends http.BaseClient {
   bool aborted = false;
 
   @override

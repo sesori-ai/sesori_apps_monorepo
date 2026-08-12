@@ -13,7 +13,7 @@ const double _buttonHPaddingMd = 14.0;
 const double _buttonVPaddingMd = 10.0;
 
 /// Size variants for [PregoButtonsSolid].
-enum PregoButtonsSolidSize {
+enum PregoButtonsSolidSize() {
   /// Height 36px — text-sm/medium, px=12, py=8, gap=4.
   sm,
 
@@ -28,7 +28,7 @@ enum PregoButtonsSolidSize {
 }
 
 /// Hierarchy variants for [PregoButtonsSolid].
-enum PregoButtonsSolidHierarchy {
+enum PregoButtonsSolidHierarchy() {
   /// Filled brand-blue background with white text. Skeuomorphic border + shadow.
   primary,
 
@@ -51,7 +51,7 @@ enum PregoButtonsSolidHierarchy {
 
 /// Colour tone for [PregoButtonsSolid] — the colour family applied within the
 /// chosen [PregoButtonsSolidHierarchy].
-enum PregoButtonsSolidType {
+enum PregoButtonsSolidType() {
   /// Brand blue — the default.
   regular,
 
@@ -204,7 +204,7 @@ class PregoButtonsSolid extends StatefulWidget {
   State<PregoButtonsSolid> createState() => _PregoButtonsSolidState();
 }
 
-class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
+class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   bool _isFocused = false;
 
   bool get _isDestructive => widget.type == PregoButtonsSolidType.destructive;
@@ -804,13 +804,11 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
 ///
 /// In the Secondary focused state, [bottomShadowColor] is set to
 /// `skeuomorphicInnerBorder` so both layers use the same token.
-class PregoSkeuomorphicOverlay extends StatelessWidget {
-  const PregoSkeuomorphicOverlay({
+class const PregoSkeuomorphicOverlay({
     super.key,
     required this.innerBorderColor,
     required this.bottomShadowColor,
-  });
-
+  }) extends StatelessWidget {
   final Color innerBorderColor;
   final Color bottomShadowColor;
 
@@ -829,12 +827,10 @@ class PregoSkeuomorphicOverlay extends StatelessWidget {
   }
 }
 
-class _SkeuomorphicPainter extends CustomPainter {
-  _SkeuomorphicPainter({
+class _SkeuomorphicPainter({
     required this.innerBorderColor,
     required this.bottomShadowColor,
-  });
-
+  }) extends CustomPainter {
   final Color innerBorderColor;
   final Color bottomShadowColor;
 
@@ -870,9 +866,7 @@ class _SkeuomorphicPainter extends CustomPainter {
 }
 
 /// A small circular progress indicator used in the button loading state.
-class _LoadingSpinner extends StatelessWidget {
-  const _LoadingSpinner({required this.color, required this.size});
-
+class const _LoadingSpinner({required this.color, required this.size}) extends StatelessWidget {
   final Color color;
   final double size;
 

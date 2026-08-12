@@ -20,9 +20,7 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 /// [AcpEventMapper.classifyHaltNotice]) and it is surfaced as a
 /// [shared.Message.error] instead of quiet assistant text, giving the user an
 /// explicit "the turn did not run" signal.
-class AcpHaltNotice {
-  const AcpHaltNotice({required this.errorName, required this.message});
-
+class const AcpHaltNotice({required this.errorName, required this.message}) {
   /// Short stable label for the halt class (e.g. "cursor_gate"), carried in
   /// the error message's `errorName`.
   final String errorName;
@@ -49,14 +47,14 @@ class AcpHaltNotice {
 ///
 /// Harness-specific notifications (e.g. Cursor's `cursor/*`) are routed to
 /// [mapExtension], which subclasses override.
-class AcpEventMapper {
-  AcpEventMapper({
+class AcpEventMapper({
     required String launchDirectory,
     required this.agentId,
     required this.pluginId,
     required AcpSessionConfigurationTracker configurationTracker,
     required AcpContentMapper contentMapper,
-  }) : _configurationTracker = configurationTracker,
+  }) {
+  this : _configurationTracker = configurationTracker,
        _contentMapper = contentMapper,
        launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
@@ -1056,23 +1054,21 @@ class AcpEventMapper {
   }
 }
 
-enum _ChunkRole { user, assistant }
+enum _ChunkRole() { user, assistant }
 
 /// Last-known metadata for one session, merged into the `session.updated`
 /// payload a `session_info_update` emits.
-class _SessionSnapshot {
+class _SessionSnapshot() {
   String? title;
   int? createdMs;
   int? updatedMs;
 }
 
-class _TextPartAccumulator {
-  _TextPartAccumulator({
+class _TextPartAccumulator({
     required this.partId,
     required this.messageId,
     required this.type,
-  });
-
+  }) {
   final String partId;
   final String messageId;
   final PluginMessagePartType type;
@@ -1081,8 +1077,7 @@ class _TextPartAccumulator {
 
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
-class _LiveTool {
-  _LiveTool({
+class _LiveTool({
     required this.tool,
     required this.title,
     required this.status,
@@ -1091,8 +1086,7 @@ class _LiveTool {
     required this.diffEmitted,
     required this.hasExplicitKind,
     required this.hasExplicitStatus,
-  });
-
+  }) {
   final String tool;
   final String? title;
   final PluginToolStatus status;

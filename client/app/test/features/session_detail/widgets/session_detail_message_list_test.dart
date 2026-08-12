@@ -8,26 +8,24 @@ import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _SessionDetailMessageListHarness extends StatefulWidget {
+class const _SessionDetailMessageListHarness({
+    super.key,
+    required this.initialMessages,
+    required this.initialStreamingText,
+    this.initialRetryErrorMessage,
+    this.onLoadOlderMessages,
+  }) extends StatefulWidget {
   final List<MessageWithParts> initialMessages;
   final Map<String, String> initialStreamingText;
   final String? initialRetryErrorMessage;
 
   final Future<void> Function()? onLoadOlderMessages;
 
-  const _SessionDetailMessageListHarness({
-    super.key,
-    required this.initialMessages,
-    required this.initialStreamingText,
-    this.initialRetryErrorMessage,
-    this.onLoadOlderMessages,
-  });
-
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
 }
 
-class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageListHarness> {
+class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessageListHarness> {
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
   late String? _retryErrorMessage;

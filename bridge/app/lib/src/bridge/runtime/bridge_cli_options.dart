@@ -4,7 +4,16 @@ import "package:args/args.dart" show ArgParserException, ArgResults;
 import "package:path/path.dart" as path;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
-class BridgeCliOptions {
+class const BridgeCliOptions({
+    required this.cliArgs,
+    required this.relayUrl,
+    required this.authBackendUrl,
+    required this.dataDirectory,
+    required this.debugPort,
+    required this.logLevelName,
+    required this.importPluginIds,
+    required this.controlUrl,
+  }) {
   final List<String> cliArgs;
   final String relayUrl;
   final String authBackendUrl;
@@ -16,17 +25,6 @@ class BridgeCliOptions {
   /// Loopback control-channel URL supplied by a GUI supervisor via
   /// `--control-url`. `null` in standalone mode. See [isSupervised].
   final String? controlUrl;
-
-  const BridgeCliOptions({
-    required this.cliArgs,
-    required this.relayUrl,
-    required this.authBackendUrl,
-    required this.dataDirectory,
-    required this.debugPort,
-    required this.logLevelName,
-    required this.importPluginIds,
-    required this.controlUrl,
-  });
 
   /// Whether the bridge runs under a GUI supervisor (the desktop app). True
   /// exactly when `--control-url` was supplied; in that mode the bridge

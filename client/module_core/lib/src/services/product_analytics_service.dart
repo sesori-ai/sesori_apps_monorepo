@@ -14,7 +14,10 @@ import "product_analytics_generation_event_dispatcher.dart";
 import "product_analytics_preference_service.dart";
 
 @lazySingleton
-class ProductAnalyticsService {
+class ProductAnalyticsService({
+    required AnalyticsRepository analyticsRepository,
+    required ProductAnalyticsPreferenceService preferenceService,
+  }) {
   final AnalyticsRepository _analyticsRepository;
   final ProductAnalyticsPreferenceService _preferenceService;
   final ProductAnalyticsGenerationEventDispatcher _schemaReadiness = ProductAnalyticsGenerationEventDispatcher();
@@ -28,10 +31,7 @@ class ProductAnalyticsService {
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
-  ProductAnalyticsService({
-    required AnalyticsRepository analyticsRepository,
-    required ProductAnalyticsPreferenceService preferenceService,
-  }) : _analyticsRepository = analyticsRepository,
+  this : _analyticsRepository = analyticsRepository,
        _preferenceService = preferenceService;
 
   ValueStream<ProductAnalyticsState> get stateStream => _preferenceService.stateStream;

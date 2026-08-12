@@ -6,11 +6,9 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
 /// A single rendered output line and where it belongs. [isError] lines go to
 /// stderr; the rest go to stdout. The [text] is already styled (color/glyphs
 /// applied or stripped) for its destination, so consumers only write it.
-class RenderedLine {
+class const RenderedLine({required this.isError, required this.text}) {
   final bool isError;
   final String text;
-
-  const RenderedLine({required this.isError, required this.text});
 }
 
 /// Where users are sent to re-run the installer after an update failure. Shared
@@ -42,8 +40,8 @@ void writeRenderedLine(RenderedLine line) {
 /// inject it — the formatter retains only the two resolved booleans, never the
 /// raw [Stdout] or environment. Every builder returns a styled string; the
 /// formatter performs no IO.
-class UpdateOutputFormatter {
-  const UpdateOutputFormatter({required bool color, required bool unicode})
+class const UpdateOutputFormatter({required bool color, required bool unicode}) {
+  this
     : _color = color,
       _unicode = unicode;
 

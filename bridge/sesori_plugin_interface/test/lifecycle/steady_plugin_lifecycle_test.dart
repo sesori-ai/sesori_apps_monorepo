@@ -218,9 +218,7 @@ void main() {
   });
 }
 
-class _SteadyPlugin with SteadyPluginLifecycle {
-  _SteadyPlugin({this.throwOnShutdown = false});
-
+class _SteadyPlugin({this.throwOnShutdown = false}) with SteadyPluginLifecycle {
   final bool throwOnShutdown;
   final _ManualClock clock = _ManualClock(DateTime.utc(2026, 6, 11, 12));
   int onShutdownCalls = 0;
@@ -258,9 +256,7 @@ class _SteadyPlugin with SteadyPluginLifecycle {
   }
 }
 
-class _ManualClock extends ServerClock {
-  _ManualClock(this._now);
-
+class _ManualClock(this._now) extends ServerClock {
   DateTime _now;
   final List<({Duration duration, Completer<void> completer})> _pendingDelays = [];
 

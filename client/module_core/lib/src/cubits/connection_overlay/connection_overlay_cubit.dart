@@ -18,15 +18,15 @@ import "connection_overlay_state.dart";
 /// per park, so a one-shot registration check at park time could be wrong if the
 /// latch resolves (or flips) afterwards; combining the two streams re-derives the
 /// banner whenever either input changes.
-class ConnectionOverlayCubit extends Cubit<ConnectionOverlayState> {
+class ConnectionOverlayCubit(
+    ConnectionService connectionService,
+    RegisteredBridgesService registeredBridgesService,
+  ) extends Cubit<ConnectionOverlayState> {
   final ConnectionService _connectionService;
   late final StreamSubscription<ConnectionOverlayState> _subscription;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  ConnectionOverlayCubit(
-    ConnectionService connectionService,
-    RegisteredBridgesService registeredBridgesService,
-  ) : _connectionService = connectionService,
+  this : _connectionService = connectionService,
       super(_derive(connectionService.currentStatus, registeredBridgesService.isRegistered.value)) {
     _subscription =
         Rx.combineLatest2(

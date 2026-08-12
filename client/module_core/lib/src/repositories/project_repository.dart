@@ -13,16 +13,16 @@ import "../logging/logging.dart";
 import "models/repo_provider.dart";
 
 @lazySingleton
-class ProjectRepository {
+class ProjectRepository({
+    required ProjectApi api,
+    required FilesystemApi filesystemApi,
+    required SessionApi sessionApi,
+  }) {
   final ProjectApi _api;
   final FilesystemApi _filesystemApi;
   final SessionApi _sessionApi;
 
-  ProjectRepository({
-    required ProjectApi api,
-    required FilesystemApi filesystemApi,
-    required SessionApi sessionApi,
-  }) : _api = api,
+  this : _api = api,
        _filesystemApi = filesystemApi,
        _sessionApi = sessionApi;
 
@@ -202,29 +202,25 @@ class ProjectRepository {
   }
 }
 
-class ProjectSessionContext {
-  final String projectId;
-  final String pluginId;
-  final String? sessionTitle;
-
-  const ProjectSessionContext({
+class const ProjectSessionContext({
     required this.projectId,
     required this.pluginId,
     required this.sessionTitle,
-  });
+  }) {
+  final String projectId;
+  final String pluginId;
+  final String? sessionTitle;
 }
 
 /// A project's git context: the configured base branch and the repository
 /// identity of its git remote. [repoSlug] is null when the project has no
 /// usable remote; [repoProvider] is then [RepoProvider.other].
-class ProjectGitContext {
-  final String? baseBranch;
-  final String? repoSlug;
-  final RepoProvider repoProvider;
-
-  const ProjectGitContext({
+class const ProjectGitContext({
     required this.baseBranch,
     required this.repoSlug,
     required this.repoProvider,
-  });
+  }) {
+  final String? baseBranch;
+  final String? repoSlug;
+  final RepoProvider repoProvider;
 }

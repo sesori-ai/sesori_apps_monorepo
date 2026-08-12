@@ -16,10 +16,10 @@ import "models/codex_projected_tool.dart";
 /// app-server id for code-mode commands and file changes. Those operations
 /// execute sequentially within a turn, making the pending same-turn FIFO the
 /// narrow common identity between the streams.
-class CodexToolLifecycleTracker {
-  CodexToolLifecycleTracker({
+class CodexToolLifecycleTracker({
     required CodexRolloutToolMapper rolloutToolMapper,
-  }) : _rolloutToolMapper = rolloutToolMapper;
+  }) {
+  this : _rolloutToolMapper = rolloutToolMapper;
 
   final CodexRolloutToolMapper _rolloutToolMapper;
   final Map<String, _ThreadToolLifecycle> _threads = {};
@@ -755,7 +755,7 @@ class CodexToolLifecycleTracker {
   }
 }
 
-class _ThreadToolLifecycle {
+class _ThreadToolLifecycle() {
   final Map<String, _TrackedTool> tools = {};
   final Map<String, List<String>> pendingShellCallsByTurn = {};
   final Map<String, List<String>> pendingCodeModeShellCallsByTurn = {};
@@ -773,16 +773,14 @@ class _ThreadToolLifecycle {
   int chronologySegment = 0;
 }
 
-class _TrackedTool {
-  _TrackedTool({
+class _TrackedTool({
     required this.id,
     required this.tool,
     required this.title,
     required this.turnId,
     required this.chronologySegment,
     required this.isRolloutCall,
-  });
-
+  }) {
   final String id;
   final String tool;
   String? title;

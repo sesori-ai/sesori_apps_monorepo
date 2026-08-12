@@ -1179,7 +1179,7 @@ void main() {
   });
 }
 
-class _FakeWorktreeService extends WorktreeService {
+class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
   String? lastPreparePreferredBranchName;
@@ -1192,7 +1192,7 @@ class _FakeWorktreeService extends WorktreeService {
   );
   String? resolveHeadCommitResult;
 
-  _FakeWorktreeService({required AppDatabase database})
+  this
     : super(
         worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
@@ -1228,7 +1228,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 }
 
-class _NoopProcessRunner implements ProcessRunner {
+class _NoopProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -1250,12 +1250,12 @@ class _NoopProcessRunner implements ProcessRunner {
   }
 }
 
-class _OpenCodeFakeBridgePlugin extends FakeBridgePlugin {
+class _OpenCodeFakeBridgePlugin() extends FakeBridgePlugin {
   @override
   String get id => "opencode";
 }
 
-class _ThrowingCreateSessionPlugin extends _OpenCodeFakeBridgePlugin {
+class _ThrowingCreateSessionPlugin() extends _OpenCodeFakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
@@ -1270,7 +1270,7 @@ class _ThrowingCreateSessionPlugin extends _OpenCodeFakeBridgePlugin {
   }
 }
 
-class _ThrowingRenameSessionPlugin extends _OpenCodeFakeBridgePlugin {
+class _ThrowingRenameSessionPlugin() extends _OpenCodeFakeBridgePlugin {
   @override
   Future<PluginSession> renameSession({
     required String sessionId,
@@ -1280,12 +1280,12 @@ class _ThrowingRenameSessionPlugin extends _OpenCodeFakeBridgePlugin {
   }
 }
 
-class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
+class _OrderCheckingCommandPlugin({required AppDatabase database}) extends _OpenCodeFakeBridgePlugin {
   final AppDatabase _database;
 
   bool hadStoredRowWhenCommandSent = false;
 
-  _OrderCheckingCommandPlugin({required AppDatabase database}) : _database = database;
+  this : _database = database;
 
   @override
   Future<void> sendCommand({
@@ -1314,7 +1314,7 @@ class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
   }
 }
 
-class _FakeBridgePlugin extends _OpenCodeFakeBridgePlugin {
+class _FakeBridgePlugin() extends _OpenCodeFakeBridgePlugin {
   @override
   Future<void> deleteWorkspace({
     required String projectId,

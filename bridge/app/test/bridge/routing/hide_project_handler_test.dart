@@ -90,10 +90,8 @@ void main() {
   });
 }
 
-class _ProjectMutationService implements ProjectMutationService {
+class _ProjectMutationService({required this.projectRepository}) implements ProjectMutationService {
   final ProjectRepository projectRepository;
-
-  _ProjectMutationService({required this.projectRepository});
 
   @override
   Future<void> hideProject({required String projectId}) {

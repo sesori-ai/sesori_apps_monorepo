@@ -163,14 +163,12 @@ CodexToolOutcomeRepository _repository({required HostJsonStore store}) {
   );
 }
 
-class _FixedClock extends ServerClock {
-  const _FixedClock();
-
+class const _FixedClock() extends ServerClock {
   @override
   DateTime now() => DateTime.utc(2026, 8, 3, 12);
 }
 
-class _MemoryHostJsonStore implements HostJsonStore {
+class _MemoryHostJsonStore() implements HostJsonStore {
   final Map<String, String> files = {};
 
   @override
@@ -210,7 +208,7 @@ class _MemoryHostJsonStore implements HostJsonStore {
   }
 }
 
-class _ReadFailingHostJsonStore extends _MemoryHostJsonStore {
+class _ReadFailingHostJsonStore() extends _MemoryHostJsonStore {
   @override
   Future<String?> read({required String name}) {
     throw const FileSystemException("denied");

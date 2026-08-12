@@ -25,14 +25,14 @@ sealed class FileDiff with _$FileDiff {
 }
 
 @JsonEnum(alwaysCreate: true)
-enum FileDiffStatus {
+enum FileDiffStatus() {
   added,
   deleted,
   modified,
 }
 
 @JsonEnum(alwaysCreate: true)
-enum FileDiffSkipReason {
+enum FileDiffSkipReason() {
   binary,
   tooLarge,
   readError,

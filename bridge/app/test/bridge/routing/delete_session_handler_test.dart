@@ -549,7 +549,7 @@ Future<void> _insertSession({
   );
 }
 
-class _FakeWorktreeService extends WorktreeService {
+class _FakeWorktreeService({required AppDatabase database, required this.operationLog}) extends WorktreeService {
   final List<String> operationLog;
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
@@ -568,7 +568,7 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastDeleteBranchName;
   bool? lastDeleteBranchForce;
 
-  _FakeWorktreeService({required AppDatabase database, required this.operationLog})
+  this
     : super(
         worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
@@ -623,7 +623,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 }
 
-class _FakeBridgePlugin extends FakeBridgePlugin {
+class _FakeBridgePlugin() extends FakeBridgePlugin {
   @override
   Future<void> deleteWorkspace({
     required String projectId,
@@ -631,7 +631,7 @@ class _FakeBridgePlugin extends FakeBridgePlugin {
   }) async {}
 }
 
-class _NoopProcessRunner implements ProcessRunner {
+class _NoopProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -653,10 +653,8 @@ class _NoopProcessRunner implements ProcessRunner {
   }
 }
 
-class _TrackingFakeBridgePlugin extends FakeBridgePlugin {
+class _TrackingFakeBridgePlugin({required this.operationLog}) extends FakeBridgePlugin {
   final List<String> operationLog;
-
-  _TrackingFakeBridgePlugin({required this.operationLog});
 
   @override
   Future<void> deleteSession(String sessionId) async {

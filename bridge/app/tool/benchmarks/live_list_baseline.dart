@@ -42,16 +42,14 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({
+class const _BenchmarkConfiguration({
     required this.warmupCount,
     required this.sampleCount,
     required this.pluginCount,
     required this.projectCount,
     required this.sessionCount,
     required this.unpaginatedSessionCount,
-  });
-
+  }) {
   final int warmupCount;
   final int sampleCount;
   final int pluginCount;
@@ -103,8 +101,8 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _LiveListBenchmark {
-  const _LiveListBenchmark({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
+class const _LiveListBenchmark({required _BenchmarkConfiguration configuration}) {
+  this : _configuration = configuration;
 
   final _BenchmarkConfiguration _configuration;
 
@@ -741,9 +739,7 @@ mixin _PluginCounters {
   }
 }
 
-class _PluginCounterAggregate {
-  const _PluginCounterAggregate({required this.plugins});
-
+class const _PluginCounterAggregate({required this.plugins}) {
   final List<_ThrowingBenchmarkPlugin> plugins;
 
   int get pluginCount => plugins.length;
@@ -757,9 +753,7 @@ class _PluginCounterAggregate {
   }
 }
 
-class _ThrowingBenchmarkPlugin with _PluginCounters implements NativeProjectsPluginApi {
-  _ThrowingBenchmarkPlugin({required this.id});
-
+class _ThrowingBenchmarkPlugin({required this.id}) with _PluginCounters implements NativeProjectsPluginApi {
   @override
   final String id;
 
@@ -794,7 +788,7 @@ class _ThrowingBenchmarkPlugin with _PluginCounters implements NativeProjectsPlu
   }
 }
 
-class _ExistingFilesystemApi implements FilesystemApi {
+class _ExistingFilesystemApi() implements FilesystemApi {
   @override
   bool directoryExists(String path) => true;
 

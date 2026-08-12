@@ -5,10 +5,10 @@ import "repositories/models/claude_transcript_record.dart";
 
 /// Maps Claude's persisted transcript into the same neutral message shapes used
 /// by live stream events.
-final class ClaudeHistoryMapper {
-  const ClaudeHistoryMapper({
+final class const ClaudeHistoryMapper({
     required ClaudeContentMapper content,
-  }) : _content = content;
+  }) {
+  this : _content = content;
 
   final ClaudeContentMapper _content;
 
@@ -145,19 +145,13 @@ final class ClaudeHistoryMapper {
 bool _skipRecord({required ClaudeTranscriptAttributedRecord record, required String sessionId}) =>
     (record.isSidechain ?? false) || (record.sessionId != null && record.sessionId != sessionId);
 
-sealed class _ClaudeHistoryEntry {
-  const _ClaudeHistoryEntry();
-}
+sealed class const _ClaudeHistoryEntry();
 
-final class _UserHistoryMessage extends _ClaudeHistoryEntry {
-  const _UserHistoryMessage({required this.message});
-
+final class const _UserHistoryMessage({required this.message}) extends _ClaudeHistoryEntry {
   final PluginMessageWithParts message;
 }
 
-final class _AssistantHistoryMessage extends _ClaudeHistoryEntry {
-  _AssistantHistoryMessage({required this.id, required this.timestamp, required this.model});
-
+final class _AssistantHistoryMessage({required this.id, required this.timestamp, required this.model}) extends _ClaudeHistoryEntry {
   final String id;
   final DateTime? timestamp;
   String? model;

@@ -13,13 +13,11 @@ import "../../core/extensions/build_context_x.dart";
 ///
 /// Uses [Cue] entrance animation when motion is not disabled by accessibility
 /// settings. Safe to place inside a [Stack] with [Positioned.fill].
-class NewSessionLoadingOverlay extends StatefulWidget {
-  const NewSessionLoadingOverlay({
+class const NewSessionLoadingOverlay({
     super.key = const Key("new_session_loading_overlay"),
     required this.semanticsLabel,
     required this.messages,
-  });
-
+  }) extends StatefulWidget {
   final String semanticsLabel;
   final List<String> messages;
 
@@ -27,7 +25,7 @@ class NewSessionLoadingOverlay extends StatefulWidget {
   State<NewSessionLoadingOverlay> createState() => _NewSessionLoadingOverlayState();
 }
 
-class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
+class _NewSessionLoadingOverlayState() extends State<NewSessionLoadingOverlay> {
   int _messageIndex = 0;
   Timer? _timer;
 
@@ -111,24 +109,22 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                 color: prego.colors.bgBrandSolid,
               ),
               const SizedBox(height: 24),
-              if (reducedMotion)
-                Text(
-                  message,
-                  key: const Key("new_session_loading_message"),
-                  style: prego.textTheme.textSm.regular.copyWith(
-                    color: prego.colors.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                )
-              else
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position:
-                            Tween<Offset>(
+              reducedMotion
+                  ? Text(
+                      message,
+                      key: const Key("new_session_loading_message"),
+                      style: prego.textTheme.textSm.regular.copyWith(
+                        color: prego.colors.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                  : AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 500),
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
                               begin: const Offset(0, 0.4),
                               end: Offset.zero,
                             ).animate(
@@ -137,19 +133,19 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                                 curve: Curves.easeOutCubic,
                               ),
                             ),
-                        child: child,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Text(
+                        message,
+                        key: ValueKey<String>(message),
+                        style: prego.textTheme.textSm.regular.copyWith(
+                          color: prego.colors.textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    );
-                  },
-                  child: Text(
-                    message,
-                    key: ValueKey<String>(message),
-                    style: prego.textTheme.textSm.regular.copyWith(
-                      color: prego.colors.textPrimary,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
             ],
           ),
         ),

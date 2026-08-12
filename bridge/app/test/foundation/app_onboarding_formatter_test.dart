@@ -119,12 +119,12 @@ bool _expectedDark(QrImage image, {required int row, required int column}) {
   return image.isDark(row, column);
 }
 
-class _FakeStdout implements Stdout {
-  _FakeStdout({
+class _FakeStdout({
     required this.supportsAnsiEscapes,
     int? terminalColumns,
     this.terminalColumnsError,
-  }) : _terminalColumns = terminalColumns;
+  }) implements Stdout {
+  this : _terminalColumns = terminalColumns;
 
   @override
   final bool supportsAnsiEscapes;

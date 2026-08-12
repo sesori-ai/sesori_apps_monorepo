@@ -12,16 +12,14 @@ import "../../api/models/archived_session_file_dto.dart";
 import "models/stored_session.dart";
 
 /// Raised when an audit file was written by a newer bridge than this one.
-class ChatHistoryArchiveVersionException implements Exception {
-  final String sessionId;
-  final int fileVersion;
-  final int supportedVersion;
-
-  ChatHistoryArchiveVersionException({
+class ChatHistoryArchiveVersionException({
     required this.sessionId,
     required this.fileVersion,
     required this.supportedVersion,
-  });
+  }) implements Exception {
+  final String sessionId;
+  final int fileVersion;
+  final int supportedVersion;
 
   @override
   String toString() =>
@@ -45,28 +43,22 @@ typedef StoredAttachmentThumbnail = ({
   AttachmentThumbnailFormat format,
 });
 
-sealed class MessageAttachmentProjection {
-  const MessageAttachmentProjection();
-}
+sealed class const MessageAttachmentProjection();
 
-final class InlineMessageAttachmentProjection extends MessageAttachmentProjection {
-  const InlineMessageAttachmentProjection();
-}
+final class const InlineMessageAttachmentProjection() extends MessageAttachmentProjection;
 
-final class StoredReferenceMessageAttachmentProjection extends MessageAttachmentProjection {
+final class const StoredReferenceMessageAttachmentProjection({required this.bridgeId}) extends MessageAttachmentProjection {
   final String bridgeId;
-
-  const StoredReferenceMessageAttachmentProjection({required this.bridgeId});
 }
 
 /// Owns the stored representation of chat history: database rows, their JSON
 /// payloads, and the attachment spill files those payloads reference.
-class ChatHistoryRepository {
-  ChatHistoryRepository({
+class ChatHistoryRepository({
     required ChatHistoryDao chatHistoryDao,
     required AttachmentSpillStorage attachmentSpillStorage,
     required ArchivedSessionStorage archivedSessionStorage,
-  }) : _chatHistoryDao = chatHistoryDao,
+  }) {
+  this : _chatHistoryDao = chatHistoryDao,
        _attachmentSpillStorage = attachmentSpillStorage,
        _archivedSessionStorage = archivedSessionStorage;
 

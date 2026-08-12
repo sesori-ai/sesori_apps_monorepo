@@ -30,7 +30,7 @@ import "queued_session_submission.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
-enum _SessionRefreshTrigger {
+enum _SessionRefreshTrigger(this.logValue) {
   commandExecuted("command_executed"),
   connectionReconnected("connection_reconnected"),
   lifecycleResumed("lifecycle_resumed"),
@@ -39,15 +39,28 @@ enum _SessionRefreshTrigger {
   queuedEvent("queued_event");
 
   final String logValue;
-
-  _SessionRefreshTrigger(this.logValue);
 }
 
-enum _SessionRefreshAction { observed, ignored, queued, coalesced, started, completed }
+enum _SessionRefreshAction() { observed, ignored, queued, coalesced, started, completed }
 
-enum _SessionRefreshResult { applied, failed, waitingForConnection, staleConnection, closed }
+enum _SessionRefreshResult() { applied, failed, waitingForConnection, staleConnection, closed }
 
-class SessionDetailCubit extends Cubit<SessionDetailState> {
+class SessionDetailCubit(
+    ConnectionService connectionService, {
+    required SessionDetailLoadService loadService,
+    required SessionRepository promptDispatcher,
+    required PermissionRepository permissionRepository,
+    required SessionViewingService sessionViewingService,
+    required ProjectViewingService projectViewingService,
+    required LifecycleSource lifecycleSource,
+    required ComposerDraftRepository composerDraftRepository,
+    required ProductAnalyticsService productAnalyticsService,
+    required String sessionId,
+    required String projectId,
+    required NotificationCanceller notificationCanceller,
+    required FailureReporter failureReporter,
+    this.eventRefreshMinInterval = const Duration(seconds: 5),
+  }) extends Cubit<SessionDetailState> {
   final SessionDetailLoadService _loadService;
 
   /// Bumped whenever the transcript is replaced wholesale (a refresh or
@@ -127,22 +140,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Stream<SesoriPermissionAsked> get permissionStream => _permissionStream.stream;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  SessionDetailCubit(
-    ConnectionService connectionService, {
-    required SessionDetailLoadService loadService,
-    required SessionRepository promptDispatcher,
-    required PermissionRepository permissionRepository,
-    required SessionViewingService sessionViewingService,
-    required ProjectViewingService projectViewingService,
-    required LifecycleSource lifecycleSource,
-    required ComposerDraftRepository composerDraftRepository,
-    required ProductAnalyticsService productAnalyticsService,
-    required String sessionId,
-    required String projectId,
-    required NotificationCanceller notificationCanceller,
-    required FailureReporter failureReporter,
-    this.eventRefreshMinInterval = const Duration(seconds: 5),
-  }) : _loadService = loadService,
+  this : _loadService = loadService,
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,

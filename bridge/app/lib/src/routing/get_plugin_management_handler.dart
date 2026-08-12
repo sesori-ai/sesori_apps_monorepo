@@ -3,8 +3,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
-class GetPluginManagementHandler extends GetRequestHandler<PluginManagementResponse> {
-  GetPluginManagementHandler({required PluginLifecycleService lifecycleService})
+class GetPluginManagementHandler({required PluginLifecycleService lifecycleService}) extends GetRequestHandler<PluginManagementResponse> {
+  this
     : _lifecycleService = lifecycleService,
       super("/plugin/management");
 

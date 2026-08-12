@@ -7,13 +7,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "process_runner.dart";
 
 /// Abstracts platform checks so they can be mocked in tests.
-abstract class PlatformChecker {
+abstract class PlatformChecker() {
   bool get isMacOS;
   bool get isWindows;
   bool get isLinux;
 }
 
-class DefaultPlatformChecker implements PlatformChecker {
+class DefaultPlatformChecker() implements PlatformChecker {
   @override
   bool get isMacOS => Platform.isMacOS;
 
@@ -26,17 +26,17 @@ class DefaultPlatformChecker implements PlatformChecker {
 
 /// Detects whether the current device is a laptop (as opposed to a desktop
 /// or server). Used to show platform-specific wake-lock limitations.
-class DeviceTypeDetector {
+class DeviceTypeDetector({
+    required ProcessRunner processRunner,
+    required PlatformChecker platformChecker,
+    @visibleForTesting String linuxPowerSupplyPath = "/sys/class/power_supply/",
+  }) {
   final ProcessRunner _processRunner;
   final PlatformChecker _platformChecker;
   final String _linuxPowerSupplyPath;
   Future<bool>? _isLaptop;
 
-  DeviceTypeDetector({
-    required ProcessRunner processRunner,
-    required PlatformChecker platformChecker,
-    @visibleForTesting String linuxPowerSupplyPath = "/sys/class/power_supply/",
-  }) : _processRunner = processRunner,
+  this : _processRunner = processRunner,
        _platformChecker = platformChecker,
        _linuxPowerSupplyPath = linuxPowerSupplyPath;
 

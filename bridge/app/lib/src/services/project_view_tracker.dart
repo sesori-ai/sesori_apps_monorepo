@@ -1,20 +1,20 @@
 import "dart:async";
 
 /// An immutable aggregate change to the projects currently viewed by phones.
-final class ProjectViewChange {
+final class ProjectViewChange({
+    required Set<String> activeProjectIds,
+    required Set<String> newlyAddedProjectIds,
+  }) {
   final Set<String> activeProjectIds;
   final Set<String> newlyAddedProjectIds;
 
-  ProjectViewChange({
-    required Set<String> activeProjectIds,
-    required Set<String> newlyAddedProjectIds,
-  }) : activeProjectIds = Set<String>.unmodifiable(activeProjectIds),
+  this : activeProjectIds = Set<String>.unmodifiable(activeProjectIds),
        newlyAddedProjectIds = Set<String>.unmodifiable(newlyAddedProjectIds);
 }
 
 /// Tracks one full-state project-view declaration per relay connection and
 /// publishes only changes to their aggregate union.
-class ProjectViewTracker {
+class ProjectViewTracker() {
   final Map<int, String> _viewedByConnection = <int, String>{};
   final Map<String, int> _viewerCountByProject = <String, int>{};
   final StreamController<ProjectViewChange> _changes = StreamController<ProjectViewChange>.broadcast(sync: true);

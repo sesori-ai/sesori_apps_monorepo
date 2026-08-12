@@ -40,9 +40,7 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({required this.warmupCount, required this.sampleCount});
-
+class const _BenchmarkConfiguration({required this.warmupCount, required this.sampleCount}) {
   final int warmupCount;
   final int sampleCount;
 
@@ -63,8 +61,8 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _EventProjectionBenchmark {
-  const _EventProjectionBenchmark({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
+class const _EventProjectionBenchmark({required _BenchmarkConfiguration configuration}) {
+  this : _configuration = configuration;
 
   final _BenchmarkConfiguration _configuration;
 
@@ -402,7 +400,7 @@ class _EventProjectionBenchmark {
   }
 }
 
-class _BenchmarkPlugin implements NativeProjectsPluginApi {
+class _BenchmarkPlugin() implements NativeProjectsPluginApi {
   @override
   String get id => _pluginId;
 
@@ -416,7 +414,7 @@ class _BenchmarkPlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _BenchmarkFailureReporter implements FailureReporter {
+class _BenchmarkFailureReporter() implements FailureReporter {
   @override
   void log({required String message}) {}
 

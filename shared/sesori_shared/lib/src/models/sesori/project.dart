@@ -79,7 +79,7 @@ sealed class ProjectPathRequest with _$ProjectPathRequest {
 }
 
 @JsonEnum(fieldRename: FieldRename.snake)
-enum OpenProjectGitAction {
+enum OpenProjectGitAction() {
   promptIfNeeded,
   initializeGit,
   openWithoutGit,

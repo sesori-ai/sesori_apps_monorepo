@@ -9,17 +9,17 @@ import "../../services/notification_registration_service.dart";
 import "../../services/product_analytics_service.dart";
 import "settings_state.dart";
 
-class SettingsCubit extends Cubit<SettingsState> {
+class SettingsCubit({
+    required AuthSession authSession,
+    required NotificationRegistrationService notificationRegistrationService,
+    required ProductAnalyticsService productAnalyticsService,
+  }) extends Cubit<SettingsState> {
   final AuthSession _authSession;
   final NotificationRegistrationService _notificationRegistrationService;
   final ProductAnalyticsService _productAnalyticsService;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  SettingsCubit({
-    required AuthSession authSession,
-    required NotificationRegistrationService notificationRegistrationService,
-    required ProductAnalyticsService productAnalyticsService,
-  }) : _authSession = authSession,
+  this : _authSession = authSession,
        _notificationRegistrationService = notificationRegistrationService,
        _productAnalyticsService = productAnalyticsService,
        super(SettingsState(account: _accountFrom(authSession.currentState))) {

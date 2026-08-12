@@ -5,10 +5,10 @@ import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/platform/analytics_client.dart";
 
 @lazySingleton
-class AnalyticsApi {
+class AnalyticsApi({required AnalyticsClient client}) {
   final AnalyticsClient _client;
 
-  AnalyticsApi({required AnalyticsClient client}) : _client = client;
+  this : _client = client;
 
   Future<void> logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey}) {
     return _client.logProductEvent(envelope: envelope, userKey: userKey);

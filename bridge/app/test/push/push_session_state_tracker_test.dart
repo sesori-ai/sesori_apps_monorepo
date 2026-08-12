@@ -1662,10 +1662,10 @@ void main() {
   });
 }
 
-class _FakeClock {
+class _FakeClock({required DateTime initial}) {
   DateTime _current;
 
-  _FakeClock({required DateTime initial}) : _current = initial;
+  this : _current = initial;
 
   DateTime now() {
     return _current;

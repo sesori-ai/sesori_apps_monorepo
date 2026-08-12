@@ -3,12 +3,12 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "codex_account_dto.freezed.dart";
 part "codex_account_dto.g.dart";
 
-enum CodexAccountLoginType {
+enum CodexAccountLoginType() {
   @JsonValue("chatgptDeviceCode")
   chatgptDeviceCode,
 }
 
-enum CodexAccountLoginCancelStatus {
+enum CodexAccountLoginCancelStatus() {
   @JsonValue("canceled")
   canceled,
   @JsonValue("notFound")

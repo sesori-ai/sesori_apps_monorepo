@@ -24,18 +24,18 @@ import "composer_options_accordion.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
-enum _VoiceState { idle, recording, transcribing }
+enum _VoiceState() { idle, recording, transcribing }
 
-enum _PasteImageResult { noImage, handled, stale }
+enum _PasteImageResult() { noImage, handled, stale }
 
-final class _ComposerPasteAction extends Action<PasteTextIntent> {
+final class _ComposerPasteAction({
+    required Future<_PasteImageResult> Function() pasteImage,
+    required TextEditingController controller,
+  }) extends Action<PasteTextIntent> {
   final Future<_PasteImageResult> Function() _pasteImage;
   final TextEditingController _controller;
 
-  _ComposerPasteAction({
-    required Future<_PasteImageResult> Function() pasteImage,
-    required TextEditingController controller,
-  }) : _pasteImage = pasteImage,
+  this : _pasteImage = pasteImage,
        _controller = controller;
 
   @override
@@ -88,7 +88,26 @@ typedef PromptSubmitCallback =
       required List<ComposerAttachment> attachments,
     });
 
-class PromptInput extends StatefulWidget {
+class const PromptInput({
+    super.key,
+    required this.isBusy,
+    required this.hasMessages,
+    required this.onSend,
+    required this.onVoiceTranscriptionCompleted,
+    required this.onDraftChanged,
+    required this.onDraftCleared,
+    required this.onAbort,
+    required this.surfaceStyleController,
+    required this.composerHeader,
+    required this.availableCommands,
+    required this.stagedCommand,
+    required this.onCommandSelected,
+    required this.onCommandCleared,
+    required this.attachmentsSupported,
+    required this.draftIdentity,
+    required this.initialDraft,
+    this.header,
+  }) extends StatefulWidget {
   final bool isBusy;
 
   /// Whether the session already has (or has queued) messages. Drives the
@@ -119,32 +138,11 @@ class PromptInput extends StatefulWidget {
   final String draftIdentity;
   final ComposerDraft initialDraft;
 
-  const PromptInput({
-    super.key,
-    required this.isBusy,
-    required this.hasMessages,
-    required this.onSend,
-    required this.onVoiceTranscriptionCompleted,
-    required this.onDraftChanged,
-    required this.onDraftCleared,
-    required this.onAbort,
-    required this.surfaceStyleController,
-    required this.composerHeader,
-    required this.availableCommands,
-    required this.stagedCommand,
-    required this.onCommandSelected,
-    required this.onCommandCleared,
-    required this.attachmentsSupported,
-    required this.draftIdentity,
-    required this.initialDraft,
-    this.header,
-  });
-
   @override
   State<PromptInput> createState() => _PromptInputState();
 }
 
-class _PromptInputState extends State<PromptInput> {
+class _PromptInputState() extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   static const _successFeedbackPulseDelay = Duration(milliseconds: 100);

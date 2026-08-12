@@ -6,15 +6,13 @@ import "../../core/routing/app_router.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_scaffold.dart";
 
-class SessionListScreen extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-
-  const SessionListScreen({
+class const SessionListScreen({
     super.key,
     required this.projectId,
     this.projectName,
-  });
+  }) extends StatelessWidget {
+  final String projectId;
+  final String? projectName;
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +23,9 @@ class SessionListScreen extends StatelessWidget {
   }
 }
 
-class _SessionListBody extends StatelessWidget {
+class const _SessionListBody({required this.projectId, this.projectName}) extends StatelessWidget {
   final String projectId;
   final String? projectName;
-
-  const _SessionListBody({required this.projectId, this.projectName});
 
   @override
   Widget build(BuildContext context) {

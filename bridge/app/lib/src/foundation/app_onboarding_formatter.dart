@@ -4,8 +4,8 @@ import "package:qr/qr.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show TerminalColorValidator, TerminalGlyphValidator;
 
-class AppOnboardingFormatter {
-  AppOnboardingFormatter({required Stdout out, required Map<String, String> environment})
+class AppOnboardingFormatter({required Stdout out, required Map<String, String> environment}) {
+  this
     : _out = out,
       _environment = environment;
 

@@ -7,18 +7,18 @@ import "../models/cursor_catalog_models.dart";
 import "../repositories/cursor_catalog_repository.dart";
 import "../trackers/cursor_catalog_tracker.dart";
 
-enum _MissingCommandSnapshotPolicy { retain, invalidate }
+enum _MissingCommandSnapshotPolicy() { retain, invalidate }
 
 /// Coordinates bounded, isolated Cursor catalog discovery.
-class CursorCatalogService {
-  CursorCatalogService({
+class CursorCatalogService({
     required CursorCatalogRepository repository,
     required CursorCatalogTracker tracker,
     required AcpCommandTracker commandTracker,
     required AcpCommandTracker stagedCommandTracker,
     required Duration totalTimeout,
     required int maxCandidates,
-  }) : _repository = repository,
+  }) {
+  this : _repository = repository,
        _tracker = tracker,
        _commandTracker = commandTracker,
        _stagedCommandTracker = stagedCommandTracker,

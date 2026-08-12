@@ -3,39 +3,31 @@ import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmen
 
 import "../mappers/acp_content_mapper.dart";
 
-sealed class AcpContentMutation {
-  const AcpContentMutation({required this.partIdSuffix});
-
+sealed class const AcpContentMutation({required this.partIdSuffix}) {
   final String partIdSuffix;
 }
 
-final class AcpTextDeltaMutation extends AcpContentMutation {
-  const AcpTextDeltaMutation({
+final class const AcpTextDeltaMutation({
     required super.partIdSuffix,
     required this.delta,
-  });
-
+  }) extends AcpContentMutation {
   final String delta;
 }
 
-final class AcpImageMutation extends AcpContentMutation {
-  const AcpImageMutation({
+final class const AcpImageMutation({
     required super.partIdSuffix,
     required this.attachment,
-  });
-
+  }) extends AcpContentMutation {
   final PluginMessageAttachment attachment;
 }
 
-final class AcpContentSnapshot {
-  const AcpContentSnapshot({
+final class const AcpContentSnapshot({
     required this.textPartCount,
     required this.activeTextPartIdSuffix,
     required this.imageCandidateCount,
     required this.decodedImageBytes,
     required this.composition,
-  });
-
+  }) {
   final int textPartCount;
   final String? activeTextPartIdSuffix;
   final int imageCandidateCount;
@@ -43,7 +35,7 @@ final class AcpContentSnapshot {
   final AcpContentComposition composition;
 }
 
-enum AcpContentComposition {
+enum AcpContentComposition() {
   empty,
   textOnly,
   mixed,
@@ -51,7 +43,7 @@ enum AcpContentComposition {
 
 /// Owns ordered text/image segmentation and bounded image budgets for one
 /// logical ACP assistant message.
-final class AcpContentTracker {
+final class AcpContentTracker() {
   static const int _maxImageCandidates = 4;
 
   final Set<_AcpContentWarning> _warned = {};
@@ -165,7 +157,7 @@ final class AcpContentTracker {
   }
 }
 
-enum _AcpContentWarning {
+enum _AcpContentWarning() {
   invalid,
   unsupported,
   oversized,

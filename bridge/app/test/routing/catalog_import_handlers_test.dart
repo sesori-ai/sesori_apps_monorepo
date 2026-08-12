@@ -107,14 +107,12 @@ void main() {
   });
 }
 
-class _HandlerCatalogImportRepository implements CatalogImportRepository {
+class _HandlerCatalogImportRepository({this.release}) implements CatalogImportRepository {
   @override
   Stream<List<SessionBackendActivity>> get backendActivity => const Stream.empty();
 
   @override
   Future<void> dispose() async {}
-
-  _HandlerCatalogImportRepository({this.release});
 
   final Completer<void>? release;
   final Completer<void> started = Completer<void>();

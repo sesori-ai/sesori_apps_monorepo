@@ -4,7 +4,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "../../theme/prego_theme.dart";
 
 /// Size variants for [PregoButtonsIconGlass].
-enum PregoButtonsIconGlassSize {
+enum PregoButtonsIconGlassSize() {
   /// 32×32 circle — default icon 20px. Matches the Figma app-bar / badge size.
   xs,
 
@@ -41,8 +41,7 @@ extension PregoButtonsIconGlassSizeDiameter on PregoButtonsIconGlassSize {
 ///   onPressed: () => openSettings(),
 /// )
 /// ```
-class PregoButtonsIconGlass extends StatelessWidget {
-  const PregoButtonsIconGlass({
+class const PregoButtonsIconGlass({
     super.key,
     required this.icon,
     required this.onPressed,
@@ -50,8 +49,7 @@ class PregoButtonsIconGlass extends StatelessWidget {
     this.iconSize,
     this.iconColor,
     this.semanticLabel,
-  });
-
+  }) extends StatelessWidget {
   /// The glyph rendered at the centre of the button.
   final IconData icon;
 

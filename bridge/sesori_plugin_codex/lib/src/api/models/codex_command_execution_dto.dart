@@ -3,13 +3,13 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "codex_command_execution_dto.freezed.dart";
 part "codex_command_execution_dto.g.dart";
 
-enum CodexCommandExecutionItemType {
+enum CodexCommandExecutionItemType() {
   @JsonValue("commandExecution")
   commandExecution,
   unknown,
 }
 
-enum CodexCommandExecutionStatus {
+enum CodexCommandExecutionStatus() {
   inProgress,
   completed,
   failed,

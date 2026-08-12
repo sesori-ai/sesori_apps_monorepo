@@ -312,7 +312,7 @@ void main() {
   });
 }
 
-class _FakeProcessRepository implements ProcessRepository {
+class _FakeProcessRepository() implements ProcessRepository {
   @override
   Future<int> startDetached({
     required String executable,
@@ -345,9 +345,7 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 }
 
-class _RacingRuntimeFileApi extends RuntimeFileApi {
-  _RacingRuntimeFileApi({required super.runtimeDirectory});
-
+class _RacingRuntimeFileApi({required super.runtimeDirectory}) extends RuntimeFileApi {
   @override
   Future<bool> acquireStartupLock({required String contents}) async {
     return false;

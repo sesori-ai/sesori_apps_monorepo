@@ -5,11 +5,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../bridge/runtime/plugin_runtime.dart";
 import "../bridge/services/session_options_service.dart";
 
-class SessionOptionsChangedRefreshListener {
-  SessionOptionsChangedRefreshListener({
+class SessionOptionsChangedRefreshListener({
     required PluginRuntime runtime,
     required SessionOptionsService service,
-  }) : _runtime = runtime,
+  }) {
+  this : _runtime = runtime,
        _service = service;
 
   final PluginRuntime _runtime;

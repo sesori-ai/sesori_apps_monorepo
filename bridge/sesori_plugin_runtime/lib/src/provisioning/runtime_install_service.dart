@@ -10,9 +10,7 @@ import "runtime_manifest.dart";
 /// Raised when a managed runtime cannot be installed (download, checksum,
 /// extraction, or placement failure). The provision service maps this to a
 /// non-fatal `ProvisionFailed`.
-class RuntimeInstallException implements Exception {
-  const RuntimeInstallException(this.message);
-
+class const RuntimeInstallException(this.message) implements Exception {
   final String message;
 
   @override
@@ -34,20 +32,20 @@ class RuntimeInstallException implements Exception {
 /// binary lands via atomic rename, and the sentinel is written last — so any
 /// residual race self-heals on the next attempt. Staging paths are fixed and
 /// self-healing.
-class RuntimeInstallService {
+class RuntimeInstallService({
+    required BinaryDownloadClient downloadClient,
+    required ChecksumValidator checksumValidator,
+    required ArchiveExtractor archiveExtractor,
+    required CommandExecutor commandExecutor,
+    required String runtimeId,
+  }) {
   final BinaryDownloadClient _downloadClient;
   final ChecksumValidator _checksumValidator;
   final ArchiveExtractor _archiveExtractor;
   final CommandExecutor _commandExecutor;
   final String _runtimeId;
 
-  RuntimeInstallService({
-    required BinaryDownloadClient downloadClient,
-    required ChecksumValidator checksumValidator,
-    required ArchiveExtractor archiveExtractor,
-    required CommandExecutor commandExecutor,
-    required String runtimeId,
-  }) : _downloadClient = downloadClient,
+  this : _downloadClient = downloadClient,
        _checksumValidator = checksumValidator,
        _archiveExtractor = archiveExtractor,
        _commandExecutor = commandExecutor,

@@ -10,7 +10,7 @@ import "package:sesori_shared/sesori_shared.dart";
 /// can never be answered (the bridge resolves it `nonInteractive` on channel
 /// loss), so the dispatcher clears the tracker on helper disconnect.
 @lazySingleton
-class BridgePromptTracker {
+class BridgePromptTracker() {
   final BehaviorSubject<List<ControlPromptRequest>> _prompts =
       BehaviorSubject.seeded(const <ControlPromptRequest>[]);
 

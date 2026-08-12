@@ -203,9 +203,7 @@ void main() {
   });
 }
 
-class _FakeHostProcessService implements HostProcessService {
-  _FakeHostProcessService(this._outcomes);
-
+class _FakeHostProcessService(this._outcomes) implements HostProcessService {
   final List<Object> _outcomes;
   final List<String> executables = <String>[];
   final List<List<String>> arguments = <List<String>>[];
@@ -250,8 +248,8 @@ class _FakeHostProcessService implements HostProcessService {
   );
 }
 
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required String stdoutText, int? exitCode, Future<int>? exitCodeFuture})
+class _ProbeProcess({required String stdoutText, int? exitCode, Future<int>? exitCodeFuture}) implements SpawnedProcess {
+  this
     : pid = _nextPid++,
       _stdoutBytes = utf8.encode(stdoutText),
       _exitCode = exitCodeFuture ?? Future<int>.value(exitCode!);
@@ -280,7 +278,7 @@ class _ProbeProcess implements SpawnedProcess {
   ProcessIdentity get identity => throw UnimplementedError();
 }
 
-class _AbortOnSecondCheck implements StartAbortSignal {
+class _AbortOnSecondCheck() implements StartAbortSignal {
   int _checks = 0;
 
   @override

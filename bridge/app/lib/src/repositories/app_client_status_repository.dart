@@ -1,26 +1,18 @@
 import "../api/sesori_server_api.dart";
 
-sealed class AppClientStatusResult {
-  const AppClientStatusResult();
-}
+sealed class const AppClientStatusResult();
 
-final class AppClientRegistered extends AppClientStatusResult {
-  const AppClientRegistered();
-}
+final class const AppClientRegistered() extends AppClientStatusResult;
 
-final class AppClientAbsent extends AppClientStatusResult {
-  const AppClientAbsent();
-}
+final class const AppClientAbsent() extends AppClientStatusResult;
 
-final class AppClientStatusUnavailable extends AppClientStatusResult {
-  const AppClientStatusUnavailable({required this.error, required this.stackTrace});
-
+final class const AppClientStatusUnavailable({required this.error, required this.stackTrace}) extends AppClientStatusResult {
   final Object error;
   final StackTrace stackTrace;
 }
 
-class AppClientStatusRepository {
-  AppClientStatusRepository({required SesoriServerApi api}) : _api = api;
+class AppClientStatusRepository({required SesoriServerApi api}) {
+  this : _api = api;
 
   final SesoriServerApi _api;
 

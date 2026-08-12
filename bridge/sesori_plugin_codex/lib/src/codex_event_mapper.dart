@@ -27,15 +27,15 @@ import "repositories/models/codex_thread_record.dart";
 /// so [map] returns a list. An empty list drops the notification — codex
 /// has 50+ notification methods and only a subset has a mobile-facing
 /// representation today.
-class CodexEventMapper {
-  CodexEventMapper({
+class CodexEventMapper({
     required this.pluginId,
     required this.projectCwd,
     required CodexImageAttachmentMapper imageAttachmentMapper,
     required CodexImageBearingItemParser imageBearingItemParser,
     required CodexRolloutToolMapper rolloutToolMapper,
     this.config = const CodexConfigDefaults.empty(),
-  }) : _imageAttachmentMapper = imageAttachmentMapper,
+  }) {
+  this : _imageAttachmentMapper = imageAttachmentMapper,
        _imageBearingItemParser = imageBearingItemParser,
        _rolloutToolMapper = rolloutToolMapper;
 

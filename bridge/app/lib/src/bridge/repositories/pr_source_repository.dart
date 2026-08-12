@@ -7,14 +7,14 @@ import "../api/git_cli_api.dart";
 import "mappers/git_remote_identity_parser.dart";
 import "models/verified_github_login.dart";
 
-class PrSourceRepository {
+class PrSourceRepository({required GhCliApi ghCli, required GitCliApi gitCli}) {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const int _maxConcurrentDirectoryResolutions = 8;
 
   final GhCliApi _ghCli;
   final GitCliApi _gitCli;
 
-  PrSourceRepository({required GhCliApi ghCli, required GitCliApi gitCli}) : _ghCli = ghCli, _gitCli = gitCli;
+  this : _ghCli = ghCli, _gitCli = gitCli;
 
   Future<bool> isGithubCliAvailable() => _ghCli.isAvailable();
 
@@ -247,7 +247,7 @@ class PrSourceRepository {
   }
 }
 
-final class _PullRequestTargetSelection {
+final class _PullRequestTargetSelection({required this.target}) {
   final PullRequestSelectionTarget target;
   GhPullRequestCandidatePage? _terminalInitialPage;
   final List<GhPullRequest> _eligibleCandidates = <GhPullRequest>[];
@@ -257,8 +257,6 @@ final class _PullRequestTargetSelection {
 
   bool isComplete = false;
   GhPullRequest? _selection;
-
-  _PullRequestTargetSelection({required this.target});
 
   PullRequestTargetSelection get targetSelection {
     final pullRequest = _selection;
@@ -367,16 +365,14 @@ final class _PullRequestTargetSelection {
   }
 }
 
-final class _PendingPullRequestCursor {
-  final _PullRequestTargetSelection state;
-  final GhPullRequestStateGroup stateGroup;
-  final String cursor;
-
-  const _PendingPullRequestCursor({
+final class const _PendingPullRequestCursor({
     required this.state,
     required this.stateGroup,
     required this.cursor,
-  });
+  }) {
+  final _PullRequestTargetSelection state;
+  final GhPullRequestStateGroup stateGroup;
+  final String cursor;
 
   GhPullRequestCursorRequest get apiRequest => GhPullRequestCursorRequest(
     target: GhPullRequestTarget(

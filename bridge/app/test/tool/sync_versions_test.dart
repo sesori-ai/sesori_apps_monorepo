@@ -25,9 +25,7 @@ Future<void> _writeJsonFile({
   await File(path).writeAsString('$formatted\n');
 }
 
-class _FixtureApp {
-  _FixtureApp({required this.rootPath});
-
+class _FixtureApp({required this.rootPath}) {
   final String rootPath;
 
   String get clientPubspecPath => p.join(rootPath, 'client', 'app', 'pubspec.yaml');

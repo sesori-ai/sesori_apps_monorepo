@@ -10,16 +10,16 @@ import "request_handler.dart";
 /// Handles `GET /sessions` — returns sessions for a given project.
 ///
 /// Reads the durable catalog and applies bridge-owned enrichment.
-class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
+class GetSessionsHandler({
+    required SessionRepository sessionRepository,
+    required PrSyncService prSyncService,
+    Duration prRefreshTimeout = const Duration(seconds: 5),
+  }) extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final Duration _prRefreshTimeout;
 
-  GetSessionsHandler({
-    required SessionRepository sessionRepository,
-    required PrSyncService prSyncService,
-    Duration prRefreshTimeout = const Duration(seconds: 5),
-  }) : _sessionRepository = sessionRepository,
+  this : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _prRefreshTimeout = prRefreshTimeout,
        super(

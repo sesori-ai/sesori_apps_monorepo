@@ -4,7 +4,13 @@ import "default_model_selector.dart";
 
 /// A single selectable model row in the model picker, precomputed so the
 /// sheet can render without any per-frame sorting or grouping.
-class ModelPickerModelEntry {
+class const ModelPickerModelEntry({
+    required this.modelID,
+    required this.displayName,
+    required this.family,
+    required this.searchText,
+    required this.visibleByDefault,
+  }) {
   /// Model identifier reported back when the entry is selected.
   final String modelID;
 
@@ -21,30 +27,20 @@ class ModelPickerModelEntry {
   /// Whether the entry is shown when the search query is empty — true for
   /// each family's representative and for the currently selected model.
   final bool visibleByDefault;
-
-  const ModelPickerModelEntry({
-    required this.modelID,
-    required this.displayName,
-    required this.family,
-    required this.searchText,
-    required this.visibleByDefault,
-  });
 }
 
 /// One provider's section in the model picker.
-class ModelPickerSection {
+class const ModelPickerSection({
+    required this.providerID,
+    required this.providerName,
+    required this.models,
+  }) {
   final String providerID;
   final String providerName;
 
   /// Available models sorted by release date (newest first, undated last),
   /// ties broken by name.
   final List<ModelPickerModelEntry> models;
-
-  const ModelPickerSection({
-    required this.providerID,
-    required this.providerName,
-    required this.models,
-  });
 }
 
 /// Shapes raw [ProviderInfo] catalogs into the sections displayed by the
@@ -61,9 +57,7 @@ class ModelPickerSection {
 /// used by the cubits that pick the initial model when no prior selection
 /// exists — so the picker's "default per family" matches the cubit's
 /// "default for the whole provider".
-class ModelPickerSectionBuilder {
-  const ModelPickerSectionBuilder();
-
+class const ModelPickerSectionBuilder() {
   static const _defaultModelSelector = DefaultModelSelector();
 
   /// Builds the provider sections for the given catalog.

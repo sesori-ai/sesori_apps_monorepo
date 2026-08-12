@@ -9,7 +9,7 @@ import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _ReplyCapture {
+class _ReplyCapture() {
   String? requestId;
   List<ReplyAnswer>? answers;
   String? rejectedRequestId;

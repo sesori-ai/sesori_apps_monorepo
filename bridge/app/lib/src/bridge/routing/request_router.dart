@@ -11,12 +11,12 @@ import "routed_request.dart";
 /// Error handling is centralised here: any exception thrown by a handler is
 /// converted to a `502` response so callers never have to deal with routing
 /// failures.
-class RequestRouter {
+class RequestRouter({
+    required List<RequestHandlerBase> handlers,
+  }) {
   final List<RequestHandlerBase> _handlers;
 
-  RequestRouter({
-    required List<RequestHandlerBase> handlers,
-  }) : _handlers = List<RequestHandlerBase>.unmodifiable(handlers);
+  this : _handlers = List<RequestHandlerBase>.unmodifiable(handlers);
 
   /// Selects a route synchronously and returns its asynchronous completion.
   PendingRoutedRequest route({required RelayRequest request}) {

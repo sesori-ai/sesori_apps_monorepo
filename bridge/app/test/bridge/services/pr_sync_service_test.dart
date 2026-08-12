@@ -685,7 +685,11 @@ Future<void> _waitFor(bool Function() condition) async {
   }
 }
 
-final class _FakePrSource implements PrSourceRepository {
+final class _FakePrSource({
+    Map<String, PullRequestDirectoryTarget> targetsByDirectory = const {},
+    this.resolutionResults = const [],
+    this.selectionBlocks = const [],
+  }) implements PrSourceRepository {
   final List<Map<String, PullRequestDirectoryTarget>> resolutionResults;
   final List<Completer<void>> selectionBlocks;
   final List<List<String>> resolveCalls = <List<String>>[];
@@ -701,11 +705,7 @@ final class _FakePrSource implements PrSourceRepository {
   int _activeSelections = 0;
   int maxConcurrentSelections = 0;
 
-  _FakePrSource({
-    Map<String, PullRequestDirectoryTarget> targetsByDirectory = const {},
-    this.resolutionResults = const [],
-    this.selectionBlocks = const [],
-  }) : targetsByDirectory = Map<String, PullRequestDirectoryTarget>.from(targetsByDirectory);
+  this : targetsByDirectory = Map<String, PullRequestDirectoryTarget>.from(targetsByDirectory);
 
   @override
   Future<Map<String, PullRequestDirectoryTarget>> resolvePullRequestTargets({
@@ -764,7 +764,7 @@ final class _FakePrSource implements PrSourceRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakePullRequestRepository implements PullRequestRepository {
+final class _FakePullRequestRepository() implements PullRequestRepository {
   Set<String> localChangedProjectIds = const <String>{};
   Set<String> preparedChangedProjectIds = const <String>{};
   final Map<String, PullRequestReplacementOutcome> replacementOutcomes = <String, PullRequestReplacementOutcome>{};
@@ -823,10 +823,8 @@ final class _FakePullRequestRepository implements PullRequestRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakeSessionRepository implements SessionRepository {
+final class _FakeSessionRepository({required this.sessionsByProject}) implements SessionRepository {
   final Map<String, List<StoredSession>> sessionsByProject;
-
-  _FakeSessionRepository({required this.sessionsByProject});
 
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {

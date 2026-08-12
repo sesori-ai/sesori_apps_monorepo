@@ -5,37 +5,19 @@ typedef PullRequestSelectionTarget = ({
   String branchName,
 });
 
-sealed class PullRequestSelectionOutcome {
-  const PullRequestSelectionOutcome();
-}
+sealed class const PullRequestSelectionOutcome();
 
-final class PullRequestSelectionCompleted extends PullRequestSelectionOutcome {
+final class const PullRequestSelectionCompleted({required this.selections}) extends PullRequestSelectionOutcome {
   final List<PullRequestTargetSelection> selections;
-
-  const PullRequestSelectionCompleted({required this.selections});
 }
 
-final class PullRequestSelectionIdentityChanged extends PullRequestSelectionOutcome {
-  const PullRequestSelectionIdentityChanged();
-}
+final class const PullRequestSelectionIdentityChanged() extends PullRequestSelectionOutcome;
 
-sealed class PullRequestTargetSelection {
+sealed class const PullRequestTargetSelection({required this.target}) {
   final PullRequestSelectionTarget target;
-
-  const PullRequestTargetSelection({required this.target});
 }
 
-final class PullRequestTargetSelected extends PullRequestTargetSelection {
-  final int number;
-  final String url;
-  final String title;
-  final DateTime createdAt;
-  final PrState state;
-  final PrMergeableStatus mergeableStatus;
-  final PrReviewDecision reviewDecision;
-  final PrCheckStatus checkStatus;
-
-  const PullRequestTargetSelected({
+final class const PullRequestTargetSelected({
     required super.target,
     required this.number,
     required this.url,
@@ -45,9 +27,15 @@ final class PullRequestTargetSelected extends PullRequestTargetSelection {
     required this.mergeableStatus,
     required this.reviewDecision,
     required this.checkStatus,
-  });
+  }) extends PullRequestTargetSelection {
+  final int number;
+  final String url;
+  final String title;
+  final DateTime createdAt;
+  final PrState state;
+  final PrMergeableStatus mergeableStatus;
+  final PrReviewDecision reviewDecision;
+  final PrCheckStatus checkStatus;
 }
 
-final class PullRequestTargetUnmatched extends PullRequestTargetSelection {
-  const PullRequestTargetUnmatched({required super.target});
-}
+final class const PullRequestTargetUnmatched({required super.target}) extends PullRequestTargetSelection;

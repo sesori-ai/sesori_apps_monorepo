@@ -1219,7 +1219,14 @@ void main() {
   });
 }
 
-class _FakeApi implements OpenCodeApi {
+class _FakeApi({
+    List<Session>? sessions,
+    List<GlobalSession>? globalSessions,
+    List<Project>? projects,
+    List<Command>? commands,
+    Session? createdSession,
+    Project? currentProject,
+  }) implements OpenCodeApi {
   final List<Session> _sessions;
   final List<GlobalSession> _globalSessions;
   final List<Project> _projects;
@@ -1241,14 +1248,7 @@ class _FakeApi implements OpenCodeApi {
   String? lastGetProjectDirectory;
   int updateProjectCalls = 0;
 
-  _FakeApi({
-    List<Session>? sessions,
-    List<GlobalSession>? globalSessions,
-    List<Project>? projects,
-    List<Command>? commands,
-    Session? createdSession,
-    Project? currentProject,
-  }) : _sessions = sessions ?? [],
+  this : _sessions = sessions ?? [],
        _globalSessions = globalSessions ?? [],
        _projects = projects ?? [],
        _commands = commands ?? [],

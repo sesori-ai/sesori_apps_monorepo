@@ -11,9 +11,7 @@ import "syntax_highlight.dart";
 /// `syntax_highlight.dart`; the classes stay separate because the diff path
 /// has a different (line-by-line, pre-computed) usage contract and its own
 /// brittle init-order test.
-class CodeHighlighter {
-  CodeHighlighter._();
-
+class CodeHighlighter._() {
   /// Common fence aliases mapped to a registered language key.
   static const Map<String, String> _aliases = <String, String>{
     "js": "javascript",

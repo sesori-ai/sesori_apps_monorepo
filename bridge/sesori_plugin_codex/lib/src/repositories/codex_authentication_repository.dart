@@ -3,22 +3,18 @@ import "dart:async";
 import "../api/codex_app_server_api.dart";
 import "../api/models/codex_account_dto.dart";
 
-final class CodexAuthenticationChallenge {
-  const CodexAuthenticationChallenge({
+final class const CodexAuthenticationChallenge({
     required this.verificationUri,
     required this.userCode,
-  });
-
+  }) {
   final Uri verificationUri;
   final String userCode;
 }
 
-final class CodexAuthenticationException implements Exception {
-  const CodexAuthenticationException({
+final class const CodexAuthenticationException({
     required this.message,
     required this.cause,
-  });
-
+  }) implements Exception {
   final String message;
   final Object? cause;
 
@@ -27,11 +23,11 @@ final class CodexAuthenticationException implements Exception {
 }
 
 /// Owns Codex's private login identifier and completion correlation.
-class CodexAuthenticationRepository {
-  CodexAuthenticationRepository({
+class CodexAuthenticationRepository({
     required CodexAppServerApi appServerApi,
     required Duration requestTimeout,
-  }) : _appServerApi = appServerApi,
+  }) {
+  this : _appServerApi = appServerApi,
        _requestTimeout = requestTimeout;
 
   final CodexAppServerApi _appServerApi;

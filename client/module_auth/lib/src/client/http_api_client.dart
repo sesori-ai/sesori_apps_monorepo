@@ -15,10 +15,10 @@ import "safe_api_client.dart";
 const _textTimeout = Duration(seconds: 15);
 
 @lazySingleton
-class HttpApiClient implements SafeApiClient {
+class HttpApiClient(http.Client client) implements SafeApiClient {
   final http.Client _client;
 
-  HttpApiClient(http.Client client) : _client = client;
+  this : _client = client;
 
   /// GETs a document served as plain text (e.g. markdown) and returns the body
   /// verbatim.
@@ -292,11 +292,9 @@ class HttpApiClient implements SafeApiClient {
   }
 }
 
-final class _JsonResponseParsingException implements Exception {
+final class const _JsonResponseParsingException({required this.message, required this.innerError}) implements Exception {
   final String message;
   final Object innerError;
-
-  const _JsonResponseParsingException({required this.message, required this.innerError});
 
   @override
   String toString() => "$message (innerError: ${innerError.runtimeType.toString()})";

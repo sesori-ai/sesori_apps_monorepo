@@ -4,14 +4,14 @@ part "plugin_agent.freezed.dart";
 
 part "plugin_agent.g.dart";
 
-enum PluginAgentMode {
+enum PluginAgentMode() {
   all,
   primary,
   subagent,
   unknown,
 }
 
-enum PluginAgentVariant {
+enum PluginAgentVariant(this.safeName) {
   none("none"),
   minimal("minimal"),
   low("low"),
@@ -20,7 +20,6 @@ enum PluginAgentVariant {
   xhigh("xhigh")
   ;
 
-  PluginAgentVariant(this.safeName);
   final String safeName;
 
   /// Parses a raw string into a [PluginAgentVariant], or returns `null`

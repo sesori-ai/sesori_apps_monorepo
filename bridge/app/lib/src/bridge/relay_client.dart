@@ -12,27 +12,25 @@ import "../auth/bridge_id_provider.dart";
 
 const String _bridgeRole = "bridge";
 
-class RelayClientMessage {
+class const RelayClientMessage({required this.isText, required this.data}) {
   final bool isText;
   final Uint8List data;
-
-  const RelayClientMessage({required this.isText, required this.data});
 }
 
 /// Opaque handle for one exact relay WebSocket generation.
 ///
 /// Callers can retain and pass the handle back to [RelayClient], but cannot
 /// inspect the underlying socket.
-final class RelayConnection {
-  RelayConnection._({required IOWebSocketChannel channel}) : _channel = channel;
+final class RelayConnection._({required IOWebSocketChannel channel}) {
+  this : _channel = channel;
 
   final IOWebSocketChannel _channel;
   String? _lastAuthedToken;
 }
 
-enum RelaySendOutcome { sent, stale }
+enum RelaySendOutcome() { sent, stale }
 
-enum RelayCloseOutcome { closed, stale }
+enum RelayCloseOutcome() { closed, stale }
 
 /// Live connection state of the relay WebSocket, emitted on
 /// [RelayClient.connectionState].
@@ -41,19 +39,13 @@ enum RelayCloseOutcome { closed, stale }
 /// carries the WebSocket [RelayDisconnected.closeCode] so observers can key on
 /// close semantics (e.g. revoked/replaced) without racing the reconnect loop's
 /// own connection-scoped close-code read.
-sealed class RelayConnectionState {
-  const RelayConnectionState();
-}
+sealed class const RelayConnectionState();
 
 /// A connect attempt is in flight (initial connect or a reconnect).
-final class RelayConnecting extends RelayConnectionState {
-  const RelayConnecting();
-}
+final class const RelayConnecting() extends RelayConnectionState;
 
 /// The relay socket is open and the auth message (if any) has been sent.
-final class RelayConnected extends RelayConnectionState {
-  const RelayConnected();
-}
+final class const RelayConnected() extends RelayConnectionState;
 
 /// The relay socket dropped or a connect attempt failed.
 ///
@@ -63,14 +55,18 @@ final class RelayConnected extends RelayConnectionState {
 /// bridge-replaced close during the relay-deploy rollout window (the relay
 /// sends `1000 + "replaced"` until it emits the dedicated code); it is fragile
 /// and only consulted for that fallback — the close code is authoritative.
-final class RelayDisconnected extends RelayConnectionState {
+final class const RelayDisconnected({required this.closeCode, required this.closeReason}) extends RelayConnectionState {
   final int? closeCode;
   final String? closeReason;
-
-  const RelayDisconnected({required this.closeCode, required this.closeReason});
 }
 
-class RelayClient {
+class RelayClient({
+    required String relayURL,
+    required AccessTokenProvider accessTokenProvider,
+    required BridgeIdProvider bridgeIdProvider,
+    Duration pingInterval = const Duration(seconds: 15),
+    Duration connectTimeout = const Duration(seconds: 15),
+  }) {
   final String _relayURL;
   final AccessTokenProvider _accessTokenProvider;
   final BridgeIdProvider _bridgeIdProvider;
@@ -80,13 +76,7 @@ class RelayClient {
   _RelayConnectionAttempt? _pendingConnection;
   RelayConnection? _connection;
 
-  RelayClient({
-    required String relayURL,
-    required AccessTokenProvider accessTokenProvider,
-    required BridgeIdProvider bridgeIdProvider,
-    Duration pingInterval = const Duration(seconds: 15),
-    Duration connectTimeout = const Duration(seconds: 15),
-  }) : _relayURL = relayURL,
+  this : _relayURL = relayURL,
        _accessTokenProvider = accessTokenProvider,
        _bridgeIdProvider = bridgeIdProvider,
        _pingInterval = pingInterval,
@@ -361,9 +351,7 @@ class RelayClient {
   }
 }
 
-final class _RelayConnectionAttempt {
-  const _RelayConnectionAttempt({required this.channel, required this.httpClient});
-
+final class const _RelayConnectionAttempt({required this.channel, required this.httpClient}) {
   final IOWebSocketChannel channel;
   final HttpClient httpClient;
 }

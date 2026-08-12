@@ -8,21 +8,19 @@ import "subtask_part_widget.dart";
 import "text_part_widget.dart";
 import "tool_part_widget.dart";
 
-class AssistantMessageCard extends StatelessWidget {
-  final String? projectId;
-  final MessageWithParts message;
-  final Map<String, String> streamingText;
-  final List<Session> children;
-  final Map<String, SessionStatus> childStatuses;
-
-  const AssistantMessageCard({
+class const AssistantMessageCard({
     super.key,
     required this.projectId,
     required this.message,
     required this.streamingText,
     required this.children,
     required this.childStatuses,
-  });
+  }) extends StatelessWidget {
+  final String? projectId;
+  final MessageWithParts message;
+  final Map<String, String> streamingText;
+  final List<Session> children;
+  final Map<String, SessionStatus> childStatuses;
 
   @override
   Widget build(BuildContext context) {

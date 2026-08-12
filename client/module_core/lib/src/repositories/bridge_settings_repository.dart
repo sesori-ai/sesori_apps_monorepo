@@ -6,8 +6,8 @@ import "../api/bridge_settings_api.dart";
 import "models/bridge_settings_result.dart";
 
 @lazySingleton
-class BridgeSettingsRepository {
-  BridgeSettingsRepository({required BridgeSettingsApi bridgeSettingsApi}) : _bridgeSettingsApi = bridgeSettingsApi;
+class BridgeSettingsRepository({required BridgeSettingsApi bridgeSettingsApi}) {
+  this : _bridgeSettingsApi = bridgeSettingsApi;
 
   final BridgeSettingsApi _bridgeSettingsApi;
 

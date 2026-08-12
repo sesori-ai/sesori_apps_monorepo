@@ -28,8 +28,7 @@ import '../repositories/process_repository.dart';
 /// dispatcher emits a shutdown request only after the debug response closes or
 /// the relay response is synchronously enqueued. Relay delivery remains
 /// best-effort through the existing graceful close.
-class BridgeRestartService {
-  BridgeRestartService({
+class BridgeRestartService({
     required ProcessRepository processRepository,
     required BridgeRestartCommandBuilder commandBuilder,
     required String binaryPath,
@@ -37,7 +36,8 @@ class BridgeRestartService {
     required int currentPid,
     required bool isSupervised,
     required void Function() onSupervisedRestartRequested,
-  }) : _processRepository = processRepository,
+  }) {
+  this : _processRepository = processRepository,
        _commandBuilder = commandBuilder,
        _binaryPath = binaryPath,
        _cliArgs = cliArgs,

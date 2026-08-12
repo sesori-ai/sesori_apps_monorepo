@@ -10,18 +10,18 @@ Uri _buildUri({required String base, required String path}) {
   return Uri.parse("$b/$path");
 }
 
-class LoginOAuthApi {
+class LoginOAuthApi({
+    required this.authBackendUrl,
+    required http.Client client,
+    required AuthClientType clientType,
+    required DeviceInfo device,
+  }) {
   final String authBackendUrl;
   final http.Client _client;
   final AuthClientType _clientType;
   final DeviceInfo _device;
 
-  LoginOAuthApi({
-    required this.authBackendUrl,
-    required http.Client client,
-    required AuthClientType clientType,
-    required DeviceInfo device,
-  }) : _client = client,
+  this : _client = client,
        _clientType = clientType,
        _device = device;
 

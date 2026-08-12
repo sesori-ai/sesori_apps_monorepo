@@ -20,7 +20,10 @@ import "../repositories/session_view_repository.dart";
 /// globally), so the owning `SessionDetailCubit` re-asserts only after its
 /// post-resume/reconnect refresh has rendered fresh content.
 @lazySingleton
-class SessionViewingService with Disposable {
+class SessionViewingService({
+    required SessionViewRepository viewRepository,
+    required LifecycleSource lifecycleSource,
+  }) with Disposable {
   final SessionViewRepository _viewRepository;
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
 
@@ -37,10 +40,7 @@ class SessionViewingService with Disposable {
   /// errors, so the tail never breaks.
   Future<void> _sendTail = Future<void>.value();
 
-  SessionViewingService({
-    required SessionViewRepository viewRepository,
-    required LifecycleSource lifecycleSource,
-  }) : _viewRepository = viewRepository {
+  this : _viewRepository = viewRepository {
     _lifecycleSubscription = lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged);
   }
 

@@ -8,14 +8,12 @@ import 'update_result.dart';
 /// the in-place swap. On any failure [stagingPath] is `null` and [result]
 /// carries the cause.
 @immutable
-class UpdateInstallResult {
-  final UpdateResult result;
-  final String? stagingPath;
-
-  const UpdateInstallResult({
+class const UpdateInstallResult({
     required this.result,
     required this.stagingPath,
-  });
+  }) {
+  final UpdateResult result;
+  final String? stagingPath;
 
   const UpdateInstallResult.staged({required String stagingPath})
     : this(result: UpdateResult.success, stagingPath: stagingPath);

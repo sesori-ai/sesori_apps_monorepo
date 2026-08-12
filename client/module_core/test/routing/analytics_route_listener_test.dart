@@ -6,10 +6,10 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _FakeRouteSource implements RouteSource {
+class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSource {
   final BehaviorSubject<AppRouteDef?> routes;
 
-  _FakeRouteSource({required AppRouteDef? initialRoute}) : routes = BehaviorSubject.seeded(initialRoute);
+  this : routes = BehaviorSubject.seeded(initialRoute);
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
@@ -22,7 +22,7 @@ class _FakeRouteSource implements RouteSource {
   Future<void> dispose() => routes.close();
 }
 
-class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsService {
+class _FakeProductAnalyticsService({required ProductAnalyticsState initialState}) extends Mock implements ProductAnalyticsService {
   final BehaviorSubject<ProductAnalyticsState> states;
   final events = <ProductAnalyticsEvent>[];
   final occurredAtUtc = <DateTime>[];
@@ -31,7 +31,7 @@ class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsServi
   Completer<AnalyticsDeliveryResult>? deliveryCompleter;
   AnalyticsDeliveryResult deliveryResult = AnalyticsDeliveryResult.acceptedBySdk;
 
-  _FakeProductAnalyticsService({required ProductAnalyticsState initialState})
+  this
     : states = BehaviorSubject.seeded(initialState);
 
   @override

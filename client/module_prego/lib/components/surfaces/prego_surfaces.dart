@@ -15,7 +15,7 @@ import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 
 /// The two outline treatments used by the composer and its adjacent surfaces.
-enum PregoComposerSurfaceStyle { subtle, emphasized }
+enum PregoComposerSurfaceStyle() { subtle, emphasized }
 
 /// Builds the shared solid decoration used by the composer, picker pills, and
 /// background-task card.
@@ -39,14 +39,12 @@ BoxDecoration pregoComposerSurfaceDecoration({
 /// A rounded, elevated surface that hosts grouped content.
 ///
 /// Uses the same fill, border, and elevation as the composer on every platform.
-class PregoCard extends StatelessWidget {
-  const PregoCard({
+class const PregoCard({
     super.key,
     required this.child,
     required this.surfaceStyle,
     this.borderRadius = 20,
-  });
-
+  }) extends StatelessWidget {
   final Widget child;
   final PregoComposerSurfaceStyle surfaceStyle;
 
@@ -80,15 +78,13 @@ class PregoCard extends StatelessWidget {
 /// Apple: a frosted hairline ([GlassDivider]). Android: a flat [Divider] tinted
 /// with the secondary border colour. Decorative on both paths (hidden from
 /// screen readers).
-class PregoDivider extends StatelessWidget {
-  const PregoDivider({
+class const PregoDivider({
     super.key,
     this.indent = 0,
     this.endIndent = 0,
     this.height,
     this.flat = false,
-  });
-
+  }) extends StatelessWidget {
   /// Empty space leading the line on the left.
   final double indent;
 
@@ -128,8 +124,7 @@ class PregoDivider extends StatelessWidget {
 /// Uses one [InkWell] row on every platform: 32px leading box, 12px gap,
 /// title/subtitle column, and trailing content. The row composes a flat
 /// [PregoDivider] below itself unless it is the last row.
-class PregoListTile extends StatelessWidget {
-  const PregoListTile({
+class const PregoListTile({
     super.key,
     this.leading,
     required this.title,
@@ -143,8 +138,7 @@ class PregoListTile extends StatelessWidget {
     this.titleStyle,
     this.subtitleStyle,
     this.dividerIndent,
-  });
-
+  }) extends StatelessWidget {
   final Widget? leading;
   final Widget title;
   final Widget? subtitle;

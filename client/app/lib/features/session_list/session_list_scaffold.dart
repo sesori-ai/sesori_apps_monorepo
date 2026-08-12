@@ -11,15 +11,7 @@ import "../../core/widgets/project_nav_subtitle.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
 
-class SessionListScaffold extends StatelessWidget {
-  final String? projectName;
-  final String? selectedSessionId;
-  final ValueChanged<Session> onSessionTap;
-  final SessionMenuEntriesBuilder sessionMenuEntries;
-  final VoidCallback onNewSession;
-  final VoidCallback? onBack;
-
-  const SessionListScaffold({
+class const SessionListScaffold({
     super.key,
     this.projectName,
     this.selectedSessionId,
@@ -27,7 +19,13 @@ class SessionListScaffold extends StatelessWidget {
     required this.sessionMenuEntries,
     required this.onNewSession,
     required this.onBack,
-  });
+  }) extends StatelessWidget {
+  final String? projectName;
+  final String? selectedSessionId;
+  final ValueChanged<Session> onSessionTap;
+  final SessionMenuEntriesBuilder sessionMenuEntries;
+  final VoidCallback onNewSession;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {

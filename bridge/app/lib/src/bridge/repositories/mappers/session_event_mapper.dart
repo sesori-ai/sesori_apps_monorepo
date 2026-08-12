@@ -1,9 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-class SessionEventMapper {
-  const SessionEventMapper();
-
+class const SessionEventMapper() {
   Session? sessionInfo({required BridgeSseEvent event}) {
     return switch (event) {
       BridgeSseTerminalHandoff(:final event) => sessionInfo(event: event),

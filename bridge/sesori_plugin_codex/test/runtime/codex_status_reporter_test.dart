@@ -66,7 +66,7 @@ void main() {
   });
 }
 
-class _ManualClock implements ServerClock {
+class _ManualClock() implements ServerClock {
   final DateTime startTime = DateTime.utc(2026, 6, 1, 12);
   late DateTime _now = startTime;
   final List<Completer<void>> _pending = <Completer<void>>[];

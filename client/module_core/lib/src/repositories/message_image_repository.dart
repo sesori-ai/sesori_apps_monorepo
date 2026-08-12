@@ -15,46 +15,36 @@ Uint8List? _tryDecodeBase64Image(String base64Data) {
   }
 }
 
-sealed class MessageImageLoadResult {
-  const MessageImageLoadResult();
-}
+sealed class const MessageImageLoadResult();
 
-final class MessageImageLoadSuccess extends MessageImageLoadResult {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
-  final Uri? originalUri;
-
-  const MessageImageLoadSuccess({
+final class const MessageImageLoadSuccess({
     required this.bytes,
     required this.mime,
     required this.actionFilename,
     required this.originalUri,
-  });
+  }) extends MessageImageLoadResult {
+  final Uint8List bytes;
+  final String mime;
+  final String actionFilename;
+  final Uri? originalUri;
 }
 
-final class MessageImageLoadUnsupported extends MessageImageLoadResult {
-  const MessageImageLoadUnsupported();
-}
+final class const MessageImageLoadUnsupported() extends MessageImageLoadResult;
 
-final class MessageImageLoadRejected extends MessageImageLoadResult {
-  const MessageImageLoadRejected();
-}
+final class const MessageImageLoadRejected() extends MessageImageLoadResult;
 
-final class MessageImageLoadFailure extends MessageImageLoadResult {
+final class const MessageImageLoadFailure({
+    required this.cause,
+    required this.stackTrace,
+  }) extends MessageImageLoadResult {
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   final Object cause;
   final StackTrace stackTrace;
-
-  const MessageImageLoadFailure({
-    required this.cause,
-    required this.stackTrace,
-  });
 }
 
 /// Layer-2 policy and mapping for renderable message image attachments.
 @lazySingleton
-class MessageImageRepository {
+class MessageImageRepository({required MessageImageApi api}) {
   static const _remoteFetchTimeout = Duration(seconds: 15);
   static const _maxFilenameBytes = 255;
   static const _supportedRasterMimes = {
@@ -67,7 +57,7 @@ class MessageImageRepository {
 
   final MessageImageApi _api;
 
-  MessageImageRepository({required MessageImageApi api}) : _api = api;
+  this : _api = api;
 
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
     MessageAttachmentInlineImage(:final mime) => _supportedRasterMimes.contains(_normalizedMime(mime: mime)),

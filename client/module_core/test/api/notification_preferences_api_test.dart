@@ -8,7 +8,7 @@ import "package:test/test.dart";
 const _deviceId = "123e4567-e89b-42d3-a456-426614174000";
 const _userId = "user-a";
 
-final class _RecordingAuthenticatedClient extends Mock implements AuthenticatedHttpApiClient {
+final class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpApiClient {
   Object? getJson;
   Object? patchJson;
   ApiError? getError;

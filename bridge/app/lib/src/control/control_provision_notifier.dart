@@ -23,7 +23,7 @@ import "../foundation/control_channel_client.dart";
 /// Sends are best-effort and never throw to the caller: progress is
 /// informational, and a frame lost to a channel blip only skips a UI update —
 /// the terminal `ready`/`failed` state still governs the plugin's health.
-class ControlProvisionNotifier {
+class ControlProvisionNotifier({required ControlChannelClient client}) {
   static const int _unknownTotalStepBytes = 512 * 1024;
 
   final ControlChannelClient _client;
@@ -33,7 +33,7 @@ class ControlProvisionNotifier {
   int? _lastSentDownloadBytes;
   int? _lastSentDownloadPercent;
 
-  ControlProvisionNotifier({required ControlChannelClient client}) : _client = client;
+  this : _client = client;
 
   /// Typed feed from the runner's provisioning loop: maps [event] to its wire
   /// DTO and best-effort sends it to the GUI.

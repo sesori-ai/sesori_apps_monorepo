@@ -1,9 +1,7 @@
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-sealed class PluginManagementLoadResult {
-  const PluginManagementLoadResult();
-
+sealed class const PluginManagementLoadResult() {
   const factory PluginManagementLoadResult.loading() = PluginManagementLoadResultLoading;
 
   const factory PluginManagementLoadResult.supported({
@@ -16,33 +14,23 @@ sealed class PluginManagementLoadResult {
   const factory PluginManagementLoadResult.failure({required ApiError error}) = PluginManagementLoadResultFailure;
 }
 
-final class PluginManagementLoadResultLoading extends PluginManagementLoadResult {
-  const PluginManagementLoadResultLoading();
-}
+final class const PluginManagementLoadResultLoading() extends PluginManagementLoadResult;
 
-final class PluginManagementLoadResultSupported extends PluginManagementLoadResult {
+final class const PluginManagementLoadResultSupported({required this.response, required this.refreshError}) extends PluginManagementLoadResult {
   final PluginManagementResponse response;
 
   /// Non-null when this publication replays a retained snapshot after a
   /// refresh failure against the same bridge identity.
   final ApiError? refreshError;
-
-  const PluginManagementLoadResultSupported({required this.response, required this.refreshError});
 }
 
-final class PluginManagementLoadResultUnsupported extends PluginManagementLoadResult {
-  const PluginManagementLoadResultUnsupported();
-}
+final class const PluginManagementLoadResultUnsupported() extends PluginManagementLoadResult;
 
-final class PluginManagementLoadResultFailure extends PluginManagementLoadResult {
+final class const PluginManagementLoadResultFailure({required this.error}) extends PluginManagementLoadResult {
   final ApiError error;
-
-  const PluginManagementLoadResultFailure({required this.error});
 }
 
-sealed class PluginManagementMutationResult {
-  const PluginManagementMutationResult();
-
+sealed class const PluginManagementMutationResult() {
   const factory PluginManagementMutationResult.success({
     required PluginManagementResponse response,
   }) = PluginManagementMutationResultSuccess;
@@ -63,35 +51,23 @@ sealed class PluginManagementMutationResult {
       PluginManagementMutationResultFailure;
 }
 
-final class PluginManagementMutationResultSuccess extends PluginManagementMutationResult {
+final class const PluginManagementMutationResultSuccess({required this.response}) extends PluginManagementMutationResult {
   final PluginManagementResponse response;
-
-  const PluginManagementMutationResultSuccess({required this.response});
 }
 
-final class PluginManagementMutationResultNotFound extends PluginManagementMutationResult {
-  const PluginManagementMutationResultNotFound();
-}
+final class const PluginManagementMutationResultNotFound() extends PluginManagementMutationResult;
 
-final class PluginManagementMutationResultConflict extends PluginManagementMutationResult {
+final class const PluginManagementMutationResultConflict({required this.conflict}) extends PluginManagementMutationResult {
   final PluginLifecycleConflict conflict;
-
-  const PluginManagementMutationResultConflict({required this.conflict});
 }
 
-final class PluginManagementMutationResultUncertain extends PluginManagementMutationResult {
-  const PluginManagementMutationResultUncertain();
-}
+final class const PluginManagementMutationResultUncertain() extends PluginManagementMutationResult;
 
-final class PluginManagementMutationResultFailure extends PluginManagementMutationResult {
+final class const PluginManagementMutationResultFailure({required this.error}) extends PluginManagementMutationResult {
   final ApiError error;
-
-  const PluginManagementMutationResultFailure({required this.error});
 }
 
-sealed class PluginAuthenticationStartResult {
-  const PluginAuthenticationStartResult();
-
+sealed class const PluginAuthenticationStartResult() {
   const factory PluginAuthenticationStartResult.challenge({
     required PluginAuthenticationChallengeResponse challenge,
   }) = PluginAuthenticationStartChallenge;
@@ -109,36 +85,25 @@ sealed class PluginAuthenticationStartResult {
   const factory PluginAuthenticationStartResult.failure({required ApiError error}) = PluginAuthenticationStartFailure;
 }
 
-final class PluginAuthenticationStartChallenge extends PluginAuthenticationStartResult {
-  const PluginAuthenticationStartChallenge({required this.challenge});
+final class const PluginAuthenticationStartChallenge({required this.challenge}) extends PluginAuthenticationStartResult {
   final PluginAuthenticationChallengeResponse challenge;
 }
 
-final class PluginAuthenticationStartNotFound extends PluginAuthenticationStartResult {
-  const PluginAuthenticationStartNotFound();
-}
+final class const PluginAuthenticationStartNotFound() extends PluginAuthenticationStartResult;
 
-final class PluginAuthenticationStartConflict extends PluginAuthenticationStartResult {
-  const PluginAuthenticationStartConflict({required this.conflict});
+final class const PluginAuthenticationStartConflict({required this.conflict}) extends PluginAuthenticationStartResult {
   final PluginAuthenticationConflict conflict;
 }
 
-final class PluginAuthenticationStartUnsupported extends PluginAuthenticationStartResult {
-  const PluginAuthenticationStartUnsupported();
-}
+final class const PluginAuthenticationStartUnsupported() extends PluginAuthenticationStartResult;
 
-final class PluginAuthenticationStartUncertain extends PluginAuthenticationStartResult {
-  const PluginAuthenticationStartUncertain();
-}
+final class const PluginAuthenticationStartUncertain() extends PluginAuthenticationStartResult;
 
-final class PluginAuthenticationStartFailure extends PluginAuthenticationStartResult {
-  const PluginAuthenticationStartFailure({required this.error});
+final class const PluginAuthenticationStartFailure({required this.error}) extends PluginAuthenticationStartResult {
   final ApiError error;
 }
 
-sealed class PluginAuthenticationCancelResult {
-  const PluginAuthenticationCancelResult();
-
+sealed class const PluginAuthenticationCancelResult() {
   const factory PluginAuthenticationCancelResult.success() = PluginAuthenticationCancelSuccess;
   const factory PluginAuthenticationCancelResult.notFound() = PluginAuthenticationCancelNotFound;
   const factory PluginAuthenticationCancelResult.conflict({
@@ -149,28 +114,18 @@ sealed class PluginAuthenticationCancelResult {
   const factory PluginAuthenticationCancelResult.failure({required ApiError error}) = PluginAuthenticationCancelFailure;
 }
 
-final class PluginAuthenticationCancelSuccess extends PluginAuthenticationCancelResult {
-  const PluginAuthenticationCancelSuccess();
-}
+final class const PluginAuthenticationCancelSuccess() extends PluginAuthenticationCancelResult;
 
-final class PluginAuthenticationCancelNotFound extends PluginAuthenticationCancelResult {
-  const PluginAuthenticationCancelNotFound();
-}
+final class const PluginAuthenticationCancelNotFound() extends PluginAuthenticationCancelResult;
 
-final class PluginAuthenticationCancelConflict extends PluginAuthenticationCancelResult {
-  const PluginAuthenticationCancelConflict({required this.conflict});
+final class const PluginAuthenticationCancelConflict({required this.conflict}) extends PluginAuthenticationCancelResult {
   final PluginAuthenticationConflict conflict;
 }
 
-final class PluginAuthenticationCancelUnsupported extends PluginAuthenticationCancelResult {
-  const PluginAuthenticationCancelUnsupported();
-}
+final class const PluginAuthenticationCancelUnsupported() extends PluginAuthenticationCancelResult;
 
-final class PluginAuthenticationCancelUncertain extends PluginAuthenticationCancelResult {
-  const PluginAuthenticationCancelUncertain();
-}
+final class const PluginAuthenticationCancelUncertain() extends PluginAuthenticationCancelResult;
 
-final class PluginAuthenticationCancelFailure extends PluginAuthenticationCancelResult {
-  const PluginAuthenticationCancelFailure({required this.error});
+final class const PluginAuthenticationCancelFailure({required this.error}) extends PluginAuthenticationCancelResult {
   final ApiError error;
 }

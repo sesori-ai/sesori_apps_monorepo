@@ -30,10 +30,10 @@ const _directoryOpenCodeHeader = "x-opencode-directory";
 /// success enforcement, auth headers, endpoint labeling — are delegated to
 /// [OpenCodeRawHttpClient], so they apply uniformly and can't be forgotten on a
 /// new endpoint.
-class OpenCodeApi {
+class OpenCodeApi({required OpenCodeRawHttpClient client}) {
   final OpenCodeRawHttpClient _client;
 
-  OpenCodeApi({required OpenCodeRawHttpClient client}) : _client = client;
+  this : _client = client;
 
   Future<bool> healthCheck() async {
     try {

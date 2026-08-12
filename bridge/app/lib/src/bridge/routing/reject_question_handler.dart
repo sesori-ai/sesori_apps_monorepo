@@ -8,10 +8,10 @@ import "request_handler.dart";
 /// Session context scopes modern question IDs. It remains optional for
 /// backwards compatibility with older clients, where the pending owner must
 /// resolve unambiguously before rejection.
-class RejectQuestionHandler extends BodyRequestHandler<RejectQuestionRequest, SuccessEmptyResponse> {
+class RejectQuestionHandler({required PendingInteractionService pendingInteractionService}) extends BodyRequestHandler<RejectQuestionRequest, SuccessEmptyResponse> {
   final PendingInteractionService _pendingInteractionService;
 
-  RejectQuestionHandler({required PendingInteractionService pendingInteractionService})
+  this
     : _pendingInteractionService = pendingInteractionService,
       super(
         HttpMethod.post,

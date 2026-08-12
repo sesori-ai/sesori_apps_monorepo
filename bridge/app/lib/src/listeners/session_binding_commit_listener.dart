@@ -3,16 +3,16 @@ import "dart:async";
 import "../bridge/repositories/session_repository.dart";
 import "../bridge/services/session_event_dispatcher.dart";
 
-class SessionBindingCommitListener {
+class SessionBindingCommitListener({
+    required Stream<SessionBindingsCommitted> source,
+    required SessionEventDispatcher dispatcher,
+  }) {
   final Stream<SessionBindingsCommitted> _source;
   final SessionEventDispatcher _dispatcher;
   StreamSubscription<SessionBindingsCommitted>? _subscription;
   bool _disposed = false;
 
-  SessionBindingCommitListener({
-    required Stream<SessionBindingsCommitted> source,
-    required SessionEventDispatcher dispatcher,
-  }) : _source = source,
+  this : _source = source,
        _dispatcher = dispatcher;
 
   void start() {

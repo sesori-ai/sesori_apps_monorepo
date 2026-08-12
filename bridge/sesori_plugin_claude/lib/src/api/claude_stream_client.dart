@@ -10,9 +10,7 @@ import "models/claude_stream_message.dart";
 
 /// A control request that the CLI answered with a failure, or that could not be
 /// delivered at all.
-class ClaudeControlException implements Exception {
-  ClaudeControlException({required this.subtype, required this.message});
-
+class ClaudeControlException({required this.subtype, required this.message}) implements Exception {
   final String subtype;
   final String message;
 
@@ -30,13 +28,13 @@ class ClaudeControlException implements Exception {
 /// teardown, broken-pipe absorption, failing pending requests on exit, and
 /// SIGTERM-then-SIGKILL termination — are ported from `AcpStdioClient`, where
 /// they are load-bearing.
-class ClaudeStreamClient {
-  ClaudeStreamClient({
+class ClaudeStreamClient({
     required ClaudeLaunchSpec launchSpec,
     required ClaudeProcessFactory processFactory,
     Duration controlTimeout = const Duration(seconds: 60),
     String logTag = "claude",
-  }) : _launchSpec = launchSpec,
+  }) {
+  this : _launchSpec = launchSpec,
        _processFactory = processFactory,
        _controlTimeout = controlTimeout,
        _logTag = logTag;

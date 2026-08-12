@@ -227,8 +227,8 @@ void main() {
   });
 }
 
-final class _ServiceHarness {
-  _ServiceHarness({this.stdinCloseCompletes = true, this.failInterrupt = false}) {
+final class _ServiceHarness({this.stdinCloseCompletes = true, this.failInterrupt = false}) {
+  this {
     repository = ClaudeSessionProcessRepository(
       processFactory: _spawn,
       binaryPath: "claude",
@@ -313,7 +313,7 @@ final class _ServiceHarness {
   }
 }
 
-final class _ControlledClock extends ServerClock {
+final class _ControlledClock() extends ServerClock {
   final List<Completer<void>> _delays = [];
 
   @override

@@ -19,7 +19,14 @@ import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
 /// Owns the bridge's aggregate project catalog and local project operations.
-class ProjectRepository {
+class ProjectRepository({
+    required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
+    required SessionUnseenCalculator unseenCalculator,
+    required FilesystemApi filesystemApi,
+    required GitCliApi gitCliApi,
+    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
+  }) {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
 
@@ -30,14 +37,7 @@ class ProjectRepository {
   final GitCliApi _gitCliApi;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
 
-  ProjectRepository({
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required SessionUnseenCalculator unseenCalculator,
-    required FilesystemApi filesystemApi,
-    required GitCliApi gitCliApi,
-    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-  }) : _projectsDao = projectsDao,
+  this : _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _unseenCalculator = unseenCalculator,
        _filesystemApi = filesystemApi,

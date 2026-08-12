@@ -4,11 +4,9 @@ import "../../../core/extensions/build_context_x.dart";
 
 /// Centered error message with a retry button, shown when the diff fails
 /// to load or when diff view-model computation fails.
-class DiffErrorView extends StatelessWidget {
+class const DiffErrorView({super.key, required this.error, required this.onRetry}) extends StatelessWidget {
   final Object error;
   final VoidCallback onRetry;
-
-  const DiffErrorView({super.key, required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {

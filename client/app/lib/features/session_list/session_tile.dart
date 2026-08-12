@@ -43,7 +43,22 @@ typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext c
 /// edge the row opens on the mail-style read toggle, committed by a full swipe
 /// likewise. The swipes are the quick paths; the menu stays the discoverable
 /// and assistive one.
-class SessionTile extends StatelessWidget {
+class const SessionTile({
+    super.key,
+    required this.session,
+    required this.isArchived,
+    required this.isActive,
+    this.unseen = false,
+    this.selected = false,
+    this.awaitingInput = false,
+    this.isRetrying = false,
+    this.backgroundTaskCount = 0,
+    required this.onTap,
+    required this.menuEntries,
+    required this.onArchive,
+    required this.onDelete,
+    required this.onToggleUnread,
+  }) extends StatelessWidget {
   final Session session;
   final bool isArchived;
   final bool isActive;
@@ -68,23 +83,6 @@ class SessionTile extends StatelessWidget {
 
   /// Flips this session's read state, from the leading swipe.
   final VoidCallback onToggleUnread;
-
-  const SessionTile({
-    super.key,
-    required this.session,
-    required this.isArchived,
-    required this.isActive,
-    this.unseen = false,
-    this.selected = false,
-    this.awaitingInput = false,
-    this.isRetrying = false,
-    this.backgroundTaskCount = 0,
-    required this.onTap,
-    required this.menuEntries,
-    required this.onArchive,
-    required this.onDelete,
-    required this.onToggleUnread,
-  });
 
   /// Wide enough for the longest action label ("Mark as unread") without the
   /// panel spanning the row it is anchored to.
@@ -399,9 +397,7 @@ class SessionTile extends StatelessWidget {
 
 /// The branch the session's workspace is checked out on: a git-branch mark in
 /// a fixed slot, then the name.
-class _BranchDetail extends StatelessWidget {
-  const _BranchDetail({required this.branch});
-
+class const _BranchDetail({required this.branch}) extends StatelessWidget {
   final String branch;
 
   @override

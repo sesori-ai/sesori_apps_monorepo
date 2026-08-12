@@ -5,9 +5,7 @@ part "api_error.freezed.dart";
 part "api_error.g.dart";
 
 @Freezed(fromJson: true)
-sealed class ApiError extends Error with _$ApiError {
-  ApiError._();
-
+sealed class ApiError._() extends Error with _$ApiError {
   factory ApiError.jsonParsing(String jsonString) = JsonParsingError;
 
   // ignore: no_slop_linter/prefer_specific_type

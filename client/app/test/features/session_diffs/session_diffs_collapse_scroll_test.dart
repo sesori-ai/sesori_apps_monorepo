@@ -16,9 +16,9 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class _MockDiffCubit extends MockCubit<DiffState> implements DiffCubit;
+class _MockDiffCubit() extends MockCubit<DiffState> implements DiffCubit;
 
-class _MockSessionRepository extends Mock implements SessionRepository;
+class _MockSessionRepository() extends Mock implements SessionRepository;
 
 FileDiff _makeDiff(String file, {required int lineCount}) {
   final before = List<String>.filled(lineCount, "old line").join("\n");

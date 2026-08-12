@@ -185,10 +185,9 @@ _TestRecord _record({required String ownerSessionId, required int pid, required 
   );
 }
 
-enum _TestStatus { starting, ready, stopping }
+enum _TestStatus() { starting, ready, stopping }
 
-class _TestRecord {
-  const _TestRecord({
+class const _TestRecord({
     required this.ownerSessionId,
     required this.openCodePid,
     required this.openCodeStartMarker,
@@ -200,8 +199,7 @@ class _TestRecord {
     required this.bridgeStartMarker,
     required this.startedAt,
     required this.status,
-  });
-
+  }) {
   final String ownerSessionId;
   final int openCodePid;
   final String? openCodeStartMarker;
@@ -231,9 +229,7 @@ class _TestRecord {
   }
 }
 
-class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
-  const _TestRecordMapper();
-
+class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   @override
   Map<String, dynamic> toJson({required _TestRecord record}) => record.toJson();
 
@@ -312,7 +308,7 @@ class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
   }
 }
 
-class _FakeHostJsonStore implements HostJsonStore {
+class _FakeHostJsonStore() implements HostJsonStore {
   final Map<String, String> files = <String, String>{};
   final List<String> calls = <String>[];
   void Function()? onBeforeUpdate;
@@ -358,9 +354,7 @@ class _FakeHostJsonStore implements HostJsonStore {
   }
 }
 
-class _FixedClock extends ServerClock {
-  const _FixedClock();
-
+class const _FixedClock() extends ServerClock {
   @override
   DateTime now() => DateTime.utc(2026, 5, 15, 12, 30, 1, 234);
 }

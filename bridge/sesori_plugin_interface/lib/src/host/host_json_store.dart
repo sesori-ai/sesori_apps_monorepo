@@ -11,7 +11,7 @@ import "dart:async";
 /// Contents are raw strings, not decoded JSON, on purpose: stores with a
 /// frozen on-disk contract (byte-stable files read by older bridge versions)
 /// need full control over the serialized bytes.
-abstract class HostJsonStore {
+abstract class HostJsonStore() {
   /// Reads the contents of [name], or `null` when the file does not exist.
   Future<String?> read({required String name});
 

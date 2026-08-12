@@ -41,7 +41,23 @@ import "services/codex_session_service.dart";
 ///     non-empty data while sessions are alive.
 ///
 /// Approval/permission flows still throw — those land in Phase 5.
-class CodexPlugin implements CodexManagedApi {
+class CodexPlugin._({
+    required String serverUrl,
+    required String? capabilityToken,
+    required CodexAppServerClient Function()? clientFactory,
+    required CodexSessionService sessionService,
+    required CodexEventMapper eventMapper,
+    required CodexRolloutTailer rolloutTailer,
+    required CodexToolLifecycleTracker toolLifecycleTracker,
+    required CodexToolOutcomeRepository toolOutcomeRepository,
+    required CodexCommandExecutionParser commandExecutionParser,
+    required CodexFileChangeParser fileChangeParser,
+    required CodexImageBearingItemParser imageBearingItemParser,
+    required String projectCwd,
+    required void Function()? onConnected,
+    required void Function()? onDisconnected,
+    required Duration keepaliveInterval,
+  }) implements CodexManagedApi {
   static final String pluginId = Harness.codex.name;
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
   static const Duration _renameRetryTimeout = Duration(seconds: 2);
@@ -154,23 +170,7 @@ class CodexPlugin implements CodexManagedApi {
          keepaliveInterval: keepaliveInterval,
        );
 
-  CodexPlugin._({
-    required String serverUrl,
-    required String? capabilityToken,
-    required CodexAppServerClient Function()? clientFactory,
-    required CodexSessionService sessionService,
-    required CodexEventMapper eventMapper,
-    required CodexRolloutTailer rolloutTailer,
-    required CodexToolLifecycleTracker toolLifecycleTracker,
-    required CodexToolOutcomeRepository toolOutcomeRepository,
-    required CodexCommandExecutionParser commandExecutionParser,
-    required CodexFileChangeParser fileChangeParser,
-    required CodexImageBearingItemParser imageBearingItemParser,
-    required String projectCwd,
-    required void Function()? onConnected,
-    required void Function()? onDisconnected,
-    required Duration keepaliveInterval,
-  }) : _serverUrl = serverUrl,
+  this : _serverUrl = serverUrl,
        _keepaliveInterval = keepaliveInterval,
        _capabilityToken = capabilityToken,
        _clientFactory = clientFactory,

@@ -554,23 +554,21 @@ ProcessResult _processResult({
   return ProcessResult(1, exitCode, stdout, stderr);
 }
 
-class _Invocation {
-  final String command;
-  final List<String> arguments;
-  final String? workingDirectory;
-  final Duration timeout;
-  final Map<String, String>? environment;
-
-  const _Invocation({
+class const _Invocation({
     required this.command,
     required this.arguments,
     required this.workingDirectory,
     required this.timeout,
     required this.environment,
-  });
+  }) {
+  final String command;
+  final List<String> arguments;
+  final String? workingDirectory;
+  final Duration timeout;
+  final Map<String, String>? environment;
 }
 
-class _FakeProcessRunner implements ProcessRunner {
+class _FakeProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,

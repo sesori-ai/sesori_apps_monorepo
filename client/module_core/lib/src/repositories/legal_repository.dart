@@ -11,10 +11,10 @@ export "../api/legal_api.dart" show LegalDocument;
 /// through unchanged; it exists so cubits depend on a repository rather than
 /// reaching into the API layer.
 @lazySingleton
-class LegalRepository {
+class LegalRepository({required LegalApi api}) {
   final LegalApi _api;
 
-  LegalRepository({required LegalApi api}) : _api = api;
+  this : _api = api;
 
   Future<ApiResponse<String>> getMarkdown({required LegalDocument document}) {
     return _api.fetchMarkdown(document: document);

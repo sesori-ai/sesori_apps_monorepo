@@ -1,7 +1,5 @@
-class UpdateProjectBody {
+class const UpdateProjectBody({required this.name}) {
   final String name;
-
-  const UpdateProjectBody({required this.name});
 
   Map<String, dynamic> toJson() => {"name": name};
 }

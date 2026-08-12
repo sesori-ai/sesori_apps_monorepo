@@ -3,7 +3,7 @@
 /// Consumers that need a raw token string (e.g. for WebSocket auth)
 /// inject this interface. They cannot clear, refresh, or otherwise
 /// control the token lifecycle.
-abstract interface class AuthTokenProvider {
+abstract interface class AuthTokenProvider() {
   /// Returns a valid access token, refreshing proactively if the
   /// remaining validity is less than [minTtl].
   ///

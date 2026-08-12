@@ -9,9 +9,7 @@ import "package:test/test.dart";
 
 final _url = Uri.parse("https://api.example.com/preferences");
 
-class _RecordingClient extends http.BaseClient {
-  _RecordingClient({required this.statusCode, required this.responseBody});
-
+class _RecordingClient({required this.statusCode, required this.responseBody}) extends http.BaseClient {
   final int statusCode;
   final String responseBody;
 

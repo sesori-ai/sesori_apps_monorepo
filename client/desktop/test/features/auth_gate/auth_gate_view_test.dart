@@ -8,7 +8,7 @@ import "package:sesori_desktop/features/home/home_placeholder.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-class _MockAuthGateCubit extends MockCubit<AuthGateState> implements AuthGateCubit;
+class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 
 const AuthUser _user = AuthUser(
   id: "user-1",

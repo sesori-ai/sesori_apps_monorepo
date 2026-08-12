@@ -9,10 +9,8 @@ import "../../core/extensions/build_context_x.dart";
 /// left the screen blank: the chooser has nothing to offer and the composer has
 /// nothing to send to. This names the reason in the chooser's place and points
 /// at harness settings, where each harness reports what it is still missing.
-class NewSessionNoHarnessNotice extends StatelessWidget {
+class const NewSessionNoHarnessNotice({super.key, required this.onSettingsPressed}) extends StatelessWidget {
   final VoidCallback onSettingsPressed;
-
-  const NewSessionNoHarnessNotice({super.key, required this.onSettingsPressed});
 
   @override
   Widget build(BuildContext context) {

@@ -14,8 +14,7 @@ import "codex_status_reporter.dart";
 /// surface: a [PluginStatusController] fed by both the transport (via
 /// [CodexRuntimeStatusReporter]) and the exit monitor, plus an ordered,
 /// idempotent [shutdown].
-class CodexBridgePlugin implements BridgePlugin {
-  CodexBridgePlugin({
+class CodexBridgePlugin({
     required this.api,
     required CodexRuntimeStatusReporter reporter,
     required ManagedRuntimeMonitor<CodexOwnershipRecord> monitor,
@@ -23,7 +22,8 @@ class CodexBridgePlugin implements BridgePlugin {
     required CodexOwnershipRecord? ownedRecord,
     required this.port,
     required this.serverUrl,
-  }) : _reporter = reporter,
+  }) implements BridgePlugin {
+  this : _reporter = reporter,
        _monitor = monitor,
        _service = service,
        _ownedRecord = ownedRecord;

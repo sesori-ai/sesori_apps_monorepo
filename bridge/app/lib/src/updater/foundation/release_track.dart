@@ -5,7 +5,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 /// - [stable]: only stable `vX.Y.Z` GitHub releases (the default).
 /// - [internal]: the newest of stable releases and `vX.Y.Z-internal.N`
 ///   pre-releases, so internal users ride the per-merge internal channel.
-enum ReleaseTrack {
+enum ReleaseTrack() {
   stable,
   internal;
 

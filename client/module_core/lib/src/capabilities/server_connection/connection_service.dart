@@ -20,16 +20,12 @@ import "models/sse_event.dart";
 import "server_connection_config.dart";
 
 @lazySingleton
-class ClockProvider {
-  const ClockProvider();
-
+class const ClockProvider() {
   DateTime call() => DateTime.now();
 }
 
 @lazySingleton
-class RelayClientFactory {
-  const RelayClientFactory();
-
+class const RelayClientFactory() {
   RelayClient call({
     required String relayHost,
     required RelayCryptoService cryptoService,
@@ -44,7 +40,16 @@ class RelayClientFactory {
 }
 
 @lazySingleton
-class ConnectionService {
+class ConnectionService(
+    RelayCryptoService cryptoService,
+    RoomKeyStorage roomKeyStorage,
+    AuthTokenProvider authTokenProvider,
+    AuthSession authSession,
+    LifecycleSource lifecycleSource,
+    FailureReporter failureReporter, {
+    @visibleForTesting ClockProvider clock = const ClockProvider(),
+    @visibleForTesting RelayClientFactory relayClientFactory = const RelayClientFactory(),
+  }) {
   final RelayCryptoService _cryptoService;
   final RoomKeyStorage _roomKeyStorage;
   final LifecycleSource _lifecycleSource;
@@ -97,16 +102,7 @@ class ConnectionService {
     milliseconds: (sseReplayWindow.inMilliseconds * 0.9).round(),
   );
 
-  ConnectionService(
-    RelayCryptoService cryptoService,
-    RoomKeyStorage roomKeyStorage,
-    AuthTokenProvider authTokenProvider,
-    AuthSession authSession,
-    LifecycleSource lifecycleSource,
-    FailureReporter failureReporter, {
-    @visibleForTesting ClockProvider clock = const ClockProvider(),
-    @visibleForTesting RelayClientFactory relayClientFactory = const RelayClientFactory(),
-  }) : _cryptoService = cryptoService,
+  this : _cryptoService = cryptoService,
        _roomKeyStorage = roomKeyStorage,
        _authTokenProvider = authTokenProvider,
        _authSession = authSession,

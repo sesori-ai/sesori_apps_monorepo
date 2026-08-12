@@ -5,7 +5,7 @@ part "open_code_ownership_record.g.dart";
 
 /// Lifecycle status of an owned `opencode serve` process, as persisted in the
 /// frozen `opencode-processes.json` ownership file.
-enum OpenCodeOwnershipStatus {
+enum OpenCodeOwnershipStatus() {
   starting,
   ready,
   stopping,

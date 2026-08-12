@@ -48,9 +48,7 @@ void main() {
   });
 }
 
-class _RecordingCatalogImportService implements CatalogImportService {
-  _RecordingCatalogImportService({required this.operationalPluginIds});
-
+class _RecordingCatalogImportService({required this.operationalPluginIds}) implements CatalogImportService {
   final Set<String> operationalPluginIds;
   final List<({String pluginId, CatalogImportTrigger trigger})> starts = [];
 

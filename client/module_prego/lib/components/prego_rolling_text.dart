@@ -5,7 +5,7 @@ import "package:flutter/material.dart";
 import "../utils/color_extensions.dart";
 
 /// Controls the direction characters roll when transitioning.
-enum PregoRollingTextDirection {
+enum PregoRollingTextDirection() {
   /// Each character independently determines its roll direction:
   /// higher char code -> rolls up; lower -> rolls down.
   perCharacter,
@@ -19,14 +19,12 @@ enum PregoRollingTextDirection {
   down,
 }
 
-class _CharAnimConfig {
-  const _CharAnimConfig({
+class const _CharAnimConfig({
     required this.oldChar,
     required this.newChar,
     required this.interval,
     required this.rollUp,
-  });
-
+  }) {
   final String? oldChar;
   final String? newChar;
   final Interval interval;
@@ -34,8 +32,7 @@ class _CharAnimConfig {
 }
 
 /// Per-character rolling text animation for Prego design language components.
-class PregoRollingText extends StatefulWidget {
-  const PregoRollingText({
+class const PregoRollingText({
     super.key,
     required this.text,
     required this.style,
@@ -43,8 +40,7 @@ class PregoRollingText extends StatefulWidget {
     this.duration = const Duration(milliseconds: 450),
     this.staggerSlideDelay = const Duration(milliseconds: 40),
     this.curve = Curves.easeOut,
-  });
-
+  }) extends StatefulWidget {
   /// Text to display and animate.
   final String text;
 
@@ -67,7 +63,7 @@ class PregoRollingText extends StatefulWidget {
   State<PregoRollingText> createState() => _PregoRollingTextState();
 }
 
-class _PregoRollingTextState extends State<PregoRollingText> with SingleTickerProviderStateMixin {
+class _PregoRollingTextState() extends State<PregoRollingText> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   String _previousText = "";
   String _currentText = "";

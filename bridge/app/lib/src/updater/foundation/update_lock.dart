@@ -10,13 +10,17 @@ import '../../bridge/foundation/process_runner.dart';
 
 const Duration _invalidLockGracePeriod = Duration(seconds: 2);
 
-enum LockAcquireResult {
+enum LockAcquireResult() {
   acquired,
   alreadyLocked,
   permissionDenied,
 }
 
-class UpdateLock {
+class UpdateLock({
+    required int currentPid,
+    required ProcessRunner processRunner,
+    required Clock clock,
+  }) {
   /// Default age after which a still-"held" `.update.lock` is reaped as stale,
   /// even when the holder PID still appears alive.
   ///
@@ -31,11 +35,7 @@ class UpdateLock {
   final ProcessRunner _processRunner;
   final Clock _clock;
 
-  UpdateLock({
-    required int currentPid,
-    required ProcessRunner processRunner,
-    required Clock clock,
-  }) : _currentPid = currentPid,
+  this : _currentPid = currentPid,
        _processRunner = processRunner,
        _clock = clock;
 
@@ -336,11 +336,9 @@ class UpdateLock {
   }
 }
 
-final class _LockOwner {
+final class const _LockOwner({required this.pid, required this.processMarker}) {
   final int pid;
   final String? processMarker;
-
-  const _LockOwner({required this.pid, required this.processMarker});
 
   factory _LockOwner.fromJson(Map<String, dynamic> json) {
     return _LockOwner(

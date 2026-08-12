@@ -18,7 +18,7 @@ String? normalizePluginMessageAttachmentFilename({required String? filename}) {
 }
 
 @JsonEnum()
-enum PluginMessagePartType {
+enum PluginMessagePartType() {
   @JsonValue("text")
   text,
   @JsonValue("reasoning")
@@ -112,7 +112,7 @@ sealed class PluginMessageAttachment with _$PluginMessageAttachment {
 /// matching magic strings. The `@JsonValue`s keep the wire form
 /// (`"pending"`, `"running"`, …) unchanged.
 @JsonEnum()
-enum PluginToolStatus {
+enum PluginToolStatus() {
   @JsonValue("pending")
   pending,
   @JsonValue("running")

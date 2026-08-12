@@ -2,9 +2,7 @@ import "package:meta/meta.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 @immutable
-sealed class SessionOptionsCacheKey {
-  const SessionOptionsCacheKey({required this.pluginId});
-
+sealed class const SessionOptionsCacheKey({required this.pluginId}) {
   const factory SessionOptionsCacheKey.plugin({
     required String pluginId,
   }) = PluginSessionOptionsCacheKey;
@@ -22,8 +20,8 @@ sealed class SessionOptionsCacheKey {
   String get ownerId;
 }
 
-final class PluginSessionOptionsCacheKey extends SessionOptionsCacheKey {
-  const PluginSessionOptionsCacheKey({required super.pluginId}) : assert(pluginId != "");
+final class const PluginSessionOptionsCacheKey({required super.pluginId}) extends SessionOptionsCacheKey {
+  this : assert(pluginId != "");
 
   @override
   PluginSessionOptionsScope get scope => PluginSessionOptionsScope.plugin;
@@ -38,12 +36,12 @@ final class PluginSessionOptionsCacheKey extends SessionOptionsCacheKey {
   int get hashCode => Object.hash(PluginSessionOptionsCacheKey, pluginId);
 }
 
-final class ProjectSessionOptionsCacheKey extends SessionOptionsCacheKey {
-  const ProjectSessionOptionsCacheKey({
+final class const ProjectSessionOptionsCacheKey({
     required super.pluginId,
     required this.projectId,
     required this.projectPath,
-  }) : assert(pluginId != ""),
+  }) extends SessionOptionsCacheKey {
+  this : assert(pluginId != ""),
        assert(projectId != ""),
        assert(projectPath != "");
 

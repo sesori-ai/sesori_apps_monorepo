@@ -10,9 +10,7 @@ import '../models/update_attempt.dart';
 ///
 /// Lives next to the managed install (`installRoot/.sesori-bridge-update-attempt.json`)
 /// and mirrors the atomic tmp-write-then-rename pattern used by `UpdateCacheApi`.
-class UpdateAttemptApi {
-  UpdateAttemptApi({required this.installRoot});
-
+class UpdateAttemptApi({required this.installRoot}) {
   final String installRoot;
 
   static const String _fileName = '.sesori-bridge-update-attempt.json';

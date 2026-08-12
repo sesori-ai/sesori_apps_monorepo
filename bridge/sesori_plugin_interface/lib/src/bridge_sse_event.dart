@@ -2,191 +2,162 @@ import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 
-sealed class BridgeSseEvent {
-  const BridgeSseEvent();
-}
+sealed class const BridgeSseEvent();
 
 /// Mapping provenance for reconciliation synthesized during a forced stop.
 ///
 /// This wrapper carries no stop-fence authority. The generation runtime owns
 /// that authorization separately, so a plugin-emitted wrapper remains an
 /// ordinary fenced event.
-class BridgeSseTerminalHandoff extends BridgeSseEvent {
+class const BridgeSseTerminalHandoff({required this.event}) extends BridgeSseEvent {
   final BridgeSseEvent event;
-  const BridgeSseTerminalHandoff({required this.event});
 }
 
-class BridgeSseServerConnected extends BridgeSseEvent {
-  const BridgeSseServerConnected();
-}
+class const BridgeSseServerConnected() extends BridgeSseEvent;
 
-class BridgeSseServerHeartbeat extends BridgeSseEvent {
-  const BridgeSseServerHeartbeat();
-}
+class const BridgeSseServerHeartbeat() extends BridgeSseEvent;
 
-class BridgeSseServerInstanceDisposed extends BridgeSseEvent {
+class const BridgeSseServerInstanceDisposed({this.directory}) extends BridgeSseEvent {
   final String? directory;
-  const BridgeSseServerInstanceDisposed({this.directory});
 }
 
-class BridgeSseGlobalDisposed extends BridgeSseEvent {
-  const BridgeSseGlobalDisposed();
-}
+class const BridgeSseGlobalDisposed() extends BridgeSseEvent;
 
 /// Signals that the emitting plugin's process-wide command catalog changed.
-class BridgeSseCommandCatalogUpdated extends BridgeSseEvent {
-  const BridgeSseCommandCatalogUpdated();
-}
+class const BridgeSseCommandCatalogUpdated() extends BridgeSseEvent;
 
-class BridgeSseSessionCreated extends BridgeSseEvent {
+class const BridgeSseSessionCreated({required this.info}) extends BridgeSseEvent {
   final Map<String, dynamic> info;
-  const BridgeSseSessionCreated({required this.info});
 }
 
-class BridgeSseSessionUpdated extends BridgeSseEvent {
+class const BridgeSseSessionUpdated({required this.info, required this.titleChanged}) extends BridgeSseEvent {
   final Map<String, dynamic> info;
   final bool titleChanged;
-  const BridgeSseSessionUpdated({required this.info, required this.titleChanged});
 }
 
 /// Signals that every session under [projectID] should be re-fetched.
-class BridgeSseSessionsUpdated extends BridgeSseEvent {
-  final String sessionID;
-  final String projectID;
-  const BridgeSseSessionsUpdated({
+class const BridgeSseSessionsUpdated({
     required this.sessionID,
     required this.projectID,
-  });
+  }) extends BridgeSseEvent {
+  final String sessionID;
+  final String projectID;
 }
 
 /// Signals that session-creation options changed for a backend session.
 ///
 /// This is an internal plugin event. [sessionID] is the backend's session
 /// identity so bridge core can resolve its stable persisted binding.
-class BridgeSseSessionOptionsChanged extends BridgeSseEvent {
+class const BridgeSseSessionOptionsChanged({required this.sessionID}) extends BridgeSseEvent {
   final String sessionID;
-  const BridgeSseSessionOptionsChanged({required this.sessionID});
 }
 
 /// Signals that a backend changed the effective defaults for future turns.
-class BridgeSseSessionPromptDefaultsChanged extends BridgeSseEvent {
-  final String sessionID;
-  final String? agent;
-  final PluginAgentModel? model;
-
-  const BridgeSseSessionPromptDefaultsChanged({
+class const BridgeSseSessionPromptDefaultsChanged({
     required this.sessionID,
     required this.agent,
     required this.model,
-  });
+  }) extends BridgeSseEvent {
+  final String sessionID;
+  final String? agent;
+  final PluginAgentModel? model;
 }
 
-class BridgeSseSessionDeleted extends BridgeSseEvent {
+class const BridgeSseSessionDeleted({required this.info}) extends BridgeSseEvent {
   final Map<String, dynamic> info;
-  const BridgeSseSessionDeleted({required this.info});
 }
 
-class BridgeSseSessionDiff extends BridgeSseEvent {
+class const BridgeSseSessionDiff({required this.sessionID}) extends BridgeSseEvent {
   final String sessionID;
-  const BridgeSseSessionDiff({required this.sessionID});
 }
 
-class BridgeSseSessionError extends BridgeSseEvent {
+class const BridgeSseSessionError({required this.sessionID}) extends BridgeSseEvent {
   final String? sessionID;
-  const BridgeSseSessionError({required this.sessionID});
 }
 
-class BridgeSseSessionCompacted extends BridgeSseEvent {
+class const BridgeSseSessionCompacted({required this.sessionID}) extends BridgeSseEvent {
   final String sessionID;
-  const BridgeSseSessionCompacted({required this.sessionID});
 }
 
-class BridgeSseSessionStatus extends BridgeSseEvent {
+class const BridgeSseSessionStatus({required this.sessionID, required this.status}) extends BridgeSseEvent {
   final String sessionID;
   final Map<String, dynamic> status;
-  const BridgeSseSessionStatus({required this.sessionID, required this.status});
 }
 
-class BridgeSseSessionIdle extends BridgeSseEvent {
+class const BridgeSseSessionIdle({required this.sessionID}) extends BridgeSseEvent {
   final String sessionID;
-  const BridgeSseSessionIdle({required this.sessionID});
 }
 
-class BridgeSseCommandExecuted extends BridgeSseEvent {
-  final String name;
-  final String sessionID;
-  final String arguments;
-  final String messageID;
-  const BridgeSseCommandExecuted({
+class const BridgeSseCommandExecuted({
     required this.name,
     required this.sessionID,
     required this.arguments,
     required this.messageID,
-  });
+  }) extends BridgeSseEvent {
+  final String name;
+  final String sessionID;
+  final String arguments;
+  final String messageID;
 }
 
-class BridgeSseMessageUpdated extends BridgeSseEvent {
+class const BridgeSseMessageUpdated({required this.info}) extends BridgeSseEvent {
   final Map<String, dynamic> info;
-  const BridgeSseMessageUpdated({required this.info});
 }
 
-class BridgeSseMessageRemoved extends BridgeSseEvent {
+class const BridgeSseMessageRemoved({required this.sessionID, required this.messageID}) extends BridgeSseEvent {
   final String sessionID;
   final String messageID;
-  const BridgeSseMessageRemoved({required this.sessionID, required this.messageID});
 }
 
-class BridgeSseMessagePartUpdated extends BridgeSseEvent {
+class const BridgeSseMessagePartUpdated({required this.part}) extends BridgeSseEvent {
   final PluginMessagePart part;
-  const BridgeSseMessagePartUpdated({required this.part});
 }
 
-class BridgeSseMessagePartDelta extends BridgeSseEvent {
-  final String sessionID;
-  final String messageID;
-  final String partID;
-  final String field;
-  final String delta;
-  const BridgeSseMessagePartDelta({
+class const BridgeSseMessagePartDelta({
     required this.sessionID,
     required this.messageID,
     required this.partID,
     required this.field,
     required this.delta,
-  });
-}
-
-class BridgeSseMessagePartRemoved extends BridgeSseEvent {
+  }) extends BridgeSseEvent {
   final String sessionID;
   final String messageID;
   final String partID;
-  const BridgeSseMessagePartRemoved({
+  final String field;
+  final String delta;
+}
+
+class const BridgeSseMessagePartRemoved({
     required this.sessionID,
     required this.messageID,
     required this.partID,
-  });
+  }) extends BridgeSseEvent {
+  final String sessionID;
+  final String messageID;
+  final String partID;
 }
 
-class BridgeSsePtyCreated extends BridgeSseEvent {
-  const BridgeSsePtyCreated();
-}
+class const BridgeSsePtyCreated() extends BridgeSseEvent;
 
-class BridgeSsePtyUpdated extends BridgeSseEvent {
-  const BridgeSsePtyUpdated();
-}
+class const BridgeSsePtyUpdated() extends BridgeSseEvent;
 
-class BridgeSsePtyExited extends BridgeSseEvent {
+class const BridgeSsePtyExited({this.id, this.exitCode}) extends BridgeSseEvent {
   final String? id;
   final int? exitCode;
-  const BridgeSsePtyExited({this.id, this.exitCode});
 }
 
-class BridgeSsePtyDeleted extends BridgeSseEvent {
+class const BridgeSsePtyDeleted({this.id}) extends BridgeSseEvent {
   final String? id;
-  const BridgeSsePtyDeleted({this.id});
 }
 
-class BridgeSsePermissionAsked extends BridgeSseEvent {
+class const BridgeSsePermissionAsked({
+    required this.requestID,
+    required this.sessionID,
+    required this.displaySessionId,
+    required this.tool,
+    required this.description,
+    required this.allowAlways,
+  }) extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
 
@@ -196,36 +167,30 @@ class BridgeSsePermissionAsked extends BridgeSseEvent {
   final String tool;
   final String description;
   final bool allowAlways;
-  const BridgeSsePermissionAsked({
+}
+
+class const BridgeSsePermissionReplied({
     required this.requestID,
     required this.sessionID,
     required this.displaySessionId,
-    required this.tool,
-    required this.description,
-    required this.allowAlways,
-  });
-}
-
-class BridgeSsePermissionReplied extends BridgeSseEvent {
+    required this.reply,
+  }) extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
 
   /// Root session this request is surfaced under. Null when unknown.
   final String? displaySessionId;
   final String reply;
-  const BridgeSsePermissionReplied({
-    required this.requestID,
+}
+
+class const BridgeSsePermissionUpdated() extends BridgeSseEvent;
+
+class const BridgeSseQuestionAsked({
+    required this.id,
     required this.sessionID,
     required this.displaySessionId,
-    required this.reply,
-  });
-}
-
-class BridgeSsePermissionUpdated extends BridgeSseEvent {
-  const BridgeSsePermissionUpdated();
-}
-
-class BridgeSseQuestionAsked extends BridgeSseEvent {
+    required this.questions,
+  }) extends BridgeSseEvent {
   final String id;
   final String sessionID;
 
@@ -233,113 +198,82 @@ class BridgeSseQuestionAsked extends BridgeSseEvent {
   /// child/sub-agent session's request). Null when unknown.
   final String? displaySessionId;
   final List<PluginQuestionInfo> questions;
-  const BridgeSseQuestionAsked({
-    required this.id,
-    required this.sessionID,
-    required this.displaySessionId,
-    required this.questions,
-  });
 }
 
-class BridgeSseQuestionReplied extends BridgeSseEvent {
+class const BridgeSseQuestionReplied({
+    required this.requestID,
+    required this.sessionID,
+    required this.displaySessionId,
+  }) extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
 
   /// Root session this request is surfaced under. Null when unknown.
   final String? displaySessionId;
-  const BridgeSseQuestionReplied({
+}
+
+class const BridgeSseQuestionRejected({
     required this.requestID,
     required this.sessionID,
     required this.displaySessionId,
-  });
-}
-
-class BridgeSseQuestionRejected extends BridgeSseEvent {
+  }) extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
 
   /// Root session this request is surfaced under. Null when unknown.
   final String? displaySessionId;
-  const BridgeSseQuestionRejected({
-    required this.requestID,
-    required this.sessionID,
-    required this.displaySessionId,
-  });
 }
 
-class BridgeSseTodoUpdated extends BridgeSseEvent {
+class const BridgeSseTodoUpdated({required this.sessionID}) extends BridgeSseEvent {
   final String sessionID;
-  const BridgeSseTodoUpdated({required this.sessionID});
 }
 
-class BridgeSseProjectUpdated extends BridgeSseEvent {
-  const BridgeSseProjectUpdated();
-}
+class const BridgeSseProjectUpdated() extends BridgeSseEvent;
 
-class BridgeSseVcsBranchUpdated extends BridgeSseEvent {
-  const BridgeSseVcsBranchUpdated();
-}
+class const BridgeSseVcsBranchUpdated() extends BridgeSseEvent;
 
-class BridgeSseFileEdited extends BridgeSseEvent {
+class const BridgeSseFileEdited({this.file}) extends BridgeSseEvent {
   final String? file;
-  const BridgeSseFileEdited({this.file});
 }
 
-class BridgeSseFileWatcherUpdated extends BridgeSseEvent {
+class const BridgeSseFileWatcherUpdated({this.file, this.event}) extends BridgeSseEvent {
   final String? file;
   final String? event;
-  const BridgeSseFileWatcherUpdated({this.file, this.event});
 }
 
-class BridgeSseLspUpdated extends BridgeSseEvent {
-  const BridgeSseLspUpdated();
-}
+class const BridgeSseLspUpdated() extends BridgeSseEvent;
 
-class BridgeSseLspClientDiagnostics extends BridgeSseEvent {
+class const BridgeSseLspClientDiagnostics({this.serverID, this.path}) extends BridgeSseEvent {
   final String? serverID;
   final String? path;
-  const BridgeSseLspClientDiagnostics({this.serverID, this.path});
 }
 
-class BridgeSseMcpToolsChanged extends BridgeSseEvent {
-  const BridgeSseMcpToolsChanged();
-}
+class const BridgeSseMcpToolsChanged() extends BridgeSseEvent;
 
-class BridgeSseMcpBrowserOpenFailed extends BridgeSseEvent {
-  const BridgeSseMcpBrowserOpenFailed();
-}
+class const BridgeSseMcpBrowserOpenFailed() extends BridgeSseEvent;
 
-class BridgeSseInstallationUpdated extends BridgeSseEvent {
+class const BridgeSseInstallationUpdated({this.version}) extends BridgeSseEvent {
   final String? version;
-  const BridgeSseInstallationUpdated({this.version});
 }
 
-class BridgeSseInstallationUpdateAvailable extends BridgeSseEvent {
+class const BridgeSseInstallationUpdateAvailable({this.version}) extends BridgeSseEvent {
   final String? version;
-  const BridgeSseInstallationUpdateAvailable({this.version});
 }
 
-class BridgeSseWorkspaceReady extends BridgeSseEvent {
+class const BridgeSseWorkspaceReady({this.name}) extends BridgeSseEvent {
   final String? name;
-  const BridgeSseWorkspaceReady({this.name});
 }
 
-class BridgeSseWorkspaceFailed extends BridgeSseEvent {
+class const BridgeSseWorkspaceFailed({this.message}) extends BridgeSseEvent {
   final String? message;
-  const BridgeSseWorkspaceFailed({this.message});
 }
 
-class BridgeSseTuiToastShow extends BridgeSseEvent {
+class const BridgeSseTuiToastShow({this.title, this.message, this.variant}) extends BridgeSseEvent {
   final String? title;
   final String? message;
   final String? variant;
-  const BridgeSseTuiToastShow({this.title, this.message, this.variant});
 }
 
-class BridgeSseWorktreeReady extends BridgeSseEvent {
-  const BridgeSseWorktreeReady();
-}
+class const BridgeSseWorktreeReady() extends BridgeSseEvent;
 
-class BridgeSseWorktreeFailed extends BridgeSseEvent {
-  const BridgeSseWorktreeFailed();
-}
+class const BridgeSseWorktreeFailed() extends BridgeSseEvent;

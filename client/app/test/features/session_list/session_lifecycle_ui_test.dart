@@ -20,7 +20,7 @@ import "../../helpers/test_helpers.dart";
 // Mock classes
 // ---------------------------------------------------------------------------
 
-class MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {
+class MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit {
   SessionCleanupRejection? _lastCleanupRejection;
 
   @override
@@ -106,9 +106,7 @@ Session _testSessionWithPullRequest() {
 /// Minimal harness that renders the session list actions bottom sheet
 /// for the given session. This avoids depending on the full screen
 /// widget tree while still exercising the dialog/sheet widgets.
-class _TestSessionListBody extends StatelessWidget {
-  const _TestSessionListBody();
-
+class const _TestSessionListBody() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<SessionListCubit>().state;
@@ -188,16 +186,15 @@ class _TestSessionListBody extends StatelessWidget {
 // the full SessionListScreen widget. But since it requires full DI setup,
 // we'll instead test the bottom sheet UI patterns directly.
 
-class _TestDeleteSheet extends StatefulWidget {
+class const _TestDeleteSheet({required this.session, required this.cubit}) extends StatefulWidget {
   final Session session;
   final SessionListCubit cubit;
-  const _TestDeleteSheet({required this.session, required this.cubit});
 
   @override
   State<_TestDeleteSheet> createState() => _TestDeleteSheetState();
 }
 
-class _TestDeleteSheetState extends State<_TestDeleteSheet> {
+class _TestDeleteSheetState() extends State<_TestDeleteSheet> {
   bool _deleteWorktree = true;
   bool _deleteBranch = true;
 
@@ -242,16 +239,15 @@ class _TestDeleteSheetState extends State<_TestDeleteSheet> {
   }
 }
 
-class _TestArchiveSheet extends StatefulWidget {
+class const _TestArchiveSheet({required this.session, required this.cubit}) extends StatefulWidget {
   final Session session;
   final SessionListCubit cubit;
-  const _TestArchiveSheet({required this.session, required this.cubit});
 
   @override
   State<_TestArchiveSheet> createState() => _TestArchiveSheetState();
 }
 
-class _TestArchiveSheetState extends State<_TestArchiveSheet> {
+class _TestArchiveSheetState() extends State<_TestArchiveSheet> {
   bool _deleteWorktree = true;
   bool _deleteBranch = true;
 

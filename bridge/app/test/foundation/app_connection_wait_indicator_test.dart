@@ -149,13 +149,11 @@ void main() {
   });
 }
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout({
+class _CapturingStdout({
     required this.hasTerminal,
     required this.supportsAnsiEscapes,
     required this.terminalColumns,
-  });
-
+  }) implements Stdout {
   @override
   final bool hasTerminal;
 
@@ -175,7 +173,7 @@ class _CapturingStdout implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ThrowingStdout implements Stdout {
+class _ThrowingStdout() implements Stdout {
   int writeCalls = 0;
 
   @override

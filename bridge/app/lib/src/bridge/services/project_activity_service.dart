@@ -9,12 +9,12 @@ import "../repositories/models/project_activity_evidence.dart";
 import "../repositories/project_activity_repository.dart";
 import "../repositories/project_repository.dart";
 
-class ProjectActivityService {
-  ProjectActivityService({
+class ProjectActivityService({
     required ProjectRepository projectRepository,
     required ProjectActivityRepository projectActivityRepository,
     required int Function() now,
-  }) : _projectRepository = projectRepository,
+  }) {
+  this : _projectRepository = projectRepository,
        _projectActivityRepository = projectActivityRepository,
        _now = now;
 

@@ -4,27 +4,19 @@ import "package:crypto/crypto.dart" show sha256;
 
 import "../api/app_onboarding_state_storage.dart";
 
-sealed class AppOnboardingStateLookup {
-  const AppOnboardingStateLookup();
-}
+sealed class const AppOnboardingStateLookup();
 
-final class AppOnboardingStatePresent extends AppOnboardingStateLookup {
-  const AppOnboardingStatePresent();
-}
+final class const AppOnboardingStatePresent() extends AppOnboardingStateLookup;
 
-final class AppOnboardingStateAbsent extends AppOnboardingStateLookup {
-  const AppOnboardingStateAbsent();
-}
+final class const AppOnboardingStateAbsent() extends AppOnboardingStateLookup;
 
-final class AppOnboardingStateReadFailed extends AppOnboardingStateLookup {
-  const AppOnboardingStateReadFailed({required this.error, required this.stackTrace});
-
+final class const AppOnboardingStateReadFailed({required this.error, required this.stackTrace}) extends AppOnboardingStateLookup {
   final Object error;
   final StackTrace stackTrace;
 }
 
-class AppOnboardingStateRepository {
-  AppOnboardingStateRepository({required AppOnboardingStateStorage storage}) : _storage = storage;
+class AppOnboardingStateRepository({required AppOnboardingStateStorage storage}) {
+  this : _storage = storage;
 
   final AppOnboardingStateStorage _storage;
 

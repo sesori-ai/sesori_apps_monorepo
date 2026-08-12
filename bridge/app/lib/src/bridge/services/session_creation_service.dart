@@ -8,18 +8,18 @@ import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
 import "worktree_service.dart";
 
-class SessionCreationService {
+class SessionCreationService({
+    required MetadataService metadataService,
+    required WorktreeService worktreeService,
+    required SessionRepository sessionRepository,
+    required SessionMutationDispatcher sessionMutationDispatcher,
+  }) {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
   final SessionMutationDispatcher _sessionMutationDispatcher;
 
-  SessionCreationService({
-    required MetadataService metadataService,
-    required WorktreeService worktreeService,
-    required SessionRepository sessionRepository,
-    required SessionMutationDispatcher sessionMutationDispatcher,
-  }) : _metadataService = metadataService,
+  this : _metadataService = metadataService,
        _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
        _sessionMutationDispatcher = sessionMutationDispatcher;

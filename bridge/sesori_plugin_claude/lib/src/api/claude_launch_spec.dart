@@ -6,7 +6,7 @@ import "../models/claude_permission_mode.dart";
 /// A launch is exactly one of these. Modelling them as separate variants keeps
 /// "new and resumed at once" and "neither" unrepresentable, and each carries
 /// only the session id it needs.
-sealed class ClaudeSessionLaunch {
+sealed class ClaudeSessionLaunch({required this.sessionId}) {
   /// Rejects an id the CLI would refuse.
   ///
   /// `--session-id` requires a UUID, and every transcript filename observed was
@@ -14,7 +14,7 @@ sealed class ClaudeSessionLaunch {
   /// wrong thing or a corrupted persisted row. Failing here names the problem;
   /// failing at spawn surfaces it as an opaque CLI startup error attached to a
   /// session the user just tried to open.
-  ClaudeSessionLaunch({required this.sessionId}) {
+  this {
     if (!_uuidPattern.hasMatch(sessionId)) {
       throw ArgumentError.value(sessionId, "sessionId", "must be a UUID");
     }
@@ -26,14 +26,10 @@ sealed class ClaudeSessionLaunch {
 }
 
 /// Starts a new session under a bridge-generated id (`--session-id`).
-final class ClaudeNewSession extends ClaudeSessionLaunch {
-  ClaudeNewSession({required super.sessionId});
-}
+final class ClaudeNewSession({required super.sessionId}) extends ClaudeSessionLaunch;
 
 /// Continues an existing session from its transcript (`--resume`).
-final class ClaudeResumedSession extends ClaudeSessionLaunch {
-  ClaudeResumedSession({required super.sessionId});
-}
+final class ClaudeResumedSession({required super.sessionId}) extends ClaudeSessionLaunch;
 
 final RegExp _uuidPattern = RegExp(
   r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
@@ -47,8 +43,7 @@ final RegExp _uuidPattern = RegExp(
 ///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 1.
-class ClaudeLaunchSpec {
-  ClaudeLaunchSpec({
+class ClaudeLaunchSpec({
     required this.binaryPath,
     required this.workingDirectory,
     required this.launch,
@@ -57,7 +52,8 @@ class ClaudeLaunchSpec {
     required this.permissionMode,
     required List<String> allowedTools,
     Map<String, String> environment = const {},
-  }) : allowedTools = List.unmodifiable(allowedTools),
+  }) {
+  this : allowedTools = List.unmodifiable(allowedTools),
        environment = Map.unmodifiable(environment) {
     if (this.environment.containsKey("HOME")) {
       throw ArgumentError.value(

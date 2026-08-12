@@ -7,8 +7,8 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 /// exercise git: every git command fails (non-zero exit), so derived reads
 /// resolve to their "absent" results — [getRemoteUrl] returns `null` unless a
 /// fixed [remoteUrl] is supplied.
-class FakeGitCliApi extends GitCliApi {
-  FakeGitCliApi({String? remoteUrl})
+class FakeGitCliApi({String? remoteUrl}) extends GitCliApi {
+  this
     : _remoteUrl = remoteUrl,
       super(processRunner: _FailingProcessRunner(), gitPathExists: _noGitPath);
 
@@ -21,7 +21,7 @@ class FakeGitCliApi extends GitCliApi {
 }
 
 /// Fails every command with exit code 1 without spawning a process.
-class _FailingProcessRunner implements ProcessRunner {
+class _FailingProcessRunner() implements ProcessRunner {
   @override
   Future<ProcessResult> run(
     String executable,

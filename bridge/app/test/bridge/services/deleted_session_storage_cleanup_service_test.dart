@@ -47,14 +47,12 @@ void main() {
   });
 }
 
-class _FakeSessionRepository implements SessionRepository {
-  _FakeSessionRepository({
+class _FakeSessionRepository({
     required this.cleanupPluginIds,
     required this.tombstonesByPlugin,
     required this.failingTombstoneReads,
     required this.failingCleanups,
-  });
-
+  }) implements SessionRepository {
   final List<String> cleanupPluginIds;
   final Map<String, Set<String>> tombstonesByPlugin;
   final Set<String> failingTombstoneReads;

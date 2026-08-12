@@ -6,9 +6,7 @@ import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dar
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show DownloadProgress;
 import 'package:test/test.dart';
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout({required this.hasTerminal});
-
+class _CapturingStdout({required this.hasTerminal}) implements Stdout {
   @override
   final bool hasTerminal;
 
@@ -24,7 +22,7 @@ class _CapturingStdout implements Stdout {
 
 /// A terminal whose writes always fail, simulating a broken pipe / closed
 /// terminal mid-download.
-class _ThrowingStdout implements Stdout {
+class _ThrowingStdout() implements Stdout {
   int writeCalls = 0;
 
   @override

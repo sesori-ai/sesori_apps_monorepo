@@ -14,12 +14,12 @@ import "auth_gate_state.dart";
 /// network — the startup posture mobile's splash uses), then tracks live
 /// transitions. Mid-login states do not flip the gate: the login surface owns
 /// its own progress UI.
-class AuthGateCubit extends Cubit<AuthGateState> {
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  AuthGateCubit(
+class AuthGateCubit(
     AuthSession authSession, {
     @visibleForTesting Duration signOutRestoreFence = const Duration(seconds: 5),
-  }) : _authSession = authSession,
+  }) extends Cubit<AuthGateState> {
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
+  this : _authSession = authSession,
        _signOutRestoreFence = signOutRestoreFence,
        super(const AuthGateState.checking()) {
     unawaited(_restoreAndSubscribe());

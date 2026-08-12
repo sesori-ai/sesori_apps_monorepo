@@ -23,7 +23,19 @@ import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
-class SessionListCubit extends Cubit<SessionListState> {
+class SessionListCubit({
+    required SessionService sessionService,
+    required SessionListService sessionListService,
+    required ProjectRepository projectRepository,
+    required ConnectionService connectionService,
+    required SseEventTracker sseEventTracker,
+    required SessionUnseenTracker sessionUnseenTracker,
+    required ProjectViewingService projectViewingService,
+    required RouteSource routeSource,
+    required String projectId,
+    required this.initialSupportsDedicatedWorktrees,
+    required FailureReporter failureReporter,
+  }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   final SessionService _sessionService;
@@ -46,19 +58,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// keeps the last-known values.
   ProjectGitContext? _gitContext;
 
-  SessionListCubit({
-    required SessionService sessionService,
-    required SessionListService sessionListService,
-    required ProjectRepository projectRepository,
-    required ConnectionService connectionService,
-    required SseEventTracker sseEventTracker,
-    required SessionUnseenTracker sessionUnseenTracker,
-    required ProjectViewingService projectViewingService,
-    required RouteSource routeSource,
-    required String projectId,
-    required this.initialSupportsDedicatedWorktrees,
-    required FailureReporter failureReporter,
-  }) : _sessionService = sessionService,
+  this : _sessionService = sessionService,
        _sessionListService = sessionListService,
        _projectRepository = projectRepository,
        _connectionService = connectionService,

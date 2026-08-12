@@ -362,8 +362,8 @@ void main() {
   });
 }
 
-class _ProbeProcessService implements HostProcessService {
-  _ProbeProcessService({this.spawnError, List<_ProbeProcess>? processSequence, List<Object>? spawnOutcomes})
+class _ProbeProcessService({this.spawnError, List<_ProbeProcess>? processSequence, List<Object>? spawnOutcomes}) implements HostProcessService {
+  this
     : _processSequence = processSequence ?? const <_ProbeProcess>[],
       _spawnOutcomes = spawnOutcomes;
 
@@ -413,8 +413,8 @@ class _ProbeProcessService implements HostProcessService {
   );
 }
 
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required this.pid, required List<int> stdoutBytes, required Future<int> exitCode})
+class _ProbeProcess({required this.pid, required List<int> stdoutBytes, required Future<int> exitCode}) implements SpawnedProcess {
+  this
     : _stdoutBytes = stdoutBytes,
       _exitCode = exitCode;
 
@@ -440,7 +440,7 @@ class _ProbeProcess implements SpawnedProcess {
   ProcessIdentity get identity => throw UnimplementedError();
 }
 
-class _AbortOnThirdCheck implements StartAbortSignal {
+class _AbortOnThirdCheck() implements StartAbortSignal {
   int _checks = 0;
 
   @override

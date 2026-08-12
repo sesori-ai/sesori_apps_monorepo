@@ -259,12 +259,12 @@ void main() {
 
 Future<void> _eventLoop() => Future<void>.delayed(Duration.zero);
 
-class _FakeHostProcessService implements HostProcessService {
-  _FakeHostProcessService(
+class _FakeHostProcessService(
     this.process, {
     this.exitOnForceSignal = false,
     List<_FakeProcess> additionalProcesses = const [],
-  }) : _spawnProcesses = [process, ...additionalProcesses];
+  }) implements HostProcessService {
+  this : _spawnProcesses = [process, ...additionalProcesses];
 
   final _FakeProcess process;
   final List<_FakeProcess> _spawnProcesses;
@@ -323,8 +323,8 @@ class _FakeHostProcessService implements HostProcessService {
   );
 }
 
-class _FakeProcess implements SpawnedProcess {
-  _FakeProcess({required this.autoExitOnStdinClose}) {
+class _FakeProcess({required this.autoExitOnStdinClose}) implements SpawnedProcess {
+  this {
     _stdinController = StreamController<List<int>>(
       onListen: () {},
       onCancel: () {},

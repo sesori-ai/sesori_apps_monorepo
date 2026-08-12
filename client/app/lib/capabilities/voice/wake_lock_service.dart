@@ -7,7 +7,7 @@ import "package:wakelock_plus/wakelock_plus.dart";
 /// Wake lock failures are logged but never thrown — they must not
 /// interrupt the recording flow.
 @lazySingleton
-class WakeLockService {
+class WakeLockService() {
   Future<void> enable() async {
     try {
       await WakelockPlus.enable();

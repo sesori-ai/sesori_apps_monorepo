@@ -137,12 +137,10 @@ void main() {
   });
 }
 
-class _RequestResponse {
+class _RequestResponse({required this.path, required this.statusCode, required this.body}) {
   final String path;
   final int statusCode;
   final String body;
-
-  _RequestResponse({required this.path, required this.statusCode, required this.body});
 }
 
 void _handleRequests(HttpServer server, List<_RequestResponse> responses) {

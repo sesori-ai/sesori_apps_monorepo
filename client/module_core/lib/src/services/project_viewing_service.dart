@@ -17,18 +17,14 @@ import "../routing/app_routes.dart";
 ///
 /// The service compares claims by identity, so cleanup from an older cubit
 /// cannot erase the claim installed by its replacement.
-class ProjectViewClaim {
-  ProjectViewClaim();
-}
+class ProjectViewClaim();
 
 /// Opaque generation owner for one adaptive shell's wide list pane.
 ///
 /// The service compares pane claims by identity so a replaced shell cannot
 /// clear the presence reported by its replacement when Flutter disposes them
 /// out of order.
-class ProjectViewPaneClaim {
-  ProjectViewPaneClaim();
-}
+class ProjectViewPaneClaim();
 
 /// Layer-3 owner of this client's single effective viewed project.
 ///
@@ -39,7 +35,12 @@ class ProjectViewPaneClaim {
 /// occluded reports [LifecycleState.inactive], so it keeps its declaration. This is intentionally independent from
 /// session-view declarations, whose mark-seen side effect has different rules.
 @lazySingleton
-class ProjectViewingService with Disposable {
+class ProjectViewingService({
+    required ProjectViewRepository viewRepository,
+    required LifecycleSource lifecycleSource,
+    required ConnectionService connectionService,
+    required RouteSource routeSource,
+  }) with Disposable {
   final ProjectViewRepository _viewRepository;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -60,12 +61,7 @@ class ProjectViewingService with Disposable {
   Future<void> _sendTail = Future<void>.value();
   Future<void>? _disposeFuture;
 
-  ProjectViewingService({
-    required ProjectViewRepository viewRepository,
-    required LifecycleSource lifecycleSource,
-    required ConnectionService connectionService,
-    required RouteSource routeSource,
-  }) : _viewRepository = viewRepository,
+  this : _viewRepository = viewRepository,
        _route = routeSource.currentRoute,
        _backgrounded = _isBackgroundState(state: lifecycleSource.lifecycleState),
        _wasConnected = connectionService.currentStatus is ConnectionConnected {
@@ -326,21 +322,13 @@ class ProjectViewingService with Disposable {
   }
 }
 
-sealed class _ProjectViewClaimState {
+sealed class const _ProjectViewClaimState({required this.claim, required this.projectId}) {
   final ProjectViewClaim claim;
   final String projectId;
-
-  const _ProjectViewClaimState({required this.claim, required this.projectId});
 }
 
-final class _ProjectViewClaimPending extends _ProjectViewClaimState {
-  const _ProjectViewClaimPending({required super.claim, required super.projectId});
-}
+final class const _ProjectViewClaimPending({required super.claim, required super.projectId}) extends _ProjectViewClaimState;
 
-final class _ProjectViewClaimReady extends _ProjectViewClaimState {
-  const _ProjectViewClaimReady({required super.claim, required super.projectId});
-}
+final class const _ProjectViewClaimReady({required super.claim, required super.projectId}) extends _ProjectViewClaimState;
 
-final class _ProjectViewClaimFailed extends _ProjectViewClaimState {
-  const _ProjectViewClaimFailed({required super.claim, required super.projectId});
-}
+final class const _ProjectViewClaimFailed({required super.claim, required super.projectId}) extends _ProjectViewClaimState;

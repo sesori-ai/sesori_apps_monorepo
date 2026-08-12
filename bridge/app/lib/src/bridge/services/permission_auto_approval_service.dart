@@ -6,7 +6,12 @@ import "../repositories/permission_repository.dart";
 import "../repositories/session_repository.dart";
 import "pending_interaction_service.dart";
 
-class PermissionAutoApprovalService {
+class PermissionAutoApprovalService({
+    required SessionRepository sessionRepository,
+    required PermissionRepository permissionRepository,
+    required PendingInteractionService pendingInteractionService,
+    required BridgeSettingsRepository bridgeSettingsRepository,
+  }) {
   final SessionRepository _sessionRepository;
   final PermissionRepository _permissionRepository;
   final PendingInteractionService _pendingInteractionService;
@@ -15,12 +20,7 @@ class PermissionAutoApprovalService {
 
   bool _disposed = false;
 
-  PermissionAutoApprovalService({
-    required SessionRepository sessionRepository,
-    required PermissionRepository permissionRepository,
-    required PendingInteractionService pendingInteractionService,
-    required BridgeSettingsRepository bridgeSettingsRepository,
-  }) : _sessionRepository = sessionRepository,
+  this : _sessionRepository = sessionRepository,
        _permissionRepository = permissionRepository,
        _pendingInteractionService = pendingInteractionService,
        _bridgeSettingsRepository = bridgeSettingsRepository;

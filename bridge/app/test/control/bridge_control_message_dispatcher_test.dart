@@ -137,7 +137,7 @@ void main() {
 
 String _encode(ControlMessage message) => jsonEncode(message.toJson());
 
-class _FakeControlChannelClient implements ControlChannelClient {
+class _FakeControlChannelClient() implements ControlChannelClient {
   final StreamController<String> _inbound = StreamController<String>.broadcast();
   int listenCount = 0;
 
@@ -174,7 +174,7 @@ class _FakeControlChannelClient implements ControlChannelClient {
   }
 }
 
-class _RecordingTokenService implements ControlChannelTokenService {
+class _RecordingTokenService() implements ControlChannelTokenService {
   final List<(String, String?)> responses = <(String, String?)>[];
   final List<String> updates = <String>[];
 
@@ -188,7 +188,7 @@ class _RecordingTokenService implements ControlChannelTokenService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _RecordingPromptService implements ControlPromptService {
+class _RecordingPromptService() implements ControlPromptService {
   final List<(String, bool)> responses = <(String, bool)>[];
 
   @override
@@ -198,7 +198,7 @@ class _RecordingPromptService implements ControlPromptService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _RecordingUnregisterService implements ControlUnregisterService {
+class _RecordingUnregisterService() implements ControlUnregisterService {
   int calls = 0;
 
   @override

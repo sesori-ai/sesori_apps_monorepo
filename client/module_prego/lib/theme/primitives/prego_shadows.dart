@@ -17,9 +17,7 @@ import "prego_colors.g.dart";
 /// )
 /// ```
 @immutable
-final class PregoShadows {
-  const PregoShadows({required this.colors});
-
+final class const PregoShadows({required this.colors}) {
   final PregoColors colors;
 
   /// Figma: shadow-xs

@@ -31,7 +31,11 @@ extension CompleterWithTimeout<T> on Completer<T> {
   }
 }
 
-class MessageQueue<T, OUT> {
+class MessageQueue<T, OUT>({
+    required this.sendFunction,
+    this.inFlightTimeout,
+    Completer<void>? isReady,
+  }) {
   final FutureOr<OUT> Function(T) sendFunction;
   final Completer<void> _isReady;
 
@@ -41,11 +45,7 @@ class MessageQueue<T, OUT> {
   final Queue<({T data, Completer<OUT> completer})> _messages = Queue();
   bool _isSending = false;
 
-  MessageQueue({
-    required this.sendFunction,
-    this.inFlightTimeout,
-    Completer<void>? isReady,
-  }) : _isReady = isReady ?? (Completer()..complete()) {
+  this : _isReady = isReady ?? (Completer()..complete()) {
     unawaited(_isReady.future.then((value) => _checkAndSendNext()));
   }
 

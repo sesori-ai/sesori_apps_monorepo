@@ -14,7 +14,7 @@ part "projects_table.freezed.dart";
   },
 )
 @UseRowClass(ProjectDto)
-class ProjectsTable extends Table {
+class ProjectsTable() extends Table {
   TextColumn get projectId => text()();
 
   /// The project's live directory on disk. This may differ from [projectId]
@@ -50,7 +50,7 @@ class ProjectsTable extends Table {
 }
 
 @freezed
-sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
+sealed class const ProjectDto._() with _$ProjectDto, $ProjectsTableTableToColumns {
   const factory ProjectDto({
     required String projectId,
     required String path,
@@ -62,6 +62,4 @@ sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
     required int updatedAt,
     required int projectionUpdatedAt,
   }) = _ProjectDto;
-
-  const ProjectDto._();
 }

@@ -6,38 +6,26 @@ import "package:image/image.dart" as image;
 
 import "../../api/attachment_spill_storage.dart";
 
-sealed class AttachmentThumbnailBuildResult {
-  const AttachmentThumbnailBuildResult();
-}
+sealed class const AttachmentThumbnailBuildResult();
 
-final class AttachmentThumbnailRendered extends AttachmentThumbnailBuildResult {
+final class const AttachmentThumbnailRendered({required this.bytes, required this.format}) extends AttachmentThumbnailBuildResult {
   final Uint8List bytes;
   final AttachmentThumbnailFormat format;
-
-  const AttachmentThumbnailRendered({required this.bytes, required this.format});
 }
 
-final class AttachmentThumbnailUnsupported extends AttachmentThumbnailBuildResult {
-  const AttachmentThumbnailUnsupported();
-}
+final class const AttachmentThumbnailUnsupported() extends AttachmentThumbnailBuildResult;
 
-final class AttachmentThumbnailTooLarge extends AttachmentThumbnailBuildResult {
-  const AttachmentThumbnailTooLarge();
-}
+final class const AttachmentThumbnailTooLarge() extends AttachmentThumbnailBuildResult;
 
-final class AttachmentThumbnailFailed extends AttachmentThumbnailBuildResult {
+final class const AttachmentThumbnailFailed({required this.cause, required this.stackTrace}) extends AttachmentThumbnailBuildResult {
   final Object cause;
   final StackTrace stackTrace;
-
-  const AttachmentThumbnailFailed({required this.cause, required this.stackTrace});
 }
 
-class AttachmentThumbnailBuilder {
+class const AttachmentThumbnailBuilder() {
   static const _size = 512;
   static const _jpegQuality = 82;
   static const _maxDecodedPixels = 24 * 1024 * 1024;
-
-  const AttachmentThumbnailBuilder();
 
   String? detectSupportedMime({required Uint8List bytes}) {
     try {

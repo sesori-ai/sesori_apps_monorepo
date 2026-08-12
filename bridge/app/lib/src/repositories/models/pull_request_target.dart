@@ -1,72 +1,50 @@
 import "pull_request_selection.dart";
 
-enum PullRequestNoBranchReason { missingDirectory, notGitRepository, detachedHead }
+enum PullRequestNoBranchReason() { missingDirectory, notGitRepository, detachedHead }
 
-sealed class PullRequestDirectoryTarget {
-  const PullRequestDirectoryTarget();
-}
+sealed class const PullRequestDirectoryTarget();
 
-final class PullRequestGithubDirectoryTarget extends PullRequestDirectoryTarget {
+final class const PullRequestGithubDirectoryTarget({required this.target}) extends PullRequestDirectoryTarget {
   final PullRequestSelectionTarget target;
-
-  const PullRequestGithubDirectoryTarget({required this.target});
 }
 
-final class PullRequestLocalBranchDirectoryTarget extends PullRequestDirectoryTarget {
+final class const PullRequestLocalBranchDirectoryTarget({required this.branchName}) extends PullRequestDirectoryTarget {
   final String branchName;
-
-  const PullRequestLocalBranchDirectoryTarget({required this.branchName});
 }
 
-final class PullRequestNoBranchDirectoryTarget extends PullRequestDirectoryTarget {
+final class const PullRequestNoBranchDirectoryTarget({required this.reason}) extends PullRequestDirectoryTarget {
   final PullRequestNoBranchReason reason;
-
-  const PullRequestNoBranchDirectoryTarget({required this.reason});
 }
 
-final class PullRequestBranchResolutionFailed extends PullRequestDirectoryTarget {
+final class const PullRequestBranchResolutionFailed({required this.error}) extends PullRequestDirectoryTarget {
   final PullRequestTargetResolutionException error;
-
-  const PullRequestBranchResolutionFailed({required this.error});
 }
 
-final class PullRequestBranchChangedDuringResolution extends PullRequestDirectoryTarget {
-  const PullRequestBranchChangedDuringResolution();
-}
+final class const PullRequestBranchChangedDuringResolution() extends PullRequestDirectoryTarget;
 
-final class PullRequestRepositoryResolutionFailed extends PullRequestDirectoryTarget {
-  final String branchName;
-  final PullRequestTargetResolutionException error;
-
-  const PullRequestRepositoryResolutionFailed({
+final class const PullRequestRepositoryResolutionFailed({
     required this.branchName,
     required this.error,
-  });
+  }) extends PullRequestDirectoryTarget {
+  final String branchName;
+  final PullRequestTargetResolutionException error;
 }
 
-final class PullRequestTargetResolutionException implements Exception {
-  final Object innerError;
-  final StackTrace innerStackTrace;
-
-  const PullRequestTargetResolutionException({
+final class const PullRequestTargetResolutionException({
     required this.innerError,
     required this.innerStackTrace,
-  });
+  }) implements Exception {
+  final Object innerError;
+  final StackTrace innerStackTrace;
 
   @override
   String toString() => "Local pull request target resolution failed while handling ${innerError.runtimeType}";
 }
 
-sealed class PullRequestReplacementOutcome {
-  const PullRequestReplacementOutcome();
-}
+sealed class const PullRequestReplacementOutcome();
 
-final class PullRequestReplacementApplied extends PullRequestReplacementOutcome {
+final class const PullRequestReplacementApplied({required this.changed}) extends PullRequestReplacementOutcome {
   final bool changed;
-
-  const PullRequestReplacementApplied({required this.changed});
 }
 
-final class PullRequestReplacementScopeChanged extends PullRequestReplacementOutcome {
-  const PullRequestReplacementScopeChanged();
-}
+final class const PullRequestReplacementScopeChanged() extends PullRequestReplacementOutcome;

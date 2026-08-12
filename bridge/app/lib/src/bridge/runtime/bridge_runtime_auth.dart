@@ -13,7 +13,14 @@ import 'bridge_cli_options.dart';
 
 const Duration _oAuthAckTimeout = Duration(seconds: 5);
 
-class BridgeRuntimeAuthService {
+class const BridgeRuntimeAuthService({
+    required LoginEmailRepository loginEmailRepository,
+    required LoginOAuthService loginOAuthService,
+    required Map<String, String> environment,
+    required Future<TokenData> Function() loadTokens,
+    required Future<void> Function(TokenData tokens) saveTokens,
+    required Future<void> Function() clearTokens,
+  }) {
   final LoginEmailRepository _loginEmailRepository;
   final LoginOAuthService _loginOAuthService;
   final Map<String, String> _environment;
@@ -21,14 +28,7 @@ class BridgeRuntimeAuthService {
   final Future<void> Function(TokenData tokens) _saveTokens;
   final Future<void> Function() _clearTokens;
 
-  const BridgeRuntimeAuthService({
-    required LoginEmailRepository loginEmailRepository,
-    required LoginOAuthService loginOAuthService,
-    required Map<String, String> environment,
-    required Future<TokenData> Function() loadTokens,
-    required Future<void> Function(TokenData tokens) saveTokens,
-    required Future<void> Function() clearTokens,
-  }) : _loginEmailRepository = loginEmailRepository,
+  this : _loginEmailRepository = loginEmailRepository,
        _loginOAuthService = loginOAuthService,
        _environment = environment,
        _loadTokens = loadTokens,

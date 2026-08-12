@@ -9,42 +9,28 @@ import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
 
-sealed class ClaudeTurnOutcome {
-  const ClaudeTurnOutcome();
-}
+sealed class const ClaudeTurnOutcome();
 
-final class ClaudeTurnCompleted extends ClaudeTurnOutcome {
-  const ClaudeTurnCompleted();
-}
+final class const ClaudeTurnCompleted() extends ClaudeTurnOutcome;
 
-final class ClaudeTurnFailed extends ClaudeTurnOutcome {
-  const ClaudeTurnFailed();
-}
+final class const ClaudeTurnFailed() extends ClaudeTurnOutcome;
 
-final class ClaudeTurnInterrupted extends ClaudeTurnOutcome {
-  const ClaudeTurnInterrupted();
-}
+final class const ClaudeTurnInterrupted() extends ClaudeTurnOutcome;
 
-final class ClaudeTurnDispatch {
-  const ClaudeTurnDispatch({required this.accepted, required this.outcome});
-
+final class const ClaudeTurnDispatch({required this.accepted, required this.outcome}) {
   final bool accepted;
   final Future<ClaudeTurnOutcome> outcome;
 }
 
-sealed class ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessEvent({required this.sessionId});
-
+sealed class const ClaudeSessionProcessEvent({required this.sessionId}) {
   final String sessionId;
 }
 
-final class ClaudeSessionProcessMessage extends ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessMessage({
+final class const ClaudeSessionProcessMessage({
     required super.sessionId,
     required this.message,
     required this.interrupted,
-  });
-
+  }) extends ClaudeSessionProcessEvent {
   final ClaudeStreamMessage message;
   final bool interrupted;
 
@@ -54,33 +40,27 @@ final class ClaudeSessionProcessMessage extends ClaudeSessionProcessEvent {
   };
 }
 
-final class ClaudeSessionProcessExited extends ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessExited({required super.sessionId, required this.interrupted});
-
+final class const ClaudeSessionProcessExited({required super.sessionId, required this.interrupted}) extends ClaudeSessionProcessEvent {
   final bool interrupted;
 }
 
-final class ClaudeAppliedSelection {
-  const ClaudeAppliedSelection({
+final class const ClaudeAppliedSelection({
     required this.model,
     required this.effort,
     required this.permissionMode,
-  });
-
+  }) {
   final String? model;
   final ClaudeEffortLevel? effort;
   final ClaudePermissionMode? permissionMode;
 }
 
-final class _ResidentProcess {
-  _ResidentProcess({
+final class _ResidentProcess({
     required this.client,
     required this.resumed,
     required this.appliedModel,
     required this.appliedEffort,
     required this.appliedPermissionMode,
-  });
-
+  }) {
   final ClaudeStreamClient client;
   late final StreamSubscription<ClaudeStreamMessage> messages;
   final bool resumed;
@@ -93,12 +73,12 @@ final class _ResidentProcess {
 }
 
 /// Owns resident Claude processes and all transport-facing session state.
-final class ClaudeSessionProcessRepository {
-  ClaudeSessionProcessRepository({
+final class ClaudeSessionProcessRepository({
     required ClaudeProcessFactory processFactory,
     required String binaryPath,
     required Map<String, String> environment,
-  }) : _processFactory = processFactory,
+  }) {
+  this : _processFactory = processFactory,
        _binaryPath = binaryPath,
        _environment = Map.unmodifiable(environment);
 

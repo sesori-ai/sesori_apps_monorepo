@@ -8,7 +8,7 @@ import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
 import "../repositories/claude_session_process_repository.dart";
 
-final class _SessionTurnState {
+final class _SessionTurnState() {
   Future<void> tail = Future<void>.value();
   int pending = 0;
   int generation = 0;
@@ -16,13 +16,13 @@ final class _SessionTurnState {
 }
 
 /// Serializes Claude turns and owns session work/idle lifecycle policy.
-final class ClaudeSessionService {
-  ClaudeSessionService({
+final class ClaudeSessionService({
     required ClaudeSessionProcessRepository processes,
     required ClaudeApprovalRegistry approvals,
     required ServerClock clock,
     required Duration idleTimeout,
-  }) : _processes = processes,
+  }) {
+  this : _processes = processes,
        _approvals = approvals,
        _clock = clock,
        _idleTimeout = idleTimeout {

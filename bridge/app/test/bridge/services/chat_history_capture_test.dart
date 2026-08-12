@@ -553,15 +553,13 @@ MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   parts: [_part(id: "$id-p1", messageId: id, text: "text of $id")],
 );
 
-class _FakeSessionRepository implements SessionRepository {
-  _FakeSessionRepository({
+class _FakeSessionRepository({
     required this.transcript,
     this.error,
     this.pluginSessionLookupError,
     this.existingSessionIds = const {},
     this.pluginSessionIds = const {},
-  });
-
+  }) implements SessionRepository {
   final List<MessageWithParts> transcript;
   final Object? error;
   final Object? pluginSessionLookupError;

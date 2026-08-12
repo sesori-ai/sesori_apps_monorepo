@@ -11,20 +11,20 @@ import "token.dart";
 import "token_refresh_exception.dart";
 import "token_refresher.dart";
 
-class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
+class TokenManager({
+    required String initialToken,
+    required String authBackendUrl,
+    required Future<TokenData?> Function() loadTokens,
+    required Future<void> Function(TokenData) saveTokens,
+    http.Client? client,
+  }) implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
   final BehaviorSubject<String> _tokenSubject;
   final String _authBackendUrl;
   final Future<TokenData?> Function() _loadTokens;
   final Future<void> Function(TokenData) _saveTokens;
   final http.Client _client;
 
-  TokenManager({
-    required String initialToken,
-    required String authBackendUrl,
-    required Future<TokenData?> Function() loadTokens,
-    required Future<void> Function(TokenData) saveTokens,
-    http.Client? client,
-  }) : _tokenSubject = BehaviorSubject.seeded(initialToken),
+  this : _tokenSubject = BehaviorSubject.seeded(initialToken),
        _authBackendUrl = authBackendUrl,
        _loadTokens = loadTokens,
        _saveTokens = saveTokens,

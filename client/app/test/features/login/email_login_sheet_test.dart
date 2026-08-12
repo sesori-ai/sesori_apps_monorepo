@@ -8,7 +8,7 @@ import "package:sesori_mobile/features/login/email_login_sheet.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:theme_prego/module_prego.dart";
 
-class MockLoginCubit extends Mock implements LoginCubit;
+class MockLoginCubit() extends Mock implements LoginCubit;
 
 /// Drives [LoginCubit.state]/[LoginCubit.stream] from a plain seed so tests can
 /// stage a state without standing up the real cubit's auth dependencies.

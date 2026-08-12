@@ -8,28 +8,26 @@ import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
 import "session_operation_dispatcher.dart";
 
-class SessionPromptDefaultsChange {
-  final String sessionId;
-  final SessionPromptDefaults promptDefaults;
-
-  const SessionPromptDefaultsChange({
+class const SessionPromptDefaultsChange({
     required this.sessionId,
     required this.promptDefaults,
-  });
+  }) {
+  final String sessionId;
+  final SessionPromptDefaults promptDefaults;
 }
 
-class SessionPromptService {
+class SessionPromptService({
+    required SessionRepository sessionRepository,
+    required SessionOperationDispatcher dispatcher,
+    required ArchivedSessionValidator archivedSessionValidator,
+  }) {
   final SessionRepository _sessionRepository;
   final SessionOperationDispatcher _dispatcher;
   final ArchivedSessionValidator _archivedSessionValidator;
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
 
-  SessionPromptService({
-    required SessionRepository sessionRepository,
-    required SessionOperationDispatcher dispatcher,
-    required ArchivedSessionValidator archivedSessionValidator,
-  }) : _sessionRepository = sessionRepository,
+  this : _sessionRepository = sessionRepository,
        _dispatcher = dispatcher,
        _archivedSessionValidator = archivedSessionValidator;
 

@@ -173,9 +173,7 @@ void main() {
   });
 }
 
-class _FakeAuthenticationRepository implements CodexAuthenticationRepository {
-  _FakeAuthenticationRepository({this.cancelGate});
-
+class _FakeAuthenticationRepository({this.cancelGate}) implements CodexAuthenticationRepository {
   final Future<void>? cancelGate;
   final Completer<void> _started = Completer<void>();
   final Completer<void> _completion = Completer<void>();
@@ -217,9 +215,7 @@ class _FakeAuthenticationRepository implements CodexAuthenticationRepository {
   }
 }
 
-class _FakeStdioClient implements CodexStdioAppServerClient {
-  _FakeStdioClient({this.connectError});
-
+class _FakeStdioClient({this.connectError}) implements CodexStdioAppServerClient {
   final Object? connectError;
   final Completer<int> _exit = Completer<int>();
   bool disposed = false;

@@ -5,8 +5,7 @@ import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-class _PolicyPlugin extends TestAcpPlugin {
-  _PolicyPlugin({
+class _PolicyPlugin({
     required this.processWide,
     required this.failClosed,
     required this.forms,
@@ -16,7 +15,8 @@ class _PolicyPlugin extends TestAcpPlugin {
     required super.commandTracker,
     required super.sessionOptionsService,
     required AcpProcessFactory super.processFactory,
-  }) : super(
+  }) extends TestAcpPlugin {
+  this : super(
          id: "acp",
          agentDisplayName: "ACP",
          launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),

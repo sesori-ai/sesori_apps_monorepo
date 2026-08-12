@@ -3,13 +3,13 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "codex_file_change_dto.freezed.dart";
 part "codex_file_change_dto.g.dart";
 
-enum CodexFileChangeItemType {
+enum CodexFileChangeItemType() {
   @JsonValue("fileChange")
   fileChange,
   unknown,
 }
 
-enum CodexFileChangeStatus {
+enum CodexFileChangeStatus() {
   inProgress,
   completed,
   failed,

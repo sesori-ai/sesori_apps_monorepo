@@ -12,14 +12,14 @@ import "package:sesori_auth/src/storage/token_storage_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockHttpClient extends Mock implements http.Client;
+class MockHttpClient() extends Mock implements http.Client;
 
-class MockTokenStorageService extends Mock implements TokenStorageService;
+class MockTokenStorageService() extends Mock implements TokenStorageService;
 
-class MockOAuthStorageService extends Mock implements OAuthStorageService;
+class MockOAuthStorageService() extends Mock implements OAuthStorageService;
 
 /// Returns a fixed descriptor so the init body is deterministic in tests.
-class FakeOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
+class FakeOAuthDeviceDescriptorProvider() implements OAuthDeviceDescriptorProvider {
   @override
   Future<OAuthDeviceDescriptor> describe() async => const OAuthDeviceDescriptor(
     clientType: AuthClientType.appIos,

@@ -6,9 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _StubManifest implements RuntimeManifest {
-  const _StubManifest({required this.hasAsset});
-
+class const _StubManifest({required this.hasAsset}) implements RuntimeManifest {
   final bool hasAsset;
 
   static const RuntimeAsset _asset = RuntimeAsset(
@@ -51,9 +49,7 @@ class _StubManifest implements RuntimeManifest {
   }
 }
 
-class _FakeValidator implements RuntimeVersionValidator {
-  _FakeValidator({required this.managedVersion});
-
+class _FakeValidator({required this.managedVersion}) implements RuntimeVersionValidator {
   final SemanticVersion? managedVersion;
   final List<String> detectedExecutables = [];
 
@@ -70,9 +66,7 @@ class _FakeValidator implements RuntimeVersionValidator {
   SemanticVersion? parseVersionOutput({required String output}) => SemanticVersion.tryParse(value: output);
 }
 
-class _FakeDownloadClient implements BinaryDownloadClient {
-  const _FakeDownloadClient();
-
+class const _FakeDownloadClient() implements BinaryDownloadClient {
   @override
   Stream<DownloadProgress> download({required String url, required String destinationPath}) async* {
     File(destinationPath).writeAsBytesSync(const [1, 2, 3, 4]);
@@ -80,9 +74,7 @@ class _FakeDownloadClient implements BinaryDownloadClient {
   }
 }
 
-class _FakeChecksumValidator implements ChecksumValidator {
-  const _FakeChecksumValidator({required this.valid});
-
+class const _FakeChecksumValidator({required this.valid}) implements ChecksumValidator {
   final bool valid;
 
   @override
@@ -92,9 +84,7 @@ class _FakeChecksumValidator implements ChecksumValidator {
   Future<String> computeSha256({required String filePath}) async => "deadbeef";
 }
 
-class _FakeArchiveExtractor implements ArchiveExtractor {
-  const _FakeArchiveExtractor();
-
+class const _FakeArchiveExtractor() implements ArchiveExtractor {
   @override
   Future<ArchiveExtractionResult> extract({
     required String archivePath,
@@ -107,7 +97,7 @@ class _FakeArchiveExtractor implements ArchiveExtractor {
   }
 }
 
-class _FakeCommandExecutor implements CommandExecutor {
+class _FakeCommandExecutor() implements CommandExecutor {
   @override
   Future<CommandResult> run(
     String executable,

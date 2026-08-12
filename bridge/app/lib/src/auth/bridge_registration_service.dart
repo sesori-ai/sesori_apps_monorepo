@@ -19,7 +19,13 @@ import "token_refresher.dart";
 /// The persisted bridge id is read from [BridgeIdStorage]; legacy ids from an
 /// older `token.json` are copied into that storage by `BridgeIdMigrationService`
 /// before authentication, so this service never reads `token.json`.
-class BridgeRegistrationService implements BridgeIdProvider {
+class BridgeRegistrationService({
+    required BridgeRegistrationRepository repository,
+    required TokenRefresher tokenRefresher,
+    required BridgeIdStorage bridgeIdStorage,
+    required String hostName,
+    required String platform,
+  }) implements BridgeIdProvider {
   final BridgeRegistrationRepository _repository;
   final TokenRefresher _tokenRefresher;
   final BridgeIdStorage _bridgeIdStorage;
@@ -30,13 +36,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
   String? _bridgeId;
   final StreamController<String> _registrations = StreamController<String>.broadcast();
 
-  BridgeRegistrationService({
-    required BridgeRegistrationRepository repository,
-    required TokenRefresher tokenRefresher,
-    required BridgeIdStorage bridgeIdStorage,
-    required String hostName,
-    required String platform,
-  }) : _repository = repository,
+  this : _repository = repository,
        _tokenRefresher = tokenRefresher,
        _bridgeIdStorage = bridgeIdStorage,
        _hostName = sanitizeBridgeName(hostName),

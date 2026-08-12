@@ -51,8 +51,7 @@ typedef PregoSwipeActionBuilder = Widget Function(BuildContext context, VoidCall
 /// an alternative path to the same actions (the project row's long-press
 /// menu). While a side is closed its actions are excluded from semantics and
 /// focus traversal entirely, so the row still reads as one button.
-class PregoSwipeActions extends StatefulWidget {
-  const PregoSwipeActions({
+class const PregoSwipeActions({
     super.key,
     required this.child,
     required this.actionsBuilder,
@@ -61,7 +60,8 @@ class PregoSwipeActions extends StatefulWidget {
     this.leadingPrimaryActionBuilder,
     this.onLeadingFullSwipe,
     this.showBottomHairline = false,
-  }) : assert(
+  }) extends StatefulWidget {
+  this : assert(
          (leadingPrimaryActionBuilder == null) == (onLeadingFullSwipe == null),
          'A leading action takes both its builder and its full-swipe commit.',
        );
@@ -125,7 +125,7 @@ const double _flingVelocity = 700;
 /// One build's strip children, captured as a unit when a close settle begins.
 typedef _StripChildren = ({List<Widget> actions, Widget primary, Widget? leadingPrimary});
 
-class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTickerProviderStateMixin {
+class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTickerProviderStateMixin {
   /// 0 is closed, and the sign is the open side: positive slides the content
   /// toward the start edge (trailing actions), negative toward the end edge
   /// (the leading action). The magnitude times the row width is the pixel
@@ -466,9 +466,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
 /// One side of a [PregoSwipeActions] row — the trailing strip or the leading
 /// action — so each per-side mechanic (measurement, overdrag stretch, strip
 /// layout) exists once, instantiated for both sides.
-class _SwipeSide {
-  _SwipeSide({required this.sign});
-
+class _SwipeSide({required this.sign}) {
   /// The extent sign that opens this side: positive trailing, negative
   /// leading.
   final double sign;

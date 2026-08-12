@@ -11,9 +11,7 @@
 ///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 9.
-sealed class ClaudeTranscriptRecord {
-  const ClaudeTranscriptRecord({required this.sessionId, required this.raw});
-
+sealed class const ClaudeTranscriptRecord({required this.sessionId, required this.raw}) {
   /// The session this record belongs to.
   ///
   /// Nullable because a record that omits it must still be kept: the
@@ -27,11 +25,9 @@ sealed class ClaudeTranscriptRecord {
 }
 
 /// A non-message record that still attributes a transcript to a project.
-enum ClaudeTranscriptContextKind {
+enum ClaudeTranscriptContextKind({required this.wireType}) {
   attachment(wireType: "attachment"),
   system(wireType: "system");
-
-  ClaudeTranscriptContextKind({required this.wireType});
 
   final String wireType;
 
@@ -44,8 +40,7 @@ enum ClaudeTranscriptContextKind {
 }
 
 /// Common project and timestamp fields on message and context records.
-sealed class ClaudeTranscriptAttributedRecord extends ClaudeTranscriptRecord {
-  const ClaudeTranscriptAttributedRecord({
+sealed class const ClaudeTranscriptAttributedRecord({
     required this.cwd,
     required this.timestamp,
     required this.isSidechain,
@@ -53,8 +48,7 @@ sealed class ClaudeTranscriptAttributedRecord extends ClaudeTranscriptRecord {
     required this.version,
     required super.sessionId,
     required super.raw,
-  });
-
+  }) extends ClaudeTranscriptRecord {
   /// The directory the session ran in. This is what the bridge groups sessions
   /// by, so the munged transcript directory name is never un-munged.
   final String? cwd;
@@ -73,8 +67,7 @@ sealed class ClaudeTranscriptAttributedRecord extends ClaudeTranscriptRecord {
 }
 
 /// A persisted user message.
-final class ClaudeTranscriptUserRecord extends ClaudeTranscriptAttributedRecord {
-  const ClaudeTranscriptUserRecord({
+final class const ClaudeTranscriptUserRecord({
     required this.id,
     required this.content,
     required this.isMeta,
@@ -86,8 +79,7 @@ final class ClaudeTranscriptUserRecord extends ClaudeTranscriptAttributedRecord 
     required super.version,
     required super.sessionId,
     required super.raw,
-  });
-
+  }) extends ClaudeTranscriptAttributedRecord {
   static const String wireType = "user";
 
   final String id;
@@ -100,8 +92,7 @@ final class ClaudeTranscriptUserRecord extends ClaudeTranscriptAttributedRecord 
 ///
 /// Claude can split one Anthropic message across several transcript records;
 /// records carrying the same [id] belong to one plugin message.
-final class ClaudeTranscriptAssistantRecord extends ClaudeTranscriptAttributedRecord {
-  const ClaudeTranscriptAssistantRecord({
+final class const ClaudeTranscriptAssistantRecord({
     required this.id,
     required this.model,
     required this.content,
@@ -112,8 +103,7 @@ final class ClaudeTranscriptAssistantRecord extends ClaudeTranscriptAttributedRe
     required super.version,
     required super.sessionId,
     required super.raw,
-  });
-
+  }) extends ClaudeTranscriptAttributedRecord {
   static const String wireType = "assistant";
 
   final String id;
@@ -125,8 +115,7 @@ final class ClaudeTranscriptAssistantRecord extends ClaudeTranscriptAttributedRe
 ///
 /// It can still attribute the transcript to a project, but cannot be replayed
 /// as a plugin message without inventing an id.
-final class ClaudeTranscriptUnreplayableMessageRecord extends ClaudeTranscriptAttributedRecord {
-  const ClaudeTranscriptUnreplayableMessageRecord({
+final class const ClaudeTranscriptUnreplayableMessageRecord({
     required super.cwd,
     required super.timestamp,
     required super.isSidechain,
@@ -134,12 +123,10 @@ final class ClaudeTranscriptUnreplayableMessageRecord extends ClaudeTranscriptAt
     required super.version,
     required super.sessionId,
     required super.raw,
-  });
-}
+  }) extends ClaudeTranscriptAttributedRecord;
 
 /// Internal context attached by Claude rather than a user-visible message.
-final class ClaudeTranscriptContextRecord extends ClaudeTranscriptAttributedRecord {
-  const ClaudeTranscriptContextRecord({
+final class const ClaudeTranscriptContextRecord({
     required this.kind,
     required super.cwd,
     required super.timestamp,
@@ -148,15 +135,12 @@ final class ClaudeTranscriptContextRecord extends ClaudeTranscriptAttributedReco
     required super.version,
     required super.sessionId,
     required super.raw,
-  });
-
+  }) extends ClaudeTranscriptAttributedRecord {
   final ClaudeTranscriptContextKind kind;
 }
 
 /// An `ai-title` record — the session title, written by the CLI itself.
-final class ClaudeTranscriptTitleRecord extends ClaudeTranscriptRecord {
-  const ClaudeTranscriptTitleRecord({required this.title, required super.sessionId, required super.raw});
-
+final class const ClaudeTranscriptTitleRecord({required this.title, required super.sessionId, required super.raw}) extends ClaudeTranscriptRecord {
   static const String wireType = "ai-title";
 
   /// Non-empty by construction; the repository rejects a blank title.
@@ -167,9 +151,7 @@ final class ClaudeTranscriptTitleRecord extends ClaudeTranscriptRecord {
 ///
 /// Kept rather than dropped so a scan reports honest record counts and so a new
 /// record type never truncates a transcript.
-final class ClaudeTranscriptUnknownRecord extends ClaudeTranscriptRecord {
-  const ClaudeTranscriptUnknownRecord({required this.type, required super.sessionId, required super.raw});
-
+final class const ClaudeTranscriptUnknownRecord({required this.type, required super.sessionId, required super.raw}) extends ClaudeTranscriptRecord {
   /// Null when the record had no string `type` at all.
   final String? type;
 }

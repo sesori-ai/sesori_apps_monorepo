@@ -2,8 +2,8 @@ import '../api/terminal_prompt_api.dart';
 import '../foundation/bridge_replace_prompt.dart';
 import '../foundation/terminal_prompt_decision.dart';
 
-class TerminalPromptRepository implements BridgeReplacePrompt {
-  TerminalPromptRepository({required TerminalPromptApi api}) : _api = api;
+class TerminalPromptRepository({required TerminalPromptApi api}) implements BridgeReplacePrompt {
+  this : _api = api;
 
   final TerminalPromptApi _api;
 

@@ -182,14 +182,14 @@ typedef _HandleRequest =
       required String? fragment,
     });
 
-class _TestHandler extends RequestHandlerBase {
-  final _HandleRequest _handle;
-
-  _TestHandler({
+class _TestHandler({
     required HttpMethod method,
     required String path,
     required _HandleRequest handle,
-  }) : _handle = handle,
+  }) extends RequestHandlerBase {
+  final _HandleRequest _handle;
+
+  this : _handle = handle,
        super(method, path);
 
   @override

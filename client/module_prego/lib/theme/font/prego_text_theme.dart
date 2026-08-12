@@ -3,7 +3,7 @@ import "package:flutter/material.dart";
 import "../../utils/non_null_text_theme.dart";
 import "../primitives/prego_colors.g.dart";
 
-enum _PregoTextThemeVariant {
+enum _PregoTextThemeVariant() {
   dark,
   light
   ;
@@ -12,8 +12,6 @@ enum _PregoTextThemeVariant {
     .dark => PregoColors.dark.textPrimary,
     .light => PregoColors.light.textPrimary,
   };
-
-  _PregoTextThemeVariant();
 }
 
 class PregoTextTheme {

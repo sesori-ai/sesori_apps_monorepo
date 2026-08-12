@@ -2,7 +2,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/plugin_preference_api.dart";
 import "package:test/test.dart";
 
-class _InMemorySecureStorage implements SecureStorage {
+class _InMemorySecureStorage() implements SecureStorage {
   final Map<String, String> data = {};
 
   @override

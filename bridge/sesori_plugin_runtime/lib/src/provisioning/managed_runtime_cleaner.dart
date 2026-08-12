@@ -9,8 +9,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 /// pinned version is healthy, older version directories are dead weight from a
 /// previous bridge release's bundled runtime; this sweeps them, keeping only the
 /// version currently in use so a running runtime is never deleted.
-class ManagedRuntimeCleaner {
-  ManagedRuntimeCleaner({required String runtimeId}) : _runtimeId = runtimeId;
+class ManagedRuntimeCleaner({required String runtimeId}) {
+  this : _runtimeId = runtimeId;
 
   final String _runtimeId;
 

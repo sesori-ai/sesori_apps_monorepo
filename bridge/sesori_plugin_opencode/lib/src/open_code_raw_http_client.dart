@@ -21,7 +21,7 @@ const _defaultTimeout = Duration(seconds: 30);
 /// error handling classify it like any other upstream failure.
 const _timeoutStatusCode = 504;
 
-enum _HttpMethod { get, post, patch, delete }
+enum _HttpMethod() { get, post, patch, delete }
 
 /// Transport-level HTTP client for the OpenCode REST API.
 ///
@@ -50,16 +50,16 @@ enum _HttpMethod { get, post, patch, delete }
 ///
 /// It also owns Basic-auth header computation and URI construction. It performs
 /// no JSON decoding or model mapping — that stays in [OpenCodeApi].
-class OpenCodeRawHttpClient {
+class OpenCodeRawHttpClient({
+    required String serverURL,
+    required String? password,
+    required http.Client client,
+  }) {
   final String _serverURL;
   final String? _password;
   final http.Client _client;
 
-  OpenCodeRawHttpClient({
-    required String serverURL,
-    required String? password,
-    required http.Client client,
-  }) : _serverURL = serverURL,
+  this : _serverURL = serverURL,
        _password = password,
        _client = client;
 
@@ -184,7 +184,7 @@ class OpenCodeRawHttpClient {
   }
 }
 
-class OpenCodeApiException implements Exception {
+class OpenCodeApiException(this.endpoint, this.statusCode, {String? responseBody}) implements Exception {
   static const _maxBodyLength = 500;
 
   final String endpoint;
@@ -196,7 +196,7 @@ class OpenCodeApiException implements Exception {
   /// diagnosing failures from logs.
   final String? responseBody;
 
-  OpenCodeApiException(this.endpoint, this.statusCode, {String? responseBody})
+  this
     : responseBody = switch (responseBody) {
         null => null,
         final body when body.length > _maxBodyLength => "${body.substring(0, _maxBodyLength)}…",

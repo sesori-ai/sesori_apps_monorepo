@@ -18,7 +18,11 @@ import "runtime_version_validator.dart";
 /// sufficiently recent fallback executable candidate (e.g. a CLI bundled by a
 /// backend's desktop app, enumerated by the owning plugin), then the pinned
 /// managed runtime when that exact version is already present and runnable.
-class ManagedRuntimeProvisionService {
+class ManagedRuntimeProvisionService({
+    required RuntimeManifest manifest,
+    required RuntimeVersionValidator versionValidator,
+    required List<String> fallbackExecutableCandidates,
+  }) {
   final RuntimeManifest _manifest;
   final RuntimeVersionValidator _versionValidator;
 
@@ -27,11 +31,7 @@ class ManagedRuntimeProvisionService {
   /// harmlessly.
   final List<String> _fallbackExecutableCandidates;
 
-  ManagedRuntimeProvisionService({
-    required RuntimeManifest manifest,
-    required RuntimeVersionValidator versionValidator,
-    required List<String> fallbackExecutableCandidates,
-  }) : _manifest = manifest,
+  this : _manifest = manifest,
        _versionValidator = versionValidator,
        _fallbackExecutableCandidates = fallbackExecutableCandidates;
 

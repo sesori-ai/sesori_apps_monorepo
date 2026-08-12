@@ -15,22 +15,17 @@ import "anchored_spotlight_backdrop.dart";
 /// Entries are plain data, not pre-built widgets, so one call site renders
 /// either the liquid-glass items ([GlassMenuItem] et al. on iOS) or flat
 /// Material rows (Android) without the caller knowing which path is active.
-sealed class PregoMenuEntry {
-  const PregoMenuEntry();
-}
+sealed class const PregoMenuEntry();
 
 /// A non-interactive section header. Rendered in uppercase on both paths.
-class PregoMenuLabel extends PregoMenuEntry {
-  const PregoMenuLabel({required this.text});
-
+class const PregoMenuLabel({required this.text}) extends PregoMenuEntry {
   final String text;
 }
 
 /// A tappable menu row with a [title], optional [subtitle], an optional
 /// leading glyph or widget, and an optional selected check mark. Tapping runs
 /// [onTap] and dismisses the menu.
-class PregoMenuItem extends PregoMenuEntry {
-  const PregoMenuItem({
+class const PregoMenuItem({
     required this.title,
     required this.subtitle,
     required this.isSelected,
@@ -40,7 +35,8 @@ class PregoMenuItem extends PregoMenuEntry {
     this.leading,
     this.isEnabled = true,
     this.isDestructive = false,
-  }) : assert(
+  }) extends PregoMenuEntry {
+  this : assert(
          leadingIcon == null || leading == null,
          "A row leads with either a glyph or a custom widget, not both.",
        );
@@ -75,18 +71,14 @@ class PregoMenuItem extends PregoMenuEntry {
 }
 
 /// A thin separator line between entries.
-class PregoMenuDivider extends PregoMenuEntry {
-  const PregoMenuDivider();
-}
+class const PregoMenuDivider() extends PregoMenuEntry;
 
 /// An escape hatch for a custom row (e.g. a search affordance pinned at the top
 /// of the menu).
 ///
 /// [builder] receives a `close` callback that dismisses the menu — use it to
 /// collapse the popup before, say, raising a full-screen sheet.
-class PregoMenuCustom extends PregoMenuEntry {
-  const PregoMenuCustom({required this.builder, required this.height});
-
+class const PregoMenuCustom({required this.builder, required this.height}) extends PregoMenuEntry {
   final Widget Function(BuildContext context, VoidCallback close) builder;
 
   /// The row's rendered height, which the caller must state.
@@ -111,12 +103,10 @@ typedef PregoMenuTriggerBuilder = Widget Function(BuildContext context, VoidCall
 /// trigger while the popup is up and morphs the popup out of the trigger's
 /// bounds, so there is nothing left to keep sharp; [PregoAnchorMenu] asserts the
 /// pairing rather than letting the option silently do nothing.
-class PregoMenuSpotlight {
-  const PregoMenuSpotlight({
+class const PregoMenuSpotlight({
     required this.borderRadius,
     this.inset = EdgeInsets.zero,
-  });
-
+  }) {
   /// Corner radius of the sharp cut-out.
   final double borderRadius;
 
@@ -157,8 +147,7 @@ class PregoMenuSpotlight {
 /// rendering differs. See [glassEffectsEnabled] for the platform switch. Set [flat] to
 /// force the flat/`cue` path on every platform (including Apple) — for a menu
 /// paired with a flat trigger, where a glass popup would look out of place.
-class PregoAnchorMenu extends StatefulWidget {
-  const PregoAnchorMenu({
+class const PregoAnchorMenu({
     super.key,
     required this.triggerBuilder,
     required this.entriesBuilder,
@@ -168,7 +157,8 @@ class PregoAnchorMenu extends StatefulWidget {
     this.menuScreenPadding = const EdgeInsets.all(12),
     this.flat = false,
     this.spotlight,
-  }) : assert(
+  }) extends StatefulWidget {
+  this : assert(
          spotlight == null || flat,
          "A spotlight needs the flat path (flat: true): GlassMenu hides its trigger while the "
          "popup is up, so there is no trigger left to keep sharp.",
@@ -218,7 +208,7 @@ class PregoAnchorMenu extends StatefulWidget {
   State<PregoAnchorMenu> createState() => _PregoAnchorMenuState();
 }
 
-class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
+class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
   /// Drives the glass popup imperatively so a [PregoMenuCustom] entry can close
   /// the menu before escalating (e.g. into a full-screen sheet). `late` so it is
   /// only constructed when the glass path actually reads it — never on Android.
@@ -459,8 +449,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
 
 /// A single flat menu row — the Android counterpart of [GlassMenuItem], styled
 /// to match its glass sibling (same 44px min height, title/subtitle/check layout).
-class _FlatMenuTile extends StatelessWidget {
-  const _FlatMenuTile({
+class const _FlatMenuTile({
     super.key,
     required this.title,
     required this.subtitle,
@@ -470,8 +459,7 @@ class _FlatMenuTile extends StatelessWidget {
     required this.isDestructive,
     this.leadingIcon,
     this.leading,
-  });
-
+  }) extends StatelessWidget {
   final String title;
   final String? subtitle;
   final bool isSelected;

@@ -4,11 +4,11 @@ import "../bridge/services/permission_auto_approval_service.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 
-class YoloSettingsService {
-  YoloSettingsService({
+class YoloSettingsService({
     required BridgeSettingsRepository bridgeSettingsRepository,
     required PermissionAutoApprovalService permissionAutoApprovalService,
-  }) : _bridgeSettingsRepository = bridgeSettingsRepository,
+  }) {
+  this : _bridgeSettingsRepository = bridgeSettingsRepository,
        _permissionAutoApprovalService = permissionAutoApprovalService;
 
   final BridgeSettingsRepository _bridgeSettingsRepository;

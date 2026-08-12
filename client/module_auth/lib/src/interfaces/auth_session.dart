@@ -8,7 +8,7 @@ import "../models/auth_state.dart";
 /// operations (get user, invalidate sessions, local logout).
 /// Initiates email-based login directly;
 /// use [OAuthFlowProvider] for OAuth-based login.
-abstract interface class AuthSession {
+abstract interface class AuthSession() {
   /// Push-based stream of auth state changes. Late subscribers
   /// immediately receive the current value.
   ValueStream<AuthState> get authStateStream;

@@ -3,12 +3,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// The composer's three visual layouts and their shared surface treatment.
-enum ComposerSurfaceLayout {
+enum ComposerSurfaceLayout({required this.surfaceStyle}) {
   holdToTalk(surfaceStyle: PregoComposerSurfaceStyle.subtle),
   compact(surfaceStyle: PregoComposerSurfaceStyle.emphasized),
   typing(surfaceStyle: PregoComposerSurfaceStyle.emphasized);
-
-  ComposerSurfaceLayout({required this.surfaceStyle});
 
   final PregoComposerSurfaceStyle surfaceStyle;
 }

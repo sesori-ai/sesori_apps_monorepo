@@ -16,20 +16,16 @@ import "../../logging/logging.dart";
 @pragma("dart2js:tryInline")
 Future<T> _parseJson<T>(String json, ParseJsonTask<T> task) => isolatesPool.run<String, T>(task, json);
 
-class ParseJsonTask<T> implements IsolateTask<String, T> {
+class const ParseJsonTask<T>(this.fromJson) implements IsolateTask<String, T> {
   // ignore: no_slop_linter/prefer_specific_type, DTO fromJson signatures accept dynamic JSON maps
   final T Function(Map<String, dynamic> json) fromJson;
-
-  const ParseJsonTask(this.fromJson);
 
   @override
   FutureOr<T> Function(String arg) get staticFunction =>
       (arg) => fromJson(jsonDecodeMap(arg));
 }
 
-class JsonDtoParser {
-  JsonDtoParser();
-
+class JsonDtoParser() {
   Future<ApiResponse<T>> parseDto<T>(
     Uri uri, {
     required ParseJsonTask<T> parseJsonTask,

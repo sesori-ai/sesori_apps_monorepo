@@ -17,8 +17,7 @@ import '../repositories/update_log_repository.dart';
 /// Runs once, early, on every launch: confirms a pending activation, reports an
 /// interrupted (crashed) apply, surfaces a prior failure, sweeps residue, and
 /// clears the record. Fast and local — it never touches the network.
-class UpdateReconciliationService {
-  UpdateReconciliationService({
+class UpdateReconciliationService({
     required UpdateAttemptRepository attemptRepository,
     required UpdateLogRepository logRepository,
     required UpdateInstallationRepository installationRepository,
@@ -26,7 +25,8 @@ class UpdateReconciliationService {
     required UpdateLock updateLock,
     required String currentVersion,
     required String installRoot,
-  }) : _attemptRepository = attemptRepository,
+  }) {
+  this : _attemptRepository = attemptRepository,
        _logRepository = logRepository,
        _installationRepository = installationRepository,
        _messageFormatter = messageFormatter,

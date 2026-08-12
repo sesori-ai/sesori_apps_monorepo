@@ -6,14 +6,12 @@ import "dart:io" as io;
 /// JSON-RPC over their own stdin/stdout. The bridge resolves the binary and
 /// hands this spec to the plugin, which spawns the process and owns its
 /// lifecycle.
-class AcpLaunchSpec {
-  const AcpLaunchSpec({
+class const AcpLaunchSpec({
     required this.command,
     required this.args,
     this.cwd,
     this.environment = const {},
-  });
-
+  }) {
   /// Executable to run (absolute path or a name resolved on PATH).
   final String command;
 
@@ -33,7 +31,7 @@ class AcpLaunchSpec {
 /// Kept narrow so tests can supply an in-memory fake without implementing the
 /// full [io.Process] surface (analogous to codex's injected
 /// `CodexWebSocketChannelFactory`).
-abstract class AcpProcessHandle {
+abstract class AcpProcessHandle() {
   Stream<List<int>> get stdout;
   Stream<List<int>> get stderr;
   io.IOSink get stdin;
@@ -59,9 +57,7 @@ Future<AcpProcessHandle> defaultAcpProcessFactory(AcpLaunchSpec spec) async {
   return _RealAcpProcess(process);
 }
 
-class _RealAcpProcess implements AcpProcessHandle {
-  _RealAcpProcess(this._process);
-
+class _RealAcpProcess(this._process) implements AcpProcessHandle {
   final io.Process _process;
 
   @override

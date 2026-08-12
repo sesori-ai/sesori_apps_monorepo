@@ -39,9 +39,7 @@ sealed class CodexReasoningEffortOptionDto with _$CodexReasoningEffortOptionDto 
   ) => _$CodexReasoningEffortOptionDtoFromJson(json);
 }
 
-class CodexModelListConverter implements JsonConverter<List<CodexModelDto>, Object?> {
-  const CodexModelListConverter();
-
+class const CodexModelListConverter() implements JsonConverter<List<CodexModelDto>, Object?> {
   @override
   List<CodexModelDto> fromJson(Object? json) {
     if (json is! List) {
@@ -59,9 +57,7 @@ class CodexModelListConverter implements JsonConverter<List<CodexModelDto>, Obje
   }
 }
 
-class CodexReasoningEffortListConverter implements JsonConverter<List<CodexReasoningEffortOptionDto>?, Object?> {
-  const CodexReasoningEffortListConverter();
-
+class const CodexReasoningEffortListConverter() implements JsonConverter<List<CodexReasoningEffortOptionDto>?, Object?> {
   @override
   List<CodexReasoningEffortOptionDto>? fromJson(Object? json) {
     if (json == null) return null;

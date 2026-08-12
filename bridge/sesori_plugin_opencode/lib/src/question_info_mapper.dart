@@ -6,9 +6,7 @@ import "models/openapi/question_info.g.dart";
 /// and the `GET /session/questions` REST payload) to the plugin-interface
 /// [PluginQuestionInfo]. Pure transformation, reused by [PluginModelMapper] and
 /// [SseEventMapper] so both question paths stay typed and identical.
-class QuestionInfoMapper {
-  const QuestionInfoMapper();
-
+class const QuestionInfoMapper() {
   List<PluginQuestionInfo> mapQuestionInfos(List<QuestionInfo> infos) =>
       infos.map(mapQuestionInfo).toList();
 

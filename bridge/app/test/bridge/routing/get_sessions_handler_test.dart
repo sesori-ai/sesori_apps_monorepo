@@ -1508,7 +1508,7 @@ SessionDto _storedSession({required String currentBranchName}) {
   );
 }
 
-final class _IdentityBlockingPrSyncService extends FakePrSyncService {
+final class _IdentityBlockingPrSyncService() extends FakePrSyncService {
   final Completer<void> identityVerificationStarted = Completer<void>();
   final Completer<VerifiedGithubLogin?> identityVerification = Completer<VerifiedGithubLogin?>();
 
@@ -1522,15 +1522,13 @@ final class _IdentityBlockingPrSyncService extends FakePrSyncService {
 }
 
 /// Fails only the post-refresh re-read, keeping the first identity-gated read.
-final class _RereadFailingSessionRepository extends FakeSessionRepository {
-  int enrichmentAttempts = 0;
-
-  _RereadFailingSessionRepository({
+final class _RereadFailingSessionRepository({
     required super.plugin,
     required super.sessionDao,
     required super.pullRequestRepository,
     required super.persistenceDatabase,
-  });
+  }) extends FakeSessionRepository {
+  int enrichmentAttempts = 0;
 
   @override
   Future<List<Session>> enrichSessions({
@@ -1548,16 +1546,14 @@ final class _RereadFailingSessionRepository extends FakeSessionRepository {
   }
 }
 
-final class _StalledEnrichmentSessionRepository extends FakeSessionRepository {
-  final Completer<void> enrichmentStarted = Completer<void>();
-  final Completer<List<Session>> _stalled = Completer<List<Session>>();
-
-  _StalledEnrichmentSessionRepository({
+final class _StalledEnrichmentSessionRepository({
     required super.plugin,
     required super.sessionDao,
     required super.pullRequestRepository,
     required super.persistenceDatabase,
-  });
+  }) extends FakeSessionRepository {
+  final Completer<void> enrichmentStarted = Completer<void>();
+  final Completer<List<Session>> _stalled = Completer<List<Session>>();
 
   @override
   Future<List<Session>> enrichSessions({

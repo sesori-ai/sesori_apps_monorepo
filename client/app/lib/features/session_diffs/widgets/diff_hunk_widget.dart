@@ -5,10 +5,8 @@ import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
 
 /// Renders a diff hunk header showing the @@ range.
-class DiffHunkWidget extends StatelessWidget {
+class const DiffHunkWidget({super.key, required this.viewModel}) extends StatelessWidget {
   final DiffHunkViewModel viewModel;
-
-  const DiffHunkWidget({super.key, required this.viewModel});
 
   static final _headerTextStyle = const TextStyle(
     fontSize: 12,

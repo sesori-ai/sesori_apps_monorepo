@@ -5,7 +5,7 @@ part "session_archived_rejection.freezed.dart";
 part "session_archived_rejection.g.dart";
 
 /// Why a mutation against an archived session was refused.
-enum SessionArchivedReason {
+enum SessionArchivedReason() {
   @JsonValue("archived_read_only")
   archivedReadOnly,
 }

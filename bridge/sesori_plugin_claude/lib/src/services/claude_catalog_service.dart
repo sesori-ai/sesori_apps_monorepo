@@ -7,13 +7,13 @@ import "../repositories/claude_session_process_repository.dart";
 typedef _CatalogFetch = ({bool refresh, Future<ClaudeBackendCatalog> future});
 
 /// Owns the global catalog probe and live-session selection controls.
-final class ClaudeCatalogService {
-  ClaudeCatalogService({
+final class ClaudeCatalogService({
     required ClaudeBackendCatalogRepository catalog,
     required ClaudeSessionProcessRepository processes,
     required String probeSessionId,
     required String discoveryDirectory,
-  }) : _catalogRepository = catalog,
+  }) {
+  this : _catalogRepository = catalog,
        _processes = processes,
        _probeSessionId = probeSessionId,
        _discoveryDirectory = discoveryDirectory;

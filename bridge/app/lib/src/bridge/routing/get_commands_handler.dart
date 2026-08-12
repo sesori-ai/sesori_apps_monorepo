@@ -4,10 +4,10 @@ import "../repositories/session_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /command` — returns slash commands available to the project.
-class GetCommandsHandler extends BodyRequestHandler<PluginProjectIdRequest, CommandListResponse> {
+class GetCommandsHandler({required SessionRepository sessionRepository}) extends BodyRequestHandler<PluginProjectIdRequest, CommandListResponse> {
   final SessionRepository _sessionRepository;
 
-  GetCommandsHandler({required SessionRepository sessionRepository})
+  this
     : _sessionRepository = sessionRepository,
       super(
         HttpMethod.post,

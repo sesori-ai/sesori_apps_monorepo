@@ -4,14 +4,14 @@ import "crypto_service.dart";
 
 /// Stateful wrapper holding the derived encryption key for a relay session.
 /// Created after key exchange completes. Used for all encrypt/decrypt operations.
-class SessionEncryptor {
+class SessionEncryptor({
+    required RelayCryptoService cryptoService,
+    required SecretKey encryptionKey,
+  }) {
   final RelayCryptoService _cryptoService;
   final SecretKey _encryptionKey;
 
-  SessionEncryptor({
-    required RelayCryptoService cryptoService,
-    required SecretKey encryptionKey,
-  }) : _cryptoService = cryptoService,
+  this : _cryptoService = cryptoService,
        _encryptionKey = encryptionKey;
 
   /// Encrypts plaintext bytes using the session encryption key.

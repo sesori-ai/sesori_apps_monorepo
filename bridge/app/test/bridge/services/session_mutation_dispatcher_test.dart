@@ -131,7 +131,7 @@ void main() {
   });
 }
 
-class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
+class _FakeDerivedPlugin() implements BridgeDerivedProjectsPluginApi {
   Completer<void>? renameStarted;
   Future<void>? releaseRename;
   Object? renameError;

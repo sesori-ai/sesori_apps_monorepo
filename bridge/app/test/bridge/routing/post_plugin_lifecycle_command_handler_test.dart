@@ -116,7 +116,7 @@ const _conflict = PluginLifecycleConflict(
   current: _plugin,
 );
 
-class _FakePluginLifecycleService implements PluginLifecycleService {
+class _FakePluginLifecycleService() implements PluginLifecycleService {
   String? receivedPluginId;
   PluginLifecycleCommandRequest? receivedRequest;
   Object? error;

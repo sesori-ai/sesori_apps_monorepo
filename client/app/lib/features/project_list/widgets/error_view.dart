@@ -1,11 +1,9 @@
 part of "../project_list_screen.dart";
 
 /// Shown when loading projects fails while the bridge is connected.
-class _ErrorView extends StatelessWidget {
+class const _ErrorView({required this.reason, required this.onRetry}) extends StatelessWidget {
   final RemoteFailureReason reason;
   final VoidCallback onRetry;
-
-  const _ErrorView({required this.reason, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {

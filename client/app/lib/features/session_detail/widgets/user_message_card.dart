@@ -3,10 +3,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 import "file_part_widget.dart";
 
-class UserMessageCard extends StatelessWidget {
+class const UserMessageCard({super.key, required this.message}) extends StatelessWidget {
   final MessageWithParts message;
-
-  const UserMessageCard({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {

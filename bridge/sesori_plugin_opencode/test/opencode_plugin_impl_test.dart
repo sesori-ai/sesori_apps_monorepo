@@ -879,7 +879,7 @@ const Map<String, dynamic> _modelLimit = {
 
 /// A lightweight fake OpenCode server whose `/session/status` response can be
 /// changed between calls — used to test the merge of API data with tracker data.
-class _DynamicStatusServer {
+class _DynamicStatusServer() {
   HttpServer? _server;
   final Completer<void> _firstSseClient = Completer<void>();
 
@@ -985,7 +985,7 @@ class _DynamicStatusServer {
   }
 }
 
-class _FakeOpenCodeServer {
+class _FakeOpenCodeServer() {
   HttpServer? _server;
   final List<HttpResponse> _sseClients = [];
   final Completer<void> _firstSseClient = Completer<void>();

@@ -15,7 +15,7 @@ import "host_process_service.dart";
 /// writing state files directly) — the host's seams are what make plugin
 /// lifecycles testable and let the bridge enforce its cross-version on-disk
 /// contracts.
-abstract class PluginHost {
+abstract class PluginHost() {
   /// Parsed values of the options this plugin declared.
   PluginConfig get config;
 

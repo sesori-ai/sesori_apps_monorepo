@@ -5,15 +5,13 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../../core/di/injection.dart";
 import "session_diffs_body.dart";
 
-class SessionDiffsScreen extends StatelessWidget {
-  final String projectId;
-  final String sessionId;
-
-  const SessionDiffsScreen({
+class const SessionDiffsScreen({
     super.key,
     required this.projectId,
     required this.sessionId,
-  });
+  }) extends StatelessWidget {
+  final String projectId;
+  final String sessionId;
 
   @override
   Widget build(BuildContext context) {

@@ -8,7 +8,7 @@ const harnessSettingsPresentationQueryParam = "presentation";
 
 /// How the harness settings page was raised, which decides both its page
 /// transition and the way out of it.
-enum HarnessSettingsPresentation {
+enum HarnessSettingsPresentation() {
   /// Raised over a screen it does not belong to — the new-session harness
   /// menu. It slides up as a modal and closes back onto its opener.
   modal,
@@ -36,7 +36,7 @@ String _appendQuery({required String path, required Map<String, String> queryPar
 ///
 /// [AppRouteDef.values] is compile-time complete, so every route is
 /// guaranteed to be registered — no manual list to keep in sync.
-enum AppRouteDef {
+enum AppRouteDef(this.path) {
   splash("/splash"),
   login("/login"),
   projects("/projects"),
@@ -50,7 +50,6 @@ enum AppRouteDef {
   sessionDiffs("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam/diffs"),
   ;
 
-  AppRouteDef(this.path);
   final String path;
 }
 
@@ -69,9 +68,7 @@ enum AppRouteDef {
 ///   readOnly: false,
 /// ));
 /// ```
-sealed class AppRoute {
-  const AppRoute();
-
+sealed class const AppRoute() {
   /// The matching [AppRouteDef] for this route.
   AppRouteDef get def;
 
@@ -143,9 +140,7 @@ sealed class AppRoute {
   }
 }
 
-class AppRouteSplash extends AppRoute {
-  const AppRouteSplash();
-
+class const AppRouteSplash() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.splash;
 
@@ -153,9 +148,7 @@ class AppRouteSplash extends AppRoute {
   String buildPath() => def.path;
 }
 
-class AppRouteLogin extends AppRoute {
-  const AppRouteLogin();
-
+class const AppRouteLogin() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.login;
 
@@ -163,9 +156,7 @@ class AppRouteLogin extends AppRoute {
   String buildPath() => def.path;
 }
 
-class AppRouteProjects extends AppRoute {
-  const AppRouteProjects();
-
+class const AppRouteProjects() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.projects;
 
@@ -173,9 +164,7 @@ class AppRouteProjects extends AppRoute {
   String buildPath() => def.path;
 }
 
-class AppRouteSettings extends AppRoute {
-  const AppRouteSettings();
-
+class const AppRouteSettings() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.settings;
 
@@ -183,9 +172,7 @@ class AppRouteSettings extends AppRoute {
   String buildPath() => def.path;
 }
 
-class AppRouteSettingsNotifications extends AppRoute {
-  const AppRouteSettingsNotifications();
-
+class const AppRouteSettingsNotifications() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.settingsNotifications;
 
@@ -193,12 +180,10 @@ class AppRouteSettingsNotifications extends AppRoute {
   String buildPath() => def.path;
 }
 
-class AppRouteSettingsHarnesses extends AppRoute {
+class const AppRouteSettingsHarnesses({required this.presentation}) extends AppRoute {
   static const _presentationQueryParam = harnessSettingsPresentationQueryParam;
 
   final HarnessSettingsPresentation presentation;
-
-  const AppRouteSettingsHarnesses({required this.presentation});
 
   /// Decodes from query parameter maps (inverse of [buildPath]).
   factory AppRouteSettingsHarnesses.fromParams({required Map<String, String> queryParams}) {
@@ -224,9 +209,7 @@ class AppRouteSettingsHarnesses extends AppRoute {
   }
 }
 
-class AppRouteSettingsProfile extends AppRoute {
-  const AppRouteSettingsProfile();
-
+class const AppRouteSettingsProfile() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.settingsProfile;
 
@@ -234,7 +217,11 @@ class AppRouteSettingsProfile extends AppRoute {
   String buildPath() => def.path;
 }
 
-class AppRouteSessions extends AppRoute {
+class const AppRouteSessions({
+    required this.projectId,
+    required this.projectName,
+    required this.supportsDedicatedWorktrees,
+  }) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
   static const _supportsDedicatedWorktreesQueryParam = supportsDedicatedWorktreesQueryParam;
@@ -242,12 +229,6 @@ class AppRouteSessions extends AppRoute {
   final String projectId;
   final String? projectName;
   final bool? supportsDedicatedWorktrees;
-
-  const AppRouteSessions({
-    required this.projectId,
-    required this.projectName,
-    required this.supportsDedicatedWorktrees,
-  });
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteSessions.fromParams({
@@ -279,14 +260,12 @@ class AppRouteSessions extends AppRoute {
   }
 }
 
-class AppRouteNewSession extends AppRoute {
+class const AppRouteNewSession({required this.projectId, required this.projectName}) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
   final String? projectName;
-
-  const AppRouteNewSession({required this.projectId, required this.projectName});
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteNewSession.fromParams({
@@ -312,7 +291,13 @@ class AppRouteNewSession extends AppRoute {
   }
 }
 
-class AppRouteSessionDetail extends AppRoute {
+class const AppRouteSessionDetail({
+    required this.projectId,
+    required this.projectName,
+    required this.sessionId,
+    required this.sessionTitle,
+    required this.readOnly,
+  }) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _sessionIdPathParam = sessionIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
@@ -324,14 +309,6 @@ class AppRouteSessionDetail extends AppRoute {
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
-
-  const AppRouteSessionDetail({
-    required this.projectId,
-    required this.projectName,
-    required this.sessionId,
-    required this.sessionTitle,
-    required this.readOnly,
-  });
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteSessionDetail.fromParams({
@@ -379,7 +356,7 @@ class AppRouteSessionDetail extends AppRoute {
   }
 }
 
-class AppRouteSessionDiffs extends AppRoute {
+class const AppRouteSessionDiffs({required this.projectId, required this.projectName, required this.sessionId}) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _sessionIdPathParam = sessionIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
@@ -387,8 +364,6 @@ class AppRouteSessionDiffs extends AppRoute {
   final String projectId;
   final String? projectName;
   final String sessionId;
-
-  const AppRouteSessionDiffs({required this.projectId, required this.projectName, required this.sessionId});
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteSessionDiffs.fromParams({

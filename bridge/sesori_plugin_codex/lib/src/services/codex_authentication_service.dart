@@ -5,13 +5,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../codex_stdio_app_server_client.dart";
 import "../repositories/codex_authentication_repository.dart";
 
-class CodexAuthenticationService {
-  CodexAuthenticationService({
+class CodexAuthenticationService({
     required CodexStdioAppServerClient client,
     required CodexAuthenticationRepository repository,
     required StartAbortSignal aborted,
     required Duration requestTimeout,
-  }) : _client = client,
+  }) {
+  this : _client = client,
        _repository = repository,
        _aborted = aborted,
        _requestTimeout = requestTimeout;

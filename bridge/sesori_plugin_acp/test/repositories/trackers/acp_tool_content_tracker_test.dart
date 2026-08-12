@@ -185,7 +185,7 @@ String _captureWarnings(void Function() action) {
   return stderr.text;
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();

@@ -4,17 +4,15 @@ part of "session_list_action_dispatcher.dart";
 // Delete session bottom sheet
 // -----------------------------------------------------------------------------
 
-class _DeleteSessionSheet extends StatefulWidget {
+class const _DeleteSessionSheet({required this.session, required this.onConfirm}) extends StatefulWidget {
   final Session session;
   final void Function({required bool deleteWorktree, required bool deleteBranch}) onConfirm;
-
-  const _DeleteSessionSheet({required this.session, required this.onConfirm});
 
   @override
   State<_DeleteSessionSheet> createState() => _DeleteSessionSheetState();
 }
 
-class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
+class _DeleteSessionSheetState() extends State<_DeleteSessionSheet> {
   bool _deleteWorktree = true;
   bool _deleteBranch = true;
 
@@ -93,17 +91,15 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
 // Archive session bottom sheet
 // -----------------------------------------------------------------------------
 
-class _ArchiveSessionSheet extends StatefulWidget {
+class const _ArchiveSessionSheet({required this.session, required this.onConfirm}) extends StatefulWidget {
   final Session session;
   final void Function({required bool deleteWorktree, required bool deleteBranch}) onConfirm;
-
-  const _ArchiveSessionSheet({required this.session, required this.onConfirm});
 
   @override
   State<_ArchiveSessionSheet> createState() => _ArchiveSessionSheetState();
 }
 
-class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
+class _ArchiveSessionSheetState() extends State<_ArchiveSessionSheet> {
   bool _deleteWorktree = true;
   bool _deleteBranch = true;
 

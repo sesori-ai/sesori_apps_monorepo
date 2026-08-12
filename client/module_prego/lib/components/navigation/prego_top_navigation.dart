@@ -6,7 +6,7 @@ import "../../utils/color_extensions.dart";
 
 /// How [PregoTopNavigation] presents its title. The values map to the Figma
 /// `PregoTopNavigation` component types.
-enum PregoTopNavigationTitleMode {
+enum PregoTopNavigationTitleMode() {
   /// Figma "Large Title": the bar title fades in as the page's large title
   /// scrolls away (driven by [PregoTopNavigation.scrollController]).
   collapsing,
@@ -70,8 +70,7 @@ enum PregoTopNavigationTitleMode {
 ///   body: ...,
 /// )
 /// ```
-class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget {
-  const PregoTopNavigation({
+class const PregoTopNavigation({
     super.key,
     required this.title,
     this.subtitle,
@@ -83,8 +82,7 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
     this.leading,
     this.onBack,
     this.automaticallyImplyLeading = true,
-  });
-
+  }) extends StatelessWidget implements PreferredSizeWidget {
   /// Primary title — fixed (inline and back-leading modes) or fading in as the
   /// large title collapses (collapsing mode), depending on [titleMode].
   final String title;

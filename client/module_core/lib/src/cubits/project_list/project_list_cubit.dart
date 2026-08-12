@@ -32,9 +32,19 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
-enum _InventoryAnalyticsGuard { ready, inFlight, consumed }
+enum _InventoryAnalyticsGuard() { ready, inFlight, consumed }
 
-class ProjectListCubit extends Cubit<ProjectListState> {
+class ProjectListCubit(
+    ProjectRepository projectRepository,
+    ConnectionService connectionService,
+    SseEventTracker sseEventTracker,
+    RouteSource routeSource, {
+    required ProjectListService projectListService,
+    required SessionUnseenTracker sessionUnseenTracker,
+    required RegisteredBridgesService registeredBridgesService,
+    required ProductAnalyticsService productAnalyticsService,
+    required FailureReporter failureReporter,
+  }) extends Cubit<ProjectListState> {
   final ProjectRepository _projectRepository;
   final ProjectListService _projectListService;
   final ConnectionService _connectionService;
@@ -48,17 +58,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   _InventoryAnalyticsGuard _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  ProjectListCubit(
-    ProjectRepository projectRepository,
-    ConnectionService connectionService,
-    SseEventTracker sseEventTracker,
-    RouteSource routeSource, {
-    required ProjectListService projectListService,
-    required SessionUnseenTracker sessionUnseenTracker,
-    required RegisteredBridgesService registeredBridgesService,
-    required ProductAnalyticsService productAnalyticsService,
-    required FailureReporter failureReporter,
-  }) : _projectRepository = projectRepository,
+  this : _projectRepository = projectRepository,
        _projectListService = projectListService,
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,

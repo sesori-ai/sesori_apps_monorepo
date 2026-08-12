@@ -3,10 +3,8 @@
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 
-class NonNullTextTheme extends TextTheme {
+class const NonNullTextTheme({required this.textTheme}) extends TextTheme {
   final TextTheme textTheme;
-
-  const NonNullTextTheme({required this.textTheme});
 
   @override
   TextTheme apply({
@@ -149,7 +147,23 @@ class NonNullTextTheme extends TextTheme {
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) => textTheme.toString(minLevel: minLevel);
 }
 
-class GuaranteedTextTheme extends TextTheme {
+class const GuaranteedTextTheme({
+    required this.displayLarge,
+    required this.displayMedium,
+    required this.displaySmall,
+    required this.headlineLarge,
+    required this.headlineMedium,
+    required this.headlineSmall,
+    required this.titleLarge,
+    required this.titleMedium,
+    required this.titleSmall,
+    required this.labelLarge,
+    required this.labelMedium,
+    required this.labelSmall,
+    required this.bodyLarge,
+    required this.bodyMedium,
+    required this.bodySmall,
+  }) extends TextTheme {
   @override
   final TextStyle displayLarge;
   @override
@@ -180,22 +194,4 @@ class GuaranteedTextTheme extends TextTheme {
   final TextStyle bodyMedium;
   @override
   final TextStyle bodySmall;
-
-  const GuaranteedTextTheme({
-    required this.displayLarge,
-    required this.displayMedium,
-    required this.displaySmall,
-    required this.headlineLarge,
-    required this.headlineMedium,
-    required this.headlineSmall,
-    required this.titleLarge,
-    required this.titleMedium,
-    required this.titleSmall,
-    required this.labelLarge,
-    required this.labelMedium,
-    required this.labelSmall,
-    required this.bodyLarge,
-    required this.bodyMedium,
-    required this.bodySmall,
-  });
 }

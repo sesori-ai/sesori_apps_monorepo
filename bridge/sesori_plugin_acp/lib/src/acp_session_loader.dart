@@ -11,8 +11,7 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 /// ACP replays a thread as a stream of chunk notifications in conversational
 /// order; consecutive same-role chunks belong to one message, and a role
 /// switch starts a new message.
-class AcpReplayCollector {
-  AcpReplayCollector({
+class AcpReplayCollector({
     required this.sessionId,
     required this.agentId,
     this.modelId,
@@ -20,7 +19,8 @@ class AcpReplayCollector {
     required this.initialUserMessageId,
     required this.haltClassifier,
     required AcpContentMapper contentMapper,
-  }) : _contentMapper = contentMapper;
+  }) {
+  this : _contentMapper = contentMapper;
 
   final String sessionId;
   final String agentId;
@@ -487,14 +487,12 @@ class AcpReplayCollector {
       update["title"] is String ? update["title"] as String? : null;
 }
 
-class _Draft {
-  _Draft({
+class _Draft({
     required this.role,
     required this.id,
     required this.acpMessageId,
     required this.contentTracker,
-  });
-
+  }) {
   final String role;
   final String id;
 
@@ -507,43 +505,33 @@ class _Draft {
   final Map<String, _ToolDraft> tools = {};
 }
 
-sealed class _AssistantDraftEntry {
-  const _AssistantDraftEntry();
-}
+sealed class const _AssistantDraftEntry();
 
-final class _AssistantContentEntry extends _AssistantDraftEntry {
-  const _AssistantContentEntry({required this.mutation});
-
+final class const _AssistantContentEntry({required this.mutation}) extends _AssistantDraftEntry {
   final AcpContentMutation mutation;
 }
 
-final class _AssistantToolEntry extends _AssistantDraftEntry {
-  const _AssistantToolEntry({required this.toolId, required this.tool});
-
+final class const _AssistantToolEntry({required this.toolId, required this.tool}) extends _AssistantDraftEntry {
   final String toolId;
   final _ToolDraft tool;
 }
 
-final class _PendingAssistantContent {
-  const _PendingAssistantContent({
+final class const _PendingAssistantContent({
     required this.messageId,
     required this.tracker,
-  });
-
+  }) {
   final String? messageId;
   final AcpContentTracker tracker;
 }
 
-class _ToolDraft {
-  _ToolDraft({
+class _ToolDraft({
     required this.tool,
     required this.title,
     required this.status,
     required this.contentTracker,
     required this.hasExplicitKind,
     required this.hasExplicitStatus,
-  });
-
+  }) {
   String tool;
   // Reassigned as later tool_call_update notifications arrive during replay.
   String? title;

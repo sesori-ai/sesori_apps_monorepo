@@ -8,33 +8,29 @@ import '../foundation/process_match.dart';
 import '../models/bridge_startup_lock.dart';
 import 'process_repository.dart';
 
-class StartupLockRejection {
-  const StartupLockRejection({
+class const StartupLockRejection({
     required this.lock,
     required this.holderMatch,
     required this.lockFilePath,
-  });
-
+  }) {
   final BridgeStartupLock? lock;
   final ProcessMatch? holderMatch;
   final String lockFilePath;
 }
 
-class _LiveStartupLockHolder {
-  const _LiveStartupLockHolder({
+class const _LiveStartupLockHolder({
     required this.lock,
     required this.match,
-  });
-
+  }) {
   final BridgeStartupLock lock;
   final ProcessMatch match;
 }
 
-class StartupMutexRepository {
-  StartupMutexRepository({
+class StartupMutexRepository({
     required RuntimeFileApi runtimeFileApi,
     required ProcessRepository processRepository,
-  }) : _runtimeFileApi = runtimeFileApi,
+  }) {
+  this : _runtimeFileApi = runtimeFileApi,
        _processRepository = processRepository;
 
   final RuntimeFileApi _runtimeFileApi;

@@ -17,15 +17,15 @@ typedef HostProcessStarter =
       bool runInShell,
     });
 
-class BridgeHostProcessService implements HostProcessService {
-  BridgeHostProcessService({
+class BridgeHostProcessService({
     required HostProcessStarter processStarter,
     required ProcessRepository processRepository,
     required ServerClock clock,
     required ProcessUser? currentUser,
     required bool isWindows,
     required String platform,
-  }) : _processStarter = processStarter,
+  }) implements HostProcessService {
+  this : _processStarter = processStarter,
        _processRepository = processRepository,
        _clock = clock,
        _currentUser = currentUser,
@@ -171,11 +171,11 @@ class BridgeHostProcessService implements HostProcessService {
   }
 }
 
-class _HostSpawnedProcess implements SpawnedProcess {
-  _HostSpawnedProcess({
+class _HostSpawnedProcess({
     required io.Process process,
     required this.identity,
-  }) : _process = process;
+  }) implements SpawnedProcess {
+  this : _process = process;
 
   final io.Process _process;
 

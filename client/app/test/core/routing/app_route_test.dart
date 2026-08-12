@@ -558,7 +558,7 @@ GoRoute _sessionDiffsRoute() {
   return detailRoute.routes.whereType<GoRoute>().singleWhere((route) => route.path == "diffs");
 }
 
-class _FakeBuildContext extends Fake implements BuildContext {
+class _FakeBuildContext() extends Fake implements BuildContext {
   // No inherited widgets in this synthetic context: MediaQuery lookups in
   // page builders (reduced-motion checks) resolve to null → defaults.
   // MediaQuery is an InheritedModel, so InheritedModel.inheritFrom resolves
@@ -568,12 +568,13 @@ class _FakeBuildContext extends Fake implements BuildContext {
   InheritedElement? getElementForInheritedWidgetOfExactType<T extends InheritedWidget>() => null;
 }
 
-// ignore: avoid_implementing_value_types, GoRouterState is a value type but tests only need a lightweight fake
-class _FakeGoRouterState extends Fake implements GoRouterState {
-  _FakeGoRouterState({
+class _FakeGoRouterState({
     this.pathParameters = const {},
     Map<String, String> queryParameters = const {},
-  }) : uri = Uri(path: "/", queryParameters: queryParameters.isEmpty ? null : queryParameters);
+  }) extends Fake
+    // ignore: avoid_implementing_value_types, tests only need a lightweight fake
+    implements GoRouterState {
+  this : uri = Uri(path: "/", queryParameters: queryParameters.isEmpty ? null : queryParameters);
 
   @override
   final Map<String, String> pathParameters;

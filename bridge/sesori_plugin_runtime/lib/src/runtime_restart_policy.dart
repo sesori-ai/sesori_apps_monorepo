@@ -6,9 +6,7 @@
 /// ([RuntimeRestartPolicy.bounded]) becomes available only when the real
 /// descriptor opts in at the flip; until then the monitor is simply never
 /// armed, so production behavior is unchanged.
-sealed class RuntimeRestartPolicy {
-  const RuntimeRestartPolicy();
-
+sealed class const RuntimeRestartPolicy() {
   /// Legacy: an unexpected exit is terminal and surfaces as `PluginFailed`.
   const factory RuntimeRestartPolicy.disabled() = DisabledRestartPolicy;
 
@@ -27,22 +25,20 @@ sealed class RuntimeRestartPolicy {
 }
 
 /// Restarts are off: the supervisor never relaunches a runtime that exits.
-class DisabledRestartPolicy extends RuntimeRestartPolicy {
-  const DisabledRestartPolicy();
-}
+class const DisabledRestartPolicy() extends RuntimeRestartPolicy;
 
 /// Bounded restart-with-backoff, pinned to the runtime's original port.
-class BoundedRestartPolicy extends RuntimeRestartPolicy {
-  // Not const: the parameter guards compare Durations, which is not a
-  // constant-evaluable operation. Built at runtime anyway (at the flip).
-  BoundedRestartPolicy({
+class BoundedRestartPolicy({
     required this.maxAttempts,
     required this.initialBackoff,
     required this.maxBackoff,
     required this.portReleaseTimeout,
     required this.portReleasePollInterval,
     this.backoffMultiplier = 2.0,
-  }) : assert(maxAttempts > 0, "maxAttempts must be positive"),
+  }) extends RuntimeRestartPolicy {
+  // Not const: the parameter guards compare Durations, which is not a
+  // constant-evaluable operation. Built at runtime anyway (at the flip).
+  this : assert(maxAttempts > 0, "maxAttempts must be positive"),
        assert(!initialBackoff.isNegative, "initialBackoff must be non-negative"),
        assert(backoffMultiplier >= 1.0, "backoffMultiplier must be at least 1.0"),
        assert(maxBackoff >= initialBackoff, "maxBackoff must be at least initialBackoff"),

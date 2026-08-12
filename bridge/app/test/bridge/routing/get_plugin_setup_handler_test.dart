@@ -111,7 +111,7 @@ void main() {
   });
 }
 
-class _ReadyPluginApi extends NativeProjectsPluginApi {
+class _ReadyPluginApi() extends NativeProjectsPluginApi {
   @override
   String get id => "ready";
 

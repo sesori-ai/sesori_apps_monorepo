@@ -8,7 +8,13 @@ import "push_maintenance_telemetry.dart";
 import "push_rate_limiter.dart";
 import "push_session_state_tracker.dart";
 
-class MaintenancePushListener {
+class MaintenancePushListener({
+    required PushSessionStateTracker tracker,
+    required CompletionNotifier completionNotifier,
+    required PushRateLimiter rateLimiter,
+    required PushMaintenanceTelemetryBuilder telemetryBuilder,
+    Duration maintenanceInterval = const Duration(minutes: 10),
+  }) {
   final PushSessionStateTracker _tracker;
   final CompletionNotifier _completionNotifier;
   final PushRateLimiter _rateLimiter;
@@ -17,13 +23,7 @@ class MaintenancePushListener {
   Timer? _timer;
   PushMaintenanceTelemetrySnapshot? _lastMaintenanceTelemetry;
 
-  MaintenancePushListener({
-    required PushSessionStateTracker tracker,
-    required CompletionNotifier completionNotifier,
-    required PushRateLimiter rateLimiter,
-    required PushMaintenanceTelemetryBuilder telemetryBuilder,
-    Duration maintenanceInterval = const Duration(minutes: 10),
-  }) : _tracker = tracker,
+  this : _tracker = tracker,
        _completionNotifier = completionNotifier,
        _rateLimiter = rateLimiter,
        _telemetryBuilder = telemetryBuilder,

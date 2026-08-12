@@ -30,7 +30,12 @@ import "../foundation/control_channel_client.dart";
 /// and a frame lost to a channel blip is repaired by the reconnect re-sync.
 /// Consecutive identical status frames are deduped so live state changes are
 /// pushed exactly once (no periodic spam).
-class ControlStatusNotifier {
+class ControlStatusNotifier({
+    required ControlChannelClient client,
+    required Stream<List<PluginMetadata>> pluginMetadata,
+    required Stream<RelayConnectionState> relayConnectionState,
+    required Stream<String> registrations,
+  }) {
   final ControlChannelClient _client;
   final Stream<List<PluginMetadata>> _pluginMetadata;
   final Stream<RelayConnectionState> _relayConnectionState;
@@ -47,12 +52,7 @@ class ControlStatusNotifier {
   String? _bridgeId;
   bool _started = false;
 
-  ControlStatusNotifier({
-    required ControlChannelClient client,
-    required Stream<List<PluginMetadata>> pluginMetadata,
-    required Stream<RelayConnectionState> relayConnectionState,
-    required Stream<String> registrations,
-  }) : _client = client,
+  this : _client = client,
        _pluginMetadata = pluginMetadata,
        _relayConnectionState = relayConnectionState,
        _registrations = registrations;

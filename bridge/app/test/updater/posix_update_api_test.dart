@@ -6,9 +6,7 @@ import 'package:sesori_bridge/src/updater/api/platform_update_api.dart';
 import 'package:sesori_bridge/src/updater/api/posix_update_api.dart';
 import 'package:test/test.dart';
 
-class _FakeProcessRunner implements ProcessRunner {
-  _FakeProcessRunner({this.chmodExitCode = 0});
-
+class _FakeProcessRunner({this.chmodExitCode = 0}) implements ProcessRunner {
   final int chmodExitCode;
   final List<List<String>> calls = <List<String>>[];
 

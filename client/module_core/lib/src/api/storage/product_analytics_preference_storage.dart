@@ -46,12 +46,12 @@ sealed class StoredProductAnalyticsPreference with _$StoredProductAnalyticsPrefe
 }
 
 @lazySingleton
-class ProductAnalyticsPreferenceStorage {
+class ProductAnalyticsPreferenceStorage({required SecureStorage storage}) {
   static const _keyPrefix = "product_analytics_preference_v1:";
 
   final SecureStorage _storage;
 
-  ProductAnalyticsPreferenceStorage({required SecureStorage storage}) : _storage = storage;
+  this : _storage = storage;
 
   Future<StoredProductAnalyticsPreference?> read({required String userId}) async {
     final value = await _storage.read(key: _key(userId));
@@ -92,14 +92,14 @@ class ProductAnalyticsPreferenceStorage {
   String _key(String userId) => "$_keyPrefix$userId";
 }
 
-final class ProductAnalyticsPreferenceStorageFormatException extends FormatException {
+final class const ProductAnalyticsPreferenceStorageFormatException({
+    required this.innerError,
+    required this.innerStackTrace,
+  }) extends FormatException {
   final Object innerError;
   final StackTrace innerStackTrace;
 
-  const ProductAnalyticsPreferenceStorageFormatException({
-    required this.innerError,
-    required this.innerStackTrace,
-  }) : super("Invalid stored product analytics preference");
+  this : super("Invalid stored product analytics preference");
 }
 
 bool _hasValidOperationId(StoredProductAnalyticsPreference record) => switch (record) {

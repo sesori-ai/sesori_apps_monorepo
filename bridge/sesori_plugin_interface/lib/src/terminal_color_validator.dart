@@ -21,9 +21,7 @@ import "dart:io";
 /// Dart's `supportsAnsiEscapes` is a more reliable capability signal than the
 /// mere presence of `TERM`, and forcing off there would regress color on real
 /// terminals that do not export `TERM`.
-class TerminalColorValidator {
-  TerminalColorValidator._();
-
+class TerminalColorValidator._() {
   /// Whether color may be emitted to [out] under [environment].
   static bool isSupported({
     required Stdout out,

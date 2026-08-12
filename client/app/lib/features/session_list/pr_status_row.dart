@@ -15,10 +15,8 @@ const _kPrAmber = Color(0xFFD29922);
 ///
 /// Used inside [_SessionTile] to surface pull-request metadata directly in the
 /// session list without navigating to the detail screen.
-class PrStatusRow extends StatelessWidget {
+class const PrStatusRow({super.key, required this.pr}) extends StatelessWidget {
   final PullRequestInfo pr;
-
-  const PrStatusRow({super.key, required this.pr});
 
   @override
   Widget build(BuildContext context) {

@@ -1,16 +1,15 @@
 import "package:meta/meta.dart";
 
-enum AnalyticsLoginProvider {
+enum AnalyticsLoginProvider({required this.wireValue}) {
   github(wireValue: "github"),
   google(wireValue: "google"),
   apple(wireValue: "apple"),
   email(wireValue: "email");
 
   final String wireValue;
-  AnalyticsLoginProvider({required this.wireValue});
 }
 
-enum AnalyticsLoginFailureKind {
+enum AnalyticsLoginFailureKind({required this.wireValue}) {
   authentication(wireValue: "authentication"),
   launch(wireValue: "launch"),
   cancelled(wireValue: "cancelled"),
@@ -18,13 +17,10 @@ enum AnalyticsLoginFailureKind {
   unknown(wireValue: "unknown");
 
   final String wireValue;
-  AnalyticsLoginFailureKind({required this.wireValue});
 }
 
 @immutable
-sealed class InstallationAnalyticsEvent {
-  const InstallationAnalyticsEvent();
-
+sealed class const InstallationAnalyticsEvent() {
   const factory InstallationAnalyticsEvent.loginAttemptStarted({required AnalyticsLoginProvider provider}) =
       LoginAttemptStartedEvent;
   const factory InstallationAnalyticsEvent.loginAttemptCompleted({required AnalyticsLoginProvider provider}) =
@@ -52,9 +48,8 @@ sealed class InstallationAnalyticsEvent {
   );
 }
 
-final class LoginAttemptStartedEvent extends InstallationAnalyticsEvent {
+final class const LoginAttemptStartedEvent({required this.provider}) extends InstallationAnalyticsEvent {
   final AnalyticsLoginProvider provider;
-  const LoginAttemptStartedEvent({required this.provider});
 
   @override
   String get wireName => "login_attempt_started";
@@ -63,9 +58,8 @@ final class LoginAttemptStartedEvent extends InstallationAnalyticsEvent {
   Map<String, String> get parameters => {"provider": provider.wireValue};
 }
 
-final class LoginAttemptCompletedEvent extends InstallationAnalyticsEvent {
+final class const LoginAttemptCompletedEvent({required this.provider}) extends InstallationAnalyticsEvent {
   final AnalyticsLoginProvider provider;
-  const LoginAttemptCompletedEvent({required this.provider});
 
   @override
   String get wireName => "login_attempt_completed";
@@ -74,10 +68,9 @@ final class LoginAttemptCompletedEvent extends InstallationAnalyticsEvent {
   Map<String, String> get parameters => {"provider": provider.wireValue};
 }
 
-final class LoginAttemptFailedEvent extends InstallationAnalyticsEvent {
+final class const LoginAttemptFailedEvent({required this.provider, required this.failureKind}) extends InstallationAnalyticsEvent {
   final AnalyticsLoginProvider provider;
   final AnalyticsLoginFailureKind failureKind;
-  const LoginAttemptFailedEvent({required this.provider, required this.failureKind});
 
   @override
   String get wireName => "login_attempt_failed";

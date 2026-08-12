@@ -1,5 +1,4 @@
-class CodexThreadRecord {
-  const CodexThreadRecord({
+class const CodexThreadRecord({
     required this.id,
     required this.name,
     required this.directory,
@@ -7,8 +6,7 @@ class CodexThreadRecord {
     required this.updatedAt,
     required this.model,
     required this.modelProvider,
-  });
-
+  }) {
   final String id;
   final String? name;
   final String? directory;

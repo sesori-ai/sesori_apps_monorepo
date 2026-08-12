@@ -42,9 +42,7 @@ abstract class PlatformUpdateApi {
 
 /// Raised when an in-place swap cannot be completed. The applier rolls back any
 /// partial state before throwing so the running install is left intact.
-class UpdateApplyException implements Exception {
-  const UpdateApplyException(this.message);
-
+class const UpdateApplyException(this.message) implements Exception {
   final String message;
 
   @override

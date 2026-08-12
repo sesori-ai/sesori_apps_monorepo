@@ -5,7 +5,7 @@ import "package:injectable/injectable.dart";
 
 /// Injectable seam around file_selector's static plugin API.
 @lazySingleton
-class FileSaveClient {
+class FileSaveClient() {
   Future<bool> saveFile({
     required Uint8List bytes,
     required String mime,

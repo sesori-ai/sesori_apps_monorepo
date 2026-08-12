@@ -7,7 +7,7 @@ import "../../logging/logging.dart";
 import "../../services/notification_preferences_service.dart";
 import "notification_preferences_state.dart";
 
-class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
+class NotificationPreferencesCubit({required NotificationPreferencesService service}) extends Cubit<NotificationPreferencesState> {
   final NotificationPreferencesService _service;
   late final StreamSubscription<NotificationPreferencesAccountStatus> _accountSubscription;
 
@@ -15,7 +15,7 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
   int _accountGeneration = 0;
   int _loadGeneration = 0;
 
-  NotificationPreferencesCubit({required NotificationPreferencesService service})
+  this
     : _service = service,
       super(const NotificationPreferencesState.loading()) {
     _accountSubscription = _service.accountStatusStream.listen(

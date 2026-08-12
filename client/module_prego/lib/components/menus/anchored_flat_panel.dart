@@ -20,8 +20,7 @@ import "../../theme/prego_theme.dart";
 /// enclosing `CueModalTransition` pushed — wire it to any dismiss affordance
 /// inside the bubble (a tapped menu row, a "Done" button). The transparent
 /// tap-outside barrier belongs to that `CueModalTransition`, not to this panel.
-class AnchoredFlatPanel extends StatelessWidget {
-  const AnchoredFlatPanel({
+class const AnchoredFlatPanel({
     super.key,
     required this.triggerRect,
     required this.width,
@@ -29,8 +28,7 @@ class AnchoredFlatPanel extends StatelessWidget {
     required this.borderRadius,
     required this.screenPadding,
     required this.childBuilder,
-  });
-
+  }) extends StatelessWidget {
   /// Screen-space rectangle of the trigger the bubble anchors to.
   final Rect triggerRect;
 
@@ -127,8 +125,7 @@ class AnchoredFlatPanel extends StatelessWidget {
 /// [maxHeight], anchored above or below [triggerRect] per [expandUp], and
 /// clamped so it never crosses the screen-edge padding (incl. notches and the
 /// keyboard).
-class _AnchoredPopupLayoutDelegate extends SingleChildLayoutDelegate {
-  _AnchoredPopupLayoutDelegate({
+class _AnchoredPopupLayoutDelegate({
     required this.triggerRect,
     required this.width,
     required this.maxHeight,
@@ -137,8 +134,7 @@ class _AnchoredPopupLayoutDelegate extends SingleChildLayoutDelegate {
     required this.safe,
     required this.keyboard,
     required this.gap,
-  });
-
+  }) extends SingleChildLayoutDelegate {
   final Rect triggerRect;
   final double width;
   final double maxHeight;

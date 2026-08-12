@@ -31,15 +31,15 @@ import "runtime_restart_policy.dart";
 /// - [disarm] (called by the owner's shutdown *before* it signals the child)
 ///   aborts any in-flight restart so the relaunched child is rolled back rather
 ///   than leaked, and cancels the stdio subscriptions. It is idempotent.
-class ManagedRuntimeMonitor<R> {
-  ManagedRuntimeMonitor({
+class ManagedRuntimeMonitor<R>({
     required ManagedProcessService<R> service,
     required ManagedRuntimeSpec<R> spec,
     required PluginStatusController status,
     required ServerClock clock,
     required String runtimeId,
     required RuntimeRestartPolicy restartPolicy,
-  }) : _service = service,
+  }) {
+  this : _service = service,
        _spec = spec,
        _status = status,
        _clock = clock,

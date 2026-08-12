@@ -8,7 +8,12 @@ import 'release_info.dart';
 /// track, and the latest eligible release (if any) with its typed version.
 /// Version parsing/typing lives in the repository that builds this; consumers
 /// only compare the already-typed values.
-class UpdateResolution {
+class const UpdateResolution({
+    required this.currentVersion,
+    required this.currentEligible,
+    required this.latestEligible,
+    required this.latestVersion,
+  }) {
   /// The version of the currently running binary.
   final SemanticVersion currentVersion;
 
@@ -22,11 +27,4 @@ class UpdateResolution {
 
   /// The typed version of [latestEligible], or `null` when there is none.
   final SemanticVersion? latestVersion;
-
-  const UpdateResolution({
-    required this.currentVersion,
-    required this.currentEligible,
-    required this.latestEligible,
-    required this.latestVersion,
-  });
 }

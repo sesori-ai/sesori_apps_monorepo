@@ -6,12 +6,10 @@ import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../repositories/codex_catalog_repository.dart";
 
-class CodexRolloutAppend {
-  const CodexRolloutAppend({
+class const CodexRolloutAppend({
     required this.sessionId,
     required this.line,
-  });
-
+  }) {
   final String sessionId;
   final CodexRolloutLineDto line;
 }
@@ -24,14 +22,14 @@ class CodexRolloutAppend {
 /// and experimental raw events are disabled when a thread is resumed. Remove
 /// this tailer when a stable app-server stream covers raw calls and outputs for
 /// both newly started and resumed threads.
-class CodexRolloutTailer {
-  static const int _terminalDrainPollAttempts = 10;
-
-  CodexRolloutTailer({
+class CodexRolloutTailer({
     required CodexRolloutApi rolloutApi,
     required CodexCatalogRepository catalogRepository,
     required Duration pollInterval,
-  }) : _rolloutApi = rolloutApi,
+  }) {
+  static const int _terminalDrainPollAttempts = 10;
+
+  this : _rolloutApi = rolloutApi,
        _catalogRepository = catalogRepository,
        _pollInterval = pollInterval;
 
@@ -173,14 +171,12 @@ class CodexRolloutTailer {
   }
 }
 
-class _CodexRolloutCursor {
-  _CodexRolloutCursor({
+class _CodexRolloutCursor({
     required this.path,
     required this.offset,
     required this.trailingBytes,
     required this.hasObservedAppend,
-  });
-
+  }) {
   String? path;
   int offset;
   List<int> trailingBytes;

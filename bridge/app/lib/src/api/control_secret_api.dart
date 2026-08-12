@@ -8,10 +8,10 @@ import "dart:convert";
 /// platforms and this secret authenticates the control channel that issues
 /// bearer tokens, so it must never appear on the command line. The GUI writes
 /// `<secret>\n` to the child's stdin at spawn; this reads the first line.
-class ControlSecretApi {
+class ControlSecretApi({required Stream<List<int>> input}) {
   final Stream<List<int>> _input;
 
-  ControlSecretApi({required Stream<List<int>> input}) : _input = input;
+  this : _input = input;
 
   /// Reads and returns the trimmed secret (the first line of the input stream).
   ///

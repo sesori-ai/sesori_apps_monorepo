@@ -5,13 +5,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../bridge/foundation/process_runner.dart";
 
-class SystemProcessApi {
-  SystemProcessApi({
+class SystemProcessApi({
     required ProcessRunner processRunner,
     required ServerClock clock,
     required bool isWindows,
     required String platform,
-  }) : _processRunner = processRunner,
+  }) {
+  this : _processRunner = processRunner,
        _clock = clock,
        _isWindows = isWindows,
        _platform = platform;

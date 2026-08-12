@@ -207,7 +207,7 @@ Uint8List _pngBytes() {
   return image.encodePng(source);
 }
 
-class _CountingThumbnailBuilder extends AttachmentThumbnailBuilder {
+class _CountingThumbnailBuilder() extends AttachmentThumbnailBuilder {
   int calls = 0;
 
   @override
@@ -217,7 +217,7 @@ class _CountingThumbnailBuilder extends AttachmentThumbnailBuilder {
   }
 }
 
-class _TrackingThumbnailBuilder extends AttachmentThumbnailBuilder {
+class _TrackingThumbnailBuilder() extends AttachmentThumbnailBuilder {
   int _active = 0;
   int maxActive = 0;
 
@@ -234,7 +234,7 @@ class _TrackingThumbnailBuilder extends AttachmentThumbnailBuilder {
   }
 }
 
-class _MissingSessionRepository implements SessionRepository {
+class _MissingSessionRepository() implements SessionRepository {
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
@@ -242,7 +242,7 @@ class _MissingSessionRepository implements SessionRepository {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-class _PresentSessionRepository implements SessionRepository {
+class _PresentSessionRepository() implements SessionRepository {
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
     id: sessionId,
@@ -263,7 +263,7 @@ class _PresentSessionRepository implements SessionRepository {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-class _TrackingChatHistoryRepository implements ChatHistoryRepository {
+class _TrackingChatHistoryRepository() implements ChatHistoryRepository {
   int _activeReads = 0;
   int maxActiveReads = 0;
 
@@ -297,9 +297,7 @@ class _TrackingChatHistoryRepository implements ChatHistoryRepository {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-class _BridgeIdProvider implements BridgeIdProvider {
-  const _BridgeIdProvider();
-
+class const _BridgeIdProvider() implements BridgeIdProvider {
   @override
   String get bridgeId => "br_test1234";
 }

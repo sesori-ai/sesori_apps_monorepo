@@ -19,7 +19,15 @@ import "storage/oauth_storage_service.dart";
 import "storage/token_storage_service.dart";
 
 @lazySingleton
-class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
+class AuthManager(
+    http.Client client,
+    TokenStorageService tokenStorage,
+    OAuthStorageService oAuthStorage,
+    OAuthDeviceDescriptorProvider deviceDescriptorProvider, {
+    @visibleForTesting Duration pollInterval = _defaultPollInterval,
+    @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
+    @visibleForTesting Future<void> Function(Duration duration)? delay,
+  }) implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   static const _sessionTokenHeader = "X-Sesori-Session-Token";
   static const _defaultPollInterval = Duration(milliseconds: 250);
   static const _defaultPollTimeout = Duration(minutes: 5);
@@ -36,15 +44,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   final Future<void> Function(Duration duration) _delay;
   String? _oAuthSessionToken;
 
-  AuthManager(
-    http.Client client,
-    TokenStorageService tokenStorage,
-    OAuthStorageService oAuthStorage,
-    OAuthDeviceDescriptorProvider deviceDescriptorProvider, {
-    @visibleForTesting Duration pollInterval = _defaultPollInterval,
-    @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
-    @visibleForTesting Future<void> Function(Duration duration)? delay,
-  }) : _client = client,
+  this : _client = client,
        _tokenStorage = tokenStorage,
        _oAuthStorage = oAuthStorage,
        _deviceDescriptorProvider = deviceDescriptorProvider,

@@ -4,10 +4,10 @@ import "../api/loopback_port_api.dart";
 
 const String loopbackPortHost = "127.0.0.1";
 
-class PortRepository {
-  const PortRepository({
+class const PortRepository({
     required LoopbackPortApi loopbackPortApi,
-  }) : _loopbackPortApi = loopbackPortApi;
+  }) {
+  this : _loopbackPortApi = loopbackPortApi;
 
   final LoopbackPortApi _loopbackPortApi;
 
@@ -40,13 +40,11 @@ class PortRepository {
 }
 
 @immutable
-class PortAvailabilityFact {
-  const PortAvailabilityFact({
+class const PortAvailabilityFact({
     required this.host,
     required this.port,
     required this.isAvailable,
-  });
-
+  }) {
   final String host;
   final int port;
   final bool isAvailable;

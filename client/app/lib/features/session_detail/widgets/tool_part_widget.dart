@@ -7,10 +7,8 @@ import "../../../core/widgets/copy_icon_button.dart";
 import "../../../l10n/app_localizations.dart";
 import "file_part_widget.dart";
 
-class ToolPartWidget extends StatelessWidget {
+class const ToolPartWidget({super.key, required this.part}) extends StatelessWidget {
   final MessagePart part;
-
-  const ToolPartWidget({super.key, required this.part});
 
   @override
   Widget build(BuildContext context) {
@@ -129,16 +127,14 @@ class ToolPartWidget extends StatelessWidget {
 /// button, expandable to the full (previously hard-capped at 500 chars)
 /// output. Kept collapsed by default so large outputs don't grow the list
 /// or jank while streaming.
-class _ToolOutputBlock extends StatefulWidget {
+class const _ToolOutputBlock({required this.output}) extends StatefulWidget {
   final String output;
-
-  const _ToolOutputBlock({required this.output});
 
   @override
   State<_ToolOutputBlock> createState() => _ToolOutputBlockState();
 }
 
-class _ToolOutputBlockState extends State<_ToolOutputBlock> {
+class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
   /// Collapsed line budget; mirrors the previous fixed `maxLines: 8`.
   static const _collapsedMaxLines = 8;
 

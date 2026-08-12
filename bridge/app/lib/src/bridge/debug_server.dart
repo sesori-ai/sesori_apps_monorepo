@@ -10,7 +10,13 @@ import "routing/bridge_restart_dispatcher.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 
-class DebugServer {
+class DebugServer({
+    required Stream<SesoriSseEvent> localWireEvents,
+    required RoutedRequestDispatcher routedRequestDispatcher,
+    required this.port,
+    required FailureReporter failureReporter,
+    required BridgeRestartDispatcher restartDispatcher,
+  }) {
   final Stream<SesoriSseEvent> _localWireEvents;
   final RoutedRequestDispatcher _routedRequestDispatcher;
   final FailureReporter _failureReporter;
@@ -30,13 +36,7 @@ class DebugServer {
 
   int _nextRequestId = 1;
 
-  DebugServer({
-    required Stream<SesoriSseEvent> localWireEvents,
-    required RoutedRequestDispatcher routedRequestDispatcher,
-    required this.port,
-    required FailureReporter failureReporter,
-    required BridgeRestartDispatcher restartDispatcher,
-  }) : _localWireEvents = localWireEvents,
+  this : _localWireEvents = localWireEvents,
        _routedRequestDispatcher = routedRequestDispatcher,
        _failureReporter = failureReporter,
        _restartDispatcher = restartDispatcher;

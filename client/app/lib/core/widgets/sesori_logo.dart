@@ -12,9 +12,7 @@ import "package:vector_graphics/vector_graphics.dart";
 /// The source SVG is a 151x177 frame holding a 120x120 squircle whose top-left
 /// corner sits at (15.333, 2.667) with a 30.667 corner radius; the leftover
 /// frame space is where the drop shadow extends.
-class SesoriLogo extends StatelessWidget {
-  const SesoriLogo({super.key, this.squareSize = _svgSquare});
-
+class const SesoriLogo({super.key, this.squareSize = _svgSquare}) extends StatelessWidget {
   /// Shared [Hero] tag so the logo flies between screens that show it
   /// (splash → login) during route transitions.
   static const String heroTag = "sesori-logo";
@@ -100,9 +98,7 @@ class SesoriLogo extends StatelessWidget {
   }
 }
 
-class _BevelPainter extends CustomPainter {
-  const _BevelPainter({required this.radius, required this.scale});
-
+class const _BevelPainter({required this.radius, required this.scale}) extends CustomPainter {
   final double radius;
   final double scale;
 

@@ -13,9 +13,7 @@ typedef PullRequestPersistedTarget = ({
 });
 
 @DriftAccessor(tables: [ProjectsTable, PullRequestsTable, SessionTable])
-class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin {
-  PullRequestDao(super.attachedDatabase);
-
+class PullRequestDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin {
   Future<void> upsertPr({required PullRequestDto pullRequest}) async {
     await into(pullRequestsTable).insertOnConflictUpdate(pullRequest);
   }

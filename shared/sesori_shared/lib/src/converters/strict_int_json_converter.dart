@@ -3,9 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 const strictIntJsonConverter = StrictIntJsonConverter();
 
 // ignore: no_slop_linter/prefer_specific_type, converter must inspect untyped JSON before coercion
-class StrictIntJsonConverter implements JsonConverter<int, Object?> {
-  const StrictIntJsonConverter();
-
+class const StrictIntJsonConverter() implements JsonConverter<int, Object?> {
   @override
   int fromJson(Object? json) {
     if (json is int) return json;

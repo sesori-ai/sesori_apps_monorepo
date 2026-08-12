@@ -32,19 +32,17 @@ Future<void> refreshSessionList(BuildContext context) async {
   );
 }
 
-class SessionListContent extends StatelessWidget {
-  final String? projectName;
-  final String? selectedSessionId;
-  final ValueChanged<Session> onSessionTap;
-  final SessionMenuEntriesBuilder sessionMenuEntries;
-
-  const SessionListContent({
+class const SessionListContent({
     super.key,
     required this.projectName,
     this.selectedSessionId,
     required this.onSessionTap,
     required this.sessionMenuEntries,
-  });
+  }) extends StatelessWidget {
+  final String? projectName;
+  final String? selectedSessionId;
+  final ValueChanged<Session> onSessionTap;
+  final SessionMenuEntriesBuilder sessionMenuEntries;
 
   /// Returns the page content as a single sliver per state, so it slots
   /// directly into [PregoGlassScaffold]'s scroll view. Pull-to-refresh and the
@@ -134,10 +132,8 @@ class SessionListContent extends StatelessWidget {
   }
 }
 
-class _StaleProjectView extends StatelessWidget {
+class const _StaleProjectView({required this.onBack}) extends StatelessWidget {
   final VoidCallback onBack;
-
-  const _StaleProjectView({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -167,11 +163,9 @@ class _StaleProjectView extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
+class const _ErrorView({required this.reason, required this.onRetry}) extends StatelessWidget {
   final RemoteFailureReason reason;
   final VoidCallback onRetry;
-
-  const _ErrorView({required this.reason, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {

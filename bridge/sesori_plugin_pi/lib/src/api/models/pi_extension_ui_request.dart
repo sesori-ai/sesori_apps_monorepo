@@ -10,9 +10,7 @@ import "pi_frame_fields.dart";
 /// decorations that expect no answer at all. The variants below keep that split
 /// explicit so a consumer cannot accidentally leave a dialog unanswered or
 /// invent a reply to a notification.
-sealed class PiExtensionUiRequest {
-  const PiExtensionUiRequest({required this.id, required this.raw});
-
+sealed class const PiExtensionUiRequest({required this.id, required this.raw}) {
   /// Pi's own request ID, echoed in an `extension_ui_response`.
   final String id;
 
@@ -88,96 +86,78 @@ PiExtensionUiRequest _unknownExtensionUiRequest({required String id, required Ma
 }
 
 /// A request that blocks an extension until an `extension_ui_response` arrives.
-sealed class PiExtensionDialogRequest extends PiExtensionUiRequest {
-  const PiExtensionDialogRequest({required this.title, required super.id, required super.raw});
-
+sealed class const PiExtensionDialogRequest({required this.title, required super.id, required super.raw}) extends PiExtensionUiRequest {
   final String? title;
 }
 
-final class PiSelectDialogRequest extends PiExtensionDialogRequest {
-  const PiSelectDialogRequest({
+final class const PiSelectDialogRequest({
     required super.id,
     required super.title,
     required this.options,
     required this.timeoutMs,
     required super.raw,
-  });
-
+  }) extends PiExtensionDialogRequest {
   final List<String> options;
 
   /// Pi resolves this dialog itself when the timeout elapses.
   final int? timeoutMs;
 }
 
-final class PiConfirmDialogRequest extends PiExtensionDialogRequest {
-  const PiConfirmDialogRequest({
+final class const PiConfirmDialogRequest({
     required super.id,
     required super.title,
     required this.message,
     required this.timeoutMs,
     required super.raw,
-  });
-
+  }) extends PiExtensionDialogRequest {
   final String? message;
   final int? timeoutMs;
 }
 
-final class PiInputDialogRequest extends PiExtensionDialogRequest {
-  const PiInputDialogRequest({
+final class const PiInputDialogRequest({
     required super.id,
     required super.title,
     required this.placeholder,
     required this.timeoutMs,
     required super.raw,
-  });
-
+  }) extends PiExtensionDialogRequest {
   final String? placeholder;
   final int? timeoutMs;
 }
 
 /// An editor dialog. Pi never expires this one, so the plugin owns its expiry.
-final class PiEditorDialogRequest extends PiExtensionDialogRequest {
-  const PiEditorDialogRequest({
+final class const PiEditorDialogRequest({
     required super.id,
     required super.title,
     required this.prefill,
     required super.raw,
-  });
-
+  }) extends PiExtensionDialogRequest {
   final String? prefill;
 }
 
 /// A decoration Pi emits without waiting for any reply.
-sealed class PiExtensionDecorationRequest extends PiExtensionUiRequest {
-  const PiExtensionDecorationRequest({required super.id, required super.raw});
-}
+sealed class const PiExtensionDecorationRequest({required super.id, required super.raw}) extends PiExtensionUiRequest;
 
-final class PiNotifyRequest extends PiExtensionDecorationRequest {
-  const PiNotifyRequest({required super.id, required this.message, required this.notifyType, required super.raw});
-
+final class const PiNotifyRequest({required super.id, required this.message, required this.notifyType, required super.raw}) extends PiExtensionDecorationRequest {
   final String? message;
 
   final PiNotificationType? notifyType;
 }
 
-final class PiSetStatusRequest extends PiExtensionDecorationRequest {
-  const PiSetStatusRequest({required super.id, required this.statusKey, required this.statusText, required super.raw});
-
+final class const PiSetStatusRequest({required super.id, required this.statusKey, required this.statusText, required super.raw}) extends PiExtensionDecorationRequest {
   final String? statusKey;
 
   /// Null clears the status entry.
   final String? statusText;
 }
 
-final class PiSetWidgetRequest extends PiExtensionDecorationRequest {
-  const PiSetWidgetRequest({
+final class const PiSetWidgetRequest({
     required super.id,
     required this.widgetKey,
     required this.widgetLines,
     required this.widgetPlacement,
     required super.raw,
-  });
-
+  }) extends PiExtensionDecorationRequest {
   final String? widgetKey;
 
   /// Null clears the widget.
@@ -186,22 +166,16 @@ final class PiSetWidgetRequest extends PiExtensionDecorationRequest {
   final String? widgetPlacement;
 }
 
-final class PiSetTitleRequest extends PiExtensionDecorationRequest {
-  const PiSetTitleRequest({required super.id, required this.title, required super.raw});
-
+final class const PiSetTitleRequest({required super.id, required this.title, required super.raw}) extends PiExtensionDecorationRequest {
   final String? title;
 }
 
-final class PiSetEditorTextRequest extends PiExtensionDecorationRequest {
-  const PiSetEditorTextRequest({required super.id, required this.text, required super.raw});
-
+final class const PiSetEditorTextRequest({required super.id, required this.text, required super.raw}) extends PiExtensionDecorationRequest {
   final String? text;
 }
 
 /// An extension-UI method this build does not model. Treated as fire-and-forget
 /// because answering an unknown method could resolve it with a wrong shape.
-final class PiUnknownExtensionUiRequest extends PiExtensionUiRequest {
-  const PiUnknownExtensionUiRequest({required super.id, required this.method, required super.raw});
-
+final class const PiUnknownExtensionUiRequest({required super.id, required this.method, required super.raw}) extends PiExtensionUiRequest {
   final String? method;
 }

@@ -4,31 +4,21 @@ import "../../foundation/models/product_analytics/product_analytics_preference.d
 import "product_analytics_preference_snapshot.dart";
 import "product_analytics_state.dart";
 
-sealed class ProductAnalyticsLogoutState {
-  const ProductAnalyticsLogoutState();
-}
+sealed class const ProductAnalyticsLogoutState();
 
-final class ProductAnalyticsLogoutIdle extends ProductAnalyticsLogoutState {
-  const ProductAnalyticsLogoutIdle();
-}
+final class const ProductAnalyticsLogoutIdle() extends ProductAnalyticsLogoutState;
 
-sealed class ProductAnalyticsLogoutPreparation extends ProductAnalyticsLogoutState {
+sealed class const ProductAnalyticsLogoutPreparation({required this.generation, required this.capturedState}) extends ProductAnalyticsLogoutState {
   final int generation;
   final ProductAnalyticsState capturedState;
-
-  const ProductAnalyticsLogoutPreparation({required this.generation, required this.capturedState});
 }
 
-final class ProductAnalyticsLogoutPreparationClean extends ProductAnalyticsLogoutPreparation {
-  const ProductAnalyticsLogoutPreparationClean({required super.generation, required super.capturedState});
-}
+final class const ProductAnalyticsLogoutPreparationClean({required super.generation, required super.capturedState}) extends ProductAnalyticsLogoutPreparation;
 
-final class ProductAnalyticsLogoutPreparationRecoveryRequired extends ProductAnalyticsLogoutPreparation {
-  const ProductAnalyticsLogoutPreparationRecoveryRequired({
+final class const ProductAnalyticsLogoutPreparationRecoveryRequired({
     required super.generation,
     required super.capturedState,
-  });
-}
+  }) extends ProductAnalyticsLogoutPreparation;
 
 final class ProductAnalyticsPreferenceIntent {
   final int sequence;
@@ -53,11 +43,9 @@ final class ProductAnalyticsPreferenceIntent {
   );
 }
 
-sealed class ProductAnalyticsAccountSession {
+sealed class const ProductAnalyticsAccountSession({required this.generation, required this.snapshot}) {
   final int generation;
   final ProductAnalyticsPreferenceSnapshot snapshot;
-
-  const ProductAnalyticsAccountSession({required this.generation, required this.snapshot});
 
   String? get userId;
   Future<void>? get hydration;
@@ -67,8 +55,8 @@ sealed class ProductAnalyticsAccountSession {
   ProductAnalyticsAccountSession markReconciled();
 }
 
-final class ProductAnalyticsSignedOutSession extends ProductAnalyticsAccountSession {
-  const ProductAnalyticsSignedOutSession({required super.generation})
+final class const ProductAnalyticsSignedOutSession({required super.generation}) extends ProductAnalyticsAccountSession {
+  this
     : super(snapshot: const ProductAnalyticsPreferenceUnresolved());
 
   @override
@@ -87,17 +75,15 @@ final class ProductAnalyticsSignedOutSession extends ProductAnalyticsAccountSess
   ProductAnalyticsAccountSession markReconciled() => this;
 }
 
-final class ProductAnalyticsHydratingSession extends ProductAnalyticsAccountSession {
-  @override
-  final String userId;
-  final Completer<void> completion;
-
-  const ProductAnalyticsHydratingSession({
+final class const ProductAnalyticsHydratingSession({
     required this.userId,
     required super.generation,
     required this.completion,
     required super.snapshot,
-  });
+  }) extends ProductAnalyticsAccountSession {
+  @override
+  final String userId;
+  final Completer<void> completion;
 
   @override
   Future<void> get hydration => completion.future;
@@ -118,18 +104,16 @@ final class ProductAnalyticsHydratingSession extends ProductAnalyticsAccountSess
   ProductAnalyticsAccountSession markReconciled() => this;
 }
 
-final class ProductAnalyticsReadySession extends ProductAnalyticsAccountSession {
-  @override
-  final String userId;
-  @override
-  final bool reconciled;
-
-  const ProductAnalyticsReadySession({
+final class const ProductAnalyticsReadySession({
     required this.userId,
     required super.generation,
     required super.snapshot,
     required this.reconciled,
-  });
+  }) extends ProductAnalyticsAccountSession {
+  @override
+  final String userId;
+  @override
+  final bool reconciled;
 
   @override
   Future<void>? get hydration => null;

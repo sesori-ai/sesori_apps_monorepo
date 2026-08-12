@@ -7,16 +7,16 @@ import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_agent_mapper.dart";
 import "models/project_not_found_exception.dart";
 
-class AgentRepository {
+class AgentRepository({
+    required PluginRuntime runtime,
+    required ProjectsDao projectsDao,
+    required this.legacyPluginId,
+  }) {
   final PluginRuntime _runtime;
   final ProjectsDao _projectsDao;
   final String legacyPluginId;
 
-  AgentRepository({
-    required PluginRuntime runtime,
-    required ProjectsDao projectsDao,
-    required this.legacyPluginId,
-  }) : _runtime = runtime,
+  this : _runtime = runtime,
        _projectsDao = projectsDao;
 
   Future<Agents> getAgents({required String? projectId, required String pluginId}) async {
@@ -47,4 +47,4 @@ class AgentRepository {
   }
 }
 
-enum _AgentOperation { getAgents }
+enum _AgentOperation() { getAgents }

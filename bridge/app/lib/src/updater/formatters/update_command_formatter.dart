@@ -8,11 +8,11 @@ import 'update_output_formatter.dart';
 /// [UpdateOutputFormatter]s (one per stream: [_outFormatter] for stdout,
 /// [_errFormatter] for stderr). Pure: [format] returns strings and performs no
 /// IO — the command does the writing.
-class UpdateCommandFormatter {
-  UpdateCommandFormatter({
+class UpdateCommandFormatter({
     required UpdateOutputFormatter outFormatter,
     required UpdateOutputFormatter errFormatter,
-  }) : _outFormatter = outFormatter,
+  }) {
+  this : _outFormatter = outFormatter,
        _errFormatter = errFormatter;
 
   final UpdateOutputFormatter _outFormatter;

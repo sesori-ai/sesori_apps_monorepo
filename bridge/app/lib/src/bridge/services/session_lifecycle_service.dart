@@ -11,41 +11,42 @@ import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
 import "worktree_service.dart";
 
-enum SessionCleanupOperation { removeWorktree, deleteBranch }
+enum SessionCleanupOperation() { removeWorktree, deleteBranch }
 
-class SessionCleanupFailedException implements Exception {
-  final String sessionId;
-  final SessionCleanupOperation operation;
-
-  SessionCleanupFailedException({
+class SessionCleanupFailedException({
     required this.sessionId,
     required this.operation,
-  });
+  }) implements Exception {
+  final String sessionId;
+  final SessionCleanupOperation operation;
 
   @override
   String toString() => "session cleanup failed for $sessionId while ${operation.name}";
 }
 
-class SessionArchiveConflictException implements Exception {
+class SessionArchiveConflictException({required this.rejection}) implements Exception {
   final SessionCleanupRejection rejection;
-
-  SessionArchiveConflictException({required this.rejection});
 }
 
-class ArchiveStatusUpdate {
+class ArchiveStatusUpdate({required this.session, required this.changed, required this.projectId}) {
   final Session session;
   final bool changed;
 
   /// The stored project id the session row is keyed by. A dedicated-worktree
   /// session can report its worktree directory as the enriched project id.
   final String projectId;
-
-  ArchiveStatusUpdate({required this.session, required this.changed, required this.projectId});
 }
 
-class SessionNotFoundException implements Exception;
+class SessionNotFoundException() implements Exception;
 
-class SessionLifecycleService {
+class SessionLifecycleService({
+    required WorktreeService worktreeService,
+    required SessionRepository sessionRepository,
+    required FilesystemRepository filesystemRepository,
+    required SessionOperationDispatcher sessionOperationDispatcher,
+    required ChatHistoryService chatHistoryService,
+    required ArchivedSessionValidator archivedSessionValidator,
+  }) {
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
   final FilesystemRepository _filesystemRepository;
@@ -53,14 +54,7 @@ class SessionLifecycleService {
   final ChatHistoryService _chatHistoryService;
   final ArchivedSessionValidator _archivedSessionValidator;
 
-  SessionLifecycleService({
-    required WorktreeService worktreeService,
-    required SessionRepository sessionRepository,
-    required FilesystemRepository filesystemRepository,
-    required SessionOperationDispatcher sessionOperationDispatcher,
-    required ChatHistoryService chatHistoryService,
-    required ArchivedSessionValidator archivedSessionValidator,
-  }) : _worktreeService = worktreeService,
+  this : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
        _filesystemRepository = filesystemRepository,
        _sessionOperationDispatcher = sessionOperationDispatcher,

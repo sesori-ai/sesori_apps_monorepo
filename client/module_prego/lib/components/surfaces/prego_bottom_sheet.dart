@@ -25,8 +25,7 @@ import "../../utils/color_extensions.dart";
 ///   builder: (_) => const WhyContent(),
 /// );
 /// ```
-class PregoBottomSheet extends StatelessWidget {
-  const PregoBottomSheet({
+class const PregoBottomSheet({
     super.key,
     required this.title,
     required this.child,
@@ -40,8 +39,7 @@ class PregoBottomSheet extends StatelessWidget {
     this.contentPadding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
     this.handleBottomSafeArea = true,
     this.topInset,
-  });
-
+  }) extends StatelessWidget {
   /// Header title. See [PregoTopNavigationSheets.title].
   final String title;
 

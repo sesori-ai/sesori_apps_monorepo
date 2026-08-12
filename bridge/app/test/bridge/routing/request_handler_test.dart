@@ -6,9 +6,7 @@ import "package:test/test.dart";
 import "routing_test_helpers.dart";
 
 // Minimal concrete subclass used to exercise base-class behaviour.
-class _StubHandler extends RequestHandlerBase {
-  _StubHandler(super.method, super.path);
-
+class _StubHandler(super.method, super.path) extends RequestHandlerBase {
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
@@ -24,8 +22,8 @@ class _StubHandler extends RequestHandlerBase {
 }
 
 // Throws the configured error from handle() to exercise error mapping.
-class _ThrowingGetHandler extends GetRequestHandler<Object> {
-  _ThrowingGetHandler(this._error) : super("/throw");
+class _ThrowingGetHandler(this._error) extends GetRequestHandler<Object> {
+  this : super("/throw");
 
   final Object _error;
 

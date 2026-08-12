@@ -13,21 +13,21 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockRelayCryptoService extends Mock implements RelayCryptoService;
+class MockRelayCryptoService() extends Mock implements RelayCryptoService;
 
-class MockRoomKeyStorage extends Mock implements RoomKeyStorage;
+class MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
 
-class MockAuthTokenProvider extends Mock implements AuthTokenProvider;
+class MockAuthTokenProvider() extends Mock implements AuthTokenProvider;
 
-class MockAuthSession extends Mock implements AuthSession;
+class MockAuthSession() extends Mock implements AuthSession;
 
-class MockLifecycleSource extends Mock implements LifecycleSource;
+class MockLifecycleSource() extends Mock implements LifecycleSource;
 
-class MockFailureReporter extends Mock implements FailureReporter;
+class MockFailureReporter() extends Mock implements FailureReporter;
 
-class MockRelayClient extends Mock implements RelayClient;
+class MockRelayClient() extends Mock implements RelayClient;
 
-class _TestRelayClientFactory extends RelayClientFactory {
+class _TestRelayClientFactory(this._factory) extends RelayClientFactory {
   final RelayClient Function({
     required String relayHost,
     required RelayCryptoService cryptoService,
@@ -37,8 +37,6 @@ class _TestRelayClientFactory extends RelayClientFactory {
   _factory;
 
   int callCount = 0;
-
-  _TestRelayClientFactory(this._factory);
 
   @override
   RelayClient call({
@@ -57,9 +55,8 @@ class _TestRelayClientFactory extends RelayClientFactory {
   }
 }
 
-class _TestClockProvider extends ClockProvider {
+class _TestClockProvider(this._now) extends ClockProvider {
   final DateTime Function() _now;
-  _TestClockProvider(this._now);
 
   @override
   DateTime call() => _now();

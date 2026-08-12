@@ -8,7 +8,7 @@ import "../process/signal_result.dart";
 /// Backed by the bridge's platform-aware process layer: identity capture
 /// uses the POSIX `ps` start-time marker where available, with documented
 /// Windows fallbacks (no start marker, image-name-only command lines).
-abstract class HostProcessService {
+abstract class HostProcessService() {
   /// Spawns a child process and captures its identity.
   ///
   /// The returned [SpawnedProcess] exposes stdio — including [SpawnedProcess.stdin],
@@ -38,7 +38,7 @@ abstract class HostProcessService {
 }
 
 /// A child process spawned through [HostProcessService.spawn].
-abstract class SpawnedProcess {
+abstract class SpawnedProcess() {
   /// The child's process id.
   int get pid;
 

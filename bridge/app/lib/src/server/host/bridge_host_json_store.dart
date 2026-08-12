@@ -4,10 +4,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show HostJ
 
 import "../api/runtime_file_api.dart";
 
-class BridgeHostJsonStore implements HostJsonStore {
-  BridgeHostJsonStore({
+class BridgeHostJsonStore({
     required RuntimeFileApi fileApi,
-  }) : _fileApi = fileApi;
+  }) implements HostJsonStore {
+  this : _fileApi = fileApi;
 
   final RuntimeFileApi _fileApi;
 

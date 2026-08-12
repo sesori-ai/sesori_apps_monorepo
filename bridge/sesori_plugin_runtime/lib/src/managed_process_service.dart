@@ -5,8 +5,7 @@ import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
 import "runtime_start_intent.dart";
 
-class ManagedProcessService<R> {
-  ManagedProcessService({
+class ManagedProcessService<R>({
     required RuntimeOwnershipRepository<R> ownershipRepository,
     required RuntimeRecordMapper<R> mapper,
     required HostProcessService processes,
@@ -15,7 +14,8 @@ class ManagedProcessService<R> {
     required String runtimeId,
     required Duration gracefulShutdownWait,
     RuntimeStartIntentStore? intentStore,
-  }) : _ownershipRepository = ownershipRepository,
+  }) {
+  this : _ownershipRepository = ownershipRepository,
        _mapper = mapper,
        _processes = processes,
        _bridge = bridge,
@@ -809,9 +809,7 @@ class ManagedProcessService<R> {
   String? _bridgeStartMarkerOf({required R record}) => _mapper.bridgeStartMarkerOf(record: record);
 }
 
-class _CurrentOwnedRuntimeProcess {
-  const _CurrentOwnedRuntimeProcess({required this.process, required this.identity});
-
+class const _CurrentOwnedRuntimeProcess({required this.process, required this.identity}) {
   final SpawnedProcess process;
   final ProcessIdentity identity;
 }

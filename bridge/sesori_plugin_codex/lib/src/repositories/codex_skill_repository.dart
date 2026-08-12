@@ -4,8 +4,8 @@ import "../api/codex_app_server_api.dart";
 import "../api/models/codex_skill_dto.dart";
 
 /// Maps Codex's authoritative app-server skill catalog into plugin commands.
-class CodexSkillRepository {
-  CodexSkillRepository({required CodexAppServerApi appServerApi}) : _appServerApi = appServerApi;
+class CodexSkillRepository({required CodexAppServerApi appServerApi}) {
+  this : _appServerApi = appServerApi;
 
   final CodexAppServerApi _appServerApi;
 

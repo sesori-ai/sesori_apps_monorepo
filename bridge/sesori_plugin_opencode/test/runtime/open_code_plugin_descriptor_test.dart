@@ -938,7 +938,7 @@ void _seedStaleRecord(_FakeHost host) {
 // Fakes
 // ---------------------------------------------------------------------------
 
-class _FakeApiRecorder {
+class _FakeApiRecorder() {
   Object? initializeError;
   void Function()? onInitialize;
   bool neverCompleteInitialize = false;
@@ -965,16 +965,14 @@ class _FakeApiRecorder {
   }
 }
 
-class _FakeManagedApi implements OpenCodeManagedApi {
-  _FakeManagedApi({
+class _FakeManagedApi({
     required this.initializeError,
     required this.onInitialize,
     required this.neverCompleteInitialize,
     required this.password,
     required this.onConnected,
     required this.onDisconnected,
-  });
-
+  }) implements OpenCodeManagedApi {
   final Object? initializeError;
   final void Function()? onInitialize;
   final bool neverCompleteInitialize;
@@ -1027,9 +1025,7 @@ class _FakeManagedApi implements OpenCodeManagedApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeHost implements PluginHost {
-  _FakeHost({required this.config});
-
+class _FakeHost({required this.config}) implements PluginHost {
   @override
   final PluginConfig config;
 
@@ -1073,9 +1069,7 @@ class _FakeHost implements PluginHost {
   }
 }
 
-class _ImmediateClock implements ServerClock {
-  const _ImmediateClock();
-
+class const _ImmediateClock() implements ServerClock {
   @override
   DateTime now() => DateTime.utc(2026, 6, 1, 12);
 
@@ -1083,7 +1077,7 @@ class _ImmediateClock implements ServerClock {
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _FakeBridgeHostInfo implements BridgeHostInfo {
+class _FakeBridgeHostInfo() implements BridgeHostInfo {
   List<ProcessIdentity> terminatedBridgeIdentitiesValue = <ProcessIdentity>[];
   final Set<int> liveBridgePids = <int>{};
 
@@ -1109,7 +1103,7 @@ class _FakeBridgeHostInfo implements BridgeHostInfo {
       liveBridgePids.contains(pid);
 }
 
-class _FakePortService implements HostPortService {
+class _FakePortService() implements HostPortService {
   bool defaultBindable = true;
   final Map<int, bool> byPort = <int, bool>{};
 
@@ -1117,7 +1111,7 @@ class _FakePortService implements HostPortService {
   Future<bool> isBindable({required String host, required int port}) async => byPort[port] ?? defaultBindable;
 }
 
-class _FakeHostProcessService implements HostProcessService {
+class _FakeHostProcessService() implements HostProcessService {
   final List<_FakeSpawnedProcess> spawnedProcesses = <_FakeSpawnedProcess>[];
   final List<Map<String, String>?> spawnEnvironments = <Map<String, String>?>[];
   final List<String> signals = <String>[];
@@ -1173,8 +1167,8 @@ class _FakeHostProcessService implements HostProcessService {
   }
 }
 
-class _FakeSpawnedProcess implements SpawnedProcess {
-  _FakeSpawnedProcess({required this.pid, required String executablePath}) : _executablePath = executablePath;
+class _FakeSpawnedProcess({required this.pid, required String executablePath}) implements SpawnedProcess {
+  this : _executablePath = executablePath;
 
   @override
   final int pid;
@@ -1212,7 +1206,7 @@ class _FakeSpawnedProcess implements SpawnedProcess {
   Stream<List<int>> get stderr => Stream<List<int>>.value(const <int>[]);
 }
 
-class _MemoryJsonStore implements HostJsonStore {
+class _MemoryJsonStore() implements HostJsonStore {
   final Map<String, String> files = <String, String>{};
 
   @override

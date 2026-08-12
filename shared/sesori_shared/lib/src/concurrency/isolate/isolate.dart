@@ -7,18 +7,14 @@ import "multi_task/multi_task_transient_isolate.dart";
 import "single_task/single_task_isolate.dart";
 import "single_task/single_task_isolate_pool.dart";
 
-final class IsolateConfigs {
-  const IsolateConfigs._();
-
+final class const IsolateConfigs._() {
   static const int minTasksPerActiveIsolateToSpinTransientIsolate = 10;
   static const Duration transientDefaultTimeout = Duration(seconds: 10);
   static bool debugLogsEnabled = false;
 }
 
-class IsolateTask<IN, OUT> {
+class const IsolateTask<IN, OUT>(this.staticFunction) {
   final FutureOr<OUT> Function(IN arg) staticFunction;
-
-  const IsolateTask(this.staticFunction);
 }
 
 abstract interface class MultiTaskIsolate {

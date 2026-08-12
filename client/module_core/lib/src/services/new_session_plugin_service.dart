@@ -8,14 +8,12 @@ import "../repositories/plugin_preference_repository.dart";
 import "../repositories/plugin_repository.dart";
 import "models/new_session_options_source.dart";
 
-final class NewSessionPluginDiscovery {
-  const NewSessionPluginDiscovery({
+final class const NewSessionPluginDiscovery({
     required this.bridgeId,
     required this.optionsSource,
     required this.plugins,
     required this.selected,
-  });
-
+  }) {
   final String? bridgeId;
   final NewSessionOptionsSource optionsSource;
   final List<PluginMetadata> plugins;
@@ -23,14 +21,14 @@ final class NewSessionPluginDiscovery {
 }
 
 @lazySingleton
-class NewSessionPluginService {
+class NewSessionPluginService({
+    required PluginRepository pluginRepository,
+    required PluginPreferenceRepository pluginPreferenceRepository,
+  }) {
   final PluginRepository _pluginRepository;
   final PluginPreferenceRepository _pluginPreferenceRepository;
 
-  NewSessionPluginService({
-    required PluginRepository pluginRepository,
-    required PluginPreferenceRepository pluginPreferenceRepository,
-  }) : _pluginRepository = pluginRepository,
+  this : _pluginRepository = pluginRepository,
        _pluginPreferenceRepository = pluginPreferenceRepository;
 
   Future<ApiResponse<NewSessionPluginDiscovery>> discover({

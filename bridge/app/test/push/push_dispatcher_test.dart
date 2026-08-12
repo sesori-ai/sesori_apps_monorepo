@@ -564,10 +564,8 @@ _newHarness({
   );
 }
 
-class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
+class ThrowingPushSessionStateTracker({required super.now, this.throwFindPrunableRoots = false}) extends PushSessionStateTracker {
   final bool throwFindPrunableRoots;
-
-  ThrowingPushSessionStateTracker({required super.now, this.throwFindPrunableRoots = false});
 
   @override
   List<PushPrunableRoot> findPrunableRoots() {
@@ -579,11 +577,11 @@ class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
   }
 }
 
-class FakePushNotificationClient extends PushNotificationClient {
+class FakePushNotificationClient() extends PushNotificationClient {
   final List<SendNotificationPayload> sentPayloads = [];
   int disposeCallCount = 0;
 
-  FakePushNotificationClient()
+  this
     : super(
         authBackendURL: "https://example.com",
         tokenRefreshManager: _FakeTokenRefresher(),
@@ -601,10 +599,8 @@ class FakePushNotificationClient extends PushNotificationClient {
   }
 }
 
-class FakePushRateLimiter extends PushRateLimiter {
+class FakePushRateLimiter({this.shouldAllowSend = true, super.now}) extends PushRateLimiter {
   bool shouldAllowSend;
-
-  FakePushRateLimiter({this.shouldAllowSend = true, super.now});
 
   @override
   bool shouldSend({
@@ -624,14 +620,14 @@ class FakePushRateLimiter extends PushRateLimiter {
   }
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
     return "token";
   }
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();

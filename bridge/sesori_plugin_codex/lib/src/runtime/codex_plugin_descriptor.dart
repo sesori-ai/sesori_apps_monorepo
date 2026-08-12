@@ -130,8 +130,7 @@ CodexManagedApi _defaultBuildApi({
 ///
 /// The optional constructor parameters are test seams; the registered
 /// descriptor is `const CodexPluginDescriptor()`.
-class CodexPluginDescriptor extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
-  const CodexPluginDescriptor({
+class const CodexPluginDescriptor({
     CodexManagedApiFactory? buildApi,
     Iterable<int>? candidatePorts,
     Random? random,
@@ -140,7 +139,8 @@ class CodexPluginDescriptor extends BridgePluginDescriptor implements Interactiv
     Duration versionProbeTimeout = codexVersionProbeTimeout,
     ManagedRuntimeProvisionService? provisionService,
     List<String>? desktopAppCliCandidates,
-  }) : _buildApi = buildApi,
+  }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
+  this : _buildApi = buildApi,
        _candidatePorts = candidatePorts,
        _random = random,
        _degradedDebounce = degradedDebounce,

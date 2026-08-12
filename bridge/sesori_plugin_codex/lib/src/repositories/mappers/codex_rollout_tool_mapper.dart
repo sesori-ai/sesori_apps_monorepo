@@ -7,27 +7,23 @@ import "../../api/models/codex_image_bearing_item_dto.dart";
 import "../../api/models/codex_rollout_dto.dart";
 import "codex_image_attachment_mapper.dart";
 
-class CodexRolloutToolCall {
-  const CodexRolloutToolCall({
+class const CodexRolloutToolCall({
     required this.id,
     required this.turnId,
     required this.tool,
     required this.title,
-  });
-
+  }) {
   final String id;
   final String? turnId;
   final String tool;
   final String? title;
 }
 
-sealed class CodexRolloutToolResult {
-  const CodexRolloutToolResult({
+sealed class const CodexRolloutToolResult({
     required this.callId,
     required this.output,
     required this.attachments,
-  });
-
+  }) {
   final String callId;
   final String? output;
   final List<PluginMessageAttachment> attachments;
@@ -39,63 +35,51 @@ sealed class CodexRolloutToolResult {
   };
 }
 
-final class CodexRolloutToolRunningResult extends CodexRolloutToolResult {
-  const CodexRolloutToolRunningResult({
+final class const CodexRolloutToolRunningResult({
     required super.callId,
     required super.output,
     required super.attachments,
     required this.cellIds,
-  });
-
+  }) extends CodexRolloutToolResult {
   final List<String> cellIds;
 }
 
-final class CodexRolloutToolCompletedResult extends CodexRolloutToolResult {
-  const CodexRolloutToolCompletedResult({
+final class const CodexRolloutToolCompletedResult({
     required super.callId,
     required super.output,
     required super.attachments,
-  });
-}
+  }) extends CodexRolloutToolResult;
 
-final class CodexRolloutToolErrorResult extends CodexRolloutToolResult {
-  const CodexRolloutToolErrorResult({
+final class const CodexRolloutToolErrorResult({
     required super.callId,
     required super.output,
     required super.attachments,
-  });
-}
+  }) extends CodexRolloutToolResult;
 
-final class CodexRolloutToolErrorWithRunningCellsResult extends CodexRolloutToolResult {
-  const CodexRolloutToolErrorWithRunningCellsResult({
+final class const CodexRolloutToolErrorWithRunningCellsResult({
     required super.callId,
     required super.output,
     required super.attachments,
     required this.cellIds,
-  });
-
+  }) extends CodexRolloutToolResult {
   final List<String> cellIds;
 }
 
-class CodexRolloutWaitCall {
-  const CodexRolloutWaitCall({
+class const CodexRolloutWaitCall({
     required this.callId,
     required this.turnId,
     required this.cellId,
-  });
-
+  }) {
   final String callId;
   final String? turnId;
   final String cellId;
 }
 
-class CodexRolloutImageGeneration {
-  const CodexRolloutImageGeneration({
+class const CodexRolloutImageGeneration({
     required this.id,
     required this.status,
     required this.attachments,
-  });
-
+  }) {
   final String? id;
   final PluginToolStatus status;
   final List<PluginMessageAttachment> attachments;
@@ -107,10 +91,10 @@ class CodexRolloutImageGeneration {
 /// than the persisted response items. Keeping the raw call/result rules here
 /// prevents the live and reload paths from independently inventing titles,
 /// raw result classifications, or attachment extraction.
-class CodexRolloutToolMapper {
-  const CodexRolloutToolMapper({
+class const CodexRolloutToolMapper({
     required CodexImageAttachmentMapper imageAttachmentMapper,
-  }) : _imageAttachmentMapper = imageAttachmentMapper;
+  }) {
+  this : _imageAttachmentMapper = imageAttachmentMapper;
 
   final CodexImageAttachmentMapper _imageAttachmentMapper;
 

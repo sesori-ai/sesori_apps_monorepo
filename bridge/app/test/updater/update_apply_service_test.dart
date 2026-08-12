@@ -13,7 +13,7 @@ import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dar
 import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
 import 'package:test/test.dart';
 
-class _FakeInstallationRepository implements UpdateInstallationRepository {
+class _FakeInstallationRepository() implements UpdateInstallationRepository {
   Object? applyError;
   Object? recordError;
   int applyCount = 0;
@@ -45,7 +45,7 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
   }
 }
 
-class _FakeAttemptRepository implements UpdateAttemptRepository {
+class _FakeAttemptRepository() implements UpdateAttemptRepository {
   final List<UpdateAttempt> saved = <UpdateAttempt>[];
   bool cleared = false;
 
@@ -68,7 +68,7 @@ class _FakeAttemptRepository implements UpdateAttemptRepository {
   Future<void> clearAttempt() async => cleared = true;
 }
 
-class _FakeLogRepository implements UpdateLogRepository {
+class _FakeLogRepository() implements UpdateLogRepository {
   final List<String> messages = <String>[];
 
   /// When set, a `log` call whose message contains this substring throws,
@@ -93,7 +93,7 @@ class _FakeLogRepository implements UpdateLogRepository {
   }
 }
 
-class _FakeUpdateLock implements UpdateLock {
+class _FakeUpdateLock() implements UpdateLock {
   LockAcquireResult outcome = LockAcquireResult.acquired;
 
   @override

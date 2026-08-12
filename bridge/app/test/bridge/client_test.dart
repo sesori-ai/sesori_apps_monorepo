@@ -771,7 +771,7 @@ void main() {
   });
 }
 
-class _ThrowingAccessTokenProvider extends FakeAccessTokenProvider {
+class _ThrowingAccessTokenProvider() extends FakeAccessTokenProvider {
   @override
   String get accessToken => throw StateError("auth token unavailable");
 }
