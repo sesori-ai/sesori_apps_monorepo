@@ -66,8 +66,13 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     if (diagnostics.malformedMetadataRecords > 0) {
       Log.w("[pi] skipped ${diagnostics.malformedMetadataRecords} malformed session metadata record(s)");
     }
-    if (diagnostics.oversizedMetadataRecords > 0) {
-      Log.w("[pi] skipped ${diagnostics.oversizedMetadataRecords} oversized session metadata record(s)");
+    for (final path in diagnostics.oversizedMetadataPaths) {
+      Log.w("[pi] skipped oversized session metadata record at '$path'");
+    }
+    final unreportedOversizedMetadata =
+        diagnostics.oversizedMetadataRecords - diagnostics.oversizedMetadataPaths.length;
+    if (unreportedOversizedMetadata > 0) {
+      Log.w("[pi] skipped $unreportedOversizedMetadata additional oversized session metadata record(s)");
     }
     for (final failure in diagnostics.storageFailures) {
       Log.w(
@@ -371,7 +376,7 @@ _PiScannedSession? _readSessionMetadata({
           if (header == null) invalidBeforeHeader = true;
           return;
         case _PiScannedLineOversizedMetadata():
-          diagnostics.oversizedMetadataRecords += 1;
+          diagnostics.recordOversizedMetadata(path: resolvedPath);
           if (header == null) invalidBeforeHeader = true;
           return;
         case _PiScannedLineMetadata(:final bytes):
@@ -712,6 +717,7 @@ final class _PiScanDiagnostics() {
   int oversizedExternalParentHeaders = 0;
   bool externalParentLimitReached = false;
   final List<_PiStorageFailure> storageFailures = [];
+  final List<String> oversizedMetadataPaths = [];
   final List<_PiStorageFailure> malformedSettingsFailures = [];
   final List<String> oversizedSettingsPaths = [];
 
@@ -748,6 +754,13 @@ final class _PiScanDiagnostics() {
         stackTrace: stackTrace,
       ),
     );
+  }
+
+  void recordOversizedMetadata({required String path}) {
+    oversizedMetadataRecords += 1;
+    if (oversizedMetadataPaths.length < PiSessionStorageApi.diagnosticFailureLimit) {
+      oversizedMetadataPaths.add(path);
+    }
   }
 
   void recordOversizedSettings({required String path}) {

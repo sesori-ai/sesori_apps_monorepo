@@ -312,7 +312,7 @@ void main() {
       expect(session.title, "After");
     });
 
-    test("bounds oversized metadata and never logs source or paths", () async {
+    test("bounds oversized metadata and logs only the file path", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);
       final project = fixture.directory("private-project");
@@ -334,7 +334,7 @@ void main() {
 
       expect(warnings, contains("oversized session metadata"));
       expect(warnings, isNot(contains(secret.substring(0, 20))));
-      expect(warnings, isNot(contains(root)));
+      expect(warnings, contains(File(file).resolveSymbolicLinksSync()));
       expect(warnings, isNot(contains(project)));
     });
 
