@@ -74,13 +74,34 @@ Future<void> main(List<String> args) async {
         .timeout(const Duration(seconds: 180));
     stdout.writeln("    prompt accepted");
 
-    // 4. Let streamed deltas settle, then fetch the final history (replay
-    //    via a fresh `session/load` client — the same path getSessionMessages
-    //    uses on the phone).
-    await Future<void>.delayed(const Duration(seconds: 3));
+    // 4. Wait for the turn to settle deterministically from the LIVE stream
+    //    (the same events the phone sees): at least one assistant part delta,
+    //    then no new deltas for a quiet window. Replayed history is fetched
+    //    once after settlement — repeated `session/load` replay clients
+    //    contend with the live turn, so polling history is counterproductive.
+    final settleDeadline = DateTime.now().add(const Duration(seconds: 120));
+    var lastDeltaCount = 0;
+    var lastDeltaAt = DateTime.now();
+    while (DateTime.now().isBefore(settleDeadline)) {
+      final deltaCount = events.whereType<BridgeSseMessagePartDelta>().length;
+      if (deltaCount > lastDeltaCount) {
+        lastDeltaAt = DateTime.now();
+        lastDeltaCount = deltaCount;
+      }
+      if (deltaCount > 0 &&
+          DateTime.now().difference(lastDeltaAt) >= const Duration(seconds: 2)) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
     final messages = await plugin
         .getSessionMessages(session.id)
-        .timeout(const Duration(seconds: 90));
+        .timeout(const Duration(seconds: 60));
+    if (!messages.any((entry) => entry.info is PluginMessageAssistant)) {
+      stderr.writeln("FAIL: assistant reply never appeared in replayed history");
+      exitCode = 1;
+      return;
+    }
     stdout.writeln("[4] session messages: ${messages.length}");
     for (final entry in messages) {
       final role = switch (entry.info) {
