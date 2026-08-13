@@ -6,7 +6,7 @@ part of "session_list_action_dispatcher.dart";
 
 class const _DeleteSessionSheet({
   required final Session session,
-  required final void Function({required bool deleteWorktree, required bool deleteBranch}) onConfirm,
+  required final void Function({required bool deleteWorktree}) onConfirm,
 }) extends StatefulWidget {
   @override
   State<_DeleteSessionSheet> createState() => _DeleteSessionSheetState();
@@ -14,7 +14,6 @@ class const _DeleteSessionSheet({
 
 class _DeleteSessionSheetState() extends State<_DeleteSessionSheet> {
   bool _deleteWorktree = true;
-  bool _deleteBranch = true;
 
   @override
   Widget build(BuildContext context) {
@@ -49,14 +48,6 @@ class _DeleteSessionSheetState() extends State<_DeleteSessionSheet> {
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
-              CheckboxListTile(
-                value: _deleteBranch,
-                onChanged: (v) => setState(() => _deleteBranch = v ?? false),
-                title: Text(loc.sessionListDeleteBranchCheckbox),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
               const SizedBox(height: 12),
             ],
             Row(
@@ -73,7 +64,6 @@ class _DeleteSessionSheetState() extends State<_DeleteSessionSheet> {
                     context.pop();
                     widget.onConfirm(
                       deleteWorktree: hasWorktree && _deleteWorktree,
-                      deleteBranch: hasWorktree && _deleteBranch,
                     );
                   },
                   child: Text(loc.sessionListDeleteConfirmAction),
@@ -93,7 +83,7 @@ class _DeleteSessionSheetState() extends State<_DeleteSessionSheet> {
 
 class const _ArchiveSessionSheet({
   required final Session session,
-  required final void Function({required bool deleteWorktree, required bool deleteBranch}) onConfirm,
+  required final void Function({required bool deleteWorktree}) onConfirm,
 }) extends StatefulWidget {
   @override
   State<_ArchiveSessionSheet> createState() => _ArchiveSessionSheetState();
@@ -101,7 +91,6 @@ class const _ArchiveSessionSheet({
 
 class _ArchiveSessionSheetState() extends State<_ArchiveSessionSheet> {
   bool _deleteWorktree = true;
-  bool _deleteBranch = true;
 
   @override
   Widget build(BuildContext context) {
@@ -136,14 +125,6 @@ class _ArchiveSessionSheetState() extends State<_ArchiveSessionSheet> {
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
-              CheckboxListTile(
-                value: _deleteBranch,
-                onChanged: (v) => setState(() => _deleteBranch = v ?? false),
-                title: Text(loc.sessionListDeleteBranchCheckbox),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
               const SizedBox(height: 12),
             ],
             Row(
@@ -159,7 +140,6 @@ class _ArchiveSessionSheetState() extends State<_ArchiveSessionSheet> {
                     context.pop();
                     widget.onConfirm(
                       deleteWorktree: hasWorktree && _deleteWorktree,
-                      deleteBranch: hasWorktree && _deleteBranch,
                     );
                   },
                   child: Text(loc.sessionListArchiveConfirmAction),

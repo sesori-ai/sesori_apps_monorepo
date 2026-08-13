@@ -130,7 +130,6 @@ void main() {
       final result = await fixture.deletions.deleteSession(
         sessionId: "root",
         deleteWorktree: true,
-        deleteBranch: false,
         force: false,
       );
 
@@ -243,7 +242,6 @@ class _Fixture() {
     final result = await deletions.deleteSession(
       sessionId: "root",
       deleteWorktree: false,
-      deleteBranch: false,
       force: false,
     );
     if (result is CleanupRejected) throw StateError("unexpected cleanup rejection");
@@ -254,7 +252,6 @@ class _Fixture() {
       sessionId: "root",
       archived: archived,
       deleteWorktree: false,
-      deleteBranch: false,
       force: false,
     );
   }
@@ -300,6 +297,7 @@ class _FamilyRepository() implements SessionRepository {
     if (record == null) throw StateError("missing test session $sessionId");
     record.archivedAt = archived ? 1 : null;
   }
+
   @override
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
@@ -464,9 +462,6 @@ class _FamilyWorktreeService() implements WorktreeService {
     required String worktreePath,
     required bool force,
   }) async => true;
-
-  @override
-  Future<bool> deleteBranch({required String projectId, required String branchName, required bool force}) async => true;
 
   @override
   Future<bool> branchExists({required String projectId, required String branchName}) async => false;

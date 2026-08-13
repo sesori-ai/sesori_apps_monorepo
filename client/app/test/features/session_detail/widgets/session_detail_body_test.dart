@@ -567,10 +567,22 @@ void main() {
 
   testWidgets("an archived session is read-only: no composer, no pending banners", (tester) async {
     // Archiving is permanent, so an archived session is audit-only.
-    final state = _loadedState(
-      pendingQuestions: const [_question],
-      pendingPermissions: const [_permission],
-    ).copyWith(isArchived: true);
+    final state =
+        _loadedState(
+          pendingQuestions: const [_question],
+          pendingPermissions: const [_permission],
+        ).copyWith(
+          isArchived: true,
+          queuedMessages: const [
+            QueuedSessionSubmission.text(
+              text: "Queued before archive",
+              inputMode: ComposerInputMode.typed,
+              attachments: [],
+              agent: "coder",
+              agentModel: null,
+            ),
+          ],
+        );
     when(() => cubit.state).thenReturn(state);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -581,6 +593,13 @@ void main() {
     // Pending requests can never be answered on an archived session.
     expect(find.text("1 pending question"), findsNothing);
     expect(find.text("1 permission request pending"), findsNothing);
+    expect(find.text("Queued before archive"), findsOneWidget);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(
+      tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
+      isTrue,
+    );
   });
 
   testWidgets("closes an open question when it leaves pending state", (tester) async {
@@ -2557,7 +2576,7 @@ void main() {
     expect(find.text("1 image"), findsOneWidget);
   });
 
-  testWidgets("a queued submission uses the shared outlined Markdown bubble and status rail", (tester) async {
+  testWidgets("a queued submission renders inline with the transcript", (tester) async {
     const submission = QueuedSessionSubmission.text(
       text: "Please **review** `main.dart`",
       inputMode: ComposerInputMode.typed,
@@ -2574,6 +2593,22 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
+    expect(
+      find.descendant(
+        of: find.byType(SessionDetailMessageList),
+        matching: find.byType(QueuedMessageBubble),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.byType(QueuedMessageBubble),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is CustomScrollView && widget.reverse,
+        ),
+      ),
+      findsOneWidget,
+    );
     final bubble = tester.widget<UserMessageBubble>(
       find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(UserMessageBubble)),
     );
@@ -2587,7 +2622,7 @@ void main() {
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
   });
 
-  testWidgets("the same queued bubble element animates into sending", (tester) async {
+  testWidgets("the same inline queued bubble becomes sending in place", (tester) async {
     const submission = QueuedSessionSubmission.text(
       text: "Cold-start prompt",
       inputMode: ComposerInputMode.typed,
@@ -2615,12 +2650,9 @@ void main() {
 
     final submissionFinder = find.byKey(const ObjectKey(submission));
     final before = tester.element(submissionFinder);
-    final submissionCancel = find.descendant(
-      of: submissionFinder,
-      matching: find.widgetWithText(TextButton, "Cancel"),
-    );
-    final cancelFocus = Focus.of(
-      tester.element(find.descendant(of: submissionCancel, matching: find.text("Cancel"))),
+    expect(
+      find.descendant(of: find.byType(SessionDetailMessageList), matching: submissionFinder),
+      findsOneWidget,
     );
     expect(
       tester
@@ -2630,10 +2662,6 @@ void main() {
           .outlined,
       isTrue,
     );
-    cancelFocus.requestFocus();
-    await tester.pump();
-    expect(cancelFocus.hasFocus, isTrue);
-
     state = state.copyWith(queuedMessages: const [followingSubmission], sendingSubmission: submission);
     states.add(state);
     await tester.idle();
@@ -2648,19 +2676,9 @@ void main() {
           .outlined,
       isFalse,
     );
-    expect(cancelFocus.hasFocus, isFalse);
     expect(find.text("Sending"), findsOneWidget);
-    expect(find.text("Cancel"), findsNWidgets(2));
-
-    final fadingCancel = find.descendant(of: submissionFinder, matching: find.text("Cancel"));
-    await tester.tap(fadingCancel, warnIfMissed: false);
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    verifyNever(() => cubit.cancelQueuedMessage(any()));
-
-    await tester.pump(const Duration(milliseconds: 241));
-    await tester.pump();
-    expect(fadingCancel, findsNothing);
     expect(find.text("Cancel"), findsOneWidget);
+    expect(find.descendant(of: submissionFinder, matching: find.text("Cancel")), findsNothing);
   });
 
   testWidgets("reduced motion swaps queued feedback immediately", (tester) async {

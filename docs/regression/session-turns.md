@@ -33,11 +33,12 @@ defaults and queued client sends coherent.
   dropped. Each queued send retains the agent, model, and variant selected when
   it was submitted. A submitted prompt remains visible while the bridge is
   accepting it, including during a cold backend startup, and a failed acceptance
-  returns it to the head of the queue. Queued and sending text uses the same brand
-  bubble and Markdown rendering as settled user text; a compact status rail and
-  subtle queued outline carry the transient state, with queued-to-sending changes
-  animated when reduced motion is not requested. A turn started on one client is
-  visible to every other client of that bridge.
+  returns it to the head of the queue. Queued and sending text render as the
+  newest rows inside the scrollable transcript, never as controls pinned above
+  the composer. It uses the same brand bubble and Markdown rendering as settled
+  user text; a compact status rail and subtle queued outline carry the transient
+  state, with the outline change animated when reduced motion is not requested.
+  A turn started on one client is visible to every other client of that bridge.
 - Live message envelopes render in transcript timestamp order even when events
   arrive out of order; late envelopes append after existing envelopes with the
   same timestamp rather than reordering an established turn. Finalized parts
@@ -75,7 +76,8 @@ queue, turn length, and client count.
   completion notification, or queued sends reorder, vanish, or resend while the
   session-detail cubit remains alive. Submitted text disappears while bridge
   acceptance or backend startup is still pending, or queued feedback uses a
-  visually unrelated surface or renders authored Markdown as literal syntax.
+  visually unrelated or composer-pinned surface, or renders authored Markdown
+  as literal syntax.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 

@@ -119,7 +119,12 @@ void main() {
 
   testWidgets("Mark as unread dismisses the menu and marks the session", (tester) async {
     final session = testSession(title: "My Session");
-    when(() => cubit.markSessionSeen(sessionId: any(named: "sessionId"), read: any(named: "read"))).thenAnswer(
+    when(
+      () => cubit.markSessionSeen(
+        sessionId: any(named: "sessionId"),
+        read: any(named: "read"),
+      ),
+    ).thenAnswer(
       (_) async {},
     );
 
@@ -164,7 +169,6 @@ void main() {
       () => cubit.archiveSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async {
@@ -251,7 +255,10 @@ void main() {
 
     expect(find.text("Delete").hitTestable(), findsNothing);
     verifyNever(
-      () => cubit.markSessionSeen(sessionId: any(named: "sessionId"), read: any(named: "read")),
+      () => cubit.markSessionSeen(
+        sessionId: any(named: "sessionId"),
+        read: any(named: "read"),
+      ),
     );
   });
 }

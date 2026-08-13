@@ -241,18 +241,6 @@ class WorktreeRepository({
     return removed;
   }
 
-  Future<bool> deleteBranch({
-    required String projectPath,
-    required String branchName,
-    required bool force,
-  }) async {
-    return await _gitApi.deleteBranch(
-      projectPath: projectPath,
-      branchName: branchName,
-      force: force,
-    );
-  }
-
   bool isValidWorktreePath({required String projectPath, required String worktreePath}) {
     final expectedPrefix = "$projectPath/$_worktreeDir/";
     return worktreePath.startsWith(expectedPrefix);

@@ -44,7 +44,6 @@ void main() {
       await service.archiveSession(
         sessionId: "s1",
         deleteWorktree: true,
-        deleteBranch: false,
         force: true,
       );
 
@@ -75,7 +74,6 @@ void main() {
       await service.deleteSession(
         sessionId: "s1",
         deleteWorktree: true,
-        deleteBranch: true,
         force: false,
       );
 
@@ -86,7 +84,7 @@ void main() {
           body: const DeleteSessionRequest(
             sessionId: "s1",
             deleteWorktree: true,
-            deleteBranch: true,
+            deleteBranch: false,
             force: false,
           ),
         ),
@@ -117,7 +115,6 @@ void main() {
         () => service.deleteSession(
           sessionId: "s1",
           deleteWorktree: true,
-          deleteBranch: true,
           force: false,
         ),
         throwsA(

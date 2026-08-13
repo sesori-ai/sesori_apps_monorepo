@@ -414,7 +414,6 @@ void main() {
       () => harness.sessionRepository.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -472,7 +471,6 @@ void main() {
       () => harness.sessionRepository.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async => ApiResponse<void>.success(null));

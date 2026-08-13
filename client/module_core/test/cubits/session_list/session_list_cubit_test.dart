@@ -442,7 +442,6 @@ void main() {
           () => mockSessionService.archiveSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
@@ -454,7 +453,6 @@ void main() {
         final result = await cubit.archiveSession(
           sessionId: "s1",
           deleteWorktree: false,
-          deleteBranch: false,
           force: false,
         );
         expect(result, isTrue);
@@ -487,7 +485,6 @@ void main() {
           () => mockSessionService.archiveSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -498,7 +495,6 @@ void main() {
         final result = await cubit.archiveSession(
           sessionId: "s1",
           deleteWorktree: false,
-          deleteBranch: false,
           force: false,
         );
         expect(result, isFalse);
@@ -533,7 +529,6 @@ void main() {
           () => mockSessionService.archiveSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenThrow(
@@ -550,7 +545,6 @@ void main() {
         final result = await cubit.archiveSession(
           sessionId: "s1",
           deleteWorktree: true,
-          deleteBranch: true,
           force: false,
         );
         expect(result, isFalse);
@@ -580,7 +574,6 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -591,7 +584,6 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: false,
-          deleteBranch: false,
           force: false,
         );
         expect(result, isTrue);
@@ -619,7 +611,6 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenThrow(
@@ -636,7 +627,6 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: true,
-          deleteBranch: true,
           force: false,
         );
         expect(result, isFalse);
@@ -966,21 +956,17 @@ void main() {
           data: SesoriSseEvent.sessionUpdated(info: withoutPullRequest),
         ),
       );
-      final afterSessionUpdate =
-          await cubit.stream.firstWhere(
-                (state) => state is SessionListLoaded && state.sessions.single.title == "Updated",
-              )
-              as SessionListLoaded;
+      final afterSessionUpdate = await cubit.stream.firstWhere(
+        (state) => state is SessionListLoaded && state.sessions.single.title == "Updated",
+      ) as SessionListLoaded;
       expect(afterSessionUpdate.sessions.single.pullRequest, mergedPullRequest);
 
       eventController.add(
         SseEvent(data: const SesoriSessionsUpdated(projectID: projectId)),
       );
-      final afterAuthoritativeRefresh =
-          await cubit.stream.firstWhere(
-                (state) => state is SessionListLoaded && state.sessions.single.pullRequest == null,
-              )
-              as SessionListLoaded;
+      final afterAuthoritativeRefresh = await cubit.stream.firstWhere(
+        (state) => state is SessionListLoaded && state.sessions.single.pullRequest == null,
+      ) as SessionListLoaded;
       expect(afterAuthoritativeRefresh.sessions.single.pullRequest, isNull);
     });
 
