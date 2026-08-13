@@ -9,7 +9,7 @@ import "package:test/test.dart";
 class _MockProjectRepository() extends Mock implements ProjectRepository;
 
 void main() {
-  test("running sessions form an alphabetical prefix while the tail stays timestamp ordered", () {
+  test("running sessions use activity markers while inactive sessions stay timestamp ordered", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
       activityCalculator: const SessionActivityCalculator(),
@@ -17,22 +17,75 @@ void main() {
 
     final result = service.visibleSessions(
       sessions: [
-        _session(id: "running-z", title: "Zulu", updatedAt: 400),
-        _session(id: "waiting-a", title: "Alpha", updatedAt: 300),
-        _session(id: "inactive-b", title: "Beta", updatedAt: 200),
-        _session(id: "running-a", title: "Alpha", updatedAt: 100),
+        _session(id: "running-new-update", title: "Zulu", updatedAt: 400),
+        _session(id: "waiting", title: "Alpha", updatedAt: 300),
+        _session(id: "inactive", title: "Beta", updatedAt: 200),
+        _session(id: "running-new-activity", title: "Alpha", updatedAt: 100),
       ],
       showArchived: true,
       activityBySessionId: const {
-        "running-z": SessionActivityInfo(isRetrying: true),
-        "waiting-a": SessionActivityInfo(awaitingInput: true),
-        "running-a": SessionActivityInfo(mainAgentRunning: true),
+        "running-new-update": SessionActivityInfo(isRetrying: true),
+        "waiting": SessionActivityInfo(awaitingInput: true),
+        "running-new-activity": SessionActivityInfo(mainAgentRunning: true),
+      },
+      listStateBySessionId: const {
+        "running-new-update": (unseen: false, lastUserActivityAt: 10),
+        "running-new-activity": (unseen: true, lastUserActivityAt: 20),
       },
     );
 
     expect(
       result.map((session) => session.id),
-      ["running-a", "running-z", "waiting-a", "inactive-b"],
+      ["running-new-activity", "running-new-update", "waiting", "inactive"],
+    );
+  });
+
+  test("running sessions use REST markers before updated-time fallback", () {
+    final service = SessionListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+
+    final result = service.visibleSessions(
+      sessions: [
+        _session(id: "new-update", title: "B", updatedAt: 20).copyWith(lastUserActivityAt: 5),
+        _session(id: "new-activity", title: "A", updatedAt: 10).copyWith(lastUserActivityAt: 15),
+      ],
+      showArchived: true,
+      activityBySessionId: const {
+        "new-update": SessionActivityInfo(mainAgentRunning: true),
+        "new-activity": SessionActivityInfo(mainAgentRunning: true),
+      },
+      listStateBySessionId: const {},
+    );
+
+    expect(result.map((session) => session.id), ["new-activity", "new-update"]);
+  });
+
+  test("running marker fallback and timestamp ties use session ID", () {
+    final service = SessionListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+
+    final result = service.visibleSessions(
+      sessions: [
+        _session(id: "running-b", title: "B", updatedAt: 10),
+        _session(id: "running-a", title: "A", updatedAt: 10),
+        _session(id: "inactive-b", title: "B", updatedAt: 5),
+        _session(id: "inactive-a", title: "A", updatedAt: 5),
+      ],
+      showArchived: true,
+      activityBySessionId: const {
+        "running-a": SessionActivityInfo(backgroundTaskCount: 1),
+        "running-b": SessionActivityInfo(mainAgentRunning: true),
+      },
+      listStateBySessionId: const {},
+    );
+
+    expect(
+      result.map((session) => session.id),
+      ["running-a", "running-b", "inactive-a", "inactive-b"],
     );
   });
 
@@ -61,9 +114,11 @@ void main() {
     );
     final existing = _session(id: "session", title: "Original", updatedAt: 1).copyWith(
       pullRequestHistory: const [existingHistory],
+      lastUserActivityAt: 20,
     );
     final incoming = _session(id: "session", title: "Updated", updatedAt: 2).copyWith(
       pullRequest: incomingPullRequest,
+      lastUserActivityAt: 10,
     );
 
     final result = service.applySessionUpdatedEvent(
@@ -74,6 +129,7 @@ void main() {
 
     expect(result.single.pullRequest, incomingPullRequest);
     expect(result.single.pullRequestHistory, const [existingHistory]);
+    expect(result.single.lastUserActivityAt, 20);
   });
 }
 
@@ -88,5 +144,6 @@ Session _session({required String id, required String title, required int update
     pullRequest: null,
     promptDefaults: null,
     branchName: null,
+    lastUserActivityAt: null,
   );
 }

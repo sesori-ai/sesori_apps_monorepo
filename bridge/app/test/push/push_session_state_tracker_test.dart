@@ -1692,5 +1692,6 @@ Session _session({
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
   );
 }

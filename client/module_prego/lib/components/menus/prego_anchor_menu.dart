@@ -2,8 +2,8 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:cue/cue.dart";
-import "package:flutter/material.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
@@ -320,31 +320,35 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
 
   Widget _buildFlat(BuildContext context) {
     final spotlight = widget.spotlight;
-    return CueModalTransition(
-      barrierColor: Colors.transparent,
-      motion: const Spring.smooth(),
-      reverseMotion: const Spring.snappy(),
-      // No alignment: the panel positions itself from the trigger rect so it can
-      // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
-      triggerBuilder: (context, showModal) => widget.triggerBuilder(context, () => unawaited(showModal())),
-      builder: (context, triggerRect) {
-        final panel = _flatPanel(context, triggerRect: triggerRect);
-        if (spotlight == null) return panel;
-        // The backdrop is stacked here rather than passed as CueModalTransition's
-        // `backdrop`, which is a plain widget and so cannot see the trigger rect
-        // it must cut its hole around. Both children fill the route; the panel
-        // paints last, over the blur.
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            AnchoredSpotlightBackdrop(
-              spotlightRect: spotlight.resolveRect(triggerRect: triggerRect),
-              borderRadius: spotlight.borderRadius,
-            ),
-            panel,
-          ],
-        );
-      },
+    // `cue` still imports the SDK Material library and reads its localizations.
+    // ignore: deprecated_member_use
+    return MaterialUiCompatibilityBridge(
+      child: CueModalTransition(
+        barrierColor: Colors.transparent,
+        motion: const Spring.smooth(),
+        reverseMotion: const Spring.snappy(),
+        // No alignment: the panel positions itself from the trigger rect so it can
+        // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
+        triggerBuilder: (context, showModal) => widget.triggerBuilder(context, () => unawaited(showModal())),
+        builder: (context, triggerRect) {
+          final panel = _flatPanel(context, triggerRect: triggerRect);
+          if (spotlight == null) return panel;
+          // The backdrop is stacked here rather than passed as CueModalTransition's
+          // `backdrop`, which is a plain widget and so cannot see the trigger rect
+          // it must cut its hole around. Both children fill the route; the panel
+          // paints last, over the blur.
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              AnchoredSpotlightBackdrop(
+                spotlightRect: spotlight.resolveRect(triggerRect: triggerRect),
+                borderRadius: spotlight.borderRadius,
+              ),
+              panel,
+            ],
+          );
+        },
+      ),
     );
   }
 

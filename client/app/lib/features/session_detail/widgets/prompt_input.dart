@@ -2,11 +2,11 @@ import "dart:async";
 
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
-import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -832,8 +832,8 @@ class _PromptInputState() extends State<PromptInput> {
           begin: Alignment.center,
           end: Alignment.topCenter,
           colors: [
-            prego.colors.bgSurface1.withValues(alpha: 0.9),
-            prego.colors.bgSurface1.withValues(alpha: 0.7),
+            prego.colors.bgSurface1.withValues(alpha: 0.98),
+            prego.colors.bgSurface1.withValues(alpha: 0.88),
             prego.colors.bgSurface1.withValues(alpha: 0),
           ],
           stops: const [0, 0.8, 1.0],

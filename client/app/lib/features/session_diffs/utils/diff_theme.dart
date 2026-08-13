@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 /// Theme-aware colors for diff rendering. Returns appropriate colors based on
 /// the current [Brightness] (light or dark mode).

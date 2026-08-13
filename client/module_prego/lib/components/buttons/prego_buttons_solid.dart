@@ -1,5 +1,5 @@
-import "package:flutter/cupertino.dart" show CupertinoActivityIndicator;
-import "package:flutter/material.dart";
+import "package:cupertino_ui/cupertino_ui.dart" show CupertinoActivityIndicator;
+import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";

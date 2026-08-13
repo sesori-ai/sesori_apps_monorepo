@@ -1,6 +1,6 @@
-import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 Widget _harness({required PregoDesignSystem prego}) {
@@ -25,6 +25,34 @@ void main() {
   // The scaffold paints the app's own theme, so the status-bar icons have to
   // contrast with that — not with the device's appearance setting, which an
   // in-app light/dark choice deliberately overrides.
+
+  testWidgets("provides standalone Material and Scaffold ancestors", (tester) async {
+    late BuildContext scaffoldContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: PregoGlassScaffold(
+          title: "Title",
+          automaticallyImplyLeading: false,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Builder(
+                builder: (context) {
+                  scaffoldContext = context;
+                  return const TextField();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    ScaffoldMessenger.of(scaffoldContext).showSnackBar(const SnackBar(content: Text("Notice")));
+    await tester.pump();
+    expect(find.text("Notice"), findsOneWidget);
+  });
 
   testWidgets("a light app keeps dark status-bar icons on a dark device", (tester) async {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;

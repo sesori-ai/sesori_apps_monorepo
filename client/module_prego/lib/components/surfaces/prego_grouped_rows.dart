@@ -5,7 +5,7 @@
 /// page background rather than liquid glass.
 library;
 
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_theme.dart";
 

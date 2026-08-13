@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 /// Maps the surface-neutral [AppearanceMode] onto Flutter's [ThemeMode] at the

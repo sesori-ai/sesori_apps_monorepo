@@ -1,7 +1,7 @@
 import "dart:async";
 
-import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:material_ui/material_ui.dart";
 
 /// Dismisses the current modal route when its request is no longer pending.
 class const PendingRequestAutoDismiss({

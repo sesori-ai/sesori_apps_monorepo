@@ -1,5 +1,5 @@
-import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_mobile/features/session_diffs/models/diff_file_view_model.dart";
 import "package:sesori_mobile/features/session_diffs/widgets/diff_file_widget.dart";
 import "package:sesori_shared/sesori_shared.dart";

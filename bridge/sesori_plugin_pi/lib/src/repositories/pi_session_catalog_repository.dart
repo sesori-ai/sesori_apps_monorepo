@@ -1,0 +1,101 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession, PluginSessionTime;
+
+import "../api/pi_session_storage_api.dart";
+
+final class PiSessionCatalogRepository({required final PiSessionStorageApi _storageApi}) {
+  final Map<String, String> _primedDirectories = {};
+  final Set<String> _knownDirectories = {};
+
+  void primeSessionDirectory({required String sessionId, required String directory}) {
+    if (sessionId.isEmpty || directory.trim().isEmpty) return;
+    final normalized = normalizeProjectDirectory(directory: directory);
+    _primedDirectories[sessionId] = normalized;
+    _knownDirectories.add(normalized);
+  }
+
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
+      _readSessions(knownDirectories: knownDirectories);
+
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    final target = normalizeProjectDirectory(directory: projectId);
+    final sessions = (await _readSessions(knownDirectories: {target}))
+        .where((session) => session.directory == target)
+        .toList(growable: false);
+    return _page(sessions: sessions, start: start, limit: limit);
+  }
+
+  Future<List<PluginSession>> getChildSessions({required String sessionId}) async => [
+    for (final session in await _readSessions(knownDirectories: const {}))
+      if (session.parentID == sessionId) session,
+  ];
+
+  Future<PluginSession?> findSessionById({required String sessionId}) async {
+    for (final session in await _readSessions(knownDirectories: const {})) {
+      if (session.id == sessionId) return session;
+    }
+    return null;
+  }
+
+  Future<List<PluginSession>> _readSessions({required Set<String> knownDirectories}) async {
+    _knownDirectories.addAll({
+      for (final directory in knownDirectories)
+        if (directory.trim().isNotEmpty) normalizeProjectDirectory(directory: directory),
+    });
+    final scanDirectories = {..._knownDirectories, ..._primedDirectories.values};
+    final metadata = await _storageApi.listSessionMetadata(knownDirectories: scanDirectories);
+    final observedIds = metadata.map((session) => session.id).toSet();
+    _primedDirectories.removeWhere((sessionId, _) => observedIds.contains(sessionId));
+    final sessions = <PluginSession>[
+      for (final session in metadata) _toPluginSession(session),
+      for (final entry in _primedDirectories.entries)
+        PluginSession(
+          id: entry.key,
+          projectID: entry.value,
+          directory: entry.value,
+          parentID: null,
+          title: null,
+          time: null,
+        ),
+    ];
+    sessions.sort((left, right) {
+      final leftUpdated = left.time?.updated;
+      final rightUpdated = right.time?.updated;
+      if (leftUpdated == null && rightUpdated == null) return left.id.compareTo(right.id);
+      if (leftUpdated == null) return 1;
+      if (rightUpdated == null) return -1;
+      final timeOrder = rightUpdated.compareTo(leftUpdated);
+      return timeOrder == 0 ? left.id.compareTo(right.id) : timeOrder;
+    });
+    return List.unmodifiable(sessions);
+  }
+
+  PluginSession _toPluginSession(PiSessionMetadata metadata) {
+    final directory = normalizeProjectDirectory(directory: metadata.cwd);
+    final updated = metadata.updatedAt.millisecondsSinceEpoch;
+    return PluginSession(
+      id: metadata.id,
+      projectID: directory,
+      directory: directory,
+      parentID: metadata.parentId,
+      title: metadata.title,
+      time: PluginSessionTime(
+        created: metadata.createdAt?.millisecondsSinceEpoch ?? updated,
+        updated: updated,
+        archived: null,
+      ),
+    );
+  }
+
+  List<PluginSession> _page({required List<PluginSession> sessions, required int? start, required int? limit}) {
+    final from = (start ?? 0).clamp(0, sessions.length);
+    if (from >= sessions.length) return const [];
+    final pageSize = limit?.clamp(0, sessions.length);
+    final until = pageSize == null ? sessions.length : (from + pageSize).clamp(from, sessions.length);
+    return sessions.sublist(from, until);
+  }
+}

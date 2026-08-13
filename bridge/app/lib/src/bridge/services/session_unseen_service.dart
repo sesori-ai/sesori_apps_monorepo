@@ -19,6 +19,7 @@ typedef UnseenChange = ({
   String sessionId,
   bool unseen,
   bool projectHasUnseenChanges,
+  int? lastUserActivityAt,
 });
 
 /// Layer-3 owner of unseen-changes decisions. It consumes activity events,
@@ -298,7 +299,13 @@ class SessionUnseenService({
   Future<void> _emitDeleted({required String sessionId, required String projectId}) async {
     try {
       final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
-      _add(projectId: projectId, sessionId: sessionId, unseen: false, projectHasUnseenChanges: projectHasUnseen);
+      _add(
+        projectId: projectId,
+        sessionId: sessionId,
+        unseen: false,
+        projectHasUnseenChanges: projectHasUnseen,
+        lastUserActivityAt: null,
+      );
     } catch (error, stackTrace) {
       Log.w("failed to emit unseen clear for deleted session $sessionId", error, stackTrace);
     }
@@ -309,9 +316,16 @@ class SessionUnseenService({
   /// committed (or that is fire-and-forget from the SSE path).
   Future<void> _emit({required String sessionId, required String projectId}) async {
     try {
-      final unseen = await _unseenRepository.isUnseen(sessionId: sessionId);
+      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+      final unseen = row != null && _unseenRepository.unseenForRow(row);
       final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
-      _add(projectId: projectId, sessionId: sessionId, unseen: unseen, projectHasUnseenChanges: projectHasUnseen);
+      _add(
+        projectId: projectId,
+        sessionId: sessionId,
+        unseen: unseen,
+        projectHasUnseenChanges: projectHasUnseen,
+        lastUserActivityAt: row?.userMessageAt,
+      );
     } catch (error, stackTrace) {
       Log.w("failed to compute/emit unseen change for session $sessionId", error, stackTrace);
     }
@@ -322,6 +336,7 @@ class SessionUnseenService({
     required String sessionId,
     required bool unseen,
     required bool projectHasUnseenChanges,
+    required int? lastUserActivityAt,
   }) {
     if (_changes.isClosed) return;
     _changes.add(
@@ -330,6 +345,7 @@ class SessionUnseenService({
         sessionId: sessionId,
         unseen: unseen,
         projectHasUnseenChanges: projectHasUnseenChanges,
+        lastUserActivityAt: lastUserActivityAt,
       ),
     );
   }

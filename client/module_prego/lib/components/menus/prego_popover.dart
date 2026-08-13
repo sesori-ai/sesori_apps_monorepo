@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:cue/cue.dart";
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "anchored_flat_panel.dart";
 
@@ -45,21 +45,25 @@ class const PregoPopover({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return CueModalTransition(
-      barrierColor: Colors.transparent,
-      motion: const Spring.smooth(),
-      reverseMotion: const Spring.snappy(),
-      // No alignment: the panel positions itself from the trigger rect so it can
-      // clamp to the screen edges.
-      triggerBuilder: (context, showModal) => triggerBuilder(context, () => unawaited(showModal())),
-      builder: (context, triggerRect) => AnchoredFlatPanel(
-        triggerRect: triggerRect,
-        width: popoverWidth,
-        // Content-sized (still bounded to stay on screen).
-        maxHeight: null,
-        borderRadius: popoverBorderRadius,
-        screenPadding: screenPadding,
-        childBuilder: contentBuilder,
+    // `cue` still imports the SDK Material library and reads its localizations.
+    // ignore: deprecated_member_use
+    return MaterialUiCompatibilityBridge(
+      child: CueModalTransition(
+        barrierColor: Colors.transparent,
+        motion: const Spring.smooth(),
+        reverseMotion: const Spring.snappy(),
+        // No alignment: the panel positions itself from the trigger rect so it can
+        // clamp to the screen edges.
+        triggerBuilder: (context, showModal) => triggerBuilder(context, () => unawaited(showModal())),
+        builder: (context, triggerRect) => AnchoredFlatPanel(
+          triggerRect: triggerRect,
+          width: popoverWidth,
+          // Content-sized (still bounded to stay on screen).
+          maxHeight: null,
+          borderRadius: popoverBorderRadius,
+          screenPadding: screenPadding,
+          childBuilder: contentBuilder,
+        ),
       ),
     );
   }

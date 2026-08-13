@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 import "package:re_highlight/languages/css.dart";
 import "package:re_highlight/languages/dart.dart";
 import "package:re_highlight/languages/go.dart";

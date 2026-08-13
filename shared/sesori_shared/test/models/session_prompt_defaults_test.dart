@@ -24,6 +24,39 @@ void main() {
     });
   });
 
+  group("Session.lastUserActivityAt", () {
+    test("accepts omission as null and omits null on encode", () {
+      final session = Session.fromJson({
+        "id": "ses_1",
+        "projectID": "proj_1",
+        "directory": "/tmp",
+        "parentID": null,
+        "title": null,
+        "time": null,
+        "pullRequest": null,
+      });
+
+      expect(session.lastUserActivityAt, isNull);
+      expect(session.toJson(), isNot(contains("lastUserActivityAt")));
+    });
+
+    test("round-trips a committed marker", () {
+      final session = Session.fromJson({
+        "id": "ses_1",
+        "projectID": "proj_1",
+        "directory": "/tmp",
+        "parentID": null,
+        "title": null,
+        "time": null,
+        "pullRequest": null,
+        "lastUserActivityAt": 1234,
+      });
+
+      expect(session.lastUserActivityAt, 1234);
+      expect(session.toJson()["lastUserActivityAt"], 1234);
+    });
+  });
+
   group("Session.promptDefaults", () {
     test("defaults to null when missing from JSON", () {
       final session = Session.fromJson({
@@ -51,6 +84,7 @@ void main() {
         title: null,
         time: null,
         pullRequest: null,
+        lastUserActivityAt: null,
         promptDefaults: SessionPromptDefaults(
           agent: "agent-1",
           model: AgentModel(
@@ -66,9 +100,15 @@ void main() {
 
       expect(parsed.promptDefaults, session.promptDefaults);
       expect((json["promptDefaults"] as Map<String, dynamic>)["agent"], "agent-1");
-      expect(((json["promptDefaults"] as Map<String, dynamic>)["model"] as Map<String, dynamic>)["providerID"], "provider-1");
+      expect(
+        ((json["promptDefaults"] as Map<String, dynamic>)["model"] as Map<String, dynamic>)["providerID"],
+        "provider-1",
+      );
       expect(((json["promptDefaults"] as Map<String, dynamic>)["model"] as Map<String, dynamic>)["modelID"], "model-1");
-      expect(((json["promptDefaults"] as Map<String, dynamic>)["model"] as Map<String, dynamic>)["variant"], "variant-1");
+      expect(
+        ((json["promptDefaults"] as Map<String, dynamic>)["model"] as Map<String, dynamic>)["variant"],
+        "variant-1",
+      );
     });
   });
 }

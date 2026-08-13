@@ -326,6 +326,7 @@ void main() {
         updatedAt: 10,
         projectionUpdatedAt: 10,
       );
+      await db.sessionDao.setUserMessageAt(sessionId: "s1", userMessageAt: 1234);
       await db.projectsDao.setPrCacheGithubLogin(
         projectId: "p1",
         githubLogin: "octocat",
@@ -403,6 +404,7 @@ void main() {
           time: SessionTime(created: 1, updated: 2, archived: null),
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
         verifiedGithubLogin: _octocatLogin,
       );
@@ -420,6 +422,7 @@ void main() {
       expect(result.promptDefaults?.model?.variant, equals("variant-1"));
       expect(result.pullRequest?.number, equals(11));
       expect(result.pullRequest?.state, equals(PrState.open));
+      expect(result.lastUserActivityAt, 1234);
     });
 
     test("enrichSession leaves promptDefaults null when stored defaults are all null", () async {
@@ -463,6 +466,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
         verifiedGithubLogin: null,
       );
@@ -511,6 +515,7 @@ void main() {
           ),
         ],
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
 
       for (final verifiedGithubLogin in <VerifiedGithubLogin?>[null, _hubotLogin]) {
@@ -603,6 +608,7 @@ void main() {
             time: null,
             pullRequest: null,
             promptDefaults: null,
+            lastUserActivityAt: null,
           ),
           Session(
             branchName: null,
@@ -615,6 +621,7 @@ void main() {
             time: SessionTime(created: 3, updated: 4, archived: null),
             pullRequest: null,
             promptDefaults: null,
+            lastUserActivityAt: null,
           ),
         ],
         verifiedGithubLogin: _octocatLogin,
@@ -689,6 +696,7 @@ void main() {
             time: null,
             pullRequest: null,
             promptDefaults: null,
+            lastUserActivityAt: null,
           ),
           Session(
             branchName: null,
@@ -701,6 +709,7 @@ void main() {
             time: null,
             pullRequest: null,
             promptDefaults: null,
+            lastUserActivityAt: null,
           ),
         ],
         verifiedGithubLogin: null,

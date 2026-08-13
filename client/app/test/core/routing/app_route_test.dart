@@ -1,8 +1,8 @@
-import "package:flutter/cupertino.dart" show CupertinoPage;
-import "package:flutter/material.dart";
+import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";

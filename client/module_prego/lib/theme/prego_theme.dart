@@ -47,7 +47,7 @@
 /// - `PregoRadius.lg` -> 10px (static access)
 library;
 
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "prego_design_system.dart";
 

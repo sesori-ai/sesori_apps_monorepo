@@ -1,5 +1,5 @@
-import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_mobile/core/widgets/connection_graphic.dart";
 
 /// Pumps [graphic] under a theme of the given [brightness] and returns the

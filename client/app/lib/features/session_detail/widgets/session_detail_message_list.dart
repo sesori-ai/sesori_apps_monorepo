@@ -1,9 +1,9 @@
 import "dart:async";
 
 import "package:flutter/gestures.dart";
-import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
 import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -811,7 +811,28 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   chat_core.ChatTheme _chatThemeFor({required ThemeData theme}) {
     final cached = _chatThemeCache;
     if (cached != null && identical(cached.$1, theme)) return cached.$2;
-    final derived = chat_core.ChatTheme.fromThemeData(theme);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final derived = chat_core.ChatTheme(
+      colors: chat_core.ChatColors(
+        primary: colorScheme.primary,
+        onPrimary: colorScheme.onPrimary,
+        surface: colorScheme.surface,
+        onSurface: colorScheme.onSurface,
+        surfaceContainerLow: colorScheme.surfaceContainerLow,
+        surfaceContainer: colorScheme.surfaceContainer,
+        surfaceContainerHigh: colorScheme.surfaceContainerHigh,
+      ),
+      typography: chat_core.ChatTypography(
+        bodyLarge: textTheme.bodyLarge ?? const TextStyle(),
+        bodyMedium: textTheme.bodyMedium ?? const TextStyle(),
+        bodySmall: textTheme.bodySmall ?? const TextStyle(),
+        labelLarge: textTheme.labelLarge ?? const TextStyle(),
+        labelMedium: textTheme.labelMedium ?? const TextStyle(),
+        labelSmall: textTheme.labelSmall ?? const TextStyle(),
+      ),
+      shape: const BorderRadius.all(Radius.circular(12)),
+    );
     _chatThemeCache = (theme, derived);
     return derived;
   }

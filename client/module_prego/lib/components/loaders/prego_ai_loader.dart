@@ -1,7 +1,7 @@
 /// The AI activity indicator: a sparkle that twinkles while an agent works.
 library;
 
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";

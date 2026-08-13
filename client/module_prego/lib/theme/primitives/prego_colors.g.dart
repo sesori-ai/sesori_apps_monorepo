@@ -3,7 +3,7 @@
 //   dart run scripts/figma_tokens/sync_figma_tokens.dart generate
 // ignore_for_file: lines_longer_than_80_chars
 
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../utils/lerp_utils.dart";
 import "prego_color_primitives.g.dart";

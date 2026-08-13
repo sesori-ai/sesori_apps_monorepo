@@ -1,5 +1,5 @@
-import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 const _fabKey = Key("fab");
@@ -23,7 +23,11 @@ Widget _harness({
   );
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
-    home: paneWidth == null ? scaffold : Center(child: SizedBox(width: paneWidth, child: scaffold)),
+    home: paneWidth == null
+        ? scaffold
+        : Center(
+            child: SizedBox(width: paneWidth, child: scaffold),
+          ),
   );
 }
 
@@ -91,5 +95,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(scrollable.controller!.offset, greaterThan(0));
+  });
+
+  testWidgets("a snackbar clears the floating action", (tester) async {
+    late BuildContext bodyContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: PregoGlassScaffold(
+          title: "Title",
+          automaticallyImplyLeading: false,
+          floatingActionButton: const SizedBox(key: _fabKey, width: 120, height: 52),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Builder(
+                builder: (context) {
+                  bodyContext = context;
+                  return const SizedBox(height: 10);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    ScaffoldMessenger.of(bodyContext).showSnackBar(const SnackBar(content: Text("Notice")));
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(find.byKey(_fabKey)).bottom, lessThanOrEqualTo(tester.getRect(find.byType(SnackBar)).top));
+  });
+
+  testWidgets("a snackbar clears the keyboard", (tester) async {
+    late BuildContext bodyContext;
+    const keyboardInset = 180.0;
+    final devicePixelRatio = tester.view.devicePixelRatio;
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: PregoGlassScaffold(
+          title: "Title",
+          automaticallyImplyLeading: false,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Builder(
+                builder: (context) {
+                  bodyContext = context;
+                  return const TextField();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    tester.view.viewInsets = FakeViewPadding(bottom: keyboardInset * devicePixelRatio);
+    ScaffoldMessenger.of(bodyContext).showSnackBar(const SnackBar(content: Text("Notice")));
+    await tester.pumpAndSettle();
+
+    final logicalHeight = tester.view.physicalSize.height / devicePixelRatio;
+    expect(tester.getRect(find.byType(SnackBar)).bottom, lessThanOrEqualTo(logicalHeight - keyboardInset));
   });
 }

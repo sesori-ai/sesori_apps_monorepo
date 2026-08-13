@@ -23,10 +23,12 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProjectViewPaneClaim,
         ProjectViewingService,
         RouteSource,
+        SessionListItemState,
         SessionOptionsCatalog,
         SessionOptionsRepositoryAvailable,
         SessionOptionsRepositoryFailure,
-        SessionOptionsRequestMode;
+        SessionOptionsRequestMode,
+        latestUserActivityAt;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
@@ -237,7 +239,9 @@ void _registerListServices({
 /// overwrite-only maps plus a tick guard.
 class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
   final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
-  final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Map<String, SessionListItemState>>> _sessionUnseen = BehaviorSubject.seeded(
+    const {},
+  );
 
   @override
   ValueStream<Map<String, bool>> get projectUnseen => _projectUnseen.stream;
@@ -246,13 +250,16 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
   Map<String, bool> get currentProjectUnseen => _projectUnseen.value;
 
   @override
-  ValueStream<Map<String, Map<String, bool>>> get sessionUnseen => _sessionUnseen.stream;
+  ValueStream<Map<String, Map<String, SessionListItemState>>> get sessionUnseen => _sessionUnseen.stream;
 
   @override
-  Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
+  Map<String, Map<String, SessionListItemState>> get currentSessionUnseen => _sessionUnseen.value;
+
+  int _tick = 0;
+  final Map<String, int> _projectTick = {};
 
   @override
-  int get tick => 0;
+  int get tick => _tick;
 
   @override
   void seedProjects(Map<String, bool> unseenByProjectId, {required int sinceTick}) {
@@ -262,11 +269,22 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
   @override
   void seedSessions({
     required String projectId,
-    required Map<String, bool> unseenBySessionId,
+    required Map<String, SessionListItemState> stateBySessionId,
     required int sinceTick,
   }) {
-    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
-    sessions[projectId] = Map<String, bool>.from(unseenBySessionId);
+    if ((_projectTick[projectId] ?? 0) > sinceTick) return;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final current = sessions[projectId] ?? const <String, SessionListItemState>{};
+    sessions[projectId] = {
+      for (final entry in stateBySessionId.entries)
+        entry.key: (
+          unseen: entry.value.unseen,
+          lastUserActivityAt: latestUserActivityAt(
+            first: current[entry.key]?.lastUserActivityAt,
+            second: entry.value.lastUserActivityAt,
+          ),
+        ),
+    };
     _sessionUnseen.add(sessions);
   }
 
@@ -276,16 +294,25 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
     required String sessionId,
     required bool unseen,
   }) {
-    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
-    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
-    projectSessions[sessionId] = unseen;
+    _projectTick[projectId] = ++_tick;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    projectSessions[sessionId] = (
+      unseen: unseen,
+      lastUserActivityAt: projectSessions[sessionId]?.lastUserActivityAt,
+    );
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
   }
 
   void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
 
-  void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
+  void emitSessionUnseen(Map<String, Map<String, SessionListItemState>> unseen) {
+    for (final projectId in unseen.keys) {
+      _projectTick[projectId] = ++_tick;
+    }
+    _sessionUnseen.add(unseen);
+  }
 }
 
 class MockSessionViewingService() extends Mock implements SessionViewingService;
@@ -610,6 +637,7 @@ Session testSession({
   SessionPromptDefaults? promptDefaults,
   String pluginId = "plugin-1",
   String? branchName,
+  int? lastUserActivityAt,
 }) {
   return Session(
     branchName: branchName,
@@ -626,6 +654,7 @@ Session testSession({
       updated: updatedAt ?? 1700000000000,
       archived: archivedAt?.millisecondsSinceEpoch,
     ),
+    lastUserActivityAt: lastUserActivityAt,
   );
 }
 

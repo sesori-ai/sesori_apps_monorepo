@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../models/diff_file_view_model.dart";
 import "diff_file_widget.dart";

@@ -4,7 +4,6 @@ import "dart:ui" show PointerDeviceKind;
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart" show kSecondaryButton;
-import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -12,6 +11,7 @@ import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
+import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
@@ -269,6 +269,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("No messages yet"), findsOneWidget);
+  });
+
+  testWidgets("composer fade obscures transcript text behind floating controls", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(
+        of: find.byType(PromptInput),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              widget.decoration is BoxDecoration &&
+              (widget.decoration as BoxDecoration).gradient is LinearGradient,
+        ),
+      ).first,
+    );
+    final gradient = (decoratedBox.decoration as BoxDecoration).gradient! as LinearGradient;
+    final surface = PregoDesignSystem.light.colors.bgSurface1;
+    expect(gradient.colors[0], surface.withValues(alpha: 0.98));
+    expect(gradient.colors[1], surface.withValues(alpha: 0.88));
+    expect(gradient.colors[2], surface.withValues(alpha: 0));
   });
 
   testWidgets("an empty newest page keeps older transcript paging reachable", (tester) async {

@@ -1,7 +1,7 @@
 /// Reduced-motion support for the Prego design system's animated components.
 library;
 
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 /// Whether the platform is currently asking for reduced motion.
 ///

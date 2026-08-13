@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_theme.dart";
 import "prego_popover.dart";
