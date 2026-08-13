@@ -36,6 +36,8 @@ dependencies:
     path: ../sesori_plugin_cursor
   claude_plugin:
     path: ../sesori_plugin_claude
+  hermes_plugin:
+    path: ../sesori_plugin_hermes
   meta: ^1.19.0
   # Keep runtime and codegen on the same patch; skew breaks the Drift schema verifier.
   drift: 2.34.3
