@@ -203,8 +203,8 @@
   access while bypassing stale cache when deletion keeps failing. The focused
   review matrix passes 29 repository tests, 33 mobile storage/DI/widget tests,
   and two desktop DI tests, plus fatal analysis in all three owning products.
-  After synchronization with `origin/main` at `57e1d0ea`, the PR diff has 1,472
-  additions and 77 deletions across 17 files (1,549 changed lines), within the
+  After synchronization with `origin/main` at `57e1d0ea`, the PR diff has 1,473
+  additions and 77 deletions across 17 files (1,550 changed lines), within the
   review-revised 1,250-1,600 target;
   `git diff --check origin/main...HEAD` passes. Published as
   [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876); monitoring
