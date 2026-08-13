@@ -13,7 +13,7 @@ import "dart:async";
 /// `Future.timeout` around `start()`, since an abandoned start would keep
 /// mutating shared state (ownership records, child processes) while a new
 /// bridge believes the lock is free.
-abstract class StartAbortSignal {
+abstract class StartAbortSignal() {
   /// A signal that never aborts, for callers that don't support aborting.
   static final StartAbortSignal never = _NeverAbortedSignal();
 
@@ -28,8 +28,8 @@ abstract class StartAbortSignal {
 }
 
 /// Write side of the start-abort signal, owned by the bridge.
-class StartAbortController {
-  StartAbortController() : _signal = _CompleterAbortSignal();
+class StartAbortController() {
+  this : _signal = _CompleterAbortSignal();
 
   final _CompleterAbortSignal _signal;
 
@@ -48,7 +48,7 @@ class StartAbortController {
   }
 }
 
-class _CompleterAbortSignal implements StartAbortSignal {
+class _CompleterAbortSignal() implements StartAbortSignal {
   final Completer<void> _completer = Completer<void>();
 
   @override
@@ -58,7 +58,7 @@ class _CompleterAbortSignal implements StartAbortSignal {
   Future<void> get whenAborted => _completer.future;
 }
 
-class _NeverAbortedSignal implements StartAbortSignal {
+class _NeverAbortedSignal() implements StartAbortSignal {
   @override
   bool get isAborted => false;
 

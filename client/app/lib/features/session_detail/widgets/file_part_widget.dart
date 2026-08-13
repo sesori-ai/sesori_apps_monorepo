@@ -12,14 +12,13 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/external_link.dart";
 import "image_attachment_viewer.dart";
 
-class FilePartWidget extends StatelessWidget {
+class const FilePartWidget({
+  super.key,
+  required final String sessionId,
+  required final MessageAttachment attachment,
+}) extends StatelessWidget {
   static const previewImageKey = ValueKey("filePartWidget.previewImage");
   static const previewTapTargetKey = ValueKey("filePartWidget.previewTapTarget");
-
-  final String sessionId;
-  final MessageAttachment attachment;
-
-  const FilePartWidget({super.key, required this.sessionId, required this.attachment});
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +34,8 @@ class FilePartWidget extends StatelessWidget {
   }
 }
 
-class _FilePartContent extends StatelessWidget {
+class const _FilePartContent({required final MessageAttachment attachment}) extends StatelessWidget {
   static const _maxMetadataCharacters = 255;
-
-  final MessageAttachment attachment;
-
-  const _FilePartContent({required this.attachment});
 
   @override
   Widget build(BuildContext context) {
@@ -196,26 +191,18 @@ class _FilePartContent extends StatelessWidget {
   }
 }
 
-class _LoadedImageAttachment extends StatefulWidget {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
-  final Uri? originalUri;
-  final String? filename;
-
-  const _LoadedImageAttachment({
-    required this.bytes,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-    required this.filename,
-  });
-
+class const _LoadedImageAttachment({
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+  required final Uri? originalUri,
+  required final String? filename,
+}) extends StatefulWidget {
   @override
   State<_LoadedImageAttachment> createState() => _LoadedImageAttachmentState();
 }
 
-class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
+class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
   static const _maxDecodedImageDimension = 2048;
 
   final _heroTag = UniqueKey();

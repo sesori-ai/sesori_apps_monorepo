@@ -3,16 +3,11 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
-class RetryPartWidget extends StatelessWidget {
-  final int? attempt;
-  final String? retryError;
-
-  const RetryPartWidget({
-    super.key,
-    required this.attempt,
-    required this.retryError,
-  });
-
+class const RetryPartWidget({
+  super.key,
+  required final int? attempt,
+  required final String? retryError,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

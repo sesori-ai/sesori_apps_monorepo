@@ -3,7 +3,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "../models/omp_catalog_models.dart";
 
 /// Owns OMP's last coherent catalog independently for each project.
-class OmpCatalogTracker {
+class OmpCatalogTracker() {
   final Map<String, OmpProjectCatalog> _catalogs = {};
 
   OmpProjectCatalog? snapshotFor({required String projectId}) =>

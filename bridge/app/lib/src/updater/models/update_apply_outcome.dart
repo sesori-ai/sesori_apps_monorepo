@@ -5,9 +5,7 @@
 /// handled inside the service. This type carries only what a caller needs to
 /// message the user and decide flow — the apply service itself never writes to
 /// `Console`.
-sealed class UpdateApplyOutcome {
-  const UpdateApplyOutcome();
-}
+sealed class const UpdateApplyOutcome();
 
 /// The staged release was swapped in and is pending activation on next launch.
 ///
@@ -17,23 +15,13 @@ sealed class UpdateApplyOutcome {
 /// failed — the manifest may be stale, or the activation record may have been
 /// cleared — so the post-swap state is not fully persisted and a chained
 /// in-session apply must not proceed.
-final class UpdateApplied extends UpdateApplyOutcome {
-  final String version;
-  final bool durablyRecorded;
-
-  const UpdateApplied({required this.version, required this.durablyRecorded});
-}
+final class const UpdateApplied({required final String version, required final bool durablyRecorded})
+    extends UpdateApplyOutcome;
 
 /// Another process holds the update lock; the swap was skipped (benign).
-final class UpdateApplyLockBusy extends UpdateApplyOutcome {
-  const UpdateApplyLockBusy();
-}
+final class const UpdateApplyLockBusy() extends UpdateApplyOutcome;
 
 /// The swap failed. [reason] is a human-readable cause; [logPath] points at the
 /// durable update log with full detail.
-final class UpdateApplyFailed extends UpdateApplyOutcome {
-  final String reason;
-  final String logPath;
-
-  const UpdateApplyFailed({required this.reason, required this.logPath});
-}
+final class const UpdateApplyFailed({required final String reason, required final String logPath})
+    extends UpdateApplyOutcome;

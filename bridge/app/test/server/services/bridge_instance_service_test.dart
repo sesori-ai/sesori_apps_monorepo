@@ -487,7 +487,7 @@ ProcessMatch _match({
   );
 }
 
-class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
+class _FakeBridgeInstanceRepository() implements BridgeInstanceRepository {
   List<List<ProcessIdentity>> snapshots = <List<ProcessIdentity>>[];
   final List<int> currentPids = <int>[];
 
@@ -501,7 +501,7 @@ class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
   }
 }
 
-class _FakeTerminalPromptRepository implements TerminalPromptRepository {
+class _FakeTerminalPromptRepository() implements TerminalPromptRepository {
   TerminalPromptDecision decision = TerminalPromptDecision.replace;
   int askCount = 0;
   int emailPromptCount = 0;
@@ -539,7 +539,7 @@ class _FakeTerminalPromptRepository implements TerminalPromptRepository {
   }
 }
 
-class _FakeProcessRepository implements ProcessRepository {
+class _FakeProcessRepository() implements ProcessRepository {
   @override
   Future<int> startDetached({
     required String executable,
@@ -603,7 +603,7 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 }
 
-class _FakeServerClock implements ServerClock {
+class _FakeServerClock() implements ServerClock {
   final List<Duration> delays = <Duration>[];
 
   @override
@@ -617,7 +617,7 @@ class _FakeServerClock implements ServerClock {
   }
 }
 
-class _FakeControlChannelClient implements ControlChannelClient {
+class _FakeControlChannelClient() implements ControlChannelClient {
   final List<String> sentFrames = <String>[];
 
   /// Mimics [ControlChannelClient.send] throwing when the channel is down.

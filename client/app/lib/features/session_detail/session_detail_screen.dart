@@ -8,22 +8,14 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/di/injection.dart";
 import "widgets/session_detail_body.dart";
 
-class SessionDetailScreen extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final String sessionId;
-  final String? sessionTitle;
-  final bool readOnly;
-
-  const SessionDetailScreen({
-    super.key,
-    required this.projectId,
-    required this.projectName,
-    required this.sessionId,
-    this.sessionTitle,
-    this.readOnly = false,
-  });
-
+class const SessionDetailScreen({
+  super.key,
+  required final String projectId,
+  required final String? projectName,
+  required final String sessionId,
+  final String? sessionTitle,
+  final bool readOnly = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -55,22 +47,18 @@ class SessionDetailScreen extends StatelessWidget {
   }
 }
 
-class _SessionActivityAnalyticsOwner extends StatefulWidget {
-  final Widget child;
-
-  const _SessionActivityAnalyticsOwner({required this.child});
-
+class const _SessionActivityAnalyticsOwner({required final Widget child}) extends StatefulWidget {
   @override
   State<_SessionActivityAnalyticsOwner> createState() => _SessionActivityAnalyticsOwnerState();
 }
 
-class _SessionActivityAnalyticsOwnerState extends State<_SessionActivityAnalyticsOwner> {
+class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
   SessionActivityAnalyticsListener? _listener;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final isRouteVisible = ModalRoute.of(context)?.isCurrent == true;
+    final isRouteVisible = ModalRoute.of(context)?.isCurrent ?? false;
     final listener = _listener;
     if (listener == null) {
       _listener = SessionActivityAnalyticsListener(

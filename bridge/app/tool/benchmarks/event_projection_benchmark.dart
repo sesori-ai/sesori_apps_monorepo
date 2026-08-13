@@ -40,12 +40,7 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({required this.warmupCount, required this.sampleCount});
-
-  final int warmupCount;
-  final int sampleCount;
-
+class const _BenchmarkConfiguration({required final int warmupCount, required final int sampleCount}) {
   static _BenchmarkConfiguration parse({required List<String> arguments}) {
     final parser = ArgParser()
       ..addOption("warmup", defaultsTo: "$_defaultWarmupCount")
@@ -63,11 +58,7 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _EventProjectionBenchmark {
-  const _EventProjectionBenchmark({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
-
-  final _BenchmarkConfiguration _configuration;
-
+class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-event-projection-");
@@ -402,7 +393,7 @@ class _EventProjectionBenchmark {
   }
 }
 
-class _BenchmarkPlugin implements NativeProjectsPluginApi {
+class _BenchmarkPlugin() implements NativeProjectsPluginApi {
   @override
   String get id => _pluginId;
 
@@ -416,7 +407,7 @@ class _BenchmarkPlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _BenchmarkFailureReporter implements FailureReporter {
+class _BenchmarkFailureReporter() implements FailureReporter {
   @override
   void log({required String message}) {}
 

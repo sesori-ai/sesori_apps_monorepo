@@ -14,9 +14,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 /// Implementations compare only against their own scheme; mixing schemes is a
 /// programming error and throws.
 @immutable
-sealed class RuntimeVersion implements Comparable<RuntimeVersion> {
-  const RuntimeVersion();
-
+sealed class const RuntimeVersion() implements Comparable<RuntimeVersion> {
   /// The publisher's exact version string, suitable for download URLs and
   /// on-disk version directories. Never a normalized rendering.
   String get raw;
@@ -26,10 +24,10 @@ sealed class RuntimeVersion implements Comparable<RuntimeVersion> {
 }
 
 /// A semver-ordered runtime version (OpenCode, codex).
-final class SemanticRuntimeVersion extends RuntimeVersion {
-  const SemanticRuntimeVersion._({required this.raw, required this.version});
-
-  factory SemanticRuntimeVersion.parse({required String value}) {
+final class const SemanticRuntimeVersion._({
+  @override
+  required final String raw, required final SemanticVersion version}) extends RuntimeVersion {
+  factory parse({required String value}) {
     return SemanticRuntimeVersion._(
       raw: value.trim(),
       version: SemanticVersion.parse(value: value),
@@ -40,11 +38,6 @@ final class SemanticRuntimeVersion extends RuntimeVersion {
     final parsed = SemanticVersion.tryParse(value: value);
     return parsed == null ? null : SemanticRuntimeVersion._(raw: value.trim(), version: parsed);
   }
-
-  @override
-  final String raw;
-
-  final SemanticVersion version;
 
   @override
   int compareTo(RuntimeVersion other) {
@@ -76,17 +69,16 @@ final class SemanticRuntimeVersion extends RuntimeVersion {
 /// Ordering uses the calendar date only. The suffix identifies a build within a
 /// day and carries no order, so a dated build is never ranked below the same
 /// day's bare version — the mistake semver ordering makes.
-final class CalendarRuntimeVersion extends RuntimeVersion {
-  const CalendarRuntimeVersion._({
-    required this.raw,
-    required this.year,
-    required this.month,
-    required this.day,
-  });
-
+final class const CalendarRuntimeVersion._({
+    @override
+  required final String raw,
+    required final int year,
+    required final int month,
+    required final int day,
+  }) extends RuntimeVersion {
   static final RegExp _pattern = RegExp(r"^(\d{4})\.(\d{1,2})\.(\d{1,2})(?:[-.].*)?$");
 
-  factory CalendarRuntimeVersion.parse({required String value}) {
+  factory parse({required String value}) {
     final parsed = tryParse(value: value);
     if (parsed == null) {
       throw FormatException('Version "$value" is not a YYYY.MM.DD calendar build.');
@@ -110,13 +102,6 @@ final class CalendarRuntimeVersion extends RuntimeVersion {
       day: day,
     );
   }
-
-  @override
-  final String raw;
-
-  final int year;
-  final int month;
-  final int day;
 
   @override
   int compareTo(RuntimeVersion other) {

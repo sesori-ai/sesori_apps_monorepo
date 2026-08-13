@@ -8,9 +8,7 @@ import "tables/history_sync_state_table.dart";
 part "chat_history_dao.g.dart";
 
 @DriftAccessor(tables: [HistoryMessagesTable, HistoryPartsTable, HistorySyncStateTable])
-class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHistoryDaoMixin {
-  ChatHistoryDao(super.attachedDatabase);
-
+class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHistoryDaoMixin {
   Future<HistorySyncStateTableData?> getSyncState({required String sessionId}) {
     return (select(historySyncStateTable)..where((table) => table.sessionId.equals(sessionId))).getSingleOrNull();
   }
@@ -26,7 +24,7 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
     int? before,
   }) async {
     if (limit == null) {
-      return (select(historyMessagesTable)
+      return await (select(historyMessagesTable)
             ..where((table) => table.sessionId.equals(sessionId))
             ..orderBy([(table) => OrderingTerm(expression: table.seq)]))
           .get();
@@ -66,10 +64,11 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
 
   Future<int?> getMaxSeq({required String sessionId}) async {
     final maxSeq = historyMessagesTable.seq.max();
-    final row = await (selectOnly(historyMessagesTable)
-          ..addColumns([maxSeq])
-          ..where(historyMessagesTable.sessionId.equals(sessionId)))
-        .getSingle();
+    final row =
+        await (selectOnly(historyMessagesTable)
+              ..addColumns([maxSeq])
+              ..where(historyMessagesTable.sessionId.equals(sessionId)))
+            .getSingle();
     return row.read(maxSeq);
   }
 
@@ -84,10 +83,11 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
 
   Future<int?> getMaxPartOrderIndex({required String sessionId, required String messageId}) async {
     final maxOrder = historyPartsTable.orderIndex.max();
-    final row = await (selectOnly(historyPartsTable)
-          ..addColumns([maxOrder])
-          ..where(historyPartsTable.sessionId.equals(sessionId) & historyPartsTable.messageId.equals(messageId)))
-        .getSingle();
+    final row =
+        await (selectOnly(historyPartsTable)
+              ..addColumns([maxOrder])
+              ..where(historyPartsTable.sessionId.equals(sessionId) & historyPartsTable.messageId.equals(messageId)))
+            .getSingle();
     return row.read(maxOrder);
   }
 
@@ -99,9 +99,7 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
     final row =
         await (select(historyPartsTable)..where(
               (table) =>
-                  table.sessionId.equals(sessionId) &
-                  table.messageId.equals(messageId) &
-                  table.partId.equals(partId),
+                  table.sessionId.equals(sessionId) & table.messageId.equals(messageId) & table.partId.equals(partId),
             ))
             .getSingleOrNull();
     return row?.orderIndex;
@@ -256,12 +254,14 @@ class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHi
 
   /// Every session id the store holds rows for.
   Future<Set<String>> getStoredSessionIds() async {
-    final rows = await (selectOnly(historyMessagesTable, distinct: true)
-          ..addColumns([historyMessagesTable.sessionId]))
-        .get();
-    final syncRows = await (selectOnly(historySyncStateTable, distinct: true)
-          ..addColumns([historySyncStateTable.sessionId]))
-        .get();
+    final rows = await (selectOnly(
+      historyMessagesTable,
+      distinct: true,
+    )..addColumns([historyMessagesTable.sessionId])).get();
+    final syncRows = await (selectOnly(
+      historySyncStateTable,
+      distinct: true,
+    )..addColumns([historySyncStateTable.sessionId])).get();
     return {
       for (final row in rows) row.read(historyMessagesTable.sessionId)!,
       for (final row in syncRows) row.read(historySyncStateTable.sessionId)!,

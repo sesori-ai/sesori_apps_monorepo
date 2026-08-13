@@ -3,7 +3,7 @@ import "dart:io" show Platform;
 import "package:meta/meta.dart";
 
 /// Operating systems a managed runtime can be published for.
-enum PlatformOs {
+enum PlatformOs() {
   macos,
   linux,
   windows;
@@ -25,7 +25,7 @@ enum PlatformOs {
 }
 
 /// CPU architectures a managed runtime can be published for.
-enum PlatformArch {
+enum PlatformArch() {
   arm64,
   x64;
 
@@ -50,24 +50,18 @@ enum PlatformArch {
 /// published asset name/format/checksum (the bridge updater and the OpenCode
 /// runtime manifest each key their own asset tables off this).
 @immutable
-final class PlatformTarget {
-  const PlatformTarget({required this.os, required this.arch});
-
-  factory PlatformTarget.current() {
+final class const PlatformTarget({required final PlatformOs os, required final PlatformArch arch}) {
+  factory current() {
     return PlatformTarget(
       os: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
       arch: PlatformArch.fromDartVersion(dartVersion: Platform.version),
     );
   }
 
-  final PlatformOs os;
-  final PlatformArch arch;
-
   String get key => "${os.value} ${arch.value}";
 
   @override
-  bool operator ==(Object other) =>
-      other is PlatformTarget && other.os == os && other.arch == arch;
+  bool operator ==(Object other) => other is PlatformTarget && other.os == os && other.arch == arch;
 
   @override
   int get hashCode => Object.hash(os, arch);

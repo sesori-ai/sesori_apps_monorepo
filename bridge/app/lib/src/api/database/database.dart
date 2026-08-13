@@ -35,17 +35,15 @@ part "database.g.dart";
   ],
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
-class AppDatabase extends _$AppDatabase {
+class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
-
-  AppDatabase(super.e);
 
   @override
   int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async => m.createAll(),
+    onCreate: (m) async => await m.createAll(),
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
         await m.addColumn(schema.projectsTable, schema.projectsTable.baseBranch);

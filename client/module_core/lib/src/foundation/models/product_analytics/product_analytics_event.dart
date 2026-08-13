@@ -1,42 +1,30 @@
 import "package:meta/meta.dart";
 
-enum SupportChannel {
+enum SupportChannel({required final String wireValue}) {
   email(wireValue: "email"),
   discord(wireValue: "discord"),
   x(wireValue: "x");
-
-  final String wireValue;
-  SupportChannel({required this.wireValue});
 }
 
-enum OnboardingSurface {
+enum OnboardingSurface({required final String wireValue}) {
   connectSetup(wireValue: "connect_setup"),
   connectedEmpty(wireValue: "connected_empty"),
   bridgeOffline(wireValue: "bridge_offline");
-
-  final String wireValue;
-  OnboardingSurface({required this.wireValue});
 }
 
-enum BridgeInstallMethod {
+enum BridgeInstallMethod({required final String wireValue}) {
   curl(wireValue: "curl"),
   powershell(wireValue: "powershell"),
   npm(wireValue: "npm"),
   bun(wireValue: "bun");
-
-  final String wireValue;
-  BridgeInstallMethod({required this.wireValue});
 }
 
-enum BridgeInstallOs {
+enum BridgeInstallOs({required final String wireValue}) {
   unix(wireValue: "unix"),
   windows(wireValue: "windows");
-
-  final String wireValue;
-  BridgeInstallOs({required this.wireValue});
 }
 
-enum AnalyticsScreen {
+enum AnalyticsScreen({required final String wireValue}) {
   login(wireValue: "login"),
   projects(wireValue: "projects"),
   settings(wireValue: "settings"),
@@ -46,67 +34,44 @@ enum AnalyticsScreen {
   newSession(wireValue: "new_session"),
   sessionDetail(wireValue: "session_detail"),
   sessionDiffs(wireValue: "session_diffs");
-
-  final String wireValue;
-  AnalyticsScreen({required this.wireValue});
 }
 
-enum AnalyticsInputMode {
+enum AnalyticsInputMode({required final String wireValue}) {
   typed(wireValue: "typed"),
   voiceAssisted(wireValue: "voice_assisted");
-
-  final String wireValue;
-  AnalyticsInputMode({required this.wireValue});
 }
 
-enum AnalyticsInventoryState {
+enum AnalyticsInventoryState({required final String wireValue}) {
   empty(wireValue: "empty"),
   nonEmpty(wireValue: "non_empty");
-
-  final String wireValue;
-  AnalyticsInventoryState({required this.wireValue});
 }
 
-enum AnalyticsActivityState {
+enum AnalyticsActivityState({required final String wireValue}) {
   empty(wireValue: "empty"),
   nonEmpty(wireValue: "non_empty");
-
-  final String wireValue;
-  AnalyticsActivityState({required this.wireValue});
 }
 
-enum AnalyticsSubmissionKind {
+enum AnalyticsSubmissionKind({required final String wireValue}) {
   text(wireValue: "text"),
   command(wireValue: "command");
-
-  final String wireValue;
-  AnalyticsSubmissionKind({required this.wireValue});
 }
 
 @immutable
-sealed class AnalyticsSubmission {
-  const AnalyticsSubmission();
-
-  const factory AnalyticsSubmission.text({required AnalyticsInputMode inputMode}) = AnalyticsTextSubmission;
-  const factory AnalyticsSubmission.command() = AnalyticsCommandSubmission;
+sealed class const AnalyticsSubmission() {
+  const factory text({required AnalyticsInputMode inputMode}) = AnalyticsTextSubmission;
+  const factory command() = AnalyticsCommandSubmission;
 
   AnalyticsSubmissionKind get kind;
   AnalyticsInputMode get inputMode;
 }
 
-final class AnalyticsTextSubmission extends AnalyticsSubmission {
-  @override
-  final AnalyticsInputMode inputMode;
-
-  const AnalyticsTextSubmission({required this.inputMode});
-
+final class const AnalyticsTextSubmission({@override required final AnalyticsInputMode inputMode})
+    extends AnalyticsSubmission {
   @override
   AnalyticsSubmissionKind get kind => AnalyticsSubmissionKind.text;
 }
 
-final class AnalyticsCommandSubmission extends AnalyticsSubmission {
-  const AnalyticsCommandSubmission();
-
+final class const AnalyticsCommandSubmission() extends AnalyticsSubmission {
   @override
   AnalyticsSubmissionKind get kind => AnalyticsSubmissionKind.command;
 
@@ -114,108 +79,90 @@ final class AnalyticsCommandSubmission extends AnalyticsSubmission {
   AnalyticsInputMode get inputMode => AnalyticsInputMode.typed;
 }
 
-enum AnalyticsWorkspaceKind {
+enum AnalyticsWorkspaceKind({required final String wireValue}) {
   project(wireValue: "project"),
   dedicatedWorktree(wireValue: "dedicated_worktree");
-
-  final String wireValue;
-  AnalyticsWorkspaceKind({required this.wireValue});
 }
 
-enum AnalyticsSessionCreationFailureReason {
+enum AnalyticsSessionCreationFailureReason({required final String wireValue}) {
   notAuthenticated(wireValue: "not_authenticated"),
   serverRejected(wireValue: "server_rejected"),
   networkDown(wireValue: "network_down"),
   badResponse(wireValue: "bad_response"),
   unknown(wireValue: "unknown");
-
-  final String wireValue;
-  AnalyticsSessionCreationFailureReason({required this.wireValue});
 }
 
-enum AnalyticsPermissionDecision {
+enum AnalyticsPermissionDecision({required final String wireValue}) {
   once(wireValue: "once"),
   always(wireValue: "always"),
   reject(wireValue: "reject");
-
-  final String wireValue;
-  AnalyticsPermissionDecision({required this.wireValue});
 }
 
 /// Outcome of a phone-triggered managed harness runtime install. Bounded on
 /// purpose: the harness identity and any failure text stay off the wire.
-enum AnalyticsHarnessInstallOutcome {
+enum AnalyticsHarnessInstallOutcome({required final String wireValue}) {
   completed(wireValue: "completed"),
   failed(wireValue: "failed");
-
-  final String wireValue;
-  AnalyticsHarnessInstallOutcome({required this.wireValue});
 }
 
-enum AnalyticsChangeState {
+enum AnalyticsChangeState({required final String wireValue}) {
   empty(wireValue: "empty"),
   nonEmpty(wireValue: "non_empty");
-
-  final String wireValue;
-  AnalyticsChangeState({required this.wireValue});
 }
 
 @immutable
-sealed class ProductAnalyticsEvent {
-  const ProductAnalyticsEvent();
-
-  const factory ProductAnalyticsEvent.analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
-  const factory ProductAnalyticsEvent.analyticsActivationReady() = AnalyticsActivationReadyEvent;
-  const factory ProductAnalyticsEvent.projectInventoryLoaded({
+sealed class const ProductAnalyticsEvent() {
+  const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
+  const factory analyticsActivationReady() = AnalyticsActivationReadyEvent;
+  const factory projectInventoryLoaded({
     required AnalyticsInventoryState inventoryState,
   }) = ProjectInventoryLoadedEvent;
-  const factory ProductAnalyticsEvent.sessionActivityViewed({
+  const factory sessionActivityViewed({
     required AnalyticsActivityState activityState,
   }) = SessionActivityViewedEvent;
-  const factory ProductAnalyticsEvent.sessionMessageSent({
+  const factory sessionMessageSent({
     required AnalyticsSubmission submission,
   }) = SessionMessageSentEvent;
-  const factory ProductAnalyticsEvent.sessionCreatedWithMessage({
+  const factory sessionCreatedWithMessage({
     required AnalyticsSubmission submission,
     required AnalyticsWorkspaceKind workspaceKind,
   }) = SessionCreatedWithMessageEvent;
-  const factory ProductAnalyticsEvent.sessionCreationFailed({
+  const factory sessionCreationFailed({
     required AnalyticsSessionCreationFailureReason failureReason,
     required AnalyticsWorkspaceKind workspaceKind,
   }) = SessionCreationFailedEvent;
-  const factory ProductAnalyticsEvent.voiceTranscriptionCompleted() = VoiceTranscriptionCompletedEvent;
-  const factory ProductAnalyticsEvent.sessionQuestionAnswered() = SessionQuestionAnsweredEvent;
-  const factory ProductAnalyticsEvent.sessionQuestionRejected() = SessionQuestionRejectedEvent;
-  const factory ProductAnalyticsEvent.sessionPermissionAnswered({
+  const factory voiceTranscriptionCompleted() = VoiceTranscriptionCompletedEvent;
+  const factory sessionQuestionAnswered() = SessionQuestionAnsweredEvent;
+  const factory sessionQuestionRejected() = SessionQuestionRejectedEvent;
+  const factory sessionPermissionAnswered({
     required AnalyticsPermissionDecision decision,
   }) = SessionPermissionAnsweredEvent;
-  const factory ProductAnalyticsEvent.sessionAbortSucceeded() = SessionAbortSucceededEvent;
-  const factory ProductAnalyticsEvent.harnessInstallFinished({
+  const factory sessionAbortSucceeded() = SessionAbortSucceededEvent;
+  const factory harnessInstallFinished({
     required AnalyticsHarnessInstallOutcome outcome,
   }) = HarnessInstallFinishedEvent;
-  const factory ProductAnalyticsEvent.sessionDiffViewed({
+  const factory sessionDiffViewed({
     required AnalyticsChangeState changeState,
   }) = SessionDiffViewedEvent;
-  const factory ProductAnalyticsEvent.needHelpMenuOpened({required OnboardingSurface surface}) =
-      NeedHelpMenuOpenedEvent;
-  const factory ProductAnalyticsEvent.supportLinkOpened({
+  const factory needHelpMenuOpened({required OnboardingSurface surface}) = NeedHelpMenuOpenedEvent;
+  const factory supportLinkOpened({
     required SupportChannel channel,
     required OnboardingSurface surface,
   }) = SupportLinkOpenedEvent;
-  const factory ProductAnalyticsEvent.whyBridgeOpened({required OnboardingSurface surface}) = WhyBridgeOpenedEvent;
-  const factory ProductAnalyticsEvent.installCommandCopied({
+  const factory whyBridgeOpened({required OnboardingSurface surface}) = WhyBridgeOpenedEvent;
+  const factory installCommandCopied({
     required BridgeInstallMethod method,
     required BridgeInstallOs os,
     required OnboardingSurface surface,
   }) = InstallCommandCopiedEvent;
-  const factory ProductAnalyticsEvent.installCommandShared({
+  const factory installCommandShared({
     required BridgeInstallMethod method,
     required BridgeInstallOs os,
     required OnboardingSurface surface,
   }) = InstallCommandSharedEvent;
-  const factory ProductAnalyticsEvent.runCommandCopied({required OnboardingSurface surface}) = RunCommandCopiedEvent;
-  const factory ProductAnalyticsEvent.runCommandShared({required OnboardingSurface surface}) = RunCommandSharedEvent;
-  const factory ProductAnalyticsEvent.screenViewed({required AnalyticsScreen screen}) = ProductScreenViewedEvent;
+  const factory runCommandCopied({required OnboardingSurface surface}) = RunCommandCopiedEvent;
+  const factory runCommandShared({required OnboardingSurface surface}) = RunCommandSharedEvent;
+  const factory screenViewed({required AnalyticsScreen screen}) = ProductScreenViewedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -235,9 +182,7 @@ sealed class ProductAnalyticsEvent {
   );
 }
 
-final class AnalyticsSchemaReadyEvent extends ProductAnalyticsEvent {
-  const AnalyticsSchemaReadyEvent();
-
+final class const AnalyticsSchemaReadyEvent() extends ProductAnalyticsEvent {
   @override
   String get wireName => "analytics_schema_ready";
 
@@ -245,9 +190,7 @@ final class AnalyticsSchemaReadyEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => const {};
 }
 
-final class AnalyticsActivationReadyEvent extends ProductAnalyticsEvent {
-  const AnalyticsActivationReadyEvent();
-
+final class const AnalyticsActivationReadyEvent() extends ProductAnalyticsEvent {
   @override
   String get wireName => "analytics_activation_ready";
 
@@ -255,10 +198,8 @@ final class AnalyticsActivationReadyEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => const {"activation_schema_version": "1"};
 }
 
-final class ProjectInventoryLoadedEvent extends ProductAnalyticsEvent {
-  final AnalyticsInventoryState inventoryState;
-  const ProjectInventoryLoadedEvent({required this.inventoryState});
-
+final class const ProjectInventoryLoadedEvent({required final AnalyticsInventoryState inventoryState})
+    extends ProductAnalyticsEvent {
   @override
   String get wireName => "project_inventory_loaded";
 
@@ -266,10 +207,8 @@ final class ProjectInventoryLoadedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"inventory_state": inventoryState.wireValue};
 }
 
-final class SessionActivityViewedEvent extends ProductAnalyticsEvent {
-  final AnalyticsActivityState activityState;
-  const SessionActivityViewedEvent({required this.activityState});
-
+final class const SessionActivityViewedEvent({required final AnalyticsActivityState activityState})
+    extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_activity_viewed";
 
@@ -277,10 +216,8 @@ final class SessionActivityViewedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"activity_state": activityState.wireValue};
 }
 
-final class SessionMessageSentEvent extends ProductAnalyticsEvent {
-  final AnalyticsSubmission submission;
-  const SessionMessageSentEvent({required this.submission});
-
+final class const SessionMessageSentEvent({required final AnalyticsSubmission submission})
+    extends ProductAnalyticsEvent {
   AnalyticsSubmissionKind get submissionKind => submission.kind;
   AnalyticsInputMode get inputMode => submission.inputMode;
 
@@ -294,14 +231,10 @@ final class SessionMessageSentEvent extends ProductAnalyticsEvent {
   };
 }
 
-final class SessionCreatedWithMessageEvent extends ProductAnalyticsEvent {
-  final AnalyticsSubmission submission;
-  final AnalyticsWorkspaceKind workspaceKind;
-  const SessionCreatedWithMessageEvent({
-    required this.submission,
-    required this.workspaceKind,
-  });
-
+final class const SessionCreatedWithMessageEvent({
+  required final AnalyticsSubmission submission,
+  required final AnalyticsWorkspaceKind workspaceKind,
+}) extends ProductAnalyticsEvent {
   AnalyticsSubmissionKind get submissionKind => submission.kind;
   AnalyticsInputMode get inputMode => submission.inputMode;
 
@@ -316,11 +249,10 @@ final class SessionCreatedWithMessageEvent extends ProductAnalyticsEvent {
   };
 }
 
-final class SessionCreationFailedEvent extends ProductAnalyticsEvent {
-  final AnalyticsSessionCreationFailureReason failureReason;
-  final AnalyticsWorkspaceKind workspaceKind;
-  const SessionCreationFailedEvent({required this.failureReason, required this.workspaceKind});
-
+final class const SessionCreationFailedEvent({
+  required final AnalyticsSessionCreationFailureReason failureReason,
+  required final AnalyticsWorkspaceKind workspaceKind,
+}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_creation_failed";
 
@@ -331,9 +263,7 @@ final class SessionCreationFailedEvent extends ProductAnalyticsEvent {
   };
 }
 
-final class VoiceTranscriptionCompletedEvent extends ProductAnalyticsEvent {
-  const VoiceTranscriptionCompletedEvent();
-
+final class const VoiceTranscriptionCompletedEvent() extends ProductAnalyticsEvent {
   @override
   String get wireName => "voice_transcription_completed";
 
@@ -341,9 +271,7 @@ final class VoiceTranscriptionCompletedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => const {};
 }
 
-final class SessionQuestionAnsweredEvent extends ProductAnalyticsEvent {
-  const SessionQuestionAnsweredEvent();
-
+final class const SessionQuestionAnsweredEvent() extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_question_answered";
 
@@ -351,9 +279,7 @@ final class SessionQuestionAnsweredEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => const {};
 }
 
-final class SessionQuestionRejectedEvent extends ProductAnalyticsEvent {
-  const SessionQuestionRejectedEvent();
-
+final class const SessionQuestionRejectedEvent() extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_question_rejected";
 
@@ -361,10 +287,8 @@ final class SessionQuestionRejectedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => const {};
 }
 
-final class SessionPermissionAnsweredEvent extends ProductAnalyticsEvent {
-  final AnalyticsPermissionDecision decision;
-  const SessionPermissionAnsweredEvent({required this.decision});
-
+final class const SessionPermissionAnsweredEvent({required final AnalyticsPermissionDecision decision})
+    extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_permission_answered";
 
@@ -372,9 +296,7 @@ final class SessionPermissionAnsweredEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"decision": decision.wireValue};
 }
 
-final class SessionAbortSucceededEvent extends ProductAnalyticsEvent {
-  const SessionAbortSucceededEvent();
-
+final class const SessionAbortSucceededEvent() extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_abort_succeeded";
 
@@ -385,10 +307,8 @@ final class SessionAbortSucceededEvent extends ProductAnalyticsEvent {
 /// Whether a phone-triggered harness runtime install actually succeeded — the
 /// adoption signal for install-from-phone. Reported at the bridge's terminal
 /// install event, not at the tap.
-final class HarnessInstallFinishedEvent extends ProductAnalyticsEvent {
-  final AnalyticsHarnessInstallOutcome outcome;
-  const HarnessInstallFinishedEvent({required this.outcome});
-
+final class const HarnessInstallFinishedEvent({required final AnalyticsHarnessInstallOutcome outcome})
+    extends ProductAnalyticsEvent {
   @override
   String get wireName => "harness_install_finished";
 
@@ -396,10 +316,8 @@ final class HarnessInstallFinishedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"outcome": outcome.wireValue};
 }
 
-final class SessionDiffViewedEvent extends ProductAnalyticsEvent {
-  final AnalyticsChangeState changeState;
-  const SessionDiffViewedEvent({required this.changeState});
-
+final class const SessionDiffViewedEvent({required final AnalyticsChangeState changeState})
+    extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_diff_viewed";
 
@@ -407,10 +325,7 @@ final class SessionDiffViewedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"change_state": changeState.wireValue};
 }
 
-final class NeedHelpMenuOpenedEvent extends ProductAnalyticsEvent {
-  final OnboardingSurface surface;
-  const NeedHelpMenuOpenedEvent({required this.surface});
-
+final class const NeedHelpMenuOpenedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "onboarding_need_help_opened";
 
@@ -418,11 +333,10 @@ final class NeedHelpMenuOpenedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"surface": surface.wireValue};
 }
 
-final class SupportLinkOpenedEvent extends ProductAnalyticsEvent {
-  final SupportChannel channel;
-  final OnboardingSurface surface;
-  const SupportLinkOpenedEvent({required this.channel, required this.surface});
-
+final class const SupportLinkOpenedEvent({
+  required final SupportChannel channel,
+  required final OnboardingSurface surface,
+}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "onboarding_support_link_opened";
 
@@ -430,10 +344,7 @@ final class SupportLinkOpenedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"channel": channel.wireValue, "surface": surface.wireValue};
 }
 
-final class WhyBridgeOpenedEvent extends ProductAnalyticsEvent {
-  final OnboardingSurface surface;
-  const WhyBridgeOpenedEvent({required this.surface});
-
+final class const WhyBridgeOpenedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "onboarding_why_bridge_opened";
 
@@ -441,12 +352,11 @@ final class WhyBridgeOpenedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"surface": surface.wireValue};
 }
 
-final class InstallCommandCopiedEvent extends ProductAnalyticsEvent {
-  final BridgeInstallMethod method;
-  final BridgeInstallOs os;
-  final OnboardingSurface surface;
-  const InstallCommandCopiedEvent({required this.method, required this.os, required this.surface});
-
+final class const InstallCommandCopiedEvent({
+  required final BridgeInstallMethod method,
+  required final BridgeInstallOs os,
+  required final OnboardingSurface surface,
+}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "bridge_install_command_copied";
 
@@ -458,12 +368,11 @@ final class InstallCommandCopiedEvent extends ProductAnalyticsEvent {
   };
 }
 
-final class InstallCommandSharedEvent extends ProductAnalyticsEvent {
-  final BridgeInstallMethod method;
-  final BridgeInstallOs os;
-  final OnboardingSurface surface;
-  const InstallCommandSharedEvent({required this.method, required this.os, required this.surface});
-
+final class const InstallCommandSharedEvent({
+  required final BridgeInstallMethod method,
+  required final BridgeInstallOs os,
+  required final OnboardingSurface surface,
+}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "bridge_install_command_shared";
 
@@ -475,10 +384,7 @@ final class InstallCommandSharedEvent extends ProductAnalyticsEvent {
   };
 }
 
-final class RunCommandCopiedEvent extends ProductAnalyticsEvent {
-  final OnboardingSurface surface;
-  const RunCommandCopiedEvent({required this.surface});
-
+final class const RunCommandCopiedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "bridge_run_command_copied";
 
@@ -486,10 +392,7 @@ final class RunCommandCopiedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"surface": surface.wireValue};
 }
 
-final class RunCommandSharedEvent extends ProductAnalyticsEvent {
-  final OnboardingSurface surface;
-  const RunCommandSharedEvent({required this.surface});
-
+final class const RunCommandSharedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "bridge_run_command_shared";
 
@@ -497,10 +400,7 @@ final class RunCommandSharedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"surface": surface.wireValue};
 }
 
-final class ProductScreenViewedEvent extends ProductAnalyticsEvent {
-  final AnalyticsScreen screen;
-  const ProductScreenViewedEvent({required this.screen});
-
+final class const ProductScreenViewedEvent({required final AnalyticsScreen screen}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "product_screen_viewed";
 
@@ -508,10 +408,6 @@ final class ProductScreenViewedEvent extends ProductAnalyticsEvent {
   Map<String, String> get parameters => {"screen": screen.wireValue};
 }
 
-final class ProductAnalyticsEnvelope {
-  final ProductAnalyticsEvent event;
-  final DateTime occurredAtUtc;
-
-  ProductAnalyticsEnvelope({required this.event, required DateTime occurredAtUtc})
-    : occurredAtUtc = occurredAtUtc.toUtc();
+final class ProductAnalyticsEnvelope({required final ProductAnalyticsEvent event, required DateTime occurredAtUtc}) {
+  final DateTime occurredAtUtc = occurredAtUtc.toUtc();
 }

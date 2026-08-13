@@ -62,25 +62,14 @@ CursorPlugin _defaultBuildPlugin({
 ///
 /// The optional constructor parameters are test seams; the registered instance
 /// is `const CursorPluginDescriptor()`.
-class CursorPluginDescriptor extends BridgePluginDescriptor {
-  const CursorPluginDescriptor({
-    CursorPluginFactory? buildPlugin,
-    Duration connectBudget = const Duration(seconds: 15),
-    Duration versionProbeTimeout = const Duration(seconds: 10),
-    ManagedRuntimeProvisionService? provisionService,
-  }) : _buildPlugin = buildPlugin,
-       _connectBudget = connectBudget,
-       _versionProbeTimeout = versionProbeTimeout,
-       _provisionService = provisionService;
-
-  final CursorPluginFactory? _buildPlugin;
-  final Duration _connectBudget;
-  final Duration _versionProbeTimeout;
-
-  /// Test seam for existing-runtime resolution. Production builds a default in
-  /// [ensureRuntime] from the host's process service.
-  final ManagedRuntimeProvisionService? _provisionService;
-
+class const CursorPluginDescriptor({
+    final CursorPluginFactory? _buildPlugin,
+    final Duration _connectBudget = const Duration(seconds: 15),
+    final Duration _versionProbeTimeout = const Duration(seconds: 10),
+    /// Test seam for existing-runtime resolution. Production builds a default in
+    /// [ensureRuntime] from the host's process service.
+    final ManagedRuntimeProvisionService? _provisionService,
+  }) extends BridgePluginDescriptor {
   /// Minimum Cursor CLI build the bridge supports, owned by
   /// [CursorRuntimeManifest.minPathVersion]. Earlier builds (e.g.
   /// `2026.05.28`) advertise the `acp` model picker and `session/load` but
@@ -483,4 +472,4 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   }
 }
 
-enum _CursorRuntimeProbeState { ready, missing, outdated, unknown, unrecognized }
+enum _CursorRuntimeProbeState() { ready, missing, outdated, unknown, unrecognized }

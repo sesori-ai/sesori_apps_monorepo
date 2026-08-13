@@ -3,16 +3,14 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/catalog_import_service.dart";
 
-class CancelCatalogImportHandler extends BodyRequestHandler<CatalogImportRequest, SuccessEmptyResponse> {
-  CancelCatalogImportHandler({required CatalogImportService service})
-    : _service = service,
-      super(
+class CancelCatalogImportHandler({required final CatalogImportService _service})
+    extends BodyRequestHandler<CatalogImportRequest, SuccessEmptyResponse> {
+  this
+    : super(
         HttpMethod.delete,
         "/plugin/import",
         fromJson: CatalogImportRequest.fromJson,
       );
-
-  final CatalogImportService _service;
 
   @override
   Future<SuccessEmptyResponse> handle(

@@ -23,22 +23,22 @@ import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
-class SessionListCubit extends Cubit<SessionListState> {
+class SessionListCubit({
+  required final SessionService _sessionService,
+  required final SessionListService _sessionListService,
+  required final ProjectRepository _projectRepository,
+  required final ConnectionService _connectionService,
+  required final SseEventTracker _sseEventTracker,
+  required final SessionUnseenTracker _sessionUnseenTracker,
+  required final ProjectViewingService _projectViewingService,
+  required final RouteSource _routeSource,
+  required final String _projectId,
+  required final bool? initialSupportsDedicatedWorktrees,
+  required final FailureReporter _failureReporter,
+}) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  final SessionService _sessionService;
-  final SessionListService _sessionListService;
-  final ProjectRepository _projectRepository;
-  final ConnectionService _connectionService;
-  final SseEventTracker _sseEventTracker;
-  final SessionUnseenTracker _sessionUnseenTracker;
-  final ProjectViewingService _projectViewingService;
-  final ProjectViewClaim _projectViewClaim;
-  final RouteSource _routeSource;
-  final String _projectId;
-  final bool? initialSupportsDedicatedWorktrees;
-  final FailureReporter _failureReporter;
-
+  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginListClaim(projectId: _projectId);
   SessionCleanupRejection? _lastCleanupRejection;
 
   /// Cached git context (base branch + remote repository identity), fetched
@@ -46,30 +46,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// keeps the last-known values.
   ProjectGitContext? _gitContext;
 
-  SessionListCubit({
-    required SessionService sessionService,
-    required SessionListService sessionListService,
-    required ProjectRepository projectRepository,
-    required ConnectionService connectionService,
-    required SseEventTracker sseEventTracker,
-    required SessionUnseenTracker sessionUnseenTracker,
-    required ProjectViewingService projectViewingService,
-    required RouteSource routeSource,
-    required String projectId,
-    required this.initialSupportsDedicatedWorktrees,
-    required FailureReporter failureReporter,
-  }) : _sessionService = sessionService,
-       _sessionListService = sessionListService,
-       _projectRepository = projectRepository,
-       _connectionService = connectionService,
-       _sseEventTracker = sseEventTracker,
-       _sessionUnseenTracker = sessionUnseenTracker,
-       _projectViewingService = projectViewingService,
-       _projectViewClaim = projectViewingService.beginListClaim(projectId: projectId),
-       _routeSource = routeSource,
-       _projectId = projectId,
-       _failureReporter = failureReporter,
-       super(const SessionListState.loading()) {
+  this : super(const SessionListState.loading()) {
     loadSessions();
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
     // 1. Navigate-back refresh: one immediate fetch when the user returns to

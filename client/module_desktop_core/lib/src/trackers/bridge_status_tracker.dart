@@ -11,7 +11,7 @@ import "bridge_control_status.dart";
 /// the offline baseline before any helper connects, so the v1 UI can render
 /// "bridge off" without a control channel.
 @lazySingleton
-class BridgeStatusTracker {
+class BridgeStatusTracker() {
   final BehaviorSubject<BridgeControlStatus> _status = BehaviorSubject.seeded(BridgeControlStatus.offline);
 
   ValueStream<BridgeControlStatus> get statusStream => _status.stream;

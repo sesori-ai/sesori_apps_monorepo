@@ -28,9 +28,7 @@ import "package:meta/meta.dart";
 /// can refresh details (a new hint, the next restart attempt) without leaving
 /// the state. Setting a status equal to the current one is a no-op everywhere.
 @immutable
-sealed class PluginStatus {
-  const PluginStatus();
-
+sealed class const PluginStatus() {
   /// Whether the state machine permits moving from this status to [next].
   ///
   /// Transitioning to a status equal to the current one is handled by the
@@ -55,9 +53,7 @@ sealed class PluginStatus {
 }
 
 /// The plugin is acquiring its resources; `start()` has not completed yet.
-final class PluginStarting extends PluginStatus {
-  const PluginStarting();
-
+final class const PluginStarting() extends PluginStatus {
   @override
   bool operator ==(Object other) => other is PluginStarting;
 
@@ -69,9 +65,7 @@ final class PluginStarting extends PluginStatus {
 }
 
 /// The plugin is fully operational.
-final class PluginReady extends PluginStatus {
-  const PluginReady();
-
+final class const PluginReady() extends PluginStatus {
   @override
   bool operator ==(Object other) => other is PluginReady;
 
@@ -88,30 +82,26 @@ final class PluginReady extends PluginStatus {
 /// loss should surface here, not as [PluginFailed]. When recovery needs a
 /// human (e.g. a remote plugin's credentials expired), set
 /// [requiresUserAction] and explain what to do in [userActionHint].
-final class PluginDegraded extends PluginStatus {
-  const PluginDegraded({
-    required this.since,
-    required this.recoverable,
-    required this.requiresUserAction,
-    required this.userActionHint,
-  }) : assert(
-         !requiresUserAction || userActionHint != null,
-         "userActionHint should explain what to do when requiresUserAction is true",
-       );
-
+final class const PluginDegraded({
   /// When the degradation was first observed (not when it was reported —
   /// debounced reporters keep the earliest observation time).
-  final DateTime since;
+  required final DateTime since,
 
   /// Whether the plugin expects to recover without intervention.
-  final bool recoverable;
+  required final bool recoverable,
 
   /// Whether recovery needs the user to act (re-authenticate, restart a
   /// remote server). When `true`, [userActionHint] should say what to do.
-  final bool requiresUserAction;
+  required final bool requiresUserAction,
 
   /// Human-readable instruction shown when [requiresUserAction] is `true`.
-  final String? userActionHint;
+  required final String? userActionHint,
+}) extends PluginStatus {
+  this
+    : assert(
+        !requiresUserAction || userActionHint != null,
+        "userActionHint should explain what to do when requiresUserAction is true",
+      );
 
   @override
   bool operator ==(Object other) {
@@ -135,15 +125,14 @@ final class PluginDegraded extends PluginStatus {
 }
 
 /// The plugin is restarting its managed runtime after an unexpected exit.
-final class PluginRestarting extends PluginStatus {
-  const PluginRestarting({required this.attempt, required this.reason})
-    : assert(attempt >= 1, "attempt is 1-based: the first restart is attempt 1");
-
+final class const PluginRestarting({
   /// 1-based restart attempt within the current failure episode.
-  final int attempt;
+  required final int attempt,
 
   /// Why the restart was triggered (e.g. "runtime exited with code 1").
-  final String? reason;
+  required final String? reason,
+}) extends PluginStatus {
+  this : assert(attempt >= 1, "attempt is 1-based: the first restart is attempt 1");
 
   @override
   bool operator ==(Object other) {
@@ -163,15 +152,13 @@ final class PluginRestarting extends PluginStatus {
 /// bridge and other plugins continue running. A plugin that is being stopped
 /// deliberately must never emit this — the state machine forbids `Failed`
 /// after `Stopping`.
-final class PluginFailed extends PluginStatus {
-  const PluginFailed({required this.reason, required this.cause});
-
+final class const PluginFailed({
   /// Human-readable description of the terminal failure.
-  final String reason;
+  required final String reason,
 
   /// The underlying error, when one exists.
-  final Object? cause;
-
+  required final Object? cause,
+}) extends PluginStatus {
   @override
   bool operator ==(Object other) {
     return other is PluginFailed && other.reason == reason && other.cause == cause;
@@ -185,9 +172,7 @@ final class PluginFailed extends PluginStatus {
 }
 
 /// The plugin's `shutdown()` is in progress.
-final class PluginStopping extends PluginStatus {
-  const PluginStopping();
-
+final class const PluginStopping() extends PluginStatus {
   @override
   bool operator ==(Object other) => other is PluginStopping;
 
@@ -199,9 +184,7 @@ final class PluginStopping extends PluginStatus {
 }
 
 /// The plugin has fully stopped; the status stream closes after this.
-final class PluginStopped extends PluginStatus {
-  const PluginStopped();
-
+final class const PluginStopped() extends PluginStatus {
   @override
   bool operator ==(Object other) => other is PluginStopped;
 

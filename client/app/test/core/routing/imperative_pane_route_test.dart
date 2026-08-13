@@ -27,9 +27,7 @@ void main() {
   });
 }
 
-class _ImperativeProbe extends StatelessWidget {
-  const _ImperativeProbe();
-
+class const _ImperativeProbe() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text("imperative=${isImperativePaneRoute(context)}");

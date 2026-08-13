@@ -61,7 +61,7 @@ void main() {
   });
 }
 
-class _FakeTerminalPromptApi implements TerminalPromptApi {
+class _FakeTerminalPromptApi() implements TerminalPromptApi {
   bool isInteractiveValue = true;
   String? answer;
   int readCount = 0;

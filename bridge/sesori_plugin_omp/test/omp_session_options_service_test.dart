@@ -235,7 +235,7 @@ AcpNewSessionResult _result({required String model, required String mode, requir
       raw: const {},
     );
 
-class _FakeConfigRepository implements AcpSessionConfigRepository {
+class _FakeConfigRepository() implements AcpSessionConfigRepository {
   final List<AcpNewSessionResult> results = [];
   final List<({String configId, String value})> writes = [];
 
@@ -250,11 +250,8 @@ class _FakeConfigRepository implements AcpSessionConfigRepository {
   }
 }
 
-class _FakeCatalogService implements OmpCatalogService {
-  _FakeCatalogService(this.catalog) : result = OmpCatalogObserved(catalog: catalog);
-
-  final OmpProjectCatalog catalog;
-  OmpCatalogDiscoveryResult result;
+class _FakeCatalogService(final OmpProjectCatalog catalog) implements OmpCatalogService {
+  OmpCatalogDiscoveryResult result = OmpCatalogObserved(catalog: catalog);
 
   @override
   Future<OmpCatalogDiscoveryResult> ensureCatalog({required String projectId}) async => result;
@@ -266,7 +263,7 @@ class _FakeCatalogService implements OmpCatalogService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _UnusedAcpApi implements OmpAcpApi {
+class _UnusedAcpApi() implements OmpAcpApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -2,9 +2,7 @@ import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-class LoopbackPortApi {
-  const LoopbackPortApi();
-
+class const LoopbackPortApi() {
   Future<bool> isBindable({
     required String host,
     required int port,

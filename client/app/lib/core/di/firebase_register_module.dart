@@ -17,7 +17,7 @@ const firebaseDisabledEnvironment = Environment(firebaseDisabledEnvironmentName)
 
 /// Selects real FlutterFire objects or type-compatible no-ops as one DI unit.
 @module
-abstract class FirebaseRegisterModule {
+abstract class FirebaseRegisterModule() {
   @firebaseEnabledEnvironment
   @lazySingleton
   FirebaseApp get enabledFirebaseApp => Firebase.app();

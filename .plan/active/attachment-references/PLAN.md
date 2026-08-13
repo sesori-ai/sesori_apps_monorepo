@@ -6,7 +6,7 @@
 - **Status:** Step 8/11 - client thumbnail cache ready for review
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `88059e20`
+- **Implementation base:** `origin/main` at `b87e4343`
 - **Delivery:** one plan PR, nine sequential implementation PRs, and one
   plan-retirement PR
 - **Related future work:** prompt-upload decisions are recorded separately in

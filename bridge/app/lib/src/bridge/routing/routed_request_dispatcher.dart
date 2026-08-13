@@ -3,21 +3,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "request_router.dart";
 import "routed_request.dart";
 
-sealed class RoutedRequestDispatchResult {
-  const RoutedRequestDispatchResult();
-}
+sealed class const RoutedRequestDispatchResult();
 
-final class RoutedRequestAccepted extends RoutedRequestDispatchResult {
-  final PendingRoutedRequest pendingRequest;
+final class const RoutedRequestAccepted({required final PendingRoutedRequest pendingRequest})
+    extends RoutedRequestDispatchResult;
 
-  const RoutedRequestAccepted({required this.pendingRequest});
-}
-
-final class RoutedRequestShutdownRejected extends RoutedRequestDispatchResult {
-  final String requestId;
-
-  const RoutedRequestShutdownRejected({required this.requestId});
-
+final class const RoutedRequestShutdownRejected({required final String requestId}) extends RoutedRequestDispatchResult {
   RelayResponse get response => RelayResponse(
     id: requestId,
     status: 503,
@@ -27,14 +18,11 @@ final class RoutedRequestShutdownRejected extends RoutedRequestDispatchResult {
 }
 
 /// Owns route acceptance and the completion barrier shared by every transport.
-class RoutedRequestDispatcher {
-  final RequestRouter _router;
+class RoutedRequestDispatcher({required final RequestRouter _router}) {
   final Set<Future<RoutedRequestOutcome>> _inFlightRoutes = <Future<RoutedRequestOutcome>>{};
 
   bool _accepting = true;
   Future<void>? _drainFuture;
-
-  RoutedRequestDispatcher({required RequestRouter router}) : _router = router;
 
   RoutedRequestDispatchResult dispatch({required RelayRequest request}) {
     if (!_accepting) {

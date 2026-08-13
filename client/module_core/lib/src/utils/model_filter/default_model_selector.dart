@@ -28,9 +28,7 @@ import "package:sesori_shared/sesori_shared.dart";
 /// `bridge/sesori_plugin_opencode/lib/src/provider_mapper.dart`, and a
 /// hard cutoff can hide new models whose metadata is missing or stale.
 @lazySingleton
-class DefaultModelSelector {
-  const DefaultModelSelector();
-
+class const DefaultModelSelector() {
   /// Selects the default model for a single family of [ProviderModel]s.
   ///
   /// Returns `null` only if [group] is empty.

@@ -4,16 +4,10 @@ import "../bridge/services/permission_auto_approval_service.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 
-class YoloSettingsService {
-  YoloSettingsService({
-    required BridgeSettingsRepository bridgeSettingsRepository,
-    required PermissionAutoApprovalService permissionAutoApprovalService,
-  }) : _bridgeSettingsRepository = bridgeSettingsRepository,
-       _permissionAutoApprovalService = permissionAutoApprovalService;
-
-  final BridgeSettingsRepository _bridgeSettingsRepository;
-  final PermissionAutoApprovalService _permissionAutoApprovalService;
-
+class YoloSettingsService({
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final PermissionAutoApprovalService _permissionAutoApprovalService,
+}) {
   YoloSettingsResponse get currentSettings => _response(settings: _bridgeSettingsRepository.currentSettings);
 
   Future<YoloSettingsResponse> readCommittedSettings() async {

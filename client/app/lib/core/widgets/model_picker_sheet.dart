@@ -18,26 +18,18 @@ import "model_picker_list_items.dart";
 /// The sheet opens immediately with a progress indicator: the provider and
 /// model grouping/sorting runs in a background isolate once the sheet is up,
 /// so opening never blocks the UI thread on the size of the model catalog.
-class ModelPickerSheet extends StatefulWidget {
-  final List<ProviderInfo> providers;
-  final String selectedProviderID;
-  final String selectedModelID;
-  final void Function({required String providerID, required String modelID}) onModelChanged;
+class const ModelPickerSheet({
+  super.key,
+  required final List<ProviderInfo> providers,
+  required final String selectedProviderID,
+  required final String selectedModelID,
+  required final void Function({required String providerID, required String modelID}) onModelChanged,
 
   /// Whether the search field grabs focus (and raises the keyboard) as soon as
   /// the sheet opens. Used when the sheet is opened straight into "search mode"
   /// from the composer's model menu.
-  final bool autofocusSearch;
-
-  const ModelPickerSheet({
-    super.key,
-    required this.providers,
-    required this.selectedProviderID,
-    required this.selectedModelID,
-    required this.onModelChanged,
-    this.autofocusSearch = false,
-  });
-
+  final bool autofocusSearch = false,
+}) extends StatefulWidget {
   /// Shows the model picker as a modal bottom sheet.
   ///
   /// [fullScreen] makes the sheet rise to just below the top safe area instead
@@ -99,7 +91,7 @@ class ModelPickerSheet extends StatefulWidget {
   State<ModelPickerSheet> createState() => _ModelPickerSheetState();
 }
 
-class _ModelPickerSheetState extends State<ModelPickerSheet> {
+class _ModelPickerSheetState() extends State<ModelPickerSheet> {
   String _query = "";
 
   /// Precomputed provider sections; `null` while the background isolate is
@@ -237,17 +229,9 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
 }
 
 /// A row in the flattened picker list: either a provider header or a model.
-sealed class _PickerRow {
-  const _PickerRow();
-}
+sealed class const _PickerRow();
 
-class _ProviderHeaderRow extends _PickerRow {
-  final String providerName;
-  const _ProviderHeaderRow({required this.providerName});
-}
+class const _ProviderHeaderRow({required final String providerName}) extends _PickerRow;
 
-class _ModelRow extends _PickerRow {
-  final String providerID;
-  final ModelPickerModelEntry entry;
-  const _ModelRow({required this.providerID, required this.entry});
-}
+class const _ModelRow({required final String providerID, required final ModelPickerModelEntry entry})
+    extends _PickerRow;

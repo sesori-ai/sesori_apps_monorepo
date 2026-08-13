@@ -149,22 +149,11 @@ void main() {
   });
 }
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout({
-    required this.hasTerminal,
-    required this.supportsAnsiEscapes,
-    required this.terminalColumns,
-  });
-
-  @override
-  final bool hasTerminal;
-
-  @override
-  final bool supportsAnsiEscapes;
-
-  @override
-  final int terminalColumns;
-
+class _CapturingStdout({
+  @override required final bool hasTerminal,
+  @override required final bool supportsAnsiEscapes,
+  @override required final int terminalColumns,
+}) implements Stdout {
   final StringBuffer _buffer = StringBuffer();
   String get written => _buffer.toString();
 
@@ -175,7 +164,7 @@ class _CapturingStdout implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ThrowingStdout implements Stdout {
+class _ThrowingStdout() implements Stdout {
   int writeCalls = 0;
 
   @override

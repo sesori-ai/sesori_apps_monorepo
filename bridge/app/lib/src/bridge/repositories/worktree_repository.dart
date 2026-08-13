@@ -13,21 +13,12 @@ import "models/project_not_found_exception.dart";
 
 const _worktreeDir = ".worktrees";
 
-class WorktreeRepository {
-  final GitCliApi _gitApi;
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-  final PluginRuntime _runtime;
-
-  WorktreeRepository({
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required GitCliApi gitApi,
-    required PluginRuntime runtime,
-  }) : _gitApi = gitApi,
-       _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _runtime = runtime;
+class WorktreeRepository({
+    required final ProjectsDao _projectsDao,
+    required final SessionDao _sessionDao,
+    required final GitCliApi _gitApi,
+    required final PluginRuntime _runtime,
+  }) {
 
   Future<({String path, String branchName, String baseBranch, String baseCommit})?> getParentWorktree({
     required String parentSessionId,
@@ -255,7 +246,7 @@ class WorktreeRepository {
     required String branchName,
     required bool force,
   }) async {
-    return _gitApi.deleteBranch(
+    return await _gitApi.deleteBranch(
       projectPath: projectPath,
       branchName: branchName,
       force: force,
@@ -274,8 +265,8 @@ class WorktreeRepository {
     if (storedBranch != null && await _gitApi.branchExists(projectPath: projectPath, branchName: storedBranch)) {
       return storedBranch;
     }
-    return _gitApi.resolveDefaultBranch(projectPath: projectPath);
+    return await _gitApi.resolveDefaultBranch(projectPath: projectPath);
   }
 }
 
-enum _WorktreeOperation { deleteWorkspace }
+enum _WorktreeOperation() { deleteWorkspace }

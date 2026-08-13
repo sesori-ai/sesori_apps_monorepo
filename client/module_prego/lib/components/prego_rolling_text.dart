@@ -5,7 +5,7 @@ import "package:flutter/material.dart";
 import "../utils/color_extensions.dart";
 
 /// Controls the direction characters roll when transitioning.
-enum PregoRollingTextDirection {
+enum PregoRollingTextDirection() {
   /// Each character independently determines its roll direction:
   /// higher char code -> rolls up; lower -> rolls down.
   perCharacter,
@@ -19,55 +19,34 @@ enum PregoRollingTextDirection {
   down,
 }
 
-class _CharAnimConfig {
-  const _CharAnimConfig({
-    required this.oldChar,
-    required this.newChar,
-    required this.interval,
-    required this.rollUp,
+class const _CharAnimConfig({
+    required final String? oldChar,
+    required final String? newChar,
+    required final Interval interval,
+    required final bool rollUp,
   });
-
-  final String? oldChar;
-  final String? newChar;
-  final Interval interval;
-  final bool rollUp;
-}
 
 /// Per-character rolling text animation for Prego design language components.
-class PregoRollingText extends StatefulWidget {
-  const PregoRollingText({
+class const PregoRollingText({
     super.key,
-    required this.text,
-    required this.style,
-    required this.direction,
-    this.duration = const Duration(milliseconds: 450),
-    this.staggerSlideDelay = const Duration(milliseconds: 40),
-    this.curve = Curves.easeOut,
-  });
-
-  /// Text to display and animate.
-  final String text;
-
-  /// Text style applied to all characters.
-  final TextStyle style;
-
-  /// Character roll direction mode.
-  final PregoRollingTextDirection direction;
-
-  /// Total cascade duration.
-  final Duration duration;
-
-  /// Delay between consecutive character starts.
-  final Duration staggerSlideDelay;
-
-  /// Easing curve used for character intervals.
-  final Curve curve;
-
+    /// Text to display and animate.
+  required final String text,
+    /// Text style applied to all characters.
+  required final TextStyle style,
+    /// Character roll direction mode.
+  required final PregoRollingTextDirection direction,
+    /// Total cascade duration.
+  final Duration duration = const Duration(milliseconds: 450),
+    /// Delay between consecutive character starts.
+  final Duration staggerSlideDelay = const Duration(milliseconds: 40),
+    /// Easing curve used for character intervals.
+  final Curve curve = Curves.easeOut,
+  }) extends StatefulWidget {
   @override
   State<PregoRollingText> createState() => _PregoRollingTextState();
 }
 
-class _PregoRollingTextState extends State<PregoRollingText> with SingleTickerProviderStateMixin {
+class _PregoRollingTextState() extends State<PregoRollingText> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   String _previousText = "";
   String _currentText = "";

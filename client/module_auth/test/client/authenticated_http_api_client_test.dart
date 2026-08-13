@@ -12,9 +12,9 @@ import "package:sesori_auth/src/models/auth_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockHttpApiClient extends Mock implements HttpApiClient;
+class MockHttpApiClient() extends Mock implements HttpApiClient;
 
-class MockAuthManager extends Mock implements AuthManager;
+class MockAuthManager() extends Mock implements AuthManager;
 
 const _userA = AuthUser(
   id: "user-a",

@@ -16,12 +16,9 @@ import "models/codex_projected_tool.dart";
 /// app-server id for code-mode commands and file changes. Those operations
 /// execute sequentially within a turn, making the pending same-turn FIFO the
 /// narrow common identity between the streams.
-class CodexToolLifecycleTracker {
-  CodexToolLifecycleTracker({
-    required CodexRolloutToolMapper rolloutToolMapper,
-  }) : _rolloutToolMapper = rolloutToolMapper;
-
-  final CodexRolloutToolMapper _rolloutToolMapper;
+class CodexToolLifecycleTracker({
+  required final CodexRolloutToolMapper _rolloutToolMapper,
+}) {
   final Map<String, _ThreadToolLifecycle> _threads = {};
   final Map<String, Map<String, _TrackedTool>> _retainedCommandsByThread = {};
 
@@ -32,7 +29,7 @@ class CodexToolLifecycleTracker {
   }) {
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
     return switch (line) {
-      CodexRolloutResponseItemLineDto(: final payload) => _observeRolloutPayload(
+      CodexRolloutResponseItemLineDto(:final payload) => _observeRolloutPayload(
         thread: thread,
         payload: payload,
       ),
@@ -239,9 +236,11 @@ class CodexToolLifecycleTracker {
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
     thread.durableImageResults.addAll([
       for (final line in lines)
-        if (line case CodexRolloutEventMessageLineDto(
-          payload: CodexRolloutImageGenerationEndEventDto(:final result),
-        ) when result.isNotEmpty)
+        if (line
+            case CodexRolloutEventMessageLineDto(
+              payload: CodexRolloutImageGenerationEndEventDto(:final result),
+            )
+            when result.isNotEmpty)
           result,
     ]);
   }
@@ -755,7 +754,7 @@ class CodexToolLifecycleTracker {
   }
 }
 
-class _ThreadToolLifecycle {
+class _ThreadToolLifecycle() {
   final Map<String, _TrackedTool> tools = {};
   final Map<String, List<String>> pendingShellCallsByTurn = {};
   final Map<String, List<String>> pendingCodeModeShellCallsByTurn = {};
@@ -773,22 +772,14 @@ class _ThreadToolLifecycle {
   int chronologySegment = 0;
 }
 
-class _TrackedTool {
-  _TrackedTool({
-    required this.id,
-    required this.tool,
-    required this.title,
-    required this.turnId,
-    required this.chronologySegment,
-    required this.isRolloutCall,
-  });
-
-  final String id;
-  final String tool;
-  String? title;
-  final String? turnId;
-  final int chronologySegment;
-  final bool isRolloutCall;
+class _TrackedTool({
+  required final String id,
+  required final String tool,
+  required var String? title,
+  required final String? turnId,
+  required final int chronologySegment,
+  required final bool isRolloutCall,
+}) {
   PluginToolStatus status = PluginToolStatus.running;
   String? rolloutOutput;
   String? appServerOutput;

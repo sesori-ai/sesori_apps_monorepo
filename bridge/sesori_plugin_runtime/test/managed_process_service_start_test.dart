@@ -799,8 +799,7 @@ _TestRecord _buildRecord(RuntimeRecordDraft draft) {
   );
 }
 
-class _Fakes {
-  _Fakes({_RecordingClock? clock}) : clock = clock ?? _FakeServerClock();
+class _Fakes({_RecordingClock? clock}) {
 
   final _FakeOwnershipRepository ownership = _FakeOwnershipRepository();
   final _FakeHostProcessService processes = _FakeHostProcessService();
@@ -815,7 +814,7 @@ class _Fakes {
       capturedAt: DateTime.utc(2026, 5, 15, 12),
     ),
   );
-  final _RecordingClock clock;
+  final _RecordingClock clock = clock ?? _FakeServerClock();
   final _SpawnPlan spawn = _SpawnPlan();
   final _ProbePlan probe = _ProbePlan();
   final _BindablePlan bindable = _BindablePlan();
@@ -854,7 +853,7 @@ class _Fakes {
   }
 }
 
-class _SpawnPlan {
+class _SpawnPlan() {
   final List<Object> results = <Object>[];
   final List<int> spawnedPorts = <int>[];
   void Function()? onSpawn;
@@ -870,7 +869,7 @@ class _SpawnPlan {
   }
 }
 
-class _ProbePlan {
+class _ProbePlan() {
   final List<RuntimeHealthProbe> results = <RuntimeHealthProbe>[];
   final List<int> probedPorts = <int>[];
   void Function()? onProbe;
@@ -890,7 +889,7 @@ class _ProbePlan {
   }
 }
 
-class _BindablePlan {
+class _BindablePlan() {
   final Map<int, bool> byPort = <int, bool>{};
   final List<int> probedPorts = <int>[];
 
@@ -904,35 +903,21 @@ class _BindablePlan {
   }
 }
 
-enum _TestStatus { starting, ready, stopping }
+enum _TestStatus() { starting, ready, stopping }
 
-class _TestRecord {
-  const _TestRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.openCodeCommand,
-    required this.openCodeArgs,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.startedAt,
-    required this.status,
-  });
-
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String openCodeCommand;
-  final List<String> openCodeArgs;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final DateTime startedAt;
-  final _TestStatus status;
-
+class const _TestRecord({
+    required final String ownerSessionId,
+    required final int openCodePid,
+    required final String? openCodeStartMarker,
+    required final String openCodeExecutablePath,
+    required final String openCodeCommand,
+    required final List<String> openCodeArgs,
+    required final int port,
+    required final int bridgePid,
+    required final String? bridgeStartMarker,
+    required final DateTime startedAt,
+    required final _TestStatus status,
+  }) {
   _TestRecord copyWith({required _TestStatus status}) {
     return _TestRecord(
       ownerSessionId: ownerSessionId,
@@ -950,9 +935,7 @@ class _TestRecord {
   }
 }
 
-class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
-  const _TestRecordMapper();
-
+class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   @override
   Map<String, dynamic> toJson({required _TestRecord record}) => throw UnimplementedError();
 
@@ -989,7 +972,7 @@ class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
   _TestRecord markStopping({required _TestRecord record}) => record.copyWith(status: _TestStatus.stopping);
 }
 
-class _FakeOwnershipRepository implements RuntimeOwnershipRepository<_TestRecord> {
+class _FakeOwnershipRepository() implements RuntimeOwnershipRepository<_TestRecord> {
   final Map<String, _TestRecord> records = <String, _TestRecord>{};
   final List<_TestStatus> upsertedStatuses = <_TestStatus>[];
   int writeCallCount = 0;
@@ -1020,7 +1003,7 @@ class _FakeOwnershipRepository implements RuntimeOwnershipRepository<_TestRecord
   }
 }
 
-class _FakeHostProcessService implements HostProcessService {
+class _FakeHostProcessService() implements HostProcessService {
   final Map<int, List<ProcessIdentity?>> inspectResults = <int, List<ProcessIdentity?>>{};
   final Map<int, void Function()> gracefulHooks = <int, void Function()>{};
   final Map<int, void Function()> forceHooks = <int, void Function()>{};
@@ -1071,13 +1054,10 @@ class _FakeHostProcessService implements HostProcessService {
   }
 }
 
-class _FakeBridgeHostInfo implements BridgeHostInfo {
+class _FakeBridgeHostInfo({required final ProcessIdentity _identity}) implements BridgeHostInfo {
   @override
   List<ProcessIdentity> get terminatedBridgeIdentities => const [];
 
-  _FakeBridgeHostInfo({required ProcessIdentity identity}) : _identity = identity;
-
-  final ProcessIdentity _identity;
   final Map<int, List<bool>> liveBridgeResults = <int, List<bool>>{};
 
   @override
@@ -1096,11 +1076,11 @@ class _FakeBridgeHostInfo implements BridgeHostInfo {
   }
 }
 
-abstract interface class _RecordingClock implements ServerClock {
+abstract interface class _RecordingClock() implements ServerClock {
   List<Duration> get delays;
 }
 
-class _FakeServerClock implements _RecordingClock {
+class _FakeServerClock() implements _RecordingClock {
   @override
   final List<Duration> delays = <Duration>[];
 
@@ -1113,10 +1093,9 @@ class _FakeServerClock implements _RecordingClock {
   DateTime now() => DateTime.utc(2026, 5, 15, 12, 30);
 }
 
-class _AdvancingServerClock implements _RecordingClock {
-  _AdvancingServerClock({DateTime? start}) : _now = start ?? DateTime.utc(2026, 5, 15, 12);
+class _AdvancingServerClock({DateTime? start}) implements _RecordingClock {
 
-  DateTime _now;
+  DateTime _now = start ?? DateTime.utc(2026, 5, 15, 12);
 
   @override
   final List<Duration> delays = <Duration>[];
@@ -1131,14 +1110,13 @@ class _AdvancingServerClock implements _RecordingClock {
   DateTime now() => _now;
 }
 
-class _FakeSpawnedProcess implements SpawnedProcess {
-  _FakeSpawnedProcess({required ProcessIdentity identity, required bool exitImmediately}) : _identity = identity {
+class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately}) implements SpawnedProcess {
+  this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);
     }
   }
 
-  final ProcessIdentity _identity;
   final Completer<int> _exitCodeCompleter = Completer<int>();
 
   @override

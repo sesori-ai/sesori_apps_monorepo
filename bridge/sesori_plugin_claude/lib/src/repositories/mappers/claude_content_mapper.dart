@@ -11,66 +11,38 @@ import "package:sesori_shared/sesori_shared.dart"
 
 import "../../api/models/claude_content_block_dto.dart";
 
-sealed class ClaudeMappedContentBlock {
-  const ClaudeMappedContentBlock();
-}
+sealed class const ClaudeMappedContentBlock();
 
-final class ClaudeMappedTextContentBlock extends ClaudeMappedContentBlock {
-  const ClaudeMappedTextContentBlock({required this.text});
+final class const ClaudeMappedTextContentBlock({required final String text}) extends ClaudeMappedContentBlock;
 
-  final String text;
-}
+final class const ClaudeMappedThinkingContentBlock({required final String thinking}) extends ClaudeMappedContentBlock;
 
-final class ClaudeMappedThinkingContentBlock extends ClaudeMappedContentBlock {
-  const ClaudeMappedThinkingContentBlock({required this.thinking});
+final class const ClaudeMappedToolUseContentBlock({
+  required final String id,
+  required final String name,
+  required final Object? input,
+}) extends ClaudeMappedContentBlock;
 
-  final String thinking;
-}
+final class const ClaudeMappedToolResultContentBlock({
+  required final String toolUseId,
+  required final String? output,
+  required final bool isError,
+  required final List<PluginMessageAttachment> attachments,
+}) extends ClaudeMappedContentBlock;
 
-final class ClaudeMappedToolUseContentBlock extends ClaudeMappedContentBlock {
-  const ClaudeMappedToolUseContentBlock({required this.id, required this.name, required this.input});
+final class const ClaudeMappedImageContentBlock({required final PluginMessageAttachment attachment})
+    extends ClaudeMappedContentBlock;
 
-  final String id;
-  final String name;
-  final Object? input;
-}
+final class const ClaudeMappedUnsupportedContentBlock() extends ClaudeMappedContentBlock;
 
-final class ClaudeMappedToolResultContentBlock extends ClaudeMappedContentBlock {
-  const ClaudeMappedToolResultContentBlock({
-    required this.toolUseId,
-    required this.output,
-    required this.isError,
-    required this.attachments,
-  });
-
-  final String toolUseId;
-  final String? output;
-  final bool isError;
-  final List<PluginMessageAttachment> attachments;
-}
-
-final class ClaudeMappedImageContentBlock extends ClaudeMappedContentBlock {
-  const ClaudeMappedImageContentBlock({required this.attachment});
-
-  final PluginMessageAttachment attachment;
-}
-
-final class ClaudeMappedUnsupportedContentBlock extends ClaudeMappedContentBlock {
-  const ClaudeMappedUnsupportedContentBlock();
-}
-
-final class ClaudeMappedUnknownContentBlock extends ClaudeMappedContentBlock {
-  const ClaudeMappedUnknownContentBlock();
-}
+final class const ClaudeMappedUnknownContentBlock() extends ClaudeMappedContentBlock;
 
 /// Maps Claude's standard Anthropic content blocks into backend-neutral parts.
 ///
 /// This class is stateless. Tool-use correlation and lifecycle remain Step 7's
 /// responsibility; the mapped variants retain the identities and input needed
 /// there.
-final class ClaudeContentMapper {
-  const ClaudeContentMapper();
-
+final class const ClaudeContentMapper() {
   static const int _maxMimeCharacters = 255;
   static const Set<String> _supportedImageMimes = {
     "image/gif",
@@ -327,7 +299,7 @@ final class ClaudeContentMapper {
   }
 }
 
-final class _ClaudeContentMappingState {
+final class _ClaudeContentMappingState() {
   int remainingImageBytes = maxTranscriptImageCollectionBytes;
   int _imageCandidates = 0;
 

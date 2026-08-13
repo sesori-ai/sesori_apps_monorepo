@@ -20,14 +20,8 @@ const maxComposerPromptAttachmentBytes = 50 * 1000 * 1000;
 /// buffers are megabytes and come straight from the picker — so callers must
 /// treat it as read-only.
 @immutable
-final class ComposerAttachment {
-  final String mime;
-  final Uint8List bytes;
-  final String? filename;
-
-  const ComposerAttachment({
-    required this.mime,
-    required this.bytes,
-    required this.filename,
-  });
-}
+final class const ComposerAttachment({
+  required final String mime,
+  required final Uint8List bytes,
+  required final String? filename,
+});

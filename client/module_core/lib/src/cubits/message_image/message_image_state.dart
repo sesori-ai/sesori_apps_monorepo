@@ -1,86 +1,49 @@
 import "dart:typed_data";
 
-final class MessageImageState {
-  final MessageImagePreviewState preview;
-  final MessageImageOriginalState original;
+final class const MessageImageState({
+  required final MessageImagePreviewState preview,
+  required final MessageImageOriginalState original,
+});
 
-  const MessageImageState({required this.preview, required this.original});
-}
+sealed class const MessageImagePreviewState();
 
-sealed class MessageImagePreviewState {
-  const MessageImagePreviewState();
-}
+final class const MessageImagePreviewLoading() extends MessageImagePreviewState;
 
-final class MessageImagePreviewLoading extends MessageImagePreviewState {
-  const MessageImagePreviewLoading();
-}
+final class const MessageImagePreviewLoaded({
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+  required final Uri? originalUri,
+}) extends MessageImagePreviewState;
 
-final class MessageImagePreviewLoaded extends MessageImagePreviewState {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
-  final Uri? originalUri;
+final class const MessageImagePreviewUnsupported() extends MessageImagePreviewState;
 
-  const MessageImagePreviewLoaded({
-    required this.bytes,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-  });
-}
+final class const MessageImagePreviewRejected() extends MessageImagePreviewState;
 
-final class MessageImagePreviewUnsupported extends MessageImagePreviewState {
-  const MessageImagePreviewUnsupported();
-}
-
-final class MessageImagePreviewRejected extends MessageImagePreviewState {
-  const MessageImagePreviewRejected();
-}
-
-final class MessageImagePreviewFailed extends MessageImagePreviewState {
+final class const MessageImagePreviewFailed({
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
-  final Object cause;
-  final StackTrace stackTrace;
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImagePreviewState;
 
-  const MessageImagePreviewFailed({required this.cause, required this.stackTrace});
-}
+sealed class const MessageImageOriginalState();
 
-sealed class MessageImageOriginalState {
-  const MessageImageOriginalState();
-}
+final class const MessageImageOriginalAvailable() extends MessageImageOriginalState;
 
-final class MessageImageOriginalAvailable extends MessageImageOriginalState {
-  const MessageImageOriginalAvailable();
-}
+final class const MessageImageOriginalUnavailable() extends MessageImageOriginalState;
 
-final class MessageImageOriginalUnavailable extends MessageImageOriginalState {
-  const MessageImageOriginalUnavailable();
-}
+final class const MessageImageOriginalLoading() extends MessageImageOriginalState;
 
-final class MessageImageOriginalLoading extends MessageImageOriginalState {
-  const MessageImageOriginalLoading();
-}
+final class const MessageImageOriginalLoaded({
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+}) extends MessageImageOriginalState;
 
-final class MessageImageOriginalLoaded extends MessageImageOriginalState {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
+final class const MessageImageOriginalRejected() extends MessageImageOriginalState;
 
-  const MessageImageOriginalLoaded({
-    required this.bytes,
-    required this.mime,
-    required this.actionFilename,
-  });
-}
-
-final class MessageImageOriginalRejected extends MessageImageOriginalState {
-  const MessageImageOriginalRejected();
-}
-
-final class MessageImageOriginalFailed extends MessageImageOriginalState {
+final class const MessageImageOriginalFailed({
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
-  final Object cause;
-  final StackTrace stackTrace;
-
-  const MessageImageOriginalFailed({required this.cause, required this.stackTrace});
-}
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImageOriginalState;

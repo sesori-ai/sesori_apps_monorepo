@@ -7,6 +7,7 @@ linter:
     # - always_use_package_imports
     - annotate_overrides
     - annotate_redeclares
+    - async_return_with_no_await
     - avoid_annotating_with_dynamic
     # - avoid_bool_literals_in_conditional_expressions
     - avoid_catches_without_on_clauses
@@ -81,6 +82,7 @@ linter:
     - implementation_imports
     - implicit_call_tearoffs
     - implicit_reopen
+    - initialize_in_field_declaration
     - invalid_case_patterns
     - invalid_runtime_check_with_js_interop_types
     - join_return_with_assignment
@@ -190,7 +192,8 @@ linter:
     - unawaited_futures
     - unintended_html_in_doc_comment
     # - unnecessary_async
-    - unnecessary_await_in_return
+    # Conflicts with async_return_with_no_await when preserving async error timing.
+    # - unnecessary_await_in_return
     - unnecessary_brace_in_string_interps
     - unnecessary_breaks
     - unnecessary_const
@@ -198,7 +201,7 @@ linter:
     - unnecessary_constructor_name
     # - unnecessary_final
     - unnecessary_getters_setters
-    # - unnecessary_ignore
+    - unnecessary_ignore
     - unnecessary_lambdas
     - unnecessary_late
     - unnecessary_library_directive
@@ -211,12 +214,14 @@ linter:
     - unnecessary_nullable_for_final_variable_declarations
     - unnecessary_overrides
     - unnecessary_parenthesis
+    - unnecessary_primary_constructor_body
     - unnecessary_raw_strings
     - unnecessary_statements
     - unnecessary_string_escapes
     - unnecessary_string_interpolations
     - unnecessary_this
     - unnecessary_to_list_in_spreads
+    - unnecessary_type_name_in_constructor
     - unnecessary_unawaited
     - unnecessary_underscores
     - unreachable_from_main
@@ -224,16 +229,18 @@ linter:
     # - unsafe_variance
     - use_build_context_synchronously
     - use_colored_box
+    - use_declaring_parameters
     - use_decorated_box
     - use_enums
     - use_full_hex_values_for_flutter_colors
     - use_function_type_syntax_for_parameters
-    # - use_if_null_to_convert_nulls_to_bools
+    - use_if_null_to_convert_nulls_to_bools
     - use_is_even_rather_than_modulo
     - use_key_in_widget_constructors
     - use_late_for_private_fields_and_variables
     - use_named_constants
     - use_null_aware_elements
+    - use_primary_constructors
     - use_raw_strings
     - use_rethrow_when_possible
     # - use_setters_to_change_properties

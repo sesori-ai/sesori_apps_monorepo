@@ -8,11 +8,7 @@ import "../capabilities/relay/relay_client.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
-class BridgeSettingsApi {
-  BridgeSettingsApi({required RelayHttpApiClient client}) : _client = client;
-
-  final RelayHttpApiClient _client;
-
+class BridgeSettingsApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<PullRequestRefreshSettingsResponse>> getPullRequestRefreshSettings() {
     return _client.get<PullRequestRefreshSettingsResponse>(
       "/settings/pull-request-refresh",
@@ -34,7 +30,7 @@ class BridgeSettingsApi {
       fromJson: BridgeSettingUpdate.fromJson,
     )) {
       SuccessResponse(:final data) => BridgeSettingUpdateApiCommitted(update: data),
-      ErrorResponse(: final NonSuccessCodeError error) when error.errorCode == 400 => _mapRejection(error: error),
+      ErrorResponse(:final NonSuccessCodeError error) when error.errorCode == 400 => _mapRejection(error: error),
       ErrorResponse(:final error) => BridgeSettingUpdateApiFailure(error: error),
     };
   }
@@ -53,31 +49,17 @@ class BridgeSettingsApi {
   }
 }
 
-sealed class BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiResult();
-}
+sealed class const BridgeSettingUpdateApiResult();
 
-final class BridgeSettingUpdateApiCommitted extends BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiCommitted({required this.update});
+final class const BridgeSettingUpdateApiCommitted({required final BridgeSettingUpdate update})
+    extends BridgeSettingUpdateApiResult;
 
-  final BridgeSettingUpdate update;
-}
+final class const BridgeSettingUpdateApiRejected({
+  required final BridgeSettingUpdateRejection rejection,
+  required final NonSuccessCodeError error,
+}) extends BridgeSettingUpdateApiResult;
 
-final class BridgeSettingUpdateApiRejected extends BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiRejected({
-    required this.rejection,
-    required this.error,
-  });
-
-  final BridgeSettingUpdateRejection rejection;
-  final NonSuccessCodeError error;
-}
-
-final class BridgeSettingUpdateApiFailure extends BridgeSettingUpdateApiResult {
-  const BridgeSettingUpdateApiFailure({required this.error});
-
-  final ApiError error;
-
+final class const BridgeSettingUpdateApiFailure({required final ApiError error}) extends BridgeSettingUpdateApiResult {
   bool get isCommitUncertain => switch (error) {
     JsonParsingError() || EmptyResponseError() => true,
     DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()) => true,

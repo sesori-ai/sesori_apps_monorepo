@@ -6,7 +6,7 @@ import "package:drift/drift.dart";
 /// shared `Message` wire model verbatim. No other wire field is extracted into
 /// a column because the only queries are "by session, ordered, paged".
 @TableIndex(name: "idx_history_messages_seq", columns: {#sessionId, #seq}, unique: true)
-class HistoryMessagesTable extends Table {
+class HistoryMessagesTable() extends Table {
   @override
   String get tableName => "history_messages";
 

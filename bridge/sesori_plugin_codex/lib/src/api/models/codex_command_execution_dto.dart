@@ -3,13 +3,13 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "codex_command_execution_dto.freezed.dart";
 part "codex_command_execution_dto.g.dart";
 
-enum CodexCommandExecutionItemType {
+enum CodexCommandExecutionItemType() {
   @JsonValue("commandExecution")
   commandExecution,
   unknown,
 }
 
-enum CodexCommandExecutionStatus {
+enum CodexCommandExecutionStatus() {
   inProgress,
   completed,
   failed,
@@ -37,19 +37,19 @@ String? _commandExecutionTextFromJson(Object? value) {
 
 @freezed
 sealed class CodexCommandExecutionParamsDto with _$CodexCommandExecutionParamsDto {
-  const factory CodexCommandExecutionParamsDto({
+  const factory({
     required String? threadId,
     required String? turnId,
     required CodexCommandExecutionItemDto item,
   }) = _CodexCommandExecutionParamsDto;
 
-  factory CodexCommandExecutionParamsDto.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$CodexCommandExecutionParamsDtoFromJson(json);
 }
 
 @freezed
 sealed class CodexCommandExecutionItemDto with _$CodexCommandExecutionItemDto {
-  const factory CodexCommandExecutionItemDto({
+  const factory({
     @JsonKey(
       unknownEnumValue: CodexCommandExecutionItemType.unknown,
       defaultValue: CodexCommandExecutionItemType.unknown,
@@ -62,6 +62,6 @@ sealed class CodexCommandExecutionItemDto with _$CodexCommandExecutionItemDto {
     @JsonKey(fromJson: _commandExecutionExitCodeFromJson) required int? exitCode,
   }) = _CodexCommandExecutionItemDto;
 
-  factory CodexCommandExecutionItemDto.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$CodexCommandExecutionItemDtoFromJson(json);
 }

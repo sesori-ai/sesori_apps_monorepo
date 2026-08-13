@@ -689,23 +689,15 @@ PluginSession _session(String directory, {required String id}) => PluginSession(
 
 /// A derive-style plugin whose pending questions are keyed per session, so the
 /// repository must resolve the project's sessions (worktree-aware) and ask each.
-class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
-  _FakeDerivedQuestionPlugin({
-    required this.launchDirectory,
-    required this.allSessions,
-    required this.questionsBySession,
-    this.ownProjectQuestions = const [],
-  });
-
-  @override
-  final String launchDirectory;
-
-  final List<PluginSession> allSessions;
-  final Map<String, List<PluginPendingQuestion>> questionsBySession;
+class _FakeDerivedQuestionPlugin({
+  @override required final String launchDirectory,
+  required final List<PluginSession> allSessions,
+  required final Map<String, List<PluginPendingQuestion>> questionsBySession,
 
   /// What the plugin's own project-scoped query returns — its live in-memory
   /// view, which can know sessions that `listAllSessions` (disk) does not yet.
-  final List<PluginPendingQuestion> ownProjectQuestions;
+  final List<PluginPendingQuestion> ownProjectQuestions = const [],
+}) implements BridgeDerivedProjectsPluginApi {
   final List<String> queriedSessionIds = [];
   int questionMutationCalls = 0;
 
@@ -748,17 +740,10 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeNativeQuestionPlugin implements NativeProjectsPluginApi {
-  _FakeNativeQuestionPlugin({
-    required this.id,
-    required this.projectQuestions,
-  });
-
-  @override
-  final String id;
-
-  final Future<List<PluginPendingQuestion>> Function() projectQuestions;
-
+class _FakeNativeQuestionPlugin({
+  @override required final String id,
+  required final Future<List<PluginPendingQuestion>> Function() projectQuestions,
+}) implements NativeProjectsPluginApi {
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) => projectQuestions();
 
@@ -772,11 +757,7 @@ class _FakeNativeQuestionPlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.output);
-
-  final List<String> output;
-
+class _CapturingStdout(final List<String> output) implements Stdout {
   @override
   void write(Object? object) => output.add(object.toString());
 

@@ -43,20 +43,18 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
 /// - **Create new folder** — makes an empty folder here and steps into it, so
 ///   the user can then add *it*.
 @visibleForTesting
-class AddProjectDialog extends StatefulWidget {
-  final ProjectListCubit cubit;
-
+class const AddProjectDialog({
+  required final ProjectListCubit cubit,
   /// The status-bar inset captured from the presenting context — the modal
   /// route strips it from the sheet's own MediaQuery.
-  final double topInset;
-
-  const AddProjectDialog({required this.cubit, required this.topInset, super.key});
-
+  required final double topInset,
+  super.key,
+}) extends StatefulWidget {
   @override
   State<AddProjectDialog> createState() => _AddProjectDialogState();
 }
 
-class _AddProjectDialogState extends State<AddProjectDialog> {
+class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// The messenger this sheet presents its own messages on — see
   /// [_showSnackBar]. Keyed because it is built below this state, so
   /// `ScaffoldMessenger.of` from here would find the screen's instead.
@@ -428,12 +426,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
 
 /// One folder in the browser: its name, a tag when it already holds a git
 /// repository, and a chevron into it.
-class _FolderTile extends StatelessWidget {
-  final FilesystemSuggestion entry;
-  final VoidCallback onTap;
-
-  const _FolderTile({required this.entry, required this.onTap});
-
+class const _FolderTile({required final FilesystemSuggestion entry, required final VoidCallback onTap}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -509,11 +502,7 @@ class _FolderTile extends StatelessWidget {
 
 /// The listing's loading state: the row geometry with the names replaced by
 /// bars, so nothing jumps when the folders land.
-class _FolderListSkeleton extends StatelessWidget {
-  const _FolderListSkeleton({required this.semanticLabel});
-
-  final String semanticLabel;
-
+class const _FolderListSkeleton({required final String semanticLabel}) extends StatelessWidget {
   /// Name-bar widths cycled across rows so the placeholder does not read as a
   /// stripe pattern.
   static const List<double> _nameWidths = [96, 140, 112, 168, 88, 124];
@@ -556,12 +545,7 @@ class _FolderListSkeleton extends StatelessWidget {
 
 /// The listing's failure state — the folder could not be read, either because
 /// the host denied access or because the bridge could not list it.
-class _BrowseError extends StatelessWidget {
-  const _BrowseError({required this.permissionDenied, required this.onRetry});
-
-  final bool permissionDenied;
-  final VoidCallback onRetry;
-
+class const _BrowseError({required final bool permissionDenied, required final VoidCallback onRetry}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -608,23 +592,15 @@ class _BrowseError extends StatelessWidget {
 /// folders dissolve as they scroll past — the same treatment the chat composer
 /// uses (`PromptInput`), and the mirror of the scroll-edge fade the sheet header
 /// paints at the top.
-class _ActionMenu extends StatelessWidget {
-  const _ActionMenu({
-    required this.onAdd,
-    required this.onCreateFolder,
-    required this.inFlight,
-  });
-
-  /// Null while an action is in flight or before the browser knows its folder.
-  final VoidCallback? onAdd;
-
-  /// Null while an action is in flight or before the browser knows its folder.
-  final VoidCallback? onCreateFolder;
-
-  /// Which action is waiting on the bridge, so that button — and only that one
+class const _ActionMenu({
+    /// Null while an action is in flight or before the browser knows its folder.
+  required final VoidCallback? onAdd,
+    /// Null while an action is in flight or before the browser knows its folder.
+  required final VoidCallback? onCreateFolder,
+    /// Which action is waiting on the bridge, so that button — and only that one
   /// — spins.
-  final _AddProjectAction? inFlight;
-
+  required final _AddProjectAction? inFlight,
+  }) extends StatelessWidget {
   /// Clear space above the buttons, where the fade starts.
   static const double _fadeExtent = PregoSpacing.x5l;
 
@@ -704,9 +680,7 @@ class _ActionMenu extends StatelessWidget {
 /// granted to the terminal running the bridge). It is scoped to this sheet —
 /// where the user is browsing directories — rather than shown app-wide, since
 /// it is only actionable here.
-class _FilesystemAccessBanner extends StatelessWidget {
-  const _FilesystemAccessBanner();
-
+class const _FilesystemAccessBanner() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connectionService = GetIt.instance<ConnectionService>();
@@ -744,7 +718,7 @@ class _FilesystemAccessBanner extends StatelessWidget {
 
 /// The sheet's two bridge-bound actions, so the one that is running can be told
 /// apart from the one that is merely blocked while it runs.
-enum _AddProjectAction { add, createFolder }
+enum _AddProjectAction() { add, createFolder }
 
 const double _folderIconSize = 16;
 const double _chevronSize = 16;

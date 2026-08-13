@@ -2,19 +2,13 @@ import "dart:io";
 
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 
-class Invocation {
-  final String executable;
-  final List<String> arguments;
-  final String? workingDirectory;
+class const Invocation({
+  required final String executable,
+  required final List<String> arguments,
+  required final String? workingDirectory,
+});
 
-  const Invocation({
-    required this.executable,
-    required this.arguments,
-    required this.workingDirectory,
-  });
-}
-
-class FakeProcessRunner implements ProcessRunner {
+class FakeProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,

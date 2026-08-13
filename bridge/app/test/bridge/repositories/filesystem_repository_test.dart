@@ -196,7 +196,7 @@ void main() {
 }
 
 /// Fake that reports the directory exists but raises an EACCES on listing.
-class _PermissionDeniedFilesystemApi implements FilesystemApi {
+class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   @override
   String currentDirectoryPath() => "/";
 
@@ -245,7 +245,7 @@ class _PermissionDeniedFilesystemApi implements FilesystemApi {
   void appendToFile(String path, String content) {}
 }
 
-class _GrowingFilesystemApi implements FilesystemApi {
+class _GrowingFilesystemApi() implements FilesystemApi {
   @override
   FileSystemEntityType entityType(String path) => FileSystemEntityType.file;
 
@@ -262,12 +262,10 @@ class _GrowingFilesystemApi implements FilesystemApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _EnvironmentFilesystemApi implements FilesystemApi {
-  final Map<String, String> environment;
-  final String currentDirectory;
-
-  _EnvironmentFilesystemApi({required this.environment, required this.currentDirectory});
-
+class _EnvironmentFilesystemApi({
+  required final Map<String, String> environment,
+  required final String currentDirectory,
+}) implements FilesystemApi {
   @override
   String currentDirectoryPath() => currentDirectory;
 

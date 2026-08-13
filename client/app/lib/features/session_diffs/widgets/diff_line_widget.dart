@@ -7,11 +7,7 @@ import "../utils/diff_theme.dart";
 
 /// Renders a single diff line with colored background, single gutter line number,
 /// +/-/space prefix, and wrapping content.
-class DiffLineWidget extends StatelessWidget {
-  final DiffLineViewModel viewModel;
-
-  const DiffLineWidget({super.key, required this.viewModel});
-
+class const DiffLineWidget({super.key, required final DiffLineViewModel viewModel}) extends StatelessWidget {
   static final _monoStyle = const TextStyle(
     fontSize: 12,
     height: 1.4,

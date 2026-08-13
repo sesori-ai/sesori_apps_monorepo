@@ -7,11 +7,7 @@ import "process_runner.dart";
 /// Adapts the bridge's [ProcessRunner] to the runtime [CommandExecutor] seam, so
 /// Layer-0 acquisition primitives (archive extraction, runtime version probing)
 /// can run commands to completion without depending on the app's process layer.
-class ProcessRunnerCommandExecutor implements CommandExecutor {
-  final ProcessRunner _processRunner;
-
-  ProcessRunnerCommandExecutor({required ProcessRunner processRunner}) : _processRunner = processRunner;
-
+class ProcessRunnerCommandExecutor({required final ProcessRunner _processRunner}) implements CommandExecutor {
   @override
   Future<CommandResult> run(
     String executable,

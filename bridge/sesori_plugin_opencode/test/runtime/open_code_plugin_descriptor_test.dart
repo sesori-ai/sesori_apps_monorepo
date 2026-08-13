@@ -938,7 +938,7 @@ void _seedStaleRecord(_FakeHost host) {
 // Fakes
 // ---------------------------------------------------------------------------
 
-class _FakeApiRecorder {
+class _FakeApiRecorder() {
   Object? initializeError;
   void Function()? onInitialize;
   bool neverCompleteInitialize = false;
@@ -965,22 +965,14 @@ class _FakeApiRecorder {
   }
 }
 
-class _FakeManagedApi implements OpenCodeManagedApi {
-  _FakeManagedApi({
-    required this.initializeError,
-    required this.onInitialize,
-    required this.neverCompleteInitialize,
-    required this.password,
-    required this.onConnected,
-    required this.onDisconnected,
-  });
-
-  final Object? initializeError;
-  final void Function()? onInitialize;
-  final bool neverCompleteInitialize;
-  final String? password;
-  final void Function() onConnected;
-  final void Function() onDisconnected;
+class _FakeManagedApi({
+  required final Object? initializeError,
+  required final void Function()? onInitialize,
+  required final bool neverCompleteInitialize,
+  required final String? password,
+  required final void Function() onConnected,
+  required final void Function() onDisconnected,
+}) implements OpenCodeManagedApi {
   bool initializeCalled = false;
   int disposeCount = 0;
 
@@ -998,7 +990,7 @@ class _FakeManagedApi implements OpenCodeManagedApi {
     initializeCalled = true;
     onInitialize?.call();
     if (neverCompleteInitialize) {
-      return Completer<void>().future;
+      return await Completer<void>().future;
     }
     final error = initializeError;
     if (error != null) {
@@ -1027,12 +1019,7 @@ class _FakeManagedApi implements OpenCodeManagedApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeHost implements PluginHost {
-  _FakeHost({required this.config});
-
-  @override
-  final PluginConfig config;
-
+class _FakeHost({@override required final PluginConfig config}) implements PluginHost {
   @override
   final String stateDirectory = "/runtime";
 
@@ -1073,9 +1060,7 @@ class _FakeHost implements PluginHost {
   }
 }
 
-class _ImmediateClock implements ServerClock {
-  const _ImmediateClock();
-
+class const _ImmediateClock() implements ServerClock {
   @override
   DateTime now() => DateTime.utc(2026, 6, 1, 12);
 
@@ -1083,7 +1068,7 @@ class _ImmediateClock implements ServerClock {
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _FakeBridgeHostInfo implements BridgeHostInfo {
+class _FakeBridgeHostInfo() implements BridgeHostInfo {
   List<ProcessIdentity> terminatedBridgeIdentitiesValue = <ProcessIdentity>[];
   final Set<int> liveBridgePids = <int>{};
 
@@ -1109,7 +1094,7 @@ class _FakeBridgeHostInfo implements BridgeHostInfo {
       liveBridgePids.contains(pid);
 }
 
-class _FakePortService implements HostPortService {
+class _FakePortService() implements HostPortService {
   bool defaultBindable = true;
   final Map<int, bool> byPort = <int, bool>{};
 
@@ -1117,7 +1102,7 @@ class _FakePortService implements HostPortService {
   Future<bool> isBindable({required String host, required int port}) async => byPort[port] ?? defaultBindable;
 }
 
-class _FakeHostProcessService implements HostProcessService {
+class _FakeHostProcessService() implements HostProcessService {
   final List<_FakeSpawnedProcess> spawnedProcesses = <_FakeSpawnedProcess>[];
   final List<Map<String, String>?> spawnEnvironments = <Map<String, String>?>[];
   final List<String> signals = <String>[];
@@ -1173,13 +1158,8 @@ class _FakeHostProcessService implements HostProcessService {
   }
 }
 
-class _FakeSpawnedProcess implements SpawnedProcess {
-  _FakeSpawnedProcess({required this.pid, required String executablePath}) : _executablePath = executablePath;
-
-  @override
-  final int pid;
-
-  final String _executablePath;
+class _FakeSpawnedProcess({@override required final int pid, required final String _executablePath})
+    implements SpawnedProcess {
   final Completer<int> _exit = Completer<int>();
 
   void completeExit([int code = 0]) {
@@ -1212,7 +1192,7 @@ class _FakeSpawnedProcess implements SpawnedProcess {
   Stream<List<int>> get stderr => Stream<List<int>>.value(const <int>[]);
 }
 
-class _MemoryJsonStore implements HostJsonStore {
+class _MemoryJsonStore() implements HostJsonStore {
   final Map<String, String> files = <String, String>{};
 
   @override

@@ -80,7 +80,7 @@ void main() {
   });
 }
 
-class _RecordingDispatcher implements SessionEventDispatcher {
+class _RecordingDispatcher() implements SessionEventDispatcher {
   final List<SessionBindingsCommitted> commits = [];
   final List<Session> deletedSessions = [];
 

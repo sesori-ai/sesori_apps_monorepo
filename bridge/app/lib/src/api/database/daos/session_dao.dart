@@ -45,11 +45,9 @@ typedef SessionPullRequestScopeUpdate = ({
 });
 
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
-class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
+class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
   static const _writeBatchSize = 500;
-
-  SessionDao(super.attachedDatabase);
 
   /// Sets the bridge-owned title copy for [sessionId] (null removes the copy).
   /// No-op for rowless sessions.
@@ -198,7 +196,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }
 
   Future<SessionDto?> getSession({required String sessionId}) async {
-    return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
+    return await (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
   }
 
   Future<void> updatePullRequestScopes({
@@ -312,7 +310,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         ),
       );
     });
-    return getSessionsByBackendIds(
+    return await getSessionsByBackendIds(
       pluginId: pluginId,
       backendSessionIds: [for (final session in sessions) session.backendSessionId],
     );
@@ -435,7 +433,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }
 
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
-    return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
+    return await (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
   /// The stored project path for every session recorded for [pluginId], via a
@@ -565,7 +563,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }) async {
     if (worktreePath == null && branchName == null) return [];
 
-    return (select(sessionTable)..where((t) {
+    return await (select(sessionTable)..where((t) {
           final base = t.sessionId.equals(sessionId).not() & t.projectId.equals(projectId) & t.archivedAt.isNull();
 
           final sharingCondition = switch ((worktreePath, branchName)) {

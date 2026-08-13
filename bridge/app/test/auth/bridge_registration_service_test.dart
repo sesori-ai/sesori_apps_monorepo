@@ -238,7 +238,7 @@ void main() {
   });
 }
 
-class _RecordingTokenRefresher implements TokenRefresher {
+class _RecordingTokenRefresher() implements TokenRefresher {
   int forceRefreshCalls = 0;
   void Function()? onForceRefresh;
 
@@ -253,11 +253,7 @@ class _RecordingTokenRefresher implements TokenRefresher {
   }
 }
 
-class _UnregisterFailingRepository implements BridgeRegistrationRepository {
-  final int statusCode;
-
-  _UnregisterFailingRepository({required this.statusCode});
-
+class _UnregisterFailingRepository({required final int statusCode}) implements BridgeRegistrationRepository {
   @override
   Future<BridgeSummary> register({
     required String name,

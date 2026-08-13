@@ -8,7 +8,7 @@ part "session_activity_info.freezed.dart";
 /// how many background (child) tasks are active.
 @Freezed()
 sealed class SessionActivityInfo with _$SessionActivityInfo {
-  const factory SessionActivityInfo({
+  const factory({
     @Default(false) bool mainAgentRunning,
     @Default(false) bool awaitingInput,
     @Default(0) int backgroundTaskCount,

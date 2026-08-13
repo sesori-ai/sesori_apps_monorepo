@@ -16,25 +16,14 @@ import "../routing/bridge_restart_dispatcher.dart";
 import "../routing/routed_request_dispatcher.dart";
 import "bridge_shutdown_coordinator.dart";
 
-class BridgeRuntime {
-  BridgeRuntime({
-    required AppDatabase database,
-    required ChatHistoryDatabase chatHistoryDatabase,
-    required FailureReporter failureReporter,
-    required OrchestratorComposition composition,
-  }) : _database = database,
-       _chatHistoryDatabase = chatHistoryDatabase,
-       _failureReporter = failureReporter,
-       _restartDispatcher = composition.restartDispatcher,
-       _routedRequestDispatcher = composition.routedRequestDispatcher,
-       _composition = composition;
-
-  final AppDatabase _database;
-  final ChatHistoryDatabase _chatHistoryDatabase;
-  final FailureReporter _failureReporter;
-  final BridgeRestartDispatcher _restartDispatcher;
-  final RoutedRequestDispatcher _routedRequestDispatcher;
-  final OrchestratorComposition _composition;
+class BridgeRuntime({
+  required final AppDatabase _database,
+  required final ChatHistoryDatabase _chatHistoryDatabase,
+  required final FailureReporter _failureReporter,
+  required final OrchestratorComposition _composition,
+}) {
+  final BridgeRestartDispatcher _restartDispatcher = _composition.restartDispatcher;
+  final RoutedRequestDispatcher _routedRequestDispatcher = _composition.routedRequestDispatcher;
   Future<void>? _closeFuture;
 
   OrchestratorSession get session => _composition.session;

@@ -23,8 +23,10 @@ import "../logging/logging.dart";
 /// `/sessions` is held for seconds by the PR-data wait. Cubits capture [tick]
 /// before fetching; seeds skip projects whose last update is newer.
 @lazySingleton
-class SessionUnseenTracker with Disposable {
-  final FailureReporter _failureReporter;
+class SessionUnseenTracker(
+  ConnectionService connectionService, {
+  required final FailureReporter _failureReporter,
+}) with Disposable {
   late final StreamSubscription<SseEvent> _subscription;
 
   // project ID -> whether the project has any unseen session.
@@ -37,10 +39,7 @@ class SessionUnseenTracker with Disposable {
   // project ID -> tick of its last live/local update.
   final Map<String, int> _projectTick = {};
 
-  SessionUnseenTracker(
-    ConnectionService connectionService, {
-    required FailureReporter failureReporter,
-  }) : _failureReporter = failureReporter {
+  this {
     _subscription = connectionService.events.listen(_handleEvent);
   }
 
@@ -112,13 +111,12 @@ class SessionUnseenTracker with Disposable {
 
   void _handleEvent(SseEvent event) {
     try {
-      if (event.data
-          case SesoriSessionUnseenChanged(
-            :final projectID,
-            :final sessionId,
-            :final unseen,
-            :final projectHasUnseenChanges,
-          )) {
+      if (event.data case SesoriSessionUnseenChanged(
+        :final projectID,
+        :final sessionId,
+        :final unseen,
+        :final projectHasUnseenChanges,
+      )) {
         // A late event can race disposal (the subscription cancel is not
         // awaited); adding to a closed subject would throw and be reported as
         // a false-positive failure.

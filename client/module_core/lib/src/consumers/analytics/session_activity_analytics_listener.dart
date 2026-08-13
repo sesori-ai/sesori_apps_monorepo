@@ -13,30 +13,31 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../services/models/product_analytics_state.dart";
 import "../../services/product_analytics_service.dart";
 
-enum _ActivityAnalyticsGuard { ready, inFlight, consumed }
+enum _ActivityAnalyticsGuard() { ready, inFlight, consumed }
 
 /// Reports bounded session activity only while its owning detail route is
 /// current and the app is foregrounded.
 ///
 /// Route visibility is supplied by the Flutter owner so this pure-Dart
 /// listener never mistakes a covered detail route for the active route.
-class SessionActivityAnalyticsListener {
-  final SessionDetailCubit _sessionDetailCubit;
-  final LifecycleSource _lifecycleSource;
-  final ProductAnalyticsService _productAnalyticsService;
-  final DateTime Function() _nowUtc;
-
+class SessionActivityAnalyticsListener._({
+    required final SessionDetailCubit _sessionDetailCubit,
+    required final LifecycleSource _lifecycleSource,
+    required final ProductAnalyticsService _productAnalyticsService,
+    required bool initialRouteVisible,
+    required final DateTime Function() _nowUtc,
+  }) {
   late final StreamSubscription<SessionDetailState> _sessionStateSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamSubscription<ProductAnalyticsState> _analyticsStateSubscription;
 
-  bool _routeVisible;
+  bool _routeVisible = initialRouteVisible;
   bool _disposed = false;
   _ActivityAnalyticsGuard _emptyGuard = _ActivityAnalyticsGuard.ready;
   bool _nonEmptyInFlight = false;
   DateTime? _consumedNonEmptyDateUtc;
 
-  SessionActivityAnalyticsListener({
+  new({
     required SessionDetailCubit sessionDetailCubit,
     required LifecycleSource lifecycleSource,
     required ProductAnalyticsService productAnalyticsService,
@@ -50,7 +51,7 @@ class SessionActivityAnalyticsListener {
        );
 
   @visibleForTesting
-  SessionActivityAnalyticsListener.withClock({
+  new withClock({
     required SessionDetailCubit sessionDetailCubit,
     required LifecycleSource lifecycleSource,
     required ProductAnalyticsService productAnalyticsService,
@@ -64,17 +65,7 @@ class SessionActivityAnalyticsListener {
          nowUtc: nowUtc,
        );
 
-  SessionActivityAnalyticsListener._({
-    required SessionDetailCubit sessionDetailCubit,
-    required LifecycleSource lifecycleSource,
-    required ProductAnalyticsService productAnalyticsService,
-    required bool initialRouteVisible,
-    required DateTime Function() nowUtc,
-  }) : _sessionDetailCubit = sessionDetailCubit,
-       _lifecycleSource = lifecycleSource,
-       _productAnalyticsService = productAnalyticsService,
-       _routeVisible = initialRouteVisible,
-       _nowUtc = nowUtc {
+  this {
     _sessionStateSubscription = _sessionDetailCubit.stream.listen((_) => _evaluateCurrentState());
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((_) => _evaluateCurrentState());
     _analyticsStateSubscription = _productAnalyticsService.stateStream.listen((state) {

@@ -239,10 +239,10 @@ void main() {
   });
 }
 
-class _FakeMetadataService extends MetadataService {
+class _FakeMetadataService() extends MetadataService {
   int generateCalls = 0;
 
-  _FakeMetadataService()
+  this
     : super(
         client: http.Client(),
         baseUrl: "http://localhost",
@@ -256,18 +256,16 @@ class _FakeMetadataService extends MetadataService {
   }
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }
 
-class _FakeWorktreeService extends WorktreeService {
+class _FakeWorktreeService({required super.worktreeRepository}) extends WorktreeService {
   int prepareCalls = 0;
   int resolveCalls = 0;
   WorktreeResult prepareResult = WorktreeFallback(originalPath: "/repo", reason: "fallback");
   String? headCommit;
-
-  _FakeWorktreeService({required super.worktreeRepository});
 
   @override
   Future<WorktreeResult> prepareWorktreeForSession({
@@ -288,7 +286,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 }
 
-class _FakePlugin implements NativeProjectsPluginApi {
+class _FakePlugin() implements NativeProjectsPluginApi {
   int createCalls = 0;
   String? lastCreateDirectory;
   String? lastCreateUserVisibleText;
@@ -334,7 +332,7 @@ class _FakePlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _NoopProcessRunner implements ProcessRunner {
+class _NoopProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,

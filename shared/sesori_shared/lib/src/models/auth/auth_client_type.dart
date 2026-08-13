@@ -1,7 +1,7 @@
 import "package:json_annotation/json_annotation.dart";
 
 /// Auth-server client identity used to label the device that starts OAuth.
-enum AuthClientType {
+enum AuthClientType() {
   @JsonValue("bridge")
   bridge,
   @JsonValue("app")

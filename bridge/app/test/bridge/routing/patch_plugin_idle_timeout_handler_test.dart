@@ -149,7 +149,7 @@ const _unsupportedConflict = PluginLifecycleConflict(
   current: _unsupportedPlugin,
 );
 
-class _FakePluginLifecycleService implements PluginLifecycleService {
+class _FakePluginLifecycleService() implements PluginLifecycleService {
   PluginIdleTimeoutUpdateRequest? receivedRequest;
   Object? error;
 

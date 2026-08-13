@@ -5,51 +5,29 @@ import "../repositories/project_repository.dart";
 import "project_activity_service.dart";
 import "project_initialization_service.dart";
 
-sealed class OpenProjectOutcome {
-  const OpenProjectOutcome();
-}
+sealed class const OpenProjectOutcome();
 
-final class OpenProjectSuccess extends OpenProjectOutcome {
-  final Project project;
+final class const OpenProjectSuccess({required final Project project}) extends OpenProjectOutcome;
 
-  const OpenProjectSuccess({required this.project});
-}
+final class const OpenProjectDirectoryNotFound() extends OpenProjectOutcome;
 
-final class OpenProjectDirectoryNotFound extends OpenProjectOutcome {
-  const OpenProjectDirectoryNotFound();
-}
+final class const OpenProjectPathNotDirectory() extends OpenProjectOutcome;
 
-final class OpenProjectPathNotDirectory extends OpenProjectOutcome {
-  const OpenProjectPathNotDirectory();
-}
-
-final class OpenProjectGitChoiceRequired extends OpenProjectOutcome {
-  const OpenProjectGitChoiceRequired();
-}
+final class const OpenProjectGitChoiceRequired() extends OpenProjectOutcome;
 
 /// Owns complete create, open, and hide workflows under one bridge-wide FIFO.
-class ProjectMutationService {
-  final FilesystemRepository _filesystemRepository;
-  final ProjectInitializationService _projectInitializationService;
-  final ProjectActivityService _projectActivityService;
-  final ProjectRepository _projectRepository;
-
+class ProjectMutationService({
+  required final FilesystemRepository _filesystemRepository,
+  required final ProjectInitializationService _projectInitializationService,
+  required final ProjectActivityService _projectActivityService,
+  required final ProjectRepository _projectRepository,
+}) {
   Future<void> _tail = Future<void>.value();
-
-  ProjectMutationService({
-    required FilesystemRepository filesystemRepository,
-    required ProjectInitializationService projectInitializationService,
-    required ProjectActivityService projectActivityService,
-    required ProjectRepository projectRepository,
-  }) : _filesystemRepository = filesystemRepository,
-       _projectInitializationService = projectInitializationService,
-       _projectActivityService = projectActivityService,
-       _projectRepository = projectRepository;
 
   Future<Project> createProject({required String path}) {
     return _enqueue(() async {
       await _projectInitializationService.initializeProject(path: path);
-      return _projectActivityService.openProject(path: path);
+      return await _projectActivityService.openProject(path: path);
     });
   }
 

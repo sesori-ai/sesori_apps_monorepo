@@ -8,7 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Nativ
 /// a failure as a degraded status) before returning. Keeping this as a small
 /// interface — rather than the concrete `OpenCodePlugin` — lets the descriptor's
 /// API construction be a test seam without forcing real HTTP/SSE in unit tests.
-abstract interface class OpenCodeManagedApi implements NativeProjectsPluginApi {
+abstract interface class OpenCodeManagedApi() implements NativeProjectsPluginApi {
   Stream<PluginWorkState> get workState;
   PluginWorkState get currentWorkState;
 

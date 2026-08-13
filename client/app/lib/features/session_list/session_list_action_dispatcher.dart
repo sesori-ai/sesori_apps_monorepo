@@ -16,9 +16,7 @@ part "session_list_actions.dart";
 part "session_cleanup_dialogs.dart";
 part "session_force_dialog.dart";
 
-class SessionListActionDispatcher {
-  const SessionListActionDispatcher();
-
+class const SessionListActionDispatcher() {
   /// The long-press actions for [session], rendered by [SessionTile] in a
   /// [PregoAnchorMenu] anchored to the row.
   ///

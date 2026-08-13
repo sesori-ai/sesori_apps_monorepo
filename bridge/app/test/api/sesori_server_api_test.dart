@@ -80,7 +80,7 @@ void main() {
   });
 }
 
-class _AbortAwareClient extends http.BaseClient {
+class _AbortAwareClient() extends http.BaseClient {
   bool abortObserved = false;
 
   @override
@@ -92,7 +92,7 @@ class _AbortAwareClient extends http.BaseClient {
   }
 }
 
-class _ImmediateClient extends http.BaseClient {
+class _ImmediateClient() extends http.BaseClient {
   bool abortObserved = false;
 
   @override

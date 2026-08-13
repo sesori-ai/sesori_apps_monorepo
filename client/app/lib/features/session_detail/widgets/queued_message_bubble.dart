@@ -5,34 +5,21 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "user_message_card.dart";
 
-sealed class QueuedMessageBubblePresentation {
-  const QueuedMessageBubblePresentation();
-
-  const factory QueuedMessageBubblePresentation.sending() = SendingMessageBubblePresentation;
-  const factory QueuedMessageBubblePresentation.pending({required VoidCallback onCancel}) =
-      PendingMessageBubblePresentation;
+sealed class const QueuedMessageBubblePresentation() {
+  const factory sending() = SendingMessageBubblePresentation;
+  const factory pending({required VoidCallback onCancel}) = PendingMessageBubblePresentation;
 }
 
-final class SendingMessageBubblePresentation extends QueuedMessageBubblePresentation {
-  const SendingMessageBubblePresentation();
-}
+final class const SendingMessageBubblePresentation() extends QueuedMessageBubblePresentation;
 
-final class PendingMessageBubblePresentation extends QueuedMessageBubblePresentation {
-  final VoidCallback onCancel;
+final class const PendingMessageBubblePresentation({required final VoidCallback onCancel})
+    extends QueuedMessageBubblePresentation;
 
-  const PendingMessageBubblePresentation({required this.onCancel});
-}
-
-class QueuedMessageBubble extends StatelessWidget {
-  final QueuedSessionSubmission submission;
-  final QueuedMessageBubblePresentation presentation;
-
-  const QueuedMessageBubble({
-    super.key,
-    required this.submission,
-    required this.presentation,
-  });
-
+class const QueuedMessageBubble({
+  super.key,
+  required final QueuedSessionSubmission submission,
+  required final QueuedMessageBubblePresentation presentation,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

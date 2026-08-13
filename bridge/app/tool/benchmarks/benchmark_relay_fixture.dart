@@ -6,20 +6,12 @@ import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 
-final class BenchmarkRelayFixture {
-  BenchmarkRelayFixture._({
-    required this.client,
-    required this.connection,
-    required HttpServer server,
-    required _BenchmarkAccessTokenProvider accessTokenProvider,
-  }) : _server = server,
-       _accessTokenProvider = accessTokenProvider;
-
-  final RelayClient client;
-  final RelayConnection connection;
-  final HttpServer _server;
-  final _BenchmarkAccessTokenProvider _accessTokenProvider;
-
+final class BenchmarkRelayFixture._({
+  required final RelayClient client,
+  required final RelayConnection connection,
+  required final HttpServer _server,
+  required final _BenchmarkAccessTokenProvider _accessTokenProvider,
+}) {
   static Future<BenchmarkRelayFixture> start() async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.listen((request) async {
@@ -59,7 +51,7 @@ final class BenchmarkRelayFixture {
   }
 }
 
-final class _BenchmarkAccessTokenProvider implements AccessTokenProvider {
+final class _BenchmarkAccessTokenProvider() implements AccessTokenProvider {
   final BehaviorSubject<String> _tokens = BehaviorSubject.seeded("");
 
   @override
@@ -71,9 +63,7 @@ final class _BenchmarkAccessTokenProvider implements AccessTokenProvider {
   Future<void> dispose() => _tokens.close();
 }
 
-final class _BenchmarkBridgeIdProvider implements BridgeIdProvider {
-  const _BenchmarkBridgeIdProvider();
-
+final class const _BenchmarkBridgeIdProvider() implements BridgeIdProvider {
   @override
   String? get bridgeId => null;
 }

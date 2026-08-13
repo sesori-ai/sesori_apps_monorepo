@@ -8,7 +8,7 @@ class SingleTaskIsolateImpl<IN, OUT> implements SingleTaskIsolate<IN, OUT> {
   final MultiTaskIsolate _sharedIsolate;
   final IsolateTask<IN, OUT> _task;
 
-  SingleTaskIsolateImpl.transient({
+  new transient({
     required IsolateTask<IN, OUT> task,
     required bool eagerStart,
     required String debugName,
@@ -20,7 +20,7 @@ class SingleTaskIsolateImpl<IN, OUT> implements SingleTaskIsolate<IN, OUT> {
          debugName: debugName,
        );
 
-  SingleTaskIsolateImpl.persistent({
+  new persistent({
     required IsolateTask<IN, OUT> task,
     required String debugName,
   }) : _task = task,

@@ -6,7 +6,7 @@ import "../../module_prego.dart";
 /// How the [PregoTopNavigationSheets] title (and subtitle) are aligned across the
 /// bar: [center] mirrors [PregoTopNavigation]'s centred title, [start] pins the
 /// block to the leading edge (the Figma "Title 2 Line Left" style).
-enum PregoSheetTitleAlignment { center, start }
+enum PregoSheetTitleAlignment() { center, start }
 
 /// The header of [PregoBottomSheet] — the Figma `pregoTopNavigationSheets`
 /// component: a drag [showGrabber] pill above a fixed nav row with an optional
@@ -31,55 +31,37 @@ enum PregoSheetTitleAlignment { center, start }
 ///
 /// The back/close affordances announce the platform's standard
 /// back/close tooltips so screen readers describe them without a bespoke string.
-class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeWidget {
-  const PregoTopNavigationSheets({
+class const PregoTopNavigationSheets({
     super.key,
-    required this.title,
-    this.subtitle,
-    this.alignment = PregoSheetTitleAlignment.center,
-    this.showGrabber = true,
-    this.onClose,
-    this.onBack,
-    this.actions,
-    this.leading,
-  });
-
-  /// Primary title, in `text-primary`. [alignment] picks the scale:
+    /// Primary title, in `text-primary`. [alignment] picks the scale:
   /// `text-lg / bold` centred, the quieter `text-md / medium` start-aligned.
-  final String title;
-
-  /// Optional second line, in the scale [alignment] picks: `text-md / regular /
+  required final String title,
+    /// Optional second line, in the scale [alignment] picks: `text-md / regular /
   /// text-secondary` centred, `text-xs / regular / text-tertiary`
   /// start-aligned. A `null` or empty value renders the title on its own.
-  final String? subtitle;
-
-  /// Whether the title block is centred across the bar or pinned to the leading
+  final String? subtitle,
+    /// Whether the title block is centred across the bar or pinned to the leading
   /// edge. Defaults to [PregoSheetTitleAlignment.center].
-  final PregoSheetTitleAlignment alignment;
-
-  /// Whether to render the drag grabber pill above the nav row. Defaults to
+  final PregoSheetTitleAlignment alignment = PregoSheetTitleAlignment.center,
+    /// Whether to render the drag grabber pill above the nav row. Defaults to
   /// `true`. The grabber is decorative — dragging it dismisses the sheet, but
   /// the affordance is owned by the enclosing modal, not this widget.
-  final bool showGrabber;
-
-  /// Renders a glass close button (`x`) on the trailing edge that invokes this
+  final bool showGrabber = true,
+    /// Renders a glass close button (`x`) on the trailing edge that invokes this
   /// callback. It lives in the trailing slot, so neither [leading] nor [onBack]
   /// suppresses it.
-  final VoidCallback? onClose;
-
-  /// Renders a glass back button (`arrow-left`) in the leading slot that invokes
+  final VoidCallback? onClose,
+    /// Renders a glass back button (`arrow-left`) in the leading slot that invokes
   /// this callback, for stepping back within the sheet.
-  final VoidCallback? onBack;
-
-  /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
+  final VoidCallback? onBack,
+    /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
   /// match the leading button.
-  final List<Widget>? actions;
-
-  /// Overrides the leading slot entirely. Takes precedence over [onBack]'s back
+  final List<Widget>? actions,
+    /// Overrides the leading slot entirely. Takes precedence over [onBack]'s back
   /// arrow. It governs only the leading slot, so it leaves the trailing
   /// [onClose] button untouched.
-  final Widget? leading;
-
+  final Widget? leading,
+  }) extends StatelessWidget implements PreferredSizeWidget {
   /// Height of the drag-grabber block above the nav row.
   static const double grabberBlockHeight = 16;
 
@@ -226,19 +208,12 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
 ///
 /// Distinct from [PregoNavTitle] (which is `text-lg / medium`, centre-only,
 /// tuned for the taller top bar) by this bar's tighter [lineHeight].
-class _SheetTitle extends StatelessWidget {
-  const _SheetTitle({
-    required this.title,
-    required this.subtitle,
-    required this.alignment,
-    required this.lineHeight,
-  });
-
-  final String title;
-  final String? subtitle;
-  final PregoSheetTitleAlignment alignment;
-  final double lineHeight;
-
+class const _SheetTitle({
+    required final String title,
+    required final String? subtitle,
+    required final PregoSheetTitleAlignment alignment,
+    required final double lineHeight,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

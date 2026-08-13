@@ -10,13 +10,13 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 // NOTE: do NOT make it lazy singleton, otherwise it will not eagerly create the instance
 // - eager creation is required to register the WidgetsBinding observer
 @Singleton(as: LifecycleSource)
-class AppLifecycleObserver with WidgetsBindingObserver, Disposable implements LifecycleSource {
+class AppLifecycleObserver() with WidgetsBindingObserver, Disposable implements LifecycleSource {
   final BehaviorSubject<LifecycleState> _lifecycleStateStream = BehaviorSubject.seeded(LifecycleState.resumed);
 
   @override
   ValueStream<LifecycleState> get lifecycleStateStream => _lifecycleStateStream.stream;
 
-  AppLifecycleObserver() {
+  this {
     WidgetsBinding.instance.addObserver(this);
   }
 

@@ -14,7 +14,7 @@ class PluginOperationException implements Exception {
   final String? message;
   final Object? cause;
 
-  const PluginOperationException(
+  const new(
     this.operation, {
     this.statusCode,
     this.message,
@@ -26,7 +26,7 @@ class PluginOperationException implements Exception {
   /// Handlers use [isNotFound] for idempotent deletes, so non-HTTP plugins
   /// should signal missing entities through this constructor rather than a
   /// hand-rolled status code.
-  const PluginOperationException.notFound(this.operation, {this.message, this.cause}) : statusCode = 404;
+  const new notFound(this.operation, {this.message, this.cause}) : statusCode = 404;
 
   /// `true` when this failure means the target entity does not exist.
   bool get isNotFound => statusCode == 404;

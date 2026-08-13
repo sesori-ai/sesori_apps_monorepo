@@ -6,7 +6,7 @@ import "package:theme_prego/module_prego.dart";
 
 /// Records the rounded rects the painter draws so tests can assert the
 /// painted contract without goldens.
-class _RecordingCanvas implements Canvas {
+class _RecordingCanvas() implements Canvas {
   final List<(RRect, Color)> rrects = [];
 
   @override

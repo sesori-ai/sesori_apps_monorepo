@@ -1,52 +1,31 @@
 import "package:diff_match_patch/diff_match_patch.dart" as dmp;
 
-enum DiffLineType { added, removed, context }
+enum DiffLineType() { added, removed, context }
 
-class DiffLine {
-  final DiffLineType type;
-  final int? oldLineNumber;
-  final int? newLineNumber;
-  final String content;
-
-  const DiffLine({
-    required this.type,
-    this.oldLineNumber,
-    this.newLineNumber,
-    required this.content,
+class const DiffLine({
+    required final DiffLineType type,
+    final int? oldLineNumber,
+    final int? newLineNumber,
+    required final String content,
   });
-}
 
-class DiffHunk {
-  final int oldStart;
-  final int oldCount;
-  final int newStart;
-  final int newCount;
-  final List<DiffLine> lines;
-
+class const DiffHunk({
+    required final int oldStart,
+    required final int oldCount,
+    required final int newStart,
+    required final int newCount,
+    required final List<DiffLine> lines,
+  }) {
   String get header => "@@ -$oldStart,$oldCount +$newStart,$newCount @@";
-
-  const DiffHunk({
-    required this.oldStart,
-    required this.oldCount,
-    required this.newStart,
-    required this.newCount,
-    required this.lines,
-  });
 }
 
-class DiffFileResult {
-  final List<DiffHunk> hunks;
-  final int additions;
-  final int deletions;
-
-  const DiffFileResult({
-    required this.hunks,
-    required this.additions,
-    required this.deletions,
+class const DiffFileResult({
+    required final List<DiffHunk> hunks,
+    required final int additions,
+    required final int deletions,
   });
-}
 
-class DiffEngine {
+class DiffEngine() {
   static const int _contextLines = 3;
 
   static DiffFileResult computeDiff({required String before, required String after}) {

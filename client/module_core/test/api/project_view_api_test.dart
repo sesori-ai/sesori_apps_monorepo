@@ -3,7 +3,7 @@ import "package:sesori_dart_core/src/api/project_view_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:test/test.dart";
 
-class _MockConnectionService extends Mock implements ConnectionService;
+class _MockConnectionService() extends Mock implements ConnectionService;
 
 void main() {
   test("ProjectViewApi forwards project and clear declarations to the connection seam", () async {

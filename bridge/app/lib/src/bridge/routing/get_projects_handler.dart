@@ -4,12 +4,9 @@ import "../services/project_activity_service.dart";
 import "request_handler.dart";
 
 /// Handles `GET /projects` — returns visible projects from the catalog.
-class GetProjectsHandler extends GetRequestHandler<Projects> {
-  final ProjectActivityService _projectActivityService;
-
-  GetProjectsHandler({required ProjectActivityService projectActivityService})
-    : _projectActivityService = projectActivityService,
-      super("/projects");
+class GetProjectsHandler({required final ProjectActivityService _projectActivityService})
+    extends GetRequestHandler<Projects> {
+  this : super("/projects");
 
   @override
   Future<Projects> handle(

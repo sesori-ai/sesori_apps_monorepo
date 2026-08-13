@@ -42,23 +42,14 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({
-    required this.warmupCount,
-    required this.sampleCount,
-    required this.pluginCount,
-    required this.projectCount,
-    required this.sessionCount,
-    required this.unpaginatedSessionCount,
-  });
-
-  final int warmupCount;
-  final int sampleCount;
-  final int pluginCount;
-  final int projectCount;
-  final int sessionCount;
-  final int unpaginatedSessionCount;
-
+class const _BenchmarkConfiguration({
+  required final int warmupCount,
+  required final int sampleCount,
+  required final int pluginCount,
+  required final int projectCount,
+  required final int sessionCount,
+  required final int unpaginatedSessionCount,
+}) {
   static _BenchmarkConfiguration parse({required List<String> arguments}) {
     final parser = ArgParser()
       ..addOption("warmup", defaultsTo: "$_defaultWarmupCount")
@@ -103,11 +94,7 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _LiveListBenchmark {
-  const _LiveListBenchmark({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
-
-  final _BenchmarkConfiguration _configuration;
-
+class const _LiveListBenchmark({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-live-list-baseline-");
@@ -741,11 +728,7 @@ mixin _PluginCounters {
   }
 }
 
-class _PluginCounterAggregate {
-  const _PluginCounterAggregate({required this.plugins});
-
-  final List<_ThrowingBenchmarkPlugin> plugins;
-
+class const _PluginCounterAggregate({required final List<_ThrowingBenchmarkPlugin> plugins}) {
   int get pluginCount => plugins.length;
   int get calls => plugins.fold(0, (total, plugin) => total + plugin.calls);
   int get rowsEnumerated => plugins.fold(0, (total, plugin) => total + plugin.rowsEnumerated);
@@ -757,12 +740,9 @@ class _PluginCounterAggregate {
   }
 }
 
-class _ThrowingBenchmarkPlugin with _PluginCounters implements NativeProjectsPluginApi {
-  _ThrowingBenchmarkPlugin({required this.id});
-
-  @override
-  final String id;
-
+class _ThrowingBenchmarkPlugin({@override required final String id})
+    with _PluginCounters
+    implements NativeProjectsPluginApi {
   @override
   Future<List<PluginProject>> getProjects() => _throwListRead(read: "projects");
 
@@ -794,7 +774,7 @@ class _ThrowingBenchmarkPlugin with _PluginCounters implements NativeProjectsPlu
   }
 }
 
-class _ExistingFilesystemApi implements FilesystemApi {
+class _ExistingFilesystemApi() implements FilesystemApi {
   @override
   bool directoryExists(String path) => true;
 

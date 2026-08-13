@@ -5,7 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/desktop_file_image_saver.dart";
 import "package:sesori_mobile/core/platform/file_save_client.dart";
 
-class _FakeFileSaveClient implements FileSaveClient {
+class _FakeFileSaveClient() implements FileSaveClient {
   bool result = false;
   Uint8List? bytes;
   String? mime;

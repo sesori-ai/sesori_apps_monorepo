@@ -3,7 +3,7 @@ import "plugin_config.dart";
 import "start_abort_signal.dart";
 
 /// Optional descriptor capability for an interactive backend login flow.
-abstract interface class InteractivePluginAuthenticationDescriptor {
+abstract interface class InteractivePluginAuthenticationDescriptor() {
   /// Starts one plugin-owned authentication operation.
   ///
   /// The first actionable event is a challenge. The plugin must release every
@@ -18,26 +18,13 @@ abstract interface class InteractivePluginAuthenticationDescriptor {
   });
 }
 
-sealed class PluginAuthenticationEvent {
-  const PluginAuthenticationEvent();
-}
+sealed class const PluginAuthenticationEvent();
 
-final class PluginAuthenticationDeviceCodeChallenge extends PluginAuthenticationEvent {
-  const PluginAuthenticationDeviceCodeChallenge({
-    required this.verificationUri,
-    required this.userCode,
-  });
+final class const PluginAuthenticationDeviceCodeChallenge({
+  required final Uri verificationUri,
+  required final String userCode,
+}) extends PluginAuthenticationEvent;
 
-  final Uri verificationUri;
-  final String userCode;
-}
+final class const PluginAuthenticationCompleted() extends PluginAuthenticationEvent;
 
-final class PluginAuthenticationCompleted extends PluginAuthenticationEvent {
-  const PluginAuthenticationCompleted();
-}
-
-final class PluginAuthenticationFailed extends PluginAuthenticationEvent {
-  const PluginAuthenticationFailed({required this.message});
-
-  final String message;
-}
+final class const PluginAuthenticationFailed({required final String message}) extends PluginAuthenticationEvent;

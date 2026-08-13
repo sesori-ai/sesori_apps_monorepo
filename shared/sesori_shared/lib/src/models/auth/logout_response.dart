@@ -5,9 +5,9 @@ part "logout_response.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class LogoutResponse with _$LogoutResponse {
-  const factory LogoutResponse({
+  const factory({
     required bool success,
   }) = _LogoutResponse;
 
-  factory LogoutResponse.fromJson(Map<String, dynamic> json) => _$LogoutResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$LogoutResponseFromJson(json);
 }

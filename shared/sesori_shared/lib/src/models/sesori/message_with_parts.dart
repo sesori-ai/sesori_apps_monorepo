@@ -10,7 +10,7 @@ part "message_with_parts.g.dart";
 /// Response body for `POST /session/messages`.
 @Freezed(fromJson: true, toJson: true)
 sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
-  const factory MessageWithPartsResponse({
+  const factory({
     required List<MessageWithParts> messages,
 
     /// Cursor for the next older page, to be sent back verbatim as the
@@ -19,15 +19,15 @@ sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
     required int? nextCursor,
   }) = _MessageWithPartsResponse;
 
-  factory MessageWithPartsResponse.fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class MessageWithParts with _$MessageWithParts {
-  const factory MessageWithParts({
+  const factory({
     required Message info,
     required List<MessagePart> parts,
   }) = _MessageWithParts;
 
-  factory MessageWithParts.fromJson(Map<String, dynamic> json) => _$MessageWithPartsFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$MessageWithPartsFromJson(json);
 }

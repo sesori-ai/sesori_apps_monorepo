@@ -7,44 +7,28 @@ import "../isolate.dart";
 import "multi_task_isolate.dart";
 import "multi_task_transient_isolate.dart";
 
-class MultiTaskIsolatePoolImpl implements MultiTaskIsolate {
-  final UnmodifiableListView<MultiTaskIsolate> _isolates;
-  bool _disposed = false;
+class MultiTaskIsolatePoolImpl({
+  required int minPoolSize,
+  required int maxPoolSize,
+  required Duration timeout,
+  required String debugName,
 
   /// The minimum number of tasks that an active isolate must have before
   /// a transient isolate is spun up. This is used to avoid spinning up
   /// transient isolates when there are few tasks to run.
-  final int minTasksPerActiveIsolateToSpinTransientIsolate;
+  required final int minTasksPerActiveIsolateToSpinTransientIsolate,
+}) implements MultiTaskIsolate {
+  final UnmodifiableListView<MultiTaskIsolate> _isolates = _createIsolates(
+    minPoolSize: minPoolSize,
+    maxPoolSize: maxPoolSize,
+    timeout: timeout,
+    debugName: debugName,
+    minTasksPerActiveIsolateToSpinTransientIsolate: minTasksPerActiveIsolateToSpinTransientIsolate,
+  );
+  bool _disposed = false;
 
   @override
   bool get disposed => _disposed;
-
-  MultiTaskIsolatePoolImpl({
-    required int minPoolSize,
-    required int maxPoolSize,
-    required Duration timeout,
-    required String debugName,
-    required this.minTasksPerActiveIsolateToSpinTransientIsolate,
-  }) : assert(maxPoolSize > 0),
-       assert(minTasksPerActiveIsolateToSpinTransientIsolate > 0),
-       assert(minPoolSize <= maxPoolSize),
-       _isolates = UnmodifiableListView(
-         List.generate(
-           max(maxPoolSize, 1),
-           (index) => index < minPoolSize
-               ? MultiTaskIsolateImpl(
-                   // Persistent isolates (always present)
-                   debugName: "$debugName - #$index",
-                   onActiveTaskCountChanged: null,
-                 )
-               : MultiTaskTransientIsolate(
-                   // Transient isolates (optional, created on demand)
-                   debugName: "$debugName - #$index",
-                   timeout: timeout,
-                   eagerStart: false,
-                 ),
-         ),
-       );
 
   @override
   Future<OUT> run<IN, OUT>(IsolateTask<IN, OUT> task, IN arg) async {
@@ -94,7 +78,7 @@ class MultiTaskIsolatePoolImpl implements MultiTaskIsolate {
         "with [${selectedIsolate.activeTaskCount}] active tasks",
       );
     }
-    return selectedIsolate.run(task, arg);
+    return await selectedIsolate.run(task, arg);
   }
 
   @override
@@ -113,6 +97,35 @@ class MultiTaskIsolatePoolImpl implements MultiTaskIsolate {
       : _isolates
             .map((e) => e.activeTaskCount) //
             .reduce((previousValue, element) => previousValue + element);
+
+  static UnmodifiableListView<MultiTaskIsolate> _createIsolates({
+    required int minPoolSize,
+    required int maxPoolSize,
+    required Duration timeout,
+    required String debugName,
+    required int minTasksPerActiveIsolateToSpinTransientIsolate,
+  }) {
+    assert(maxPoolSize > 0);
+    assert(minTasksPerActiveIsolateToSpinTransientIsolate > 0);
+    assert(minPoolSize <= maxPoolSize);
+    return UnmodifiableListView(
+      List.generate(
+        max(maxPoolSize, 1),
+        (index) => index < minPoolSize
+            ? MultiTaskIsolateImpl(
+                // Persistent isolates (always present)
+                debugName: "$debugName - #$index",
+                onActiveTaskCountChanged: null,
+              )
+            : MultiTaskTransientIsolate(
+                // Transient isolates (optional, created on demand)
+                debugName: "$debugName - #$index",
+                timeout: timeout,
+                eagerStart: false,
+              ),
+      ),
+    );
+  }
 }
 
 MultiTaskIsolate? _getIsolateWithMinActiveTasks(

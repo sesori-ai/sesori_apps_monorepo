@@ -1274,9 +1274,7 @@ void main() {
   });
 }
 
-class _TransactionGatedSessionDao extends SessionDao {
-  _TransactionGatedSessionDao(super.attachedDatabase);
-
+class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
   Completer<void>? _transactionEntered;
   Completer<void>? _releaseTransaction;
   bool _failPromptDefaultsUpdate = false;
@@ -1319,7 +1317,7 @@ class _TransactionGatedSessionDao extends SessionDao {
       _transactionEntered = null;
       _releaseTransaction = null;
     }
-    return super.isSessionTombstoned(
+    return await super.isSessionTombstoned(
       backendSessionId: backendSessionId,
       pluginId: pluginId,
     );
@@ -1370,7 +1368,7 @@ Map<String, dynamic> _sessionInfo({
   ).toJson();
 }
 
-class _EventPlugin implements NativeProjectsPluginApi {
+class _EventPlugin() implements NativeProjectsPluginApi {
   @override
   String get id => "event-plugin";
 

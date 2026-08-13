@@ -3,12 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 
-class PullRequestRefreshSettingsService {
-  PullRequestRefreshSettingsService({required BridgeSettingsRepository bridgeSettingsRepository})
-    : _bridgeSettingsRepository = bridgeSettingsRepository;
-
-  final BridgeSettingsRepository _bridgeSettingsRepository;
-
+class PullRequestRefreshSettingsService({required final BridgeSettingsRepository _bridgeSettingsRepository}) {
   PullRequestRefreshSettingsResponse get currentSettings =>
       _response(settings: _bridgeSettingsRepository.currentSettings);
 
@@ -44,11 +39,7 @@ class PullRequestRefreshSettingsService {
   }
 }
 
-class PullRequestRefreshIntervalOutOfRangeException implements Exception {
-  final int intervalSeconds;
-
-  const PullRequestRefreshIntervalOutOfRangeException({required this.intervalSeconds});
-
+class const PullRequestRefreshIntervalOutOfRangeException({required final int intervalSeconds}) implements Exception {
   int get minimumIntervalSeconds => minimumPullRequestRefreshIntervalSeconds;
 
   int get maximumIntervalSeconds => maximumPullRequestRefreshIntervalSeconds;

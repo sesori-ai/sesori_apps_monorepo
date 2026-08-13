@@ -6,7 +6,7 @@ part 'release_info.g.dart';
 /// A newer release available for download.
 @Freezed(fromJson: true, toJson: true)
 sealed class ReleaseInfo with _$ReleaseInfo {
-  const factory ReleaseInfo({
+  const factory({
     /// The version string of the release (e.g., "0.3.0").
     required String version,
 
@@ -20,5 +20,5 @@ sealed class ReleaseInfo with _$ReleaseInfo {
     required DateTime publishedAt,
   }) = _ReleaseInfo;
 
-  factory ReleaseInfo.fromJson(Map<String, dynamic> json) => _$ReleaseInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ReleaseInfoFromJson(json);
 }

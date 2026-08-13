@@ -401,15 +401,15 @@ CodexSessionService _newService({
   );
 }
 
-class _DeleteFailingCatalogRepository extends CodexCatalogRepository {
-  _DeleteFailingCatalogRepository() : super(rolloutApi: CodexRolloutApi(environment: const {}));
+class _DeleteFailingCatalogRepository() extends CodexCatalogRepository {
+  this : super(rolloutApi: CodexRolloutApi(environment: const {}));
 
   @override
   bool deleteSession({required String sessionId}) => false;
 }
 
-class _DelayedToolOutcomeRepository extends CodexToolOutcomeRepository {
-  _DelayedToolOutcomeRepository()
+class _DelayedToolOutcomeRepository() extends CodexToolOutcomeRepository {
+  this
     : super(
         storage: _ReadFailingToolOutcomeStorage(),
       );
@@ -425,15 +425,15 @@ class _DelayedToolOutcomeRepository extends CodexToolOutcomeRepository {
   }
 }
 
-class _FixedPathCatalogRepository extends CodexCatalogRepository {
-  _FixedPathCatalogRepository() : super(rolloutApi: CodexRolloutApi(environment: const {}));
+class _FixedPathCatalogRepository() extends CodexCatalogRepository {
+  this : super(rolloutApi: CodexRolloutApi(environment: const {}));
 
   @override
   String? findRolloutPath({required String sessionId}) => "/rollout.jsonl";
 }
 
-class _RecordingMessageRepository extends CodexMessageRepository {
-  _RecordingMessageRepository()
+class _RecordingMessageRepository() extends CodexMessageRepository {
+  this
     : super(
         rolloutApi: CodexRolloutApi(environment: const {}),
         rolloutToolMapper: const CodexRolloutToolMapper(
@@ -468,7 +468,7 @@ class _RecordingMessageRepository extends CodexMessageRepository {
   }
 }
 
-class _ReadFailingToolOutcomeStorage implements CodexToolOutcomeStorage {
+class _ReadFailingToolOutcomeStorage() implements CodexToolOutcomeStorage {
   @override
   Future<List<CodexStoredToolErrorDto>> readErrors() {
     throw const FileSystemException("denied");
@@ -483,30 +483,27 @@ class _ReadFailingToolOutcomeStorage implements CodexToolOutcomeStorage {
   }) async {}
 }
 
-class _StubMetadataRepository extends CodexMetadataRepository {
-  _StubMetadataRepository({required this.defaults}) : super(configReader: CodexConfigReader(environment: const {}));
-
-  final CodexConfigDefaults defaults;
+class _StubMetadataRepository({required final CodexConfigDefaults defaults}) extends CodexMetadataRepository {
+  this : super(configReader: CodexConfigReader(environment: const {}));
 
   @override
   CodexConfigDefaults readConfigDefaults() => defaults;
 }
 
-class _StubModelRepository extends CodexModelRepository {
-  _StubModelRepository({
-    this.catalog = const (
-      defaultModelID: null,
-      models: <PluginModel>[],
-    ),
-    this.error,
-  }) : super(
-         appServerApi: CodexAppServerApi(
-           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
-         ),
-       );
+class _StubModelRepository({
+  final CodexModelCatalog catalog = const (
+    defaultModelID: null,
+    models: <PluginModel>[],
+  ),
+  final Object? error,
+}) extends CodexModelRepository {
+  this
+    : super(
+        appServerApi: CodexAppServerApi(
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+        ),
+      );
 
-  final CodexModelCatalog catalog;
-  final Object? error;
   int listCount = 0;
 
   @override
@@ -518,16 +515,14 @@ class _StubModelRepository extends CodexModelRepository {
   }
 }
 
-class _StubSkillRepository extends CodexSkillRepository {
-  _StubSkillRepository({this.commands = const [], this.error})
+class _StubSkillRepository({var List<PluginCommand> commands = const [], final Object? error})
+    extends CodexSkillRepository {
+  this
     : super(
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
         ),
       );
-
-  List<PluginCommand> commands;
-  final Object? error;
 
   @override
   Future<List<PluginCommand>> listCommands({required String cwd}) async {
@@ -537,8 +532,8 @@ class _StubSkillRepository extends CodexSkillRepository {
   }
 }
 
-class _StubThreadRepository extends CodexThreadRepository {
-  _StubThreadRepository()
+class _StubThreadRepository() extends CodexThreadRepository {
+  this
     : super(
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),

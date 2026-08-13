@@ -1,7 +1,7 @@
 import "package:drift/drift.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-class SessionOptionsCacheTable extends Table {
+class SessionOptionsCacheTable() extends Table {
   @override
   String get tableName => "session_options_cache_table";
 

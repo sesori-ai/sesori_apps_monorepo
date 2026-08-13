@@ -253,7 +253,7 @@ Future<void> _insertRoot({
   );
 }
 
-class _ThrowingPlugin implements NativeProjectsPluginApi {
+class _ThrowingPlugin() implements NativeProjectsPluginApi {
   int calls = 0;
 
   @override
@@ -272,7 +272,7 @@ class _ThrowingPlugin implements NativeProjectsPluginApi {
   }
 }
 
-class _NeverCompletingPlugin extends _ThrowingPlugin {
+class _NeverCompletingPlugin() extends _ThrowingPlugin {
   @override
   Future<List<PluginProject>> getProjects() {
     calls++;

@@ -8,20 +8,13 @@ import "package:web_socket_channel/web_socket_channel.dart";
 ///
 /// Fields mirror codex's `InitializeResponse` shape (see codex's
 /// `app-server generate-json-schema` output for the source of truth).
-class CodexInitializeResult {
-  const CodexInitializeResult({
-    required this.userAgent,
-    required this.codexHome,
-    required this.platformOs,
-    required this.platformFamily,
-  });
-
-  final String userAgent;
-  final String codexHome;
-  final String platformOs;
-  final String platformFamily;
-
-  factory CodexInitializeResult.fromJson(Map<String, dynamic> json) {
+class const CodexInitializeResult({
+  required final String userAgent,
+  required final String codexHome,
+  required final String platformOs,
+  required final String platformFamily,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
     return CodexInitializeResult(
       userAgent: (json["userAgent"] ?? "") as String,
       codexHome: (json["codexHome"] ?? "") as String,
@@ -32,17 +25,11 @@ class CodexInitializeResult {
 }
 
 /// A JSON-RPC error returned by codex app-server.
-class CodexRpcException implements Exception {
-  CodexRpcException({
-    required this.method,
-    required this.code,
-    required this.message,
-  });
-
-  final String method;
-  final int code;
-  final String message;
-
+class CodexRpcException({
+  required final String method,
+  required final int code,
+  required final String message,
+}) implements Exception {
   @override
   String toString() => "CodexRpcException($method, code=$code, $message)";
 }
@@ -53,12 +40,7 @@ class CodexRpcException implements Exception {
 /// a `method` (e.g. `"thread/started"`, `"item/agentMessage/delta"`) and
 /// a free-form `params` object. We keep the raw map here and let endpoint APIs
 /// decode typed notifications where Codex exposes structured payloads.
-class CodexServerNotification {
-  const CodexServerNotification({required this.method, required this.params});
-
-  final String method;
-  final Map<String, dynamic> params;
-
+class const CodexServerNotification({required final String method, required final Map<String, dynamic> params}) {
   @override
   String toString() => "CodexServerNotification($method)";
 }
@@ -67,21 +49,15 @@ class CodexServerNotification {
 /// elicitations, user-input requests). Phase 2 records and logs these but
 /// does not yet route them; later phases will turn them into
 /// [PluginPendingQuestion]s on the bridge stream.
-class CodexServerRequest {
-  const CodexServerRequest({
-    required this.id,
-    required this.method,
-    required this.params,
-  });
-
+class const CodexServerRequest({
   /// JSON-RPC `id` — caller must use this when sending a response.
-  final Object id;
-  final String method;
-  final Map<String, dynamic> params;
-}
+  required final Object id,
+  required final String method,
+  required final Map<String, dynamic> params,
+});
 
 /// Request and notification surface shared by Codex App Server transports.
-abstract interface class CodexAppServerTransport {
+abstract interface class CodexAppServerTransport() {
   Stream<CodexServerNotification> get notifications;
 
   Future<dynamic> request({
@@ -109,29 +85,22 @@ WebSocketChannel _defaultConnect(Uri uri) => WebSocketChannel.connect(uri);
 ///      by JSON-RPC `id`.
 ///   4. Listen on [notifications] and [serverRequests] for streaming events.
 ///   5. Call [dispose] to close the socket and fail any in-flight requests.
-class CodexAppServerClient implements CodexAppServerTransport {
-  CodexAppServerClient({
-    required String serverUrl,
-    String? capabilityToken,
-    CodexWebSocketChannelFactory? channelFactory,
-    void Function()? onDisconnected,
-  }) : _serverUrl = serverUrl,
-       _capabilityToken = capabilityToken,
-       _channelFactory = channelFactory ?? _defaultConnect,
-       _onDisconnected = onDisconnected;
-
-  final String _serverUrl;
+class CodexAppServerClient({
+  required final String _serverUrl,
   // Currently unused — codex's `--ws-auth` is documented as required only
   // for non-loopback listeners. Kept for non-loopback support.
-  // ignore: unused_field
-  final String? _capabilityToken;
-  final CodexWebSocketChannelFactory _channelFactory;
+  // ignore: unused_field_from_primary_constructor
+  final String? _capabilityToken,
+  CodexWebSocketChannelFactory? channelFactory,
 
   /// Fired at most once when the socket drops unexpectedly (error or close)
   /// while the client is still live — never during a deliberate [dispose].
   /// The runtime descriptor wires this to its status reporter so a transport
   /// drop surfaces as a debounced degraded status.
-  final void Function()? _onDisconnected;
+  final void Function()? _onDisconnected,
+}) implements CodexAppServerTransport {
+  final CodexWebSocketChannelFactory _channelFactory = channelFactory ?? _defaultConnect;
+
   bool _disconnectedNotified = false;
 
   WebSocketChannel? _channel;

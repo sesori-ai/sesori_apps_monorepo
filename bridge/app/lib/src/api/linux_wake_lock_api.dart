@@ -6,13 +6,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../bridge/foundation/process_starter.dart";
 import "wake_lock_client.dart";
 
-class LinuxWakeLockApi implements WakeLockClient {
-  LinuxWakeLockApi({
-    required ProcessStarter processStarter,
-  }) : _processStarter = processStarter;
-
-  final ProcessStarter _processStarter;
-
+class LinuxWakeLockApi({
+  required final ProcessStarter _processStarter,
+}) implements WakeLockClient {
   Process? _process;
 
   @override

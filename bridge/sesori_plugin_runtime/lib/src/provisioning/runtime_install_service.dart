@@ -3,18 +3,21 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginStartAbortedException, ProvisionDownloading, ProvisionExtracting, ProvisionVerifying, RuntimeProvisionProgress, StartAbortSignal;
+    show
+        Log,
+        PluginStartAbortedException,
+        ProvisionDownloading,
+        ProvisionExtracting,
+        ProvisionVerifying,
+        RuntimeProvisionProgress,
+        StartAbortSignal;
 
 import "runtime_manifest.dart";
 
 /// Raised when a managed runtime cannot be installed (download, checksum,
 /// extraction, or placement failure). The provision service maps this to a
 /// non-fatal `ProvisionFailed`.
-class RuntimeInstallException implements Exception {
-  const RuntimeInstallException(this.message);
-
-  final String message;
-
+class const RuntimeInstallException(final String message) implements Exception {
   @override
   String toString() => "RuntimeInstallException: $message";
 }
@@ -33,25 +36,13 @@ class RuntimeInstallException implements Exception {
 /// binary lands via atomic rename, and the sentinel is written last — so any
 /// residual race self-heals on the next attempt. Staging paths are fixed and
 /// self-healing.
-class RuntimeInstallService {
-  final BinaryDownloadClient _downloadClient;
-  final ChecksumValidator _checksumValidator;
-  final ArchiveExtractor _archiveExtractor;
-  final CommandExecutor _commandExecutor;
-  final String _runtimeId;
-
-  RuntimeInstallService({
-    required BinaryDownloadClient downloadClient,
-    required ChecksumValidator checksumValidator,
-    required ArchiveExtractor archiveExtractor,
-    required CommandExecutor commandExecutor,
-    required String runtimeId,
-  }) : _downloadClient = downloadClient,
-       _checksumValidator = checksumValidator,
-       _archiveExtractor = archiveExtractor,
-       _commandExecutor = commandExecutor,
-       _runtimeId = runtimeId;
-
+class RuntimeInstallService({
+  required final BinaryDownloadClient _downloadClient,
+  required final ChecksumValidator _checksumValidator,
+  required final ArchiveExtractor _archiveExtractor,
+  required final CommandExecutor _commandExecutor,
+  required final String _runtimeId,
+}) {
   static const String sentinelFileName = ".sesori-runtime-sha256";
   static const String _downloadFileName = ".sesori-runtime-download";
   static const String _stagingDirName = ".sesori-runtime-staging";
@@ -172,7 +163,10 @@ class RuntimeInstallService {
     required StartAbortSignal startAborted,
   }) async* {
     try {
-      await for (final DownloadProgress progress in _downloadClient.download(url: url, destinationPath: destinationPath)) {
+      await for (final DownloadProgress progress in _downloadClient.download(
+        url: url,
+        destinationPath: destinationPath,
+      )) {
         _throwIfAborted(startAborted);
         yield ProvisionDownloading(receivedBytes: progress.receivedBytes, totalBytes: progress.totalBytes);
       }

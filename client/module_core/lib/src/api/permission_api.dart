@@ -5,11 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
-class PermissionApi {
-  final RelayHttpApiClient _client;
-
-  PermissionApi({required RelayHttpApiClient client}) : _client = client;
-
+class PermissionApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<void>> replyToPermission({
     required String requestId,
     required String sessionId,

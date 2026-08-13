@@ -5,21 +5,16 @@ const int defaultPullRequestRefreshIntervalSeconds = 30;
 const int minimumPullRequestRefreshIntervalSeconds = 15;
 const int maximumPullRequestRefreshIntervalSeconds = 3600;
 
-enum SleepPreventionMode {
+enum SleepPreventionMode() {
   off,
   always,
 }
 
-class PluginLifecycleSettings {
-  final int? idleTimeoutMins;
-  final Map<String, Object?> additionalProperties;
-
-  const PluginLifecycleSettings({
-    required this.idleTimeoutMins,
-    this.additionalProperties = const {},
-  });
-
-  factory PluginLifecycleSettings.fromJson({
+class const PluginLifecycleSettings({
+    required final int? idleTimeoutMins,
+    final Map<String, Object?> additionalProperties = const {},
+  }) {
+  factory fromJson({
     required String entryName,
     required Map<String, dynamic> json,
   }) {
@@ -53,18 +48,12 @@ class PluginLifecycleSettings {
   }
 }
 
-class BridgePluginSettings {
-  final Set<String> disabledPluginIds;
-  final PluginLifecycleSettings defaults;
-  final Map<String, PluginLifecycleSettings> settingsByPluginId;
-
-  const BridgePluginSettings({
-    this.disabledPluginIds = const {},
-    this.defaults = const PluginLifecycleSettings(idleTimeoutMins: null),
-    this.settingsByPluginId = const {},
-  });
-
-  factory BridgePluginSettings.fromJson({required Object? rawValue}) {
+class const BridgePluginSettings({
+    final Set<String> disabledPluginIds = const {},
+    final PluginLifecycleSettings defaults = const PluginLifecycleSettings(idleTimeoutMins: null),
+    final Map<String, PluginLifecycleSettings> settingsByPluginId = const {},
+  }) {
+  factory fromJson({required Object? rawValue}) {
     if (rawValue is! Map || rawValue.keys.any((key) => key is! String)) {
       throw const PluginSettingsFormatException('"plugins" must be an object');
     }
@@ -173,31 +162,19 @@ class BridgePluginSettings {
   }
 }
 
-class BridgeSettings {
-  final SleepPreventionMode sleepPrevention;
-
-  /// Automatically approves permission requests at the bridge without
+class const BridgeSettings({
+    final SleepPreventionMode sleepPrevention = SleepPreventionMode.always,
+    /// Automatically approves permission requests at the bridge without
   /// forwarding them to connected clients.
-  final bool yolo;
-
-  /// Plugin eligibility and lifecycle settings.
-  final BridgePluginSettings plugins;
-
-  /// Which release channel the auto-updater follows.
-  final ReleaseTrack releaseTrack;
-
-  /// Polling cadence while at least one client views a project.
-  final int pullRequestRefreshIntervalSeconds;
-
-  const BridgeSettings({
-    this.sleepPrevention = SleepPreventionMode.always,
-    this.yolo = false,
-    this.plugins = const BridgePluginSettings(),
-    this.releaseTrack = ReleaseTrack.stable,
-    this.pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
-  });
-
-  factory BridgeSettings.fromJson(Map<String, dynamic> json) {
+  final bool yolo = false,
+    /// Plugin eligibility and lifecycle settings.
+  final BridgePluginSettings plugins = const BridgePluginSettings(),
+    /// Which release channel the auto-updater follows.
+  final ReleaseTrack releaseTrack = ReleaseTrack.stable,
+    /// Polling cadence while at least one client views a project.
+  final int pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
+  }) {
+  factory fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
       sleepPrevention: _parseSleepPrevention(json['sleepPrevention']),
       yolo: json['yolo'] == true,
@@ -264,19 +241,15 @@ class BridgeSettings {
   }
 }
 
-class PluginSettingsFormatException extends FormatException {
-  const PluginSettingsFormatException(super.message);
-}
+class const PluginSettingsFormatException(super.message) extends FormatException;
 
-class PluginIdleTimeoutFormatException extends PluginSettingsFormatException {
-  final String entryName;
-
-  PluginIdleTimeoutFormatException({required this.entryName})
+class PluginIdleTimeoutFormatException({required final String entryName}) extends PluginSettingsFormatException {
+  this
     : super('"plugins.$entryName.idleTimeoutMins" must be an integer');
 }
 
-class PullRequestRefreshIntervalFormatException extends FormatException {
-  const PullRequestRefreshIntervalFormatException()
+class const PullRequestRefreshIntervalFormatException() extends FormatException {
+  this
     : super(
         '"pullRequestRefreshIntervalSeconds" must be an integer between '
         '$minimumPullRequestRefreshIntervalSeconds and $maximumPullRequestRefreshIntervalSeconds',

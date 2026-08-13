@@ -2,9 +2,7 @@ import "auth_client_type.dart";
 import "device_info.dart";
 
 /// Builds auth device descriptors within the auth-server schema limits.
-class AuthDeviceInfoBuilder {
-  const AuthDeviceInfoBuilder();
-
+class const AuthDeviceInfoBuilder() {
   static const int maxNameLength = 120;
   static const int maxVersionLength = 40;
 

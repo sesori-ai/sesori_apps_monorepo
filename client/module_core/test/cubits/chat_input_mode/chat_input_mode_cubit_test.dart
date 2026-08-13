@@ -4,7 +4,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _MockChatInputModeStore extends Mock implements ChatInputModeStore;
+class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
 
 void main() {
   late _MockChatInputModeStore store;

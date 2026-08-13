@@ -8,16 +8,10 @@ typedef PluginConfigSnapshot = ({
   List<String> unknownDisabledPluginIds,
 });
 
-class BridgeConfigService {
-  BridgeConfigService({
-    required BridgeSettingsRepository bridgeSettingsRepository,
-    required DefaultEditorRepository defaultEditorRepository,
-  }) : _bridgeSettingsRepository = bridgeSettingsRepository,
-       _defaultEditorRepository = defaultEditorRepository;
-
-  final BridgeSettingsRepository _bridgeSettingsRepository;
-  final DefaultEditorRepository _defaultEditorRepository;
-
+class BridgeConfigService({
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final DefaultEditorRepository _defaultEditorRepository,
+}) {
   Future<String> openConfigFile() async {
     await _bridgeSettingsRepository.ensureConfigExists();
     final configFilePath = _bridgeSettingsRepository.configFilePath;
@@ -49,11 +43,7 @@ class BridgeConfigService {
   }
 }
 
-class UnknownPluginConfigException implements Exception {
-  final String pluginId;
-
-  const UnknownPluginConfigException({required this.pluginId});
-
+class const UnknownPluginConfigException({required final String pluginId}) implements Exception {
   @override
   String toString() => 'Unknown plugin "$pluginId".';
 }

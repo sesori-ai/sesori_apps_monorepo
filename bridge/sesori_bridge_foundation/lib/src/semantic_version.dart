@@ -4,22 +4,14 @@
 /// Transport/DTO layers keep versions as raw strings; map them into this typed
 /// value object in repository code rather than comparing version strings ad
 /// hoc. Used to gate bridge self-updates and the managed OpenCode runtime.
-final class SemanticVersion implements Comparable<SemanticVersion> {
-  final int major;
-  final int minor;
-  final int patch;
-  final List<String> prereleaseIdentifiers;
-  final List<String> buildMetadataIdentifiers;
-
-  const SemanticVersion._({
-    required this.major,
-    required this.minor,
-    required this.patch,
-    required this.prereleaseIdentifiers,
-    required this.buildMetadataIdentifiers,
-  });
-
-  factory SemanticVersion.parse({required String value}) {
+final class const SemanticVersion._({
+  required final int major,
+  required final int minor,
+  required final int patch,
+  required final List<String> prereleaseIdentifiers,
+  required final List<String> buildMetadataIdentifiers,
+}) implements Comparable<SemanticVersion> {
+  factory parse({required String value}) {
     final String normalized = value.trim();
     if (normalized.isEmpty) {
       throw const FormatException('Version is empty.');

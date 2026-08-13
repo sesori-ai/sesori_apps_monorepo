@@ -10,22 +10,15 @@ import "../platform/push_notification_message.dart";
 import "notification_preferences_service.dart";
 
 @lazySingleton
-class ForegroundNotificationDispatcher {
-  final NotificationPreferencesService _preferencesService;
-  final LocalNotificationClient _localNotificationClient;
-  final PushMessagingSource _pushMessagingSource;
-
+class ForegroundNotificationDispatcher({
+  required NotificationPreferencesService notificationPreferencesService,
+  required final LocalNotificationClient _localNotificationClient,
+  required final PushMessagingSource _pushMessagingSource,
+}) {
+  final NotificationPreferencesService _preferencesService = notificationPreferencesService;
   StreamSubscription<PushNotificationMessage>? _foregroundMessageSubscription;
   bool _started = false;
   bool _disposed = false;
-
-  ForegroundNotificationDispatcher({
-    required NotificationPreferencesService notificationPreferencesService,
-    required LocalNotificationClient localNotificationClient,
-    required PushMessagingSource pushMessagingSource,
-  }) : _preferencesService = notificationPreferencesService,
-       _localNotificationClient = localNotificationClient,
-       _pushMessagingSource = pushMessagingSource;
 
   Future<void> start() async {
     if (_disposed) {

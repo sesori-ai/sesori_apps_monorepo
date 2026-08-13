@@ -1,51 +1,33 @@
 import "codex_command_execution_dto.dart";
 import "codex_file_change_dto.dart";
 
-enum CodexCorrelatableItemLifecycle {
+enum CodexCorrelatableItemLifecycle() {
   started,
   completed,
 }
 
-sealed class CodexCorrelatableItemEventDto {
-  const CodexCorrelatableItemEventDto({
-    required this.lifecycle,
-    required this.threadId,
-    required this.turnId,
-    required this.itemId,
+sealed class const CodexCorrelatableItemEventDto({
+    required final CodexCorrelatableItemLifecycle lifecycle,
+    required final String threadId,
+    required final String? turnId,
+    required final String itemId,
   });
 
-  final CodexCorrelatableItemLifecycle lifecycle;
-  final String threadId;
-  final String? turnId;
-  final String itemId;
-}
-
-final class CodexCommandExecutionEventDto extends CodexCorrelatableItemEventDto {
-  const CodexCommandExecutionEventDto({
+final class const CodexCommandExecutionEventDto({
     required super.lifecycle,
     required super.threadId,
     required super.turnId,
     required super.itemId,
-    required this.command,
-    required this.aggregatedOutput,
-    required this.status,
-    required this.exitCode,
-  });
+    required final String? command,
+    required final String? aggregatedOutput,
+    required final CodexCommandExecutionStatus status,
+    required final int? exitCode,
+  }) extends CodexCorrelatableItemEventDto;
 
-  final String? command;
-  final String? aggregatedOutput;
-  final CodexCommandExecutionStatus status;
-  final int? exitCode;
-}
-
-final class CodexFileChangeEventDto extends CodexCorrelatableItemEventDto {
-  const CodexFileChangeEventDto({
+final class const CodexFileChangeEventDto({
     required super.lifecycle,
     required super.threadId,
     required super.turnId,
     required super.itemId,
-    required this.status,
-  });
-
-  final CodexFileChangeStatus status;
-}
+    required final CodexFileChangeStatus status,
+  }) extends CodexCorrelatableItemEventDto;

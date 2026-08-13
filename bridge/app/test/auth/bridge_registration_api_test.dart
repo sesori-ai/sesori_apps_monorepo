@@ -107,27 +107,15 @@ BridgeRegistrationApi _createApi(_BridgesTestServer server) {
   return BridgeRegistrationApi(authBackendUrl: server.baseUrl, client: client);
 }
 
-class _RecordedRequest {
-  final String method;
-  final String path;
-  final String? authorization;
-  final String body;
+class const _RecordedRequest({
+  required final String method,
+  required final String path,
+  required final String? authorization,
+  required final String body,
+});
 
-  const _RecordedRequest({
-    required this.method,
-    required this.path,
-    required this.authorization,
-    required this.body,
-  });
-}
-
-class _BridgesTestServer {
-  final HttpServer _server;
-  final int _statusCode;
-
+class _BridgesTestServer._(final HttpServer _server, final int _statusCode) {
   final List<_RecordedRequest> requests = [];
-
-  _BridgesTestServer._(this._server, this._statusCode);
 
   static Future<_BridgesTestServer> start({required int statusCode}) async {
     final server = await HttpServer.bind("127.0.0.1", 0);

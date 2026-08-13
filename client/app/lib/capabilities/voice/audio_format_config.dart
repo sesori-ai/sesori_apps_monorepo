@@ -13,26 +13,20 @@ import "package:universal_platform/universal_platform.dart";
 /// zero quality loss) and the default 44.1 kHz elsewhere (iOS requires it
 /// to avoid a hardware sample-rate mismatch that produces silent recordings).
 @lazySingleton
-class AudioFormatConfig {
-  final AudioEncoder encoder;
-  final String mimeType;
-  final String fileExtension;
+class AudioFormatConfig.forPlatform({required bool isWeb, bool isAndroid = false}) {
+  final AudioEncoder encoder = isWeb ? AudioEncoder.wav : AudioEncoder.aacLc;
+  final String mimeType = isWeb ? "audio/wav" : "audio/mp4";
+  final String fileExtension = isWeb ? "wav" : "m4a";
   final int bitRate;
-  final int sampleRate;
+  final int sampleRate = isAndroid ? 16000 : 44100;
   final int numChannels;
 
-  AudioFormatConfig()
+  new()
     : this.forPlatform(
         isWeb: UniversalPlatform.isWeb,
         isAndroid: UniversalPlatform.isAndroid,
       );
 
   @visibleForTesting
-  AudioFormatConfig.forPlatform({required bool isWeb, bool isAndroid = false})
-    : encoder = isWeb ? AudioEncoder.wav : AudioEncoder.aacLc,
-      mimeType = isWeb ? "audio/wav" : "audio/mp4",
-      fileExtension = isWeb ? "wav" : "m4a",
-      bitRate = 128000,
-      sampleRate = isAndroid ? 16000 : 44100,
-      numChannels = 1;
+  this : bitRate = 128000, numChannels = 1;
 }

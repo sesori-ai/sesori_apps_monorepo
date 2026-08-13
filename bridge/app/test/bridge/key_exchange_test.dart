@@ -20,11 +20,9 @@ void main() {
       final phoneKp = await crypto.generateKeyPair();
       final phonePub = await phoneKp.extractPublicKey();
 
-      final kxMsg =
-          RelayMessage.keyExchange(
-                publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
-              )
-              as RelayKeyExchange;
+      final kxMsg = RelayMessage.keyExchange(
+        publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
+      ) as RelayKeyExchange;
 
       final response = await manager.handleKeyExchange(message: kxMsg);
       final ready = await _decryptReady(response, phoneKp);
@@ -41,11 +39,9 @@ void main() {
       final crypto = RelayCryptoService();
       final phoneKp = await crypto.generateKeyPair();
       final phonePub = await phoneKp.extractPublicKey();
-      final kxMsg =
-          RelayMessage.keyExchange(
-                publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
-              )
-              as RelayKeyExchange;
+      final kxMsg = RelayMessage.keyExchange(
+        publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
+      ) as RelayKeyExchange;
 
       final encrypted = await manager.handleKeyExchange(message: kxMsg);
 
@@ -65,11 +61,9 @@ void main() {
       final crypto = RelayCryptoService();
       final phoneKp = await crypto.generateKeyPair();
       final phonePub = await phoneKp.extractPublicKey();
-      final kxMsg =
-          RelayMessage.keyExchange(
-                publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
-              )
-              as RelayKeyExchange;
+      final kxMsg = RelayMessage.keyExchange(
+        publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
+      ) as RelayKeyExchange;
 
       final response = await manager.handleKeyExchange(message: kxMsg);
 
@@ -84,11 +78,9 @@ void main() {
         final crypto = RelayCryptoService();
         final phoneKp = await crypto.generateKeyPair();
         final phonePub = await phoneKp.extractPublicKey();
-        final kxMsg =
-            RelayMessage.keyExchange(
-                  publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
-                )
-                as RelayKeyExchange;
+        final kxMsg = RelayMessage.keyExchange(
+          publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
+        ) as RelayKeyExchange;
 
         final result = await manager.handleKeyExchange(message: kxMsg);
         return result;
@@ -107,12 +99,10 @@ void main() {
         final crypto = RelayCryptoService();
         final phoneKp = await crypto.generateKeyPair();
         final phonePub = await phoneKp.extractPublicKey();
-        final kxMsg =
-            RelayMessage.keyExchange(
-                  publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
-                )
-                as RelayKeyExchange;
-        return manager.handleKeyExchange(message: kxMsg);
+        final kxMsg = RelayMessage.keyExchange(
+          publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
+        ) as RelayKeyExchange;
+        return await manager.handleKeyExchange(message: kxMsg);
       }
 
       expect(await exchange(), isNotEmpty);

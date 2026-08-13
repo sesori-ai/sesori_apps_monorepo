@@ -1,9 +1,7 @@
 import "dart:io";
 
 /// Raw filesystem access for Cursor's persisted ACP session directories.
-class CursorSessionStorageApi {
-  const CursorSessionStorageApi();
-
+class const CursorSessionStorageApi() {
   FileSystemEntityType entityType({required String path}) {
     return FileSystemEntity.typeSync(path, followLinks: false);
   }

@@ -8,38 +8,21 @@ import '../foundation/process_match.dart';
 import '../models/bridge_startup_lock.dart';
 import 'process_repository.dart';
 
-class StartupLockRejection {
-  const StartupLockRejection({
-    required this.lock,
-    required this.holderMatch,
-    required this.lockFilePath,
-  });
+class const StartupLockRejection({
+  required final BridgeStartupLock? lock,
+  required final ProcessMatch? holderMatch,
+  required final String lockFilePath,
+});
 
-  final BridgeStartupLock? lock;
-  final ProcessMatch? holderMatch;
-  final String lockFilePath;
-}
+class const _LiveStartupLockHolder({
+  required final BridgeStartupLock lock,
+  required final ProcessMatch match,
+});
 
-class _LiveStartupLockHolder {
-  const _LiveStartupLockHolder({
-    required this.lock,
-    required this.match,
-  });
-
-  final BridgeStartupLock lock;
-  final ProcessMatch match;
-}
-
-class StartupMutexRepository {
-  StartupMutexRepository({
-    required RuntimeFileApi runtimeFileApi,
-    required ProcessRepository processRepository,
-  }) : _runtimeFileApi = runtimeFileApi,
-       _processRepository = processRepository;
-
-  final RuntimeFileApi _runtimeFileApi;
-  final ProcessRepository _processRepository;
-
+class StartupMutexRepository({
+  required final RuntimeFileApi _runtimeFileApi,
+  required final ProcessRepository _processRepository,
+}) {
   Future<T> withLock<T>({
     required int bridgePid,
     required String? bridgeStartMarker,
@@ -76,7 +59,7 @@ class StartupMutexRepository {
       }
 
       final retryHolder = await _inspectLiveHolder(currentBridgePid: bridgePid);
-      return onLockRejected(
+      return await onLockRejected(
         StartupLockRejection(
           lock: retryHolder?.lock,
           holderMatch: retryHolder?.match,
@@ -85,7 +68,7 @@ class StartupMutexRepository {
       );
     }
 
-    return onLockRejected(
+    return await onLockRejected(
       StartupLockRejection(
         lock: holder.lock,
         holderMatch: holder.match,

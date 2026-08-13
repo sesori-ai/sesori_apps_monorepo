@@ -24,15 +24,13 @@ part "chat_history_database.g.dart";
   tables: [HistoryMessagesTable, HistoryPartsTable, HistorySyncStateTable],
   daos: [ChatHistoryDao],
 )
-class ChatHistoryDatabase extends _$ChatHistoryDatabase {
-  ChatHistoryDatabase(super.e);
-
+class ChatHistoryDatabase(super.e) extends _$ChatHistoryDatabase {
   @override
   int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async => m.createAll(),
+    onCreate: (m) async => await m.createAll(),
     beforeOpen: (details) async {
       await customStatement("PRAGMA foreign_keys = ON");
     },

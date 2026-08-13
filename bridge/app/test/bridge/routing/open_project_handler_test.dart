@@ -477,7 +477,7 @@ void main() {
   });
 }
 
-class _ConfigurableGitCliApi extends FakeGitCliApi {
+class _ConfigurableGitCliApi() extends FakeGitCliApi {
   bool initialized = false;
   bool insideWorkTree = false;
   Object? insideWorkTreeError;

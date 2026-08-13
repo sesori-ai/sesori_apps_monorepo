@@ -13,25 +13,17 @@ import "queued_message_bubble.dart";
 /// card (brand for questions, success for permissions) so it pops over the chat
 /// while sharing the glass language of the background-tasks card and the
 /// composer pills below.
-class SessionDetailPendingBanner extends StatelessWidget {
-  final IconData icon;
+class const SessionDetailPendingBanner({
+  super.key,
+  required final IconData icon,
 
   /// Semantic surface colour for the glass tint — applied with reduced alpha so
   /// the card stays frosted and the chat refracts through its edges.
-  final Color backgroundColor;
-  final Color foregroundColor;
-  final String label;
-  final VoidCallback onTap;
-
-  const SessionDetailPendingBanner({
-    super.key,
-    required this.icon,
-    required this.backgroundColor,
-    required this.foregroundColor,
-    required this.label,
-    required this.onTap,
-  });
-
+  required final Color backgroundColor,
+  required final Color foregroundColor,
+  required final String label,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -57,9 +49,7 @@ class SessionDetailPendingBanner extends StatelessWidget {
 
 /// Explains why an archived session shows no composer: archiving is permanent,
 /// so the session is readable but can never be prompted or reopened again.
-class SessionDetailArchivedNotice extends StatelessWidget {
-  const SessionDetailArchivedNotice({super.key});
-
+class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -81,16 +71,11 @@ class SessionDetailArchivedNotice extends StatelessWidget {
   }
 }
 
-class SessionDetailQueuedMessagesSection extends StatelessWidget {
-  final QueuedSessionSubmission? sendingSubmission;
-  final List<QueuedSessionSubmission> messages;
-
-  const SessionDetailQueuedMessagesSection({
-    super.key,
-    required this.sendingSubmission,
-    required this.messages,
-  });
-
+class const SessionDetailQueuedMessagesSection({
+  super.key,
+  required final QueuedSessionSubmission? sendingSubmission,
+  required final List<QueuedSessionSubmission> messages,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -117,12 +102,11 @@ class SessionDetailQueuedMessagesSection extends StatelessWidget {
   }
 }
 
-class SessionDetailErrorView extends StatelessWidget {
-  final RemoteFailureReason reason;
-  final VoidCallback onRetry;
-
-  const SessionDetailErrorView({super.key, required this.reason, required this.onRetry});
-
+class const SessionDetailErrorView({
+  super.key,
+  required final RemoteFailureReason reason,
+  required final VoidCallback onRetry,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

@@ -84,10 +84,7 @@ void main() {
   });
 }
 
-class _FakeRestartService implements BridgeRestartService {
-  _FakeRestartService({required this.handoffs});
-
-  final Queue<Future<bool> Function()> handoffs;
+class _FakeRestartService({required final Queue<Future<bool> Function()> handoffs}) implements BridgeRestartService {
   int handoffCalls = 0;
 
   @override

@@ -14,39 +14,27 @@ const Duration _kDownloadInactivityTimeout = Duration(seconds: 30);
 ///   request timeout, or a dropped connection mid-body). Stay quiet and retry.
 /// - [failed]: a genuine failure (a non-retryable status such as 404, or an
 ///   unexpected local error) that will not fix itself on the next attempt.
-enum DownloadFailureKind { network, failed }
+enum DownloadFailureKind() { network, failed }
 
 /// Raised by [BinaryDownloadClient.download] (as a stream error) when a download
 /// cannot complete. Carries a neutral [kind] so each consumer maps it to its own
 /// result type at its boundary rather than the client knowing about them.
-class DownloadException implements Exception {
-  const DownloadException({
-    required this.kind,
-    required this.message,
-    this.statusCode,
-  });
-
-  final DownloadFailureKind kind;
-  final String message;
-  final int? statusCode;
-
+class const DownloadException({
+    required final DownloadFailureKind kind,
+    required final String message,
+    final int? statusCode,
+  }) implements Exception {
   @override
   String toString() => "DownloadException(${kind.name}, status: $statusCode): $message";
 }
 
 /// A byte-progress update emitted while a download streams to disk.
-class DownloadProgress {
-  const DownloadProgress({
-    required this.receivedBytes,
-    required this.totalBytes,
-  });
-
-  final int receivedBytes;
-
-  /// Total expected bytes from `Content-Length`, or `null` when the server did
+class const DownloadProgress({
+    required final int receivedBytes,
+    /// Total expected bytes from `Content-Length`, or `null` when the server did
   /// not advertise a length (progress is then indeterminate).
-  final int? totalBytes;
-
+  required final int? totalBytes,
+  }) {
   /// Fraction in `[0, 1]`, or `null` when the total size is unknown.
   double? get fraction {
     final int? total = totalBytes;
@@ -63,18 +51,11 @@ class DownloadProgress {
 /// failure should be surfaced. The returned stream emits a [DownloadProgress]
 /// per body chunk, completes when the file is fully written, and raises a
 /// [DownloadException] (carrying a neutral [DownloadFailureKind]) on failure.
-class BinaryDownloadClient {
-  final http.Client _httpClient;
-  final Duration _requestTimeout;
-  final Duration _streamInactivityTimeout;
-
-  BinaryDownloadClient({
-    required http.Client httpClient,
-    Duration requestTimeout = _kDownloadRequestTimeout,
-    Duration streamInactivityTimeout = _kDownloadInactivityTimeout,
-  }) : _httpClient = httpClient,
-       _requestTimeout = requestTimeout,
-       _streamInactivityTimeout = streamInactivityTimeout;
+class BinaryDownloadClient({
+    required final http.Client _httpClient,
+    final Duration _requestTimeout = _kDownloadRequestTimeout,
+    final Duration _streamInactivityTimeout = _kDownloadInactivityTimeout,
+  }) {
 
   Stream<DownloadProgress> download({
     required String url,

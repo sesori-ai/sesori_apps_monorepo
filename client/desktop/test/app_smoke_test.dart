@@ -3,7 +3,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/app.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 
-class _InMemorySecureStorage implements SecureStorage {
+class _InMemorySecureStorage() implements SecureStorage {
   final Map<String, String> _values = <String, String>{};
 
   @override

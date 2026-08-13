@@ -7,7 +7,7 @@ import "../acp_process_factory.dart";
 /// In-memory [AcpProcessHandle] for transport/plugin tests — the stdio
 /// analogue of codex's injected fake WebSocket channel. Shared across ACP
 /// harness packages via `package:acp_plugin/acp_testing.dart`.
-class FakeAcpProcess implements AcpProcessHandle {
+class FakeAcpProcess() implements AcpProcessHandle {
   final StreamController<List<int>> _stdout = StreamController<List<int>>();
   final StreamController<List<int>> _stderr = StreamController<List<int>>();
   final Completer<int> _exit = Completer<int>();
@@ -68,7 +68,7 @@ class FakeAcpProcess implements AcpProcessHandle {
 
 /// Minimal [IOSink] that captures `add`-ed bytes and decodes complete ndjson
 /// lines into [frames]. Only [add] is exercised by the transport.
-class CapturingIOSink implements IOSink {
+class CapturingIOSink() implements IOSink {
   final List<int> _buffer = [];
   final List<Map<String, dynamic>> frames = [];
 

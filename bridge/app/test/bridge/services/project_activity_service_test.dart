@@ -443,7 +443,7 @@ Future<ProjectActivity?> _activity({required AppDatabase database, required Stri
   return ProjectActivity(createdAt: row.createdAt, updatedAt: row.updatedAt);
 }
 
-class _HangingProjectsPlugin extends FakeBridgePlugin {
+class _HangingProjectsPlugin() extends FakeBridgePlugin {
   final reconciliationStarted = Completer<void>();
   final releaseReconciliation = Completer<void>();
 

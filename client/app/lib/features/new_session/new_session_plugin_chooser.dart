@@ -13,22 +13,14 @@ import "../../core/extensions/build_context_x.dart";
 /// The menu's header repeats the section name and hangs the settings shortcut
 /// off it, so a harness that needs setting up is one tap from where the user
 /// noticed the problem.
-class NewSessionPluginChooser extends StatelessWidget {
-  final List<PluginMetadata> plugins;
-  final String? selectedPluginId;
-  final bool isSelectionEnabled;
-  final ValueChanged<String> onSelected;
-  final VoidCallback onSettingsPressed;
-
-  const NewSessionPluginChooser({
-    super.key,
-    required this.plugins,
-    required this.selectedPluginId,
-    required this.isSelectionEnabled,
-    required this.onSelected,
-    required this.onSettingsPressed,
-  });
-
+class const NewSessionPluginChooser({
+  super.key,
+  required final List<PluginMetadata> plugins,
+  required final String? selectedPluginId,
+  required final bool isSelectionEnabled,
+  required final ValueChanged<String> onSelected,
+  required final VoidCallback onSettingsPressed,
+}) extends StatelessWidget {
   /// Height of the trigger row and of the menu's header row (Figma: 40 / 52).
   static const double _triggerHeight = 40;
   static const double _menuHeaderHeight = 52;
@@ -102,19 +94,12 @@ class NewSessionPluginChooser extends StatelessWidget {
 }
 
 /// The picked harness' mark and name over an unfold caret.
-class _HarnessTrigger extends StatelessWidget {
-  final String? pluginId;
-  final String label;
-  final double height;
-  final VoidCallback onPressed;
-
-  const _HarnessTrigger({
-    required this.pluginId,
-    required this.label,
-    required this.height,
-    required this.onPressed,
-  });
-
+class const _HarnessTrigger({
+  required final String? pluginId,
+  required final String label,
+  required final double height,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -166,12 +151,8 @@ class _HarnessTrigger extends StatelessWidget {
 
 /// The menu's first row: the section name and the shortcut into harness
 /// settings, where harnesses are enabled, restarted and set up.
-class _HarnessesMenuHeader extends StatelessWidget {
-  final double height;
-  final VoidCallback onSettingsPressed;
-
-  const _HarnessesMenuHeader({required this.height, required this.onSettingsPressed});
-
+class const _HarnessesMenuHeader({required final double height, required final VoidCallback onSettingsPressed})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

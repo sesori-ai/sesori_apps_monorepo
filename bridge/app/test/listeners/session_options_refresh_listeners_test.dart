@@ -157,7 +157,7 @@ const _optionsResponse = SessionOptionsResponse(
   commands: CommandListResponse(items: []),
 );
 
-class _FakeSessionOptionsService implements SessionOptionsService {
+class _FakeSessionOptionsService() implements SessionOptionsService {
   int currentGeneration = 7;
   final Set<String> boundBackendSessionIds = {};
   final Set<String> failingCreationProjects = {};
@@ -213,7 +213,7 @@ class _FakeSessionOptionsService implements SessionOptionsService {
   }
 }
 
-class _FakePluginRuntime implements PluginRuntime {
+class _FakePluginRuntime() implements PluginRuntime {
   final StreamController<SourcedPluginRuntimeEvent> _events = StreamController.broadcast(sync: true);
   final List<({String pluginId, int generation})> generationChecks = [];
 

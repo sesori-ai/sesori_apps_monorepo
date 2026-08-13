@@ -21,9 +21,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///    (GitHub's release API exposes each asset's `digest: "sha256:…"`).
 /// 4. Raise [_minPathVersion] only if the new bridge code requires a newer
 ///    OpenCode API than older installs provide.
-class OpenCodeRuntimeManifest extends RuntimeManifest {
-  const OpenCodeRuntimeManifest();
-
+class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed OpenCode version the bridge will use as-is.
   /// Conservative on purpose: prefer the user's own compatible install and
   /// only download the managed runtime for genuinely old installs.

@@ -5,28 +5,26 @@ part "codex_skill_dto.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexSkillsListResponseDto with _$CodexSkillsListResponseDto {
-  const factory CodexSkillsListResponseDto({
+  const factory({
     required List<CodexSkillsListEntryDto> data,
   }) = _CodexSkillsListResponseDto;
 
-  factory CodexSkillsListResponseDto.fromJson(Map<String, dynamic> json) =>
-      _$CodexSkillsListResponseDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexSkillsListResponseDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexSkillsListEntryDto with _$CodexSkillsListEntryDto {
-  const factory CodexSkillsListEntryDto({
+  const factory({
     required String cwd,
     required List<CodexSkillDto> skills,
   }) = _CodexSkillsListEntryDto;
 
-  factory CodexSkillsListEntryDto.fromJson(Map<String, dynamic> json) =>
-      _$CodexSkillsListEntryDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexSkillsListEntryDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexSkillDto with _$CodexSkillDto {
-  const factory CodexSkillDto({
+  const factory({
     required String name,
     required String description,
     required String? shortDescription,
@@ -34,16 +32,14 @@ sealed class CodexSkillDto with _$CodexSkillDto {
     required bool enabled,
   }) = _CodexSkillDto;
 
-  factory CodexSkillDto.fromJson(Map<String, dynamic> json) =>
-      _$CodexSkillDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexSkillDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexSkillInterfaceDto with _$CodexSkillInterfaceDto {
-  const factory CodexSkillInterfaceDto({
+  const factory({
     required String? shortDescription,
   }) = _CodexSkillInterfaceDto;
 
-  factory CodexSkillInterfaceDto.fromJson(Map<String, dynamic> json) =>
-      _$CodexSkillInterfaceDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexSkillInterfaceDtoFromJson(json);
 }

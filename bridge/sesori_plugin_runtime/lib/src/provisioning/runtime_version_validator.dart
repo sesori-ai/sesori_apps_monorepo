@@ -10,21 +10,11 @@ import "runtime_version.dart";
 /// as-is, or whether the bridge should fall back to the managed runtime, and to
 /// confirm a freshly-installed managed binary actually runs and reports the
 /// expected version.
-class RuntimeVersionValidator {
-  final CommandExecutor _commandExecutor;
-  final String _runtimeId;
-  final Duration _probeTimeout;
-  final RuntimeManifest _manifest;
-
-  RuntimeVersionValidator({
-    required CommandExecutor commandExecutor,
-    required RuntimeManifest manifest,
-    Duration probeTimeout = const Duration(seconds: 10),
-  }) : _commandExecutor = commandExecutor,
-       _manifest = manifest,
-       _runtimeId = manifest.runtimeId,
-       _probeTimeout = probeTimeout;
-
+class RuntimeVersionValidator({
+  required final CommandExecutor _commandExecutor,
+  required final RuntimeManifest _manifest,
+  final Duration _probeTimeout = const Duration(seconds: 10),
+}) {
   /// Runs `<executable> --version` and returns the parsed [RuntimeVersion], or
   /// `null` when the binary cannot be launched, exits non-zero, hangs past the
   /// probe timeout, or prints no parseable version. Never throws.
@@ -42,17 +32,17 @@ class RuntimeVersionValidator {
       );
     } on Object catch (error) {
       // Almost always ENOENT (not installed / not on PATH) or a probe timeout.
-      Log.d("[$_runtimeId] version probe could not run '$executable --version': $error");
+      Log.d("[${_manifest.runtimeId}] version probe could not run '$executable --version': $error");
       return null;
     }
 
     if (result.exitCode != 0) {
-      Log.d("[$_runtimeId] version probe '$executable --version' exited ${result.exitCode}");
+      Log.d("[${_manifest.runtimeId}] version probe '$executable --version' exited ${result.exitCode}");
       return null;
     }
     final version = parseVersionOutput(output: result.stdout);
     if (version == null) {
-      Log.d("[$_runtimeId] version probe output had no parseable version");
+      Log.d("[${_manifest.runtimeId}] version probe output had no parseable version");
     }
     return version;
   }

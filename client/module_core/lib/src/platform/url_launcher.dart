@@ -1,5 +1,5 @@
 /// How a launched URL should be presented to the user.
-enum UrlLaunchMode {
+enum UrlLaunchMode() {
   /// Hand the URL to whichever app owns it — the default browser, the mail
   /// client, Discord, … The user leaves Sesori.
   externalApp,
@@ -14,7 +14,7 @@ enum UrlLaunchMode {
 ///
 /// Flutter apps delegate to [url_launcher]; CLI apps can use
 /// `Process.run("open", [url])` or similar.
-abstract class UrlLauncher {
+abstract class UrlLauncher() {
   /// Launch a URL in the default browser or application.
   Future<bool> launch(Uri url, {UrlLaunchMode mode = UrlLaunchMode.externalApp});
 }

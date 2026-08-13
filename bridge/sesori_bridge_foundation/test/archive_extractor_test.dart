@@ -6,7 +6,7 @@ import "package:test/test.dart";
 
 /// A real [CommandExecutor] backed by [Process.run], used so the extractor's
 /// security hardening is exercised against the actual `tar`/`unzip` binaries.
-class _RealCommandExecutor implements CommandExecutor {
+class _RealCommandExecutor() implements CommandExecutor {
   @override
   Future<CommandResult> run(
     String executable,
@@ -31,11 +31,7 @@ class _RealCommandExecutor implements CommandExecutor {
 
 /// A [CommandExecutor] that always throws, modelling a missing/unexecutable tool
 /// (`ProcessException`) or a force-killed timeout (`TimeoutException`).
-class _ThrowingCommandExecutor implements CommandExecutor {
-  _ThrowingCommandExecutor({required this.error});
-
-  final Object error;
-
+class _ThrowingCommandExecutor({required final Object error}) implements CommandExecutor {
   @override
   Future<CommandResult> run(
     String executable,

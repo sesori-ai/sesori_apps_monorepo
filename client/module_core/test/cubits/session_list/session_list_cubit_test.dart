@@ -1856,7 +1856,7 @@ void main() {
             waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
-          (_) async => Future.delayed(
+          (_) async => await Future.delayed(
             const Duration(milliseconds: 100),
             () => ApiResponse.success(SessionListResponse(items: [testSession()])),
           ),
@@ -1883,7 +1883,7 @@ void main() {
             waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
-          (_) async => Future.delayed(
+          (_) async => await Future.delayed(
             const Duration(milliseconds: 50),
             () => ApiResponse.success(SessionListResponse(items: [testSession()])),
           ),

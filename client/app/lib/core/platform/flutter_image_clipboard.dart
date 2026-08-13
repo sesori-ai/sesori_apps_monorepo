@@ -6,11 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "pasteboard_client.dart";
 
 @LazySingleton(as: ImageClipboard)
-class FlutterImageClipboard implements ImageClipboard {
-  final PasteboardClient _pasteboardClient;
-
-  FlutterImageClipboard({required PasteboardClient pasteboardClient}) : _pasteboardClient = pasteboardClient;
-
+class FlutterImageClipboard({required final PasteboardClient _pasteboardClient}) implements ImageClipboard {
   @override
   Future<Uint8List?> readImage() => _pasteboardClient.readImage();
 

@@ -10,53 +10,44 @@ import "../foundation/filesystem_permission_validator.dart";
 /// Thrown when a filesystem operation fails because the host OS denied access
 /// (e.g. macOS Full Disk Access not granted to the terminal running the
 /// bridge). Carries the [path] that could not be accessed.
-class FilesystemPermissionDeniedException implements Exception {
-  final String path;
-
-  FilesystemPermissionDeniedException({required this.path});
-
+class FilesystemPermissionDeniedException({required final String path}) implements Exception {
   @override
   String toString() => "FilesystemPermissionDeniedException: permission denied: $path";
 }
 
 /// Thrown when a directory that was expected to exist could not be found.
-class FilesystemDirectoryNotFoundException implements Exception {
-  final String path;
-
-  FilesystemDirectoryNotFoundException({required this.path});
-
+class FilesystemDirectoryNotFoundException({required final String path}) implements Exception {
   @override
   String toString() => "FilesystemDirectoryNotFoundException: directory not found: $path";
 }
 
 /// The kind of entity at a path, as resolved by [FilesystemRepository.classifyPath].
-enum FilesystemEntityKind { notFound, notDirectory, directory }
+enum FilesystemEntityKind() { notFound, notDirectory, directory }
 
 /// The outcome of preparing a directory for creation. [alreadyExists] covers
 /// any entity occupying the target path, not only a directory.
-enum CreatableDirectoryStatus { creatable, parentMissing, alreadyExists }
+enum CreatableDirectoryStatus() { creatable, parentMissing, alreadyExists }
 
-sealed class BoundedTextFileReadResult;
+sealed class BoundedTextFileReadResult();
 
-class BoundedTextFileContent extends BoundedTextFileReadResult {
-  final String content;
+class BoundedTextFileContent({required final String content}) extends BoundedTextFileReadResult;
 
-  BoundedTextFileContent({required this.content});
-}
+class BoundedTextFileMissing() extends BoundedTextFileReadResult;
 
-class BoundedTextFileMissing extends BoundedTextFileReadResult;
+class BoundedTextFileBinary() extends BoundedTextFileReadResult;
 
-class BoundedTextFileBinary extends BoundedTextFileReadResult;
+class BoundedTextFileTooLarge() extends BoundedTextFileReadResult;
 
-class BoundedTextFileTooLarge extends BoundedTextFileReadResult;
-
-class BoundedTextFileReadFailure extends BoundedTextFileReadResult;
+class BoundedTextFileReadFailure() extends BoundedTextFileReadResult;
 
 /// Layer 2 aggregator over [FilesystemApi]. Owns the mapping from raw
 /// `dart:io` results into shared models and the classification of
 /// [FileSystemException]s into typed domain errors. Handlers consume the typed
 /// results/exceptions and map them to HTTP statuses.
-class FilesystemRepository {
+class FilesystemRepository({
+    required final FilesystemApi _filesystemApi,
+    required final FilesystemPermissionValidator _permissionValidator,
+  }) {
   static const _binaryExtensions = <String>{
     "png",
     "jpg",
@@ -105,14 +96,6 @@ class FilesystemRepository {
     "db",
   };
 
-  final FilesystemApi _filesystemApi;
-  final FilesystemPermissionValidator _permissionValidator;
-
-  FilesystemRepository({
-    required FilesystemApi filesystemApi,
-    required FilesystemPermissionValidator permissionValidator,
-  }) : _filesystemApi = filesystemApi,
-       _permissionValidator = permissionValidator;
 
   bool directoryExists({required String path}) {
     return _guard(path: path, () => _filesystemApi.directoryExists(path));

@@ -31,9 +31,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// Change [_bundledVersion], re-download all four assets, recompute their
 /// SHA-256 values, and raise [minPathVersion] only when bridge behavior needs a
 /// newer Cursor capability.
-class CursorRuntimeManifest extends RuntimeManifest {
-  const CursorRuntimeManifest();
-
+class const CursorRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed (PATH) Cursor CLI build the bridge uses as-is.
   /// Earlier builds advertise `acp` model switching and `session/load` but
   /// silently no-op them, so the experience breaks invisibly.

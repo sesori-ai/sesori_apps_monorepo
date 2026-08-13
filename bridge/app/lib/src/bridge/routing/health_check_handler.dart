@@ -4,12 +4,9 @@ import "../repositories/health_repository.dart";
 import "request_handler.dart";
 
 /// Handles `GET /global/health` — returns the bridge health snapshot.
-class HealthCheckHandler extends GetRequestHandler<HealthResponse> {
-  final HealthRepository _healthRepository;
-
-  HealthCheckHandler({required HealthRepository healthRepository})
-    : _healthRepository = healthRepository,
-      super("/global/health");
+class HealthCheckHandler({required final HealthRepository _healthRepository})
+    extends GetRequestHandler<HealthResponse> {
+  this : super("/global/health");
 
   @override
   Future<HealthResponse> handle(

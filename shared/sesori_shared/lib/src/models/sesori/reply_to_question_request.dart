@@ -6,18 +6,18 @@ part "reply_to_question_request.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ReplyToQuestionRequest with _$ReplyToQuestionRequest {
-  const factory ReplyToQuestionRequest({
+  const factory({
     required String requestId, // questions request id
     required String sessionId,
     required List<ReplyAnswer> answers,
   }) = _ReplyToQuestionRequest;
 
-  factory ReplyToQuestionRequest.fromJson(Map<String, dynamic> json) => _$ReplyToQuestionRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ReplyToQuestionRequestFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class RejectQuestionRequest with _$RejectQuestionRequest {
-  const factory RejectQuestionRequest({
+  const factory({
     required String requestId, // questions request id
     // `required` so callers cannot forget to supply it, but nullable on the
     // wire: older clients that omit it deserialize to null, and the bridge
@@ -26,7 +26,7 @@ sealed class RejectQuestionRequest with _$RejectQuestionRequest {
     required String? sessionId,
   }) = _RejectQuestionRequest;
 
-  factory RejectQuestionRequest.fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
@@ -34,9 +34,9 @@ sealed class ReplyAnswer with _$ReplyAnswer {
   /// One question's selected values. An empty list means the question was
   /// intentionally left unanswered, including when the user declines that
   /// individual question while answering the rest of the request.
-  const factory ReplyAnswer({
+  const factory({
     required List<String> values,
   }) = _ReplyAnswer;
 
-  factory ReplyAnswer.fromJson(Map<String, dynamic> json) => _$ReplyAnswerFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ReplyAnswerFromJson(json);
 }

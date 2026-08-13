@@ -4,16 +4,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/system_process_api.dart";
 import "../foundation/process_match.dart";
 
-class ProcessRepository {
-  ProcessRepository({
-    required SystemProcessApi api,
-    required ProcessUser? currentUser,
-  }) : _api = api,
-       _currentUser = currentUser;
-
-  final SystemProcessApi _api;
-  final ProcessUser? _currentUser;
-
+class ProcessRepository({
+  required final SystemProcessApi _api,
+  required final ProcessUser? _currentUser,
+}) {
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     final identity = await _api.inspectProcess(pid: pid);
     if (identity == null) {

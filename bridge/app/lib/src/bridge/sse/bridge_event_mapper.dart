@@ -9,13 +9,9 @@ import "../plugin_to_shared_mapping.dart";
 ///
 /// Handles all event type conversions and builds the projects summary event
 /// from already-fetched summary data (the orchestrator owns fetching it).
-class BridgeEventMapper {
-  final FailureReporter _failureReporter;
-
-  BridgeEventMapper({
-    required FailureReporter failureReporter,
-  }) : _failureReporter = failureReporter;
-
+class BridgeEventMapper({
+  required final FailureReporter _failureReporter,
+}) {
   /// Maps a [BridgeSseEvent] to a [SesoriSseEvent], or null if unmappable.
   SesoriSseEvent? map({required BridgeSseEvent event, required String pluginId}) {
     try {
@@ -34,20 +30,21 @@ class BridgeEventMapper {
           :final sessionID,
           :final agent,
           model: final pluginModel,
-        ) => SesoriSseEvent.sessionPromptDefaultsChanged(
-          sessionID: sessionID,
-          promptDefaults: SessionPromptDefaults(
-            agent: agent,
-            model: switch (pluginModel) {
-              PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
-                providerID: providerID,
-                modelID: modelID,
-                variant: variant,
-              ),
-              null => null,
-            },
+        ) =>
+          SesoriSseEvent.sessionPromptDefaultsChanged(
+            sessionID: sessionID,
+            promptDefaults: SessionPromptDefaults(
+              agent: agent,
+              model: switch (pluginModel) {
+                PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
+                  providerID: providerID,
+                  modelID: modelID,
+                  variant: variant,
+                ),
+                null => null,
+              },
+            ),
           ),
-        ),
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),

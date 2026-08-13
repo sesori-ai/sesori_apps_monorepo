@@ -5,7 +5,7 @@ import "../../theme/prego_theme.dart";
 import "../../utils/lerp_utils.dart";
 
 /// Size variants for [PregoQuickActionButton].
-enum PregoQuickActionButtonSize {
+enum PregoQuickActionButtonSize() {
   /// 110x110, icon + label, 20px padding.
   full,
 
@@ -26,7 +26,7 @@ const double _borderWidth = 0.5;
 /// manually without implicit animation.
 class PregoQuickActionButton extends StatelessWidget {
   /// Standard constructor with implicit size transitions.
-  const PregoQuickActionButton({
+  const new({
     super.key,
     required this.size,
     required this.icon,
@@ -41,7 +41,7 @@ class PregoQuickActionButton extends StatelessWidget {
   /// [collapseProgress] drives the transition:
   /// - `0.0` = fully expanded (full size with label)
   /// - `1.0` = fully collapsed (minimized, icon only)
-  const PregoQuickActionButton.animated({
+  const new animated({
     super.key,
     required double this.collapseProgress,
     required this.icon,
@@ -98,21 +98,13 @@ class PregoQuickActionButton extends StatelessWidget {
 }
 
 /// The core rendering widget. Always receives a concrete [collapseProgress].
-class _PregoQuickActionButtonCore extends StatelessWidget {
-  const _PregoQuickActionButtonCore({
-    required this.collapseProgress,
-    required this.icon,
-    required this.label,
-    required this.curve,
-    required this.onTap,
-  });
-
-  final Curve curve;
-  final double collapseProgress;
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
+class const _PregoQuickActionButtonCore({
+    required final double collapseProgress,
+    required final IconData icon,
+    required final String label,
+    required final Curve curve,
+    required final VoidCallback? onTap,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -189,19 +181,12 @@ class _PregoQuickActionButtonCore extends StatelessWidget {
   );
 }
 
-class _PregoQuickActionButtonContentWidget extends StatelessWidget {
-  const _PregoQuickActionButtonContentWidget({
-    required this.collapseProgress,
-    required this.isEnabled,
-    required this.icon,
-    required this.label,
-  });
-
-  final double collapseProgress;
-  final bool isEnabled;
-  final IconData icon;
-  final String label;
-
+class const _PregoQuickActionButtonContentWidget({
+    required final double collapseProgress,
+    required final bool isEnabled,
+    required final IconData icon,
+    required final String label,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -247,24 +232,16 @@ class _PregoQuickActionButtonContentWidget extends StatelessWidget {
   }
 }
 
-enum _BorderPosition { inside, center, outside }
+enum _BorderPosition() { inside, center, outside }
 
 /// Paints a gradient stroke following a [RoundedSuperellipseBorder] shape.
-class _GradientBorderPainter extends CustomPainter {
-  _GradientBorderPainter({
-    required this.topColor,
-    required this.bottomColor,
-    required this.borderRadius,
-    required this.strokeWidth,
-    required this.position,
-  });
-
-  final Color topColor;
-  final Color bottomColor;
-  final double borderRadius;
-  final double strokeWidth;
-  final _BorderPosition position;
-
+class _GradientBorderPainter({
+    required final Color topColor,
+    required final Color bottomColor,
+    required final double borderRadius,
+    required final double strokeWidth,
+    required final _BorderPosition position,
+  }) extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;

@@ -13,7 +13,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class _MockNotificationPreferencesService extends Mock implements NotificationPreferencesService;
+class _MockNotificationPreferencesService() extends Mock implements NotificationPreferencesService;
 
 Widget _app() {
   return BlocProvider<ConnectionOverlayCubit>.value(

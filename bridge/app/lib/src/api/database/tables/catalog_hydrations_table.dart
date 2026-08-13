@@ -6,7 +6,7 @@ import "../database.dart";
 part "catalog_hydrations_table.freezed.dart";
 
 @UseRowClass(CatalogHydrationDto)
-class CatalogHydrationsTable extends Table {
+class CatalogHydrationsTable() extends Table {
   TextColumn get pluginId => text()();
   IntColumn get projectionVersion => integer()();
   IntColumn get completedAt => integer()();
@@ -19,12 +19,10 @@ class CatalogHydrationsTable extends Table {
 }
 
 @freezed
-sealed class CatalogHydrationDto with _$CatalogHydrationDto, $CatalogHydrationsTableTableToColumns {
-  const factory CatalogHydrationDto({
+sealed class const CatalogHydrationDto._() with _$CatalogHydrationDto, $CatalogHydrationsTableTableToColumns {
+  const factory({
     required String pluginId,
     required int projectionVersion,
     required int completedAt,
   }) = _CatalogHydrationDto;
-
-  const CatalogHydrationDto._();
 }

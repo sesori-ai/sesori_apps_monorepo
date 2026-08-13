@@ -15,37 +15,23 @@ import "model_picker_sheet.dart";
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
 /// the selection callbacks directly rather than a "open picker" callback.
-class AgentModelButtons extends StatefulWidget {
-  final PregoComposerSurfaceStyle surfaceStyle;
-  final List<AgentInfo> agents;
-  final String? selectedAgent;
-  final ValueChanged<String> onAgentSelected;
-
-  final List<ProviderInfo> providers;
-  final AgentModel? selectedAgentModel;
-  final void Function({required String providerID, required String modelID}) onModelSelected;
-
-  final List<SessionVariant> availableVariants;
-  final ValueChanged<SessionVariant?> onVariantSelected;
-
-  const AgentModelButtons({
-    super.key,
-    required this.surfaceStyle,
-    required this.agents,
-    required this.selectedAgent,
-    required this.onAgentSelected,
-    required this.providers,
-    required this.selectedAgentModel,
-    required this.onModelSelected,
-    required this.availableVariants,
-    required this.onVariantSelected,
-  });
-
+class const AgentModelButtons({
+  super.key,
+  required final PregoComposerSurfaceStyle surfaceStyle,
+  required final List<AgentInfo> agents,
+  required final String? selectedAgent,
+  required final ValueChanged<String> onAgentSelected,
+  required final List<ProviderInfo> providers,
+  required final AgentModel? selectedAgentModel,
+  required final void Function({required String providerID, required String modelID}) onModelSelected,
+  required final List<SessionVariant> availableVariants,
+  required final ValueChanged<SessionVariant?> onVariantSelected,
+}) extends StatefulWidget {
   @override
   State<AgentModelButtons> createState() => _AgentModelButtonsState();
 }
 
-class _AgentModelButtonsState extends State<AgentModelButtons> {
+class _AgentModelButtonsState() extends State<AgentModelButtons> {
   /// Pre-sorted, provider-grouped model sections for the model menu. Grouping/
   /// sorting a large catalog is non-trivial (the bottom sheet ran it in an
   /// isolate), so it is memoized here and only rebuilt when the provider
@@ -150,19 +136,12 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
 
 /// Agent-selection pill + its popup. Extracted as a widget (rather than a build
 /// method) so it gets its own element subtree and only rebuilds with its inputs.
-class _AgentMenu extends StatelessWidget {
-  final PregoComposerSurfaceStyle surfaceStyle;
-  final List<AgentInfo> agents;
-  final String selectedAgent;
-  final ValueChanged<String> onAgentSelected;
-
-  const _AgentMenu({
-    required this.surfaceStyle,
-    required this.agents,
-    required this.selectedAgent,
-    required this.onAgentSelected,
-  });
-
+class const _AgentMenu({
+  required final PregoComposerSurfaceStyle surfaceStyle,
+  required final List<AgentInfo> agents,
+  required final String selectedAgent,
+  required final ValueChanged<String> onAgentSelected,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -192,23 +171,14 @@ class _AgentMenu extends StatelessWidget {
 
 /// Model-selection pill + its quick-pick popup (search affordance pinned at the
 /// top, then each provider's representative models).
-class _ModelMenu extends StatelessWidget {
-  final PregoComposerSurfaceStyle surfaceStyle;
-  final List<ModelPickerSection> sections;
-  final AgentModel? selected;
-  final List<ProviderInfo> providers;
-  final void Function({required String providerID, required String modelID}) onModelSelected;
-  final VoidCallback onSearchTap;
-
-  const _ModelMenu({
-    required this.surfaceStyle,
-    required this.sections,
-    required this.selected,
-    required this.providers,
-    required this.onModelSelected,
-    required this.onSearchTap,
-  });
-
+class const _ModelMenu({
+  required final PregoComposerSurfaceStyle surfaceStyle,
+  required final List<ModelPickerSection> sections,
+  required final AgentModel? selected,
+  required final List<ProviderInfo> providers,
+  required final void Function({required String providerID, required String modelID}) onModelSelected,
+  required final VoidCallback onSearchTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Tapping the search affordance escalates into the full-screen search sheet
@@ -257,19 +227,12 @@ class _ModelMenu extends StatelessWidget {
 }
 
 /// Variant-selection pill + its popup.
-class _VariantMenu extends StatelessWidget {
-  final PregoComposerSurfaceStyle surfaceStyle;
-  final List<SessionVariant> availableVariants;
-  final String? selectedVariant;
-  final ValueChanged<SessionVariant?> onVariantSelected;
-
-  const _VariantMenu({
-    required this.surfaceStyle,
-    required this.availableVariants,
-    required this.selectedVariant,
-    required this.onVariantSelected,
-  });
-
+class const _VariantMenu({
+  required final PregoComposerSurfaceStyle surfaceStyle,
+  required final List<SessionVariant> availableVariants,
+  required final String? selectedVariant,
+  required final ValueChanged<SessionVariant?> onVariantSelected,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -307,11 +270,7 @@ class _VariantMenu extends StatelessWidget {
 /// it enters "search mode": the compact glass popup collapses and the roomy,
 /// keyboard-friendly full-screen search sheet rises in its place. The popup
 /// itself does not filter — searching happens in that sheet.
-class _ModelSearchAffordance extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _ModelSearchAffordance({required this.onTap});
-
+class const _ModelSearchAffordance({required final VoidCallback onTap}) extends StatelessWidget {
   /// The row's rendered height — the [_barHeight] bar plus the [_bottomGap] that
   /// separates it from the first provider heading. The glass popup budgets its
   /// height from what each row declares, so this is what the menu is told; the

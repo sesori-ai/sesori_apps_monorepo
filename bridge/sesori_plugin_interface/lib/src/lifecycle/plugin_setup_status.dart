@@ -5,17 +5,13 @@ import "package:meta/meta.dart";
 /// Setup inspection runs before availability, provisioning, or plugin start. It
 /// must never install a runtime, start a backend, or initiate authentication.
 @immutable
-sealed class PluginSetupStatus {
-  const PluginSetupStatus();
-
+sealed class const PluginSetupStatus() {
   /// Generic, user-facing guidance authored by the plugin.
   String? get actionHint;
 }
 
 /// Setup was deliberately not inspected because the plugin is disabled.
-final class PluginSetupNotInspected extends PluginSetupStatus {
-  const PluginSetupNotInspected();
-
+final class const PluginSetupNotInspected() extends PluginSetupStatus {
   @override
   String? get actionHint => null;
 
@@ -30,9 +26,7 @@ final class PluginSetupNotInspected extends PluginSetupStatus {
 }
 
 /// The required runtime and authentication are already available.
-final class PluginSetupReady extends PluginSetupStatus {
-  const PluginSetupReady();
-
+final class const PluginSetupReady() extends PluginSetupStatus {
   @override
   String? get actionHint => null;
 
@@ -47,12 +41,8 @@ final class PluginSetupReady extends PluginSetupStatus {
 }
 
 /// No usable backend runtime was found.
-final class PluginSetupRuntimeMissing extends PluginSetupStatus {
-  const PluginSetupRuntimeMissing({required this.actionHint})
-    : assert(actionHint != "", "PluginSetupRuntimeMissing.actionHint must not be empty");
-
-  @override
-  final String? actionHint;
+final class const PluginSetupRuntimeMissing({@override required final String? actionHint}) extends PluginSetupStatus {
+  this : assert(actionHint != "", "PluginSetupRuntimeMissing.actionHint must not be empty");
 
   @override
   bool operator ==(Object other) => other is PluginSetupRuntimeMissing && other.actionHint == actionHint;
@@ -65,12 +55,9 @@ final class PluginSetupRuntimeMissing extends PluginSetupStatus {
 }
 
 /// The runtime exists, but the backend requires authentication.
-final class PluginSetupAuthenticationRequired extends PluginSetupStatus {
-  const PluginSetupAuthenticationRequired({required this.actionHint})
-    : assert(actionHint != "", "PluginSetupAuthenticationRequired.actionHint must not be empty");
-
-  @override
-  final String? actionHint;
+final class const PluginSetupAuthenticationRequired({@override required final String? actionHint})
+    extends PluginSetupStatus {
+  this : assert(actionHint != "", "PluginSetupAuthenticationRequired.actionHint must not be empty");
 
   @override
   bool operator ==(Object other) => other is PluginSetupAuthenticationRequired && other.actionHint == actionHint;
@@ -83,12 +70,8 @@ final class PluginSetupAuthenticationRequired extends PluginSetupStatus {
 }
 
 /// The backend is present but unsupported or otherwise unusable.
-final class PluginSetupUnavailable extends PluginSetupStatus {
-  const PluginSetupUnavailable({required this.actionHint})
-    : assert(actionHint != "", "PluginSetupUnavailable.actionHint must not be empty");
-
-  @override
-  final String? actionHint;
+final class const PluginSetupUnavailable({@override required final String? actionHint}) extends PluginSetupStatus {
+  this : assert(actionHint != "", "PluginSetupUnavailable.actionHint must not be empty");
 
   @override
   bool operator ==(Object other) => other is PluginSetupUnavailable && other.actionHint == actionHint;
@@ -101,12 +84,8 @@ final class PluginSetupUnavailable extends PluginSetupStatus {
 }
 
 /// Setup could not be determined safely after a transient or ambiguous probe.
-final class PluginSetupUnknown extends PluginSetupStatus {
-  const PluginSetupUnknown({required this.actionHint})
-    : assert(actionHint != "", "PluginSetupUnknown.actionHint must not be empty");
-
-  @override
-  final String? actionHint;
+final class const PluginSetupUnknown({@override required final String? actionHint}) extends PluginSetupStatus {
+  this : assert(actionHint != "", "PluginSetupUnknown.actionHint must not be empty");
 
   @override
   bool operator ==(Object other) => other is PluginSetupUnknown && other.actionHint == actionHint;

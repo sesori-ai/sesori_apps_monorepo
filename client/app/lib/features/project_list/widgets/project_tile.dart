@@ -24,8 +24,7 @@ String projectDisplayPath(Project project) => project.path.isEmpty ? project.id 
 /// fallback when the project has no stored name. The directory comes from the
 /// bridge's host platform, not the phone's, so both separator styles must
 /// parse — the platform-local basename would return a Windows path unchanged.
-String projectDirectoryBasename(Project project) =>
-    p.posix.basename(_toPosix(projectDisplayPath(project)));
+String projectDirectoryBasename(Project project) => p.posix.basename(_toPosix(projectDisplayPath(project)));
 
 /// [project]'s directory, shortened to the part that tells projects apart.
 ///
@@ -63,22 +62,16 @@ String _toPosix(String path) => path.replaceAll(r"\", "/");
 /// which for a full-width row reads as the row collapsing into a small panel,
 /// and it allocates a ticker, a scroll controller and an unaspected MediaQuery
 /// dependency for every realised row of the list.
-class ProjectTile extends StatelessWidget {
-  const ProjectTile({
-    super.key,
-    required this.project,
-    required this.activeSessions,
-    required this.unseen,
-  });
-
-  final Project project;
+class const ProjectTile({
+  super.key,
+  required final Project project,
 
   /// How many of the project's sessions an agent is working in right now.
-  final int activeSessions;
+  required final int activeSessions,
 
   /// Whether the project has activity the user hasn't opened yet.
-  final bool unseen;
-
+  required final bool unseen,
+}) extends StatelessWidget {
   /// Wide enough for the longest action label without the panel spanning the
   /// row it is anchored to.
   static const double _menuWidth = 200;
@@ -340,17 +333,11 @@ class ProjectTile extends StatelessWidget {
 /// The status is a single slot with one occupant. A project can be both running
 /// and unseen; a live turn is the more informative of the two, so it wins, and
 /// the unseen state still shows through the title's weight.
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({
-    required this.project,
-    required this.activeSessions,
-    required this.unseen,
-  });
-
-  final Project project;
-  final int activeSessions;
-  final bool unseen;
-
+class const _StatusRow({
+  required final Project project,
+  required final int activeSessions,
+  required final bool unseen,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -405,23 +392,16 @@ class _StatusRow extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// An icon and its label, as one status.
-class _StatusLabel extends StatelessWidget {
-  const _StatusLabel({
-    required this.icon,
-    required this.label,
-    this.emphasis = false,
-  });
-
-  final Widget icon;
-  final String label;
+class const _StatusLabel({
+  required final Widget icon,
+  required final String label,
 
   /// Whether the label is the row's headline rather than a quiet aside.
-  final bool emphasis;
-
+  final bool emphasis = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -433,7 +413,10 @@ class _StatusLabel extends StatelessWidget {
       children: [
         IconTheme.merge(
           data: IconThemeData(color: prego.colors.textTertiary),
-          child: SizedBox(width: _statusSlotWidth, child: Center(child: icon)),
+          child: SizedBox(
+            width: _statusSlotWidth,
+            child: Center(child: icon),
+          ),
         ),
         Flexible(
           child: Text(
@@ -455,9 +438,7 @@ class _StatusLabel extends StatelessWidget {
 ///
 /// Decorative on its own — wrap a column of these in a single [PregoShimmer],
 /// never one per row.
-class ProjectTileSkeleton extends StatelessWidget {
-  const ProjectTileSkeleton({super.key});
-
+class const ProjectTileSkeleton({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

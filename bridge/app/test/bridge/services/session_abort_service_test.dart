@@ -96,7 +96,7 @@ void main() {
   });
 }
 
-class _FakeSessionRepository implements SessionRepository {
+class _FakeSessionRepository() implements SessionRepository {
   final Completer<void> abortCompleter = Completer<void>();
   Future<void> Function({required String sessionId})? onAbort;
   Object? resolutionError;

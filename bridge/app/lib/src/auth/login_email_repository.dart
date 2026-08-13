@@ -4,15 +4,10 @@ import 'package:sesori_shared/sesori_shared.dart';
 import 'login_email_api.dart';
 import 'token.dart';
 
-class LoginEmailRepository {
-  final LoginEmailApi emailAuthApi;
-  final ({String email, String password}) Function() promptForCredentials;
-
-  LoginEmailRepository({
-    required this.emailAuthApi,
-    required this.promptForCredentials,
-  });
-
+class LoginEmailRepository({
+  required final LoginEmailApi emailAuthApi,
+  required final ({String email, String password}) Function() promptForCredentials,
+}) {
   Future<TokenData> performEmailLogin() async {
     final credentials = promptForCredentials();
 

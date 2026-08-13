@@ -4,49 +4,26 @@ import "dart:typed_data";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 
-sealed class MessageImageApiResult {
-  const MessageImageApiResult();
-}
+sealed class const MessageImageApiResult();
 
-final class MessageImageApiSuccess extends MessageImageApiResult {
-  final Uint8List bytes;
+final class const MessageImageApiSuccess({required final Uint8List bytes}) extends MessageImageApiResult;
 
-  const MessageImageApiSuccess({required this.bytes});
-}
+final class const MessageImageApiHttpFailure({required final int statusCode}) extends MessageImageApiResult;
 
-final class MessageImageApiHttpFailure extends MessageImageApiResult {
-  final int statusCode;
+final class const MessageImageApiTooLarge() extends MessageImageApiResult;
 
-  const MessageImageApiHttpFailure({required this.statusCode});
-}
+final class const MessageImageApiInvalidRedirect() extends MessageImageApiResult;
 
-final class MessageImageApiTooLarge extends MessageImageApiResult {
-  const MessageImageApiTooLarge();
-}
-
-final class MessageImageApiInvalidRedirect extends MessageImageApiResult {
-  const MessageImageApiInvalidRedirect();
-}
-
-final class MessageImageApiNetworkFailure extends MessageImageApiResult {
+final class const MessageImageApiNetworkFailure({
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
-  final Object cause;
-  final StackTrace stackTrace;
-
-  const MessageImageApiNetworkFailure({
-    required this.cause,
-    required this.stackTrace,
-  });
-}
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImageApiResult;
 
 /// Layer-1 HTTP access for bounded remote message images.
 @lazySingleton
-class MessageImageApi {
+class MessageImageApi({required final http.Client _client}) {
   static const _maxRedirects = 5;
-
-  final http.Client _client;
-
-  MessageImageApi({required http.Client client}) : _client = client;
 
   Future<MessageImageApiResult> fetch({
     required Uri url,

@@ -19,8 +19,7 @@ void main() {
       final manager = TokenManager(
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
-        loadTokens: () async =>
-            TokenData(accessToken: "a", refreshToken: "r", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(accessToken: "a", refreshToken: "r", lastProvider: AuthProvider.github),
         saveTokens: (_) async {},
       );
 
@@ -382,27 +381,20 @@ void main() {
   });
 }
 
-class _ThrowingClient extends http.BaseClient {
+class _ThrowingClient() extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     throw Exception("network error");
   }
 }
 
-class _RefreshTestServer {
-  final HttpServer _server;
-  final int _statusCode;
-  final Duration _responseDelay;
-  final void Function(HttpRequest request, String body)? _onRequest;
-
+class _RefreshTestServer._(
+  final HttpServer _server,
+  final int _statusCode,
+  final Duration _responseDelay,
+  final void Function(HttpRequest request, String body)? _onRequest,
+) {
   int requestCount = 0;
-
-  _RefreshTestServer._(
-    this._server,
-    this._statusCode,
-    this._responseDelay,
-    this._onRequest,
-  );
 
   static Future<_RefreshTestServer> start({
     int statusCode = 200,

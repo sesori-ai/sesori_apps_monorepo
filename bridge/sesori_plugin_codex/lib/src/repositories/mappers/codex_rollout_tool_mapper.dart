@@ -7,31 +7,18 @@ import "../../api/models/codex_image_bearing_item_dto.dart";
 import "../../api/models/codex_rollout_dto.dart";
 import "codex_image_attachment_mapper.dart";
 
-class CodexRolloutToolCall {
-  const CodexRolloutToolCall({
-    required this.id,
-    required this.turnId,
-    required this.tool,
-    required this.title,
-  });
+class const CodexRolloutToolCall({
+  required final String id,
+  required final String? turnId,
+  required final String tool,
+  required final String? title,
+});
 
-  final String id;
-  final String? turnId;
-  final String tool;
-  final String? title;
-}
-
-sealed class CodexRolloutToolResult {
-  const CodexRolloutToolResult({
-    required this.callId,
-    required this.output,
-    required this.attachments,
-  });
-
-  final String callId;
-  final String? output;
-  final List<PluginMessageAttachment> attachments;
-
+sealed class const CodexRolloutToolResult({
+  required final String callId,
+  required final String? output,
+  required final List<PluginMessageAttachment> attachments,
+}) {
   PluginToolStatus get status => switch (this) {
     CodexRolloutToolRunningResult() => PluginToolStatus.running,
     CodexRolloutToolCompletedResult() => PluginToolStatus.completed,
@@ -39,67 +26,43 @@ sealed class CodexRolloutToolResult {
   };
 }
 
-final class CodexRolloutToolRunningResult extends CodexRolloutToolResult {
-  const CodexRolloutToolRunningResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-    required this.cellIds,
-  });
+final class const CodexRolloutToolRunningResult({
+  required super.callId,
+  required super.output,
+  required super.attachments,
+  required final List<String> cellIds,
+}) extends CodexRolloutToolResult;
 
-  final List<String> cellIds;
-}
+final class const CodexRolloutToolCompletedResult({
+  required super.callId,
+  required super.output,
+  required super.attachments,
+}) extends CodexRolloutToolResult;
 
-final class CodexRolloutToolCompletedResult extends CodexRolloutToolResult {
-  const CodexRolloutToolCompletedResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-  });
-}
+final class const CodexRolloutToolErrorResult({
+  required super.callId,
+  required super.output,
+  required super.attachments,
+}) extends CodexRolloutToolResult;
 
-final class CodexRolloutToolErrorResult extends CodexRolloutToolResult {
-  const CodexRolloutToolErrorResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-  });
-}
+final class const CodexRolloutToolErrorWithRunningCellsResult({
+  required super.callId,
+  required super.output,
+  required super.attachments,
+  required final List<String> cellIds,
+}) extends CodexRolloutToolResult;
 
-final class CodexRolloutToolErrorWithRunningCellsResult extends CodexRolloutToolResult {
-  const CodexRolloutToolErrorWithRunningCellsResult({
-    required super.callId,
-    required super.output,
-    required super.attachments,
-    required this.cellIds,
-  });
+class const CodexRolloutWaitCall({
+  required final String callId,
+  required final String? turnId,
+  required final String cellId,
+});
 
-  final List<String> cellIds;
-}
-
-class CodexRolloutWaitCall {
-  const CodexRolloutWaitCall({
-    required this.callId,
-    required this.turnId,
-    required this.cellId,
-  });
-
-  final String callId;
-  final String? turnId;
-  final String cellId;
-}
-
-class CodexRolloutImageGeneration {
-  const CodexRolloutImageGeneration({
-    required this.id,
-    required this.status,
-    required this.attachments,
-  });
-
-  final String? id;
-  final PluginToolStatus status;
-  final List<PluginMessageAttachment> attachments;
-}
+class const CodexRolloutImageGeneration({
+  required final String? id,
+  required final PluginToolStatus status,
+  required final List<PluginMessageAttachment> attachments,
+});
 
 /// Pure normalization shared by live rollout enrichment and history replay.
 ///
@@ -107,13 +70,9 @@ class CodexRolloutImageGeneration {
 /// than the persisted response items. Keeping the raw call/result rules here
 /// prevents the live and reload paths from independently inventing titles,
 /// raw result classifications, or attachment extraction.
-class CodexRolloutToolMapper {
-  const CodexRolloutToolMapper({
-    required CodexImageAttachmentMapper imageAttachmentMapper,
-  }) : _imageAttachmentMapper = imageAttachmentMapper;
-
-  final CodexImageAttachmentMapper _imageAttachmentMapper;
-
+class const CodexRolloutToolMapper({
+  required final CodexImageAttachmentMapper _imageAttachmentMapper,
+}) {
   /// Whether this persisted function call has a matching stable
   /// `commandExecution` item.
   bool isCommandExecutionCall({
@@ -135,10 +94,12 @@ class CodexRolloutToolMapper {
   bool isSingleCodeModeCommandExecutionCall({
     required CodexRolloutResponseItemDto payload,
   }) {
-    if (payload case CodexRolloutCustomToolCallDto(
-      :final name,
-      :final input,
-    ) when name.toLowerCase() == "exec") {
+    if (payload
+        case CodexRolloutCustomToolCallDto(
+          :final name,
+          :final input,
+        )
+        when name.toLowerCase() == "exec") {
       return _hasSingleCodeModeCommandInvocation(input);
     }
     return false;
@@ -147,10 +108,12 @@ class CodexRolloutToolMapper {
   String? codeModeFileChangePatch({
     required CodexRolloutResponseItemDto payload,
   }) {
-    if (payload case CodexRolloutCustomToolCallDto(
-      :final name,
-      :final input,
-    ) when name.toLowerCase() == "exec") {
+    if (payload
+        case CodexRolloutCustomToolCallDto(
+          :final name,
+          :final input,
+        )
+        when name.toLowerCase() == "exec") {
       return _codeModeFileChangePatch(input: input);
     }
     return null;
@@ -316,12 +279,14 @@ class CodexRolloutToolMapper {
   CodexRolloutWaitCall? mapWaitCall({
     required CodexRolloutResponseItemDto payload,
   }) {
-    if (payload case CodexRolloutFunctionCallDto(
-      :final callId,
-      :final name,
-      :final arguments,
-      :final metadata,
-    ) when name.toLowerCase() == "wait") {
+    if (payload
+        case CodexRolloutFunctionCallDto(
+          :final callId,
+          :final name,
+          :final arguments,
+          :final metadata,
+        )
+        when name.toLowerCase() == "wait") {
       final cellId = _tryDecodeToolArguments(raw: arguments)?.cellId;
       final usefulCallId = _usefulText(callId);
       final usefulCellId = _usefulText(cellId?.toString());

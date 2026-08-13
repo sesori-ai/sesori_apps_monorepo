@@ -6,9 +6,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/session_view_repository.dart";
 import "package:test/test.dart";
 
-class MockSessionViewRepository extends Mock implements SessionViewRepository;
+class MockSessionViewRepository() extends Mock implements SessionViewRepository;
 
-class FakeLifecycleSource implements LifecycleSource {
+class FakeLifecycleSource() implements LifecycleSource {
   final BehaviorSubject<LifecycleState> _subject = BehaviorSubject.seeded(LifecycleState.resumed);
   @override
   ValueStream<LifecycleState> get lifecycleStateStream => _subject.stream;

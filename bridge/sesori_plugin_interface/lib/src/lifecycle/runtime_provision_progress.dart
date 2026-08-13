@@ -11,15 +11,11 @@ import "package:meta/meta.dart";
 /// degraded status). A stream that emits nothing means the plugin needs no
 /// provisioning (the default).
 @immutable
-sealed class RuntimeProvisionProgress {
-  const RuntimeProvisionProgress();
-}
+sealed class const RuntimeProvisionProgress();
 
 /// Deciding which runtime to use (explicit override vs. an OS install vs. a
 /// managed download). No bytes have been fetched yet.
-final class ProvisionResolving extends RuntimeProvisionProgress {
-  const ProvisionResolving();
-
+final class const ProvisionResolving() extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionResolving";
 }
@@ -27,12 +23,8 @@ final class ProvisionResolving extends RuntimeProvisionProgress {
 /// Downloading the managed runtime archive. [receivedBytes] grows toward
 /// [totalBytes]; [totalBytes] is `null` when the server did not advertise a
 /// length (progress is then indeterminate).
-final class ProvisionDownloading extends RuntimeProvisionProgress {
-  const ProvisionDownloading({required this.receivedBytes, required this.totalBytes});
-
-  final int receivedBytes;
-  final int? totalBytes;
-
+final class const ProvisionDownloading({required final int receivedBytes, required final int? totalBytes})
+    extends RuntimeProvisionProgress {
   /// Fraction in `[0, 1]`, or `null` when the total size is unknown.
   double? get fraction {
     final int? total = totalBytes;
@@ -47,17 +39,13 @@ final class ProvisionDownloading extends RuntimeProvisionProgress {
 }
 
 /// Unpacking the downloaded archive into its versioned install directory.
-final class ProvisionExtracting extends RuntimeProvisionProgress {
-  const ProvisionExtracting();
-
+final class const ProvisionExtracting() extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionExtracting";
 }
 
 /// Verifying the downloaded archive against its pinned checksum.
-final class ProvisionVerifying extends RuntimeProvisionProgress {
-  const ProvisionVerifying();
-
+final class const ProvisionVerifying() extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionVerifying";
 }
@@ -66,22 +54,14 @@ final class ProvisionVerifying extends RuntimeProvisionProgress {
 /// installed runtime is older than the minimum supported version; using the
 /// managed runtime instead"). The bridge core prints [message]; it is authored
 /// by the plugin so the core stays backend-agnostic.
-final class ProvisionNotice extends RuntimeProvisionProgress {
-  const ProvisionNotice({required this.message});
-
-  final String message;
-
+final class const ProvisionNotice({required final String message}) extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionNotice(message: $message)";
 }
 
 /// Terminal success: the runtime is ready and [binaryPath] is the executable
 /// path (or PATH-resolved command) the plugin's `start()` should launch.
-final class ProvisionReady extends RuntimeProvisionProgress {
-  const ProvisionReady({required this.binaryPath});
-
-  final String binaryPath;
-
+final class const ProvisionReady({required final String binaryPath}) extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionReady(binaryPath: $binaryPath)";
 }
@@ -89,11 +69,7 @@ final class ProvisionReady extends RuntimeProvisionProgress {
 /// Terminal failure: the runtime could not be provisioned. Non-fatal — the
 /// bridge continues to `start()`, which surfaces a degraded plugin status.
 /// [message] explains what went wrong for logs/diagnostics.
-final class ProvisionFailed extends RuntimeProvisionProgress {
-  const ProvisionFailed({required this.message});
-
-  final String message;
-
+final class const ProvisionFailed({required final String message}) extends RuntimeProvisionProgress {
   @override
   String toString() => "ProvisionFailed(message: $message)";
 }

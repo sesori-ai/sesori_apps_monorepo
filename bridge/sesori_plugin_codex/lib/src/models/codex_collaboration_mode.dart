@@ -1,4 +1,9 @@
-enum CodexCollaborationMode {
+enum CodexCollaborationMode({
+  required final String agentName,
+  required final String wireValue,
+  required final String description,
+  required final String? defaultReasoningEffort,
+}) {
   defaultMode(
     agentName: "Default",
     wireValue: "default",
@@ -11,18 +16,6 @@ enum CodexCollaborationMode {
     description: "Researches without making changes and creates an implementation plan",
     defaultReasoningEffort: "medium",
   );
-
-  CodexCollaborationMode({
-    required this.agentName,
-    required this.wireValue,
-    required this.description,
-    required this.defaultReasoningEffort,
-  });
-
-  final String agentName;
-  final String wireValue;
-  final String description;
-  final String? defaultReasoningEffort;
 
   static CodexCollaborationMode? fromAgent({required String? agent}) {
     final normalized = agent?.trim().toLowerCase();

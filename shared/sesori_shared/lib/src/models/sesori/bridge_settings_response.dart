@@ -8,10 +8,10 @@ part "bridge_settings_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class BridgeSettingsResponse with _$BridgeSettingsResponse {
-  const factory BridgeSettingsResponse({
+  const factory({
     required PullRequestRefreshSettingsResponse pullRequestRefresh,
     required YoloSettingsResponse yolo,
   }) = _BridgeSettingsResponse;
 
-  factory BridgeSettingsResponse.fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);
 }

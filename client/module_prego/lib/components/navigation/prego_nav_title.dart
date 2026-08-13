@@ -16,20 +16,16 @@ import "../../module_prego.dart";
 /// Used by [PregoTopNavigation] to render its fixed inline title, so the bar
 /// title looks identical wherever the bar appears (including inside
 /// [PregoGlassScaffold], which builds its bar from [PregoTopNavigation]).
-class PregoNavTitle extends StatelessWidget {
-  const PregoNavTitle({
-    super.key,
-    required this.title,
-    this.subtitle,
-  });
+class const PregoNavTitle({
+  super.key,
 
   /// Primary title text.
-  final String title;
+  required final String title,
 
   /// Optional muted second line. A `null` or empty value renders the title on
   /// its own.
-  final String? subtitle;
-
+  final String? subtitle,
+}) extends StatelessWidget {
   /// Line-height multiplier for the bar's title and subtitle, overriding the
   /// design tokens' body-text leading (`text-lg` 1.56×, `text-md` 1.5×).
   ///

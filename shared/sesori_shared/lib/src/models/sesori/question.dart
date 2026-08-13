@@ -8,7 +8,7 @@ part "question.g.dart";
 /// available options, and selection mode.
 @Freezed(fromJson: true, toJson: true)
 sealed class QuestionInfo with _$QuestionInfo {
-  const factory QuestionInfo({
+  const factory({
     required String question,
     required String header,
     @Default([]) List<QuestionOption> options,
@@ -16,16 +16,16 @@ sealed class QuestionInfo with _$QuestionInfo {
     @Default(true) bool custom,
   }) = _QuestionInfo;
 
-  factory QuestionInfo.fromJson(Map<String, dynamic> json) => _$QuestionInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$QuestionInfoFromJson(json);
 }
 
 /// A selectable choice for a question.
 @Freezed(fromJson: true, toJson: true)
 sealed class QuestionOption with _$QuestionOption {
-  const factory QuestionOption({
+  const factory({
     required String label,
     required String description,
   }) = _QuestionOption;
 
-  factory QuestionOption.fromJson(Map<String, dynamic> json) => _$QuestionOptionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$QuestionOptionFromJson(json);
 }

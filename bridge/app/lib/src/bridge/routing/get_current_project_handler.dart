@@ -4,12 +4,10 @@ import "../repositories/project_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/current` — returns project for a given project id.
-class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Project> {
-  final ProjectRepository _projectRepository;
-
-  GetCurrentProjectHandler({required ProjectRepository projectRepository})
-    : _projectRepository = projectRepository,
-      super(
+class GetCurrentProjectHandler({required final ProjectRepository _projectRepository})
+    extends BodyRequestHandler<ProjectIdRequest, Project> {
+  this
+    : super(
         HttpMethod.post,
         "/project/current",
         fromJson: ProjectIdRequest.fromJson,
@@ -28,6 +26,6 @@ class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Proj
       throw buildErrorResponse(request, 400, "empty project id");
     }
 
-    return _projectRepository.getProject(projectId: projectId);
+    return await _projectRepository.getProject(projectId: projectId);
   }
 }

@@ -11,9 +11,7 @@ import 'package:path/path.dart' as p;
 /// it MUST be bumped — otherwise the next `npx @sesori/bridge` compares the
 /// stale manifest version against the npm payload and can clobber/downgrade the
 /// freshly updated binary.
-class ManagedRuntimeManifestApi {
-  const ManagedRuntimeManifestApi();
-
+class const ManagedRuntimeManifestApi() {
   static const String _fileName = '.managed-runtime.json';
 
   Future<void> writeVersion({required String installRoot, required String version}) async {

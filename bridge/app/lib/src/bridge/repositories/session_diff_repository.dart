@@ -1,55 +1,36 @@
 import "../api/git_cli_api.dart";
 import "mappers/git_diff_output_mapper.dart";
 
-sealed class SessionDiffQueryResult;
+sealed class SessionDiffQueryResult();
 
-class SessionDiffQuerySuccess extends SessionDiffQueryResult {
-  final String baseRevision;
-  final List<SessionDiffEntry> entries;
-  final Map<String, SessionDiffLineCounts> lineCountsByFile;
+class SessionDiffQuerySuccess({
+    required final String baseRevision,
+    required final List<SessionDiffEntry> entries,
+    required final Map<String, SessionDiffLineCounts> lineCountsByFile,
+  }) extends SessionDiffQueryResult;
 
-  SessionDiffQuerySuccess({
-    required this.baseRevision,
-    required this.entries,
-    required this.lineCountsByFile,
-  });
-}
+class SessionDiffBaseUnreachable() extends SessionDiffQueryResult;
 
-class SessionDiffBaseUnreachable extends SessionDiffQueryResult;
+class SessionDiffNoCommonAncestor() extends SessionDiffQueryResult;
 
-class SessionDiffNoCommonAncestor extends SessionDiffQueryResult;
+class SessionDiffQueryFailure({required final String message}) extends SessionDiffQueryResult;
 
-class SessionDiffQueryFailure extends SessionDiffQueryResult {
-  final String message;
+enum SessionDiffComparisonMode() { exactRevision, mergeBase }
 
-  SessionDiffQueryFailure({required this.message});
-}
+sealed class SessionDiffRevisionFileReadResult();
 
-enum SessionDiffComparisonMode { exactRevision, mergeBase }
+class SessionDiffRevisionFileContent({required final String content}) extends SessionDiffRevisionFileReadResult;
 
-sealed class SessionDiffRevisionFileReadResult;
+class SessionDiffRevisionFileBinary() extends SessionDiffRevisionFileReadResult;
 
-class SessionDiffRevisionFileContent extends SessionDiffRevisionFileReadResult {
-  final String content;
+class SessionDiffRevisionFileTooLarge() extends SessionDiffRevisionFileReadResult;
 
-  SessionDiffRevisionFileContent({required this.content});
-}
+class SessionDiffRevisionFileReadFailure() extends SessionDiffRevisionFileReadResult;
 
-class SessionDiffRevisionFileBinary extends SessionDiffRevisionFileReadResult;
-
-class SessionDiffRevisionFileTooLarge extends SessionDiffRevisionFileReadResult;
-
-class SessionDiffRevisionFileReadFailure extends SessionDiffRevisionFileReadResult;
-
-class SessionDiffRepository {
-  final GitCliApi _gitCliApi;
-  final GitDiffOutputMapper _outputMapper;
-
-  SessionDiffRepository({
-    required GitCliApi gitCliApi,
-    required GitDiffOutputMapper outputMapper,
-  }) : _gitCliApi = gitCliApi,
-       _outputMapper = outputMapper;
+class SessionDiffRepository({
+    required final GitCliApi _gitCliApi,
+    required final GitDiffOutputMapper _outputMapper,
+  }) {
 
   Future<SessionDiffQueryResult> query({
     required String worktreePath,

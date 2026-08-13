@@ -1,13 +1,9 @@
 import '../bridge/foundation/process_runner.dart';
 import 'default_editor_api.dart';
 
-class WindowsDefaultEditorApi implements DefaultEditorApi {
-  final ProcessRunner _processRunner;
-
-  WindowsDefaultEditorApi({
-    required ProcessRunner processRunner,
-  }) : _processRunner = processRunner;
-
+class WindowsDefaultEditorApi({
+  required final ProcessRunner _processRunner,
+}) implements DefaultEditorApi {
   @override
   Future<void> openFile(String filePath) async {
     // `start` is a cmd builtin, so it must run via `cmd /c`. The empty "" is the

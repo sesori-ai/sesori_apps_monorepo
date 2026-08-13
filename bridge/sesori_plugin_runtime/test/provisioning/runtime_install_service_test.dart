@@ -6,12 +6,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _FakeDownloadClient implements BinaryDownloadClient {
-  _FakeDownloadClient({this.exception});
-
+class _FakeDownloadClient({final DownloadException? exception}) implements BinaryDownloadClient {
   static const int _byteCount = 4;
   static const List<int> _bytes = [1, 2, 3, 4];
-  final DownloadException? exception;
 
   @override
   Stream<DownloadProgress> download({required String url, required String destinationPath}) async* {
@@ -24,11 +21,7 @@ class _FakeDownloadClient implements BinaryDownloadClient {
   }
 }
 
-class _FakeChecksumValidator implements ChecksumValidator {
-  _FakeChecksumValidator({required this.valid});
-
-  final bool valid;
-
+class _FakeChecksumValidator({required final bool valid}) implements ChecksumValidator {
   @override
   Future<bool> verify({required String filePath, required String expectedHash}) async => valid;
 
@@ -36,11 +29,8 @@ class _FakeChecksumValidator implements ChecksumValidator {
   Future<String> computeSha256({required String filePath}) async => "deadbeef";
 }
 
-class _FakeArchiveExtractor implements ArchiveExtractor {
-  _FakeArchiveExtractor({required this.success, required this.packageDirectory});
-
-  final bool success;
-  final bool packageDirectory;
+class _FakeArchiveExtractor({required final bool success, required final bool packageDirectory})
+    implements ArchiveExtractor {
   int extractCalls = 0;
 
   @override
@@ -65,7 +55,7 @@ class _FakeArchiveExtractor implements ArchiveExtractor {
   }
 }
 
-class _FakeCommandExecutor implements CommandExecutor {
+class _FakeCommandExecutor() implements CommandExecutor {
   int chmodCalls = 0;
 
   @override
@@ -125,8 +115,7 @@ void main() {
     return RuntimeInstallService(
       downloadClient: _FakeDownloadClient(exception: downloadError),
       checksumValidator: _FakeChecksumValidator(valid: checksumValid),
-      archiveExtractor:
-          extractor ?? _FakeArchiveExtractor(success: extractSuccess, packageDirectory: packageDirectory),
+      archiveExtractor: extractor ?? _FakeArchiveExtractor(success: extractSuccess, packageDirectory: packageDirectory),
       commandExecutor: cmd ?? _FakeCommandExecutor(),
       runtimeId: "opencode",
     );

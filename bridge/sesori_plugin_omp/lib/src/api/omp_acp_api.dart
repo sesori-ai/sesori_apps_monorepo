@@ -7,24 +7,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../omp_binary.dart";
 
 /// Layer-1 ACP operations used by OMP's bounded isolated workflows.
-class OmpAcpApi {
-  OmpAcpApi({
-    required String binaryPath,
-    required AcpProcessFactory processFactory,
-    required String logTag,
-    required bool isolateSessionHistory,
-    required String? scratchParent,
-  }) : _binaryPath = binaryPath,
-       _processFactory = processFactory,
-       _logTag = logTag,
-       _isolateSessionHistory = isolateSessionHistory,
-       _scratchParent = scratchParent;
-
-  final String _binaryPath;
-  final AcpProcessFactory _processFactory;
-  final String _logTag;
-  final bool _isolateSessionHistory;
-  final String? _scratchParent;
+class OmpAcpApi({
+  required final String _binaryPath,
+  required final AcpProcessFactory _processFactory,
+  required final String _logTag,
+  required final bool _isolateSessionHistory,
+  required final String? _scratchParent,
+}) {
   AcpStdioClient? _client;
   Directory? _sessionDirectory;
   bool _disposed = false;
@@ -91,7 +80,7 @@ class OmpAcpApi {
   Future<AcpNewSessionResult> newSession({
     required String cwd,
     required Duration timeout,
-  }) async => _sessionResult(
+  }) async => await _sessionResult(
     method: AcpMethods.sessionNew,
     params: {"cwd": cwd, "mcpServers": const <Object?>[]},
     timeout: timeout,
@@ -102,7 +91,7 @@ class OmpAcpApi {
     required String configId,
     required String value,
     required Duration timeout,
-  }) async => _sessionResult(
+  }) async => await _sessionResult(
     method: AcpMethods.sessionSetConfigOption,
     params: {"sessionId": sessionId, "configId": configId, "value": value},
     timeout: timeout,
@@ -127,7 +116,7 @@ class OmpAcpApi {
     required String sessionId,
     required String cwd,
     required Duration timeout,
-  }) async => _sessionResult(
+  }) async => await _sessionResult(
     method: AcpMethods.sessionResume,
     params: {"sessionId": sessionId, "cwd": cwd, "mcpServers": const <Object?>[]},
     timeout: timeout,
@@ -214,7 +203,7 @@ class OmpAcpApi {
   Future<Directory> _createScratch({required String prefix}) async {
     final parent = _scratchParent == null ? Directory.systemTemp : Directory(_scratchParent);
     await parent.create(recursive: true);
-    return parent.createTemp(prefix);
+    return await parent.createTemp(prefix);
   }
 
   Duration _remaining({required Duration timeout, required Stopwatch stopwatch}) {

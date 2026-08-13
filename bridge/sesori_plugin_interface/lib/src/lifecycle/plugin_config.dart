@@ -10,12 +10,10 @@
 /// `PluginValueOption.integer`) or from `validateConfig`. Exercise every
 /// typed accessor in `validateConfig`; one thrown later, from `start()`,
 /// still fails the start but only after irreversible steps may have run.
-class PluginConfigException implements Exception {
-  const PluginConfigException(this.message);
-
+class const PluginConfigException(
   /// Human-readable description of what is wrong and how to fix it.
-  final String message;
-
+  final String message,
+) implements Exception {
   @override
   String toString() => "PluginConfigException: $message";
 }
@@ -31,10 +29,10 @@ class PluginConfigException implements Exception {
 class PluginConfig {
   /// [values] is held by reference (the constructor is const, so a defensive
   /// copy is impossible) and must not be mutated after construction.
-  const PluginConfig({required Map<String, Object?> values}) : _values = values;
+  const new({required Map<String, Object?> values}) : _values = values;
 
   /// A config with no options, for plugins that declare none.
-  const PluginConfig.empty() : _values = const {};
+  const new empty() : _values = const {};
 
   final Map<String, Object?> _values;
 

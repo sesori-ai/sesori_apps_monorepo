@@ -8,7 +8,7 @@ import "session_encryptor.dart";
 /// E2E encryption service for the relay protocol.
 /// Uses X25519 for key exchange, HKDF-SHA256 for key derivation,
 /// and XChaCha20-Poly1305 for symmetric encryption.
-class RelayCryptoService {
+class RelayCryptoService() {
   final _x25519 = X25519();
   final _cipher = Xchacha20.poly1305Aead();
 
@@ -24,7 +24,7 @@ class RelayCryptoService {
     SimpleKeyPair ownKeyPair, {
     required SimplePublicKey peerPublicKey,
   }) async {
-    return _x25519.sharedSecretKey(
+    return await _x25519.sharedSecretKey(
       keyPair: ownKeyPair,
       remotePublicKey: peerPublicKey,
     );
@@ -36,7 +36,7 @@ class RelayCryptoService {
     final hkdf = Hkdf(hmac: Hmac(Sha256()), outputLength: 32);
     final sharedSecretBytes = await sharedSecret.extractBytes();
 
-    return hkdf.deriveKey(
+    return await hkdf.deriveKey(
       secretKey: SecretKey(sharedSecretBytes),
       info: utf8.encode("sesori-relay-v1"),
       nonce: Uint8List(
@@ -78,13 +78,13 @@ class RelayCryptoService {
 
     final secretBox = SecretBox(cipherText, nonce: nonce, mac: mac);
 
-    return _cipher.decrypt(secretBox, secretKey: key);
+    return await _cipher.decrypt(secretBox, secretKey: key);
   }
 
   /// Encodes a public key as base64url (no padding) for WebSocket transmission.
   Future<String> encodePublicKey(SimplePublicKey key) async {
     final bytes = key.bytes;
-    return base64Url.encode(bytes).replaceAll("=", "");
+    return await Future.value(base64Url.encode(bytes).replaceAll("=", ""));
   }
 
   /// Decodes a base64url-encoded public key.

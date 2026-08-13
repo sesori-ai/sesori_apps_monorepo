@@ -10,14 +10,12 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockSessionApi extends Mock implements SessionApi;
+class _MockSessionApi() extends Mock implements SessionApi;
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
-class _FakeAuthSession extends Fake implements AuthSession {
-  final BehaviorSubject<AuthState> states;
-
-  _FakeAuthSession(AuthState initial) : states = BehaviorSubject.seeded(initial);
+class _FakeAuthSession(AuthState initial) extends Fake implements AuthSession {
+  final BehaviorSubject<AuthState> states = BehaviorSubject.seeded(initial);
 
   @override
   ValueStream<AuthState> get authStateStream => states.stream;
@@ -28,7 +26,7 @@ class _FakeAuthSession extends Fake implements AuthSession {
   void emit(AuthState state) => states.add(state);
 }
 
-class _FakeAttachmentThumbnailStorage implements AttachmentThumbnailStorage {
+class _FakeAttachmentThumbnailStorage() implements AttachmentThumbnailStorage {
   final Map<String, Map<String, Uint8List>> entries = {};
   final Map<String, Map<String, DateTime>> modifiedAt = {};
   final Map<String, int> sizeOverrides = {};

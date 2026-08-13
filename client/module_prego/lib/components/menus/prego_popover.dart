@@ -25,31 +25,24 @@ typedef PregoPopoverContentBuilder = Widget Function(BuildContext context, VoidC
 /// Unlike [PregoAnchorMenu] (a list of selectable rows), the popover presents
 /// arbitrary [contentBuilder] content — a tooltip, a short explanation, a mini
 /// form. It anchors to the trigger, springs in, and clamps to the screen edges.
-class PregoPopover extends StatelessWidget {
-  const PregoPopover({
-    super.key,
-    required this.triggerBuilder,
-    required this.contentBuilder,
-    this.popoverWidth = 280,
-    this.popoverBorderRadius = 24,
-    this.screenPadding = const EdgeInsets.all(12),
-  });
+class const PregoPopover({
+  super.key,
 
   /// Builds the tappable trigger. The provided callback opens the popover.
-  final PregoPopoverTriggerBuilder triggerBuilder;
+  required final PregoPopoverTriggerBuilder triggerBuilder,
 
   /// Builds the popover body. The provided callback dismisses it.
-  final PregoPopoverContentBuilder contentBuilder;
+  required final PregoPopoverContentBuilder contentBuilder,
 
   /// Width of the open popover.
-  final double popoverWidth;
+  final double popoverWidth = 280,
 
   /// Corner radius of the open popover.
-  final double popoverBorderRadius;
+  final double popoverBorderRadius = 24,
 
   /// Minimum gap kept between the popover and the screen edges.
-  final EdgeInsets screenPadding;
-
+  final EdgeInsets screenPadding = const EdgeInsets.all(12),
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CueModalTransition(
@@ -58,8 +51,7 @@ class PregoPopover extends StatelessWidget {
       reverseMotion: const Spring.snappy(),
       // No alignment: the panel positions itself from the trigger rect so it can
       // clamp to the screen edges.
-      triggerBuilder: (context, showModal) =>
-          triggerBuilder(context, () => unawaited(showModal())),
+      triggerBuilder: (context, showModal) => triggerBuilder(context, () => unawaited(showModal())),
       builder: (context, triggerRect) => AnchoredFlatPanel(
         triggerRect: triggerRect,
         width: popoverWidth,

@@ -53,14 +53,9 @@ void main() {
   });
 }
 
-class _ProcessInvocation {
-  final String executable;
-  final List<String> arguments;
+class _ProcessInvocation({required final String executable, required final List<String> arguments});
 
-  _ProcessInvocation({required this.executable, required this.arguments});
-}
-
-class _FakeProcess implements io.Process {
+class _FakeProcess() implements io.Process {
   bool killCalled = false;
 
   @override

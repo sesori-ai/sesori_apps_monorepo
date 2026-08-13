@@ -10,28 +10,23 @@ const Duration _itemTransitionDuration = Duration(milliseconds: 260);
 /// The caller owns the source list. This widget keeps only the presentation
 /// snapshot needed by [SliverAnimatedList] so a removed row can collapse and
 /// fade instead of disappearing between state emissions.
-class PregoAnimatedSliverList<T> extends StatefulWidget {
-  const PregoAnimatedSliverList({
-    super.key,
-    required this.items,
-    required this.itemKey,
-    required this.itemBuilder,
-  });
+class const PregoAnimatedSliverList<T>({
+  super.key,
 
   /// The items currently present in the source list.
-  final List<T> items;
+  required final List<T> items,
 
   /// Returns the stable, unique identity of an item across list updates.
-  final Key Function(T item) itemKey;
+  required final Key Function(T item) itemKey,
 
   /// Builds an item at its current index.
-  final Widget Function(BuildContext context, int index, T item) itemBuilder;
-
+  required final Widget Function(BuildContext context, int index, T item) itemBuilder,
+}) extends StatefulWidget {
   @override
   State<PregoAnimatedSliverList<T>> createState() => _PregoAnimatedSliverListState<T>();
 }
 
-class _PregoAnimatedSliverListState<T> extends State<PregoAnimatedSliverList<T>> {
+class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T>> {
   final GlobalKey<SliverAnimatedListState> _listKey = GlobalKey<SliverAnimatedListState>();
   late List<_ListEntry<T>> _entries;
 
@@ -143,13 +138,6 @@ class _PregoAnimatedSliverListState<T> extends State<PregoAnimatedSliverList<T>>
   }
 }
 
-class _ListEntry<T> {
-  const _ListEntry({required this.key, required this.item});
+class const _ListEntry<T>({required final Key key, required final T item});
 
-  final Key key;
-  final T item;
-}
-
-class _PregoAnimatedSliverItemKey extends ValueKey<Key> {
-  const _PregoAnimatedSliverItemKey(super.value);
-}
+class const _PregoAnimatedSliverItemKey(super.value) extends ValueKey<Key>;

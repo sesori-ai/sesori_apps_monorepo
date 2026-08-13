@@ -8,17 +8,12 @@ import "package:path/path.dart" as path;
 
 import "data_directory_hardening.dart";
 
-final class AttachmentStorageScope {
-  final String pluginId;
-  final String backendSessionId;
+final class const AttachmentStorageScope({
+  required final String pluginId,
+  required final String backendSessionId,
+});
 
-  const AttachmentStorageScope({
-    required this.pluginId,
-    required this.backendSessionId,
-  });
-}
-
-enum AttachmentThumbnailFormat {
+enum AttachmentThumbnailFormat() {
   jpeg,
   png;
 
@@ -39,11 +34,7 @@ enum AttachmentThumbnailFormat {
 /// durable plugin/backend-session scope shared by every bridge data directory.
 /// Their lifetime is manual because independent databases may reference the
 /// same scope.
-class AttachmentSpillStorage {
-  AttachmentSpillStorage({required String directoryPath}) : _directoryPath = directoryPath;
-
-  final String _directoryPath;
-
+class AttachmentSpillStorage({required final String _directoryPath}) {
   /// Creates the spill root with its intended permissions, so a fresh data
   /// installation has the same shape as one that has stored attachments.
   void ensureDirectory() => createHardenedDirectory(directoryPath: _directoryPath);
@@ -86,7 +77,7 @@ class AttachmentSpillStorage {
     }
     final file = File(_filePath(scope: scope, digest: digest));
     if (!file.existsSync()) return null;
-    return file.readAsBytes();
+    return await file.readAsBytes();
   }
 
   /// The stored byte length, or null when the spill file is gone.
@@ -95,7 +86,7 @@ class AttachmentSpillStorage {
       throw ArgumentError.value(digest, "digest", "not a sha256 content address");
     }
     final file = File(_filePath(scope: scope, digest: digest));
-    return file.existsSync() ? file.length() : null;
+    return file.existsSync() ? await file.length() : null;
   }
 
   Future<({Uint8List bytes, AttachmentThumbnailFormat format})?> readThumbnail({

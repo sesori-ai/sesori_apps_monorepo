@@ -2,19 +2,11 @@ import 'dart:io';
 
 import '../../bridge/foundation/legacy_post_update_relaunch.dart';
 
-class TerminalPromptApi {
-  TerminalPromptApi({
-    required Stdin stdin,
-    required Stdout stdout,
-    required Map<String, String> environment,
-  }) : _stdin = stdin,
-       _stdout = stdout,
-       _environment = environment;
-
-  final Stdin _stdin;
-  final Stdout _stdout;
-  final Map<String, String> _environment;
-
+class TerminalPromptApi({
+  required final Stdin _stdin,
+  required final Stdout _stdout,
+  required final Map<String, String> _environment,
+}) {
   bool get isInteractive {
     // A bridge relaunched non-interactively by a legacy auto-updater inherits a
     // real terminal (inheritStdio), so hasTerminal alone would wrongly report it

@@ -8,23 +8,17 @@ import "package:theme_prego/module_prego.dart";
 /// with a check mark plus light haptic feedback. Self-contained — no snackbar
 /// or `ScaffoldMessenger` dependency, so it is safe to embed inside a
 /// [SelectionArea] (e.g. message cards, code blocks, tool output).
-class CopyIconButton extends StatefulWidget {
-  final String text;
-  final String? tooltip;
-  final double iconSize;
-
-  const CopyIconButton({
-    super.key,
-    required this.text,
-    this.tooltip,
-    this.iconSize = 16,
-  });
-
+class const CopyIconButton({
+  super.key,
+  required final String text,
+  final String? tooltip,
+  final double iconSize = 16,
+}) extends StatefulWidget {
   @override
   State<CopyIconButton> createState() => _CopyIconButtonState();
 }
 
-class _CopyIconButtonState extends State<CopyIconButton> {
+class _CopyIconButtonState() extends State<CopyIconButton> {
   /// How long the check mark stays visible after a successful copy.
   static const _confirmationDuration = Duration(milliseconds: 1500);
 

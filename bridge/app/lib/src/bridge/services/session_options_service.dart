@@ -6,80 +6,45 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/session_options_cache_key.dart";
 import "../repositories/session_options_repository.dart";
 
-sealed class SessionOptionsOutcome {
-  const SessionOptionsOutcome();
-}
+sealed class const SessionOptionsOutcome();
 
-final class SessionOptionsAvailable extends SessionOptionsOutcome {
-  const SessionOptionsAvailable({required this.response});
+final class const SessionOptionsAvailable({required final SessionOptionsResponse response}) extends SessionOptionsOutcome;
 
-  final SessionOptionsResponse response;
-}
+final class const SessionOptionsCacheUnavailable() extends SessionOptionsOutcome;
 
-final class SessionOptionsCacheUnavailable extends SessionOptionsOutcome {
-  const SessionOptionsCacheUnavailable();
-}
+final class const SessionOptionsProjectNotFound() extends SessionOptionsOutcome;
 
-final class SessionOptionsProjectNotFound extends SessionOptionsOutcome {
-  const SessionOptionsProjectNotFound();
-}
+sealed class const SessionOptionsRefreshFailure();
 
-sealed class SessionOptionsRefreshFailure {
-  const SessionOptionsRefreshFailure();
-}
+final class const SessionOptionsKnownRefreshFailure() extends SessionOptionsRefreshFailure;
 
-final class SessionOptionsKnownRefreshFailure extends SessionOptionsRefreshFailure {
-  const SessionOptionsKnownRefreshFailure();
-}
-
-final class SessionOptionsCaughtRefreshFailure extends SessionOptionsRefreshFailure {
-  const SessionOptionsCaughtRefreshFailure({
-    required this.cause,
-    required this.causeStackTrace,
-  });
-
-  final Object cause;
-  final StackTrace causeStackTrace;
-
+final class const SessionOptionsCaughtRefreshFailure({
+    required final Object cause,
+    required final StackTrace causeStackTrace,
+  }) extends SessionOptionsRefreshFailure {
   @override
   String toString() => "SessionOptionsCaughtRefreshFailure";
 }
 
-final class SessionOptionsRefreshFailedRetained extends SessionOptionsOutcome {
-  const SessionOptionsRefreshFailedRetained({required this.failure});
+final class const SessionOptionsRefreshFailedRetained({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
 
-  final SessionOptionsRefreshFailure failure;
-}
+final class const SessionOptionsRefreshFailedUnavailable({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
 
-final class SessionOptionsRefreshFailedUnavailable extends SessionOptionsOutcome {
-  const SessionOptionsRefreshFailedUnavailable({required this.failure});
+final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 
-  final SessionOptionsRefreshFailure failure;
-}
-
-final class SessionOptionsAutomaticNoOp extends SessionOptionsOutcome {
-  const SessionOptionsAutomaticNoOp();
-}
-
-class SessionOptionsService {
-  SessionOptionsService({
-    required SessionOptionsRepository repository,
+class SessionOptionsService({
+    required final SessionOptionsRepository _repository,
     required Map<String, PluginSessionOptionsScope> pluginScopes,
-    required ServerClock clock,
-    required Duration retention,
-  }) : _repository = repository,
-       _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes),
-       _clock = clock,
-       _retention = retention {
-    if (retention.isNegative) {
-      throw ArgumentError.value(retention, "retention", "must not be negative");
+    required final ServerClock _clock,
+    required final Duration _retention,
+  }) {
+  this{
+    if (_retention.isNegative) {
+      throw ArgumentError.value(_retention, "retention", "must not be negative");
     }
   }
 
-  final SessionOptionsRepository _repository;
-  final Map<String, PluginSessionOptionsScope> _pluginScopes;
-  final ServerClock _clock;
-  final Duration _retention;
+  final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
 
   Future<SessionOptionsOutcome> loadDynamic({
@@ -106,7 +71,7 @@ class SessionOptionsService {
         if (!isCurrentResolution) {
           return _movedProjectOutcome(automatic: false);
         }
-        return _refresh(
+        return await _refresh(
           resolved: resolved,
           activation: SessionOptionsCaptureActivation.mayActivate,
           discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
@@ -145,7 +110,7 @@ class SessionOptionsService {
   }) async {
     final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
     if (resolved == null) return const SessionOptionsProjectNotFound();
-    return _coalesce(
+    return await _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.forced,
       generation: null,
@@ -169,7 +134,7 @@ class SessionOptionsService {
     }
     final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
     if (resolved == null) return const SessionOptionsProjectNotFound();
-    return _coalesce(
+    return await _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.reuse,
       generation: generation,
@@ -198,7 +163,7 @@ class SessionOptionsService {
     if (projectId == null) return const SessionOptionsAutomaticNoOp();
     final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
     if (resolved == null) return const SessionOptionsProjectNotFound();
-    return _coalesce(
+    return await _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.reuse,
       generation: generation,
@@ -245,7 +210,7 @@ class SessionOptionsService {
       if (_becameStale(pluginId: resolved.key.pluginId, expectedGeneration: expectedGeneration)) {
         return const SessionOptionsAutomaticNoOp();
       }
-      return _captureFailure(
+      return await _captureFailure(
         resolved: resolved,
         automatic: automatic,
         message: "Session options capture failed for plugin ${resolved.key.pluginId}",
@@ -258,7 +223,7 @@ class SessionOptionsService {
       case SessionOptionsCaptureInactive():
         return const SessionOptionsAutomaticNoOp();
       case SessionOptionsCaptureFailed():
-        return _captureFailure(
+        return await _captureFailure(
           resolved: resolved,
           automatic: automatic,
           message: "Session options discovery failed for plugin ${resolved.key.pluginId}",
@@ -278,7 +243,7 @@ class SessionOptionsService {
       return SessionOptionsAvailable(response: retained!.response);
     }
 
-    return _commitObservation(
+    return await _commitObservation(
       resolved: resolved,
       observation: capture,
       capturedAt: _clock.now().toUtc(),
@@ -479,7 +444,7 @@ class SessionOptionsService {
       final revision = error.revision;
       if (revision == null) {
         if (retryAfterDeleteConflict) {
-          return _readValidAttempt(key: key, retryAfterDeleteConflict: false);
+          return await _readValidAttempt(key: key, retryAfterDeleteConflict: false);
         }
         Log.w("Unable to recover undecodable session options cache for plugin ${key.pluginId}");
         return null;
@@ -491,7 +456,7 @@ class SessionOptionsService {
         expectedRevision: revision,
       );
       if (!deleted && retryAfterDeleteConflict) {
-        return _readValidAttempt(key: key, retryAfterDeleteConflict: false);
+        return await _readValidAttempt(key: key, retryAfterDeleteConflict: false);
       }
       return null;
     }
@@ -506,7 +471,7 @@ class SessionOptionsService {
         expectedRevision: entry.revision,
       );
       if (!deleted && retryAfterDeleteConflict) {
-        return _readValidAttempt(key: key, retryAfterDeleteConflict: false);
+        return await _readValidAttempt(key: key, retryAfterDeleteConflict: false);
       }
       return null;
     }
@@ -633,49 +598,28 @@ class SessionOptionsService {
   }
 }
 
-final class _ResolvedSessionOptions {
-  const _ResolvedSessionOptions({
-    required this.key,
-    required this.projectId,
-    required this.projectPath,
+final class const _ResolvedSessionOptions({
+    required final SessionOptionsCacheKey key,
+    required final String projectId,
+    required final String projectPath,
   });
 
-  final SessionOptionsCacheKey key;
-  final String projectId;
-  final String projectPath;
-}
+enum _RefreshIntent() { reuse, forced }
 
-enum _RefreshIntent { reuse, forced }
-
-final class _RefreshCoordinator {
-  _RefreshCoordinator({
-    required this.intent,
-    required this.generation,
-    required this.running,
-  });
-
-  _RefreshIntent intent;
-  int? generation;
-  Future<SessionOptionsOutcome> running;
+final class _RefreshCoordinator({
+    required var _RefreshIntent intent,
+    required var int? generation,
+    required var Future<SessionOptionsOutcome> running,
+  }) {
   Future<SessionOptionsOutcome>? reuseTail;
   int? reuseTailGeneration;
   Future<SessionOptionsOutcome>? forcedTail;
 }
 
-sealed class _CommitAttempt {
-  const _CommitAttempt();
-}
+sealed class const _CommitAttempt();
 
-final class _CommitSucceeded extends _CommitAttempt {
-  const _CommitSucceeded();
-}
+final class const _CommitSucceeded() extends _CommitAttempt;
 
-final class _CommitConflict extends _CommitAttempt {
-  const _CommitConflict();
-}
+final class const _CommitConflict() extends _CommitAttempt;
 
-final class _CommitFailed extends _CommitAttempt {
-  const _CommitFailed({required this.outcome});
-
-  final SessionOptionsOutcome outcome;
-}
+final class const _CommitFailed({required final SessionOptionsOutcome outcome}) extends _CommitAttempt;

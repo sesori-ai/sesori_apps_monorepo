@@ -5,10 +5,8 @@ import "api_error.dart";
 part "api_response.freezed.dart";
 
 @Freezed()
-sealed class ApiResponse<T> with _$ApiResponse<T> {
-  ApiResponse._();
+sealed class ApiResponse<T>._() with _$ApiResponse<T> {
+  factory success(T data) = SuccessResponse;
 
-  factory ApiResponse.success(T data) = SuccessResponse;
-
-  factory ApiResponse.error(ApiError error) = ErrorResponse;
+  factory error(ApiError error) = ErrorResponse;
 }

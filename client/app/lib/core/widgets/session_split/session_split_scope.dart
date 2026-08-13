@@ -4,15 +4,11 @@ import "package:flutter/material.dart";
 ///
 /// Widgets in the session split shell can query whether they are rendering
 /// inside a wide split layout.
-class SessionSplitScope extends InheritedWidget {
-  final bool isSplit;
-
-  const SessionSplitScope({
-    super.key,
-    required this.isSplit,
-    required super.child,
-  });
-
+class const SessionSplitScope({
+  super.key,
+  required final bool isSplit,
+  required super.child,
+}) extends InheritedWidget {
   static SessionSplitScope of(BuildContext context) {
     final scope = maybeOf(context);
     if (scope == null) {

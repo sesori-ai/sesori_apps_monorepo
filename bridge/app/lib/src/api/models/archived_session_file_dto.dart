@@ -11,7 +11,7 @@ part "archived_session_file_dto.g.dart";
 /// have: archiving proceeds even when the backend cannot be consulted, because
 /// refusing would trap the session.
 @JsonEnum()
-enum ArchivedSessionCompleteness {
+enum ArchivedSessionCompleteness() {
   /// The store was brought current from the backend before the export.
   @JsonValue("complete")
   complete,
@@ -28,7 +28,7 @@ enum ArchivedSessionCompleteness {
 /// read path reconstructs exactly what the live store would have served.
 @Freezed(fromJson: true, toJson: true)
 sealed class ArchivedSessionFileDto with _$ArchivedSessionFileDto {
-  const factory ArchivedSessionFileDto({
+  const factory({
     required int schemaVersion,
     required int archivedAt,
     required ArchivedSessionCompleteness completeness,
@@ -36,14 +36,14 @@ sealed class ArchivedSessionFileDto with _$ArchivedSessionFileDto {
     required List<ArchivedMessageDto> messages,
   }) = _ArchivedSessionFileDto;
 
-  factory ArchivedSessionFileDto.fromJson(Map<String, dynamic> json) => _$ArchivedSessionFileDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ArchivedSessionFileDtoFromJson(json);
 }
 
 /// The session metadata as it stood at archive time, so the audit file is
 /// readable without the main database.
 @Freezed(fromJson: true, toJson: true)
 sealed class ArchivedSessionSnapshotDto with _$ArchivedSessionSnapshotDto {
-  const factory ArchivedSessionSnapshotDto({
+  const factory({
     required String sessionId,
     required String backendSessionId,
     required String pluginId,
@@ -61,14 +61,14 @@ sealed class ArchivedSessionSnapshotDto with _$ArchivedSessionSnapshotDto {
     required int updatedAt,
   }) = _ArchivedSessionSnapshotDto;
 
-  factory ArchivedSessionSnapshotDto.fromJson(Map<String, dynamic> json) => _$ArchivedSessionSnapshotDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ArchivedSessionSnapshotDtoFromJson(json);
 }
 
 /// One archived message, carrying the `seq` it held in the live store so the
 /// archived read path pages in the same cursor domain.
 @Freezed(fromJson: true, toJson: true)
 sealed class ArchivedMessageDto with _$ArchivedMessageDto {
-  const factory ArchivedMessageDto({
+  const factory({
     required int seq,
     required Message info,
 
@@ -83,5 +83,5 @@ sealed class ArchivedMessageDto with _$ArchivedMessageDto {
     required List<Map<String, dynamic>> parts,
   }) = _ArchivedMessageDto;
 
-  factory ArchivedMessageDto.fromJson(Map<String, dynamic> json) => _$ArchivedMessageDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ArchivedMessageDtoFromJson(json);
 }

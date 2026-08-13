@@ -16,9 +16,7 @@ import "package:sesori_shared/sesori_shared.dart"
 /// Local paths never leave this class over the transport; only basename
 /// metadata and inline bytes cross the plugin boundary. Local bridge logs do
 /// keep the path — that is sanctioned diagnostic context, not payload leakage.
-final class CursorGeneratedImageReader {
-  const CursorGeneratedImageReader();
-
+final class const CursorGeneratedImageReader() {
   List<AcpMappedImageContentBlock> read({required String path}) {
     final normalizedPath = path.trim();
     if (normalizedPath.isEmpty) {

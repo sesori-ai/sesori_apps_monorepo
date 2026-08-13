@@ -1,20 +1,14 @@
 // ignore_for_file: no_slop_linter/avoid_mutable_class_fields, Must be mutable for the cache to work
 import "dart:async";
 
-class ConcurrentCache<T> {
-  final Future<T> Function(T?) compute;
-  final Duration valid;
-  final Duration? grace;
-
+class ConcurrentCache<T>({
+  required final Future<T> Function(T?) compute,
+  required final Duration valid,
+  required final Duration? grace,
+}) {
   ({T cachedValue, int expirationTime})? _cacheData;
 
   Future<T>? _fetchingDataFuture;
-
-  ConcurrentCache({
-    required this.compute,
-    required this.valid,
-    required this.grace,
-  });
 
   bool _isExpired() {
     final expirationTime = _cacheData?.expirationTime ?? 0;
@@ -30,7 +24,7 @@ class ConcurrentCache<T> {
 
   Future<T> getOrFetch({bool forceFetch = false}) async {
     if (forceFetch) {
-      return _fetchAndCacheValue();
+      return await _fetchAndCacheValue();
     }
 
     final FutureOr<T> newCacheFuture =
@@ -38,9 +32,9 @@ class ConcurrentCache<T> {
         ? _fetchingDataFuture ?? _fetchAndCacheValue()
         : _cacheData?.cachedValue ?? _fetchAndCacheValue();
 
-    return _isGraceExpired() //
+    return await (_isGraceExpired() //
         ? newCacheFuture
-        : _cacheData?.cachedValue ?? newCacheFuture;
+        : _cacheData?.cachedValue ?? newCacheFuture);
   }
 
   Future<T> _fetchAndCacheValue() async {

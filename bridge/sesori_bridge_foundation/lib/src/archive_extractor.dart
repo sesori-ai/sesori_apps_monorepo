@@ -10,7 +10,7 @@ import "command_executor.dart";
 /// caller rather than inferred from the host OS, because publishers ship
 /// different formats per platform (e.g. OpenCode ships `.zip` on macOS but
 /// `.tar.gz` on Linux).
-enum ArchiveFormat { tarGz, zip }
+enum ArchiveFormat() { tarGz, zip }
 
 extension ArchiveFormatX on ArchiveFormat {
   /// The download filename suffix for this format, so the on-disk archive carries
@@ -31,8 +31,8 @@ extension ArchiveFormatX on ArchiveFormat {
 /// only signal of what actually went wrong (corrupt archive, missing tool,
 /// permission denied, PowerShell constrained-language mode, …).
 class ArchiveExtractionResult {
-  const ArchiveExtractionResult.success() : succeeded = true, failureReason = null;
-  const ArchiveExtractionResult.failure({required String reason}) : succeeded = false, failureReason = reason;
+  const new success() : succeeded = true, failureReason = null;
+  const new failure({required String reason}) : succeeded = false, failureReason = reason;
 
   final bool succeeded;
   final String? failureReason;
@@ -46,10 +46,7 @@ class ArchiveExtractionResult {
 /// before extraction, and any symlink in the extracted tree is rejected
 /// afterwards. Published runtime payloads contain only regular files and
 /// directories, so either is a sign of tampering — extraction fails closed.
-class ArchiveExtractor {
-  final CommandExecutor _commandExecutor;
-
-  ArchiveExtractor({required CommandExecutor commandExecutor}) : _commandExecutor = commandExecutor;
+class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
 
   static const Duration _listTimeout = Duration(seconds: 30);
   static const Duration _extractTimeout = Duration(minutes: 2);

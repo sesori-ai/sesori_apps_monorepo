@@ -5,7 +5,7 @@ part "codex_collaboration_mode_dto.g.dart";
 
 @Freezed(fromJson: false, toJson: true)
 sealed class CodexCollaborationModeDto with _$CodexCollaborationModeDto {
-  const factory CodexCollaborationModeDto({
+  const factory({
     required String mode,
     required CodexCollaborationModeSettingsDto settings,
   }) = _CodexCollaborationModeDto;
@@ -13,7 +13,7 @@ sealed class CodexCollaborationModeDto with _$CodexCollaborationModeDto {
 
 @Freezed(fromJson: false, toJson: true)
 sealed class CodexCollaborationModeSettingsDto with _$CodexCollaborationModeSettingsDto {
-  const factory CodexCollaborationModeSettingsDto({
+  const factory({
     required String model,
     @JsonKey(name: "reasoning_effort") required String? reasoningEffort,
     @JsonKey(name: "developer_instructions") required String? developerInstructions,

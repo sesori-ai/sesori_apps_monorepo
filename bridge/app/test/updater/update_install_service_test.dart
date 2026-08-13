@@ -8,7 +8,7 @@ import 'package:sesori_bridge/src/updater/repositories/update_artifact_repositor
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:test/test.dart';
 
-class _FakeArtifactRepository implements UpdateArtifactRepository {
+class _FakeArtifactRepository() implements UpdateArtifactRepository {
   UpdateResult downloadResult = UpdateResult.success;
   bool checksumValid = true;
   bool extracted = true;

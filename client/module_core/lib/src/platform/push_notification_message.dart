@@ -1,15 +1,9 @@
 import "package:meta/meta.dart";
 
 @immutable
-class PushNotificationMessage {
-  // ignore: no_slop_linter/prefer_specific_type
-  final Map<String, dynamic> data;
-  final String? title;
-  final String? body;
-
-  const PushNotificationMessage({
-    required this.data,
-    required this.title,
-    required this.body,
-  });
-}
+class const PushNotificationMessage({
+  // ignore: no_slop_linter/prefer_specific_type, notification payload values are heterogeneous
+  required final Map<String, dynamic> data,
+  required final String? title,
+  required final String? body,
+});

@@ -6,7 +6,7 @@ part "splash_state.freezed.dart";
 
 @Freezed()
 sealed class SplashState with _$SplashState {
-  const factory SplashState.initializing() = SplashInitializing;
+  const factory initializing() = SplashInitializing;
 
-  const factory SplashState.ready({required AppRoute route}) = SplashReady;
+  const factory ready({required AppRoute route}) = SplashReady;
 }

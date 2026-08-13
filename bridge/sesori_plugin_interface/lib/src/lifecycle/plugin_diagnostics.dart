@@ -6,27 +6,21 @@ import "package:meta/meta.dart";
 /// startup "Target:" log line and for debugging output; it must never block
 /// or touch the network.
 @immutable
-class PluginDiagnostics {
-  const PluginDiagnostics({
-    required this.pluginId,
-    required this.endpoint,
-    required this.details,
-  });
-
+class const PluginDiagnostics({
   /// The plugin's stable identifier (e.g. `"opencode"`).
-  final String pluginId;
+  required final String pluginId,
 
   /// Where the plugin's backend lives, when it has an address
   /// (e.g. `"http://127.0.0.1:4096"`). `null` for plugins without one.
-  final String? endpoint;
+  required final String? endpoint,
 
   /// Free-form additional facts (version, mode, state directory).
   ///
   /// Held by reference (the constructor is const, so a defensive copy is
   /// impossible); pass a const or unshared map and do not mutate it after
   /// construction.
-  final Map<String, String> details;
-
+  required final Map<String, String> details,
+}) {
   @override
   String toString() {
     final target = endpoint == null ? pluginId : "$pluginId @ $endpoint";

@@ -22,9 +22,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// release, raise [minPathVersion] only if the bridge starts to require a newer
 /// codex API, and re-run the integration tests. The hashes below are the
 /// published asset digests for codex `rust-v0.146.0`.
-class CodexRuntimeManifest extends RuntimeManifest {
-  const CodexRuntimeManifest();
-
+class const CodexRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed codex version the bridge will use as-is.
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.139.0");
 

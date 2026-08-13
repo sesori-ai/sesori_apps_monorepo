@@ -6,7 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 ///
 /// Runs checks that help surface configuration or permission issues early,
 /// before the user encounters them at runtime.
-class BridgeDiagnostics {
+class BridgeDiagnostics() {
   /// Runs all diagnostic checks and logs warnings for any issues found.
   ///
   /// Returns `true` if all checks passed, `false` if any warnings were logged.

@@ -15,26 +15,22 @@ import "../../theme/prego_theme.dart";
 ///
 /// The mark is decorative. Callers that lean on it to identify the harness
 /// must say so in words themselves; [displayNameFor] gives them the name.
-class PregoBrandLogo extends StatelessWidget {
-  const PregoBrandLogo({
-    super.key,
-    required this.pluginId,
-    this.size = 20,
-    required this.color,
-  });
-
-  final String pluginId;
-  final double size;
+class const PregoBrandLogo({
+  super.key,
+  required final String pluginId,
+  final double size = 20,
 
   /// Tints the fallback plug. The brand marks ignore it: they are drawn in
   /// their own colours, which is the point of them.
-  final Color? color;
-
+  required final Color? color,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final asset = _assetFor(pluginId, brightness: context.prego.colors.brightness);
     if (asset == null) {
-      return ExcludeSemantics(child: Icon(TablerRegular.plug, size: size, color: color));
+      return ExcludeSemantics(
+        child: Icon(TablerRegular.plug, size: size, color: color),
+      );
     }
 
     return ExcludeSemantics(

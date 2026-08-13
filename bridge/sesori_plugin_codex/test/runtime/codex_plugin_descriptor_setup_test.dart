@@ -362,14 +362,12 @@ void main() {
   });
 }
 
-class _ProbeProcessService implements HostProcessService {
-  _ProbeProcessService({this.spawnError, List<_ProbeProcess>? processSequence, List<Object>? spawnOutcomes})
-    : _processSequence = processSequence ?? const <_ProbeProcess>[],
-      _spawnOutcomes = spawnOutcomes;
-
-  final Object? spawnError;
-  final List<_ProbeProcess> _processSequence;
-  final List<Object>? _spawnOutcomes;
+class _ProbeProcessService({
+  final Object? spawnError,
+  List<_ProbeProcess>? processSequence,
+  final List<Object>? _spawnOutcomes,
+}) implements HostProcessService {
+  final List<_ProbeProcess> _processSequence = processSequence ?? const <_ProbeProcess>[];
   final List<String> spawnedExecutables = <String>[];
   final List<List<String>> spawnedArguments = <List<String>>[];
   int _nextProcess = 0;
@@ -413,17 +411,11 @@ class _ProbeProcessService implements HostProcessService {
   );
 }
 
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required this.pid, required List<int> stdoutBytes, required Future<int> exitCode})
-    : _stdoutBytes = stdoutBytes,
-      _exitCode = exitCode;
-
-  @override
-  final int pid;
-
-  final List<int> _stdoutBytes;
-  final Future<int> _exitCode;
-
+class _ProbeProcess({
+  @override required final int pid,
+  required final List<int> _stdoutBytes,
+  required final Future<int> _exitCode,
+}) implements SpawnedProcess {
   @override
   Future<int> get exitCode => _exitCode;
 
@@ -440,7 +432,7 @@ class _ProbeProcess implements SpawnedProcess {
   ProcessIdentity get identity => throw UnimplementedError();
 }
 
-class _AbortOnThirdCheck implements StartAbortSignal {
+class _AbortOnThirdCheck() implements StartAbortSignal {
   int _checks = 0;
 
   @override

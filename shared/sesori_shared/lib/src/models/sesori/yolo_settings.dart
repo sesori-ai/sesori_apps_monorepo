@@ -5,7 +5,7 @@ part "yolo_settings.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class YoloSettingsResponse with _$YoloSettingsResponse {
-  const factory YoloSettingsResponse({required bool enabled}) = _YoloSettingsResponse;
+  const factory({required bool enabled}) = _YoloSettingsResponse;
 
-  factory YoloSettingsResponse.fromJson(Map<String, dynamic> json) => _$YoloSettingsResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$YoloSettingsResponseFromJson(json);
 }

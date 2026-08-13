@@ -295,7 +295,7 @@ SesoriProjectsSummary _summaryWithSessionCount(int count) {
       as SesoriProjectsSummary;
 }
 
-class _FakeControlChannelClient implements ControlChannelClient {
+class _FakeControlChannelClient() implements ControlChannelClient {
   final StreamController<ControlChannelConnectionState> _connectionState =
       StreamController<ControlChannelConnectionState>.broadcast();
   final List<String> sentFrames = <String>[];

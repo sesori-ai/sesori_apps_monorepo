@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
 
 import 'package:sesori_shared/sesori_shared.dart';
+
 import '../../auth/login_email_repository.dart';
 import '../../auth/login_oauth_service.dart';
 import '../../auth/profile.dart';
@@ -13,28 +14,14 @@ import 'bridge_cli_options.dart';
 
 const Duration _oAuthAckTimeout = Duration(seconds: 5);
 
-class BridgeRuntimeAuthService {
-  final LoginEmailRepository _loginEmailRepository;
-  final LoginOAuthService _loginOAuthService;
-  final Map<String, String> _environment;
-  final Future<TokenData> Function() _loadTokens;
-  final Future<void> Function(TokenData tokens) _saveTokens;
-  final Future<void> Function() _clearTokens;
-
-  const BridgeRuntimeAuthService({
-    required LoginEmailRepository loginEmailRepository,
-    required LoginOAuthService loginOAuthService,
-    required Map<String, String> environment,
-    required Future<TokenData> Function() loadTokens,
-    required Future<void> Function(TokenData tokens) saveTokens,
-    required Future<void> Function() clearTokens,
-  }) : _loginEmailRepository = loginEmailRepository,
-       _loginOAuthService = loginOAuthService,
-       _environment = environment,
-       _loadTokens = loadTokens,
-       _saveTokens = saveTokens,
-       _clearTokens = clearTokens;
-
+class const BridgeRuntimeAuthService({
+  required final LoginEmailRepository _loginEmailRepository,
+  required final LoginOAuthService _loginOAuthService,
+  required final Map<String, String> _environment,
+  required final Future<TokenData> Function() _loadTokens,
+  required final Future<void> Function(TokenData tokens) _saveTokens,
+  required final Future<void> Function() _clearTokens,
+}) {
   Future<AuthProvider> promptForProvider() async {
     if (_environment[sesoriPostUpdateRestartEnvVar] == '1') {
       // Legacy upgrade: an old binary relaunched us (possibly non-interactively)
@@ -118,7 +105,7 @@ class BridgeRuntimeAuthService {
       provider = await promptForProvider();
     }
 
-    return _loginAndPersist(
+    return await _loginAndPersist(
       authBackendUrl: options.authBackendUrl,
       provider: provider,
     );

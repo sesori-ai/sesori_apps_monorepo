@@ -18,12 +18,10 @@ import "request_handler.dart";
 /// The created directory is returned as a [FilesystemSuggestion] — the same
 /// entry shape the browser's listing is made of — so the client navigates to
 /// the path this host actually produced instead of re-deriving it.
-class CreateDirectoryHandler extends BodyRequestHandler<FilesystemCreateDirectoryRequest, FilesystemSuggestion> {
-  final FilesystemRepository _filesystemRepository;
-
-  CreateDirectoryHandler({required FilesystemRepository filesystemRepository})
-    : _filesystemRepository = filesystemRepository,
-      super(
+class CreateDirectoryHandler({required final FilesystemRepository _filesystemRepository})
+    extends BodyRequestHandler<FilesystemCreateDirectoryRequest, FilesystemSuggestion> {
+  this
+    : super(
         HttpMethod.post,
         "/filesystem/directory",
         fromJson: FilesystemCreateDirectoryRequest.fromJson,

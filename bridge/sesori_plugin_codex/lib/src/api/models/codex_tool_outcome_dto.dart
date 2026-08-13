@@ -5,20 +5,20 @@ part "codex_tool_outcome_dto.g.dart";
 
 @freezed
 sealed class CodexToolOutcomeFileDto with _$CodexToolOutcomeFileDto {
-  const factory CodexToolOutcomeFileDto({
+  const factory({
     required int schemaVersion,
     required List<CodexStoredToolErrorDto> errors,
   }) = _CodexToolOutcomeFileDto;
 
-  factory CodexToolOutcomeFileDto.fromJson(Map<String, dynamic> json) => _$CodexToolOutcomeFileDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexToolOutcomeFileDtoFromJson(json);
 }
 
 @freezed
 sealed class CodexStoredToolErrorDto with _$CodexStoredToolErrorDto {
-  const factory CodexStoredToolErrorDto({
+  const factory({
     required String sessionId,
     required String callId,
   }) = _CodexStoredToolErrorDto;
 
-  factory CodexStoredToolErrorDto.fromJson(Map<String, dynamic> json) => _$CodexStoredToolErrorDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexStoredToolErrorDtoFromJson(json);
 }

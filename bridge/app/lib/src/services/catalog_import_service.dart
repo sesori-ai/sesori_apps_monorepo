@@ -5,42 +5,25 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/models/catalog_import_control.dart";
 
-enum CatalogImportTrigger { automatic, explicit, headless }
+enum CatalogImportTrigger() { automatic, explicit, headless }
 
-enum CatalogEmptyHydrationPolicy { complete, retry }
+enum CatalogEmptyHydrationPolicy() { complete, retry }
 
-class CatalogImportPluginUnknownException implements Exception {
-  CatalogImportPluginUnknownException({required this.pluginId});
+class CatalogImportPluginUnknownException({required final String pluginId}) implements Exception;
 
-  final String pluginId;
-}
+class CatalogImportPluginNotEnabledException({required final String pluginId}) implements Exception;
 
-class CatalogImportPluginNotEnabledException implements Exception {
-  CatalogImportPluginNotEnabledException({required this.pluginId});
+class CatalogImportPluginUnavailableException({required final String pluginId}) implements Exception;
 
-  final String pluginId;
-}
-
-class CatalogImportPluginUnavailableException implements Exception {
-  CatalogImportPluginUnavailableException({required this.pluginId});
-
-  final String pluginId;
-}
-
-class CatalogImportService {
-  CatalogImportService({
-    required CatalogImportRepository repository,
+class CatalogImportService({
+    required final CatalogImportRepository _repository,
     required List<String> orderedPluginIds,
     required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
-  }) : _repository = repository,
-       _orderedPluginIds = List<String>.unmodifiable(orderedPluginIds),
-       _knownPluginIds = Set<String>.unmodifiable(orderedPluginIds),
-       _emptyHydrationPolicies = Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);
+  }) {
 
-  final CatalogImportRepository _repository;
-  final List<String> _orderedPluginIds;
-  final Set<String> _knownPluginIds;
-  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies;
+  final List<String> _orderedPluginIds = List<String>.unmodifiable(orderedPluginIds);
+  final Set<String> _knownPluginIds = Set<String>.unmodifiable(orderedPluginIds);
+  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies = Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);
   final StreamController<CatalogImportProgress> _progressController = StreamController<CatalogImportProgress>.broadcast(
     sync: true,
   );

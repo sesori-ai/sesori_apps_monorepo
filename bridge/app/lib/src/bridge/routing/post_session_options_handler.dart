@@ -6,16 +6,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../services/session_options_service.dart";
 import "request_handler.dart";
 
-class PostSessionOptionsHandler extends RequestHandlerBase {
-  PostSessionOptionsHandler({
-    required SessionOptionsService service,
-    required Set<String> pluginIds,
-  }) : _service = service,
-       _pluginIds = Set.unmodifiable(pluginIds),
-       super(HttpMethod.post, "/session/options");
+class PostSessionOptionsHandler({
+  required final SessionOptionsService _service,
+  required Set<String> pluginIds,
+}) extends RequestHandlerBase {
+  this : super(HttpMethod.post, "/session/options");
 
-  final SessionOptionsService _service;
-  final Set<String> _pluginIds;
+  final Set<String> _pluginIds = Set.unmodifiable(pluginIds);
 
   @override
   Future<RelayResponse> handleInternal(

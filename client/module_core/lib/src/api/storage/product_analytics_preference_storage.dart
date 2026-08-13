@@ -20,38 +20,33 @@ const _storedPreferenceKindKey = "kind";
   unionValueCase: FreezedUnionCase.snake,
 )
 sealed class StoredProductAnalyticsPreference with _$StoredProductAnalyticsPreference {
-  const factory StoredProductAnalyticsPreference.synced({
+  const factory synced({
     required String userId,
     required int revision,
     required String userKey,
     required ProductAnalyticsPreference preference,
   }) = StoredProductAnalyticsSynced;
 
-  const factory StoredProductAnalyticsPreference.pendingDisable({
+  const factory pendingDisable({
     required String userId,
     required int revision,
     required String userKey,
     required String operationId,
   }) = StoredProductAnalyticsPendingDisable;
 
-  const factory StoredProductAnalyticsPreference.pendingEnable({
+  const factory pendingEnable({
     required String userId,
     required int revision,
     required String userKey,
     required String operationId,
   }) = StoredProductAnalyticsPendingEnable;
 
-  factory StoredProductAnalyticsPreference.fromJson(Map<String, dynamic> json) =>
-      _$StoredProductAnalyticsPreferenceFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$StoredProductAnalyticsPreferenceFromJson(json);
 }
 
 @lazySingleton
-class ProductAnalyticsPreferenceStorage {
+class ProductAnalyticsPreferenceStorage({required final SecureStorage _storage}) {
   static const _keyPrefix = "product_analytics_preference_v1:";
-
-  final SecureStorage _storage;
-
-  ProductAnalyticsPreferenceStorage({required SecureStorage storage}) : _storage = storage;
 
   Future<StoredProductAnalyticsPreference?> read({required String userId}) async {
     final value = await _storage.read(key: _key(userId));
@@ -92,14 +87,11 @@ class ProductAnalyticsPreferenceStorage {
   String _key(String userId) => "$_keyPrefix$userId";
 }
 
-final class ProductAnalyticsPreferenceStorageFormatException extends FormatException {
-  final Object innerError;
-  final StackTrace innerStackTrace;
-
-  const ProductAnalyticsPreferenceStorageFormatException({
-    required this.innerError,
-    required this.innerStackTrace,
-  }) : super("Invalid stored product analytics preference");
+final class const ProductAnalyticsPreferenceStorageFormatException({
+  required final Object innerError,
+  required final StackTrace innerStackTrace,
+}) extends FormatException {
+  this : super("Invalid stored product analytics preference");
 }
 
 bool _hasValidOperationId(StoredProductAnalyticsPreference record) => switch (record) {

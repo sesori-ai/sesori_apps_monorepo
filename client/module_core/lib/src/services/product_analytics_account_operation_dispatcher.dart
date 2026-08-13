@@ -1,4 +1,4 @@
-final class ProductAnalyticsAccountOperationDispatcher {
+final class ProductAnalyticsAccountOperationDispatcher() {
   ({int generation, Future<void> future})? _active;
 
   Future<void> run({

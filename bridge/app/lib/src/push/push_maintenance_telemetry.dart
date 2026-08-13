@@ -4,35 +4,20 @@ import "completion_notifier.dart";
 import "push_rate_limiter.dart";
 import "push_session_state_tracker_types.dart";
 
-class PushMaintenanceTelemetrySnapshot {
-  final double? rssMb;
-  final int sessions;
-  final int idleRoots;
-  final int prunableRoots;
-  final int messageRoles;
-  final int assistantTextSessions;
-  final int assistantTextChars;
-  final int trackerPermissionRequests;
-  final int notifierPermissionRequests;
-  final int completionSentRoots;
-  final int abortedRoots;
-  final int rateLimiterKeys;
-
-  const PushMaintenanceTelemetrySnapshot({
-    required this.rssMb,
-    required this.sessions,
-    required this.idleRoots,
-    required this.prunableRoots,
-    required this.messageRoles,
-    required this.assistantTextSessions,
-    required this.assistantTextChars,
-    required this.trackerPermissionRequests,
-    required this.notifierPermissionRequests,
-    required this.completionSentRoots,
-    required this.abortedRoots,
-    required this.rateLimiterKeys,
-  });
-
+class const PushMaintenanceTelemetrySnapshot({
+  required final double? rssMb,
+  required final int sessions,
+  required final int idleRoots,
+  required final int prunableRoots,
+  required final int messageRoles,
+  required final int assistantTextSessions,
+  required final int assistantTextChars,
+  required final int trackerPermissionRequests,
+  required final int notifierPermissionRequests,
+  required final int completionSentRoots,
+  required final int abortedRoots,
+  required final int rateLimiterKeys,
+}) {
   Map<String, Object?> toDebugFields() {
     return {
       "rss_mb": rssMb,
@@ -56,19 +41,11 @@ class PushMaintenanceTelemetrySnapshot {
   }
 }
 
-class PushMaintenanceTelemetryBuilder {
-  final CompletionNotifier _completionNotifier;
-  final PushRateLimiter _rateLimiter;
-  final int? Function() _rssBytesReader;
-
-  const PushMaintenanceTelemetryBuilder({
-    required CompletionNotifier completionNotifier,
-    required PushRateLimiter rateLimiter,
-    required int? Function() rssBytesReader,
-  }) : _completionNotifier = completionNotifier,
-       _rateLimiter = rateLimiter,
-       _rssBytesReader = rssBytesReader;
-
+class const PushMaintenanceTelemetryBuilder({
+  required final CompletionNotifier _completionNotifier,
+  required final PushRateLimiter _rateLimiter,
+  required final int? Function() _rssBytesReader,
+}) {
   PushMaintenanceTelemetrySnapshot build({required PushSessionTelemetrySnapshot trackerSnapshot}) {
     final rssBytes = _rssBytesReader();
     return PushMaintenanceTelemetrySnapshot(

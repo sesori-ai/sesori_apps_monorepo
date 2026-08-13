@@ -223,10 +223,8 @@ void main() {
   });
 }
 
-class FakeAuthSession implements AuthSession {
-  final BehaviorSubject<AuthState> _authStates;
-
-  FakeAuthSession({required AuthState initialState}) : _authStates = BehaviorSubject<AuthState>.seeded(initialState);
+class FakeAuthSession({required AuthState initialState}) implements AuthSession {
+  final BehaviorSubject<AuthState> _authStates = BehaviorSubject<AuthState>.seeded(initialState);
 
   @override
   ValueStream<AuthState> get authStateStream => _authStates.stream;
@@ -236,7 +234,9 @@ class FakeAuthSession implements AuthSession {
 
   void emit(AuthState state) => _authStates.add(state);
 
-  Future<void> dispose() async => _authStates.close();
+  Future<void> dispose() async {
+    await _authStates.close();
+  }
 
   @override
   Future<AuthUser?> getCurrentUser() async => null;
@@ -267,7 +267,7 @@ class FakeAuthSession implements AuthSession {
   }
 }
 
-class FakePushMessagingSource implements PushMessagingSource {
+class FakePushMessagingSource() implements PushMessagingSource {
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
@@ -311,7 +311,7 @@ class FakePushMessagingSource implements PushMessagingSource {
   }
 }
 
-class FakeLocalNotificationClient implements LocalNotificationClient {
+class FakeLocalNotificationClient() implements LocalNotificationClient {
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
       StreamController<NotificationOpenRequest>.broadcast();
   NotificationOpenRequest? initialOpenRequest;
@@ -343,10 +343,12 @@ class FakeLocalNotificationClient implements LocalNotificationClient {
     required String? sessionTitle,
   }) async {}
 
-  Future<void> dispose() async => _notificationOpenedController.close();
+  Future<void> dispose() async {
+    await _notificationOpenedController.close();
+  }
 }
 
-class RecordingRouteDispatcher implements RouteDispatcher {
+class RecordingRouteDispatcher() implements RouteDispatcher {
   final List<RouteStack> replacedStacks = <RouteStack>[];
 
   @override
@@ -355,7 +357,7 @@ class RecordingRouteDispatcher implements RouteDispatcher {
   }
 }
 
-class FakeRouteSource implements RouteSource {
+class FakeRouteSource() implements RouteSource {
   @override
   String? currentLocation;
 

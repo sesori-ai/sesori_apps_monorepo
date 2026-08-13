@@ -14,10 +14,8 @@ import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-class FakeAccessTokenProvider implements AccessTokenProvider {
-  final BehaviorSubject<String> _subject;
-
-  FakeAccessTokenProvider([String token = "test-token"]) : _subject = BehaviorSubject.seeded(token);
+class FakeAccessTokenProvider([String token = "test-token"]) implements AccessTokenProvider {
+  final BehaviorSubject<String> _subject = BehaviorSubject.seeded(token);
 
   @override
   String get accessToken => _subject.value;
@@ -26,31 +24,23 @@ class FakeAccessTokenProvider implements AccessTokenProvider {
   ValueStream<String> get tokenStream => _subject.stream;
 }
 
-class FakeBridgeIdProvider implements BridgeIdProvider {
-  String? id;
-
-  FakeBridgeIdProvider([this.id]);
-
+class FakeBridgeIdProvider([var String? id]) implements BridgeIdProvider {
   @override
   String? get bridgeId => id;
 }
 
-class FakeTokenRefresher implements TokenRefresher {
+class FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
 }
 
 /// In-memory [BridgeIdStorage] substitute for [BridgeRegistrationService] tests.
-class FakeBridgeIdStorage implements BridgeIdStorage {
-  String? bridgeId;
-
+class FakeBridgeIdStorage({var String? bridgeId}) implements BridgeIdStorage {
   /// When non-null, [clear] throws this error instead of clearing.
   Object? clearError;
 
   /// When non-null, [write] throws this error instead of persisting.
   Object? writeError;
-
-  FakeBridgeIdStorage({this.bridgeId});
 
   @override
   Future<String?> read() async => bridgeId;
@@ -76,7 +66,7 @@ class FakeBridgeIdStorage implements BridgeIdStorage {
 
 /// A [BridgeRegistrationRepository] fake that records calls and returns
 /// configurable results without touching the network.
-class FakeBridgeRegistrationRepository implements BridgeRegistrationRepository {
+class FakeBridgeRegistrationRepository() implements BridgeRegistrationRepository {
   /// The bridge ids that [register] was called with, in order.
   final List<String?> registeredBridgeIds = [];
 
@@ -134,7 +124,7 @@ BridgeRegistrationService createFakeBridgeRegistrationService({
   );
 }
 
-class FakeFailureReporter implements FailureReporter {
+class FakeFailureReporter() implements FailureReporter {
   @override
   void setGlobalKey({required String key, required Object value}) {}
 
@@ -153,7 +143,7 @@ class FakeFailureReporter implements FailureReporter {
 }
 
 /// A [FailureReporter] that captures recorded failure identifiers for assertions.
-class CapturingFailureReporter extends FakeFailureReporter {
+class CapturingFailureReporter() extends FakeFailureReporter {
   final List<String> recordedIdentifiers = [];
 
   @override
@@ -232,13 +222,10 @@ Future<({RelayClient client, RelayConnection connection})> connectTestRelayClien
 /// A test relay server that exposes individual server-side [WebSocket]
 /// connections so tests can send data to clients or close connections
 /// to simulate network failures.
-class TestRelayServer {
-  final HttpServer _server;
+class TestRelayServer._(final HttpServer _server) {
   final Queue<WebSocket> _bufferedClients = Queue();
   final Queue<Completer<WebSocket>> _waiters = Queue();
   int _acceptedClientCount = 0;
-
-  TestRelayServer._(this._server);
 
   static Future<TestRelayServer> start() async {
     final server = await HttpServer.bind("127.0.0.1", 0);

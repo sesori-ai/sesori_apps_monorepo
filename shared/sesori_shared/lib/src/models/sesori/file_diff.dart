@@ -6,7 +6,7 @@ part "file_diff.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class FileDiff with _$FileDiff {
-  const factory FileDiff.content({
+  const factory content({
     required String file,
     required String before,
     required String after,
@@ -15,24 +15,24 @@ sealed class FileDiff with _$FileDiff {
     required FileDiffStatus? status,
   }) = FileDiffContent;
 
-  const factory FileDiff.skipped({
+  const factory skipped({
     required String file,
     required FileDiffSkipReason reason,
     required FileDiffStatus? status,
   }) = FileDiffSkipped;
 
-  factory FileDiff.fromJson(Map<String, dynamic> json) => _$FileDiffFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$FileDiffFromJson(json);
 }
 
 @JsonEnum(alwaysCreate: true)
-enum FileDiffStatus {
+enum FileDiffStatus() {
   added,
   deleted,
   modified,
 }
 
 @JsonEnum(alwaysCreate: true)
-enum FileDiffSkipReason {
+enum FileDiffSkipReason() {
   binary,
   tooLarge,
   readError,

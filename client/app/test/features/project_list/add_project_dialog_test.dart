@@ -21,7 +21,7 @@ import "../../helpers/test_helpers.dart";
 // Mock classes
 // ---------------------------------------------------------------------------
 
-class MockProjectListCubit extends MockCubit<ProjectListState> implements ProjectListCubit;
+class MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
 // ---------------------------------------------------------------------------
 // Test data

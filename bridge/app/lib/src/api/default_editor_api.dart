@@ -8,7 +8,7 @@ import 'windows_default_editor_api.dart';
 abstract class DefaultEditorApi {
   Future<void> openFile(String filePath);
 
-  factory DefaultEditorApi.forPlatform({
+  factory forPlatform({
     required ProcessRunner processRunner,
   }) => switch (true) {
     _ when Platform.isMacOS => MacosDefaultEditorApi(processRunner: processRunner),

@@ -62,16 +62,10 @@ void main() {
   });
 }
 
-class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
-  _FakeBridgeSettingsRepository({
-    required this.configFilePath,
-    this.settings = const BridgeSettings(),
-  });
-
-  @override
-  final String configFilePath;
-
-  BridgeSettings settings;
+class _FakeBridgeSettingsRepository({
+  @override required final String configFilePath,
+  var BridgeSettings settings = const BridgeSettings(),
+}) implements BridgeSettingsRepository {
   int ensureConfigExistsCallCount = 0;
   final List<({String pluginId, bool disabled})> pluginUpdates = [];
 
@@ -127,7 +121,7 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
   Future<void> updateYolo({required bool enabled}) async {}
 }
 
-class _FakeDefaultEditorRepository implements DefaultEditorRepository {
+class _FakeDefaultEditorRepository() implements DefaultEditorRepository {
   final List<String> openedPaths = [];
 
   @override

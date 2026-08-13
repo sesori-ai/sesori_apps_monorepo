@@ -1,20 +1,12 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-class SendPromptBody {
-  final List<PluginPromptPart> parts;
-  final String? agent;
-  final String? variant;
-  final ({String providerID, String modelID})? model;
-  final bool noReply;
-
-  const SendPromptBody({
-    required this.parts,
-    required this.agent,
-    required this.variant,
-    required this.model,
-    required this.noReply,
-  });
-
+class const SendPromptBody({
+  required final List<PluginPromptPart> parts,
+  required final String? agent,
+  required final String? variant,
+  required final ({String providerID, String modelID})? model,
+  required final bool noReply,
+}) {
   /// Converts our domain types to OpenCode's wire format.
   ///
   /// Both [PluginPromptPartFileUrl] and [PluginPromptPartFileData] map to

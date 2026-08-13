@@ -12,17 +12,11 @@ import "../../api/models/archived_session_file_dto.dart";
 import "models/stored_session.dart";
 
 /// Raised when an audit file was written by a newer bridge than this one.
-class ChatHistoryArchiveVersionException implements Exception {
-  final String sessionId;
-  final int fileVersion;
-  final int supportedVersion;
-
-  ChatHistoryArchiveVersionException({
-    required this.sessionId,
-    required this.fileVersion,
-    required this.supportedVersion,
-  });
-
+class ChatHistoryArchiveVersionException({
+  required final String sessionId,
+  required final int fileVersion,
+  required final int supportedVersion,
+}) implements Exception {
   @override
   String toString() =>
       "archived history for session $sessionId is schema "
@@ -45,43 +39,28 @@ typedef StoredAttachmentThumbnail = ({
   AttachmentThumbnailFormat format,
 });
 
-sealed class MessageAttachmentProjection {
-  const MessageAttachmentProjection();
-}
+sealed class const MessageAttachmentProjection();
 
-final class InlineMessageAttachmentProjection extends MessageAttachmentProjection {
-  const InlineMessageAttachmentProjection();
-}
+final class const InlineMessageAttachmentProjection() extends MessageAttachmentProjection;
 
-final class StoredReferenceMessageAttachmentProjection extends MessageAttachmentProjection {
-  final String bridgeId;
-
-  const StoredReferenceMessageAttachmentProjection({required this.bridgeId});
-}
+final class const StoredReferenceMessageAttachmentProjection({required final String bridgeId})
+    extends MessageAttachmentProjection;
 
 /// Owns the stored representation of chat history: database rows, their JSON
 /// payloads, and the attachment spill files those payloads reference.
-class ChatHistoryRepository {
-  ChatHistoryRepository({
-    required ChatHistoryDao chatHistoryDao,
-    required AttachmentSpillStorage attachmentSpillStorage,
-    required ArchivedSessionStorage archivedSessionStorage,
-  }) : _chatHistoryDao = chatHistoryDao,
-       _attachmentSpillStorage = attachmentSpillStorage,
-       _archivedSessionStorage = archivedSessionStorage;
-
+class ChatHistoryRepository({
+  required final ChatHistoryDao _chatHistoryDao,
+  required final AttachmentSpillStorage _attachmentSpillStorage,
+  required final ArchivedSessionStorage _archivedSessionStorage,
+}) {
   static const _archiveSchemaVersion = 1;
-
-  final ChatHistoryDao _chatHistoryDao;
-  final AttachmentSpillStorage _attachmentSpillStorage;
-  final ArchivedSessionStorage _archivedSessionStorage;
 
   Future<Uint8List?> readStoredAttachment({
     required AttachmentStorageScope storageScope,
     required String attachmentId,
   }) async {
     if (!AttachmentSpillStorage.isContentAddress(digest: attachmentId)) return null;
-    return _attachmentSpillStorage.read(scope: storageScope, digest: attachmentId);
+    return await _attachmentSpillStorage.read(scope: storageScope, digest: attachmentId);
   }
 
   Future<StoredAttachmentThumbnail?> readStoredAttachmentThumbnail({

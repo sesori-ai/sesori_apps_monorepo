@@ -1,18 +1,12 @@
 import "dart:typed_data";
 
-final class AttachmentThumbnailMetadata {
-  final String key;
-  final int sizeBytes;
-  final DateTime modifiedAt;
+final class const AttachmentThumbnailMetadata({
+  required final String key,
+  required final int sizeBytes,
+  required final DateTime modifiedAt,
+});
 
-  const AttachmentThumbnailMetadata({
-    required this.key,
-    required this.sizeBytes,
-    required this.modifiedAt,
-  });
-}
-
-abstract interface class AttachmentThumbnailStorage {
+abstract interface class AttachmentThumbnailStorage() {
   Future<Uint8List?> read({required String scope, required String key});
 
   Future<void> write({

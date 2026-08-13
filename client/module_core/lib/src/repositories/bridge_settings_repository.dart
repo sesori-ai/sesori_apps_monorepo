@@ -6,11 +6,7 @@ import "../api/bridge_settings_api.dart";
 import "models/bridge_settings_result.dart";
 
 @lazySingleton
-class BridgeSettingsRepository {
-  BridgeSettingsRepository({required BridgeSettingsApi bridgeSettingsApi}) : _bridgeSettingsApi = bridgeSettingsApi;
-
-  final BridgeSettingsApi _bridgeSettingsApi;
-
+class BridgeSettingsRepository({required final BridgeSettingsApi _bridgeSettingsApi}) {
   Future<BridgeSettingsLoadResult> load() async {
     final aggregate = await _bridgeSettingsApi.getBridgeSettings();
     switch (aggregate) {

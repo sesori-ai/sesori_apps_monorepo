@@ -48,10 +48,8 @@ void main() {
   });
 }
 
-class _RecordingCatalogImportService implements CatalogImportService {
-  _RecordingCatalogImportService({required this.operationalPluginIds});
-
-  final Set<String> operationalPluginIds;
+class _RecordingCatalogImportService({required final Set<String> operationalPluginIds})
+    implements CatalogImportService {
   final List<({String pluginId, CatalogImportTrigger trigger})> starts = [];
 
   @override

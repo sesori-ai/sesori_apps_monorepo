@@ -7,20 +7,16 @@ import "request_handler.dart";
 /// Handles `POST /session/permissions` — returns the pending permission
 /// requests to surface on a session's screen: its own plus any descendant
 /// (sub-agent) session whose top-most root resolves to this session.
-class GetSessionPermissionsHandler extends BodyRequestHandler<SessionIdRequest, PendingPermissionResponse> {
-  final PermissionRepository _permissionRepository;
-  final YoloSettingsService _yoloSettingsService;
-
-  GetSessionPermissionsHandler({
-    required PermissionRepository permissionRepository,
-    required YoloSettingsService yoloSettingsService,
-  }) : _permissionRepository = permissionRepository,
-       _yoloSettingsService = yoloSettingsService,
-       super(
-         HttpMethod.post,
-         "/session/permissions",
-         fromJson: SessionIdRequest.fromJson,
-       );
+class GetSessionPermissionsHandler({
+  required final PermissionRepository _permissionRepository,
+  required final YoloSettingsService _yoloSettingsService,
+}) extends BodyRequestHandler<SessionIdRequest, PendingPermissionResponse> {
+  this
+    : super(
+        HttpMethod.post,
+        "/session/permissions",
+        fromJson: SessionIdRequest.fromJson,
+      );
 
   @override
   Future<PendingPermissionResponse> handle(

@@ -1,26 +1,18 @@
-enum AnalyticsRuntimeDisabledReason {
+enum AnalyticsRuntimeDisabledReason() {
   debugOrProfile,
   unsupportedPlatform,
   analyticsSinkUnavailable,
   identitySafetyPreconditionFailed,
 }
 
-sealed class AnalyticsRuntimeCapability {
-  const AnalyticsRuntimeCapability();
-
-  const factory AnalyticsRuntimeCapability.enabled() = AnalyticsRuntimeEnabled;
-  const factory AnalyticsRuntimeCapability.disabled({required AnalyticsRuntimeDisabledReason reason}) =
+sealed class const AnalyticsRuntimeCapability() {
+  const factory enabled() = AnalyticsRuntimeEnabled;
+  const factory disabled({required AnalyticsRuntimeDisabledReason reason}) =
       AnalyticsRuntimeDisabled;
 
   bool get isEnabled => this is AnalyticsRuntimeEnabled;
 }
 
-final class AnalyticsRuntimeEnabled extends AnalyticsRuntimeCapability {
-  const AnalyticsRuntimeEnabled();
-}
+final class const AnalyticsRuntimeEnabled() extends AnalyticsRuntimeCapability;
 
-final class AnalyticsRuntimeDisabled extends AnalyticsRuntimeCapability {
-  final AnalyticsRuntimeDisabledReason reason;
-
-  const AnalyticsRuntimeDisabled({required this.reason});
-}
+final class const AnalyticsRuntimeDisabled({required final AnalyticsRuntimeDisabledReason reason}) extends AnalyticsRuntimeCapability;

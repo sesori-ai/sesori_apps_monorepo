@@ -10,37 +10,35 @@ part "new_session_state.freezed.dart";
 
 @Freezed()
 sealed class NewSessionOptionsLoadState with _$NewSessionOptionsLoadState {
-  const factory NewSessionOptionsLoadState.loading({required NewSessionOptionsSource? source}) =
-      NewSessionOptionsLoadingState;
+  const factory loading({required NewSessionOptionsSource? source}) = NewSessionOptionsLoadingState;
 
-  const factory NewSessionOptionsLoadState.refreshing({
+  const factory refreshing({
     required NewSessionOptionsData options,
     required NewSessionOptionsSource source,
   }) = NewSessionOptionsRefreshingState;
 
-  const factory NewSessionOptionsLoadState.available({
+  const factory available({
     required NewSessionOptionsData options,
     required NewSessionOptionsSource source,
   }) = NewSessionOptionsAvailableState;
 
-  const factory NewSessionOptionsLoadState.unsupported() = NewSessionOptionsUnsupportedState;
+  const factory unsupported() = NewSessionOptionsUnsupportedState;
 
-  const factory NewSessionOptionsLoadState.unavailable() = NewSessionOptionsUnavailableState;
+  const factory unavailable() = NewSessionOptionsUnavailableState;
 
-  const factory NewSessionOptionsLoadState.loadFailureUnavailable() = NewSessionOptionsLoadFailureUnavailableState;
+  const factory loadFailureUnavailable() = NewSessionOptionsLoadFailureUnavailableState;
 
-  const factory NewSessionOptionsLoadState.failure({
+  const factory failure({
     required RemoteFailureReason reason,
     required NewSessionOptionsSource source,
   }) = NewSessionOptionsFailureState;
 
-  const factory NewSessionOptionsLoadState.failureRetained({
+  const factory failureRetained({
     required NewSessionOptionsData options,
     required NewSessionOptionsSource source,
   }) = NewSessionOptionsFailureRetainedState;
 
-  const factory NewSessionOptionsLoadState.refreshFailureUnavailable() =
-      NewSessionOptionsRefreshFailureUnavailableState;
+  const factory refreshFailureUnavailable() = NewSessionOptionsRefreshFailureUnavailableState;
 }
 
 extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
@@ -73,7 +71,7 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
 
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
-  const factory NewSessionState.idle({
+  const factory idle({
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
@@ -82,7 +80,7 @@ sealed class NewSessionState with _$NewSessionState {
     required bool supportsDedicatedWorktrees,
   }) = NewSessionIdle;
 
-  const factory NewSessionState.sending({
+  const factory sending({
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
@@ -91,7 +89,7 @@ sealed class NewSessionState with _$NewSessionState {
     required bool supportsDedicatedWorktrees,
   }) = NewSessionSending;
 
-  const factory NewSessionState.error({
+  const factory error({
     required RemoteFailureReason reason,
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
@@ -101,7 +99,7 @@ sealed class NewSessionState with _$NewSessionState {
     required bool supportsDedicatedWorktrees,
   }) = NewSessionError;
 
-  const factory NewSessionState.created({required Session session}) = NewSessionCreated;
+  const factory created({required Session session}) = NewSessionCreated;
 }
 
 typedef AgentModelData = ({

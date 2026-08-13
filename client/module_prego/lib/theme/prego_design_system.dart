@@ -25,17 +25,12 @@ import "primitives/prego_widths.g.dart";
 /// )
 /// ```
 @immutable
-// ignore: use_enums, theme extension instances need class semantics and static light/dark singletons
-final class PregoDesignSystem extends ThemeExtension<PregoDesignSystem> {
-  PregoDesignSystem._({
-    required this.colors,
-    required this.textTheme,
-  }) : shadows = PregoShadows(colors: colors);
-
+// ignore: prefer_const_constructors_in_immutables, shadows are computed from the selected colors
+final class PregoDesignSystem._({
   /// Semantic color values that adapt to light/dark mode.
-  final PregoColors colors;
-  final PregoTextTheme textTheme;
-
+  required final PregoColors colors,
+  required final PregoTextTheme textTheme,
+}) extends ThemeExtension<PregoDesignSystem> {
   /// Spacing constants.
   ///
   /// Access via static members: `PregoSpacing.md`, `PregoSpacing.lg`, etc.
@@ -58,7 +53,7 @@ final class PregoDesignSystem extends ThemeExtension<PregoDesignSystem> {
   ///
   /// Each shadow level returns `List<BoxShadow>` with theme-aware colors.
   /// Usage: `context.prego.shadows.sm`
-  final PregoShadows shadows;
+  final PregoShadows shadows = PregoShadows(colors: colors);
 
   /// [PregoDesignSystem] for light mode.
   static final light = PregoDesignSystem._(colors: .light, textTheme: .light);
@@ -85,9 +80,7 @@ final class PregoDesignSystem extends ThemeExtension<PregoDesignSystem> {
 /// Allows `context.prego.spacing.md` syntax while keeping
 /// spacing values as compile-time constants.
 @immutable
-final class PregoSpacingAccessor {
-  const PregoSpacingAccessor._();
-
+final class const PregoSpacingAccessor._() {
   double get xxs => PregoSpacing.xxs;
   double get xs => PregoSpacing.xs;
   double get sm => PregoSpacing.sm;
@@ -150,9 +143,7 @@ final class PregoSpacingAccessor {
 /// Allows `context.prego.radius.md` syntax while keeping
 /// radius values as compile-time constants.
 @immutable
-final class PregoRadiusAccessor {
-  const PregoRadiusAccessor._();
-
+final class const PregoRadiusAccessor._() {
   double get none => PregoRadius.none;
   double get xxs => PregoRadius.xxs;
   double get xs => PregoRadius.xs;
@@ -172,9 +163,7 @@ final class PregoRadiusAccessor {
 /// Allows `context.prego.widths.md` syntax while keeping
 /// width values as compile-time constants.
 @immutable
-final class PregoWidthsAccessor {
-  const PregoWidthsAccessor._();
-
+final class const PregoWidthsAccessor._() {
   double get xxs => PregoWidths.xxs;
   double get xs => PregoWidths.xs;
   double get sm => PregoWidths.sm;

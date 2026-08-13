@@ -12,13 +12,9 @@ import "question_info_mapper.dart";
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
 /// This class is stateless — all methods are pure transformations.
-class SseEventMapper {
-  SseEventMapper({AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper()})
-    : _assistantMessageMapper = assistantMessageMapper;
-
+class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
-  final AssistantMessageMapper _assistantMessageMapper;
 
   /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
   /// model carries — without a null-assertion (`!`). Known variants always
@@ -76,7 +72,6 @@ class SseEventMapper {
         status: _asMap(status.toJson()),
       ),
       // COMPATIBILITY 2026-05-18 (v0.7.0): Older OpenCode runtimes emit session.idle. Remove this branch and manifest variant when those runtimes are unsupported.
-      // ignore: deprecated_member_use, forwards legacy idle event for backward compatibility
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
       SseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) => BridgeSseCommandExecuted(
         name: name,

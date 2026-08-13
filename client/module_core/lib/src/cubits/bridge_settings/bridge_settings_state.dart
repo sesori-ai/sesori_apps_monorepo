@@ -2,152 +2,85 @@ import "package:sesori_auth/sesori_auth.dart";
 
 import "../../repositories/models/bridge_settings_result.dart";
 
-sealed class BridgeSettingsState {
-  const BridgeSettingsState();
-}
+sealed class const BridgeSettingsState();
 
-final class BridgeSettingsLoading extends BridgeSettingsState {
-  const BridgeSettingsLoading();
-}
+final class const BridgeSettingsLoading() extends BridgeSettingsState;
 
-final class BridgeSettingsDisconnected extends BridgeSettingsState {
-  const BridgeSettingsDisconnected();
-}
+final class const BridgeSettingsDisconnected() extends BridgeSettingsState;
 
-final class BridgeSettingsUnsupported extends BridgeSettingsState {
-  const BridgeSettingsUnsupported();
-}
+final class const BridgeSettingsUnsupported() extends BridgeSettingsState;
 
-final class BridgeSettingsFailure extends BridgeSettingsState {
-  const BridgeSettingsFailure({required this.error, required this.validationBounds});
+final class const BridgeSettingsFailure({
+  required final ApiError error,
+  required final PullRequestRefreshSettingsBounds? validationBounds,
+}) extends BridgeSettingsState;
 
-  final ApiError error;
-  final PullRequestRefreshSettingsBounds? validationBounds;
-}
-
-sealed class BridgeSettingsReady extends BridgeSettingsState {
-  const BridgeSettingsReady({
-    required this.pullRequestRefreshIntervalSeconds,
-    required this.pullRequestRefreshMutation,
-  });
-
-  final int pullRequestRefreshIntervalSeconds;
-  final PullRequestRefreshMutationState pullRequestRefreshMutation;
-
+sealed class const BridgeSettingsReady({
+  required final int pullRequestRefreshIntervalSeconds,
+  required final PullRequestRefreshMutationState pullRequestRefreshMutation,
+}) extends BridgeSettingsState {
   PullRequestRefreshSettingsBounds? get validationBounds => pullRequestRefreshMutation.validationBounds;
 }
 
-final class BridgeSettingsReadyFull extends BridgeSettingsReady {
-  const BridgeSettingsReadyFull({
-    required super.pullRequestRefreshIntervalSeconds,
-    required super.pullRequestRefreshMutation,
-    required this.yoloEnabled,
-    required this.yoloMutation,
-  });
+final class const BridgeSettingsReadyFull({
+  required super.pullRequestRefreshIntervalSeconds,
+  required super.pullRequestRefreshMutation,
+  required final bool yoloEnabled,
+  required final YoloMutationState yoloMutation,
+}) extends BridgeSettingsReady;
 
-  final bool yoloEnabled;
-  final YoloMutationState yoloMutation;
-}
+final class const BridgeSettingsReadyLegacyPartial({
+  required super.pullRequestRefreshIntervalSeconds,
+  required super.pullRequestRefreshMutation,
+}) extends BridgeSettingsReady;
 
-final class BridgeSettingsReadyLegacyPartial extends BridgeSettingsReady {
-  const BridgeSettingsReadyLegacyPartial({
-    required super.pullRequestRefreshIntervalSeconds,
-    required super.pullRequestRefreshMutation,
-  });
-}
-
-sealed class PullRequestRefreshMutationState {
-  const PullRequestRefreshMutationState();
-
+sealed class const PullRequestRefreshMutationState() {
   PullRequestRefreshSettingsBounds? get validationBounds;
 }
 
-final class PullRequestRefreshMutationIdle extends PullRequestRefreshMutationState {
-  const PullRequestRefreshMutationIdle({required this.validationBounds});
+final class const PullRequestRefreshMutationIdle({
+  @override required final PullRequestRefreshSettingsBounds? validationBounds,
+}) extends PullRequestRefreshMutationState;
 
-  @override
-  final PullRequestRefreshSettingsBounds? validationBounds;
-}
+final class const PullRequestRefreshMutationInProgress({
+  @override required final PullRequestRefreshSettingsBounds? validationBounds,
+}) extends PullRequestRefreshMutationState;
 
-final class PullRequestRefreshMutationInProgress extends PullRequestRefreshMutationState {
-  const PullRequestRefreshMutationInProgress({required this.validationBounds});
-
-  @override
-  final PullRequestRefreshSettingsBounds? validationBounds;
-}
-
-final class PullRequestRefreshMutationRangeRejected extends PullRequestRefreshMutationState {
-  const PullRequestRefreshMutationRangeRejected({required this.bounds});
-
-  final PullRequestRefreshSettingsBounds bounds;
-
+final class const PullRequestRefreshMutationRangeRejected({required final PullRequestRefreshSettingsBounds bounds})
+    extends PullRequestRefreshMutationState {
   @override
   PullRequestRefreshSettingsBounds get validationBounds => bounds;
 }
 
-final class PullRequestRefreshMutationFailed extends PullRequestRefreshMutationState {
-  const PullRequestRefreshMutationFailed({required this.error, required this.validationBounds});
+final class const PullRequestRefreshMutationFailed({
+  required final PullRequestRefreshMutationError error,
+  @override required final PullRequestRefreshSettingsBounds? validationBounds,
+}) extends PullRequestRefreshMutationState;
 
-  final PullRequestRefreshMutationError error;
+final class const PullRequestRefreshMutationUncertain({
+  required final ApiError refreshError,
+  @override required final PullRequestRefreshSettingsBounds? validationBounds,
+}) extends PullRequestRefreshMutationState;
 
-  @override
-  final PullRequestRefreshSettingsBounds? validationBounds;
-}
+final class const PullRequestRefreshMutationUnsupported({
+  @override required final PullRequestRefreshSettingsBounds? validationBounds,
+}) extends PullRequestRefreshMutationState;
 
-final class PullRequestRefreshMutationUncertain extends PullRequestRefreshMutationState {
-  const PullRequestRefreshMutationUncertain({required this.refreshError, required this.validationBounds});
+sealed class const PullRequestRefreshMutationError();
 
-  final ApiError refreshError;
+final class const PullRequestRefreshInvalidInput() extends PullRequestRefreshMutationError;
 
-  @override
-  final PullRequestRefreshSettingsBounds? validationBounds;
-}
+final class const PullRequestRefreshRequestFailed({required final ApiError error})
+    extends PullRequestRefreshMutationError;
 
-final class PullRequestRefreshMutationUnsupported extends PullRequestRefreshMutationState {
-  const PullRequestRefreshMutationUnsupported({required this.validationBounds});
+sealed class const YoloMutationState();
 
-  @override
-  final PullRequestRefreshSettingsBounds? validationBounds;
-}
+final class const YoloMutationIdle() extends YoloMutationState;
 
-sealed class PullRequestRefreshMutationError {
-  const PullRequestRefreshMutationError();
-}
+final class const YoloMutationInProgress() extends YoloMutationState;
 
-final class PullRequestRefreshInvalidInput extends PullRequestRefreshMutationError {
-  const PullRequestRefreshInvalidInput();
-}
+final class const YoloMutationFailed({required final ApiError error}) extends YoloMutationState;
 
-final class PullRequestRefreshRequestFailed extends PullRequestRefreshMutationError {
-  const PullRequestRefreshRequestFailed({required this.error});
+final class const YoloMutationUncertain({required final ApiError refreshError}) extends YoloMutationState;
 
-  final ApiError error;
-}
-
-sealed class YoloMutationState {
-  const YoloMutationState();
-}
-
-final class YoloMutationIdle extends YoloMutationState {
-  const YoloMutationIdle();
-}
-
-final class YoloMutationInProgress extends YoloMutationState {
-  const YoloMutationInProgress();
-}
-
-final class YoloMutationFailed extends YoloMutationState {
-  const YoloMutationFailed({required this.error});
-
-  final ApiError error;
-}
-
-final class YoloMutationUncertain extends YoloMutationState {
-  const YoloMutationUncertain({required this.refreshError});
-
-  final ApiError refreshError;
-}
-
-final class YoloMutationUnsupported extends YoloMutationState {
-  const YoloMutationUnsupported();
-}
+final class const YoloMutationUnsupported() extends YoloMutationState;

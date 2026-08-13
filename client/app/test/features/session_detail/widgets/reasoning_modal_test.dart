@@ -16,7 +16,7 @@ import "package:theme_prego/module_prego.dart";
 // Mock
 // ---------------------------------------------------------------------------
 
-class MockSessionDetailCubit extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -105,7 +105,7 @@ const _conflict = PluginAuthenticationConflict(
   current: _metadata,
 );
 
-class _FakePluginLifecycleService implements PluginLifecycleService {
+class _FakePluginLifecycleService() implements PluginLifecycleService {
   String? startedPluginId;
   String? cancelledPluginId;
   Object? error;

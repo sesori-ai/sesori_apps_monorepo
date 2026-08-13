@@ -5,37 +5,20 @@ import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
 import "runtime_start_intent.dart";
 
-class ManagedProcessService<R> {
-  ManagedProcessService({
-    required RuntimeOwnershipRepository<R> ownershipRepository,
-    required RuntimeRecordMapper<R> mapper,
-    required HostProcessService processes,
-    required BridgeHostInfo bridge,
-    required ServerClock clock,
-    required String runtimeId,
-    required Duration gracefulShutdownWait,
-    RuntimeStartIntentStore? intentStore,
-  }) : _ownershipRepository = ownershipRepository,
-       _mapper = mapper,
-       _processes = processes,
-       _bridge = bridge,
-       _clock = clock,
-       _runtimeId = runtimeId,
-       _gracefulShutdownWait = gracefulShutdownWait,
-       _intentStore = intentStore;
-
-  final RuntimeOwnershipRepository<R> _ownershipRepository;
-  final RuntimeRecordMapper<R> _mapper;
-  final HostProcessService _processes;
-  final BridgeHostInfo _bridge;
-  final ServerClock _clock;
-  final String _runtimeId;
-  final Duration _gracefulShutdownWait;
+class ManagedProcessService<R>({
+  required final RuntimeOwnershipRepository<R> _ownershipRepository,
+  required final RuntimeRecordMapper<R> _mapper,
+  required final HostProcessService _processes,
+  required final BridgeHostInfo _bridge,
+  required final ServerClock _clock,
+  required final String _runtimeId,
+  required final Duration _gracefulShutdownWait,
 
   /// Optional bridge-private side-file store for [RuntimeRecordTiming.intentSideFile].
   /// Required when that timing is selected; unused for the legacy after-spawn
   /// timing, so it defaults to null and the legacy path never touches it.
-  final RuntimeStartIntentStore? _intentStore;
+  final RuntimeStartIntentStore? _intentStore,
+}) {
   final Map<String, _CurrentOwnedRuntimeProcess> _currentOwnedProcessesBySessionId =
       <String, _CurrentOwnedRuntimeProcess>{};
 
@@ -66,9 +49,9 @@ class ManagedProcessService<R> {
     final portPolicy = spec.portPolicy;
     switch (portPolicy) {
       case ExplicitPortPolicy():
-        return _startOnExplicitPort(spec: spec, policy: portPolicy, abort: abort);
+        return await _startOnExplicitPort(spec: spec, policy: portPolicy, abort: abort);
       case DynamicPortPolicy():
-        return _startOnDynamicPort(spec: spec, policy: portPolicy, abort: abort);
+        return await _startOnDynamicPort(spec: spec, policy: portPolicy, abort: abort);
     }
   }
 
@@ -135,7 +118,7 @@ class ManagedProcessService<R> {
       pollInterval: portReleasePollInterval,
       abort: abort,
     );
-    return _startAndConfirmHealthy(spec: spec, port: port, abort: abort);
+    return await _startAndConfirmHealthy(spec: spec, port: port, abort: abort);
   }
 
   /// A managed runtime that opts into intent side-file timing must be given an
@@ -197,7 +180,7 @@ class ManagedProcessService<R> {
       }
       _throwIfAborted(abort);
     }
-    return _startAndConfirmHealthy(spec: spec, port: policy.port, abort: abort);
+    return await _startAndConfirmHealthy(spec: spec, port: policy.port, abort: abort);
   }
 
   Future<ManagedRuntimeHandle<R>> _startOnDynamicPort({
@@ -320,7 +303,10 @@ class ManagedProcessService<R> {
       }
       rethrow;
     }
-    trackOwnedRuntime(ownerSessionId: _ownerSessionIdOf(record: record), process: spawned);
+    trackOwnedRuntime(
+      ownerSessionId: _ownerSessionIdOf(record: record),
+      process: spawned,
+    );
 
     try {
       await _ownershipRepository.upsert(record: record);
@@ -451,7 +437,7 @@ class ManagedProcessService<R> {
       );
     }
 
-    return _probeTolerant(spec: spec, port: port);
+    return await _probeTolerant(spec: spec, port: port);
   }
 
   /// Probes health, treating a thrown probe as unhealthy — the [ManagedRuntimeSpec.probeHealth]
@@ -809,9 +795,7 @@ class ManagedProcessService<R> {
   String? _bridgeStartMarkerOf({required R record}) => _mapper.bridgeStartMarkerOf(record: record);
 }
 
-class _CurrentOwnedRuntimeProcess {
-  const _CurrentOwnedRuntimeProcess({required this.process, required this.identity});
-
-  final SpawnedProcess process;
-  final ProcessIdentity identity;
-}
+class const _CurrentOwnedRuntimeProcess({
+  required final SpawnedProcess process,
+  required final ProcessIdentity identity,
+});

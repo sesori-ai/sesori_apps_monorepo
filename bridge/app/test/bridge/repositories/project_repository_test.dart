@@ -1224,7 +1224,7 @@ PluginSession _session(
 
 /// Minimal [BridgePluginApi] fake for plugin activity evidence. Every other
 /// member throws so accidental project open/rename delegation is loud.
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   Future<List<PluginProject>>? getProjectsFuture;
   Object? getProjectsError;
@@ -1236,7 +1236,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   @override
   Future<List<PluginProject>> getProjects() async {
     getProjectsCallCount++;
-    if (getProjectsFuture case final future?) return future;
+    if (getProjectsFuture case final future?) return await future;
     final err = getProjectsError;
     if (err != null) throw err;
     return projectsResult;
@@ -1376,11 +1376,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 /// [BridgeDerivedProjectsPluginApi.listAllSessions], mirroring how Codex/ACP
 /// plugins are shaped — it has no project members at all, so the bridge
 /// derivation path is what's exercised.
-class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
-  _FakeDerivedPlugin(this.sessions);
-
-  List<PluginSession> sessions;
-
+class _FakeDerivedPlugin(var List<PluginSession> sessions) implements BridgeDerivedProjectsPluginApi {
   /// Points at a session directory used by the tests so the launch-folder seed
   /// doesn't introduce an extra project the assertions don't expect.
   String launchDir = "/tmp/proj/alpha";
@@ -1412,8 +1408,8 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _CountingProjectsDao extends ProjectsDao {
-  _CountingProjectsDao({required AppDatabase database}) : super(database);
+class _CountingProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
 
   int getAllProjectsCallCount = 0;
   int getProjectCallCount = 0;
@@ -1438,8 +1434,8 @@ class _CountingProjectsDao extends ProjectsDao {
   }
 }
 
-class _BlockingSnapshotProjectsDao extends ProjectsDao {
-  _BlockingSnapshotProjectsDao({required AppDatabase database}) : super(database);
+class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
 
   final Completer<void> snapshotTaken = Completer<void>();
   final Completer<void> releaseSnapshot = Completer<void>();

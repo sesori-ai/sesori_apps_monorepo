@@ -4,7 +4,7 @@ import "../../foundation/models/composer/composer_draft.dart";
 
 /// Process-local storage boundary for unsent composer drafts.
 @lazySingleton
-class ComposerDraftStorage {
+class ComposerDraftStorage() {
   final Map<String, ComposerDraft> _drafts = <String, ComposerDraft>{};
 
   ComposerDraft? read({required String key}) => _drafts[key];

@@ -1,7 +1,7 @@
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-final class _MemorySecureStorage implements SecureStorage {
+final class _MemorySecureStorage() implements SecureStorage {
   final Map<String, String> values = {};
   int readCount = 0;
   int writeCount = 0;

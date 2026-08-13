@@ -7,10 +7,8 @@ import "dart:io";
 /// JSON) rather than inside the token file, so it survives in supervised mode
 /// where the GUI supplies tokens over the control channel and no token file
 /// exists on disk.
-class BridgeIdStorage {
-  final String _path;
-
-  BridgeIdStorage({required String filePath}) : _path = filePath;
+class BridgeIdStorage({required String filePath}) {
+  final String _path = filePath;
 
   /// Returns the persisted bridge id, or null when no id has been stored yet
   /// (missing file) or the file is empty.

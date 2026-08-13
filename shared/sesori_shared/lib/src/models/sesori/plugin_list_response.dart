@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "plugin_list_response.freezed.dart";
 part "plugin_list_response.g.dart";
 
-enum PluginLifecycleState {
+enum PluginLifecycleState() {
   unavailable,
   ready,
   degraded,
@@ -12,7 +12,7 @@ enum PluginLifecycleState {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginMetadata with _$PluginMetadata {
-  const factory PluginMetadata({
+  const factory({
     required String id,
     required String displayName,
     required bool isDefault,
@@ -26,12 +26,12 @@ sealed class PluginMetadata with _$PluginMetadata {
     @Default(false) bool supportsPromptAttachments,
   }) = _PluginMetadata;
 
-  factory PluginMetadata.fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginListResponse with _$PluginListResponse {
-  const factory PluginListResponse({
+  const factory({
     required List<PluginMetadata> plugins,
     // COMPATIBILITY 2026-07-26 (v1.7.0): Bridges predating per-bridge harness
     // preferences omit the ID; null disables preference recall. Remove the
@@ -43,5 +43,5 @@ sealed class PluginListResponse with _$PluginListResponse {
     @Default(false) bool supportsSessionOptions,
   }) = _PluginListResponse;
 
-  factory PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
 }

@@ -4,26 +4,26 @@ part "session_attachment.freezed.dart";
 part "session_attachment.g.dart";
 
 @JsonEnum()
-enum SessionAttachmentRendition { thumbnail, original }
+enum SessionAttachmentRendition() { thumbnail, original }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionAttachmentRequest with _$SessionAttachmentRequest {
-  const factory SessionAttachmentRequest({
+  const factory({
     required String sessionId,
     required String attachmentId,
     required SessionAttachmentRendition rendition,
   }) = _SessionAttachmentRequest;
 
-  factory SessionAttachmentRequest.fromJson(Map<String, dynamic> json) => _$SessionAttachmentRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionAttachmentRequestFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true, toStringOverride: false)
 sealed class SessionAttachmentResponse with _$SessionAttachmentResponse {
-  const factory SessionAttachmentResponse({
+  const factory({
     required String mime,
     required String base64,
     required int byteLength,
   }) = _SessionAttachmentResponse;
 
-  factory SessionAttachmentResponse.fromJson(Map<String, dynamic> json) => _$SessionAttachmentResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionAttachmentResponseFromJson(json);
 }

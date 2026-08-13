@@ -5,11 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _FakeCommandExecutor implements CommandExecutor {
-  _FakeCommandExecutor({this.result, this.error});
-
-  final CommandResult? result;
-  final Object? error;
+class _FakeCommandExecutor({final CommandResult? result, final Object? error}) implements CommandExecutor {
   String? ranExecutable;
   List<String>? ranArguments;
 
@@ -30,9 +26,7 @@ class _FakeCommandExecutor implements CommandExecutor {
   }
 }
 
-class _SemverManifest extends RuntimeManifest {
-  const _SemverManifest();
-
+class const _SemverManifest() extends RuntimeManifest {
   @override
   String get runtimeId => "opencode";
 
@@ -167,11 +161,7 @@ void main() {
   });
 }
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.lines);
-
-  final List<String> lines;
-
+class _CapturingStdout(final List<String> lines) implements Stdout {
   @override
   void writeln([Object? object = ""]) {
     lines.add(object.toString());

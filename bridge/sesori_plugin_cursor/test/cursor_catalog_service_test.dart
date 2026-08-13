@@ -715,7 +715,7 @@ AcpNotification _commandUpdate(String name) => AcpNotification(
   },
 );
 
-class _FakeCursorCatalogRepository implements CursorCatalogRepository {
+class _FakeCursorCatalogRepository() implements CursorCatalogRepository {
   CursorCatalogCandidateListResult candidates = CursorCatalogCandidateListResult(
     candidates: const [],
     exhaustive: true,

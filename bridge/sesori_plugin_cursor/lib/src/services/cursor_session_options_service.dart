@@ -6,17 +6,12 @@ import "../trackers/cursor_catalog_tracker.dart";
 import "cursor_catalog_service.dart";
 
 /// Owns Cursor's coherent command, mode, and model option snapshot.
-class CursorSessionOptionsService {
-  CursorSessionOptionsService({
-    required CursorCatalogService catalogService,
-    required CursorCatalogTracker catalogTracker,
-    required AcpCommandTracker commandTracker,
-    required String launchDirectory,
-  }) : _catalogService = catalogService,
-       _catalogTracker = catalogTracker,
-       _commandTracker = commandTracker,
-       _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
-
+class CursorSessionOptionsService({
+  required final CursorCatalogService _catalogService,
+  required final CursorCatalogTracker _catalogTracker,
+  required final AcpCommandTracker _commandTracker,
+  required String launchDirectory,
+}) {
   static const String compactionCommandName = "compact";
   static const String _cursorCompactionCommandName = "summarize";
   static const String _providerId = "cursor";
@@ -28,10 +23,7 @@ class CursorSessionOptionsService {
     source: PluginCommandSource.command,
   );
 
-  final CursorCatalogService _catalogService;
-  final CursorCatalogTracker _catalogTracker;
-  final AcpCommandTracker _commandTracker;
-  final String _launchDirectory;
+  final String _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,

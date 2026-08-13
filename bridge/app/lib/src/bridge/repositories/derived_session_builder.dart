@@ -15,9 +15,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 /// - A session without a row (created outside the bridge) belongs to its own
 ///   working directory — a derive-style backend reports each session only
 ///   under its cwd, and for a non-bridge session that cwd IS the project.
-class DerivedSessionBuilder {
-  const DerivedSessionBuilder();
-
+class const DerivedSessionBuilder() {
   /// The subset of [sessions] whose canonical project directory is
   /// [projectId], in the plugin's own enumeration order.
   List<PluginSession> build({

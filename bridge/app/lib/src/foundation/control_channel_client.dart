@@ -8,15 +8,13 @@ import "package:web_socket_channel/io.dart";
 ///
 /// This is internal lifecycle state, NOT a wire-protocol type — the
 /// control-protocol DTOs live in `sesori_shared` (added in a later PR).
-enum ControlChannelConnectionState { connected, disconnected }
+enum ControlChannelConnectionState() { connected, disconnected }
 
 /// Thrown by [ControlChannelClient.send] when the channel is not currently
 /// connected (GUI outage or mid-reconnect). This is a transient runtime
 /// condition — not a programming error — so it is an [Exception], letting
 /// callers map it to their own typed failure rather than catching an [Error].
-class ControlChannelNotConnectedException implements Exception {
-  final String message;
-  const ControlChannelNotConnectedException(this.message);
+class const ControlChannelNotConnectedException(final String message) implements Exception {
   @override
   String toString() => "ControlChannelNotConnectedException: $message";
 }
@@ -37,13 +35,13 @@ class ControlChannelNotConnectedException implements Exception {
 /// sustained outage is NOT made here — it belongs to a separate lifecycle
 /// policy (`ControlChannelLossListener`, ADR A9) that observes
 /// [connectionState].
-class ControlChannelClient {
-  final Uri _url;
-  final String _secret;
-  final Duration _connectTimeout;
-  final Duration _initialReconnectDelay;
-  final Duration _maxReconnectDelay;
-
+class ControlChannelClient({
+    required final Uri _url,
+    required final String _secret,
+    final Duration _connectTimeout = const Duration(seconds: 15),
+    final Duration _initialReconnectDelay = const Duration(seconds: 1),
+    final Duration _maxReconnectDelay = const Duration(seconds: 30),
+  }) {
   final StreamController<String> _inbound = StreamController<String>.broadcast();
   final StreamController<ControlChannelConnectionState> _connectionState =
       StreamController<ControlChannelConnectionState>.broadcast();
@@ -53,18 +51,6 @@ class ControlChannelClient {
   Timer? _reconnectTimer;
   bool _active = false;
   int _generation = 0;
-
-  ControlChannelClient({
-    required Uri url,
-    required String secret,
-    Duration connectTimeout = const Duration(seconds: 15),
-    Duration initialReconnectDelay = const Duration(seconds: 1),
-    Duration maxReconnectDelay = const Duration(seconds: 30),
-  }) : _url = url,
-       _secret = secret,
-       _connectTimeout = connectTimeout,
-       _initialReconnectDelay = initialReconnectDelay,
-       _maxReconnectDelay = maxReconnectDelay;
 
   /// Raw inbound text frames from the control server. No parsing is performed.
   Stream<String> get inbound => _inbound.stream;

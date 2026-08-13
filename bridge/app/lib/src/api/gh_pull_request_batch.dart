@@ -5,106 +5,79 @@ import "../bridge/api/gh_pull_request.dart";
 part "gh_pull_request_batch.freezed.dart";
 part "gh_pull_request_batch.g.dart";
 
-enum GhPullRequestStateGroup { open, terminal }
+enum GhPullRequestStateGroup() { open, terminal }
 
-final class GhPullRequestTarget {
-  final String repositoryOwner;
-  final String repositoryName;
-  final String branchName;
-
-  const GhPullRequestTarget({
-    required this.repositoryOwner,
-    required this.repositoryName,
-    required this.branchName,
+final class const GhPullRequestTarget({
+    required final String repositoryOwner,
+    required final String repositoryName,
+    required final String branchName,
   });
-}
 
-final class GhPullRequestCursorRequest {
-  final GhPullRequestTarget target;
-  final GhPullRequestStateGroup stateGroup;
-  final String cursor;
-
-  const GhPullRequestCursorRequest({
-    required this.target,
-    required this.stateGroup,
-    required this.cursor,
+final class const GhPullRequestCursorRequest({
+    required final GhPullRequestTarget target,
+    required final GhPullRequestStateGroup stateGroup,
+    required final String cursor,
   });
-}
 
-sealed class GhPullRequestQueryException implements Exception {
-  const GhPullRequestQueryException();
-}
+sealed class const GhPullRequestQueryException() implements Exception;
 
-final class GhPullRequestProcessExitException extends GhPullRequestQueryException {
-  final int exitCode;
-
-  const GhPullRequestProcessExitException({required this.exitCode});
-
+final class const GhPullRequestProcessExitException({required final int exitCode}) extends GhPullRequestQueryException {
   @override
   String toString() => "GitHub pull request query failed with exit code $exitCode";
 }
 
-final class GhPullRequestGraphqlException extends GhPullRequestQueryException {
-  final int errorCount;
-
-  const GhPullRequestGraphqlException({required this.errorCount});
-
+final class const GhPullRequestGraphqlException({required final int errorCount}) extends GhPullRequestQueryException {
   @override
   String toString() => "GitHub pull request query returned $errorCount GraphQL error${errorCount == 1 ? "" : "s"}";
 }
 
-final class GhPullRequestWrappedException extends GhPullRequestQueryException {
-  final Object innerError;
-  final StackTrace innerStackTrace;
-
-  const GhPullRequestWrappedException({
-    required this.innerError,
-    required this.innerStackTrace,
-  });
-
+final class const GhPullRequestWrappedException({
+    required final Object innerError,
+    required final StackTrace innerStackTrace,
+  }) extends GhPullRequestQueryException {
   @override
   String toString() => "GitHub pull request query failed while handling ${innerError.runtimeType}";
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class GhPullRequestBatchResponse with _$GhPullRequestBatchResponse {
-  const factory GhPullRequestBatchResponse({
+  const factory({
     required int errorCount,
     required String viewerLogin,
     required List<GhPullRequestCandidatePage> pages,
   }) = _GhPullRequestBatchResponse;
 
-  factory GhPullRequestBatchResponse.fromJson(Map<String, dynamic> json) => _$GhPullRequestBatchResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$GhPullRequestBatchResponseFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class GhPullRequestCandidatePage with _$GhPullRequestCandidatePage {
-  const factory GhPullRequestCandidatePage({
+  const factory({
     required int requestIndex,
     required GhPullRequestStateGroup stateGroup,
     required String repositoryIdentity,
     required GhPullRequestConnection connection,
   }) = _GhPullRequestCandidatePage;
 
-  factory GhPullRequestCandidatePage.fromJson(Map<String, dynamic> json) => _$GhPullRequestCandidatePageFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$GhPullRequestCandidatePageFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class GhPullRequestConnection with _$GhPullRequestConnection {
-  const factory GhPullRequestConnection({
+  const factory({
     required List<GhPullRequest> nodes,
     required GhPullRequestPageInfo pageInfo,
   }) = _GhPullRequestConnection;
 
-  factory GhPullRequestConnection.fromJson(Map<String, dynamic> json) => _$GhPullRequestConnectionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$GhPullRequestConnectionFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class GhPullRequestPageInfo with _$GhPullRequestPageInfo {
-  const factory GhPullRequestPageInfo({
+  const factory({
     required bool hasNextPage,
     required String? endCursor,
   }) = _GhPullRequestPageInfo;
 
-  factory GhPullRequestPageInfo.fromJson(Map<String, dynamic> json) => _$GhPullRequestPageInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$GhPullRequestPageInfoFromJson(json);
 }

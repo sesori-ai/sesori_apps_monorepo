@@ -24,21 +24,11 @@ typedef _StoredRequestScope = ({
 
 typedef _StoredImageData = ({Uint8List bytes, String mime});
 
-sealed class _StoredDataResult {
-  const _StoredDataResult();
-}
+sealed class const _StoredDataResult();
 
-final class _StoredDataSuccess extends _StoredDataResult {
-  final _StoredImageData data;
+final class const _StoredDataSuccess({required final _StoredImageData data}) extends _StoredDataResult;
 
-  const _StoredDataSuccess({required this.data});
-}
-
-final class _StoredDataTerminal extends _StoredDataResult {
-  final MessageImageLoadResult result;
-
-  const _StoredDataTerminal({required this.result});
-}
+final class const _StoredDataTerminal({required final MessageImageLoadResult result}) extends _StoredDataResult;
 
 final _strictBase64 = RegExp(r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
 
@@ -57,64 +47,44 @@ Uint8List? _tryDecodeStrictBase64Image(String base64Data) {
   return _tryDecodeBase64Image(base64Data);
 }
 
-sealed class MessageImageLoadResult {
-  const MessageImageLoadResult();
-}
+sealed class const MessageImageLoadResult();
 
-final class MessageImageLoadSuccess extends MessageImageLoadResult {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
-  final Uri? originalUri;
+final class const MessageImageLoadSuccess({
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+  required final Uri? originalUri,
+}) extends MessageImageLoadResult;
 
-  const MessageImageLoadSuccess({
-    required this.bytes,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-  });
-}
+final class const MessageImageLoadUnsupported() extends MessageImageLoadResult;
 
-final class MessageImageLoadUnsupported extends MessageImageLoadResult {
-  const MessageImageLoadUnsupported();
-}
+final class const MessageImageLoadRejected() extends MessageImageLoadResult;
 
-final class MessageImageLoadRejected extends MessageImageLoadResult {
-  const MessageImageLoadRejected();
-}
-
-final class MessageImageLoadFailure extends MessageImageLoadResult {
+final class const MessageImageLoadFailure({
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
-  final Object cause;
-  final StackTrace stackTrace;
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImageLoadResult;
 
-  const MessageImageLoadFailure({
-    required this.cause,
-    required this.stackTrace,
-  });
-}
-
-final class MessageImageAuthenticationRequiredException implements Exception {
-  const MessageImageAuthenticationRequiredException();
-
+final class const MessageImageAuthenticationRequiredException() implements Exception {
   @override
   String toString() => "Authenticated account required to load stored message image";
 }
 
-enum MessageImageRequestFailureKind { invalidResponse, network, rejected, unauthenticated, unknown }
+enum MessageImageRequestFailureKind() {
+  invalidResponse,
+  network,
+  rejected,
+  unauthenticated,
+  unknown,
+}
 
-final class MessageImageRequestException implements Exception {
-  final MessageImageRequestFailureKind kind;
-  final int? statusCode;
+final class const MessageImageRequestException({
   // ignore: no_slop_linter/prefer_specific_type, preserves transport exception type
-  final Object? innerError;
-
-  const MessageImageRequestException({
-    required this.kind,
-    required this.statusCode,
-    required this.innerError,
-  });
-
+  required final MessageImageRequestFailureKind kind,
+  required final int? statusCode,
+  required final Object? innerError,
+}) implements Exception {
   @override
   String toString() =>
       "Stored message image request failed (${kind.toString()}${statusCode == null ? "" : ", HTTP $statusCode"})";
@@ -122,7 +92,12 @@ final class MessageImageRequestException implements Exception {
 
 /// Layer-2 policy and mapping for renderable message image attachments.
 @lazySingleton
-class MessageImageRepository {
+class MessageImageRepository({
+  required final MessageImageApi _api,
+  required final SessionApi _sessionApi,
+  required final AuthSession _authSession,
+  required final AttachmentThumbnailStorage attachmentThumbnailStorage,
+}) {
   static const _remoteFetchTimeout = Duration(seconds: 15);
   static const _maxFilenameBytes = 255;
   static const _thumbnailCacheMaxBytes = 64 * 1024 * 1024;
@@ -135,26 +110,12 @@ class MessageImageRepository {
     "image/webp",
   };
 
-  final MessageImageApi _api;
-  final SessionApi _sessionApi;
-  final AuthSession _authSession;
-  final AttachmentThumbnailStorage _thumbnailStorage;
+  final AttachmentThumbnailStorage _thumbnailStorage = attachmentThumbnailStorage;
   final Sha256 _sha256 = Sha256();
   final Map<_StoredRequestScope, Future<_StoredDataResult>> _activeStoredLoads = {};
   final Map<String, int> _accountGenerations = {};
   final Map<String, Set<Future<_StoredDataResult>>> _startedAccountOperations = {};
   final Map<String, Future<void>> _accountCleanups = {};
-
-  MessageImageRepository({
-    required MessageImageApi api,
-    required SessionApi sessionApi,
-    required AuthSession authSession,
-    required AttachmentThumbnailStorage attachmentThumbnailStorage,
-  }) : _api = api,
-       _sessionApi = sessionApi,
-       _authSession = authSession,
-       _thumbnailStorage = attachmentThumbnailStorage;
-
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
     MessageAttachmentInlineImage(:final mime) ||
     MessageAttachmentStoredImage(:final mime) => _supportedRasterMimes.contains(_normalizedMime(mime: mime)),
@@ -177,7 +138,7 @@ class MessageImageRepository {
   }) async {
     if (sessionId.trim().isEmpty) return const MessageImageLoadRejected();
     if (!canLoad(attachment: attachment)) return const MessageImageLoadUnsupported();
-    return switch (attachment) {
+    return await (switch (attachment) {
       MessageAttachmentInlineImage(:final mime, :final base64, :final filename)
           when rendition == SessionAttachmentRendition.thumbnail =>
         _loadInline(
@@ -200,7 +161,7 @@ class MessageImageRepository {
       MessageAttachmentRemoteUrl() ||
       MessageAttachmentMetadata() ||
       MessageAttachmentUnknown() => Future<MessageImageLoadResult>.value(const MessageImageLoadUnsupported()),
-    };
+    });
   }
 
   Future<MessageImageLoadResult> _loadInline({
@@ -326,7 +287,7 @@ class MessageImageRepository {
   Future<_StoredDataResult> _loadStoredDataWithDerivedKey({
     required _StoredRequestScope scope,
     required int generation,
-  }) async => _loadStoredData(
+  }) async => await _loadStoredData(
     scope: scope,
     generation: generation,
     cacheScope: scope.rendition == SessionAttachmentRendition.thumbnail

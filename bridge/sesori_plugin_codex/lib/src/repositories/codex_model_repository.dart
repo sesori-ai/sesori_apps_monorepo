@@ -9,20 +9,16 @@ typedef CodexModelCatalog = ({
 });
 
 /// Maps Codex's app-server model catalog into selectable plugin models.
-class CodexModelRepository {
-  CodexModelRepository({required CodexAppServerApi appServerApi}) : _appServerApi = appServerApi;
-
-  final CodexAppServerApi _appServerApi;
-
+class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
   Future<CodexModelCatalog> listModels() async {
     final response = await _appServerApi.listModels();
     String? defaultModelID;
     final models = <PluginModel>[];
     for (final model in response.data) {
-      if (model.hidden == true) continue;
+      if (model.hidden ?? false) continue;
       final id = _usefulText(value: model.id);
       if (id == null) continue;
-      if (model.isDefault == true) defaultModelID = id;
+      if (model.isDefault ?? false) defaultModelID = id;
       models.add(
         PluginModel(
           id: id,

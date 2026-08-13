@@ -165,11 +165,7 @@ MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   ],
 );
 
-class _FakeSessionRepository implements SessionRepository {
-  _FakeSessionRepository({required this.transcript});
-
-  final List<MessageWithParts> transcript;
-
+class _FakeSessionRepository({required final List<MessageWithParts> transcript}) implements SessionRepository {
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => transcript;
 

@@ -19,9 +19,9 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class _MockPluginManagementService extends Mock implements PluginManagementService;
+class _MockPluginManagementService() extends Mock implements PluginManagementService;
 
-class _MockUrlLauncher extends Mock implements UrlLauncher;
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 const _managed = PluginManagementMetadata(
   setup: PluginSetupMetadata(

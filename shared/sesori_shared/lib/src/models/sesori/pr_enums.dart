@@ -1,7 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 /// Pull request state enum with unknown fallback.
-enum PrState {
+enum PrState() {
   @JsonValue("OPEN")
   open,
   @JsonValue("CLOSED")
@@ -12,7 +12,7 @@ enum PrState {
 }
 
 /// Pull request mergeable status enum with unknown fallback.
-enum PrMergeableStatus {
+enum PrMergeableStatus() {
   @JsonValue("MERGEABLE")
   mergeable,
   @JsonValue("CONFLICTING")
@@ -22,7 +22,7 @@ enum PrMergeableStatus {
 }
 
 /// Pull request review decision enum with unknown fallback.
-enum PrReviewDecision {
+enum PrReviewDecision() {
   @JsonValue("APPROVED")
   approved,
   @JsonValue("CHANGES_REQUESTED")
@@ -33,7 +33,7 @@ enum PrReviewDecision {
 }
 
 /// Pull request check status enum with unknown fallback.
-enum PrCheckStatus {
+enum PrCheckStatus() {
   @JsonValue("SUCCESS")
   success,
   @JsonValue("FAILURE")

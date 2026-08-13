@@ -10,7 +10,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockRelayHttpApiClient extends Mock implements RelayHttpApiClient;
+class MockRelayHttpApiClient() extends Mock implements RelayHttpApiClient;
 
 void main() {
   setUpAll(() => registerFallbackValue(Duration.zero));

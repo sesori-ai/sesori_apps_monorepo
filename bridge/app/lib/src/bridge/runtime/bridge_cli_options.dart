@@ -4,37 +4,26 @@ import "package:args/args.dart" show ArgParserException, ArgResults;
 import "package:path/path.dart" as path;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
-class BridgeCliOptions {
-  final List<String> cliArgs;
-  final String relayUrl;
-  final String authBackendUrl;
-  final String dataDirectory;
-  final int? debugPort;
-  final String logLevelName;
-  final List<String> importPluginIds;
+class const BridgeCliOptions({
+  required final List<String> cliArgs,
+  required final String relayUrl,
+  required final String authBackendUrl,
+  required final String dataDirectory,
+  required final int? debugPort,
+  required final String logLevelName,
+  required final List<String> importPluginIds,
 
   /// Loopback control-channel URL supplied by a GUI supervisor via
   /// `--control-url`. `null` in standalone mode. See [isSupervised].
-  final String? controlUrl;
-
-  const BridgeCliOptions({
-    required this.cliArgs,
-    required this.relayUrl,
-    required this.authBackendUrl,
-    required this.dataDirectory,
-    required this.debugPort,
-    required this.logLevelName,
-    required this.importPluginIds,
-    required this.controlUrl,
-  });
-
+  required final String? controlUrl,
+}) {
   /// Whether the bridge runs under a GUI supervisor (the desktop app). True
   /// exactly when `--control-url` was supplied; in that mode the bridge
   /// connects the loopback control channel and the GUI is its token authority
   /// and lifecycle owner. Absent ⇒ unchanged standalone CLI behaviour.
   bool get isSupervised => controlUrl != null;
 
-  factory BridgeCliOptions.fromArgResults({
+  factory fromArgResults({
     required List<String> cliArgs,
     required ArgResults results,
     required Map<String, String> environment,

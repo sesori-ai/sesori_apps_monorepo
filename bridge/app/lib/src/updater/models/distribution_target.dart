@@ -3,21 +3,19 @@ import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 /// Maps the host [PlatformTarget] to the bridge's own published release asset
 /// (name + archive format). Platform detection and the os/arch vocabulary are
 /// shared via [PlatformTarget]; the bridge-specific asset table lives here.
-final class DistributionTarget {
-  factory DistributionTarget({
+final class const DistributionTarget._({required final PlatformTarget platform}) {
+  factory({
     required PlatformOs os,
     required PlatformArch arch,
   }) {
-    return DistributionTarget._(platform: PlatformTarget(os: os, arch: arch));
+    return DistributionTarget._(
+      platform: PlatformTarget(os: os, arch: arch),
+    );
   }
 
-  factory DistributionTarget.current() {
+  factory current() {
     return DistributionTarget._(platform: PlatformTarget.current());
   }
-
-  const DistributionTarget._({required this.platform});
-
-  final PlatformTarget platform;
 
   PlatformOs get os => platform.os;
   PlatformArch get arch => platform.arch;
@@ -27,8 +25,7 @@ final class DistributionTarget {
   /// The archive container the bridge publishes for this platform: a `.zip` on
   /// Windows, a `.tar.gz` everywhere else. Single source of truth for the
   /// updater's extraction format.
-  ArchiveFormat get archiveFormat =>
-      os == PlatformOs.windows ? ArchiveFormat.zip : ArchiveFormat.tarGz;
+  ArchiveFormat get archiveFormat => os == PlatformOs.windows ? ArchiveFormat.zip : ArchiveFormat.tarGz;
 
   String get assetName {
     switch ((os, arch)) {

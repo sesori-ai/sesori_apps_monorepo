@@ -138,7 +138,7 @@ AcpNotification _commandUpdate(List<Map<String, dynamic>> commands) => AcpNotifi
   },
 );
 
-class _FakeCursorCatalogService implements CursorCatalogService {
+class _FakeCursorCatalogService() implements CursorCatalogService {
   final List<String> reusedScopes = [];
   final List<String> refreshedScopes = [];
   bool refreshSucceeds = true;

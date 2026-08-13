@@ -5,49 +5,25 @@ typedef PullRequestSelectionTarget = ({
   String branchName,
 });
 
-sealed class PullRequestSelectionOutcome {
-  const PullRequestSelectionOutcome();
-}
+sealed class const PullRequestSelectionOutcome();
 
-final class PullRequestSelectionCompleted extends PullRequestSelectionOutcome {
-  final List<PullRequestTargetSelection> selections;
+final class const PullRequestSelectionCompleted({required final List<PullRequestTargetSelection> selections})
+    extends PullRequestSelectionOutcome;
 
-  const PullRequestSelectionCompleted({required this.selections});
-}
+final class const PullRequestSelectionIdentityChanged() extends PullRequestSelectionOutcome;
 
-final class PullRequestSelectionIdentityChanged extends PullRequestSelectionOutcome {
-  const PullRequestSelectionIdentityChanged();
-}
+sealed class const PullRequestTargetSelection({required final PullRequestSelectionTarget target});
 
-sealed class PullRequestTargetSelection {
-  final PullRequestSelectionTarget target;
+final class const PullRequestTargetSelected({
+  required super.target,
+  required final int number,
+  required final String url,
+  required final String title,
+  required final DateTime createdAt,
+  required final PrState state,
+  required final PrMergeableStatus mergeableStatus,
+  required final PrReviewDecision reviewDecision,
+  required final PrCheckStatus checkStatus,
+}) extends PullRequestTargetSelection;
 
-  const PullRequestTargetSelection({required this.target});
-}
-
-final class PullRequestTargetSelected extends PullRequestTargetSelection {
-  final int number;
-  final String url;
-  final String title;
-  final DateTime createdAt;
-  final PrState state;
-  final PrMergeableStatus mergeableStatus;
-  final PrReviewDecision reviewDecision;
-  final PrCheckStatus checkStatus;
-
-  const PullRequestTargetSelected({
-    required super.target,
-    required this.number,
-    required this.url,
-    required this.title,
-    required this.createdAt,
-    required this.state,
-    required this.mergeableStatus,
-    required this.reviewDecision,
-    required this.checkStatus,
-  });
-}
-
-final class PullRequestTargetUnmatched extends PullRequestTargetSelection {
-  const PullRequestTargetUnmatched({required super.target});
-}
+final class const PullRequestTargetUnmatched({required super.target}) extends PullRequestTargetSelection;

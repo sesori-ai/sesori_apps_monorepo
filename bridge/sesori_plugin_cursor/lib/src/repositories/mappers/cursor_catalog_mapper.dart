@@ -4,7 +4,7 @@ import "../../api/models/cursor_available_models_dto.dart";
 import "../../models/cursor_catalog_models.dart";
 
 /// Maps Cursor's raw ACP config options into the internal catalog model.
-abstract final class CursorCatalogMapper {
+abstract final class CursorCatalogMapper() {
   static CursorCatalogBootstrapSnapshot mapAvailableModels({
     required CursorAvailableModelsDto result,
   }) {

@@ -9,20 +9,14 @@ import "../../services/notification_registration_service.dart";
 import "../../services/product_analytics_service.dart";
 import "settings_state.dart";
 
-class SettingsCubit extends Cubit<SettingsState> {
-  final AuthSession _authSession;
-  final NotificationRegistrationService _notificationRegistrationService;
-  final ProductAnalyticsService _productAnalyticsService;
+class SettingsCubit({
+  required final AuthSession _authSession,
+  required final NotificationRegistrationService _notificationRegistrationService,
+  required final ProductAnalyticsService _productAnalyticsService,
+}) extends Cubit<SettingsState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  SettingsCubit({
-    required AuthSession authSession,
-    required NotificationRegistrationService notificationRegistrationService,
-    required ProductAnalyticsService productAnalyticsService,
-  }) : _authSession = authSession,
-       _notificationRegistrationService = notificationRegistrationService,
-       _productAnalyticsService = productAnalyticsService,
-       super(SettingsState(account: _accountFrom(authSession.currentState))) {
+  this : super(SettingsState(account: _accountFrom(_authSession.currentState))) {
     // Keep the signed-in account in sync: the session is restored
     // asynchronously on launch, so the account may resolve after the cubit is
     // first constructed. Initial value comes from currentState above so the UI

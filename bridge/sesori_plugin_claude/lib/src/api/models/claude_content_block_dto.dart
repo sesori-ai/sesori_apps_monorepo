@@ -5,50 +5,50 @@ part "claude_content_block_dto.g.dart";
 
 @Freezed(unionKey: "type", fallbackUnion: "unknown", fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeContentBlockDto with _$ClaudeContentBlockDto {
-  const factory ClaudeContentBlockDto.text({
+  const factory text({
     @JsonKey(fromJson: _stringOrNull) required String? text,
   }) = ClaudeTextContentBlockDto;
 
-  const factory ClaudeContentBlockDto.thinking({
+  const factory thinking({
     @JsonKey(fromJson: _stringOrNull) required String? thinking,
     @JsonKey(fromJson: _stringOrNull) required String? signature,
   }) = ClaudeThinkingContentBlockDto;
 
   @FreezedUnionValue("redacted_thinking")
-  const factory ClaudeContentBlockDto.unsupportedRedactedThinking() = ClaudeRedactedThinkingContentBlockDto;
+  const factory unsupportedRedactedThinking() = ClaudeRedactedThinkingContentBlockDto;
 
   @FreezedUnionValue("tool_use")
-  const factory ClaudeContentBlockDto.toolUse({
+  const factory toolUse({
     @JsonKey(fromJson: _stringOrNull) required String? id,
     @JsonKey(fromJson: _stringOrNull) required String? name,
     required Object? input,
   }) = ClaudeToolUseContentBlockDto;
 
   @FreezedUnionValue("tool_result")
-  const factory ClaudeContentBlockDto.toolResult({
+  const factory toolResult({
     @JsonKey(name: "tool_use_id", fromJson: _stringOrNull) required String? toolUseId,
     required Object? content,
     @JsonKey(name: "is_error", fromJson: _boolOrNull) required bool? isError,
   }) = ClaudeToolResultContentBlockDto;
 
-  const factory ClaudeContentBlockDto.image({
+  const factory image({
     @JsonKey(fromJson: _imageSourceOrNull) required ClaudeImageSourceDto? source,
   }) = ClaudeImageContentBlockDto;
 
-  const factory ClaudeContentBlockDto.unknown() = ClaudeUnknownContentBlockDto;
+  const factory unknown() = ClaudeUnknownContentBlockDto;
 
-  factory ClaudeContentBlockDto.fromJson(Map<String, dynamic> json) => _$ClaudeContentBlockDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeContentBlockDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeImageSourceDto with _$ClaudeImageSourceDto {
-  const factory ClaudeImageSourceDto({
+  const factory({
     @JsonKey(fromJson: _stringOrNull) required String? type,
     @JsonKey(name: "media_type", fromJson: _stringOrNull) required String? mediaType,
     @JsonKey(fromJson: _stringOrNull) required String? data,
   }) = _ClaudeImageSourceDto;
 
-  factory ClaudeImageSourceDto.fromJson(Map<String, dynamic> json) => _$ClaudeImageSourceDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeImageSourceDtoFromJson(json);
 }
 
 String? _stringOrNull(Object? value) => value is String ? value : null;

@@ -399,7 +399,7 @@ void main() {
   });
 }
 
-class _OpenCodeFakeBridgePlugin extends FakeBridgePlugin {
+class _OpenCodeFakeBridgePlugin() extends FakeBridgePlugin {
   @override
   String get id => "opencode";
 }

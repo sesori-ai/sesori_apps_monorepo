@@ -7,7 +7,7 @@ import "package:meta/meta.dart";
 /// stdout/stderr — distinct from [HostProcessService], which spawns and
 /// supervises long-lived runtimes. Production wires an adapter over the
 /// bridge's `ProcessRunner`; tests implement this directly.
-abstract class CommandExecutor {
+abstract class CommandExecutor() {
   /// Runs [executable] with [arguments], waits for it to exit, and returns the
   /// captured result. Implementations must enforce a timeout (killing the child
   /// and throwing) so a hung command can never stall the caller; [timeout],
@@ -23,23 +23,14 @@ abstract class CommandExecutor {
 
 /// The captured outcome of a [CommandExecutor.run] call.
 @immutable
-class CommandResult {
-  const CommandResult({
-    required this.exitCode,
-    required this.stdout,
-    required this.stderr,
-  });
-
-  final int exitCode;
-  final String stdout;
-  final String stderr;
-
+class const CommandResult({
+  required final int exitCode,
+  required final String stdout,
+  required final String stderr,
+}) {
   @override
   bool operator ==(Object other) =>
-      other is CommandResult &&
-      other.exitCode == exitCode &&
-      other.stdout == stdout &&
-      other.stderr == stderr;
+      other is CommandResult && other.exitCode == exitCode && other.stdout == stdout && other.stderr == stderr;
 
   @override
   int get hashCode => Object.hash(exitCode, stdout, stderr);

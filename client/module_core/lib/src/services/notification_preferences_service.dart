@@ -8,26 +8,23 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../logging/logging.dart";
 import "../repositories/notification_preferences_repository.dart";
 
-enum NotificationPreferencesAccountStatus { unavailable, available }
+enum NotificationPreferencesAccountStatus() { unavailable, available }
 
 typedef _AccountOperation = ({AuthState authState, int generation, String userId});
 
 @lazySingleton
-class NotificationPreferencesService {
-  final AuthSession _authSession;
-  final NotificationPreferencesRepository _repository;
+class NotificationPreferencesService({
+    required final AuthSession _authSession,
+    required final NotificationPreferencesRepository _repository,
+  }) {
   late final BehaviorSubject<NotificationPreferencesAccountStatus> _accountStatus;
   late final StreamSubscription<AuthState> _authSubscription;
 
   String? _currentUserId;
   int _accountGeneration = 0;
 
-  NotificationPreferencesService({
-    required AuthSession authSession,
-    required NotificationPreferencesRepository repository,
-  }) : _authSession = authSession,
-       _repository = repository {
-    _currentUserId = _userIdFrom(state: authSession.currentState);
+  this {
+    _currentUserId = _userIdFrom(state: _authSession.currentState);
     _accountStatus = BehaviorSubject.seeded(_statusFor(userId: _currentUserId));
     _authSubscription = _authSession.authStateStream.listen(
       // ignore: no_slop_linter/prefer_required_named_parameters, Stream callback

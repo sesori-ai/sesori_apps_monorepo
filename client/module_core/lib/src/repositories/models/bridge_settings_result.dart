@@ -1,88 +1,51 @@
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-sealed class BridgeSettingsLoadResult {
-  const BridgeSettingsLoadResult();
-}
+sealed class const BridgeSettingsLoadResult();
 
-final class BridgeSettingsLoadSupported extends BridgeSettingsLoadResult {
-  const BridgeSettingsLoadSupported({required this.response});
+final class const BridgeSettingsLoadSupported({required final BridgeSettingsResponse response})
+    extends BridgeSettingsLoadResult;
 
-  final BridgeSettingsResponse response;
-}
+final class const BridgeSettingsLoadLegacyPartial({
+  required final PullRequestRefreshSettingsResponse pullRequestRefresh,
+}) extends BridgeSettingsLoadResult;
 
-final class BridgeSettingsLoadLegacyPartial extends BridgeSettingsLoadResult {
-  const BridgeSettingsLoadLegacyPartial({required this.pullRequestRefresh});
+final class const BridgeSettingsLoadUnsupported() extends BridgeSettingsLoadResult;
 
-  final PullRequestRefreshSettingsResponse pullRequestRefresh;
-}
+final class const BridgeSettingsLoadFailure({required final ApiError error}) extends BridgeSettingsLoadResult;
 
-final class BridgeSettingsLoadUnsupported extends BridgeSettingsLoadResult {
-  const BridgeSettingsLoadUnsupported();
-}
+sealed class const PullRequestRefreshSettingsMutationResult();
 
-final class BridgeSettingsLoadFailure extends BridgeSettingsLoadResult {
-  const BridgeSettingsLoadFailure({required this.error});
+final class const PullRequestRefreshSettingsMutationCommitted({
+  required final PullRequestRefreshSettingsResponse response,
+}) extends PullRequestRefreshSettingsMutationResult;
 
-  final ApiError error;
-}
+final class const PullRequestRefreshSettingsMutationUnsupported() extends PullRequestRefreshSettingsMutationResult;
 
-sealed class PullRequestRefreshSettingsMutationResult {
-  const PullRequestRefreshSettingsMutationResult();
-}
+final class const PullRequestRefreshSettingsMutationRejected({required final PullRequestRefreshSettingsBounds bounds})
+    extends PullRequestRefreshSettingsMutationResult;
 
-final class PullRequestRefreshSettingsMutationCommitted extends PullRequestRefreshSettingsMutationResult {
-  const PullRequestRefreshSettingsMutationCommitted({required this.response});
+final class const PullRequestRefreshSettingsMutationUncertain() extends PullRequestRefreshSettingsMutationResult;
 
-  final PullRequestRefreshSettingsResponse response;
-}
+final class const PullRequestRefreshSettingsMutationFailure({required final ApiError error})
+    extends PullRequestRefreshSettingsMutationResult;
 
-final class PullRequestRefreshSettingsMutationUnsupported extends PullRequestRefreshSettingsMutationResult {
-  const PullRequestRefreshSettingsMutationUnsupported();
-}
+sealed class const YoloSettingsMutationResult();
 
-final class PullRequestRefreshSettingsMutationRejected extends PullRequestRefreshSettingsMutationResult {
-  const PullRequestRefreshSettingsMutationRejected({required this.bounds});
+final class const YoloSettingsMutationCommitted({required final YoloSettingsResponse response})
+    extends YoloSettingsMutationResult;
 
-  final PullRequestRefreshSettingsBounds bounds;
-}
+final class const YoloSettingsMutationUnsupported() extends YoloSettingsMutationResult;
 
-final class PullRequestRefreshSettingsMutationUncertain extends PullRequestRefreshSettingsMutationResult {
-  const PullRequestRefreshSettingsMutationUncertain();
-}
+final class const YoloSettingsMutationUncertain() extends YoloSettingsMutationResult;
 
-final class PullRequestRefreshSettingsMutationFailure extends PullRequestRefreshSettingsMutationResult {
-  const PullRequestRefreshSettingsMutationFailure({required this.error});
+final class const YoloSettingsMutationFailure({required final ApiError error}) extends YoloSettingsMutationResult;
 
-  final ApiError error;
-}
-
-sealed class YoloSettingsMutationResult {
-  const YoloSettingsMutationResult();
-}
-
-final class YoloSettingsMutationCommitted extends YoloSettingsMutationResult {
-  const YoloSettingsMutationCommitted({required this.response});
-
-  final YoloSettingsResponse response;
-}
-
-final class YoloSettingsMutationUnsupported extends YoloSettingsMutationResult {
-  const YoloSettingsMutationUnsupported();
-}
-
-final class YoloSettingsMutationUncertain extends YoloSettingsMutationResult {
-  const YoloSettingsMutationUncertain();
-}
-
-final class YoloSettingsMutationFailure extends YoloSettingsMutationResult {
-  const YoloSettingsMutationFailure({required this.error});
-
-  final ApiError error;
-}
-
-final class PullRequestRefreshSettingsBounds {
-  factory PullRequestRefreshSettingsBounds({
+final class const PullRequestRefreshSettingsBounds._({
+  required final int minimumIntervalSeconds,
+  required final int maximumIntervalSeconds,
+}) {
+  factory({
     required int minimumIntervalSeconds,
     required int maximumIntervalSeconds,
   }) {
@@ -98,14 +61,6 @@ final class PullRequestRefreshSettingsBounds {
       maximumIntervalSeconds: maximumIntervalSeconds,
     );
   }
-
-  const PullRequestRefreshSettingsBounds._({
-    required this.minimumIntervalSeconds,
-    required this.maximumIntervalSeconds,
-  });
-
-  final int minimumIntervalSeconds;
-  final int maximumIntervalSeconds;
 
   bool includes({required int intervalSeconds}) {
     return intervalSeconds >= minimumIntervalSeconds && intervalSeconds <= maximumIntervalSeconds;

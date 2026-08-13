@@ -7,10 +7,9 @@ part "catalog_import_statuses_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class CatalogImportStatusesResponse with _$CatalogImportStatusesResponse {
-  const factory CatalogImportStatusesResponse({
+  const factory({
     required List<CatalogImportProgress> statuses,
   }) = _CatalogImportStatusesResponse;
 
-  factory CatalogImportStatusesResponse.fromJson(Map<String, dynamic> json) =>
-      _$CatalogImportStatusesResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CatalogImportStatusesResponseFromJson(json);
 }

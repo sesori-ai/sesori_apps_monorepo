@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
@@ -10,20 +11,13 @@ import "../../../l10n/app_localizations.dart";
 /// A single background task as a row inside the tasks card. Shows the
 /// session's status icon, title + status text, and a disclosure chevron that
 /// opens the (read-only) session detail.
-class BackgroundTaskRow extends StatelessWidget {
-  final String? projectId;
-  final Session session;
-  final SessionStatus? status;
-  final bool isLast;
-
-  const BackgroundTaskRow({
-    super.key,
-    required this.projectId,
-    required this.session,
-    this.status,
-    this.isLast = false,
-  });
-
+class const BackgroundTaskRow({
+  super.key,
+  required final String? projectId,
+  required final Session session,
+  final SessionStatus? status,
+  final bool isLast = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

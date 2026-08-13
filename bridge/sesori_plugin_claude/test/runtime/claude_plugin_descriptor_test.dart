@@ -258,15 +258,10 @@ Future<void> _pump() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-final class _PluginHost implements PluginHost {
-  _PluginHost({required this.startAborted, required this.processes});
-
-  @override
-  final StartAbortSignal startAborted;
-
-  @override
-  final HostProcessService processes;
-
+final class _PluginHost({
+  @override required final StartAbortSignal startAborted,
+  @override required final HostProcessService processes,
+}) implements PluginHost {
   @override
   PluginConfig get config => const PluginConfig(values: {ClaudePluginDescriptor.binOption: "claude"});
 
@@ -286,7 +281,7 @@ final class _PluginHost implements PluginHost {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _AlwaysAbortedSignal implements StartAbortSignal {
+final class _AlwaysAbortedSignal() implements StartAbortSignal {
   @override
   bool get isAborted => true;
 
@@ -294,7 +289,7 @@ final class _AlwaysAbortedSignal implements StartAbortSignal {
   Future<void> get whenAborted => Future.value();
 }
 
-final class _AbortOnSecondCheck implements StartAbortSignal {
+final class _AbortOnSecondCheck() implements StartAbortSignal {
   int checks = 0;
 
   @override
@@ -304,10 +299,7 @@ final class _AbortOnSecondCheck implements StartAbortSignal {
   Future<void> get whenAborted => Completer<void>().future;
 }
 
-final class _ProcessService implements HostProcessService {
-  _ProcessService(this._outcomes);
-
-  final List<Object> _outcomes;
+final class _ProcessService(final List<Object> _outcomes) implements HostProcessService {
   final List<List<String>> arguments = [];
   final List<Map<String, String>?> environments = [];
   final List<bool> runInShellValues = [];
@@ -363,14 +355,12 @@ final class _ProcessService implements HostProcessService {
   );
 }
 
-final class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({
-    required String stdoutText,
-    required Future<int> exitCode,
-    bool keepStdoutOpen = false,
-  }) : pid = _nextPid++,
-       _stdout = StreamController<List<int>>(),
-       _stdin = CapturingIOSink() {
+final class _ProbeProcess({
+  required String stdoutText,
+  required Future<int> exitCode,
+  bool keepStdoutOpen = false,
+}) implements SpawnedProcess {
+  this : pid = _nextPid++, _stdout = StreamController<List<int>>(), _stdin = CapturingIOSink() {
     if (stdoutText.isNotEmpty) _stdout.add(utf8.encode(stdoutText));
     if (!keepStdoutOpen) unawaited(_stdout.close());
     unawaited(exitCode.then(completeExit));

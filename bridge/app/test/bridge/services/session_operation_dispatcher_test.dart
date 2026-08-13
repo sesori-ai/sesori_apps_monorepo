@@ -250,12 +250,9 @@ void main() {
   });
 }
 
-class _FamilyRepository implements SessionRepository {
-  final Map<String, SessionFamilyScope> scopes;
+class _FamilyRepository(final Map<String, SessionFamilyScope> scopes) implements SessionRepository {
   final List<String> resolutionOrder = [];
   Future<void> Function(String sessionId)? beforeResolve;
-
-  _FamilyRepository(this.scopes);
 
   @override
   Future<SessionFamilyScope> resolveSessionFamily({

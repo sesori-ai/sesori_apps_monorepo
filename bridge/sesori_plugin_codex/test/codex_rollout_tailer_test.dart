@@ -213,8 +213,8 @@ String _responseItemCallId({required CodexRolloutLineDto line}) {
   };
 }
 
-class _ThrowingPositionApi extends CodexRolloutApi {
-  _ThrowingPositionApi() : super(environment: const {});
+class _ThrowingPositionApi() extends CodexRolloutApi {
+  this : super(environment: const {});
 
   @override
   CodexRolloutTailPosition rolloutTailPosition({
@@ -224,21 +224,15 @@ class _ThrowingPositionApi extends CodexRolloutApi {
   }
 }
 
-class _FixedCatalogRepository extends CodexCatalogRepository {
-  _FixedCatalogRepository({
-    required super.rolloutApi,
-    required this.path,
-  });
-
-  final String path;
-
+class _FixedCatalogRepository({
+  required super.rolloutApi,
+  required final String path,
+}) extends CodexCatalogRepository {
   @override
   String? findRolloutPath({required String sessionId}) => path;
 }
 
-class _MutableCatalogRepository extends CodexCatalogRepository {
-  _MutableCatalogRepository({required super.rolloutApi});
-
+class _MutableCatalogRepository({required super.rolloutApi}) extends CodexCatalogRepository {
   String? path;
 
   @override

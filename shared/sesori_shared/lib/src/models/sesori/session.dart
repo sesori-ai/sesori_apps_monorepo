@@ -12,29 +12,29 @@ part "session.g.dart";
 /// Response from `GET /session`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionListResponse with _$SessionListResponse {
-  const factory SessionListResponse({
+  const factory({
     required List<Session> items,
   }) = _SessionListResponse;
 
-  factory SessionListResponse.fromJson(Map<String, dynamic> json) => _$SessionListResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionListResponseFromJson(json);
 }
 
 /// Request body for `POST /sessions`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionListRequest with _$SessionListRequest {
-  const factory SessionListRequest({
+  const factory({
     required String projectId,
     required int? start,
     required int? limit,
     @Default(false) bool waitForPrData,
   }) = _SessionListRequest;
 
-  factory SessionListRequest.fromJson(Map<String, dynamic> json) => _$SessionListRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionListRequestFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class Session with _$Session {
-  const factory Session({
+  const factory({
     required String id,
     // COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
     @Default(legacyMissingPluginId) String pluginId,
@@ -59,28 +59,28 @@ sealed class Session with _$Session {
     @Default(false) bool unseen,
   }) = _Session;
 
-  factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionPromptDefaults with _$SessionPromptDefaults {
-  const factory SessionPromptDefaults({
+  const factory({
     required String? agent,
     required AgentModel? model,
   }) = _SessionPromptDefaults;
 
-  factory SessionPromptDefaults.fromJson(Map<String, dynamic> json) => _$SessionPromptDefaultsFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionPromptDefaultsFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionTime with _$SessionTime {
-  const factory SessionTime({
+  const factory({
     required int created,
     required int updated,
     required int? archived,
   }) = _SessionTime;
 
-  factory SessionTime.fromJson(Map<String, dynamic> json) => _$SessionTimeFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionTimeFromJson(json);
 }
 
 /// Session with embedded project info, returned by `/experimental/session`.
@@ -90,7 +90,7 @@ sealed class SessionTime with _$SessionTime {
 /// belongs to.
 @Freezed(fromJson: true, toJson: true)
 sealed class GlobalSession with _$GlobalSession {
-  const factory GlobalSession({
+  const factory({
     required String id,
     required String projectID,
     required String directory,
@@ -100,7 +100,7 @@ sealed class GlobalSession with _$GlobalSession {
     required SessionProject? project,
   }) = _GlobalSession;
 
-  factory GlobalSession.fromJson(Map<String, dynamic> json) => _$GlobalSessionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$GlobalSessionFromJson(json);
 }
 
 /// Lightweight project reference embedded in [GlobalSession].
@@ -109,22 +109,22 @@ sealed class GlobalSession with _$GlobalSession {
 /// a subset of [Project] with only `id`, `name`, and `worktree`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionProject with _$SessionProject {
-  const factory SessionProject({
+  const factory({
     required String id,
     required String? name,
     required String worktree,
   }) = _SessionProject;
 
-  factory SessionProject.fromJson(Map<String, dynamic> json) => _$SessionProjectFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionProjectFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionIdRequest with _$SessionIdRequest {
-  const factory SessionIdRequest({
+  const factory({
     required String sessionId,
   }) = _SessionIdRequest;
 
-  factory SessionIdRequest.fromJson(Map<String, dynamic> json) => _$SessionIdRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionIdRequestFromJson(json);
 }
 
 /// Request body for `POST /session/messages`.
@@ -135,7 +135,7 @@ sealed class SessionIdRequest with _$SessionIdRequest {
 /// behavior.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionMessagesRequest with _$SessionMessagesRequest {
-  const factory SessionMessagesRequest({
+  const factory({
     required String sessionId,
 
     /// Maximum messages to return, newest-first from [before]. Null means the
@@ -151,5 +151,5 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
     @Default(MessageAttachmentDelivery.inline) MessageAttachmentDelivery attachmentDelivery,
   }) = _SessionMessagesRequest;
 
-  factory SessionMessagesRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
 }

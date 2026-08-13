@@ -17,11 +17,25 @@ import "services/cursor_session_options_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
-class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
+class CursorPlugin._({
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.contentMapper,
+  required CursorEventMapper mapper,
+  required final CursorCatalogService _catalogService,
+  required final AcpCommandListener _catalogCommandListener,
+  required final CursorCatalogTracker _catalogTracker,
+  required CursorSessionOptionsService cursorSessionOptionsService,
+  required final AcpSessionConfigurationTracker _configurationTracker,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required final CursorSessionCleanupService _sessionCleanupService,
+  super.processFactory,
+}) extends AcpPlugin implements PersistedSessionCleanupApi {
   static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
 
-  factory CursorPlugin({
+  factory({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,
     String? apiEndpoint,
@@ -103,39 +117,14 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     );
   }
 
-  CursorPlugin._({
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.contentMapper,
-    required CursorEventMapper mapper,
-    required CursorCatalogService catalogService,
-    required AcpCommandListener catalogCommandListener,
-    required CursorCatalogTracker catalogTracker,
-    required CursorSessionOptionsService cursorSessionOptionsService,
-    required AcpSessionConfigurationTracker configurationTracker,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    required CursorSessionCleanupService sessionCleanupService,
-    super.processFactory,
-  }) : _catalogService = catalogService,
-       _catalogCommandListener = catalogCommandListener,
-       _catalogTracker = catalogTracker,
-       _sessionOptionsService = cursorSessionOptionsService,
-       _configurationTracker = configurationTracker,
-       _sessionCleanupService = sessionCleanupService,
-       super(
-         id: pluginId,
-         agentDisplayName: "Cursor",
-         eventMapper: mapper,
-       );
+  this
+    : super(
+        id: pluginId,
+        agentDisplayName: "Cursor",
+        eventMapper: mapper,
+      );
 
-  final CursorCatalogService _catalogService;
-  final AcpCommandListener _catalogCommandListener;
-  final CursorCatalogTracker _catalogTracker;
-  final CursorSessionOptionsService _sessionOptionsService;
-  final AcpSessionConfigurationTracker _configurationTracker;
-  final CursorSessionCleanupService _sessionCleanupService;
-
+  final CursorSessionOptionsService _sessionOptionsService = cursorSessionOptionsService;
   String? _appliedModelId;
   String? _appliedModeId;
   String? _appliedThoughtLevelId;
@@ -353,7 +342,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    return _sessionOptionsService.listAgents(projectId: projectId);
+    return await _sessionOptionsService.listAgents(projectId: projectId);
   }
 
   @override
@@ -365,7 +354,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    return _sessionOptionsService.listProviders(projectId: projectId);
+    return await _sessionOptionsService.listProviders(projectId: projectId);
   }
 
   @override

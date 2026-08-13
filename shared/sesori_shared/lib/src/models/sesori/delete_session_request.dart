@@ -6,12 +6,12 @@ part "delete_session_request.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class DeleteSessionRequest with _$DeleteSessionRequest {
-  const factory DeleteSessionRequest({
+  const factory({
     required String sessionId,
     required bool deleteWorktree,
     required bool deleteBranch,
     required bool force,
   }) = _DeleteSessionRequest;
 
-  factory DeleteSessionRequest.fromJson(Map<String, dynamic> json) => _$DeleteSessionRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$DeleteSessionRequestFromJson(json);
 }

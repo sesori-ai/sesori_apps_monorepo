@@ -8,11 +8,11 @@ import "../services/project_view_tracker.dart";
 import "../services/pull_request_refresh_settings_service.dart";
 
 /// Schedules pull request refreshes while at least one project is being viewed.
-class ViewedProjectPrRefreshListener {
-  final ProjectViewTracker _tracker;
-  final PrSyncService _prSyncService;
-  final PullRequestRefreshSettingsService _settingsService;
-
+class ViewedProjectPrRefreshListener({
+  required final ProjectViewTracker _tracker,
+  required final PrSyncService _prSyncService,
+  required final PullRequestRefreshSettingsService _settingsService,
+}) {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Timer? _timer;
   Future<void>? _disposeFuture;
@@ -21,14 +21,6 @@ class ViewedProjectPrRefreshListener {
   bool _disposed = false;
   bool _started = false;
   late Duration _refreshInterval;
-
-  ViewedProjectPrRefreshListener({
-    required ProjectViewTracker tracker,
-    required PrSyncService prSyncService,
-    required PullRequestRefreshSettingsService settingsService,
-  }) : _tracker = tracker,
-       _prSyncService = prSyncService,
-       _settingsService = settingsService;
 
   void start() {
     if (_started || _disposed) return;

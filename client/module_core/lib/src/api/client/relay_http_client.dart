@@ -11,15 +11,12 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../logging/logging.dart";
 
 @lazySingleton
-class RelayHttpApiClient {
+class RelayHttpApiClient(final ConnectionService _connectionService) {
   static const Duration _defaultRequestTimeout = Duration(seconds: 30);
   static const String _sensitiveParsingErrorMarker = "Sensitive response omitted";
 
-  final ConnectionService _connectionService;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
-
-  RelayHttpApiClient(ConnectionService connectionService) : _connectionService = connectionService;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> get<T>(

@@ -16,25 +16,17 @@ import "pending_request_auto_dismiss.dart";
 /// Each question keeps an editable local draft. The user can move freely
 /// between questions, and the request is submitted only after every question
 /// has either been answered or explicitly declined.
-class QuestionModal extends StatefulWidget {
-  final SesoriQuestionAsked question;
-  final void Function(String requestId, List<ReplyAnswer> answers) onReply;
-  final void Function(String requestId) onReject;
-
-  /// Status-bar inset captured from the presenting context. The modal route
+class const QuestionModal({
+    super.key,
+    required final SesoriQuestionAsked question,
+    required final void Function(String requestId, List<ReplyAnswer> answers) onReply,
+    required final void Function(String requestId) onReject,
+    /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
-  final double topInset;
-
-  const QuestionModal({
-    super.key,
-    required this.question,
-    required this.onReply,
-    required this.onReject,
-    required this.topInset,
-  });
-
+  required final double topInset,
+  }) extends StatefulWidget {
   /// Opens the question modal as a content-sized bottom sheet and returns a
   /// [Future] that completes when the sheet is dismissed (by answer, reject,
   /// or swipe).
@@ -75,7 +67,7 @@ class QuestionModal extends StatefulWidget {
   State<QuestionModal> createState() => _QuestionModalState();
 }
 
-class _QuestionModalState extends State<QuestionModal> {
+class _QuestionModalState() extends State<QuestionModal> {
   late final List<_QuestionDraft> _drafts;
 
   /// Index of the question currently being displayed.
@@ -449,11 +441,11 @@ class _QuestionModalState extends State<QuestionModal> {
   }
 }
 
-enum _QuestionDisposition { answer, declined }
+enum _QuestionDisposition() { answer, declined }
 
-enum _QuestionResolution { unanswered, answered, declined }
+enum _QuestionResolution() { unanswered, answered, declined }
 
-class _QuestionDraft {
+class _QuestionDraft() {
   final TextEditingController customController = TextEditingController();
   final FocusNode customFocus = FocusNode();
   final Set<String> selectedLabels = {};
@@ -488,15 +480,10 @@ class _QuestionDraft {
 // Request-wide decline confirmation
 // -----------------------------------------------------------------------------
 
-class _DeclineAllConfirmation extends StatelessWidget {
-  final VoidCallback onCancel;
-  final VoidCallback onConfirm;
-
-  const _DeclineAllConfirmation({
-    required this.onCancel,
-    required this.onConfirm,
-  });
-
+class const _DeclineAllConfirmation({
+    required final VoidCallback onCancel,
+    required final VoidCallback onConfirm,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -545,22 +532,16 @@ class _DeclineAllConfirmation extends StatelessWidget {
 // Question navigator
 // -----------------------------------------------------------------------------
 
-class _QuestionNavigator extends StatefulWidget {
-  final int currentIndex;
-  final List<_QuestionResolution> resolutions;
-  final ValueChanged<int> onSelected;
-
-  const _QuestionNavigator({
-    required this.currentIndex,
-    required this.resolutions,
-    required this.onSelected,
-  });
-
+class const _QuestionNavigator({
+    required final int currentIndex,
+    required final List<_QuestionResolution> resolutions,
+    required final ValueChanged<int> onSelected,
+  }) extends StatefulWidget {
   @override
   State<_QuestionNavigator> createState() => _QuestionNavigatorState();
 }
 
-class _QuestionNavigatorState extends State<_QuestionNavigator> {
+class _QuestionNavigatorState() extends State<_QuestionNavigator> {
   late List<GlobalKey> _stepKeys;
 
   @override
@@ -642,22 +623,14 @@ class _QuestionNavigatorState extends State<_QuestionNavigator> {
   }
 }
 
-class _QuestionStep extends StatelessWidget {
-  final int index;
-  final int total;
-  final bool isCurrent;
-  final _QuestionResolution resolution;
-  final VoidCallback onTap;
-
-  const _QuestionStep({
+class const _QuestionStep({
     super.key,
-    required this.index,
-    required this.total,
-    required this.isCurrent,
-    required this.resolution,
-    required this.onTap,
-  });
-
+    required final int index,
+    required final int total,
+    required final bool isCurrent,
+    required final _QuestionResolution resolution,
+    required final VoidCallback onTap,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -751,19 +724,12 @@ class _QuestionStep extends StatelessWidget {
 // Option tile
 // -----------------------------------------------------------------------------
 
-class _OptionTile extends StatelessWidget {
-  final QuestionOption option;
-  final bool isMultiple;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _OptionTile({
-    required this.option,
-    required this.isMultiple,
-    required this.isSelected,
-    required this.onTap,
-  });
-
+class const _OptionTile({
+    required final QuestionOption option,
+    required final bool isMultiple,
+    required final bool isSelected,
+    required final VoidCallback onTap,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -824,15 +790,10 @@ class _OptionTile extends StatelessWidget {
 // Per-question decline tile
 // -----------------------------------------------------------------------------
 
-class _DeclineQuestionTile extends StatelessWidget {
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _DeclineQuestionTile({
-    required this.isSelected,
-    required this.onTap,
-  });
-
+class const _DeclineQuestionTile({
+    required final bool isSelected,
+    required final VoidCallback onTap,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -895,21 +856,13 @@ class _DeclineQuestionTile extends StatelessWidget {
 // Custom answer tile
 // -----------------------------------------------------------------------------
 
-class _CustomAnswerTile extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final bool isSelected;
-  final bool isMultiple;
-  final VoidCallback onTap;
-
-  const _CustomAnswerTile({
-    required this.controller,
-    required this.focusNode,
-    required this.isSelected,
-    required this.isMultiple,
-    required this.onTap,
-  });
-
+class const _CustomAnswerTile({
+    required final TextEditingController controller,
+    required final FocusNode focusNode,
+    required final bool isSelected,
+    required final bool isMultiple,
+    required final VoidCallback onTap,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

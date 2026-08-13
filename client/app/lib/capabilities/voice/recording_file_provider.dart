@@ -6,17 +6,13 @@ import "../../core/platform/temporary_directory_client.dart";
 import "audio_format_config.dart";
 
 @lazySingleton
-class RecordingFileProvider {
-  final AudioFormatConfig _audioFormat;
-  final TemporaryDirectoryClient _temporaryDirectoryClient;
-  final Future<void> _warmUp;
+class RecordingFileProvider({
+  required final AudioFormatConfig _audioFormat,
+  required final TemporaryDirectoryClient _temporaryDirectoryClient,
+}) {
+  final Future<void> _warmUp = _temporaryDirectoryClient.warmUp();
 
-  RecordingFileProvider({
-    required AudioFormatConfig audioFormat,
-    required TemporaryDirectoryClient temporaryDirectoryClient,
-  }) : _audioFormat = audioFormat,
-       _temporaryDirectoryClient = temporaryDirectoryClient,
-       _warmUp = temporaryDirectoryClient.warmUp() {
+  this {
     unawaited(_warmUp);
   }
 

@@ -7,7 +7,7 @@
 ///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 4.
-enum ClaudeEffortLevel {
+enum ClaudeEffortLevel() {
   low,
   medium,
   high,

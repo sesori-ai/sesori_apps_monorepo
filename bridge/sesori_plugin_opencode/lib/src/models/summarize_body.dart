@@ -6,17 +6,11 @@
 /// **separate** fields. `auto` distinguishes automatic (context-overflow)
 /// compaction from a manual, user-initiated one; the bridge only ever triggers
 /// the manual variant, so it defaults to `false`.
-class SummarizeBody {
-  final String providerID;
-  final String modelID;
-  final bool auto;
-
-  const SummarizeBody({
-    required this.providerID,
-    required this.modelID,
-    this.auto = false,
-  });
-
+class const SummarizeBody({
+  required final String providerID,
+  required final String modelID,
+  final bool auto = false,
+}) {
   Map<String, dynamic> toJson() {
     return {
       "providerID": providerID,

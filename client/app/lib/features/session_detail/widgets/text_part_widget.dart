@@ -10,16 +10,11 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
 import "image_attachment_viewer.dart";
 
-class TextPartWidget extends StatelessWidget {
-  final String text;
-  final bool isStreaming;
-
-  const TextPartWidget({
-    super.key,
-    required this.text,
-    this.isStreaming = false,
-  });
-
+class const TextPartWidget({
+  super.key,
+  required final String text,
+  final bool isStreaming = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (text.isEmpty) return const SizedBox.shrink();
@@ -44,21 +39,16 @@ class TextPartWidget extends StatelessWidget {
   }
 }
 
-class MarkdownMessageImage extends StatefulWidget {
-  final Uri uri;
-  final String? semanticLabel;
-
-  const MarkdownMessageImage({
-    super.key,
-    required this.uri,
-    required this.semanticLabel,
-  });
-
+class const MarkdownMessageImage({
+  super.key,
+  required final Uri uri,
+  required final String? semanticLabel,
+}) extends StatefulWidget {
   @override
   State<MarkdownMessageImage> createState() => _MarkdownMessageImageState();
 }
 
-class _MarkdownMessageImageState extends State<MarkdownMessageImage> {
+class _MarkdownMessageImageState() extends State<MarkdownMessageImage> {
   static const _maxDecodedImageDimension = 2048;
 
   final _heroTag = UniqueKey();

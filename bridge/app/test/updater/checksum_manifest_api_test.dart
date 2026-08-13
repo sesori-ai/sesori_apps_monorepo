@@ -6,7 +6,7 @@ import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
-class FakeHttpClient extends http.BaseClient {
+class FakeHttpClient() extends http.BaseClient {
   final Map<String, http.Response> responses = {};
   Object? error;
   int sendCallCount = 0;

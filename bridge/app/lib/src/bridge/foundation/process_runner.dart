@@ -6,7 +6,7 @@ import "dart:io";
 /// Production code uses the default implementation which spawns real processes
 /// via [Process.start] and kills them on timeout. Tests create a class that
 /// `implements ProcessRunner` and override [run].
-class ProcessRunner {
+class ProcessRunner() {
   Future<ProcessResult> run(
     String executable,
     List<String> arguments, {

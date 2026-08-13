@@ -50,14 +50,12 @@ Future<void> showEmailLoginSheet({
 }
 
 @visibleForTesting
-class EmailLoginSheet extends StatefulWidget {
-  const EmailLoginSheet({super.key});
-
+class const EmailLoginSheet({super.key}) extends StatefulWidget {
   @override
   State<EmailLoginSheet> createState() => _EmailLoginSheetState();
 }
 
-class _EmailLoginSheetState extends State<EmailLoginSheet> {
+class _EmailLoginSheetState() extends State<EmailLoginSheet> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -192,15 +190,10 @@ class _EmailLoginSheetState extends State<EmailLoginSheet> {
 }
 
 /// Eye toggle inside the password field.
-class _PasswordVisibilityToggle extends StatelessWidget {
-  const _PasswordVisibilityToggle({
-    required this.isObscured,
-    required this.onPressed,
-  });
-
-  final bool isObscured;
-  final VoidCallback onPressed;
-
+class const _PasswordVisibilityToggle({
+  required final bool isObscured,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

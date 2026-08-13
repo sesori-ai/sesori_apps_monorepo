@@ -5,7 +5,7 @@ part 'update_attempt.g.dart';
 
 /// The pipeline stage an [UpdateAttempt] reached. Recorded so a failure or an
 /// interrupted (crashed) attempt can be described precisely on the next launch.
-enum UpdateStage {
+enum UpdateStage() {
   downloading,
   verifying,
   extracting,
@@ -15,7 +15,7 @@ enum UpdateStage {
 }
 
 /// Lifecycle status of a persisted [UpdateAttempt].
-enum UpdateAttemptStatus {
+enum UpdateAttemptStatus() {
   /// The apply is in progress (binary/lib swap underway). A record left in
   /// this state across a restart means the process died mid-apply.
   inFlight,
@@ -35,7 +35,7 @@ enum UpdateAttemptStatus {
 /// pattern used by [CachedRelease]/`UpdateCacheApi`.
 @Freezed(fromJson: true, toJson: true)
 sealed class UpdateAttempt with _$UpdateAttempt {
-  const factory UpdateAttempt({
+  const factory({
     /// The version the bridge was running when the attempt started.
     required String fromVersion,
 
@@ -56,5 +56,5 @@ sealed class UpdateAttempt with _$UpdateAttempt {
     required String? reason,
   }) = _UpdateAttempt;
 
-  factory UpdateAttempt.fromJson(Map<String, dynamic> json) => _$UpdateAttemptFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$UpdateAttemptFromJson(json);
 }

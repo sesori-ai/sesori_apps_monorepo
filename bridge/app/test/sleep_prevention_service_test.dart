@@ -297,17 +297,15 @@ void main() {
   });
 }
 
-class _QueueBridgeSettingsApi implements BridgeSettingsApi {
-  final List<String?> _readResults;
+class _QueueBridgeSettingsApi({
+  required List<String?> readResults,
+}) implements BridgeSettingsApi {
+  final List<String?> _readResults = List<String?>.from(readResults);
 
   @override
   String get configFilePath => '/tmp/config.json';
 
   int readCount = 0;
-
-  _QueueBridgeSettingsApi({
-    required List<String?> readResults,
-  }) : _readResults = List<String?>.from(readResults);
 
   @override
   Future<String?> readConfig() async {
@@ -322,20 +320,13 @@ class _QueueBridgeSettingsApi implements BridgeSettingsApi {
   Future<void> writeConfig(String jsonContent) async {}
 }
 
-class _FakeWakeLockClient implements WakeLockClient {
-  final bool failEnable;
-  final bool failDisable;
-  @override
-  final bool preventsLidCloseSleep;
-
+class _FakeWakeLockClient({
+  final bool failEnable = false,
+  final bool failDisable = false,
+  @override final bool preventsLidCloseSleep = false,
+}) implements WakeLockClient {
   int enableCalls = 0;
   int disableCalls = 0;
-
-  _FakeWakeLockClient({
-    this.failEnable = false,
-    this.failDisable = false,
-    this.preventsLidCloseSleep = false,
-  });
 
   @override
   Future<void> enable() async {
@@ -354,19 +345,12 @@ class _FakeWakeLockClient implements WakeLockClient {
   }
 }
 
-class _FakeDeviceTypeDetector implements DeviceTypeDetector {
-  final bool _isLaptop;
-
-  _FakeDeviceTypeDetector({required bool isLaptop})
-    : _isLaptop = isLaptop;
-
+class _FakeDeviceTypeDetector({required final bool _isLaptop}) implements DeviceTypeDetector {
   @override
   Future<bool> isLaptop() async => _isLaptop;
 }
 
-class _ThrowingDeviceTypeDetector implements DeviceTypeDetector {
-  _ThrowingDeviceTypeDetector();
-
+class _ThrowingDeviceTypeDetector() implements DeviceTypeDetector {
   @override
   Future<bool> isLaptop() async {
     throw StateError('failed to detect device type');

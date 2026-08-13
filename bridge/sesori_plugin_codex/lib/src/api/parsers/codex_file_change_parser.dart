@@ -4,9 +4,7 @@ import "../../codex_app_server_client.dart";
 import "../models/codex_correlatable_item_event_dto.dart";
 import "../models/codex_file_change_dto.dart";
 
-class CodexFileChangeParser {
-  const CodexFileChangeParser();
-
+class const CodexFileChangeParser() {
   CodexFileChangeEventDto? parse({
     required CodexServerNotification notification,
   }) {

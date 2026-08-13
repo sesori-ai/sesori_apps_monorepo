@@ -9,18 +9,13 @@ import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
 
 /// Owns bridge-persisted session mutations and their backend propagation.
-class SessionMutationDispatcher {
-  final SessionRepository _sessionRepository;
-  final SessionOperationDispatcher _sessionOperationDispatcher;
+class SessionMutationDispatcher({
+  required final SessionRepository _sessionRepository,
+  required final SessionOperationDispatcher _sessionOperationDispatcher,
+}) {
   final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
   bool _disposed = false;
   Future<void>? _disposeFuture;
-
-  SessionMutationDispatcher({
-    required SessionRepository sessionRepository,
-    required SessionOperationDispatcher sessionOperationDispatcher,
-  }) : _sessionRepository = sessionRepository,
-       _sessionOperationDispatcher = sessionOperationDispatcher;
 
   Stream<Session> get deletedSessions => _deletedSessionsController.stream;
 

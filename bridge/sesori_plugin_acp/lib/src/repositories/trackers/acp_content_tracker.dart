@@ -3,47 +3,27 @@ import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCandida
 
 import "../mappers/acp_content_mapper.dart";
 
-sealed class AcpContentMutation {
-  const AcpContentMutation({required this.partIdSuffix});
+sealed class const AcpContentMutation({required final String partIdSuffix});
 
-  final String partIdSuffix;
-}
-
-final class AcpTextDeltaMutation extends AcpContentMutation {
-  const AcpTextDeltaMutation({
+final class const AcpTextDeltaMutation({
     required super.partIdSuffix,
-    required this.delta,
-  });
+    required final String delta,
+  }) extends AcpContentMutation;
 
-  final String delta;
-}
-
-final class AcpImageMutation extends AcpContentMutation {
-  const AcpImageMutation({
+final class const AcpImageMutation({
     required super.partIdSuffix,
-    required this.attachment,
+    required final PluginMessageAttachment attachment,
+  }) extends AcpContentMutation;
+
+final class const AcpContentSnapshot({
+    required final int textPartCount,
+    required final String? activeTextPartIdSuffix,
+    required final int imageCandidateCount,
+    required final int decodedImageBytes,
+    required final AcpContentComposition composition,
   });
 
-  final PluginMessageAttachment attachment;
-}
-
-final class AcpContentSnapshot {
-  const AcpContentSnapshot({
-    required this.textPartCount,
-    required this.activeTextPartIdSuffix,
-    required this.imageCandidateCount,
-    required this.decodedImageBytes,
-    required this.composition,
-  });
-
-  final int textPartCount;
-  final String? activeTextPartIdSuffix;
-  final int imageCandidateCount;
-  final int decodedImageBytes;
-  final AcpContentComposition composition;
-}
-
-enum AcpContentComposition {
+enum AcpContentComposition() {
   empty,
   textOnly,
   mixed,
@@ -51,7 +31,7 @@ enum AcpContentComposition {
 
 /// Owns ordered text/image segmentation and bounded image budgets for one
 /// logical ACP assistant message.
-final class AcpContentTracker {
+final class AcpContentTracker() {
   final Set<_AcpContentWarning> _warned = {};
   final AcpContentMappingScope mappingScope = AcpContentMappingScope();
   int _textPartCount = 0;
@@ -163,7 +143,7 @@ final class AcpContentTracker {
   }
 }
 
-enum _AcpContentWarning {
+enum _AcpContentWarning() {
   invalid,
   unsupported,
   oversized,

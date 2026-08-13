@@ -5,7 +5,7 @@ import "package:injectable/injectable.dart";
 
 /// Injectable seam around Gal's static plugin API.
 @lazySingleton
-class GalClient {
+class GalClient() {
   Future<bool> hasAccess() => Gal.hasAccess();
 
   Future<bool> requestAccess() => Gal.requestAccess();

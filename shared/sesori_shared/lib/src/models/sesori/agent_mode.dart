@@ -6,7 +6,7 @@ import "package:json_annotation/json_annotation.dart";
 /// - [primary]: only available as a primary agent
 /// - [subagent]: only available as a subagent
 /// - [unknown]: fallback for unrecognised values from the server
-enum AgentMode {
+enum AgentMode() {
   @JsonValue("all")
   all,
   @JsonValue("primary")

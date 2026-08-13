@@ -9,24 +9,14 @@ import "../trackers/omp_catalog_tracker.dart";
 import "omp_catalog_service.dart";
 
 /// Owns OMP's project-scoped options and exact turn-selection writes.
-class OmpSessionOptionsService {
-  OmpSessionOptionsService({
-    required OmpCatalogService catalogService,
-    required OmpCatalogTracker tracker,
-    required OmpCatalogRepository repository,
-    required AcpSessionConfigurationTracker configurationTracker,
-    required String launchDirectory,
-  }) : _catalogService = catalogService,
-       _tracker = tracker,
-       _repository = repository,
-       _configurationTracker = configurationTracker,
-       _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
-
-  final OmpCatalogService _catalogService;
-  final OmpCatalogTracker _tracker;
-  final OmpCatalogRepository _repository;
-  final AcpSessionConfigurationTracker _configurationTracker;
-  final String _launchDirectory;
+class OmpSessionOptionsService({
+  required final OmpCatalogService _catalogService,
+  required final OmpCatalogTracker _tracker,
+  required final OmpCatalogRepository _repository,
+  required final AcpSessionConfigurationTracker _configurationTracker,
+  required String launchDirectory,
+}) {
+  final String _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
   final Map<String, OmpSessionConfigSnapshot> _sessionConfigs = {};
 
   void captureSessionConfig(
@@ -97,7 +87,7 @@ class OmpSessionOptionsService {
     final requestedModel = model?.modelID;
     if (requestedModel != null && requestedModel.isNotEmpty) {
       final configId = current?.modelConfigId ?? catalog?.modelConfigId;
-      final models = current?.models.isNotEmpty == true ? current!.models : catalog?.models ?? const [];
+      final models = current?.models.isNotEmpty ?? false ? current!.models : catalog?.models ?? const [];
       if (configId == null || !models.any((entry) => entry.value == requestedModel)) {
         throw const PluginOperationException(
           "session/set_config_option",
@@ -264,7 +254,7 @@ class OmpSessionOptionsService {
     required OmpSessionConfigSnapshot? snapshot,
     required OmpProjectCatalog? catalog,
   }) {
-    final modes = snapshot?.modes.isNotEmpty == true ? snapshot!.modes : catalog?.modes ?? const [];
+    final modes = snapshot?.modes.isNotEmpty ?? false ? snapshot!.modes : catalog?.modes ?? const [];
     for (final mode in modes) {
       if (mode.value == agent || mode.name == agent) return mode.value;
     }

@@ -5,7 +5,7 @@
 - **Plan slug:** `attachment-references`
 - **Series state:** Step 8 ready to open
 - **Current step:** 8/11
-- **Implementation base:** `origin/main` at `88059e20`
+- **Implementation base:** `origin/main` at `b87e4343`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** None
 - **Next action:** Commit, synchronize, and open the Step 8 PR
@@ -197,7 +197,10 @@
   non-zero on unrelated existing primary-constructor parser errors and the
   product-analytics enum generator crash. Architecture implementation review
   approved the foundation, repository/service, platform, DI, privacy, and
-  lifecycle seams with no blockers. `git diff --check` passes.
+  lifecycle seams with no blockers. After synchronization with `origin/main` at
+  `b87e4343`, the PR diff has 1,342 additions and 78 deletions across 17 files
+  (1,420 changed lines), within the revised 1,250-1,500 target;
+  `git diff --check origin/main...HEAD` passes.
 
 ## Findings And Plan Deltas
 

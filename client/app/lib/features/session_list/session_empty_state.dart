@@ -9,11 +9,7 @@ import "../../core/extensions/build_context_x.dart";
 ///
 /// Rendered inside a `SliverFillRemaining(hasScrollBody: false)`, so the glyph
 /// is a fixed size — an unbounded illustration would inflate the scroll extent.
-class SessionEmptyState extends StatelessWidget {
-  final String? projectName;
-
-  const SessionEmptyState({super.key, required this.projectName});
-
+class const SessionEmptyState({super.key, required final String? projectName}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -50,9 +46,7 @@ class SessionEmptyState extends StatelessWidget {
 /// A small mac-style terminal window: three window-control dots, a green shell
 /// prompt, and a blinking-style cursor bar — drawn in pure Flutter so it scales
 /// crisply and themes with the design system (no bundled asset).
-class _EmptyTerminalGlyph extends StatelessWidget {
-  const _EmptyTerminalGlyph({super.key});
-
+class const _EmptyTerminalGlyph({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -109,11 +103,7 @@ class _EmptyTerminalGlyph extends StatelessWidget {
   }
 }
 
-class _WindowDot extends StatelessWidget {
-  final Color color;
-
-  const _WindowDot(this.color);
-
+class const _WindowDot(final Color color) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -125,11 +115,7 @@ class _WindowDot extends StatelessWidget {
 }
 
 /// The shell cursor: a static brand-blue bar with a soft glow.
-class _CursorBar extends StatelessWidget {
-  final Color color;
-
-  const _CursorBar({required this.color});
-
+class const _CursorBar({required final Color color}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -144,11 +130,7 @@ class _CursorBar extends StatelessWidget {
 }
 
 /// Non-interactive pill naming the project the first task will run in.
-class _ProjectChip extends StatelessWidget {
-  final String name;
-
-  const _ProjectChip({required this.name});
-
+class const _ProjectChip({required final String name}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

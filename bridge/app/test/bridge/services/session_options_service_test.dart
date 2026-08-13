@@ -1221,7 +1221,7 @@ Future<String> _captureLogOutput({
   return stderrBuffer.text;
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();
@@ -1236,29 +1236,17 @@ class _BufferingStdout implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-class _FixedClock extends ServerClock {
-  const _FixedClock({required this.nowValue});
-
-  final DateTime nowValue;
-
+class const _FixedClock({required final DateTime nowValue}) extends ServerClock {
   @override
   DateTime now() => nowValue;
 }
 
-class _MutableClock extends ServerClock {
-  _MutableClock({required this.nowValue});
-
-  DateTime nowValue;
-
+class _MutableClock({required var DateTime nowValue}) extends ServerClock {
   @override
   DateTime now() => nowValue;
 }
 
-class _AdvancingClock extends ServerClock {
-  _AdvancingClock({required DateTime now}) : _now = now;
-
-  DateTime _now;
-
+class _AdvancingClock({required var DateTime _now}) extends ServerClock {
   @override
   DateTime now() {
     final value = _now;
@@ -1269,42 +1257,23 @@ class _AdvancingClock extends ServerClock {
 
 typedef _CacheIdentity = ({String pluginId, PluginSessionOptionsScope scope, String ownerId});
 
-class _CaptureCall {
-  const _CaptureCall({
-    required this.key,
-    required this.projectPath,
-    required this.activation,
-    required this.discoveryMode,
-    required this.expectedGeneration,
-  });
+class const _CaptureCall({
+  required final SessionOptionsCacheKey key,
+  required final String projectPath,
+  required final SessionOptionsCaptureActivation activation,
+  required final PluginSessionOptionsDiscoveryMode discoveryMode,
+  required final int? expectedGeneration,
+});
 
-  final SessionOptionsCacheKey key;
-  final String projectPath;
-  final SessionOptionsCaptureActivation activation;
-  final PluginSessionOptionsDiscoveryMode discoveryMode;
-  final int? expectedGeneration;
-}
+class const _CommitCall({
+  required final SessionOptionsCacheEntry candidate,
+  required final int? expectedRevision,
+  required final int generation,
+});
 
-class _CommitCall {
-  const _CommitCall({
-    required this.candidate,
-    required this.expectedRevision,
-    required this.generation,
-  });
+class const _ConditionalDeleteCall({required final SessionOptionsCacheKey key, required final int expectedRevision});
 
-  final SessionOptionsCacheEntry candidate;
-  final int? expectedRevision;
-  final int generation;
-}
-
-class _ConditionalDeleteCall {
-  const _ConditionalDeleteCall({required this.key, required this.expectedRevision});
-
-  final SessionOptionsCacheKey key;
-  final int expectedRevision;
-}
-
-class _FakeSessionOptionsRepository implements SessionOptionsRepository {
+class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
   final Map<String, String> projectPaths = {};
   final Map<String, String> backendBindings = {};
   final Map<_CacheIdentity, SessionOptionsCacheEntry> _cache = {};
@@ -1371,7 +1340,7 @@ class _FakeSessionOptionsRepository implements SessionOptionsRepository {
   Future<SessionOptionsCacheEntry?> read({required SessionOptionsCacheKey key}) async {
     readCalls++;
     final handler = readHandler;
-    return handler == null ? stored(key) : handler(key);
+    return await (handler == null ? stored(key) : handler(key));
   }
 
   @override
@@ -1410,7 +1379,7 @@ class _FakeSessionOptionsRepository implements SessionOptionsRepository {
     );
     captureCalls.add(call);
     final handler = captureHandler;
-    return handler == null ? captureResult : handler(call);
+    return await (handler == null ? captureResult : handler(call));
   }
 
   @override
@@ -1433,7 +1402,7 @@ class _FakeSessionOptionsRepository implements SessionOptionsRepository {
     );
     commitCalls.add(call);
     final handler = commitHandler;
-    return handler == null ? applyCas(call) : handler(call);
+    return await (handler == null ? applyCas(call) : handler(call));
   }
 
   _CacheIdentity _identity(SessionOptionsCacheKey key) {

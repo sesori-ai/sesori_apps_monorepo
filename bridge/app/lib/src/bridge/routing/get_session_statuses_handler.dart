@@ -6,12 +6,9 @@ import "request_handler.dart";
 /// Handles `GET /session/status` — returns statuses for sessions.
 ///
 /// Returns statuses for ALL sessions globally — not filtered by session or project.
-class GetSessionStatusesHandler extends GetRequestHandler<SessionStatusResponse> {
-  final SessionRepository _sessionRepository;
-
-  GetSessionStatusesHandler({required SessionRepository sessionRepository})
-    : _sessionRepository = sessionRepository,
-      super("/session/status");
+class GetSessionStatusesHandler({required final SessionRepository _sessionRepository})
+    extends GetRequestHandler<SessionStatusResponse> {
+  this : super("/session/status");
 
   @override
   Future<SessionStatusResponse> handle(
@@ -20,6 +17,6 @@ class GetSessionStatusesHandler extends GetRequestHandler<SessionStatusResponse>
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    return _sessionRepository.getSessionStatuses();
+    return await _sessionRepository.getSessionStatuses();
   }
 }

@@ -22,7 +22,7 @@ import "../../helpers/test_helpers.dart";
 /// An [AuthSession] with valid local tokens but no cached [AuthUser]: the
 /// state splash leaves behind when `restoreLocalSession()` finds no stored
 /// user, so `SettingsCubit.account` stays null.
-class _StubAuthSession extends Mock implements AuthSession {
+class _StubAuthSession() extends Mock implements AuthSession {
   final BehaviorSubject<AuthState> _authState = BehaviorSubject.seeded(const AuthState.unauthenticated());
 
   @override
@@ -32,17 +32,17 @@ class _StubAuthSession extends Mock implements AuthSession {
   AuthState get currentState => _authState.value;
 }
 
-class _MockNotificationRegistrationService extends Mock implements NotificationRegistrationService;
+class _MockNotificationRegistrationService() extends Mock implements NotificationRegistrationService;
 
-class _MockAppearanceStore extends Mock implements AppearanceStore;
+class _MockAppearanceStore() extends Mock implements AppearanceStore;
 
-class _MockChatInputModeStore extends Mock implements ChatInputModeStore;
+class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
 
-class _MockUrlLauncher extends Mock implements UrlLauncher;
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
-class _MockLegalRepository extends Mock implements LegalRepository;
+class _MockLegalRepository() extends Mock implements LegalRepository;
 
-class _MockBridgeSettingsRepository extends Mock implements BridgeSettingsRepository;
+class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
 
 const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com");
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);

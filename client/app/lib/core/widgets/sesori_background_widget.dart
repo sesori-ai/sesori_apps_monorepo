@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../extensions/build_context_x.dart';
 
-class SesoriBackgroundWidget extends StatelessWidget {
-  const SesoriBackgroundWidget({super.key});
-
+class const SesoriBackgroundWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final orientation = MediaQuery.orientationOf(context);

@@ -70,7 +70,7 @@ void main() {
   });
 }
 
-class _MemoryAppOnboardingStateStorage implements AppOnboardingStateStorage {
+class _MemoryAppOnboardingStateStorage() implements AppOnboardingStateStorage {
   final Set<String> keys = {};
   Object? readError;
 

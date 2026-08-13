@@ -2,7 +2,7 @@
 ///
 /// Flutter apps provide a [FlutterSecureStorage]-backed implementation;
 /// CLI/TUI tools can use an OS keyring or encrypted file backend.
-abstract class SecureStorage {
+abstract class SecureStorage() {
   /// Read a value from secure storage by key.
   Future<String?> read({required String key});
 

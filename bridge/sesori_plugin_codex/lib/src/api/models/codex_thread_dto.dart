@@ -5,19 +5,19 @@ part "codex_thread_dto.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexThreadEnvelopeDto with _$CodexThreadEnvelopeDto {
-  const factory CodexThreadEnvelopeDto({
+  const factory({
     required CodexThreadDto? thread,
     required String? model,
     required String? modelProvider,
     required String? cwd,
   }) = _CodexThreadEnvelopeDto;
 
-  factory CodexThreadEnvelopeDto.fromJson(Map<String, dynamic> json) => _$CodexThreadEnvelopeDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexThreadEnvelopeDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexThreadDto with _$CodexThreadDto {
-  const factory CodexThreadDto({
+  const factory({
     required String? id,
     required String? name,
     required String? cwd,
@@ -26,5 +26,5 @@ sealed class CodexThreadDto with _$CodexThreadDto {
     required String? modelProvider,
   }) = _CodexThreadDto;
 
-  factory CodexThreadDto.fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);
 }

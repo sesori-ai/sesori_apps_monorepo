@@ -11,7 +11,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
 const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);

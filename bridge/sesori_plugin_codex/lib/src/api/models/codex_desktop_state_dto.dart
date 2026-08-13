@@ -5,20 +5,18 @@ part "codex_desktop_state_dto.g.dart";
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexDesktopStateDto with _$CodexDesktopStateDto {
-  const factory CodexDesktopStateDto({
+  const factory({
     @JsonKey(name: "projectless-thread-ids")
     @CodexProjectlessThreadIdsConverter()
     required Set<String> projectlessThreadIds,
   }) = _CodexDesktopStateDto;
 
-  factory CodexDesktopStateDto.fromJson(Map<String, dynamic> json) => _$CodexDesktopStateDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexDesktopStateDtoFromJson(json);
 }
 
 /// Reads only useful string ids from Codex Desktop's independently-versioned
 /// state while ignoring missing, malformed, and future-shaped entries.
-class CodexProjectlessThreadIdsConverter implements JsonConverter<Set<String>, Object?> {
-  const CodexProjectlessThreadIdsConverter();
-
+class const CodexProjectlessThreadIdsConverter() implements JsonConverter<Set<String>, Object?> {
   @override
   Set<String> fromJson(Object? json) {
     if (json is! List) return const {};

@@ -5,20 +5,13 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "reasoning_modal.dart";
 
-class ReasoningPartCard extends StatefulWidget {
-  final String text;
-  final bool isStreaming;
-  final String partId;
-  final String messageId;
-
-  const ReasoningPartCard({
-    super.key,
-    required this.text,
-    required this.isStreaming,
-    required this.partId,
-    required this.messageId,
-  });
-
+class const ReasoningPartCard({
+  super.key,
+  required final String text,
+  required final bool isStreaming,
+  required final String partId,
+  required final String messageId,
+}) extends StatefulWidget {
   @override
   State<ReasoningPartCard> createState() => _ReasoningPartCardState();
 
@@ -57,7 +50,7 @@ class ReasoningPartCard extends StatefulWidget {
   static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
 }
 
-class _ReasoningPartCardState extends State<ReasoningPartCard> {
+class _ReasoningPartCardState() extends State<ReasoningPartCard> {
   late String _previewText;
   late String _cachedFirstLine;
 

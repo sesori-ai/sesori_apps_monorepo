@@ -4,12 +4,9 @@ import "../services/session_mutation_dispatcher.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/title` — renames a session.
-class RenameSessionHandler extends BodyRequestHandler<RenameSessionRequest, Session> {
-  final SessionMutationDispatcher _sessionMutationDispatcher;
-
-  RenameSessionHandler({required SessionMutationDispatcher sessionMutationDispatcher})
-    : _sessionMutationDispatcher = sessionMutationDispatcher,
-      super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
+class RenameSessionHandler({required final SessionMutationDispatcher _sessionMutationDispatcher})
+    extends BodyRequestHandler<RenameSessionRequest, Session> {
+  this : super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
 
   @override
   Future<Session> handle(
@@ -22,6 +19,6 @@ class RenameSessionHandler extends BodyRequestHandler<RenameSessionRequest, Sess
     if (body.sessionId.isEmpty) {
       throw buildErrorResponse(request, 400, "empty session id");
     }
-    return _sessionMutationDispatcher.renameSession(sessionId: body.sessionId, title: body.title);
+    return await _sessionMutationDispatcher.renameSession(sessionId: body.sessionId, title: body.title);
   }
 }

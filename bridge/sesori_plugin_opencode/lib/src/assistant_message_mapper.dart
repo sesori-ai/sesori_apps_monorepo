@@ -13,9 +13,7 @@ import "models/openapi/assistant_message.g.dart";
 /// live path silently drops the error and shows a blank assistant turn until
 /// the session is re-opened. This mapper is the single owner of that
 /// normalization, shared by both paths so they can never diverge again.
-class AssistantMessageMapper {
-  const AssistantMessageMapper();
-
+class const AssistantMessageMapper() {
   PluginMessage map(AssistantMessage message) {
     final time = PluginMessageTime(
       created: message.time.created,

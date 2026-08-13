@@ -59,7 +59,7 @@ const _response = PluginManagementResponse(
   ],
 );
 
-class _FakePluginLifecycleService implements PluginLifecycleService {
+class _FakePluginLifecycleService() implements PluginLifecycleService {
   @override
   PluginManagementResponse get managementSnapshot => _response;
 

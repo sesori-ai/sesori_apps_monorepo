@@ -8,7 +8,7 @@ part "send_notification_payload.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SendNotificationPayload with _$SendNotificationPayload {
-  const factory SendNotificationPayload({
+  const factory({
     required NotificationCategory category,
     required String title,
     required String body,
@@ -16,5 +16,5 @@ sealed class SendNotificationPayload with _$SendNotificationPayload {
     required NotificationData? data,
   }) = _SendNotificationPayload;
 
-  factory SendNotificationPayload.fromJson(Map<String, dynamic> json) => _$SendNotificationPayloadFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SendNotificationPayloadFromJson(json);
 }

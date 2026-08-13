@@ -14,16 +14,16 @@ part "bridge_setting_update.g.dart";
 )
 sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
   @FreezedUnionValue("pullRequestRefreshInterval")
-  const factory BridgeSettingUpdate.pullRequestRefreshInterval({
+  const factory pullRequestRefreshInterval({
     @strictIntJsonConverter required int intervalSeconds,
   }) = PullRequestRefreshIntervalSettingUpdate;
 
   @FreezedUnionValue("yolo")
-  const factory BridgeSettingUpdate.yolo({required bool enabled}) = YoloSettingUpdate;
+  const factory yolo({required bool enabled}) = YoloSettingUpdate;
 
-  const factory BridgeSettingUpdate.unknown() = UnknownBridgeSettingUpdate;
+  const factory unknown() = UnknownBridgeSettingUpdate;
 
-  factory BridgeSettingUpdate.fromJson(Map<String, dynamic> json) => _$BridgeSettingUpdateFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$BridgeSettingUpdateFromJson(json);
 }
 
 @Freezed(
@@ -35,13 +35,12 @@ sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
 )
 sealed class BridgeSettingUpdateRejection with _$BridgeSettingUpdateRejection {
   @FreezedUnionValue("pullRequestRefreshIntervalOutOfRange")
-  const factory BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange({
+  const factory pullRequestRefreshIntervalOutOfRange({
     @strictIntJsonConverter required int minimumIntervalSeconds,
     @strictIntJsonConverter required int maximumIntervalSeconds,
   }) = PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection;
 
-  const factory BridgeSettingUpdateRejection.unknown() = UnknownBridgeSettingUpdateRejection;
+  const factory unknown() = UnknownBridgeSettingUpdateRejection;
 
-  factory BridgeSettingUpdateRejection.fromJson(Map<String, dynamic> json) =>
-      _$BridgeSettingUpdateRejectionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$BridgeSettingUpdateRejectionFromJson(json);
 }

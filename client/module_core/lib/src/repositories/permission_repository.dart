@@ -5,11 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../api/permission_api.dart";
 
 @lazySingleton
-class PermissionRepository {
-  final PermissionApi _api;
-
-  PermissionRepository({required PermissionApi api}) : _api = api;
-
+class PermissionRepository({required final PermissionApi _api}) {
   Future<ApiResponse<void>> replyToPermission({
     required String requestId,
     required String sessionId,

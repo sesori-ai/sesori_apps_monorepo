@@ -2,7 +2,7 @@ import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:test/test.dart';
 
-class _FakeDefaultEditorApi implements DefaultEditorApi {
+class _FakeDefaultEditorApi() implements DefaultEditorApi {
   String? openedPath;
 
   @override

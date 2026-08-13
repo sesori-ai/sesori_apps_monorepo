@@ -6,14 +6,12 @@ import "../../foundation/models/product_analytics/product_analytics_preference.d
 import "../../services/models/product_analytics_state.dart";
 import "../../services/product_analytics_service.dart";
 
-class ProductAnalyticsPreferenceCubit extends Cubit<ProductAnalyticsState> {
-  final ProductAnalyticsService _service;
+class ProductAnalyticsPreferenceCubit({required final ProductAnalyticsService _service})
+    extends Cubit<ProductAnalyticsState> {
   late final StreamSubscription<ProductAnalyticsState> _subscription;
 
-  ProductAnalyticsPreferenceCubit({required ProductAnalyticsService service})
-    : _service = service,
-      super(service.state) {
-    _subscription = service.stateStream.skip(1).listen((state) {
+  this : super(_service.state) {
+    _subscription = _service.stateStream.skip(1).listen((state) {
       if (isClosed) return;
       emit(state);
     });
@@ -32,6 +30,6 @@ class ProductAnalyticsPreferenceCubit extends Cubit<ProductAnalyticsState> {
   @override
   Future<void> close() async {
     await _subscription.cancel();
-    return super.close();
+    return await super.close();
   }
 }

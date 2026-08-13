@@ -8,17 +8,15 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "temporary_directory_client.dart";
 
 @LazySingleton(as: AttachmentThumbnailStorage)
-class FlutterAttachmentThumbnailStorage implements AttachmentThumbnailStorage {
+class FlutterAttachmentThumbnailStorage({
+  required final TemporaryDirectoryClient temporaryDirectoryClient,
+}) implements AttachmentThumbnailStorage {
   // path_provider maps this temporary root to the platform's app-private,
   // backup-excluded cache location.
   static const _rootName = "attachment_thumbnails";
   static var _temporaryFileSequence = 0;
 
-  final TemporaryDirectoryClient _temporaryDirectoryClient;
-
-  FlutterAttachmentThumbnailStorage({
-    required TemporaryDirectoryClient temporaryDirectoryClient,
-  }) : _temporaryDirectoryClient = temporaryDirectoryClient;
+  final TemporaryDirectoryClient _temporaryDirectoryClient = temporaryDirectoryClient;
 
   @override
   Future<Uint8List?> read({required String scope, required String key}) async {

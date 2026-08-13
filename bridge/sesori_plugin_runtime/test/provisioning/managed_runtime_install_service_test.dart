@@ -6,11 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _StubManifest implements RuntimeManifest {
-  const _StubManifest({required this.hasAsset});
-
-  final bool hasAsset;
-
+class const _StubManifest({required final bool hasAsset}) implements RuntimeManifest {
   static const RuntimeAsset _asset = DirectBinaryRuntimeAsset(
     assetName: "opencode-test",
     sha256: "abc123",
@@ -52,10 +48,7 @@ class _StubManifest implements RuntimeManifest {
   }
 }
 
-class _FakeValidator implements RuntimeVersionValidator {
-  _FakeValidator({required this.managedVersion});
-
-  final RuntimeVersion? managedVersion;
+class _FakeValidator({required final RuntimeVersion? managedVersion}) implements RuntimeVersionValidator {
   final List<String> detectedExecutables = [];
 
   @override
@@ -71,9 +64,7 @@ class _FakeValidator implements RuntimeVersionValidator {
   RuntimeVersion? parseVersionOutput({required String output}) => SemanticRuntimeVersion.tryParse(value: output);
 }
 
-class _FakeDownloadClient implements BinaryDownloadClient {
-  const _FakeDownloadClient();
-
+class const _FakeDownloadClient() implements BinaryDownloadClient {
   @override
   Stream<DownloadProgress> download({required String url, required String destinationPath}) async* {
     File(destinationPath).writeAsBytesSync(const [1, 2, 3, 4]);
@@ -81,11 +72,7 @@ class _FakeDownloadClient implements BinaryDownloadClient {
   }
 }
 
-class _FakeChecksumValidator implements ChecksumValidator {
-  const _FakeChecksumValidator({required this.valid});
-
-  final bool valid;
-
+class const _FakeChecksumValidator({required final bool valid}) implements ChecksumValidator {
   @override
   Future<bool> verify({required String filePath, required String expectedHash}) async => valid;
 
@@ -93,9 +80,7 @@ class _FakeChecksumValidator implements ChecksumValidator {
   Future<String> computeSha256({required String filePath}) async => "deadbeef";
 }
 
-class _FakeArchiveExtractor implements ArchiveExtractor {
-  const _FakeArchiveExtractor();
-
+class const _FakeArchiveExtractor() implements ArchiveExtractor {
   @override
   Future<ArchiveExtractionResult> extract({
     required String archivePath,
@@ -108,7 +93,7 @@ class _FakeArchiveExtractor implements ArchiveExtractor {
   }
 }
 
-class _FakeCommandExecutor implements CommandExecutor {
+class _FakeCommandExecutor() implements CommandExecutor {
   @override
   Future<CommandResult> run(
     String executable,
@@ -154,7 +139,8 @@ void main() {
   }
 
   Future<List<RuntimeProvisionProgress>> install(ManagedRuntimeInstallService service) {
-    return service        .install(environment: const {}, stateDirectory: stateDir.path, startAborted: StartAbortSignal.never)
+    return service
+        .install(environment: const {}, stateDirectory: stateDir.path, startAborted: StartAbortSignal.never)
         .toList();
   }
 

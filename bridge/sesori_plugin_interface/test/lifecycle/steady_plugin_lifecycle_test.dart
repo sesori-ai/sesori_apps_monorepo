@@ -218,10 +218,7 @@ void main() {
   });
 }
 
-class _SteadyPlugin with SteadyPluginLifecycle {
-  _SteadyPlugin({this.throwOnShutdown = false});
-
-  final bool throwOnShutdown;
+class _SteadyPlugin({final bool throwOnShutdown = false}) with SteadyPluginLifecycle {
   final _ManualClock clock = _ManualClock(DateTime.utc(2026, 6, 11, 12));
   int onShutdownCalls = 0;
   Duration? lastBudget;
@@ -258,10 +255,7 @@ class _SteadyPlugin with SteadyPluginLifecycle {
   }
 }
 
-class _ManualClock extends ServerClock {
-  _ManualClock(this._now);
-
-  DateTime _now;
+class _ManualClock(var DateTime _now) extends ServerClock {
   final List<({Duration duration, Completer<void> completer})> _pendingDelays = [];
 
   List<Duration> get pendingDelayDurations => [for (final pending in _pendingDelays) pending.duration];

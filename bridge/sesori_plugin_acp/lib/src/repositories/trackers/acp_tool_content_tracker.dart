@@ -3,20 +3,15 @@ import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCollect
 
 import "../mappers/acp_content_mapper.dart";
 
-final class AcpToolContentSnapshot {
-  const AcpToolContentSnapshot({
-    required this.output,
-    required this.attachments,
+final class const AcpToolContentSnapshot({
+    required final String? output,
+    required final List<PluginMessageAttachment> attachments,
   });
-
-  final String? output;
-  final List<PluginMessageAttachment> attachments;
-}
 
 /// Owns the normalized output and bounded attachment collection for one ACP
 /// tool call. Callers apply only mapper-produced mutations, so live and replay
 /// share collection replacement and partial-update semantics.
-final class AcpToolContentTracker {
+final class AcpToolContentTracker() {
   String? _output;
   List<PluginMessageAttachment> _attachments = const [];
   bool _hasReplacement = false;
@@ -142,7 +137,7 @@ final class AcpToolContentTracker {
   }
 }
 
-enum _AcpToolContentWarning {
+enum _AcpToolContentWarning() {
   invalid,
   unsupported,
   oversized,

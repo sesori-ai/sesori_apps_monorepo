@@ -50,32 +50,19 @@ typedef PluginInstallProgressUpdate = ({
 
 typedef PluginAuthenticationProgressUpdate = ({String pluginId, PluginAuthenticationProgress progress});
 
-class PluginIdleTimerScheduler {
-  const PluginIdleTimerScheduler();
-
+class const PluginIdleTimerScheduler() {
   Timer schedule({required Duration duration, required void Function() onElapsed}) {
     return Timer(duration, onElapsed);
   }
 }
 
-class PluginLifecycleService {
-  PluginLifecycleService({
-    required PluginLifecycleRepository lifecycleRepository,
-    required String preferredDefaultPluginId,
-    required BridgeSettingsRepository bridgeSettingsRepository,
-    required PluginIdleTimerScheduler idleTimerScheduler,
-    required BridgeIdProvider bridgeIdProvider,
-  }) : _lifecycleRepository = lifecycleRepository,
-       _preferredDefaultPluginId = preferredDefaultPluginId,
-       _bridgeSettingsRepository = bridgeSettingsRepository,
-       _idleTimerScheduler = idleTimerScheduler,
-       _bridgeIdProvider = bridgeIdProvider;
-
-  final PluginLifecycleRepository _lifecycleRepository;
-  final String _preferredDefaultPluginId;
-  final BridgeSettingsRepository _bridgeSettingsRepository;
-  final PluginIdleTimerScheduler _idleTimerScheduler;
-  final BridgeIdProvider _bridgeIdProvider;
+class PluginLifecycleService({
+  required final PluginLifecycleRepository _lifecycleRepository,
+  required final String _preferredDefaultPluginId,
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final PluginIdleTimerScheduler _idleTimerScheduler,
+  required final BridgeIdProvider _bridgeIdProvider,
+}) {
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   Map<String, PluginResidencyPolicy>? _residencyPolicyById;
@@ -1422,20 +1409,13 @@ class PluginLifecycleService {
 }
 
 @immutable
-final class _PluginManagementSnapshot {
+final class const _PluginManagementSnapshot({
+  required final String? snapshotToken,
+  required final String? defaultPluginId,
+  required final int defaultIdleTimeoutMins,
+  required final List<PluginManagementMetadata> plugins,
+}) {
   static const _pluginsEquality = ListEquality<PluginManagementMetadata>();
-
-  final String? snapshotToken;
-  final String? defaultPluginId;
-  final int defaultIdleTimeoutMins;
-  final List<PluginManagementMetadata> plugins;
-
-  const _PluginManagementSnapshot({
-    required this.snapshotToken,
-    required this.defaultPluginId,
-    required this.defaultIdleTimeoutMins,
-    required this.plugins,
-  });
 
   _PluginManagementSnapshot withSnapshotToken({required String snapshotToken}) {
     return _PluginManagementSnapshot(
@@ -1467,52 +1447,26 @@ final class _PluginManagementSnapshot {
   }
 }
 
-class PluginManagementPluginNotFoundException implements Exception {
-  const PluginManagementPluginNotFoundException(this.pluginId);
+class const PluginManagementPluginNotFoundException(final String pluginId) implements Exception;
 
-  final String pluginId;
-}
+class const PluginManagementConflictException(final PluginLifecycleConflict conflict) implements Exception;
 
-class PluginManagementConflictException implements Exception {
-  const PluginManagementConflictException(this.conflict);
+class const PluginAuthenticationConflictException(final PluginAuthenticationConflict conflict) implements Exception;
 
-  final PluginLifecycleConflict conflict;
-}
+class const PluginAuthenticationChallengeUnavailableException() implements Exception;
 
-class PluginAuthenticationConflictException implements Exception {
-  const PluginAuthenticationConflictException(this.conflict);
-
-  final PluginAuthenticationConflict conflict;
-}
-
-class PluginAuthenticationChallengeUnavailableException implements Exception {
-  const PluginAuthenticationChallengeUnavailableException();
-}
-
-class PluginManagementCommandFailedException implements Exception {
-  const PluginManagementCommandFailedException(this.message);
-
-  final String message;
-
+class const PluginManagementCommandFailedException(final String message) implements Exception {
   @override
   String toString() => message;
 }
 
-class PluginManagementMutationOutcomeUncertainException implements Exception {
-  const PluginManagementMutationOutcomeUncertainException();
-}
+class const PluginManagementMutationOutcomeUncertainException() implements Exception;
 
-class _ActivePluginCommand {
-  _ActivePluginCommand({required this.request});
-
-  final PluginLifecycleCommandRequest request;
+class _ActivePluginCommand({required final PluginLifecycleCommandRequest request}) {
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }
 
-class _ActivePluginAuthentication {
-  _ActivePluginAuthentication({required this.operation});
-
-  final PluginRuntimeAuthenticationOperation operation;
+class _ActivePluginAuthentication({required final PluginRuntimeAuthenticationOperation operation}) {
   final Completer<PluginAuthenticationChallengeResponse> challenge = Completer<PluginAuthenticationChallengeResponse>();
   final Completer<void> settled = Completer<void>();
 }

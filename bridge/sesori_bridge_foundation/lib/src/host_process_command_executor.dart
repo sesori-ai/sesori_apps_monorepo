@@ -13,25 +13,17 @@ import "command_executor.dart";
 /// short-lived helper commands (`tar`, `unzip`, `<bin> --version`) through this
 /// adapter. It drains stdout/stderr from spawn so a chatty child cannot block on
 /// a full pipe, and force-kills a child that outlives the timeout.
-class HostProcessCommandExecutor implements CommandExecutor {
-  final HostProcessService _processes;
-  final bool _runInShell;
-  final Duration _defaultTimeout;
-  final int? _maxCapturedOutputCharactersPerStream;
-
-  HostProcessCommandExecutor({
-    required HostProcessService processes,
-    required bool runInShell,
-    required int? maxCapturedOutputCharactersPerStream,
-    Duration defaultTimeout = const Duration(seconds: 30),
-  }) : _processes = processes,
-       _runInShell = runInShell,
-       _maxCapturedOutputCharactersPerStream = maxCapturedOutputCharactersPerStream,
-       assert(
-         maxCapturedOutputCharactersPerStream == null || maxCapturedOutputCharactersPerStream >= 0,
-         "maxCapturedOutputCharactersPerStream must not be negative",
-       ),
-       _defaultTimeout = defaultTimeout;
+class HostProcessCommandExecutor({
+  required final HostProcessService _processes,
+  required final bool _runInShell,
+  required final int? _maxCapturedOutputCharactersPerStream,
+  final Duration _defaultTimeout = const Duration(seconds: 30),
+}) implements CommandExecutor {
+  this
+    : assert(
+        _maxCapturedOutputCharactersPerStream == null || _maxCapturedOutputCharactersPerStream >= 0,
+        "maxCapturedOutputCharactersPerStream must not be negative",
+      );
 
   @override
   Future<CommandResult> run(

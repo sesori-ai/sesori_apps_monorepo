@@ -5,15 +5,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../bridge/repositories/session_repository.dart";
 import "../bridge/services/session_options_service.dart";
 
-class SessionOptionsCreationRefreshListener {
-  SessionOptionsCreationRefreshListener({
-    required Stream<SessionBindingsCommitted> source,
-    required SessionOptionsService service,
-  }) : _source = source,
-       _service = service;
-
-  final Stream<SessionBindingsCommitted> _source;
-  final SessionOptionsService _service;
+class SessionOptionsCreationRefreshListener({
+  required final Stream<SessionBindingsCommitted> _source,
+  required final SessionOptionsService _service,
+}) {
   final Set<Future<void>> _pending = {};
   StreamSubscription<SessionBindingsCommitted>? _subscription;
   Future<void>? _disposeFuture;

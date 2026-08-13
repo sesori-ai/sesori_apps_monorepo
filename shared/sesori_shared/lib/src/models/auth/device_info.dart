@@ -13,11 +13,11 @@ part "device_info.g.dart";
 /// from the wire payload (json_serializable `include_if_null: false` default).
 @Freezed(fromJson: true, toJson: true)
 sealed class DeviceInfo with _$DeviceInfo {
-  const factory DeviceInfo({
+  const factory({
     required String name,
     required String? osVersion,
     required String? appVersion,
   }) = _DeviceInfo;
 
-  factory DeviceInfo.fromJson(Map<String, dynamic> json) => _$DeviceInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$DeviceInfoFromJson(json);
 }

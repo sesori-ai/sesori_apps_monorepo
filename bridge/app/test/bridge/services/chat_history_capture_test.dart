@@ -553,20 +553,13 @@ MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   parts: [_part(id: "$id-p1", messageId: id, text: "text of $id")],
 );
 
-class _FakeSessionRepository implements SessionRepository {
-  _FakeSessionRepository({
-    required this.transcript,
-    this.error,
-    this.pluginSessionLookupError,
-    this.existingSessionIds = const {},
-    this.pluginSessionIds = const {},
-  });
-
-  final List<MessageWithParts> transcript;
-  final Object? error;
-  final Object? pluginSessionLookupError;
-  final Set<String> existingSessionIds;
-  final Map<String, Set<String>> pluginSessionIds;
+class _FakeSessionRepository({
+  required final List<MessageWithParts> transcript,
+  final Object? error,
+  final Object? pluginSessionLookupError,
+  final Set<String> existingSessionIds = const {},
+  final Map<String, Set<String>> pluginSessionIds = const {},
+}) implements SessionRepository {
   int fetchCount = 0;
 
   /// Runs while the fetch is in flight, so a test can interleave live events.

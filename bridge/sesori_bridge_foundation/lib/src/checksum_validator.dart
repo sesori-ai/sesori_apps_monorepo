@@ -8,7 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 /// A pure verification primitive shared by the bridge self-updater and the
 /// managed OpenCode runtime installer: both pin per-asset checksums and must
 /// confirm a payload before it is unpacked or placed.
-class ChecksumValidator {
+class ChecksumValidator() {
   /// Whether [filePath] hashes to [expectedHash] (case-insensitive hex).
   /// Returns `false` (rather than throwing) when the file is missing or cannot
   /// be read, so a caller can treat a vanished/unreadable download as a failed

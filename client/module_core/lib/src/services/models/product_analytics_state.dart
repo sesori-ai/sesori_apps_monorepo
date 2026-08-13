@@ -1,60 +1,32 @@
 import "../../foundation/models/product_analytics/product_analytics_preference.dart";
 
-sealed class ProductAnalyticsPreferenceStatus {
-  const ProductAnalyticsPreferenceStatus();
-}
+sealed class const ProductAnalyticsPreferenceStatus();
 
-final class ProductAnalyticsPreferenceUnknown extends ProductAnalyticsPreferenceStatus {
-  const ProductAnalyticsPreferenceUnknown();
-}
+final class const ProductAnalyticsPreferenceUnknown() extends ProductAnalyticsPreferenceStatus;
 
-final class ProductAnalyticsPreferenceKnown extends ProductAnalyticsPreferenceStatus {
-  final ProductAnalyticsPreference preference;
+final class const ProductAnalyticsPreferenceKnown({required final ProductAnalyticsPreference preference}) extends ProductAnalyticsPreferenceStatus;
 
-  const ProductAnalyticsPreferenceKnown({required this.preference});
-}
+sealed class const ProductAnalyticsSynchronizationStatus();
 
-sealed class ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsSynchronizationStatus();
-}
+final class const ProductAnalyticsNotSynchronized() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsNotSynchronized extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsNotSynchronized();
-}
+final class const ProductAnalyticsSynchronizationInProgress() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsSynchronizationInProgress extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsSynchronizationInProgress();
-}
+final class const ProductAnalyticsDisableRequestInProgress() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsDisableRequestInProgress extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsDisableRequestInProgress();
-}
+final class const ProductAnalyticsEnableRequestInProgress() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsEnableRequestInProgress extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsEnableRequestInProgress();
-}
+final class const ProductAnalyticsSynchronized() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsSynchronized extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsSynchronized();
-}
+final class const ProductAnalyticsDisablePending() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsDisablePending extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsDisablePending();
-}
+final class const ProductAnalyticsEnablePending() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsEnablePending extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsEnablePending();
-}
+final class const ProductAnalyticsDisableRetryRequired() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsDisableRetryRequired extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsDisableRetryRequired();
-}
+final class const ProductAnalyticsSynchronizationFailed() extends ProductAnalyticsSynchronizationStatus;
 
-final class ProductAnalyticsSynchronizationFailed extends ProductAnalyticsSynchronizationStatus {
-  const ProductAnalyticsSynchronizationFailed();
-}
-
-enum ProductAnalyticsInactiveReason {
+enum ProductAnalyticsInactiveReason() {
   unauthenticated,
   postSplashNotReady,
   preferenceUnknown,
@@ -65,30 +37,17 @@ enum ProductAnalyticsInactiveReason {
   requestFailure,
 }
 
-sealed class ProductAnalyticsAvailability {
-  const ProductAnalyticsAvailability();
-}
+sealed class const ProductAnalyticsAvailability();
 
-final class ProductAnalyticsActive extends ProductAnalyticsAvailability {
-  const ProductAnalyticsActive();
-}
+final class const ProductAnalyticsActive() extends ProductAnalyticsAvailability;
 
-final class ProductAnalyticsInactive extends ProductAnalyticsAvailability {
-  final ProductAnalyticsInactiveReason reason;
-  const ProductAnalyticsInactive({required this.reason});
-}
+final class const ProductAnalyticsInactive({required final ProductAnalyticsInactiveReason reason}) extends ProductAnalyticsAvailability;
 
-final class ProductAnalyticsState {
-  final ProductAnalyticsPreferenceStatus preference;
-  final ProductAnalyticsSynchronizationStatus synchronization;
-  final ProductAnalyticsAvailability availability;
-
-  const ProductAnalyticsState({
-    required this.preference,
-    required this.synchronization,
-    required this.availability,
-  });
-
+final class const ProductAnalyticsState({
+    required final ProductAnalyticsPreferenceStatus preference,
+    required final ProductAnalyticsSynchronizationStatus synchronization,
+    required final ProductAnalyticsAvailability availability,
+  }) {
   static const initial = ProductAnalyticsState(
     preference: ProductAnalyticsPreferenceUnknown(),
     synchronization: ProductAnalyticsNotSynchronized(),

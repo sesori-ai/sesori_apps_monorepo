@@ -143,7 +143,7 @@ Map<String, Object?> _result() => {
   "is_error": false,
 };
 
-final class _ProcessHarness {
+final class _ProcessHarness() {
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
   Future<void>? beforeInitialize;

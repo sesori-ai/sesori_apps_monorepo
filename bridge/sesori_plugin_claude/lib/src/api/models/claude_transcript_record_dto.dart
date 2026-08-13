@@ -14,7 +14,7 @@ typedef ClaudeTranscriptLineDto = ({ClaudeTranscriptRecordDto record, Map<String
 /// consumes.
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
-  const factory ClaudeTranscriptRecordDto({
+  const factory({
     @JsonKey(fromJson: _stringOrNull) required String? type,
     @JsonKey(fromJson: _stringOrNull) required String? sessionId,
     @JsonKey(fromJson: _stringOrNull) required String? cwd,
@@ -29,19 +29,19 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _messageOrNull) required ClaudeTranscriptMessageDto? message,
   }) = _ClaudeTranscriptRecordDto;
 
-  factory ClaudeTranscriptRecordDto.fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
 }
 
 /// The nested Anthropic message persisted by `user` and `assistant` records.
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeTranscriptMessageDto with _$ClaudeTranscriptMessageDto {
-  const factory ClaudeTranscriptMessageDto({
+  const factory({
     @JsonKey(fromJson: _stringOrNull) required String? id,
     @JsonKey(fromJson: _stringOrNull) required String? model,
     required Object? content,
   }) = _ClaudeTranscriptMessageDto;
 
-  factory ClaudeTranscriptMessageDto.fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptMessageDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptMessageDtoFromJson(json);
 }
 
 String? _stringOrNull(Object? value) => value is String ? value : null;

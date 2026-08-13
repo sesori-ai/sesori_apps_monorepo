@@ -12,10 +12,9 @@ BenchmarkPluginRuntime createBenchmarkPluginRuntime({required Iterable<BridgePlu
   return BenchmarkPluginRuntime(plugins: {for (final plugin in pluginList) plugin.id: plugin});
 }
 
-class BenchmarkPluginRuntime extends PluginRuntime {
-  BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins})
-    : _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
-      super(
+class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) extends PluginRuntime {
+  this
+    : super(
         registrations: const [],
         generationFactory: const _UnusedGenerationFactory(),
         setupProcesses: const _UnusedHostProcessService(),
@@ -24,7 +23,7 @@ class BenchmarkPluginRuntime extends PluginRuntime {
         shutdownBudget: const Duration(seconds: 1),
       );
 
-  final Map<String, BridgePluginApi> _plugins;
+  final Map<String, BridgePluginApi> _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins);
 
   @override
   Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
@@ -81,7 +80,7 @@ class BenchmarkPluginRuntime extends PluginRuntime {
     if (plugin == null) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
-    return body(plugin);
+    return await body(plugin);
   }
 
   @override
@@ -108,7 +107,7 @@ class BenchmarkPluginRuntime extends PluginRuntime {
     if (plugin == null) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
-    return commit(await prepare(plugin), 1);
+    return await commit(await prepare(plugin), 1);
   }
 
   @override
@@ -141,7 +140,7 @@ class BenchmarkPluginRuntime extends PluginRuntime {
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final plugin = _plugins[pluginId];
-    return plugin == null ? null : body(plugin, 1);
+    return await (plugin == null ? null : body(plugin, 1));
   }
 
   @override
@@ -150,9 +149,7 @@ class BenchmarkPluginRuntime extends PluginRuntime {
   }
 }
 
-class _UnusedGenerationFactory implements PluginGenerationFactory {
-  const _UnusedGenerationFactory();
-
+class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   @override
   Future<void> enforceBridgeOwnership() async {}
 
@@ -163,9 +160,7 @@ class _UnusedGenerationFactory implements PluginGenerationFactory {
   }) => throw UnsupportedError("benchmark runtime is already active");
 }
 
-class _UnusedHostProcessService implements HostProcessService {
-  const _UnusedHostProcessService();
-
+class const _UnusedHostProcessService() implements HostProcessService {
   @override
   Future<ProcessIdentity?> inspect({required int pid}) => throw UnsupportedError("unused");
 

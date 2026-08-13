@@ -16,16 +16,10 @@ typedef UnseenRow = ({
 /// Writes are intentionally UPDATE-only for the activity/seen mutators;
 /// project-level aggregation decides that durable child rows do not contribute
 /// independently.
-class SessionUnseenRepository {
-  final SessionDao _sessionDao;
-  final SessionUnseenCalculator _calculator;
-
-  SessionUnseenRepository({
-    required SessionDao sessionDao,
-    required SessionUnseenCalculator calculator,
-  }) : _sessionDao = sessionDao,
-       _calculator = calculator;
-
+class SessionUnseenRepository({
+  required final SessionDao _sessionDao,
+  required final SessionUnseenCalculator _calculator,
+}) {
   /// Returns the unseen timestamps + project id for [sessionId], or null when
   /// the session has no persisted row.
   Future<UnseenRow?> getUnseenRow({required String sessionId}) async {

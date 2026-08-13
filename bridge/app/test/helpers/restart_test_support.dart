@@ -9,7 +9,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Serve
 
 /// A [ProcessRunner] that fails fast if used — restart is never actually
 /// triggered in these tests, so the runner must stay untouched.
-class NoopProcessRunner implements ProcessRunner {
+class NoopProcessRunner() implements ProcessRunner {
   @override
   Future<ProcessResult> run(
     String executable,

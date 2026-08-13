@@ -7,17 +7,16 @@ import "../logging/logging.dart";
 import "../repositories/message_image_repository.dart";
 
 @lazySingleton
-class MessageThumbnailCacheService {
-  final MessageImageRepository _repository;
+class MessageThumbnailCacheService({
+  required final MessageImageRepository repository,
+  required final AuthSession authSession,
+}) {
+  final MessageImageRepository _repository = repository;
   StreamSubscription<AuthState>? _authSubscription;
   Future<void> _authHandling = Future.value();
-  String? _accountId;
+  late String? _accountId = _authenticatedAccountId(state: authSession.currentState);
 
-  MessageThumbnailCacheService({
-    required MessageImageRepository repository,
-    required AuthSession authSession,
-  }) : _repository = repository,
-       _accountId = _authenticatedAccountId(state: authSession.currentState) {
+  this {
     _authSubscription = authSession.authStateStream.listen(_handleAuthState);
   }
 

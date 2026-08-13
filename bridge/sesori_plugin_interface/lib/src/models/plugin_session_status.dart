@@ -6,9 +6,9 @@ part "plugin_session_status.g.dart";
 
 @freezed
 sealed class PluginSessionStatus with _$PluginSessionStatus {
-  const factory PluginSessionStatus.idle() = PluginSessionStatusIdle;
-  const factory PluginSessionStatus.busy() = PluginSessionStatusBusy;
-  const factory PluginSessionStatus.retry({
+  const factory idle() = PluginSessionStatusIdle;
+  const factory busy() = PluginSessionStatusBusy;
+  const factory retry({
     required int attempt,
     required String message,
     required int next,

@@ -305,7 +305,7 @@ String _captureWarnings(void Function() action) {
   return stderr.text;
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();
@@ -317,11 +317,7 @@ class _BufferingStdout implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-class _ThrowingCastMap extends MapBase<Object?, Object?> {
-  _ThrowingCastMap(this._values);
-
-  final Map<Object?, Object?> _values;
-
+class _ThrowingCastMap(final Map<Object?, Object?> _values) extends MapBase<Object?, Object?> {
   @override
   Object? operator [](Object? key) => _values[key];
 

@@ -9,7 +9,7 @@ import "../../utils/color_extensions.dart";
 
 /// Where [PregoGlassScaffold] parks its
 /// [PregoGlassScaffold.floatingActionButton].
-enum PregoFloatingActionAlignment {
+enum PregoFloatingActionAlignment() {
   /// Trailing edge — Flutter's [FloatingActionButtonLocation.endFloat], the
   /// placement for a corner action such as add-project or new-session.
   end,
@@ -77,56 +77,30 @@ enum PregoFloatingActionAlignment {
 ///   slivers: [SliverList.builder(...)],
 /// )
 /// ```
-class PregoGlassScaffold extends StatefulWidget {
-  const PregoGlassScaffold({
+class const PregoGlassScaffold({
     super.key,
-    required this.title,
-    required this.slivers,
-    this.subtitle,
-    this.subtitleText,
-    this.titleMode = PregoTopNavigationTitleMode.collapsing,
-    this.leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
-    this.banner,
-    this.actions,
-    this.leading,
-    this.onBack,
-    this.automaticallyImplyLeading = true,
-    this.floatingActionButton,
-    this.floatingActionAlignment = PregoFloatingActionAlignment.end,
-    this.overlay,
-    this.onRefresh,
-    this.backgroundColor,
-    this.extendBodyBehindBar = true,
-    this.reserveBarSpace = true,
-    this.scrollable = true,
-  }) : assert(
-         scrollable || onRefresh == null,
-         "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
-       );
-
-  /// Primary title — shown large below the bar and, once collapsed, inline.
-  final String title;
-
-  /// The back-leading title block's second line — a self-contained,
+    /// Primary title — shown large below the bar and, once collapsed, inline.
+  required final String title,
+    /// The page's content slivers, rendered below the auto-injected spacer and
+  /// large title. Non-scrolling states (loading, empty, error) should be a
+  /// single [SliverFillRemaining].
+  required final List<Widget> slivers,
+    /// The back-leading title block's second line — a self-contained,
   /// caller-composed widget (typically a [PregoNavSubtitle]) holding
   /// everything the row needs: icon, status dot, tap affordance.
   /// [PregoTopNavigationTitleMode.backLeading] only; null renders the title
   /// on its own.
-  final Widget? subtitle;
-
-  /// Optional second text line rendered beneath the [title] in the bar's own
+  final Widget? subtitle,
+    /// Optional second text line rendered beneath the [title] in the bar's own
   /// muted style — the large title's second line (collapsing mode) or the
   /// centred inline subtitle (inline mode).
-  final String? subtitleText;
-
-  /// How the bar presents its title — collapsing large title (default), fixed
+  final String? subtitleText,
+    /// How the bar presents its title — collapsing large title (default), fixed
   /// centred inline title, or the back-leading title block. See the class doc.
-  final PregoTopNavigationTitleMode titleMode;
-
-  /// Weight of the back-leading title line. Back-leading [titleMode] only.
-  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis;
-
-  /// An inline alert hosted in the top-navigation area, below the status bar
+  final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,
+    /// Weight of the back-leading title line. Back-leading [titleMode] only.
+  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
+    /// An inline alert hosted in the top-navigation area, below the status bar
   /// and above the bar row (e.g. a [PregoInlineAlertsNotifications]).
   ///
   /// Going `null` → non-null slides the alert down from under the status bar,
@@ -140,58 +114,41 @@ class PregoGlassScaffold extends StatefulWidget {
   /// The widget must not depend on [PregoTopBarInsetBuilder] itself: the
   /// banner's rendered height feeds that inset, so reading it back from inside
   /// the banner would oscillate between the two layouts.
-  final Widget? banner;
-
-  /// The page's content slivers, rendered below the auto-injected spacer and
-  /// large title. Non-scrolling states (loading, empty, error) should be a
-  /// single [SliverFillRemaining].
-  final List<Widget> slivers;
-
-  /// Trailing bar actions. Build these with PregoButtonsIconGlass components so
+  final Widget? banner,
+    /// Trailing bar actions. Build these with PregoButtonsIconGlass components so
   /// they match the leading/back button.
-  final List<Widget>? actions;
-
-  /// Overrides the leading slot entirely. Takes precedence over [onBack] and
+  final List<Widget>? actions,
+    /// Overrides the leading slot entirely. Takes precedence over [onBack] and
   /// [automaticallyImplyLeading].
-  final Widget? leading;
-
-  /// When set (and [leading] is null), renders a glass back button that invokes
+  final Widget? leading,
+    /// When set (and [leading] is null), renders a glass back button that invokes
   /// this callback instead of relying on the enclosing navigator.
-  final VoidCallback? onBack;
-
-  /// Whether the bar may infer a back button from the navigator when neither
+  final VoidCallback? onBack,
+    /// Whether the bar may infer a back button from the navigator when neither
   /// [leading] nor [onBack] is supplied.
-  final bool automaticallyImplyLeading;
-
-  /// Optional floating action button, forwarded to the inner [GlassScaffold].
-  final Widget? floatingActionButton;
-
-  /// Where [floatingActionButton] sits horizontally. Defaults to the trailing
+  final bool automaticallyImplyLeading = true,
+    /// Optional floating action button, forwarded to the inner [GlassScaffold].
+  final Widget? floatingActionButton,
+    /// Where [floatingActionButton] sits horizontally. Defaults to the trailing
   /// edge.
-  final PregoFloatingActionAlignment floatingActionAlignment;
-
-  /// A full-screen overlay painted above the body but below the bar, so the
+  final PregoFloatingActionAlignment floatingActionAlignment = PregoFloatingActionAlignment.end,
+    /// A full-screen overlay painted above the body but below the bar, so the
   /// bar (and its back button) stays interactive while it is shown. Use for a
   /// modal scrim such as a blocking loading indicator. Null shows nothing.
-  final Widget? overlay;
-
-  /// When set, an in-scroll refresh control opens below the top bar and pushes
+  final Widget? overlay,
+    /// When set, an in-scroll refresh control opens below the top bar and pushes
   /// the caller-provided content down while it is pulled.
-  final Future<void> Function()? onRefresh;
-
-  /// Page background painted behind the glass. Defaults to `bgSurface1`.
-  final Color? backgroundColor;
-
-  /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
+  final Future<void> Function()? onRefresh,
+    /// Page background painted behind the glass. Defaults to `bgSurface1`.
+  final Color? backgroundColor,
+    /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
   /// for bodies with pinned slivers that must pin below the bar.
-  final bool extendBodyBehindBar;
-
-  /// Whether to inject the top spacer that pushes the first content below the
+  final bool extendBodyBehindBar = true,
+    /// Whether to inject the top spacer that pushes the first content below the
   /// bar. Defaults to `true`. Set `false` when the body owns its own scroll and
   /// insets itself (see the class doc).
-  final bool reserveBarSpace;
-
-  /// Whether the page itself scrolls. Defaults to `true`
+  final bool reserveBarSpace = true,
+    /// Whether the page itself scrolls. Defaults to `true`
   /// ([AlwaysScrollableScrollPhysics]). Set `false`
   /// ([NeverScrollableScrollPhysics]) for screens whose body fills the viewport
   /// and owns its own scroll (e.g. a reversed chat list): the outer page then
@@ -199,13 +156,18 @@ class PregoGlassScaffold extends StatefulWidget {
   /// e.g. on a pinned composer — no longer drags the whole page. Only the body's
   /// own scrollable moves. Incompatible with [onRefresh], which needs the page
   /// to be draggable.
-  final bool scrollable;
+  final bool scrollable = true,
+  }) extends StatefulWidget {
+  this : assert(
+         scrollable || onRefresh == null,
+         "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
+       );
 
   @override
   State<PregoGlassScaffold> createState() => _PregoGlassScaffoldState();
 }
 
-class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
+class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   final ScrollController _scrollController = ScrollController();
 
   /// The banner slot's currently rendered height, measured after each layout.
@@ -511,16 +473,12 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 /// The first layout adopts the banner's size without animating (AnimatedSize
 /// semantics), so a screen pushed while a banner condition already holds shows
 /// it in place rather than replaying the entrance.
-class _AnimatedBannerSlot extends StatefulWidget {
-  const _AnimatedBannerSlot({required this.banner, required this.onHeightChanged});
-
+class const _AnimatedBannerSlot({
   /// The current banner, or `null` when nothing should show.
-  final Widget? banner;
-
+  required final Widget? banner,
   /// Reports the slot's rendered height after every layout in which it
   /// changed — each frame of the show/hide animation, and once at rest.
-  final ValueChanged<double> onHeightChanged;
-
+  required final ValueChanged<double> onHeightChanged}) extends StatefulWidget {
   static const Duration _duration = Duration(milliseconds: 300);
   static const Curve _curve = Curves.easeInOutCubic;
 
@@ -528,7 +486,7 @@ class _AnimatedBannerSlot extends StatefulWidget {
   State<_AnimatedBannerSlot> createState() => _AnimatedBannerSlotState();
 }
 
-class _AnimatedBannerSlotState extends State<_AnimatedBannerSlot> {
+class _AnimatedBannerSlotState() extends State<_AnimatedBannerSlot> {
   /// The last non-null banner. Kept while the exit animation runs so the real
   /// content is what slides away; cleared once the collapse lands.
   Widget? _retained;
@@ -604,11 +562,7 @@ class _AnimatedBannerSlotState extends State<_AnimatedBannerSlot> {
 /// changes. The callback is invoked post-frame so listeners may safely call
 /// `setState`/notify — the same measure-and-report pattern as the session
 /// detail composer measurement.
-class _HeightObserver extends SingleChildRenderObjectWidget {
-  const _HeightObserver({required this.onHeightChanged, required super.child});
-
-  final ValueChanged<double> onHeightChanged;
-
+class const _HeightObserver({required final ValueChanged<double> onHeightChanged, required super.child}) extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderHeightObserver(onHeightChanged);
 
@@ -618,10 +572,7 @@ class _HeightObserver extends SingleChildRenderObjectWidget {
   }
 }
 
-class _RenderHeightObserver extends RenderProxyBox {
-  _RenderHeightObserver(this.onHeightChanged);
-
-  ValueChanged<double> onHeightChanged;
+class _RenderHeightObserver(var ValueChanged<double> onHeightChanged) extends RenderProxyBox {
   double? _lastReportedHeight;
 
   @override
@@ -640,11 +591,7 @@ class _RenderHeightObserver extends RenderProxyBox {
 /// offset while converting overscroll into a held refresh extent. A widget-level
 /// transform rebuilt during that correction can observe the new scroll offset
 /// with the old sliver geometry for one frame, making the title jump.
-class _OverscrollPinnedBox extends SingleChildRenderObjectWidget {
-  const _OverscrollPinnedBox({required this.pulledExtent, required super.child});
-
-  final ValueGetter<double> pulledExtent;
-
+class const _OverscrollPinnedBox({required final ValueGetter<double> pulledExtent, required super.child}) extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderOverscrollPinnedBox(pulledExtent);
 
@@ -654,11 +601,7 @@ class _OverscrollPinnedBox extends SingleChildRenderObjectWidget {
   }
 }
 
-class _RenderOverscrollPinnedBox extends RenderProxyBox {
-  _RenderOverscrollPinnedBox(this._pulledExtent);
-
-  ValueGetter<double> _pulledExtent;
-
+class _RenderOverscrollPinnedBox(var ValueGetter<double> _pulledExtent) extends RenderProxyBox {
   void updatePulledExtent(ValueGetter<double> value) {
     _pulledExtent = value;
     markNeedsPaint();
@@ -698,19 +641,13 @@ class _RenderOverscrollPinnedBox extends RenderProxyBox {
 /// animation, so depending on this scope alone never causes per-frame
 /// rebuilds — [PregoTopBarInsetBuilder] subscribes to the listenable where
 /// per-frame tracking is wanted.
-class _TopBarInsetScope extends InheritedWidget {
-  const _TopBarInsetScope({
-    required this.baseInset,
-    required this.bannerHeight,
+class const _TopBarInsetScope({
+    /// Status-bar inset plus the bar row height — the top inset with no banner.
+  required final double baseInset,
+    /// The banner slot's rendered height, following the show/hide animation.
+  required final ValueListenable<double> bannerHeight,
     required super.child,
-  });
-
-  /// Status-bar inset plus the bar row height — the top inset with no banner.
-  final double baseInset;
-
-  /// The banner slot's rendered height, following the show/hide animation.
-  final ValueListenable<double> bannerHeight;
-
+  }) extends InheritedWidget {
   @override
   bool updateShouldNotify(_TopBarInsetScope oldWidget) =>
       baseInset != oldWidget.baseInset || !identical(bannerHeight, oldWidget.bannerHeight);
@@ -730,15 +667,12 @@ class _TopBarInsetScope extends InheritedWidget {
 ///
 /// Without an enclosing [PregoGlassScaffold] (e.g. a body pumped alone in a
 /// widget test), [builder] gets the static bar inset.
-class PregoTopBarInsetBuilder extends StatelessWidget {
-  const PregoTopBarInsetBuilder({super.key, required this.builder, this.child});
-
+class const PregoTopBarInsetBuilder({
+  super.key,
   /// Built with the current top inset; re-invoked as the banner animates.
-  final Widget Function(BuildContext context, double topInset, Widget? child) builder;
-
+  required final Widget Function(BuildContext context, double topInset, Widget? child) builder,
   /// Inset-independent subtree passed through to [builder] without rebuilding.
-  final Widget? child;
-
+  final Widget? child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<_TopBarInsetScope>();
@@ -753,20 +687,13 @@ class PregoTopBarInsetBuilder extends StatelessWidget {
   }
 }
 
-class _LargeTitleSliver extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final ScrollController scrollController;
-  final ValueChanged<double> onHeightChanged;
-  final ValueGetter<double>? pulledExtent;
-  const _LargeTitleSliver({
-    required this.title,
-    required this.subtitle,
-    required this.scrollController,
-    required this.onHeightChanged,
-    required this.pulledExtent,
-  });
-
+class const _LargeTitleSliver({
+    required final String title,
+    required final String? subtitle,
+    required final ScrollController scrollController,
+    required final ValueChanged<double> onHeightChanged,
+    required final ValueGetter<double>? pulledExtent,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

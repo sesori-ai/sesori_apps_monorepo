@@ -3,14 +3,10 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "new_session_backend_scope.freezed.dart";
 
 @Freezed()
-sealed class NewSessionBackendScopeTransition with _$NewSessionBackendScopeTransition {
-  const NewSessionBackendScopeTransition._();
+sealed class const NewSessionBackendScopeTransition._() with _$NewSessionBackendScopeTransition {
+  const factory retained({required String bridgeId}) = NewSessionBackendScopeRetainedTransition;
 
-  const factory NewSessionBackendScopeTransition.retained({required String bridgeId}) =
-      NewSessionBackendScopeRetainedTransition;
-
-  const factory NewSessionBackendScopeTransition.invalidated({required String? bridgeId}) =
-      NewSessionBackendScopeInvalidatedTransition;
+  const factory invalidated({required String? bridgeId}) = NewSessionBackendScopeInvalidatedTransition;
 
   bool get retainsBackendState => this is NewSessionBackendScopeRetainedTransition;
 
@@ -23,13 +19,10 @@ sealed class NewSessionBackendScopeTransition with _$NewSessionBackendScopeTrans
 }
 
 @Freezed()
-sealed class NewSessionBackendScope with _$NewSessionBackendScope {
-  const NewSessionBackendScope._();
+sealed class const NewSessionBackendScope._() with _$NewSessionBackendScope {
+  const factory unverified({required String? lastIdentifiedBridgeId}) = NewSessionBackendScopeUnverified;
 
-  const factory NewSessionBackendScope.unverified({required String? lastIdentifiedBridgeId}) =
-      NewSessionBackendScopeUnverified;
-
-  const factory NewSessionBackendScope.verified({required String? bridgeId}) = NewSessionBackendScopeVerified;
+  const factory verified({required String? bridgeId}) = NewSessionBackendScopeVerified;
 
   bool get isVerified => this is NewSessionBackendScopeVerified;
 

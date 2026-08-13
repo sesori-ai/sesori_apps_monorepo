@@ -5,16 +5,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "http_method.dart";
 import "models/restart_bridge_response.dart";
 
-class PendingRoutedRequest {
-  final RouteIdentity routeIdentity;
-  final Future<RoutedRequestOutcome> completion;
+class const PendingRoutedRequest({
+  required final RouteIdentity routeIdentity,
+  required final Future<RoutedRequestOutcome> completion,
+});
 
-  const PendingRoutedRequest({required this.routeIdentity, required this.completion});
-}
-
-sealed class RouteIdentity {
-  const RouteIdentity();
-
+sealed class const RouteIdentity() {
   String get diagnosticLabel => switch (this) {
     MatchedRoute(:final method, :final pathTemplate) => "${method.diagnosticLabel} $pathTemplate",
     UnmatchedRoute(:final method) => "${method.diagnosticLabel} unmatched route",
@@ -23,47 +19,22 @@ sealed class RouteIdentity {
   };
 }
 
-final class MatchedRoute extends RouteIdentity {
-  final HttpMethod method;
-  final String pathTemplate;
+final class const MatchedRoute({required final HttpMethod method, required final String pathTemplate})
+    extends RouteIdentity;
 
-  const MatchedRoute({required this.method, required this.pathTemplate});
-}
+final class const UnmatchedRoute({required final HttpMethod method}) extends RouteIdentity;
 
-final class UnmatchedRoute extends RouteIdentity {
-  final HttpMethod method;
+final class const InvalidMethodRoute() extends RouteIdentity;
 
-  const UnmatchedRoute({required this.method});
-}
+final class const InvalidTargetRoute({required final HttpMethod method}) extends RouteIdentity;
 
-final class InvalidMethodRoute extends RouteIdentity {
-  const InvalidMethodRoute();
-}
-
-final class InvalidTargetRoute extends RouteIdentity {
-  final HttpMethod method;
-
-  const InvalidTargetRoute({required this.method});
-}
-
-sealed class RoutedRequestOutcome {
-  const RoutedRequestOutcome();
-
+sealed class const RoutedRequestOutcome() {
   RelayResponse get response;
 }
 
-final class ResponseOnly extends RoutedRequestOutcome {
-  @override
-  final RelayResponse response;
+final class const ResponseOnly({@override required final RelayResponse response}) extends RoutedRequestOutcome;
 
-  const ResponseOnly({required this.response});
-}
-
-final class RestartAccepted extends RoutedRequestOutcome {
-  final String requestId;
-
-  const RestartAccepted({required this.requestId});
-
+final class const RestartAccepted({required final String requestId}) extends RoutedRequestOutcome {
   @override
   RelayResponse get response => RelayResponse(
     id: requestId,

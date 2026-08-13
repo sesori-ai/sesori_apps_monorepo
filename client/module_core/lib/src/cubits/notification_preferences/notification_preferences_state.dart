@@ -5,13 +5,13 @@ part "notification_preferences_state.freezed.dart";
 
 @Freezed()
 sealed class NotificationPreferencesState with _$NotificationPreferencesState {
-  const factory NotificationPreferencesState.loading() = NotificationPreferencesLoading;
+  const factory loading() = NotificationPreferencesLoading;
 
-  const factory NotificationPreferencesState.accountUnavailable() = NotificationPreferencesAccountUnavailable;
+  const factory accountUnavailable() = NotificationPreferencesAccountUnavailable;
 
-  const factory NotificationPreferencesState.loadFailed() = NotificationPreferencesLoadFailed;
+  const factory loadFailed() = NotificationPreferencesLoadFailed;
 
-  const factory NotificationPreferencesState.loaded({
+  const factory loaded({
     required Map<NotificationCategory, bool> preferences,
     required Set<NotificationCategory> updatingCategories,
   }) = NotificationPreferencesLoaded;

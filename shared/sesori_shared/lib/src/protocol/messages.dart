@@ -8,7 +8,7 @@ part "messages.g.dart";
 @Freezed(unionKey: "type", unionValueCase: FreezedUnionCase.snake)
 sealed class RelayMessage with _$RelayMessage {
   @FreezedUnionValue("request")
-  const factory RelayMessage.request({
+  const factory request({
     required String id,
     required String method,
     required String path,
@@ -17,7 +17,7 @@ sealed class RelayMessage with _$RelayMessage {
   }) = RelayRequest;
 
   @FreezedUnionValue("response")
-  const factory RelayMessage.response({
+  const factory response({
     required String id,
     required int status,
     required Map<String, String> headers,
@@ -25,17 +25,17 @@ sealed class RelayMessage with _$RelayMessage {
   }) = RelayResponse;
 
   @FreezedUnionValue("sse_event")
-  const factory RelayMessage.sseEvent({required String data}) = RelaySseEvent;
+  const factory sseEvent({required String data}) = RelaySseEvent;
 
   @FreezedUnionValue("sse_subscribe")
-  const factory RelayMessage.sseSubscribe({
+  const factory sseSubscribe({
     required String path,
     // COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
     @Default(MessageAttachmentDelivery.inline) MessageAttachmentDelivery attachmentDelivery,
   }) = RelaySseSubscribe;
 
   @FreezedUnionValue("sse_unsubscribe")
-  const factory RelayMessage.sseUnsubscribe() = RelaySseUnsubscribe;
+  const factory sseUnsubscribe() = RelaySseUnsubscribe;
 
   /// Connection-scoped declaration of which session the phone is currently
   /// viewing (the session detail screen). [sessionId] is null when the phone
@@ -43,38 +43,38 @@ sealed class RelayMessage with _$RelayMessage {
   /// analogous to [RelaySseSubscribe]; the bridge tracks it per-connection and
   /// auto-releases it on disconnect.
   @FreezedUnionValue("session_view")
-  const factory RelayMessage.sessionView({required String? sessionId}) = RelaySessionView;
+  const factory sessionView({required String? sessionId}) = RelaySessionView;
 
   /// Connection-scoped declaration of which project the phone is currently
   /// viewing. [projectId] is null when the phone is not viewing any project.
   /// This is a fire-and-forget control message with no response.
   @FreezedUnionValue("project_view")
-  const factory RelayMessage.projectView({required String? projectId}) = RelayProjectView;
+  const factory projectView({required String? projectId}) = RelayProjectView;
 
   @FreezedUnionValue("key_exchange")
-  const factory RelayMessage.keyExchange({required String publicKey}) = RelayKeyExchange;
+  const factory keyExchange({required String publicKey}) = RelayKeyExchange;
 
   @FreezedUnionValue("ready")
-  const factory RelayMessage.ready({
+  const factory ready({
     required String publicKey,
     required String roomKey,
   }) = RelayReady;
 
   @FreezedUnionValue("resume")
-  const factory RelayMessage.resume() = RelayResume;
+  const factory resume() = RelayResume;
 
   @FreezedUnionValue("resume_ack")
-  const factory RelayMessage.resumeAck() = RelayResumeAck;
+  const factory resumeAck() = RelayResumeAck;
 
   @FreezedUnionValue("rekey_required")
-  const factory RelayMessage.rekeyRequired() = RelayRekeyRequired;
+  const factory rekeyRequired() = RelayRekeyRequired;
 
   @FreezedUnionValue("auth")
-  const factory RelayMessage.auth({
+  const factory auth({
     required String token,
     required String role,
     @JsonKey(includeIfNull: false) required String? bridgeId,
   }) = AuthRelayMessage;
 
-  factory RelayMessage.fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);
 }

@@ -51,7 +51,7 @@ import "models/stored_session.dart";
 import "models/verified_github_login.dart";
 import "session_unseen_calculator.dart";
 
-enum SessionBindingCommitKind { sessionCreation, catalogSync }
+enum SessionBindingCommitKind() { sessionCreation, catalogSync }
 
 typedef SessionBindingsCommitted = ({
   String pluginId,
@@ -66,17 +66,19 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
 
-class SessionRepository {
+class SessionRepository({
+    required final PluginRuntime _runtime,
+    required Set<String> bridgeDerivedProjectPluginIds,
+    required final SessionDao _sessionDao,
+    required final ProjectsDao _projectsDao,
+    required final PullRequestDao _pullRequestDao,
+    required final SessionUnseenCalculator _unseenCalculator,
+    required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+    required final Duration _aggregateSourceDeadline,
+  }) {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
-  final PluginRuntime _runtime;
-  final Set<String> _bridgeDerivedProjectPluginIds;
-  final SessionDao _sessionDao;
-  final ProjectsDao _projectsDao;
-  final PullRequestDao _pullRequestDao;
-  final SessionUnseenCalculator _unseenCalculator;
-  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
-  final Duration _aggregateSourceDeadline;
+  final Set<String> _bridgeDerivedProjectPluginIds = Set<String>.unmodifiable(bridgeDerivedProjectPluginIds);
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
   final Set<String> _deletedSessionIds = <String>{};
   final StreamController<SessionBindingsCommitted> _bindingCommitsController =
@@ -85,23 +87,6 @@ class SessionRepository {
   final Set<String> _tombstonesLoaded = <String>{};
   int _lastProjectionTimestamp = 0;
 
-  SessionRepository({
-    required PluginRuntime runtime,
-    required Set<String> bridgeDerivedProjectPluginIds,
-    required SessionDao sessionDao,
-    required ProjectsDao projectsDao,
-    required PullRequestDao pullRequestDao,
-    required SessionUnseenCalculator unseenCalculator,
-    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-    required Duration aggregateSourceDeadline,
-  }) : _runtime = runtime,
-       _bridgeDerivedProjectPluginIds = Set<String>.unmodifiable(bridgeDerivedProjectPluginIds),
-       _sessionDao = sessionDao,
-       _projectsDao = projectsDao,
-       _pullRequestDao = pullRequestDao,
-       _unseenCalculator = unseenCalculator,
-       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
-       _aggregateSourceDeadline = aggregateSourceDeadline;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
 
@@ -160,7 +145,7 @@ class SessionRepository {
       throw ProjectNotFoundException(projectId: projectId);
     }
     final effectiveLimit = limit == null || limit <= 0 ? null : limit;
-    return _mapCatalogSessions(
+    return await _mapCatalogSessions(
       rows: await _sessionDao.getRootCatalogSessions(
         projectId: projectId,
         offset: start ?? 0,
@@ -325,7 +310,7 @@ class SessionRepository {
       sessionId: sessionId,
       operation: SessionOperation.sendCommand,
     );
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.sendCommand,
       body: (plugin) {
@@ -357,7 +342,7 @@ class SessionRepository {
       sessionId: sessionId,
       operation: SessionOperation.sendPrompt,
     );
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.sendPrompt,
       body: (plugin) {
@@ -475,7 +460,7 @@ class SessionRepository {
   Future<void> _ensureTombstonesLoaded({required String pluginId}) async {
     if (_tombstonesLoaded.contains(pluginId)) return;
     final inFlight = _tombstoneLoads[pluginId];
-    if (inFlight != null) return inFlight;
+    if (inFlight != null) return await inFlight;
 
     final load = _loadTombstones(pluginId: pluginId);
     _tombstoneLoads[pluginId] = load;
@@ -914,7 +899,7 @@ class SessionRepository {
       sessionId: sessionId,
       operation: SessionOperation.archiveSession,
     );
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.archiveSession,
       body: (plugin) {
@@ -929,7 +914,7 @@ class SessionRepository {
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
     );
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.abortSession,
       body: (plugin) {
@@ -1091,7 +1076,7 @@ class SessionRepository {
         message: "session $sessionId was not found",
       );
     }
-    return _mapCatalogSessions(
+    return await _mapCatalogSessions(
       rows: await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId),
       verifiedGithubLogin: null,
     );
@@ -1183,7 +1168,7 @@ class SessionRepository {
   }
 
   Future<String?> getProjectPath({required String projectId}) async {
-    return _projectsDao.getResolvedPath(projectId: projectId);
+    return await _projectsDao.getResolvedPath(projectId: projectId);
   }
 
   Future<StoredSession?> getStoredSession({required String sessionId}) async {
@@ -1220,7 +1205,7 @@ class SessionRepository {
     required bool updateCatalogTitle,
     required int projectionUpdatedAt,
   }) async {
-    return _runtime.commitCurrentGeneration(
+    return await _runtime.commitCurrentGeneration(
       pluginId: pluginId,
       generation: generation,
       operation: SessionOperation.updateObservedSessionProjection,
@@ -1273,7 +1258,7 @@ class SessionRepository {
     required StoredSession parent,
     required int projectionUpdatedAt,
   }) async {
-    return _runtime.commitCurrentGeneration(
+    return await _runtime.commitCurrentGeneration(
       pluginId: pluginId,
       generation: generation,
       operation: SessionOperation.insertObservedChild,
@@ -1361,7 +1346,7 @@ class SessionRepository {
     required SessionOperation operation,
   }) async {
     final binding = await _requireBinding(sessionId: sessionId, operation: operation);
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: operation,
       body: (_) async => binding.toStoredSession(),
@@ -1561,30 +1546,16 @@ class SessionRepository {
   }
 }
 
-class _PluginActivityObservation {
-  const _PluginActivityObservation({
-    required this.pluginId,
-    required this.summaries,
-    required this.backendSessionIds,
-    required this.hydrations,
+class const _PluginActivityObservation({
+    required final String pluginId,
+    required final List<PluginProjectActivitySummary> summaries,
+    required final Set<String> backendSessionIds,
+    required final List<_ActiveRootHydration> hydrations,
   });
 
-  final String pluginId;
-  final List<PluginProjectActivitySummary> summaries;
-  final Set<String> backendSessionIds;
-  final List<_ActiveRootHydration> hydrations;
-}
-
-class _ActiveRootHydration {
-  const _ActiveRootHydration({
-    required this.summaryId,
-    required this.preferredProjectId,
-    required this.projectDirectory,
-    required this.sessions,
+class const _ActiveRootHydration({
+    required final String summaryId,
+    required final String preferredProjectId,
+    required final String projectDirectory,
+    required final List<PluginSession> sessions,
   });
-
-  final String summaryId;
-  final String preferredProjectId;
-  final String projectDirectory;
-  final List<PluginSession> sessions;
-}

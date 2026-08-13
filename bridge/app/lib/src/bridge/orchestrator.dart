@@ -176,73 +176,31 @@ typedef OrchestratorComposition = ({
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
-class Orchestrator {
-  final BridgeConfig config;
-  final RelayClient _client;
-  final String _legacyMissingPluginId;
-  final PluginLifecycleService _pluginLifecycleService;
-  final PluginRuntime _pluginRuntime;
-  final BridgeSettingsRepository _bridgeSettingsRepository;
-  final ServerClock _clock;
-  final AppDatabase _database;
-  final ChatHistoryDatabase _chatHistoryDatabase;
-  final AttachmentSpillStorage _attachmentSpillStorage;
-  final ArchivedSessionStorage _archivedSessionStorage;
-  final http.Client _httpClient;
-  final ProcessRunner _processRunner;
-  final AccessTokenProvider _accessTokenProvider;
-  final TokenRefresher _tokenRefresher;
-  final BridgeRegistrationService _bridgeRegistrationService;
-  final FailureReporter _failureReporter;
-  final BridgeRestartService _restartService;
-  final bool _filesystemAccessOk;
-  final ControlStatusNotifier? _statusNotifier;
-  final ReconnectBackoffPolicy _reconnectBackoff;
-
-  Orchestrator({
-    required this.config,
-    required RelayClient client,
-    required String legacyMissingPluginId,
-    required PluginLifecycleService pluginLifecycleService,
-    required PluginRuntime pluginRuntime,
-    required BridgeSettingsRepository bridgeSettingsRepository,
-    required ServerClock clock,
-    required AppDatabase database,
-    required ChatHistoryDatabase chatHistoryDatabase,
-    required AttachmentSpillStorage attachmentSpillStorage,
-    required ArchivedSessionStorage archivedSessionStorage,
-    required http.Client httpClient,
-    required ProcessRunner processRunner,
-    required AccessTokenProvider accessTokenProvider,
-    required TokenRefresher tokenRefresher,
-    required BridgeRegistrationService bridgeRegistrationService,
-    required FailureReporter failureReporter,
-    required BridgeRestartService restartService,
-    required bool filesystemAccessOk,
+class Orchestrator({
+    required final BridgeConfig config,
+    required final RelayClient _client,
+    required final String _legacyMissingPluginId,
+    required final PluginLifecycleService _pluginLifecycleService,
+    required final PluginRuntime _pluginRuntime,
+    required final BridgeSettingsRepository _bridgeSettingsRepository,
+    required final ServerClock _clock,
+    required final AppDatabase _database,
+    required final ChatHistoryDatabase _chatHistoryDatabase,
+    required final AttachmentSpillStorage _attachmentSpillStorage,
+    required final ArchivedSessionStorage _archivedSessionStorage,
+    required final http.Client _httpClient,
+    required final ProcessRunner _processRunner,
+    required final AccessTokenProvider _accessTokenProvider,
+    required final TokenRefresher _tokenRefresher,
+    required final BridgeRegistrationService _bridgeRegistrationService,
+    required final FailureReporter _failureReporter,
+    required final BridgeRestartService _restartService,
+    required final bool _filesystemAccessOk,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
-    required ControlStatusNotifier? statusNotifier,
-    required ReconnectBackoffPolicy reconnectBackoff,
-  }) : _client = client,
-       _legacyMissingPluginId = legacyMissingPluginId,
-       _pluginLifecycleService = pluginLifecycleService,
-       _pluginRuntime = pluginRuntime,
-       _bridgeSettingsRepository = bridgeSettingsRepository,
-       _clock = clock,
-       _database = database,
-       _chatHistoryDatabase = chatHistoryDatabase,
-       _attachmentSpillStorage = attachmentSpillStorage,
-       _archivedSessionStorage = archivedSessionStorage,
-       _httpClient = httpClient,
-       _processRunner = processRunner,
-       _accessTokenProvider = accessTokenProvider,
-       _tokenRefresher = tokenRefresher,
-       _bridgeRegistrationService = bridgeRegistrationService,
-       _failureReporter = failureReporter,
-       _restartService = restartService,
-       _filesystemAccessOk = filesystemAccessOk,
-       _statusNotifier = statusNotifier,
-       _reconnectBackoff = reconnectBackoff;
+    required final ControlStatusNotifier? _statusNotifier,
+    required final ReconnectBackoffPolicy _reconnectBackoff,
+  }) {
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
@@ -711,60 +669,65 @@ bool _gitPathExists({required String gitPath}) {
   return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }
 
-enum OrchestratorSessionStartResult { ready, cancelled }
+enum OrchestratorSessionStartResult() { ready, cancelled }
 
 /// A running bridge session with immutable runtime state.
 ///
 /// Created by [Orchestrator.create]. Call [start] once, capture
 /// [waitUntilStopped] immediately, and use [cancel] to shut down gracefully.
-class OrchestratorSession {
-  final BridgeConfig config;
-  final RelayClient _client;
-  final Stream<NormalizedSourcedBridgeEvent> _pluginEvents;
-  final List<PluginEventListener> _pluginEventListeners;
-  final SessionBindingCommitListener _sessionBindingCommitListener;
-  final SessionDeletionListener _sessionDeletionListener;
-  final ChatHistoryListener _chatHistoryListener;
-  final ChatHistoryActivityListener _chatHistoryActivityListener;
-  final ChatHistoryService _chatHistoryService;
-  final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener;
-  final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener;
-  final SessionEventDispatcher _sessionEventDispatcher;
-  final PluginRuntime _pluginRuntime;
-  final List<int> _roomKey;
-  final SSEManager _sseManager;
-  final RoutedRequestDispatcher _routedRequestDispatcher;
-  final BridgeEventMapper _mapper;
-  final PushDispatcher _pushDispatcher;
-  final CompletionPushListener _completionListener;
-  final MaintenancePushListener _maintenanceListener;
-  final AccessTokenProvider _accessTokenProvider;
-  final TokenRefresher _tokenRefresher;
-  final BridgeRegistrationService _bridgeRegistrationService;
-  final StreamController<int> _bytesSentController;
-  final StreamController<SesoriSseEvent> _localWireEventsController;
-  final FailureReporter _failureReporter;
-  final PrSyncService _prSyncService;
-  final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener;
-  final SessionUnseenService _sessionUnseenService;
-  final SessionViewTracker _sessionViewTracker;
-  final ProjectViewTracker _projectViewTracker;
-  final SessionRepository _sessionRepository;
-  final PermissionAutoApprovalService _permissionAutoApprovalService;
-  final YoloSettingsService _yoloSettingsService;
-  final PendingInteractionService _pendingInteractionService;
-  final SessionOperationDispatcher _sessionOperationDispatcher;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
-  final SessionAbortService _sessionAbortService;
-  final SessionPromptService _sessionPromptService;
+class OrchestratorSession._({
+    required final BridgeConfig config,
+    required final RelayClient _client,
+    required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
+    required final List<PluginEventListener> _pluginEventListeners,
+    required final SessionBindingCommitListener _sessionBindingCommitListener,
+    required final SessionDeletionListener _sessionDeletionListener,
+    required final ChatHistoryListener _chatHistoryListener,
+    required final ChatHistoryActivityListener _chatHistoryActivityListener,
+    required final ChatHistoryService _chatHistoryService,
+    required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
+    required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
+    required final SessionEventDispatcher _sessionEventDispatcher,
+    required final PluginRuntime _pluginRuntime,
+    required final PushDispatcher _pushDispatcher,
+    required final CompletionPushListener _completionListener,
+    required final MaintenancePushListener _maintenanceListener,
+    required final AccessTokenProvider _accessTokenProvider,
+    required final TokenRefresher _tokenRefresher,
+    required final BridgeRegistrationService _bridgeRegistrationService,
+    required final List<int> _roomKey,
+    required final SSEManager _sseManager,
+    required final RoutedRequestDispatcher _routedRequestDispatcher,
+    required final BridgeEventMapper _mapper,
+    required final SessionPromptService _sessionPromptService,
+    required Stream<CatalogImportProgress> catalogImportProgress,
+    required Stream<String> pluginManagementSnapshotTokens,
+    required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
+    required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
+    required final StreamController<int> _bytesSentController,
+    required final StreamController<SesoriSseEvent> _localWireEventsController,
+    required final FailureReporter _failureReporter,
+    required final SessionRepository _sessionRepository,
+    required final PrSyncService _prSyncService,
+    required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
+    required final SessionUnseenService _sessionUnseenService,
+    required final SessionViewTracker _sessionViewTracker,
+    required final ProjectViewTracker _projectViewTracker,
+    required final ProjectActivityService _projectActivityService,
+    required final PermissionAutoApprovalService _permissionAutoApprovalService,
+    required final YoloSettingsService _yoloSettingsService,
+    required final PendingInteractionService _pendingInteractionService,
+    required final SessionAbortService _sessionAbortService,
+    required final SessionOperationDispatcher _sessionOperationDispatcher,
+    required final SessionMutationDispatcher _sessionMutationDispatcher,
+    required final BridgeRestartDispatcher _restartDispatcher,
+    required final ControlStatusNotifier? _statusNotifier,
+    required final ReconnectBackoffPolicy _reconnectBackoff,
+  }) {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _promptDefaultsSubscriptions = CompositeSubscription();
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _catalogImportSubscriptions = CompositeSubscription();
-  final ProjectActivityService _projectActivityService;
-  final BridgeRestartDispatcher _restartDispatcher;
-  final ControlStatusNotifier? _statusNotifier;
-  final ReconnectBackoffPolicy _reconnectBackoff;
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
@@ -790,96 +753,7 @@ class OrchestratorSession {
   final Completer<void> _shutdownCompleter = Completer<void>();
   final Completer<void> _firstPhoneConnectedCompleter = Completer<void>();
 
-  OrchestratorSession._({
-    required this.config,
-    required RelayClient client,
-    required Stream<NormalizedSourcedBridgeEvent> pluginEvents,
-    required List<PluginEventListener> pluginEventListeners,
-    required SessionBindingCommitListener sessionBindingCommitListener,
-    required SessionDeletionListener sessionDeletionListener,
-    required ChatHistoryListener chatHistoryListener,
-    required ChatHistoryActivityListener chatHistoryActivityListener,
-    required ChatHistoryService chatHistoryService,
-    required SessionOptionsCreationRefreshListener sessionOptionsCreationRefreshListener,
-    required SessionOptionsChangedRefreshListener sessionOptionsChangedRefreshListener,
-    required SessionEventDispatcher sessionEventDispatcher,
-    required PluginRuntime pluginRuntime,
-    required PushDispatcher pushDispatcher,
-    required CompletionPushListener completionListener,
-    required MaintenancePushListener maintenanceListener,
-    required AccessTokenProvider accessTokenProvider,
-    required TokenRefresher tokenRefresher,
-    required BridgeRegistrationService bridgeRegistrationService,
-    required List<int> roomKey,
-    required SSEManager sseManager,
-    required RoutedRequestDispatcher routedRequestDispatcher,
-    required BridgeEventMapper mapper,
-    required SessionPromptService sessionPromptService,
-    required Stream<CatalogImportProgress> catalogImportProgress,
-    required Stream<String> pluginManagementSnapshotTokens,
-    required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
-    required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
-    required StreamController<int> bytesSentController,
-    required StreamController<SesoriSseEvent> localWireEventsController,
-    required FailureReporter failureReporter,
-    required SessionRepository sessionRepository,
-    required PrSyncService prSyncService,
-    required ViewedProjectPrRefreshListener viewedProjectPrRefreshListener,
-    required SessionUnseenService sessionUnseenService,
-    required SessionViewTracker sessionViewTracker,
-    required ProjectViewTracker projectViewTracker,
-    required ProjectActivityService projectActivityService,
-    required PermissionAutoApprovalService permissionAutoApprovalService,
-    required YoloSettingsService yoloSettingsService,
-    required PendingInteractionService pendingInteractionService,
-    required SessionAbortService sessionAbortService,
-    required SessionOperationDispatcher sessionOperationDispatcher,
-    required SessionMutationDispatcher sessionMutationDispatcher,
-    required BridgeRestartDispatcher restartDispatcher,
-    required ControlStatusNotifier? statusNotifier,
-    required ReconnectBackoffPolicy reconnectBackoff,
-  }) : _client = client,
-       _pluginEvents = pluginEvents,
-       _pluginEventListeners = pluginEventListeners,
-       _sessionBindingCommitListener = sessionBindingCommitListener,
-       _sessionDeletionListener = sessionDeletionListener,
-       _chatHistoryListener = chatHistoryListener,
-       _chatHistoryActivityListener = chatHistoryActivityListener,
-       _chatHistoryService = chatHistoryService,
-       _sessionOptionsCreationRefreshListener = sessionOptionsCreationRefreshListener,
-       _sessionOptionsChangedRefreshListener = sessionOptionsChangedRefreshListener,
-       _sessionEventDispatcher = sessionEventDispatcher,
-       _pluginRuntime = pluginRuntime,
-       _pushDispatcher = pushDispatcher,
-       _completionListener = completionListener,
-       _maintenanceListener = maintenanceListener,
-       _accessTokenProvider = accessTokenProvider,
-       _tokenRefresher = tokenRefresher,
-       _bridgeRegistrationService = bridgeRegistrationService,
-       _roomKey = roomKey,
-       _sseManager = sseManager,
-       _routedRequestDispatcher = routedRequestDispatcher,
-       _mapper = mapper,
-       _sessionPromptService = sessionPromptService,
-       _bytesSentController = bytesSentController,
-       _localWireEventsController = localWireEventsController,
-       _failureReporter = failureReporter,
-       _prSyncService = prSyncService,
-       _viewedProjectPrRefreshListener = viewedProjectPrRefreshListener,
-       _sessionUnseenService = sessionUnseenService,
-       _sessionViewTracker = sessionViewTracker,
-       _projectViewTracker = projectViewTracker,
-       _sessionRepository = sessionRepository,
-       _permissionAutoApprovalService = permissionAutoApprovalService,
-       _yoloSettingsService = yoloSettingsService,
-       _pendingInteractionService = pendingInteractionService,
-       _sessionOperationDispatcher = sessionOperationDispatcher,
-       _sessionMutationDispatcher = sessionMutationDispatcher,
-       _sessionAbortService = sessionAbortService,
-       _projectActivityService = projectActivityService,
-       _restartDispatcher = restartDispatcher,
-       _statusNotifier = statusNotifier,
-       _reconnectBackoff = reconnectBackoff {
+  this {
     _restartDispatcher.shutdownRequests
         .listen((request) {
           switch (request) {
@@ -2511,23 +2385,15 @@ class OrchestratorSession {
 /// Injectable so tests can exercise backoff and takeover scenarios with
 /// milliseconds-order waits instead of real minutes; production uses
 /// [ReconnectBackoffPolicy.standard].
-class ReconnectBackoffPolicy {
-  const ReconnectBackoffPolicy({
-    required this.ordinaryInitial,
-    required this.ordinaryMax,
-    required this.takeoverInitial,
-    required this.takeoverMax,
-  });
-
-  /// Backoff for a plain network drop (network blip, relay restart).
-  final Duration ordinaryInitial;
-  final Duration ordinaryMax;
-
-  /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
+class const ReconnectBackoffPolicy({
+    /// Backoff for a plain network drop (network blip, relay restart).
+  required final Duration ordinaryInitial,
+    required final Duration ordinaryMax,
+    /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
   /// kicking each other (ADR A22).
-  final Duration takeoverInitial;
-  final Duration takeoverMax;
-
+  required final Duration takeoverInitial,
+    required final Duration takeoverMax,
+  }) {
   static const ReconnectBackoffPolicy standard = ReconnectBackoffPolicy(
     ordinaryInitial: Duration(seconds: 1),
     ordinaryMax: Duration(seconds: 30),

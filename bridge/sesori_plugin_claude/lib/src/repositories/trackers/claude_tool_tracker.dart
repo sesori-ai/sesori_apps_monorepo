@@ -2,33 +2,23 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 /// An immutable presentation snapshot of one Claude tool call.
-final class ClaudeTrackedTool {
-  const ClaudeTrackedTool({
-    required this.id,
-    required this.messageId,
-    required this.name,
-    required this.input,
-    required this.state,
-    required this.sessionDiffRequired,
-    required this.todoRefreshRequired,
-  });
-
-  final String id;
-  final String messageId;
-  final String name;
-  final Object? input;
-  final PluginToolState state;
+final class const ClaudeTrackedTool({
+  required final String id,
+  required final String messageId,
+  required final String name,
+  required final Object? input,
+  required final PluginToolState state,
 
   /// Whether this update should emit the session's one-shot diff signal.
-  final bool sessionDiffRequired;
+  required final bool sessionDiffRequired,
 
   /// Whether this terminal update invalidates the session's todo projection.
-  final bool todoRefreshRequired;
-}
+  required final bool todoRefreshRequired,
+});
 
 /// Tracks Claude `tool_use` blocks from their streamed start through the
 /// matching `tool_result` block.
-final class ClaudeToolTracker {
+final class ClaudeToolTracker() {
   final Map<String, _SessionTools> _sessions = {};
 
   ClaudeTrackedTool start({
@@ -169,7 +159,7 @@ final class ClaudeToolTracker {
   void forgetSession({required String sessionId}) => _sessions.remove(sessionId);
 }
 
-final class _SessionTools {
+final class _SessionTools() {
   final Map<String, _TrackedTool> tools = {};
   final Map<String, Map<int, _StreamedToolBlock>> blocks = {};
 
@@ -177,34 +167,26 @@ final class _SessionTools {
       blocks.putIfAbsent(messageId, () => {}).putIfAbsent(blockIndex, _StreamedToolBlock.new);
 }
 
-final class _StreamedToolBlock {
+final class _StreamedToolBlock() {
   String? toolId;
   bool hasCompleteInput = false;
   final StringBuffer partialInput = StringBuffer();
 }
 
-final class _TrackedTool {
-  _TrackedTool({
-    required this.id,
-    required this.messageId,
-    required String name,
-    required this.input,
-    required this.status,
-  }) : _name = name,
-       kind = _ClaudeToolKind.parse(name);
-
-  final String id;
-  final String messageId;
+final class _TrackedTool({
+  required final String id,
+  required final String messageId,
+  required var String _name,
+  required var Object? input,
+  required var PluginToolStatus status,
+}) {
   String get name => _name;
-  String _name;
   set name(String value) {
     _name = value;
     kind = _ClaudeToolKind.parse(value);
   }
 
-  _ClaudeToolKind kind;
-  Object? input;
-  PluginToolStatus status;
+  _ClaudeToolKind kind = _ClaudeToolKind.parse(_name);
   String? output;
   String? error;
   List<PluginMessageAttachment> attachments = const [];
@@ -233,7 +215,7 @@ final class _TrackedTool {
 
 bool _isTerminal(PluginToolStatus status) => status == PluginToolStatus.completed || status == PluginToolStatus.error;
 
-enum _ClaudeToolKind {
+enum _ClaudeToolKind() {
   edit,
   todoWrite,
   other;

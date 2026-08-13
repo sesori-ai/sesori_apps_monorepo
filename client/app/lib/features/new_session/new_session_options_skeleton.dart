@@ -6,15 +6,15 @@ import "../../core/extensions/build_context_x.dart";
 /// The new-session options while the bridge is still being asked what it can
 /// run: one shimmering bar per option row, laid out on the rows' own rhythm so
 /// nothing shifts when the real controls arrive.
-class NewSessionOptionsSkeleton extends StatelessWidget {
-  const NewSessionOptionsSkeleton({super.key, required this.rowHeight, required this.rowSpacing});
+class const NewSessionOptionsSkeleton({
+  super.key,
 
   /// Height of an options row, so a bar sits where its control will.
-  final double rowHeight;
+  required final double rowHeight,
 
   /// Gap between options rows.
-  final double rowSpacing;
-
+  required final double rowSpacing,
+}) extends StatelessWidget {
   /// Bar widths, in the order the rows they stand in for appear: the harness
   /// picker, then the dedicated-workspace toggle.
   static const List<double> _barWidths = [96, 132];

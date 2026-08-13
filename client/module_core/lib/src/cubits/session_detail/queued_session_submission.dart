@@ -3,10 +3,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 
-sealed class QueuedSessionSubmission {
-  const QueuedSessionSubmission();
-
-  const factory QueuedSessionSubmission.text({
+sealed class const QueuedSessionSubmission() {
+  const factory text({
     required String text,
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
@@ -14,7 +12,7 @@ sealed class QueuedSessionSubmission {
     required AgentModel? agentModel,
   }) = QueuedTextSubmission;
 
-  const factory QueuedSessionSubmission.command({
+  const factory command({
     required String text,
     required String command,
     required String? agent,
@@ -42,47 +40,23 @@ sealed class QueuedSessionSubmission {
   bool get isCommand => command != null;
 }
 
-final class QueuedTextSubmission extends QueuedSessionSubmission {
-  @override
-  final String text;
-  @override
-  final ComposerInputMode inputMode;
-  @override
-  final List<ComposerAttachment> attachments;
-  @override
-  final String? agent;
-  @override
-  final AgentModel? agentModel;
-
-  const QueuedTextSubmission({
-    required this.text,
-    required this.inputMode,
-    required this.attachments,
-    required this.agent,
-    required this.agentModel,
-  });
-
+final class const QueuedTextSubmission({
+  @override required final String text,
+  @override required final ComposerInputMode inputMode,
+  @override required final List<ComposerAttachment> attachments,
+  @override required final String? agent,
+  @override required final AgentModel? agentModel,
+}) extends QueuedSessionSubmission {
   @override
   String? get command => null;
 }
 
-final class QueuedCommandSubmission extends QueuedSessionSubmission {
-  @override
-  final String text;
-  @override
-  final String command;
-  @override
-  final String? agent;
-  @override
-  final AgentModel? agentModel;
-
-  const QueuedCommandSubmission({
-    required this.text,
-    required this.command,
-    required this.agent,
-    required this.agentModel,
-  });
-
+final class const QueuedCommandSubmission({
+  @override required final String text,
+  @override required final String command,
+  @override required final String? agent,
+  @override required final AgentModel? agentModel,
+}) extends QueuedSessionSubmission {
   @override
   ComposerInputMode get inputMode => ComposerInputMode.typed;
 
