@@ -221,13 +221,14 @@ never reapplies them on an ordinary parent rebuild. It does not expose
 attachment ownership or persist bytes. Existing-session callers pass `const []`
 and a no-op callback.
 
-The app-owned send callback also creates a `SchedulerBinding.endOfFrame` gate
-for the newly scheduled launch frame and passes it into the Cubit's creation
-intent. `NewSessionCubit` emits `NewSessionSending` synchronously, then awaits
-that gate before entering `SessionService`/`SessionApi`. This keeps Flutter out
-of `module_core` while ensuring `_buildParts` base64 work and relay JSON encoding
-cannot block the first launch-view paint. The request and all existing
-acceptance semantics remain otherwise synchronous.
+`NewSessionCubit` emits `NewSessionSending` synchronously and keeps its creation
+intent surface-neutral. For attachment submissions, `SessionApi` uses
+`module_core`'s existing isolate infrastructure to build prompt parts and encode
+the complete request JSON off the UI isolate, then gives the resulting JSON
+string to `RelayHttpApiClient`; text-only requests retain the direct path. The
+first await therefore yields naturally so Flutter can paint the launch view,
+without adding frame lifecycle to shared business logic. The request and all
+existing acceptance semantics remain otherwise synchronous.
 
 ### 2. Reusable detail-shaped launch presentation
 
@@ -346,6 +347,11 @@ flow while keeping the auth server as one provider boundary:
   401 refresh/retry;
 - Layer 3 `SessionCreationService` consumes the repository and owns the product
   decision that metadata failure is logged and degraded to no generated title.
+
+Credential acquisition remains repository orchestration, matching the existing
+`SesoriServerApi` contract whose typed operations receive an access token. The
+API owns HTTP authentication headers and exposes typed status failure; it does
+not depend upward on token lifecycle or decide when credentials are refreshed.
 
 The title-only DTO ignores the deployed response's extra `branchName` and
 `worktreeName` keys. The auth server response remains unchanged for released
@@ -607,8 +613,9 @@ bridge and client production steps into one large PR.
   title fallback, every failure restores text/voice/command/attachments, and
   every creation-originated error warns before manual resend. Cover failure
   followed by reconnect/discovery refresh.
-- With a maximum-sized attachment fixture, prove `NewSessionSending` paints
-  before base64/request serialization starts; do not use a wall-clock-only test.
+- With a maximum-sized attachment fixture, prove base64 plus request JSON
+  serialization executes through the isolate boundary and does not block launch
+  rendering; do not use a wall-clock-only test.
 - Prove mixed typed/voice spans survive submission failure exactly, and the
   existing-session queue plus analytics retain their released input-mode
   behavior after the richer callback input.

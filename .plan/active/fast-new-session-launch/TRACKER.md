@@ -49,7 +49,8 @@
   voice provenance from an input-mode enum.
 - [ ] Preserve creation warnings across reconnect/discovery/options refreshes;
   clear them only on an explicit new submission or route exit.
-- [ ] Await the app-owned launch-frame gate before attachment/request encoding.
+- [ ] Encode attachment-bearing create requests through existing `module_core`
+  isolate infrastructure; keep frame lifecycle out of the shared Cubit.
 - [ ] Preserve nullable title handoff; never convert missing title to `""`.
 - [ ] Extend `SesoriServerApi` for metadata; do not split one provider by use case.
 - [ ] One late-title future set and one shutdown abort signal only.
@@ -111,7 +112,7 @@
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational merge-base result, including this verification record itself and
   within the 750-900 Step 1 changed-line target:
-  `PLAN.md +726`, `TRACKER.md +134`, total `+860 / -0`.
+  `PLAN.md +733`, `TRACKER.md +135`, total `+868 / -0`.
 
 ### Manual matrix
 
