@@ -100,6 +100,7 @@ Session _testSessionWithPullRequest() {
       archived: null,
     ),
     promptDefaults: null,
+    lastUserActivityAt: null,
   );
 }
 
