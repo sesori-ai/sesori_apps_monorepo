@@ -67,10 +67,10 @@ class const HermesPluginDescriptor({
   ];
 
   @override
-  String get id => HermesIdentity.pluginId;
+  String get id => HermesPluginIdentity.pluginId;
 
   @override
-  String get displayName => HermesIdentity.displayName;
+  String get displayName => HermesPluginIdentity.displayName;
 
   @override
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
