@@ -224,6 +224,7 @@ sealed class PiSessionFileAgentMessageDto with _$PiSessionFileAgentMessageDto {
     required String? provider,
     required String? model,
     @JsonKey(fromJson: _stopReasonOrNull) required PiAssistantStopReason? stopReason,
+    required String? errorMessage,
     @JsonKey(fromJson: _intOrNull) required int? timestamp,
   }) = PiSessionFileAssistantMessageDto;
 
@@ -298,6 +299,7 @@ sealed class PiAgentMessageDto with _$PiAgentMessageDto {
     required String? provider,
     required String? model,
     @JsonKey(fromJson: _stopReasonOrNull) required PiAssistantStopReason? stopReason,
+    required String? errorMessage,
     @JsonKey(fromJson: _intOrNull) required int? timestamp,
   }) = PiAssistantMessageDto;
 

@@ -224,6 +224,7 @@ PiSessionFileAssistantMessageDto _$PiSessionFileAssistantMessageDtoFromJson(
   provider: json['provider'] as String?,
   model: json['model'] as String?,
   stopReason: _stopReasonOrNull(json['stopReason']),
+  errorMessage: json['errorMessage'] as String?,
   timestamp: _intOrNull(json['timestamp']),
   $type: json['role'] as String?,
 );
@@ -301,6 +302,7 @@ PiAssistantMessageDto _$PiAssistantMessageDtoFromJson(Map json) =>
       provider: json['provider'] as String?,
       model: json['model'] as String?,
       stopReason: _stopReasonOrNull(json['stopReason']),
+      errorMessage: json['errorMessage'] as String?,
       timestamp: _intOrNull(json['timestamp']),
       $type: json['role'] as String?,
     );

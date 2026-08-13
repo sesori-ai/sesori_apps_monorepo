@@ -2255,7 +2255,7 @@ as int?,
 @JsonSerializable(createToJson: false)
 
 class PiSessionFileAssistantMessageDto implements PiSessionFileAgentMessageDto {
-  const PiSessionFileAssistantMessageDto({@JsonKey(fromJson: _contentFromJson) required  List<PiContentDto> content, required this.provider, required this.model, @JsonKey(fromJson: _stopReasonOrNull) required this.stopReason, @JsonKey(fromJson: _intOrNull) required this.timestamp,  String? $type}): _content = content,$type = $type ?? 'assistant';
+  const PiSessionFileAssistantMessageDto({@JsonKey(fromJson: _contentFromJson) required  List<PiContentDto> content, required this.provider, required this.model, @JsonKey(fromJson: _stopReasonOrNull) required this.stopReason, required this.errorMessage, @JsonKey(fromJson: _intOrNull) required this.timestamp,  String? $type}): _content = content,$type = $type ?? 'assistant';
   factory PiSessionFileAssistantMessageDto.fromJson(Map<String, dynamic> json) => _$PiSessionFileAssistantMessageDtoFromJson(json);
 
  final  List<PiContentDto> _content;
@@ -2268,6 +2268,7 @@ class PiSessionFileAssistantMessageDto implements PiSessionFileAgentMessageDto {
  final  String? provider;
  final  String? model;
 @JsonKey(fromJson: _stopReasonOrNull) final  PiAssistantStopReason? stopReason;
+ final  String? errorMessage;
 @override@JsonKey(fromJson: _intOrNull) final  int? timestamp;
 
 @JsonKey(name: 'role')
@@ -2284,12 +2285,12 @@ $PiSessionFileAssistantMessageDtoCopyWith<PiSessionFileAssistantMessageDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileAssistantMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileAssistantMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,timestamp);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,errorMessage,timestamp);
 
 
 
@@ -2300,7 +2301,7 @@ abstract mixin class $PiSessionFileAssistantMessageDtoCopyWith<$Res> implements 
   factory $PiSessionFileAssistantMessageDtoCopyWith(PiSessionFileAssistantMessageDto value, $Res Function(PiSessionFileAssistantMessageDto) _then) = _$PiSessionFileAssistantMessageDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _contentFromJson) List<PiContentDto> content, String? provider, String? model,@JsonKey(fromJson: _stopReasonOrNull) PiAssistantStopReason? stopReason,@JsonKey(fromJson: _intOrNull) int? timestamp
+@JsonKey(fromJson: _contentFromJson) List<PiContentDto> content, String? provider, String? model,@JsonKey(fromJson: _stopReasonOrNull) PiAssistantStopReason? stopReason, String? errorMessage,@JsonKey(fromJson: _intOrNull) int? timestamp
 });
 
 
@@ -2317,13 +2318,14 @@ class _$PiSessionFileAssistantMessageDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiSessionFileAgentMessageDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? provider = freezed,Object? model = freezed,Object? stopReason = freezed,Object? timestamp = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? provider = freezed,Object? model = freezed,Object? stopReason = freezed,Object? errorMessage = freezed,Object? timestamp = freezed,}) {
   return _then(PiSessionFileAssistantMessageDto(
 content: null == content ? _self._content : content // ignore: cast_nullable_to_non_nullable
 as List<PiContentDto>,provider: freezed == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,stopReason: freezed == stopReason ? _self.stopReason : stopReason // ignore: cast_nullable_to_non_nullable
-as PiAssistantStopReason?,timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
+as PiAssistantStopReason?,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as String?,timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }
@@ -3014,7 +3016,7 @@ as int?,
 @JsonSerializable(createToJson: false)
 
 class PiAssistantMessageDto implements PiAgentMessageDto {
-  const PiAssistantMessageDto({@JsonKey(fromJson: _contentFromJson) required  List<PiContentDto> content, required this.provider, required this.model, @JsonKey(fromJson: _stopReasonOrNull) required this.stopReason, @JsonKey(fromJson: _intOrNull) required this.timestamp,  String? $type}): _content = content,$type = $type ?? 'assistant';
+  const PiAssistantMessageDto({@JsonKey(fromJson: _contentFromJson) required  List<PiContentDto> content, required this.provider, required this.model, @JsonKey(fromJson: _stopReasonOrNull) required this.stopReason, required this.errorMessage, @JsonKey(fromJson: _intOrNull) required this.timestamp,  String? $type}): _content = content,$type = $type ?? 'assistant';
   factory PiAssistantMessageDto.fromJson(Map<String, dynamic> json) => _$PiAssistantMessageDtoFromJson(json);
 
  final  List<PiContentDto> _content;
@@ -3027,6 +3029,7 @@ class PiAssistantMessageDto implements PiAgentMessageDto {
  final  String? provider;
  final  String? model;
 @JsonKey(fromJson: _stopReasonOrNull) final  PiAssistantStopReason? stopReason;
+ final  String? errorMessage;
 @override@JsonKey(fromJson: _intOrNull) final  int? timestamp;
 
 @JsonKey(name: 'role')
@@ -3043,12 +3046,12 @@ $PiAssistantMessageDtoCopyWith<PiAssistantMessageDto> get copyWith => _$PiAssist
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAssistantMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAssistantMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,timestamp);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,errorMessage,timestamp);
 
 
 
@@ -3059,7 +3062,7 @@ abstract mixin class $PiAssistantMessageDtoCopyWith<$Res> implements $PiAgentMes
   factory $PiAssistantMessageDtoCopyWith(PiAssistantMessageDto value, $Res Function(PiAssistantMessageDto) _then) = _$PiAssistantMessageDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _contentFromJson) List<PiContentDto> content, String? provider, String? model,@JsonKey(fromJson: _stopReasonOrNull) PiAssistantStopReason? stopReason,@JsonKey(fromJson: _intOrNull) int? timestamp
+@JsonKey(fromJson: _contentFromJson) List<PiContentDto> content, String? provider, String? model,@JsonKey(fromJson: _stopReasonOrNull) PiAssistantStopReason? stopReason, String? errorMessage,@JsonKey(fromJson: _intOrNull) int? timestamp
 });
 
 
@@ -3076,13 +3079,14 @@ class _$PiAssistantMessageDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiAgentMessageDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? provider = freezed,Object? model = freezed,Object? stopReason = freezed,Object? timestamp = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? provider = freezed,Object? model = freezed,Object? stopReason = freezed,Object? errorMessage = freezed,Object? timestamp = freezed,}) {
   return _then(PiAssistantMessageDto(
 content: null == content ? _self._content : content // ignore: cast_nullable_to_non_nullable
 as List<PiContentDto>,provider: freezed == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,stopReason: freezed == stopReason ? _self.stopReason : stopReason // ignore: cast_nullable_to_non_nullable
-as PiAssistantStopReason?,timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
+as PiAssistantStopReason?,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as String?,timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }

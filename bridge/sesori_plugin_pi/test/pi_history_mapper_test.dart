@@ -208,55 +208,59 @@ void main() {
       expect(messages.toString(), isNot(contains(privateSummary)));
     });
 
-    test("omits redacted thinking and terminalizes unresolved failed or aborted tools privately", () {
+    test("logs assistant failure locally and maps it privately", () async {
       const privateError = "secret provider payload";
-      final messages = mapper.map(
-        sessionId: sessionId,
-        entries: [
-          _message(
-            id: "failed",
-            parentId: null,
-            message: PiAgentMessageDto.fromJson({
-              "role": "assistant",
-              "content": [
-                {"type": "text", "text": "answer"},
-                {"type": "thinking", "thinking": "private reasoning", "redacted": true},
-                {"type": "thinking", "thinking": "visible reasoning", "redacted": false},
-                {"type": "toolCall", "id": "completed", "name": "read"},
-                {"type": "toolCall", "id": "unfinished", "name": "write"},
-              ],
-              "provider": "provider",
-              "model": "model",
-              "stopReason": "error",
-              "errorMessage": privateError,
-              "timestamp": 1,
-            }),
-          ),
-          _message(
-            id: "result",
-            parentId: "failed",
-            message: const PiAgentMessageDto.toolResult(
-              toolCallId: "completed",
-              toolName: "read",
-              content: [PiContentDto.text(text: "result")],
-              isError: false,
-              timestamp: 2,
+      late List<PluginMessageWithParts> messages;
+      final warnings = await _captureWarnings(() async {
+        messages = mapper.map(
+          sessionId: sessionId,
+          entries: [
+            _message(
+              id: "failed",
+              parentId: null,
+              message: PiAgentMessageDto.fromJson({
+                "role": "assistant",
+                "content": [
+                  {"type": "text", "text": "answer"},
+                  {"type": "thinking", "thinking": "private reasoning", "redacted": true},
+                  {"type": "thinking", "thinking": "visible reasoning", "redacted": false},
+                  {"type": "toolCall", "id": "completed", "name": "read"},
+                  {"type": "toolCall", "id": "unfinished", "name": "write"},
+                ],
+                "provider": "provider",
+                "model": "model",
+                "stopReason": "error",
+                "errorMessage": privateError,
+                "timestamp": 1,
+              }),
             ),
-          ),
-          _message(
-            id: "aborted",
-            parentId: "result",
-            message: const PiAgentMessageDto.assistant(
-              content: [PiContentDto.toolCall(id: "aborted-tool", name: "bash")],
-              provider: null,
-              model: null,
-              stopReason: PiAssistantStopReason.aborted,
-              timestamp: 3,
+            _message(
+              id: "result",
+              parentId: "failed",
+              message: const PiAgentMessageDto.toolResult(
+                toolCallId: "completed",
+                toolName: "read",
+                content: [PiContentDto.text(text: "result")],
+                isError: false,
+                timestamp: 2,
+              ),
             ),
-          ),
-        ],
-        leafId: "aborted",
-      );
+            _message(
+              id: "aborted",
+              parentId: "result",
+              message: const PiAgentMessageDto.assistant(
+                content: [PiContentDto.toolCall(id: "aborted-tool", name: "bash")],
+                provider: null,
+                model: null,
+                stopReason: PiAssistantStopReason.aborted,
+                errorMessage: null,
+                timestamp: 3,
+              ),
+            ),
+          ],
+          leafId: "aborted",
+        );
+      });
 
       expect(messages, hasLength(2));
       expect(messages.first.info, isA<PluginMessageError>());
@@ -272,6 +276,7 @@ void main() {
       expect(aborted.state?.error, "Pi tool call did not complete.");
       expect(messages.toString(), isNot(contains(privateError)));
       expect(messages.toString(), isNot(contains("private reasoning")));
+      expect(warnings, contains(privateError));
     });
 
     test("enforces image candidate count", () {
@@ -340,6 +345,7 @@ void main() {
               provider: null,
               model: null,
               stopReason: PiAssistantStopReason.stop,
+              errorMessage: null,
               timestamp: 2,
             ),
           ),
@@ -509,6 +515,7 @@ void main() {
         provider: "provider",
         model: "model",
         stopReason: PiAssistantStopReason.stop,
+        errorMessage: null,
         timestamp: 1,
       );
       final result = PiAgentMessageDto.toolResult(
@@ -638,6 +645,7 @@ PiAssistantMessageDto _assistantText(String text, {required int timestamp}) {
     provider: null,
     model: null,
     stopReason: PiAssistantStopReason.stop,
+    errorMessage: null,
     timestamp: timestamp,
   ) as PiAssistantMessageDto;
 }

@@ -140,6 +140,7 @@ void main() {
       expect(warnings, contains("history RPC startup unavailable"));
       expect(warnings, contains(path));
       expect(warnings, contains("PiRpcProcessExitException(exitCode: 78)"));
+      expect(warnings, contains("pi_rpc_client.dart"));
       expect(warnings, isNot(contains("from file")));
       expect(warnings, isNot(contains("/private/home")));
     });
@@ -168,6 +169,28 @@ void main() {
       );
       expect(process.stdinClosed, isTrue);
       expect(process.killed, isTrue);
+    });
+
+    test("falls back when exact no-model startup surfaces as stdin failure", () async {
+      final storage = _FakeStorageApi(
+        history: PiSessionFileHistoryDto(
+          header: const PiSessionFileHeaderDto(version: 3, id: "session"),
+          entries: [_fileUserEntry(id: "entry", parentId: null, text: "from file", timestamp: 1)],
+        ),
+      );
+      final process = FakePiProcess();
+      final repository = _repository(
+        storageApi: storage,
+        processFactory: ({required spec}) async => process,
+      );
+
+      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      await waitForCommand(process: process, type: "get_entries");
+      process.emitStderrRaw(bytes: utf8.encode("${PiRpcClient.noModelsDiagnosticPrefix}\n"));
+      process.failStdin(error: const SocketException("closed during startup"));
+
+      final messages = await pending;
+      expect(messages.single.parts.single.text, "from file");
     });
 
     test("logs command failure detail locally without exposing it remotely", () async {

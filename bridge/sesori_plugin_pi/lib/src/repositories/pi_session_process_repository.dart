@@ -117,9 +117,13 @@ final class PiSessionProcessRepository({
         } on Object catch (error, stack) {
           Error.throwWithStackTrace(PiSessionHistoryParseException(innerError: error), stack);
         }
-      } on PiRpcProcessExitException catch (error) {
+      } on PiRpcProcessExitException catch (error, stack) {
         if (!_isNoModelStartupFailure(client.stderrDiagnostics)) rethrow;
-        throw PiHistoryRpcStartupUnavailableException(cause: error);
+        Error.throwWithStackTrace(PiHistoryRpcStartupUnavailableException(cause: error), stack);
+      } on PiRpcStdinException catch (error, stack) {
+        await client.processExit;
+        if (!_isNoModelStartupFailure(client.stderrDiagnostics)) rethrow;
+        Error.throwWithStackTrace(PiHistoryRpcStartupUnavailableException(cause: error), stack);
       }
     } finally {
       await client.dispose();
@@ -212,6 +216,7 @@ final class PiSessionProcessRepository({
       :final provider,
       :final model,
       :final stopReason,
+      :final errorMessage,
       :final timestamp,
     ) =>
       PiAgentMessageDto.assistant(
@@ -219,6 +224,7 @@ final class PiSessionProcessRepository({
         provider: provider,
         model: model,
         stopReason: stopReason,
+        errorMessage: errorMessage,
         timestamp: timestamp,
       ),
     PiSessionFileToolResultMessageDto(

@@ -70,8 +70,12 @@ final class PiHistoryMapper({required final String pluginId}) {
               :final provider,
               :final model,
               :final stopReason,
+              :final errorMessage,
               :final timestamp,
             ):
+              if (stopReason == PiAssistantStopReason.error && errorMessage != null) {
+                Log.w("[pi] replayed assistant response failed", _PiAssistantFailureDiagnostic(detail: errorMessage));
+              }
               final messageId = identities.next(role: PiMessageIdentityRole.assistant, timestamp: timestamp);
               final draft = _MessageDraft(
                 info: _assistantInfo(
@@ -584,6 +588,11 @@ final class _MappedToolResult({
 final class _ImageBudget() {
   int candidates = 0;
   int decodedBytes = 0;
+}
+
+final class const _PiAssistantFailureDiagnostic({required final String detail}) implements Exception {
+  @override
+  String toString() => "Pi assistant response failed: $detail";
 }
 
 enum _PiHistoryWarning(final String message) {
