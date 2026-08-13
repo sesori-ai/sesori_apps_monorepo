@@ -5,7 +5,7 @@
 - **Plan slug:** `attachment-references`
 - **Series state:** Step 8 in review; Step 9 local successor next
 - **Current step:** 8/11
-- **Implementation base:** `origin/main` at `b87e4343`
+- **Implementation base:** `origin/main` at `57e1d0ea`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** [#876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876)
 - **Next action:** Monitor Step 8 CI/review and begin Step 9 locally
@@ -38,7 +38,7 @@
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
 | [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
 | [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
-| [ ] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,500 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) in review |
+| [ ] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) in review |
 | [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
 | [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
 | [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
@@ -193,13 +193,19 @@
   Fatal analysis passes in module_core, mobile, and desktop; all 1,105
   module-core, 972 mobile, and 16 desktop tests pass, including 28 focused
   cache-policy tests, 31 focused mobile storage/DI/widget tests, and two desktop
-  DI tests. DI generation refreshed the intended registrations but exits
-  non-zero on unrelated existing primary-constructor parser errors and the
-  product-analytics enum generator crash. Architecture implementation review
-  approved the foundation, repository/service, platform, DI, privacy, and
-  lifecycle seams with no blockers. After synchronization with `origin/main` at
-  `b87e4343`, the PR diff has 1,345 additions and 78 deletions across 17 files
-  (1,423 changed lines), within the revised 1,250-1,500 target;
+  DI tests. After merging the Dart 3.13 generator fix from `origin/main`, DI
+  generation succeeds and reproduces both intended registrations. Architecture
+  implementation review approved the foundation, repository/service, platform,
+  DI, privacy, and
+  lifecycle seams with no blockers. Review fixes reclaim abandoned atomic-write
+  files without touching active writes, tolerate files disappearing during
+  metadata scans, and retry failed account retirement before same-account cache
+  access while bypassing stale cache when deletion keeps failing. The focused
+  review matrix passes 29 repository tests, 33 mobile storage/DI/widget tests,
+  and two desktop DI tests, plus fatal analysis in all three owning products.
+  After synchronization with `origin/main` at `57e1d0ea`, the PR diff has 1,472
+  additions and 77 deletions across 17 files (1,549 changed lines), within the
+  review-revised 1,250-1,600 target;
   `git diff --check origin/main...HEAD` passes. Published as
   [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876); monitoring
   is active.
@@ -211,7 +217,9 @@
   timestamps, avoiding an LRU index or background worker.
 - **2026-08-13 - Step 8 complexity:** Persistence, auth-generation cleanup,
   mobile eager lifecycle activation, and desktop lazy-startup boundaries raised
-  Step 8 from moderate/850-1,350 to complex/1,250-1,500 changed lines.
+  Step 8 from moderate/850-1,350 to complex/1,250-1,500 changed lines. Review
+  hardening for abandoned writes, metadata races, and failed-retirement retry
+  raised the ceiling to 1,600 without changing complexity.
 
 - **2026-08-10 - Scope split:** The user approved one active transcript-viewing
   plan and a separate considerations-only record for prompt uploads rather than

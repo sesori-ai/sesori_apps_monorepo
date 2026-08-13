@@ -6,7 +6,7 @@
 - **Status:** Step 8/11 - client thumbnail cache ready for review
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `b87e4343`
+- **Implementation base:** `origin/main` at `57e1d0ea`
 - **Delivery:** one plan PR, nine sequential implementation PRs, and one
   plan-retirement PR
 - **Related future work:** prompt-upload decisions are recorded separately in
@@ -637,7 +637,7 @@ baseline is intentionally raised in a separate task.
 | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | Awaited materialization, dual event shapes, subscriber/orphan delivery mode, SSE memory/compatibility coverage. |
 | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | OpenCode, Codex, ACP, Cursor, and Claude output limits move to 20 MB each/50 MB aggregate while legacy projection stays 5 MiB. |
 | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | Typed API/repository/state support, validation, timeout, request coalescing, but delivery mode remains inline. |
-| 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,500 | Platform cache boundary/adapter, scoped atomic storage/pruning/cleanup, Cubit integration, tests. |
+| 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | Platform cache boundary/adapter, scoped atomic storage/pruning/cleanup, Cubit integration, tests. |
 | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Square/grid/overlay/loading/error presentation for existing and reference-capable attachment widgets; capability remains disabled. |
 | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Thumbnail-first viewer, original retry/actions, enable history/SSE reference mode, end-to-end compatibility tests. |
 | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Final evidence and plan move to completed. |

@@ -116,6 +116,7 @@ class MessageImageRepository({
   final Map<String, int> _accountGenerations = {};
   final Map<String, Set<Future<_StoredDataResult>>> _startedAccountOperations = {};
   final Map<String, Future<void>> _accountCleanups = {};
+  final Set<String> _accountsRequiringCleanup = {};
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
     MessageAttachmentInlineImage(:final mime) ||
     MessageAttachmentStoredImage(:final mime) => _supportedRasterMimes.contains(_normalizedMime(mime: mime)),
@@ -236,8 +237,9 @@ class MessageImageRepository({
       return const MessageImageLoadRejected();
     }
 
+    var useThumbnailCache = false;
     if (rendition == SessionAttachmentRendition.thumbnail) {
-      await waitForAccountCleanup(accountId: accountId);
+      useThumbnailCache = await waitForAccountCleanup(accountId: accountId);
       if (_authenticatedAccountId != accountId) return _authenticationRequired();
     }
     final scope = (
@@ -248,7 +250,8 @@ class MessageImageRepository({
       rendition: rendition,
       accountGeneration: _accountGenerations[accountId] ?? 0,
     );
-    final operation = _activeStoredLoads[scope] ?? _startStoredLoad(scope: scope);
+    final operation = _activeStoredLoads[scope] ??
+        _startStoredLoad(scope: scope, useThumbnailCache: useThumbnailCache);
     final result = await operation;
     return switch (result) {
       _StoredDataSuccess(:final data)
@@ -265,10 +268,17 @@ class MessageImageRepository({
     };
   }
 
-  Future<_StoredDataResult> _startStoredLoad({required _StoredRequestScope scope}) {
+  Future<_StoredDataResult> _startStoredLoad({
+    required _StoredRequestScope scope,
+    required bool useThumbnailCache,
+  }) {
     final generation = scope.accountGeneration;
     late final Future<_StoredDataResult> operation;
-    operation = _loadStoredDataWithDerivedKey(scope: scope, generation: generation).whenComplete(() {
+    operation = _loadStoredDataWithDerivedKey(
+      scope: scope,
+      generation: generation,
+      useThumbnailCache: useThumbnailCache,
+    ).whenComplete(() {
       if (identical(_activeStoredLoads[scope], operation)) {
         _activeStoredLoads.remove(scope);
       }
@@ -287,13 +297,14 @@ class MessageImageRepository({
   Future<_StoredDataResult> _loadStoredDataWithDerivedKey({
     required _StoredRequestScope scope,
     required int generation,
+    required bool useThumbnailCache,
   }) async => await _loadStoredData(
     scope: scope,
     generation: generation,
-    cacheScope: scope.rendition == SessionAttachmentRendition.thumbnail
+    cacheScope: useThumbnailCache
         ? await _accountCacheScope(accountId: scope.accountId)
         : null,
-    cacheKey: scope.rendition == SessionAttachmentRendition.thumbnail
+    cacheKey: useThumbnailCache
         ? await _thumbnailCacheKey(
             bridgeId: scope.bridgeId,
             sessionId: scope.sessionId,
@@ -464,17 +475,30 @@ class MessageImageRepository({
     return hash.bytes.map((byte) => byte.toRadixString(16).padLeft(2, "0")).join();
   }
 
-  Future<void> waitForAccountCleanup({required String accountId}) async {
+  Future<bool> waitForAccountCleanup({required String accountId}) async {
     while (true) {
       final cleanup = _accountCleanups[accountId];
-      if (cleanup == null) return;
+      if (cleanup == null) break;
       await cleanup;
     }
+    if (!_accountsRequiringCleanup.contains(accountId)) return true;
+    await _queueAccountCleanup(accountId: accountId, previousCleanup: null);
+    return !_accountsRequiringCleanup.contains(accountId);
   }
 
   Future<void> retireAccountThumbnailCache({required String accountId}) {
     _accountGenerations[accountId] = (_accountGenerations[accountId] ?? 0) + 1;
-    final previousCleanup = _accountCleanups[accountId];
+    _accountsRequiringCleanup.add(accountId);
+    return _queueAccountCleanup(
+      accountId: accountId,
+      previousCleanup: _accountCleanups[accountId],
+    );
+  }
+
+  Future<void> _queueAccountCleanup({
+    required String accountId,
+    required Future<void>? previousCleanup,
+  }) {
     late final Future<void> cleanup;
     cleanup =
         _retireAccountThumbnailCache(
@@ -499,6 +523,7 @@ class MessageImageRepository({
     final scope = await _accountCacheScope(accountId: accountId);
     try {
       await _thumbnailStorage.deleteScope(scope: scope);
+      _accountsRequiringCleanup.remove(accountId);
     } on Object catch (cause, stackTrace) {
       logw("Failed to delete retired account thumbnail cache", cause, stackTrace);
     }

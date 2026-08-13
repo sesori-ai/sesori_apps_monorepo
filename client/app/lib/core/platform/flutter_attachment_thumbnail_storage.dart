@@ -15,6 +15,7 @@ class FlutterAttachmentThumbnailStorage({
   // backup-excluded cache location.
   static const _rootName = "attachment_thumbnails";
   static var _temporaryFileSequence = 0;
+  static final Set<String> _activeTemporaryPaths = {};
 
   final TemporaryDirectoryClient _temporaryDirectoryClient = temporaryDirectoryClient;
 
@@ -39,10 +40,12 @@ class FlutterAttachmentThumbnailStorage({
     final temporaryFile = File(
       path.join(file.parent.path, ".tmp-${_temporaryFileSequence++}"),
     );
+    _activeTemporaryPaths.add(temporaryFile.path);
     try {
       await temporaryFile.writeAsBytes(bytes, flush: true);
       await temporaryFile.rename(file.path);
     } finally {
+      _activeTemporaryPaths.remove(temporaryFile.path);
       try {
         await temporaryFile.delete();
       } on PathNotFoundException {
@@ -57,10 +60,26 @@ class FlutterAttachmentThumbnailStorage({
     try {
       final metadata = <AttachmentThumbnailMetadata>[];
       await for (final entity in directory.list()) {
-        if (entity is! File || path.basename(entity.path).startsWith(".tmp-")) continue;
-        // Keep filesystem work asynchronous on the UI isolate.
-        // ignore: avoid_slow_async_io
-        final stat = await entity.stat();
+        if (entity is! File) continue;
+        if (path.basename(entity.path).startsWith(".tmp-") && !_activeTemporaryPaths.contains(entity.path)) {
+          try {
+            await entity.delete();
+          } on PathNotFoundException {
+            // Another listing or write cleanup already removed it.
+          } on Object catch (cause, stackTrace) {
+            logw("Failed to delete abandoned message thumbnail temporary file", cause, stackTrace);
+          }
+          continue;
+        }
+        late final FileStat stat;
+        try {
+          // Keep filesystem work asynchronous on the UI isolate.
+          // ignore: avoid_slow_async_io
+          stat = await entity.stat();
+        } on PathNotFoundException {
+          continue;
+        }
+        if (stat.type == FileSystemEntityType.notFound) continue;
         metadata.add(
           AttachmentThumbnailMetadata(
             key: path.basename(entity.path),

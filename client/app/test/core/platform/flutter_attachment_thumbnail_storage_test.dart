@@ -49,6 +49,16 @@ void main() {
     expect(await storage.listMetadata(scope: "missing"), isEmpty);
   });
 
+  test("metadata listing removes abandoned temporary files", () async {
+    final directory = Directory("${temporaryDirectory.path}/attachment_thumbnails/account");
+    await directory.create(recursive: true);
+    final temporaryFile = File(path.join(directory.path, ".tmp-abandoned"));
+    await temporaryFile.writeAsBytes(const [1, 2, 3]);
+
+    expect(await storage.listMetadata(scope: "account"), isEmpty);
+    expect(temporaryFile.existsSync(), isFalse);
+  });
+
   test("deletes one entry or its complete scope", () async {
     await storage.write(
       scope: "first",
@@ -108,6 +118,16 @@ void main() {
           .isEmpty,
       isTrue,
     );
+  });
+
+  test("metadata listing does not delete an active temporary write", () async {
+    final bytes = Uint8List(4 * 1024 * 1024);
+    final write = storage.write(scope: "account", key: "thumbnail", bytes: bytes);
+
+    await storage.listMetadata(scope: "account");
+    await write;
+
+    expect(await storage.read(scope: "account", key: "thumbnail"), bytes);
   });
 
   test("replaces existing file and cleans temporary file when replacement fails", () async {
