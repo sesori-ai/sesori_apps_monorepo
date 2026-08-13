@@ -121,5 +121,9 @@ final class _FakeStorageApi({required List<PiSessionMetadata> sessions, final Ob
   Future<String?> resolveEffectiveSessionDirectory({required String directory}) async => null;
 
   @override
+  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async =>
+      null;
+
+  @override
   Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async => null;
 }

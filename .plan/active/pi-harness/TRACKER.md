@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** current `origin/main` with Step 9 merged
-- **Series state:** Step 9/21 merged; Step 10/21 ready for PR
-- **Current step:** 10/21, persisted Pi session enumeration
+- **Implementation base:** current `origin/main` with Step 10 merged
+- **Series state:** Step 10/21 merged; Step 11/21 ready for PR
+- **Current step:** 11/21, Pi session history replay
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -16,7 +16,8 @@
 - **Prerequisite PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/857
 - **Step 8 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/862
 - **Step 9 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/866
-- **Next action:** open and monitor the Step 10 PR, then start Step 11 locally
+- **Step 10 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/884
+- **Next action:** open and monitor the Step 11 PR, then start Step 12 locally
 
 ## Locked Decisions
 
@@ -52,8 +53,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 (recorded overage) | Merged as PR #846 |
 | [x] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Merged as PR #862; dependency merged as PR #857 |
 | [x] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Merged as PR #866 |
-| [ ] | 10/21 | `🚧 [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 (recorded overage) | Ready for PR |
-| [ ] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 | Not started |
+| [x] | 10/21 | `🚧 [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 (recorded overage) | Merged as PR #884 |
+| [ ] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Ready for PR |
 | [ ] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 | Not started |
 | [ ] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Not started |
 | [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 | Not started |
@@ -339,6 +340,29 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Recorded overage: root discovery, bounded privacy-sensitive scanning, lineage,
   codegen, and focused tests form one catalog seam; splitting would publish an
   incomplete resolver or mapping contract.
+
+### Step 11/21
+
+- Added RPC-first `get_entries` history replay with active-branch traversal,
+  deterministic live-compatible identities, visible compaction cards, tool
+  result correlation, and bounded text/image/content mapping.
+- Added streamed read-only JSONL fallback only for the exact pinned no-model
+  startup diagnostic. Layer 2 applies v1 linear IDs/parents, v2 `hookMessage`
+  conversion, and last-valid-entry leaf selection without mutating Pi files.
+- Added an exact persisted authored-text codec so cold replay strips only
+  plugin-proven execution context; external unmarked Pi text remains visible.
+- Privacy-safe remote failures omit paths, transcript payloads, summaries, raw
+  assistant errors, and process details while local logs retain causes, stacks,
+  and actionable resolved paths.
+- `dart pub get`, `dart run build_runner build`, `dart test` (128 tests),
+  `dart analyze --fatal-infos`, and `git diff --check`: pass.
+- No client/bridge wire-contract, database, persisted-data mutation, analytics,
+  or client-UI change; Pi remains app-invisible until Step 18.
+- Architecture implementation review findings on internal DTO seams, injected
+  plugin identity, and original local file-read causes were applied.
+- Recorded overage: generated closed history unions, RPC/file normalization,
+  privacy-safe mapping, and focused regression tests are one replay seam;
+  splitting would publish incomplete history or live-parity contracts.
 
 ## Findings And Plan Deltas
 

@@ -100,6 +100,9 @@ class PiRpcClient({
   required final PiLaunchSpec _launchSpec,
   required final PiProcessFactory _processFactory,
 }) {
+  static const String noModelsDiagnosticPrefix =
+      "No models available. Use /login to log into a provider via OAuth or API key. See:";
+
   /// How many parsed frames are held while no router has attached yet.
   ///
   /// Pi streams continuously, so an unbounded startup buffer would grow with
@@ -423,6 +426,7 @@ class PiRpcClient({
   static final RegExp _nonAlphanumeric = RegExp("[^a-z0-9]");
 
   String _redact(String value) {
+    if (value.startsWith(noModelsDiagnosticPrefix)) return noModelsDiagnosticPrefix;
     try {
       final decoded = jsonDecode(value);
       if (decoded is Map || decoded is List) return jsonEncode(_redactJson(decoded));

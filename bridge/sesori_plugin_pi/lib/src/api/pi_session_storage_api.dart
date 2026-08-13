@@ -1,4 +1,4 @@
-import "dart:convert" show utf8;
+import "dart:convert" show Utf8Decoder, utf8;
 import "dart:io";
 import "dart:isolate";
 
@@ -7,6 +7,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "models/pi_session_history_dto.dart";
 import "models/pi_session_metadata_dto.dart";
 
 final class const PiSessionMetadata({
@@ -17,6 +18,19 @@ final class const PiSessionMetadata({
   required final DateTime? createdAt,
   required final DateTime updatedAt,
 });
+
+final class const PiResolvedSession({
+  required final PiSessionMetadata metadata,
+  required final String path,
+});
+
+final class const PiInvalidSessionHistoryException({
+  required final String path,
+  required final Object cause,
+}) implements Exception {
+  @override
+  String toString() => "Invalid Pi session history";
+}
 
 final class const PiSessionStorageConflictException({
   required final String sessionId,
@@ -43,8 +57,20 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
   }
 
   Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async {
+    return (await resolveSession(sessionId: sessionId, knownDirectories: knownDirectories))?.path;
+  }
+
+  Future<PiResolvedSession?> resolveSession({
+    required String sessionId,
+    required Set<String> knownDirectories,
+  }) async {
     final result = await _scan(knownDirectories: knownDirectories);
-    return result.pathsById[sessionId];
+    final path = result.pathsById[sessionId];
+    if (path == null) return null;
+    for (final metadata in result.sessions) {
+      if (metadata.id == sessionId) return PiResolvedSession(metadata: metadata, path: path);
+    }
+    return null;
   }
 
   Future<String?> resolveEffectiveSessionDirectory({required String directory}) async {
@@ -54,6 +80,19 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     );
     _logDiagnostics(result.diagnostics);
     return result.path;
+  }
+
+  Future<PiSessionFileHistoryDto> _readSessionHistory({required String path}) async {
+    final result = await Isolate.run(() => _readPiSessionHistory(path: path));
+    if (result.malformedLineCount > 0) {
+      Log.w("[pi] skipped ${result.malformedLineCount} malformed session history record(s) at '${result.path}'");
+    }
+    switch (result) {
+      case _PiHistoryReadSuccess(:final history):
+        return history;
+      case _PiHistoryReadFailure(:final error, :final stackTrace):
+        Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   Future<_PiScanResult> _scan({required Set<String> knownDirectories}) async {
@@ -132,6 +171,82 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
       );
     }
   }
+}
+
+class PiSessionHistoryStorageApi({required final PiSessionStorageApi storageApi}) {
+  Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) =>
+      storageApi._readSessionHistory(path: path);
+}
+
+_PiHistoryReadResult _readPiSessionHistory({required String path}) {
+  final resolvedPath = _absolute(File(path).resolveSymbolicLinksSync());
+  final file = File(resolvedPath);
+  final entries = <PiSessionFileEntryDto>[];
+  PiSessionFileHeaderDto? header;
+  Object? firstFailure;
+  StackTrace? firstFailureStack;
+  var invalidFirstParsedRecord = false;
+  var malformedLineCount = 0;
+  RandomAccessFile? handle;
+  try {
+    handle = file.openSync();
+    final decoder = const Utf8Decoder(allowMalformed: false).startChunkedConversion(
+      _PiHistoryStringSink(
+        onLine: (line, {required isFinal}) {
+          if (line.trim().isEmpty) return;
+          try {
+            final json = jsonDecodeMap(line);
+            if (header == null) {
+              if (invalidFirstParsedRecord) return;
+              final type = json["type"];
+              final id = json["id"];
+              if (type != "session" || id is! String) {
+                invalidFirstParsedRecord = true;
+                throw const FormatException("Expected session header");
+              }
+              header = PiSessionFileHeaderDto.fromJson(json);
+              return;
+            }
+            entries.add(PiSessionFileEntryDto.fromJson(json));
+          } on Object catch (error, stackTrace) {
+            firstFailure ??= error;
+            firstFailureStack ??= stackTrace;
+            if (!isFinal) malformedLineCount += 1;
+          }
+        },
+      ),
+    );
+    while (true) {
+      final bytes = handle.readSync(8192);
+      if (bytes.isEmpty) break;
+      decoder.add(bytes);
+    }
+    decoder.close();
+  } on Object catch (error, stackTrace) {
+    firstFailure ??= error;
+    firstFailureStack ??= stackTrace;
+  } finally {
+    handle?.closeSync();
+  }
+
+  final parsedHeader = header;
+  if (parsedHeader == null) {
+    final cause = firstFailure ?? const FormatException("Missing session header");
+    return _PiHistoryReadFailure(
+      path: resolvedPath,
+      error: PiInvalidSessionHistoryException(path: resolvedPath, cause: cause),
+      stackTrace: firstFailureStack ?? StackTrace.current,
+      malformedLineCount: malformedLineCount,
+    );
+  }
+  return _PiHistoryReadSuccess(
+    path: resolvedPath,
+    history: PiSessionFileHistoryDto(
+      header: parsedHeader,
+      entries: List.unmodifiable(entries),
+    ),
+    malformedLineCount: malformedLineCount,
+  );
 }
 
 _PiScanResult _scanPiSessions({
@@ -739,6 +854,50 @@ final class const _PiScanResult({
   required final Map<String, String> pathsById,
   required final _PiScanDiagnostics diagnostics,
 });
+
+sealed class const _PiHistoryReadResult({
+  required final String path,
+  required final int malformedLineCount,
+});
+
+final class const _PiHistoryReadSuccess({
+  required super.path,
+  required super.malformedLineCount,
+  required final PiSessionFileHistoryDto history,
+}) extends _PiHistoryReadResult;
+
+final class const _PiHistoryReadFailure({
+  required super.path,
+  required super.malformedLineCount,
+  required final PiInvalidSessionHistoryException error,
+  required final StackTrace stackTrace,
+}) extends _PiHistoryReadResult;
+
+final class _PiHistoryStringSink({
+  required void Function(String line, {required bool isFinal}) onLine,
+}) implements Sink<String> {
+  final void Function(String line, {required bool isFinal}) _onLine = onLine;
+  final StringBuffer _pending = StringBuffer();
+
+  @override
+  void add(String data) {
+    var start = 0;
+    while (true) {
+      final newline = data.indexOf("\n", start);
+      if (newline < 0) break;
+      _pending.write(data.substring(start, newline));
+      _onLine(_pending.toString(), isFinal: false);
+      _pending.clear();
+      start = newline + 1;
+    }
+    _pending.write(data.substring(start));
+  }
+
+  @override
+  void close() {
+    if (_pending.isNotEmpty) _onLine(_pending.toString(), isFinal: true);
+  }
+}
 
 final class const _PiEffectiveDirectoryResult({
   required final String? path,

@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:pi_plugin/pi_plugin.dart";
+import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
 import "package:test/test.dart";
 
@@ -375,15 +376,17 @@ void main() {
             )
             .listSessionMetadata(knownDirectories: {project}),
         throwsA(
-          isA<PiSessionStorageConflictException>().having(
-            (error) => error.sessionId,
-            "sessionId",
-            "duplicate",
-          ).having(
-            (error) => {error.firstPath, error.secondPath},
-            "conflicting paths",
-            {File(firstPath).resolveSymbolicLinksSync(), File(secondPath).resolveSymbolicLinksSync()},
-          ),
+          isA<PiSessionStorageConflictException>()
+              .having(
+                (error) => error.sessionId,
+                "sessionId",
+                "duplicate",
+              )
+              .having(
+                (error) => {error.firstPath, error.secondPath},
+                "conflicting paths",
+                {File(firstPath).resolveSymbolicLinksSync(), File(secondPath).resolveSymbolicLinksSync()},
+              ),
         ),
       );
     });
@@ -664,6 +667,164 @@ void main() {
     });
   });
 
+  group("history input", () {
+    test("returns typed header and append-order v1 entries without migration", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final path = p.join(fixture.root.path, "v1.jsonl");
+      _writeJsonLines(path, [
+        {
+          "type": "session",
+          "id": "v1-session",
+          "timestamp": "2026-08-01T00:00:00Z",
+          "cwd": fixture.root.path,
+        },
+        {
+          "type": "message",
+          "timestamp": "2026-08-01T00:00:01Z",
+          "message": {"role": "user", "content": "first", "timestamp": 1},
+        },
+        {
+          "type": "custom_message",
+          "timestamp": "2026-08-01T00:00:02Z",
+          "content": "second",
+          "display": true,
+        },
+      ]);
+
+      final history = await fixture.historyApi().readSessionHistory(path: path);
+
+      expect(history.header.id, "v1-session");
+      expect(history.header.version, isNull);
+      expect(history.entries, [
+        isA<PiSessionFileMessageEntryDto>()
+            .having((entry) => entry.id, "id", isNull)
+            .having((entry) => entry.parentId, "parentId", isNull),
+        isA<PiSessionFileCustomMessageEntryDto>()
+            .having((entry) => entry.id, "id", isNull)
+            .having((entry) => entry.parentId, "parentId", isNull),
+      ]);
+    });
+
+    test("streams and preserves inline images beyond metadata record limit", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final path = p.join(fixture.root.path, "large-image.jsonl");
+      final image = "a" * (PiSessionStorageApi.metadataRecordByteLimit + 1);
+      _writeJsonLines(path, [
+        _historyHeader(fixture: fixture),
+        {
+          ..._historyBase(type: "message", id: "image", parentId: null),
+          "message": {
+            "role": "user",
+            "content": [
+              {"type": "image", "data": image, "mimeType": "image/png"},
+            ],
+            "timestamp": 1,
+          },
+        },
+      ]);
+
+      final history = await fixture.historyApi().readSessionHistory(path: path);
+
+      final message = (history.entries.single as PiSessionFileMessageEntryDto).message as PiSessionFileUserMessageDto;
+      expect((message.content.single as PiImageContentDto).data, image);
+    });
+
+    test("tolerates malformed complete lines and silently skips malformed final record", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final path = p.join(fixture.root.path, "malformed-history.jsonl");
+      const secret = "private-history-payload";
+      File(path).writeAsStringSync(
+        '${jsonEncode(_historyHeader(fixture: fixture))}\n'
+        '{"malformed":"$secret"\n'
+        '${jsonEncode({
+          ..._historyBase(type: "message", id: "valid", parentId: null),
+          "message": {"role": "user", "content": secret, "timestamp": 1},
+        })}\n'
+        '{"unfinished":"$secret"',
+      );
+
+      final warnings = await _captureWarnings(() async {
+        final history = await fixture.historyApi().readSessionHistory(path: path);
+        expect(history.entries, hasLength(1));
+      });
+
+      expect(warnings, contains("skipped 1 malformed session history record"));
+      expect(warnings, contains(File(path).resolveSymbolicLinksSync()));
+      expect(warnings, isNot(contains(secret)));
+    });
+
+    test("rejects non-empty wholly malformed history without exposing payload", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final path = p.join(fixture.root.path, "all-malformed.jsonl");
+      const secret = "private-malformed-history";
+      File(path).writeAsStringSync('{"secret":"$secret"\n');
+
+      await expectLater(
+        fixture.historyApi().readSessionHistory(path: path),
+        throwsA(
+          isA<PiInvalidSessionHistoryException>()
+              .having((error) => error.cause, "cause", isA<FormatException>())
+              .having((error) => error.toString(), "presentation", isNot(contains(secret)))
+              .having((error) => error.toString(), "path privacy", isNot(contains(path))),
+        ),
+      );
+    });
+
+    test("rejects first parsed non-header with private path and original cause", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final path = p.join(fixture.root.path, "invalid-first-entry.jsonl");
+      const secret = "private-first-entry";
+      File(path).writeAsStringSync(
+        '{"broken":"$secret"\n'
+        '${jsonEncode({
+          ..._historyBase(type: "custom", id: "first", parentId: null),
+          "customType": secret,
+        })}\n'
+        '${jsonEncode(_historyHeader(fixture: fixture))}\n',
+      );
+
+      await expectLater(
+        fixture.historyApi().readSessionHistory(path: path),
+        throwsA(
+          isA<PiInvalidSessionHistoryException>()
+              .having((error) => error.path, "path", File(path).resolveSymbolicLinksSync())
+              .having((error) => error.cause, "cause", isA<FormatException>())
+              .having((error) => error.toString(), "presentation", "Invalid Pi session history")
+              .having((error) => error.toString(), "payload privacy", isNot(contains(secret))),
+        ),
+      );
+    });
+
+    test("read does not mutate session file", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final path = p.join(fixture.root.path, "immutable-v1.jsonl");
+      _writeJsonLines(path, [
+        {
+          "type": "session",
+          "id": "immutable",
+          "timestamp": "2026-08-01T00:00:00Z",
+          "cwd": fixture.root.path,
+        },
+        {
+          "type": "message",
+          "timestamp": "2026-08-01T00:00:01Z",
+          "message": {"role": "hookMessage", "content": "value", "display": true},
+        },
+      ]);
+      final before = File(path).readAsBytesSync();
+
+      await fixture.historyApi().readSessionHistory(path: path);
+
+      expect(File(path).readAsBytesSync(), before);
+    });
+  });
+
   test("real Pi root scan retains metadata-only structural invariants when available", () async {
     final sessions = await PiSessionStorageApi(
       environment: Platform.environment,
@@ -695,6 +856,8 @@ final class _StorageFixture({final bool useExplicitAgentDirectory = true}) {
     },
   );
 
+  PiSessionHistoryStorageApi historyApi() => PiSessionHistoryStorageApi(storageApi: api());
+
   String writeSession({
     required String root,
     required String id,
@@ -722,6 +885,29 @@ final class _StorageFixture({final bool useExplicitAgentDirectory = true}) {
   }
 
   void dispose() => root.deleteSync(recursive: true);
+}
+
+Map<String, Object?> _historyHeader({required _StorageFixture fixture, int version = 3}) => {
+  "type": "session",
+  "version": version,
+  "id": "history-session",
+  "timestamp": "2026-08-01T00:00:00Z",
+  "cwd": fixture.root.path,
+};
+
+Map<String, Object?> _historyBase({
+  required String type,
+  required String id,
+  required String? parentId,
+}) => {
+  "type": type,
+  "id": id,
+  "parentId": parentId,
+  "timestamp": "2026-08-01T00:00:01Z",
+};
+
+void _writeJsonLines(String path, List<Map<String, Object?>> records) {
+  File(path).writeAsStringSync("${records.map(jsonEncode).join("\n")}\n");
 }
 
 String _defaultSessionDirectory({required String agentDirectory, required String cwd}) {
