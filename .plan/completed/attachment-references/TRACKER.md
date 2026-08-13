@@ -281,7 +281,7 @@
   after the check. Together with the Step 10 automated matrix, this completes
   the required regression evidence for retirement.
 - Step 11 (in review): Against merge base `14a4e405`, `git diff --numstat`
-  reports 27 additions and 11 deletions across four documentation files (38
+  reports 33 additions and 11 deletions across four documentation files (44
   changed lines), below the 50-200 estimate because Git records the active-to-
   completed plan move as renames rather than deleting and re-adding both files;
   `git diff --check` passes. Published as
