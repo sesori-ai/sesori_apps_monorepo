@@ -207,16 +207,13 @@ final class PregoPopupAlertPresenter._({required final OverlayState _overlay}) {
 
   /// Shows an alert above the current route and replaces any alert already
   /// visible on the same overlay.
-  // ignore: prefer_required_named_parameters, optional alert content defaults to absent
   void show({
     required String title,
     PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.info,
-    // ignore: avoid_init_to_null, explicit default satisfies the public API lint
-    String? message = null,
-    // ignore: avoid_init_to_null, explicit default satisfies the public API lint
-    PregoPopupAlertsNotificationsAction? primaryAction = null,
-    // ignore: avoid_init_to_null, explicit default satisfies the public API lint
-    PregoPopupAlertsNotificationsAction? secondaryAction = null,
+    // ignore: prefer_required_named_parameters, optional alert content defaults to absent
+    String? message,
+    PregoPopupAlertsNotificationsAction? primaryAction,
+    PregoPopupAlertsNotificationsAction? secondaryAction,
     Duration? duration = const Duration(seconds: 3),
     bool showCloseButton = true,
   }) {
