@@ -99,6 +99,52 @@ void main() {
       );
     });
 
+    test("reports unknown when the host process seam fails for a non-spawn reason", () async {
+      final processes = _ProbeProcessService(
+        spawnError: StateError("host process seam unavailable"),
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(
+        result,
+        isA<PluginSetupUnknown>(),
+        reason: "a non-ENOENT spawn failure is not proof of a missing runtime",
+      );
+    });
+
+    test("reports runtime missing with an update hint for a pre-ACP install", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode(""),
+            stderrBytes: utf8.encode("Usage: hermes ...\ninvalid choice: 'acp'\n"),
+            exitCode: Future<int>.value(2),
+          ),
+        ],
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(
+        (result as PluginSetupRuntimeMissing).actionHint,
+        contains("Update Hermes"),
+        reason: "the binary exists but predates the acp subcommand",
+      );
+    });
+
     test("reports unavailable when the ACP adapter is below the floor", () async {
       final processes = _ProbeProcessService(
         processSequence: [
@@ -324,11 +370,12 @@ class _ProbeProcessService({
   );
 }
 
-/// A canned [SpawnedProcess] with a fixed stdout payload and a caller-supplied
-/// [exitCode] future.
+/// A canned [SpawnedProcess] with fixed stdout/stderr payloads and a
+/// caller-supplied [exitCode] future.
 class _ProbeProcess({
   @override required final int pid,
   required final List<int> _stdoutBytes,
+  final List<int> _stderrBytes = const <int>[],
   required final Future<int> _exitCode,
 }) implements SpawnedProcess {
   @override
@@ -338,7 +385,7 @@ class _ProbeProcess({
   Stream<List<int>> get stdout => Stream<List<int>>.value(_stdoutBytes);
 
   @override
-  Stream<List<int>> get stderr => const Stream<List<int>>.empty();
+  Stream<List<int>> get stderr => Stream<List<int>>.value(_stderrBytes);
 
   @override
   IOSink get stdin => throw UnimplementedError();
