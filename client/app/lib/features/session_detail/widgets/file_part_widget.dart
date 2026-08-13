@@ -275,16 +275,16 @@ class const _AttachmentMetadataOverlay({required final String? filename, require
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (filename != null)
+                if (filename case final filename?)
                   Text(
-                    filename!,
+                    filename,
                     style: prego.textTheme.textXs.medium.copyWith(color: Colors.white),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                if (mime != null)
+                if (mime case final mime?)
                   Text(
-                    mime!,
+                    mime,
                     style: prego.textTheme.textXs.regular.copyWith(color: Colors.white70),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
