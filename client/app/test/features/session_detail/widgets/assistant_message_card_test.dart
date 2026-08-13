@@ -1,12 +1,12 @@
 import "dart:typed_data";
 import "dart:ui" show SemanticsAction;
 
-import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
+import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";

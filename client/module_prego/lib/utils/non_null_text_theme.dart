@@ -1,7 +1,7 @@
 // ignore_for_file: overridden_fields, no_slop_linter/avoid_bang_operator
 
 import "package:flutter/foundation.dart";
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 class const NonNullTextTheme({required final TextTheme textTheme}) extends TextTheme {
   @override

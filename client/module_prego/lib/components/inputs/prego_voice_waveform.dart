@@ -5,7 +5,7 @@ library;
 import "dart:async";
 
 import "package:flutter/foundation.dart";
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../motion/prego_reduced_motion.dart";
 import "../../utils/lerp_utils.dart";

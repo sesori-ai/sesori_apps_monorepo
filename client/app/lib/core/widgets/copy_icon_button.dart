@@ -1,7 +1,7 @@
 import "dart:async";
 
-import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Small icon button that copies [text] to the clipboard and briefly confirms

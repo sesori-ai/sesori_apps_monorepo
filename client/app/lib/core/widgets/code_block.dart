@@ -1,6 +1,6 @@
-import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:markdown/markdown.dart" as md;
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/text_style_x.dart";

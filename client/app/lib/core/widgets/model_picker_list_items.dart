@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Provider name header above a group of models in the model picker list.

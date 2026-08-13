@@ -1,15 +1,16 @@
 import "dart:async";
 import "dart:ui" as ui;
 
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
-import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -315,19 +316,29 @@ class const _SesoriAppShell() extends StatelessWidget {
         // Light status-bar icons for the dark theme's dark backgrounds.
         appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.light),
       ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        AppLocalizations.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,
-      builder: (context, child) => BlocProvider(
-        // Provides the connection cubit app-wide (above the router) so every
-        // screen's `ConnectionBanner.maybeFor` can watch it. There is no visual
-        // overlay any more — the bridge-offline and connection-lost states
-        // surface as an inline banner in each screen's top navigation.
-        create: (_) => ConnectionOverlayCubit(
-          getIt<ConnectionService>(),
-          getIt<RegisteredBridgesService>(),
+      // Legacy UI dependencies still need the SDK theme/localization types.
+      // ignore: deprecated_member_use
+      builder: (context, child) => MaterialUiCompatibilityBridge(
+        // ignore: deprecated_member_use
+        child: CupertinoUiCompatibilityBridge(
+          child: BlocProvider(
+            // Provides the connection cubit app-wide (above the router) so every
+            // screen's `ConnectionBanner.maybeFor` can watch it. There is no visual
+            // overlay any more — the bridge-offline and connection-lost states
+            // surface as an inline banner in each screen's top navigation.
+            create: (_) => ConnectionOverlayCubit(
+              getIt<ConnectionService>(),
+              getIt<RegisteredBridgesService>(),
+            ),
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
-        child: child ?? const SizedBox.shrink(),
       ),
     );
   }

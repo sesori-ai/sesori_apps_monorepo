@@ -1,8 +1,8 @@
-import "package:flutter/cupertino.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
+import "package:cupertino_ui/cupertino_ui.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
 import "package:flutter/foundation.dart";
-import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../module_prego.dart";
 import "../../utils/color_extensions.dart";
@@ -452,10 +452,14 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             builder: (context, bannerHeight, _) => buildScaffold(bannerHeight),
           );
 
-    return _TopBarInsetScope(
-      baseInset: topPad + PregoTopNavigation.barHeight,
-      bannerHeight: _bannerHeight,
-      child: scaffold,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false,
+      body: _TopBarInsetScope(
+        baseInset: topPad + PregoTopNavigation.barHeight,
+        bannerHeight: _bannerHeight,
+        child: scaffold,
+      ),
     );
   }
 }

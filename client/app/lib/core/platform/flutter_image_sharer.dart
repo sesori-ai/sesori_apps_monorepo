@@ -1,7 +1,7 @@
 import "dart:typed_data";
 
-import "package:flutter/material.dart";
 import "package:injectable/injectable.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:share_plus/share_plus.dart";
 

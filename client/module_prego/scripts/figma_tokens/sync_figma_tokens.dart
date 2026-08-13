@@ -566,7 +566,7 @@ void _generateColorsFile(
   buf.writeln("//   dart run scripts/figma_tokens/sync_figma_tokens.dart generate");
   buf.writeln("// ignore_for_file: lines_longer_than_80_chars");
   buf.writeln();
-  buf.writeln('import "package:flutter/material.dart";');
+  buf.writeln('import "package:material_ui/material_ui.dart";');
   buf.writeln();
   buf.writeln('import "../../utils/lerp_utils.dart";');
   buf.writeln('import "prego_color_primitives.g.dart";');

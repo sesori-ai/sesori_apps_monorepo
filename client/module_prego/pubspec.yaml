@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  material_ui: ^1.0.0
+  cupertino_ui: ^1.0.0
   sesori_shared:
     path: ../../shared/sesori_shared
   meta: ^1.18.0

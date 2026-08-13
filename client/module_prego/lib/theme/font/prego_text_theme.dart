@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../utils/non_null_text_theme.dart";
 import "../primitives/prego_colors.g.dart";

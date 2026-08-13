@@ -1,5 +1,5 @@
-import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:material_ui/material_ui.dart";
 
 /// Regression guard for the install-commands disclosure in `_BridgeOfflineView`
 /// (`bridge_offline_view.dart`). That view animates the disclosure open/closed

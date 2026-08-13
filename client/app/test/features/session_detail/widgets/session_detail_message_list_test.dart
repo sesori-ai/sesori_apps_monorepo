@@ -1,6 +1,6 @@
 import "package:flutter/gestures.dart";
-import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
