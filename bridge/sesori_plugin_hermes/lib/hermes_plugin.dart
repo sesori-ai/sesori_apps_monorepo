@@ -5,3 +5,6 @@
 // only, with no harness-specific protocol extensions.
 export "src/hermes_binary.dart";
 export "src/hermes_plugin_impl.dart";
+// Plugin-lifecycle entry point: the const descriptor the bridge registers.
+export "src/runtime/hermes_plugin_descriptor.dart";
+export "src/runtime/hermes_runtime_manifest.dart";
