@@ -131,6 +131,10 @@ business logic.
 
 `SessionListCubit` continues orchestrating only. It reads the current tracker
 map and passes it with the current activity map to `SessionListService`.
+Its tracker subscription must call `_emitFiltered` so a committed activity
+patch re-runs the comparator even when the session was already running and no
+separate status event follows. Replace the current unseen-only callback behavior;
+do not add another subscription or stream.
 
 `SessionListService.visibleSessions` keeps its existing partition. For running
 roots, compare:
@@ -165,6 +169,13 @@ No new route, event variant, capability, or compatibility shim is added.
 - Automatic compaction or generated backend input normalized as a user message
   can move a running session. The marker is explicitly user-side activity, not a
   proof of human intent.
+- Markers carrying backend event times are comparable only when those backends
+  share a sufficiently aligned clock domain. A remote or clock-skewed backend
+  can pin one running session above or below genuinely newer activity from
+  another clock domain. Existing within-session clamping protects unseen state,
+  not cross-session chronology. This bounded ordering limitation is accepted
+  instead of adding a second bridge-observation scalar or changing released
+  unseen timestamp semantics.
 - Direct laptop/backend activity counts only when the backend exposes it through
   the existing normalized user-message/reply events. No effort is made to infer
   activity a bridge-owned process cannot observe.
@@ -264,6 +275,8 @@ Automated proof:
 - permission auto-approval remains filtered before marker routing;
 - tracker live max-merge, REST replacement, optimistic unseen update, initial
   load, and in-flight fetch behavior retain the latest marker;
+- a tracker patch while the target is already running immediately re-runs the
+  visible comparator without waiting for another status event or refresh;
 - running comparator, null fallback, deterministic ties, and unchanged inactive,
   awaiting-only, archived, project, and child ordering; and
 - Git diff proves no schema/migration or production plugin change.

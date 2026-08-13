@@ -38,6 +38,8 @@
   filtering.
 - [x] Automatic compaction/generated input can count when normalized as a user
   message; no plugin inference is added.
+- [x] Cross-backend activity order assumes sufficiently aligned source clocks;
+  skew is accepted instead of adding a bridge-observation scalar.
 - [x] No analytics event.
 
 ## Delivery Steps
@@ -73,6 +75,8 @@
   retaining its existing cache, tick, subscription, and lifecycle.
 - [ ] Preserve marker values across live max-merge, REST seeding, and optimistic
   unseen updates.
+- [ ] Re-run `_emitFiltered` directly from the existing tracker subscription so
+  an activity patch reorders an already-running session immediately.
 - [ ] Replace alphabetical running order with activity/fallback recency and IDs.
 - [ ] Prove unchanged inactive, awaiting-only, archived, project, child, and
   auto-approval behavior.
@@ -112,6 +116,11 @@
 - **2026-08-13 final simplification:** reuse the existing marker and current
   list-state delivery. Accept its broader user-side-activity semantics rather
   than recreating perfect origin provenance.
+- **2026-08-13 clock-domain review:** accepted that source-clock markers can
+  misorder sessions across skewed backends. A globally comparable observation
+  marker would require the second persisted scalar this redesign intentionally
+  removed; the effect is limited to running-list order and refresh cannot make
+  incomparable clocks comparable.
 
 ## Verification Log
 
