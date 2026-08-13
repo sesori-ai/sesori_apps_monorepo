@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/project_repository.dart";
 import "models/session_activity_info.dart";
+import "models/session_list_item_state.dart";
 import "session_activity_calculator.dart";
 
 @lazySingleton
@@ -31,6 +32,7 @@ class SessionListService({
     required Iterable<Session> sessions,
     required bool showArchived,
     required Map<String, SessionActivityInfo> activityBySessionId,
+    required Map<String, SessionListItemState> listStateBySessionId,
   }) {
     final visible = showArchived ? sessions : sessions.where((session) => session.time?.archived == null);
     final running = <Session>[];
@@ -43,7 +45,13 @@ class SessionListService({
         remaining.add(session);
       }
     }
-    running.sort((a, b) => _compareSessionsByTitleAndId(a: a, b: b));
+    running.sort(
+      (a, b) => _compareRunningSessions(
+        a: a,
+        b: b,
+        listStateBySessionId: listStateBySessionId,
+      ),
+    );
     return [...running, ..._sortSessions(remaining)];
   }
 
@@ -71,6 +79,11 @@ class SessionListService({
       pullRequestHistory: session.pullRequestHistory.isEmpty
           ? existingSession.pullRequestHistory
           : session.pullRequestHistory,
+      lastUserActivityAt: switch ((existingSession.lastUserActivityAt, session.lastUserActivityAt)) {
+        (null, final incoming) => incoming,
+        (final existing?, null) => existing,
+        (final existing?, final incoming?) => existing > incoming ? existing : incoming,
+      },
     );
     return upsertSession(sessions: sessions, session: merged);
   }
@@ -80,18 +93,20 @@ class SessionListService({
   }
 
   List<Session> _sortSessions(Iterable<Session> sessions) {
-    return sessions.toList()..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    return sessions.toList()..sort((a, b) {
+      final updatedCompare = (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0);
+      return updatedCompare != 0 ? updatedCompare : a.id.compareTo(b.id);
+    });
   }
 
-  int _compareSessionsByTitleAndId({required Session a, required Session b}) {
-    final titleCompare = switch ((a.title, b.title)) {
-      (null, null) => 0,
-      (null, _) => 1,
-      (_, null) => -1,
-      (final aTitle?, final bTitle?) => aTitle.toLowerCase().compareTo(bTitle.toLowerCase()),
-    };
-    if (titleCompare != 0) return titleCompare;
-
-    return a.id.compareTo(b.id);
+  int _compareRunningSessions({
+    required Session a,
+    required Session b,
+    required Map<String, SessionListItemState> listStateBySessionId,
+  }) {
+    final aActivityAt = listStateBySessionId[a.id]?.lastUserActivityAt ?? a.lastUserActivityAt ?? a.time?.updated ?? 0;
+    final bActivityAt = listStateBySessionId[b.id]?.lastUserActivityAt ?? b.lastUserActivityAt ?? b.time?.updated ?? 0;
+    final activityCompare = bActivityAt.compareTo(aActivityAt);
+    return activityCompare != 0 ? activityCompare : a.id.compareTo(b.id);
   }
 }

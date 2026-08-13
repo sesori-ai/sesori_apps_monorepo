@@ -93,6 +93,7 @@ void main() {
     expect(session.branchName, "current-feature");
     expect(session.hasWorktree, isTrue);
     expect(session.unseen, isTrue);
+    expect(session.lastUserActivityAt, 12);
   });
 
   test("StoredSessionMapper projects the fields repository consumers need", () {

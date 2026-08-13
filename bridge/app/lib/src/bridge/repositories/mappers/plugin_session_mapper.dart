@@ -29,6 +29,7 @@ extension PluginSessionMapper on PluginSession {
       },
       pullRequest: null,
       promptDefaults: null,
+      lastUserActivityAt: null,
     );
   }
 }
@@ -76,6 +77,7 @@ Session enrichSharedSession({
         userMessage: storedSession.lastUserMessageAt,
         seen: storedSession.lastSeenAt,
       ),
+      lastUserActivityAt: storedSession.lastUserMessageAt,
     );
   }
 

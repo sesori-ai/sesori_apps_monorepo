@@ -3,13 +3,14 @@
 ## Current State
 
 - **Plan slug:** `session-user-interaction-order`
-- **Implementation base:** `main` at `88059e200`
-- **Branch/worktree:** `session-order-ux-review`
+- **Implementation base:** `main` at `ae7bd8f7`
+- **Branch/worktree:** `session-user-interaction-order-implementation`
 - **Plan PR:** [#865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865)
-- **Series state:** Step 1/4 rewritten around existing persisted state
-- **Current step:** 1/4 in review; no production source published
-- **Next action:** monitor Step 1 review and merge readiness
-- **Production source changes published:** none
+- **Series state:** Step 1/4 merged; Step 2/4 implementation verified locally
+- **Current step:** 2/4 ready for publication
+- **Next action:** publish and monitor the Step 2 implementation PR
+- **Production source changes published:** none; Step 2 remains local until its
+  PR is opened
 
 ## Simplicity Contract
 
@@ -49,8 +50,8 @@
 
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
-| [ ] | 1/4 | `🌱 [session-user-interaction-order] docs: simplify running session activity order [step 1/4]` | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) open; rewritten |
-| [ ] | 2/4 | `⚙️ [session-user-interaction-order] feat: order running sessions by user activity [step 2/4]` | Pending |
+| [x] | 1/4 | `🌱 [session-user-interaction-order] docs: simplify running session activity order [step 1/4]` | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) merged |
+| [ ] | 2/4 | `⚙️ [session-user-interaction-order] feat: order running sessions by user activity [step 2/4]` | Verified locally; ready to publish |
 | [ ] | 3/4 | `🌱 [session-user-interaction-order] docs: define running session activity coverage [step 3/4]` | Pending |
 | [ ] | 4/4 | `🌱 [session-user-interaction-order] docs: verify and retire session activity ordering [step 4/4]` | Pending |
 
@@ -70,25 +71,25 @@
 
 ## Step 2 Checklist
 
-- [ ] Discard the stashed plugin event/origin prototype; do not restore it.
-- [ ] Add nullable `lastUserActivityAt` to shared `Session` and the existing
+- [x] Keep the stashed plugin event/origin prototype isolated; do not restore it.
+- [x] Add nullable `lastUserActivityAt` to shared `Session` and the existing
   list-state patch; regenerate source.
-- [ ] Map existing persisted markers through bridge REST/detail and patch seams.
-- [ ] Pass null through ACP/Codex shared `Session` constructors without deriving
+- [x] Map existing persisted markers through bridge REST/detail and patch seams.
+- [x] Pass null through ACP/Codex shared `Session` constructors without deriving
   or owning the bridge marker in plugin code.
-- [ ] Replace tracker boolean values with typed unseen/activity list state while
+- [x] Replace tracker boolean values with typed unseen/activity list state while
   retaining its existing cache, tick, subscription, and lifecycle.
-- [ ] Preserve marker values across live max-merge, REST seeding, and optimistic
+- [x] Preserve marker values across live max-merge, REST seeding, and optimistic
   unseen updates.
-- [ ] Re-run `_emitFiltered` directly from the existing tracker subscription so
+- [x] Re-run `_emitFiltered` directly from the existing tracker subscription so
   an activity patch reorders an already-running session immediately.
-- [ ] Preserve the `SessionListLoaded` guard around that callback so seeded
+- [x] Preserve the `SessionListLoaded` guard around that callback so seeded
   tracker replay cannot replace initial loading with an empty loaded list.
-- [ ] Replace alphabetical running order with activity/fallback recency and IDs.
-- [ ] Prove unchanged inactive, awaiting-only, archived, project, child, and
+- [x] Replace alphabetical running order with activity/fallback recency and IDs.
+- [x] Prove unchanged inactive, awaiting-only, archived, project, child, and
   auto-approval behavior.
-- [ ] Prove no schema/migration or production plugin diff.
-- [ ] Run focused analysis/tests and architecture implementation review.
+- [x] Prove no schema/migration or behavioral production plugin diff.
+- [x] Run focused analysis/tests and architecture implementation review.
 
 ## Step 3 Checklist
 
@@ -159,3 +160,19 @@
   `+161/-0`, and skill `+31/-0`. The plan/tracker documentation total is 498
   lines within the recorded 350-650 target; total Step 1 additions including the
   skill are 529 lines. The same range passes `git diff --check`.
+- PR #865 merged as `5954f397`; Step 2 started from `origin/main` at
+  `ae7bd8f7` on `session-user-interaction-order-implementation` in the existing
+  worktree.
+- Shared full tests and analysis passed. Module core's 1,111 tests and strict
+  analysis passed. Bridge app strict analysis and focused unseen, catalog,
+  repository, and orchestrator tests passed. ACP and Codex mapper tests and
+  strict analysis passed; mobile test-helper analysis passed.
+- The final production diff adds no database schema or migration and no plugin
+  behavior, classifier, or marker ownership. ACP/Codex changes are required
+  null arguments at shared `Session` construction sites.
+- `architecture-implementation-review` approved the full working-tree diff
+  against `origin/main` with no findings. It confirmed additive mixed-version
+  wire compatibility, bridge repository/service/orchestrator ownership, and
+  client Layer-3 state/comparator ownership.
+- No analytics event is added: this changes a derived list order rather than
+  creating a distinct user action or authoritative product outcome.

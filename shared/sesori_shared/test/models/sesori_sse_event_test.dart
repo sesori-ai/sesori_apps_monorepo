@@ -130,6 +130,36 @@ void main() {
   // Round-trip JSON compatibility
   // ---------------------------------------------------------------------------
 
+  group('session.unseen_changed compatibility', () {
+    test('accepts omission as null and omits null on encode', () {
+      final event = SesoriSseEvent.fromJson({
+        'type': 'session.unseen_changed',
+        'projectID': 'project-1',
+        'sessionId': 'session-1',
+        'unseen': false,
+        'projectHasUnseenChanges': false,
+      });
+
+      expect(event, isA<SesoriSessionUnseenChanged>());
+      final change = event as SesoriSessionUnseenChanged;
+      expect(change.lastUserActivityAt, isNull);
+      expect(change.toJson(), isNot(contains('lastUserActivityAt')));
+    });
+
+    test('round-trips a committed marker', () {
+      const event = SesoriSseEvent.sessionUnseenChanged(
+        projectID: 'project-1',
+        sessionId: 'session-1',
+        unseen: true,
+        projectHasUnseenChanges: true,
+        lastUserActivityAt: 1234,
+      );
+
+      expect(event.toJson()['lastUserActivityAt'], 1234);
+      expect(SesoriSseEvent.fromJson(event.toJson()), event);
+    });
+  });
+
   group('sessionStatus round-trip', () {
     test('busy status serializes and deserializes correctly', () {
       const event = SesoriSseEvent.sessionStatus(
@@ -207,6 +237,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
       const event = SesoriSseEvent.sessionCreated(info: session);
       final json = event.toJson();
@@ -239,6 +270,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
       const event = SesoriSseEvent.sessionUpdated(info: session);
       final json = event.toJson();
@@ -269,6 +301,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
       const event = SesoriSseEvent.sessionDeleted(info: session);
       final json = event.toJson();
@@ -332,20 +365,18 @@ void main() {
       // straight into the shared Message model rather than going through
       // the plugin mapper. A drift in either side's "time" key would drop
       // timestamps on every streaming token, so guard it explicitly.
-      final parsed =
-          SesoriSseEvent.fromJson({
-                'type': 'message.updated',
-                'info': {
-                  'role': 'assistant',
-                  'id': 'msg_003',
-                  'sessionID': 'ses_abc',
-                  'agent': null,
-                  'modelID': null,
-                  'providerID': null,
-                  'time': {'created': 1718400000000, 'completed': null},
-                },
-              })
-              as SesoriMessageUpdated;
+      final parsed = SesoriSseEvent.fromJson({
+        'type': 'message.updated',
+        'info': {
+          'role': 'assistant',
+          'id': 'msg_003',
+          'sessionID': 'ses_abc',
+          'agent': null,
+          'modelID': null,
+          'providerID': null,
+          'time': {'created': 1718400000000, 'completed': null},
+        },
+      }) as SesoriMessageUpdated;
 
       expect(parsed.info.time, const MessageTime(created: 1718400000000, completed: null));
     });
@@ -557,6 +588,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
       );
       expect(created, isA<SesoriSessionEvent>());
@@ -575,6 +607,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
       );
       expect(updated, isA<SesoriSessionEvent>());
@@ -593,6 +626,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
       );
       expect(deleted, isA<SesoriSessionEvent>());
@@ -802,6 +836,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
       ).toJson();
       expect(json['type'], 'session.created');
@@ -820,6 +855,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
       ).toJson();
       expect(json['type'], 'session.updated');
@@ -838,6 +874,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         ),
       ).toJson();
       expect(json['type'], 'session.deleted');
