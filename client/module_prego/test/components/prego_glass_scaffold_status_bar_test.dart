@@ -27,6 +27,7 @@ void main() {
   // in-app light/dark choice deliberately overrides.
 
   testWidgets("provides standalone Material and Scaffold ancestors", (tester) async {
+    late BuildContext scaffoldContext;
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -36,10 +37,10 @@ void main() {
           slivers: [
             SliverToBoxAdapter(
               child: Builder(
-                builder: (context) => TextButton(
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Notice"))),
-                  child: const TextField(),
-                ),
+                builder: (context) {
+                  scaffoldContext = context;
+                  return const TextField();
+                },
               ),
             ),
           ],
@@ -48,7 +49,7 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byType(TextButton));
+    ScaffoldMessenger.of(scaffoldContext).showSnackBar(const SnackBar(content: Text("Notice")));
     await tester.pump();
     expect(find.text("Notice"), findsOneWidget);
   });
