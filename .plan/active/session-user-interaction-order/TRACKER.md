@@ -3,14 +3,14 @@
 ## Current State
 
 - **Plan slug:** `session-user-interaction-order`
-- **Implementation base:** `main` at `ae7bd8f7`
-- **Branch/worktree:** `session-user-interaction-order-implementation`
+- **Implementation base:** `main` at `2dcaeba5`
+- **Branch/worktree:** `session-user-interaction-order-regression`
 - **Plan PR:** [#865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865)
-- **Series state:** Step 1/4 merged; Step 2/4 implementation verified locally
-- **Current step:** 2/4 ready for publication
-- **Next action:** publish and monitor the Step 2 implementation PR
-- **Production source changes published:** none; Step 2 remains local until its
-  PR is opened
+- **Implementation PR:** [#883](https://github.com/sesori-ai/sesori_apps_monorepo/pull/883)
+- **Series state:** Steps 1-2/4 merged; Step 3/4 regression contract in progress
+- **Current step:** 3/4 documentation ready for validation and publication
+- **Next action:** publish and monitor the Step 3 regression-contract PR
+- **Production source changes published:** Step 2 merged in PR #883
 
 ## Simplicity Contract
 
@@ -51,8 +51,8 @@
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
 | [x] | 1/4 | `🌱 [session-user-interaction-order] docs: simplify running session activity order [step 1/4]` | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) merged |
-| [ ] | 2/4 | `⚙️ [session-user-interaction-order] feat: order running sessions by user activity [step 2/4]` | Verified locally; ready to publish |
-| [ ] | 3/4 | `🌱 [session-user-interaction-order] docs: define running session activity coverage [step 3/4]` | Pending |
+| [x] | 2/4 | `⚙️ [session-user-interaction-order] feat: order running sessions by user activity [step 2/4]` | [PR #883](https://github.com/sesori-ai/sesori_apps_monorepo/pull/883) merged |
+| [ ] | 3/4 | `🌱 [session-user-interaction-order] docs: define running session activity coverage [step 3/4]` | Ready to publish |
 | [ ] | 4/4 | `🌱 [session-user-interaction-order] docs: verify and retire session activity ordering [step 4/4]` | Pending |
 
 ## Step 1 Checklist
@@ -93,11 +93,11 @@
 
 ## Step 3 Checklist
 
-- [ ] Update projects/sessions regression behavior and L3 exercise.
-- [ ] Reconcile turns and questions/permissions with existing marker inputs and
+- [x] Update projects/sessions regression behavior and L3 exercise.
+- [x] Reconcile turns and questions/permissions with existing marker inputs and
   auto-approval exclusion without claiming perfect human provenance.
-- [ ] Record representative-plugin scope and generated-input limitation.
-- [ ] Validate documentation consistency and whitespace.
+- [x] Record representative-plugin scope and generated-input limitation.
+- [x] Validate documentation consistency and whitespace.
 
 ## Step 4 Checklist
 
@@ -176,3 +176,10 @@
   client Layer-3 state/comparator ownership.
 - No analytics event is added: this changes a derived list order rather than
   creating a distinct user action or authoritative product outcome.
+- PR #883 merged as `2dcaeba5` with 16/16 checks passing. Review fixes kept
+  activity merging inside `SessionUnseenTracker`, preserved authoritative REST
+  unseen/project seeds, and received two architecture implementation approvals
+  with no findings.
+- Step 3 reconciles the three planned regression contracts and passes
+  `git diff --check`. No Dart/Flutter suites are required for this
+  documentation-only change.
