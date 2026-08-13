@@ -97,7 +97,7 @@ class const PregoPopupAlertsNotifications({
               if (onClose case final onClose?)
                 PositionedDirectional(
                   top: PregoSpacing.md,
-                  end: 7,
+                  end: PregoSpacing.md,
                   child: _CloseButton(onPressed: onClose),
                 ),
             ],

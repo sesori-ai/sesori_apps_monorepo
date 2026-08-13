@@ -46,6 +46,17 @@ void main() {
     );
   });
 
+  testWidgets("keeps the close icon 16 pixels from the trailing edge", (tester) async {
+    await tester.pumpWidget(
+      _harness(PregoPopupAlertsNotifications(title: "Accepted", onClose: () {})),
+    );
+
+    final cardRight = tester.getTopRight(find.byType(PregoPopupAlertsNotifications)).dx;
+    final iconRight = tester.getTopRight(find.byIcon(TablerRegular.x)).dx;
+
+    expect(cardRight - iconRight, PregoSpacing.xl);
+  });
+
   testWidgets("uses Figma's shallow lower-edge accent gradient", (tester) async {
     await tester.pumpWidget(
       _harness(
