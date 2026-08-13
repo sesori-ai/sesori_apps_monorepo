@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
@@ -17,6 +18,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -95,6 +97,60 @@ void main() {
       expect(worktreeService.resolveCalls, isZero);
       expect(plugin.createCalls, isZero);
       expect(await db.sessionDao.getSession(sessionId: "backend-session"), isNull);
+    });
+
+    test("starts plugin and metadata generation concurrently after project validation", () async {
+      final pluginGate = Completer<void>();
+      final metadataGate = Completer<void>();
+      final runtime = createTestPluginRuntime(plugins: [plugin])
+        ..useStarted = Completer<void>()
+        ..useGate = pluginGate.future;
+      metadataService
+        ..generateStarted = Completer<void>()
+        ..generateGate = metadataGate.future;
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        runtime: runtime,
+      );
+      final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      final localMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: repository,
+        sessionOperationDispatcher: localOperationDispatcher,
+      );
+      final localService = SessionCreationService(
+        metadataService: metadataService,
+        worktreeService: worktreeService,
+        sessionRepository: repository,
+        sessionMutationDispatcher: localMutationDispatcher,
+      );
+
+      final creation = localService.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      await runtime.useStarted!.future;
+      final metadataStartedWhilePluginBlocked = metadataService.generateStarted?.isCompleted;
+      pluginGate.complete();
+      metadataGate.complete();
+      await creation;
+
+      expect(metadataStartedWhilePluginBlocked, isTrue);
+      await localOperationDispatcher.dispose();
+      await localMutationDispatcher.dispose();
+      await runtime.dispose();
     });
 
     test("stores the created root with its explicit plugin and backend binding", () async {
@@ -241,6 +297,8 @@ void main() {
 
 class _FakeMetadataService() extends MetadataService {
   int generateCalls = 0;
+  Completer<void>? generateStarted;
+  Future<void>? generateGate;
 
   this
     : super(
@@ -252,6 +310,8 @@ class _FakeMetadataService() extends MetadataService {
   @override
   Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
     generateCalls++;
+    generateStarted?.complete();
+    if (generateGate case final gate?) await gate;
     return null;
   }
 }
