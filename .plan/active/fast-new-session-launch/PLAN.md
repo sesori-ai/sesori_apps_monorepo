@@ -194,7 +194,8 @@ and analytics values from that draft without persisting the submission.
 `NewSessionCubit` builds the snapshot before the first async gap. If it is still
 open when creation fails, it:
 
-1. restores the draft repository from the snapshot;
+1. restores the Cubit's cached `ComposerDraft` and the draft repository from the
+   snapshot before emitting any state that remounts `PromptInput`;
 2. restores the staged command when present;
 3. emits the transient restoring state carrying the attachments until the
    composer remounts;
@@ -244,6 +245,12 @@ between bounded chunks. Encryption still receives the complete plaintext bytes
 and the wire JSON shape remains byte-equivalent; no new relay or client-bridge
 contract is introduced. Small/non-request relay messages retain the direct encoder.
 The request and all existing acceptance semantics remain otherwise synchronous.
+
+The shared crypto boundary also avoids boxed frame assembly:
+`RelayCryptoService.encrypt` returns a preallocated `Uint8List` containing nonce,
+ciphertext, and MAC via `setRange`; `SessionEncryptor` exposes that typed result,
+and `RelayClient` preallocates only the required version-prefixed frame. The
+cipher algorithm and byte layout remain unchanged.
 
 ### 2. Reusable detail-shaped launch presentation
 
@@ -641,6 +648,9 @@ bridge and client production steps into one large PR.
   outer relay-envelope JSON/UTF-8 encoding. Prove it preserves the exact wire
   payload, does not copy attachment buffers through an isolate, and does not
   block launch rendering; do not use a wall-clock-only test.
+- Prove encryption returns the exact existing nonce/ciphertext/MAC layout in a
+  preallocated `Uint8List` and final framing does not materialize boxed integer
+  lists for the maximum-sized payload.
 - Prove mixed typed/voice spans survive submission failure exactly, and the
   existing-session queue plus analytics retain their released input-mode
   behavior after the richer callback input.
@@ -742,18 +752,3 @@ Success still means the backend accepted the initial action and the stable
 Sesori session is queryable. Failure restores the user's exact submission
 without unsafe automatic retry. No database or client-bridge wire migration is
 introduced.
-
-## Architecture Review
-
-- **Reviewer:** `architecture-plan-review` sub-agent
-- **Result:** Draft rejected with three concrete boundary findings; repository
-  rules require applying valid findings directly rather than re-reviewing fixes.
-- **Applied findings:** specified exact `OrchestratorSession` admission/drain/
-  disposal order; replaced layer-skipping `MetadataService` with
-  `SesoriServerApi` -> `SessionMetadataRepository` ->
-  `SessionCreationService`; placed the reusable status primitive in
-  `module_prego` with app-owned localization/session chrome.
-- **Additional consistency corrections:** specified one-shot attachment
-  restoration and snapshot release, pinned the initial backend/catalog title
-  rule, and documented why regression reconciliation remains the required
-  penultimate step.

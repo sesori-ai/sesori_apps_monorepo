@@ -55,6 +55,8 @@
   JSON/UTF-8; do not copy bytes through isolates or couple the Cubit to frame
   lifecycle.
 - [ ] A background failure after route exit must not restore shared draft state.
+- [ ] In-route failure restores both the Cubit's cached draft and repository
+  before `PromptInput` remounts.
 - [ ] Preserve nullable title handoff; never convert missing title to `""`.
 - [ ] Extend authenticated `SesoriServerApi` for metadata, including token
   acquisition and one 401 refresh/retry; do not split one provider by use case.
@@ -62,6 +64,8 @@
   shutdown, and deadline-bound standalone token refresh.
 - [ ] Keep the normalized event consumer alive through late-title drain, then
   drain its tails before dispatcher disposal.
+- [ ] Shared encryption returns preallocated typed bytes; maximum-size framing
+  must not spread ciphertext into boxed integer lists.
 - [ ] Generalize the existing deletion stream/listener; do not add a second
   local mutation stream.
 - [ ] Delete obsolete overlay, metadata naming, preferred-name, enrichment, and
@@ -116,9 +120,8 @@
 
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
-- Informational merge-base result, including this verification record itself and
-  within the 750-900 Step 1 changed-line target:
-  `PLAN.md +759`, `TRACKER.md +141`, total `+900 / -0`.
+- Informational result including this record, within the 750-900 target:
+  `PLAN.md +754`, `TRACKER.md +144`, total `+898 / -0`.
 
 ### Manual matrix
 
