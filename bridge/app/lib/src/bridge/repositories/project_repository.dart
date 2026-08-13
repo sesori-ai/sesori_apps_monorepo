@@ -1,3 +1,5 @@
+import "dart:async" show Completer;
+import "dart:collection" show Queue;
 import "dart:io" show FileSystemException;
 import "dart:math" show max;
 
@@ -30,22 +32,17 @@ class ProjectRepository({
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
   static const int _maxConcurrentWorktreeInspections = 8;
+  final Queue<Completer<void>> _worktreeInspectionWaiters = Queue<Completer<void>>();
+  int _activeWorktreeInspections = 0;
 
   Future<List<Project>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
-    final worktreeCapabilities = <bool>[];
-    for (var start = 0; start < rows.length; start += _maxConcurrentWorktreeInspections) {
-      final end = start + _maxConcurrentWorktreeInspections;
-      worktreeCapabilities.addAll(
-        await Future.wait([
-          for (final row in rows.sublist(start, end < rows.length ? end : rows.length))
-            _supportsDedicatedWorktrees(path: row.path),
-        ]),
-      );
-    }
+    final worktreeCapabilities = await Future.wait([
+      for (final row in rows) _supportsDedicatedWorktrees(path: row.path),
+    ]);
     return [
       for (final (index, row) in rows.indexed)
         _projectCatalogMapper.map(
@@ -269,12 +266,33 @@ class ProjectRepository({
   }
 
   Future<bool> _supportsDedicatedWorktrees({required String path}) async {
+    await _acquireWorktreeInspectionSlot();
     try {
       if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
       return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
     } on Object catch (error, stackTrace) {
       Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
       return false;
+    } finally {
+      _releaseWorktreeInspectionSlot();
+    }
+  }
+
+  Future<void> _acquireWorktreeInspectionSlot() async {
+    if (_activeWorktreeInspections < _maxConcurrentWorktreeInspections) {
+      _activeWorktreeInspections++;
+      return;
+    }
+    final waiter = Completer<void>();
+    _worktreeInspectionWaiters.addLast(waiter);
+    await waiter.future;
+  }
+
+  void _releaseWorktreeInspectionSlot() {
+    if (_worktreeInspectionWaiters.isNotEmpty) {
+      _worktreeInspectionWaiters.removeFirst().complete();
+    } else {
+      _activeWorktreeInspections--;
     }
   }
 

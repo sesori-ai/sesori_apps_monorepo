@@ -406,7 +406,7 @@ void main() {
       expect(result.single.time, const ProjectTime(created: 10, updated: 20));
     });
 
-    test("getProjects bounds concurrent Git worktree inspections", () async {
+    test("getProjects reuses an available Git worktree inspection slot", () async {
       final paths = [
         for (var index = 0; index < 9; index++) "/project-${index.toString().padLeft(2, "0")}",
       ];
@@ -417,7 +417,7 @@ void main() {
           updatedAt: paths.length - index,
         );
       }
-      final gitCliApi = _CompletingGitCliApi(paths: paths);
+      final gitCliApi = _BlockingGitCliApi();
       final boundedRepo = singlePluginProjectRepository(
         gitCliApi: gitCliApi,
         projectsDao: db.projectsDao,
@@ -431,18 +431,51 @@ void main() {
 
       expect(gitCliApi.inspectedPaths, paths.take(8));
       expect(gitCliApi.nextInspectionStarted.isCompleted, isFalse);
-      for (final path in paths.take(8)) {
-        gitCliApi.results[path]!.complete(true);
-      }
+      gitCliApi.completeFirst(result: true);
 
       await gitCliApi.nextInspectionStarted.future.timeout(const Duration(seconds: 1));
       expect(gitCliApi.inspectedPaths, paths);
-      gitCliApi.results[paths.last]!.complete(false);
+      expect(gitCliApi.activeInspections, 8);
+      gitCliApi.releaseAll(result: true);
 
       final projects = await listing;
       expect(projects.map((project) => project.path), paths);
-      expect(projects.take(8).every((project) => project.supportsDedicatedWorktrees), isTrue);
-      expect(projects.last.supportsDedicatedWorktrees, isFalse);
+      expect(projects.every((project) => project.supportsDedicatedWorktrees), isTrue);
+      expect(gitCliApi.maximumActiveInspections, 8);
+    });
+
+    test("concurrent project listings share the Git worktree inspection limit", () async {
+      final paths = [
+        for (var index = 0; index < 9; index++) "/project-${index.toString().padLeft(2, "0")}",
+      ];
+      for (final (index, path) in paths.indexed) {
+        await db.projectsDao.setActivity(
+          projectId: path,
+          createdAt: 1,
+          updatedAt: paths.length - index,
+        );
+      }
+      final gitCliApi = _BlockingGitCliApi();
+      final boundedRepo = singlePluginProjectRepository(
+        gitCliApi: gitCliApi,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final listings = Future.wait([boundedRepo.getProjects(), boundedRepo.getProjects()]);
+      await gitCliApi.inspectionLimitReached.future.timeout(const Duration(seconds: 1));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(gitCliApi.activeInspections, 8);
+      expect(gitCliApi.maximumActiveInspections, 8);
+      gitCliApi.releaseAll(result: true);
+
+      final results = await listings;
+      expect(results, everyElement(hasLength(paths.length)));
+      expect(gitCliApi.inspectedPaths, hasLength(paths.length * 2));
+      expect(gitCliApi.maximumActiveInspections, 8);
     });
 
     test("getProjects breaks equal timestamps by project id descending", () async {
@@ -1490,22 +1523,49 @@ class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends Proj
   }
 }
 
-class _CompletingGitCliApi({required List<String> paths}) extends FakeGitCliApi {
-  final Map<String, Completer<bool>> results = {
-    for (final path in paths) path: Completer<bool>(),
-  };
+class _BlockingGitCliApi() extends FakeGitCliApi {
   final List<String> inspectedPaths = [];
   final Completer<void> inspectionLimitReached = Completer<void>();
   final Completer<void> nextInspectionStarted = Completer<void>();
+  final List<Completer<bool>> _pending = [];
+  bool _released = false;
+  int activeInspections = 0;
+  int maximumActiveInspections = 0;
 
   @override
   Future<bool> isGitInitialized({required String projectPath}) async => true;
 
   @override
-  Future<bool> hasAtLeastOneCommit({required String projectPath}) {
+  Future<bool> hasAtLeastOneCommit({required String projectPath}) async {
     inspectedPaths.add(projectPath);
+    activeInspections++;
+    if (activeInspections > maximumActiveInspections) {
+      maximumActiveInspections = activeInspections;
+    }
     if (inspectedPaths.length == 8) inspectionLimitReached.complete();
     if (inspectedPaths.length == 9) nextInspectionStarted.complete();
-    return results[projectPath]!.future;
+    if (_released) {
+      activeInspections--;
+      return true;
+    }
+    final completer = Completer<bool>();
+    _pending.add(completer);
+    try {
+      return await completer.future;
+    } finally {
+      activeInspections--;
+    }
+  }
+
+  void completeFirst({required bool result}) {
+    _pending.removeAt(0).complete(result);
+  }
+
+  void releaseAll({required bool result}) {
+    _released = true;
+    for (final completer in _pending) {
+      completer.complete(result);
+    }
+    _pending.clear();
   }
 }
