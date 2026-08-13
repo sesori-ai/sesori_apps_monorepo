@@ -85,7 +85,11 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
   Future<PiSessionFileHistoryDto> _readSessionHistory({required String path}) async {
     final result = await Isolate.run(() => _readPiSessionHistory(path: path));
     if (result.malformedLineCount > 0) {
-      Log.w("[pi] skipped ${result.malformedLineCount} malformed session history record(s) at '${result.path}'");
+      Log.w(
+        "[pi] skipped ${result.malformedLineCount} malformed session history record(s) at '${result.path}'",
+        result.firstMalformedRecordError,
+        result.firstMalformedRecordStack,
+      );
     }
     switch (result) {
       case _PiHistoryReadSuccess(:final history):
@@ -240,6 +244,11 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
       error: PiInvalidSessionHistoryException(path: resolvedPath, cause: cause),
       stackTrace: fatalFailureStack ?? firstFailureStack ?? StackTrace.current,
       malformedLineCount: malformedLineCount,
+      firstMalformedRecordError: switch (firstFailure) {
+        final failure? => _PiHistoryRecordParseException(cause: failure),
+        null => null,
+      },
+      firstMalformedRecordStack: firstFailureStack,
     );
   }
   return _PiHistoryReadSuccess(
@@ -249,6 +258,11 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
       entries: List.unmodifiable(entries),
     ),
     malformedLineCount: malformedLineCount,
+    firstMalformedRecordError: switch (firstFailure) {
+      final failure? => _PiHistoryRecordParseException(cause: failure),
+      null => null,
+    },
+    firstMalformedRecordStack: firstFailureStack,
   );
 }
 
@@ -861,20 +875,31 @@ final class const _PiScanResult({
 sealed class const _PiHistoryReadResult({
   required final String path,
   required final int malformedLineCount,
+  required final _PiHistoryRecordParseException? firstMalformedRecordError,
+  required final StackTrace? firstMalformedRecordStack,
 });
 
 final class const _PiHistoryReadSuccess({
   required super.path,
   required super.malformedLineCount,
+  required super.firstMalformedRecordError,
+  required super.firstMalformedRecordStack,
   required final PiSessionFileHistoryDto history,
 }) extends _PiHistoryReadResult;
 
 final class const _PiHistoryReadFailure({
   required super.path,
   required super.malformedLineCount,
+  required super.firstMalformedRecordError,
+  required super.firstMalformedRecordStack,
   required final PiInvalidSessionHistoryException error,
   required final StackTrace stackTrace,
 }) extends _PiHistoryReadResult;
+
+final class const _PiHistoryRecordParseException({required final Object cause}) implements Exception {
+  @override
+  String toString() => "Invalid Pi session history record";
+}
 
 final class _PiHistoryStringSink({
   required void Function(String line, {required bool isFinal}) onLine,

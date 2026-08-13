@@ -752,6 +752,7 @@ void main() {
       });
 
       expect(warnings, contains("skipped 1 malformed session history record"));
+      expect(warnings, contains("Invalid Pi session history record"));
       expect(warnings, contains(File(path).resolveSymbolicLinksSync()));
       expect(warnings, isNot(contains(secret)));
     });
