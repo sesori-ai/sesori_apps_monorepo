@@ -71,9 +71,10 @@ class HermesPlugin._({
   @override
   String get clientVersion => HermesIdentity.clientVersion;
 
-  /// Hermes advertises a provider auth method plus a terminal-setup method;
-  /// the first advertised method is the configured provider, which is what we
-  /// want to authenticate against. `null` picks it.
+  /// Hermes advertises the configured provider as an agent auth method first
+  /// and a terminal-setup method after it (see `build_auth_methods`); `null`
+  /// picks the first advertised method — the provider — which is what we want
+  /// to authenticate against.
   @override
   String? get authMethodId => null;
 

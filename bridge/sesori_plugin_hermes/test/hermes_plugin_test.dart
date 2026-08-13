@@ -8,7 +8,9 @@ import "package:test/test.dart";
 /// The `initialize` result Hermes actually advertises (verified 2026-08-13
 /// against `hermes acp` v0.20.0): load/list/resume/fork session capabilities,
 /// image prompt support, and no `closeSession` — the base must therefore
-/// never call `session/close`.
+/// never call `session/close`. Auth mirrors `build_auth_methods()`: the
+/// configured provider as an agent method first, then a terminal-setup
+/// method.
 const Map<String, dynamic> hermesInitializeResult = {
   "protocolVersion": 1,
   "agentCapabilities": {
@@ -22,9 +24,15 @@ const Map<String, dynamic> hermesInitializeResult = {
   },
   "authMethods": [
     {
+      "id": "opencode-go",
+      "name": "opencode-go runtime credentials",
+      "description": "Authenticate Hermes using the currently configured opencode-go runtime credentials.",
+    },
+    {
       "type": "terminal",
       "id": "hermes-setup",
-      "title": "Hermes terminal setup",
+      "name": "Configure Hermes provider",
+      "description": "Open Hermes' interactive model/provider setup in a terminal.",
     },
   ],
 };
@@ -75,9 +83,16 @@ void main() {
     Future<void> connect() async {
       final connecting = plugin.ensureConnected();
       await respond("initialize", hermesInitializeResult);
-      // Hermes advertises a terminal auth method, so the handshake calls
-      // authenticate with it; a configured install answers with an empty body.
-      await respond("authenticate", const <String, dynamic>{});
+      // Hermes advertises the configured provider method first, then a
+      // terminal-setup method; the handshake authenticates against the first
+      // advertised method because authMethodId is null.
+      final authFrame = await waitForFrame("authenticate");
+      expect(
+        (authFrame["params"] as Map).cast<String, dynamic>()["methodId"],
+        "opencode-go",
+        reason: "the plugin must authenticate against the configured provider, not the setup method",
+      );
+      fake.emit({"jsonrpc": "2.0", "id": authFrame["id"], "result": <String, dynamic>{}});
       expect(await connecting, isTrue);
     }
 
