@@ -354,14 +354,14 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Privacy-safe remote failures omit paths, transcript payloads, summaries, raw
   assistant errors, and process details while local logs retain causes, stacks,
   and actionable resolved paths.
-- `dart pub get`, `dart run build_runner build`, `dart test` (135 tests),
+- `dart pub get`, `dart run build_runner build`, `dart test` (137 tests),
   `dart analyze --fatal-infos`, and `git diff --check`: pass.
 - No client/bridge wire-contract, database, persisted-data mutation, analytics,
   or client-UI change; Pi remains app-invisible until Step 18.
 - Architecture implementation review findings on internal DTO seams, injected
   plugin identity, and original local file-read causes were applied.
-- Diff from merge base after review feedback: +7,286/-22 = 7,308 changed
-  lines; generated lines: 4,268; tests run: 135.
+- Diff from merge base after review feedback: +7,360/-21 = 7,381 changed
+  lines; generated lines: 4,268; tests run: 137.
 - Recorded overage: generated closed history unions, RPC/file normalization,
   privacy-safe mapping, and focused regression tests are one replay seam;
   splitting would publish incomplete history or live-parity contracts.

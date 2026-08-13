@@ -731,6 +731,31 @@ void main() {
       expect((message.content.single as PiImageContentDto).data, image);
     });
 
+    test("rejects a newline-free record beyond the history byte limit", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final path = p.join(fixture.root.path, "oversized-history.jsonl");
+      final file = File(path).openSync(mode: FileMode.write);
+      addTearDown(file.closeSync);
+      file.writeStringSync("${jsonEncode(_historyHeader(fixture: fixture))}\n");
+      final chunk = utf8.encode("x" * 8192);
+      for (var written = 0; written <= PiSessionHistoryStorageApi.historyRecordByteLimit; written += chunk.length) {
+        file.writeFromSync(chunk);
+      }
+      file.flushSync();
+
+      await expectLater(
+        fixture.historyApi().readSessionHistory(path: path),
+        throwsA(
+          isA<PiInvalidSessionHistoryException>().having(
+            (error) => error.cause.toString(),
+            "cause",
+            "Pi session history record exceeds byte limit",
+          ),
+        ),
+      );
+    });
+
     test("tolerates malformed complete lines and silently skips malformed final record", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);

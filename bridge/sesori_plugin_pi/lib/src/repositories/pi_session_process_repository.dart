@@ -44,9 +44,8 @@ final class PiSessionProcessRepository({
   required final PiProcessFactory _processFactory,
   required final PiHistoryMapper _historyMapper,
   required final Duration _startupExitTimeout,
+  required final Duration _historyRpcTimeout,
 }) {
-  static const Duration _historyRpcTimeout = Duration(seconds: 15);
-
   final Map<String, String> _environment = Map.unmodifiable(environment);
 
   Future<List<PluginMessageWithParts>> loadHistory({

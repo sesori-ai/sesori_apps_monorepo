@@ -1,3 +1,4 @@
+import "dart:async" show TimeoutException;
 import "dart:convert";
 import "dart:io";
 
@@ -44,6 +45,32 @@ void main() {
       expect(messages.single.parts.single.text, "from rpc");
       expect(process.stdinClosed, isTrue);
       expect(process.killed, isTrue);
+    });
+
+    test("uses the injected replay timeout for get_entries", () async {
+      final process = FakePiProcess();
+      final repository = _repository(
+        processFactory: ({required spec}) async => process,
+        historyRpcTimeout: const Duration(milliseconds: 10),
+      );
+
+      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      await waitForCommand(process: process, type: "get_entries");
+
+      await expectLater(
+        pending,
+        throwsA(
+          isA<PluginOperationException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PiSessionHistoryLoadException>().having(
+              (error) => error.innerError,
+              "innerError",
+              isA<TimeoutException>(),
+            ),
+          ),
+        ),
+      );
     });
 
     test("disposes when RPC response is malformed and wraps original parse failure", () async {
@@ -340,6 +367,7 @@ PiSessionProcessRepository _repository({
   PiSessionStorageApi? storageApi,
   required PiProcessFactory processFactory,
   Duration startupExitTimeout = const Duration(seconds: 5),
+  Duration historyRpcTimeout = const Duration(minutes: 2),
 }) {
   final storage = storageApi ?? _FakeStorageApi();
   return PiSessionProcessRepository(
@@ -350,6 +378,7 @@ PiSessionProcessRepository _repository({
     processFactory: processFactory,
     historyMapper: PiHistoryMapper(pluginId: "pi"),
     startupExitTimeout: startupExitTimeout,
+    historyRpcTimeout: historyRpcTimeout,
   );
 }
 

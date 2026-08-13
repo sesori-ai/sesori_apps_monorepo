@@ -1,6 +1,7 @@
-import "dart:convert" show Utf8Decoder, utf8;
+import "dart:convert" show utf8;
 import "dart:io";
 import "dart:isolate";
+import "dart:typed_data" show BytesBuilder;
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
@@ -178,6 +179,8 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
 }
 
 class PiSessionHistoryStorageApi({required final PiSessionStorageApi storageApi}) {
+  static const int historyRecordByteLimit = 72 * 1024 * 1024;
+
   Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) =>
       storageApi._readSessionHistory(path: path);
 }
@@ -197,8 +200,8 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
     resolvedPath = _absolute(File(path).resolveSymbolicLinksSync());
     final file = File(resolvedPath);
     handle = file.openSync();
-    final decoder = const Utf8Decoder(allowMalformed: false).startChunkedConversion(
-      _PiHistoryStringSink(
+    final decoder = _PiHistoryByteSink(
+      maxRecordBytes: PiSessionHistoryStorageApi.historyRecordByteLimit,
         onLine: (line, {required isFinal}) {
           if (line.trim().isEmpty) return;
           try {
@@ -221,7 +224,6 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
             if (!isFinal) malformedLineCount += 1;
           }
         },
-      ),
     );
     while (true) {
       final bytes = handle.readSync(8192);
@@ -901,30 +903,50 @@ final class const _PiHistoryRecordParseException({required final Object cause}) 
   String toString() => "Invalid Pi session history record";
 }
 
-final class _PiHistoryStringSink({
+final class _PiHistoryByteSink({
+  required final int maxRecordBytes,
   required void Function(String line, {required bool isFinal}) onLine,
-}) implements Sink<String> {
+}) implements Sink<List<int>> {
+  final int _maxRecordBytes = maxRecordBytes;
   final void Function(String line, {required bool isFinal}) _onLine = onLine;
-  final StringBuffer _pending = StringBuffer();
+  BytesBuilder _pending = BytesBuilder(copy: false);
 
   @override
-  void add(String data) {
+  void add(List<int> data) {
     var start = 0;
     while (true) {
-      final newline = data.indexOf("\n", start);
+      final newline = data.indexOf(0x0A, start);
       if (newline < 0) break;
-      _pending.write(data.substring(start, newline));
-      _onLine(_pending.toString(), isFinal: false);
-      _pending.clear();
+      _addSegment(data, start, newline);
+      _emit(isFinal: false);
       start = newline + 1;
     }
-    _pending.write(data.substring(start));
+    _addSegment(data, start, data.length);
   }
 
   @override
   void close() {
-    if (_pending.isNotEmpty) _onLine(_pending.toString(), isFinal: true);
+    if (_pending.length > 0) _emit(isFinal: true);
   }
+
+  void _addSegment(List<int> data, int start, int end) {
+    final segmentLength = end - start;
+    if (_pending.length + segmentLength > _maxRecordBytes) {
+      throw const _PiHistoryRecordLimitException();
+    }
+    if (segmentLength > 0) _pending.add(data.sublist(start, end));
+  }
+
+  void _emit({required bool isFinal}) {
+    final bytes = _pending.takeBytes();
+    _pending = BytesBuilder(copy: false);
+    _onLine(utf8.decode(bytes, allowMalformed: false), isFinal: isFinal);
+  }
+}
+
+final class const _PiHistoryRecordLimitException() implements Exception {
+  @override
+  String toString() => "Pi session history record exceeds byte limit";
 }
 
 final class const _PiEffectiveDirectoryResult({
