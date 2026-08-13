@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 
-import "../../module_prego.dart";
+import "../../theme/prego_theme.dart";
 
 /// How much visual weight a [PregoNavLeadingTitle] gives its title line.
 enum PregoNavLeadingTitleEmphasis() {

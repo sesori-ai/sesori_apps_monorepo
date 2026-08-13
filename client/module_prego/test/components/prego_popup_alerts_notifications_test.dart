@@ -26,6 +26,26 @@ void main() {
     }
   });
 
+  testWidgets("keeps text contrast on its dark surface in light appearance", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: const Scaffold(
+          body: PregoPopupAlertsNotifications(
+            title: "Title",
+            message: "Supporting text",
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.widget<Text>(find.text("Title")).style?.color, PregoDesignSystem.dark.colors.textPrimary);
+    expect(
+      tester.widget<Text>(find.text("Supporting text")).style?.color,
+      PregoDesignSystem.dark.colors.textSecondary,
+    );
+  });
+
   testWidgets("presenter places the alert below navigation and auto dismisses", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(
@@ -43,7 +63,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Copied"), findsOneWidget);
-    expect(tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy, 70);
+    expect(
+      tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+      PregoTopNavigation.barHeight + PregoSpacing.xl,
+    );
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
@@ -74,6 +97,64 @@ void main() {
     await tester.tap(find.bySemanticsLabel("Close notification"));
     await tester.pumpAndSettle();
     expect(find.text("Second"), findsNothing);
+  });
+
+  testWidgets("replacement remains safe while the first alert is dismissing", (tester) async {
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      _harness(
+        Builder(
+          builder: (context) {
+            presenter = PregoPopupAlertPresenter.of(context);
+            return const SizedBox.expand();
+          },
+        ),
+      ),
+    );
+
+    presenter.show(title: "First", duration: null);
+    await tester.pumpAndSettle();
+    presenter.dismiss();
+    await tester.pump(const Duration(milliseconds: 40));
+    presenter.show(title: "Second", duration: null);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text("First"), findsNothing);
+    expect(find.text("Second"), findsOneWidget);
+  });
+
+  testWidgets("tracks the live top-bar banner inset", (tester) async {
+    late BuildContext presentationContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.dark]),
+        home: PregoGlassScaffold(
+          title: "Screen",
+          banner: const SizedBox(height: 30),
+          slivers: [
+            SliverFillRemaining(
+              child: Builder(
+                builder: (context) {
+                  presentationContext = context;
+                  return const SizedBox.expand();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final presenter = PregoPopupAlertPresenter.of(presentationContext);
+    presenter.show(title: "Below banner", duration: null);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+      PregoTopNavigation.barHeight + 30 + PregoSpacing.xl,
+    );
   });
 }
 

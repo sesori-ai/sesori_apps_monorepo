@@ -1,8 +1,12 @@
 import "package:flutter/material.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 
-import "../../module_prego.dart";
+import "../../icons/tabler_icons.g.dart";
+import "../../theme/prego_theme.dart";
 import "../../utils/color_extensions.dart";
+import "../buttons/prego_buttons_icon_glass.dart";
+import "prego_nav_leading_title.dart";
+import "prego_nav_title.dart";
 
 /// How [PregoTopNavigation] presents its title. The values map to the Figma
 /// `PregoTopNavigation` component types.

@@ -6,6 +6,7 @@ import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
+import "../navigation/prego_top_bar_inset.dart";
 
 /// Visual variant for [PregoPopupAlertsNotifications].
 enum PregoPopupAlertsNotificationsVariant() {
@@ -45,6 +46,14 @@ class const PregoPopupAlertsNotifications({
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(extensions: [...theme.extensions.values, PregoDesignSystem.dark]),
+      child: Builder(builder: _buildCard),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
 
@@ -204,13 +213,19 @@ class const PregoPopupAlertsNotifications({
 }
 
 /// A stable presentation target that can be captured before asynchronous work.
-final class PregoPopupAlertPresenter._({required final OverlayState _overlay}) {
+final class PregoPopupAlertPresenter._({
+  required final OverlayState _overlay,
+  required final double _topInset,
+}) {
   static final Expando<_PregoPopupAlertPresentation> _presentations = Expando<_PregoPopupAlertPresentation>();
 
   /// Captures the nearest overlay so an alert can still be shown after the
   /// source widget is removed or a modal route is dismissed.
   static PregoPopupAlertPresenter of(BuildContext context) {
-    return PregoPopupAlertPresenter._(overlay: Overlay.of(context));
+    return PregoPopupAlertPresenter._(
+      overlay: Overlay.of(context),
+      topInset: pregoTopBarInsetOf(context),
+    );
   }
 
   /// Shows an alert above the current route and replaces any alert already
@@ -242,6 +257,7 @@ final class PregoPopupAlertPresenter._({required final OverlayState _overlay}) {
           presentation.remove();
         },
         presentation: presentation,
+        topInset: _topInset,
       ),
     );
     presentation = _PregoPopupAlertPresentation(entry: entry);
@@ -286,6 +302,7 @@ class const _PregoPopupAlertOverlay({
   required final bool showCloseButton,
   required final VoidCallback onDismissed,
   required final _PregoPopupAlertPresentation presentation,
+  required final double topInset,
 }) extends StatefulWidget {
   @override
   State<_PregoPopupAlertOverlay> createState() => _PregoPopupAlertOverlayState();
@@ -322,44 +339,46 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
     if (_dismissing || !mounted) return;
     _dismissing = true;
     _timer?.cancel();
-    await _controller.reverse();
+    try {
+      await _controller.reverse().orCancel;
+    } on TickerCanceled {
+      return;
+    }
     if (mounted) widget.onDismissed();
   }
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final top = media.padding.top + 54 + PregoSpacing.xl;
     return PositionedDirectional(
-      top: top,
+      top: widget.topInset + PregoSpacing.xl,
       start: PregoSpacing.xl,
       end: PregoSpacing.xl,
       child: SafeArea(
-        top: false,
-        bottom: false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 343),
-            child: FadeTransition(
-              opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, -0.12),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
-                child: PregoPopupAlertsNotifications(
-                  title: widget.title,
-                  message: widget.message,
-                  variant: widget.variant,
-                  primaryAction: widget.primaryAction,
-                  secondaryAction: widget.secondaryAction,
-                  onClose: widget.showCloseButton ? _dismiss : null,
+          top: false,
+          bottom: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 343),
+              child: FadeTransition(
+                opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, -0.12),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
+                  child: PregoPopupAlertsNotifications(
+                    title: widget.title,
+                    message: widget.message,
+                    variant: widget.variant,
+                    primaryAction: widget.primaryAction,
+                    secondaryAction: widget.secondaryAction,
+                    onClose: widget.showCloseButton ? _dismiss : null,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
     );
   }
 }

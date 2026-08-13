@@ -1,11 +1,11 @@
 import "package:flutter/cupertino.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
-import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 
 import "../../module_prego.dart";
 import "../../utils/color_extensions.dart";
+import "prego_top_bar_inset.dart" as top_bar;
 
 /// Where [PregoGlassScaffold] parks its
 /// [PregoGlassScaffold.floatingActionButton].
@@ -452,7 +452,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             builder: (context, bannerHeight, _) => buildScaffold(bannerHeight),
           );
 
-    return _TopBarInsetScope(
+    return top_bar.PregoTopBarInsetScope(
       baseInset: topPad + PregoTopNavigation.barHeight,
       bannerHeight: _bannerHeight,
       child: scaffold,
@@ -632,58 +632,6 @@ class _RenderOverscrollPinnedBox(var ValueGetter<double> _pulledExtent) extends 
   @override
   void applyPaintTransform(RenderObject child, Matrix4 transform) {
     transform.translateByDouble(0, _translationY, 0, 1);
-  }
-}
-
-/// Publishes the top-bar area's geometry to descendants of a
-/// [PregoGlassScaffold]: the static base inset (status bar + bar row) plus the
-/// live banner height. The listenable's identity is stable across the banner
-/// animation, so depending on this scope alone never causes per-frame
-/// rebuilds — [PregoTopBarInsetBuilder] subscribes to the listenable where
-/// per-frame tracking is wanted.
-class const _TopBarInsetScope({
-    /// Status-bar inset plus the bar row height — the top inset with no banner.
-  required final double baseInset,
-    /// The banner slot's rendered height, following the show/hide animation.
-  required final ValueListenable<double> bannerHeight,
-    required super.child,
-  }) extends InheritedWidget {
-  @override
-  bool updateShouldNotify(_TopBarInsetScope oldWidget) =>
-      baseInset != oldWidget.baseInset || !identical(bannerHeight, oldWidget.bannerHeight);
-}
-
-/// Rebuilds [builder] with the current total top-bar inset of the enclosing
-/// [PregoGlassScaffold] — status-bar inset + bar height + the banner's
-/// animated height — tracking the [PregoGlassScaffold.banner] show/hide
-/// animation frame-by-frame.
-///
-/// Use it in bodies that inset themselves below the bar (see
-/// [PregoGlassScaffold.reserveBarSpace]) instead of computing
-/// `MediaQuery.paddingOf(context).top + PregoTopNavigation.barHeight`, which
-/// would ignore the banner. Per-frame rebuilds are confined to [builder]; put
-/// anything that doesn't depend on the inset into [child], which is built once
-/// and passed through.
-///
-/// Without an enclosing [PregoGlassScaffold] (e.g. a body pumped alone in a
-/// widget test), [builder] gets the static bar inset.
-class const PregoTopBarInsetBuilder({
-  super.key,
-  /// Built with the current top inset; re-invoked as the banner animates.
-  required final Widget Function(BuildContext context, double topInset, Widget? child) builder,
-  /// Inset-independent subtree passed through to [builder] without rebuilding.
-  final Widget? child}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<_TopBarInsetScope>();
-    if (scope == null) {
-      return builder(context, MediaQuery.paddingOf(context).top + PregoTopNavigation.barHeight, child);
-    }
-    return ValueListenableBuilder<double>(
-      valueListenable: scope.bannerHeight,
-      child: child,
-      builder: (context, bannerHeight, child) => builder(context, scope.baseInset + bannerHeight, child),
-    );
   }
 }
 

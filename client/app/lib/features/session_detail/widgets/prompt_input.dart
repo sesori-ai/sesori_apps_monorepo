@@ -601,7 +601,10 @@ class _PromptInputState() extends State<PromptInput> {
       // killing voice input for the rest of the session.
       loge("Failed to start recording", error);
       if (!mounted) return;
-      _showComposerNotice(context.loc.voiceErrorRecording);
+      _showComposerNotice(
+        context.loc.voiceErrorRecording,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      );
     }
   }
 
@@ -648,14 +651,23 @@ class _PromptInputState() extends State<PromptInput> {
       // User cancelled — nothing to do, finally resets state.
     } on NotAuthenticatedVoiceError {
       if (!mounted || stale()) return;
-      _showComposerNotice(context.loc.voiceErrorNotAuthenticated);
+      _showComposerNotice(
+        context.loc.voiceErrorNotAuthenticated,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      );
     } on NetworkVoiceError {
       if (!mounted || stale()) return;
-      _showComposerNotice(context.loc.voiceErrorNetwork);
+      _showComposerNotice(
+        context.loc.voiceErrorNetwork,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      );
     } on VoiceTranscriptionError catch (error) {
       loge("Transcription failed", error);
       if (!mounted || stale()) return;
-      _showComposerNotice(context.loc.voiceErrorTranscription);
+      _showComposerNotice(
+        context.loc.voiceErrorTranscription,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      );
     } finally {
       if (!stale()) {
         _updateComposerState(
@@ -752,10 +764,13 @@ class _PromptInputState() extends State<PromptInput> {
     }
   }
 
-  void _showComposerNotice(String message) {
+  void _showComposerNotice(
+    String message, {
+    PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.warning,
+  }) {
     PregoPopupAlertPresenter.of(context).show(
       title: message,
-      variant: PregoPopupAlertsNotificationsVariant.warning,
+      variant: variant,
     );
   }
 

@@ -266,24 +266,35 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
 
   // ignore: no_slop_linter/prefer_required_named_parameters, callback signature is defined by BlocListener
   void _handleActionState(BuildContext context, ImageAttachmentActionsState state) {
-    final message = switch (state) {
-      ImageAttachmentSaved() => context.loc.sessionDetailImageSaved,
-      ImageAttachmentCopied() => context.loc.sessionDetailImageCopied,
-      ImageAttachmentSaveAccessDenied() => context.loc.sessionDetailImageSaveAccessDenied,
-      ImageAttachmentCopyFailed() => context.loc.sessionDetailImageCopyFailed,
-      ImageAttachmentShareFailed() => context.loc.sessionDetailImageShareFailed,
-      ImageAttachmentSaveFailed() => context.loc.sessionDetailImageSaveFailed,
+    final alert = switch (state) {
+      ImageAttachmentSaved() => (
+        context.loc.sessionDetailImageSaved,
+        PregoPopupAlertsNotificationsVariant.success,
+      ),
+      ImageAttachmentCopied() => (
+        context.loc.sessionDetailImageCopied,
+        PregoPopupAlertsNotificationsVariant.success,
+      ),
+      ImageAttachmentSaveAccessDenied() => (
+        context.loc.sessionDetailImageSaveAccessDenied,
+        PregoPopupAlertsNotificationsVariant.warning,
+      ),
+      ImageAttachmentCopyFailed() => (
+        context.loc.sessionDetailImageCopyFailed,
+        PregoPopupAlertsNotificationsVariant.error,
+      ),
+      ImageAttachmentShareFailed() => (
+        context.loc.sessionDetailImageShareFailed,
+        PregoPopupAlertsNotificationsVariant.error,
+      ),
+      ImageAttachmentSaveFailed() => (
+        context.loc.sessionDetailImageSaveFailed,
+        PregoPopupAlertsNotificationsVariant.error,
+      ),
       ImageAttachmentActionsIdle() || ImageAttachmentActionRunning() => null,
     };
-    if (message == null) return;
-    final variant = switch (state) {
-      ImageAttachmentSaved() || ImageAttachmentCopied() => PregoPopupAlertsNotificationsVariant.success,
-      ImageAttachmentSaveAccessDenied() => PregoPopupAlertsNotificationsVariant.warning,
-      ImageAttachmentCopyFailed() ||
-      ImageAttachmentShareFailed() ||
-      ImageAttachmentSaveFailed() => PregoPopupAlertsNotificationsVariant.error,
-      ImageAttachmentActionsIdle() || ImageAttachmentActionRunning() => PregoPopupAlertsNotificationsVariant.info,
-    };
+    if (alert == null) return;
+    final (message, variant) = alert;
     PregoPopupAlertPresenter.of(context).show(title: message, variant: variant);
     context.read<ImageAttachmentActionsCubit>().outcomeHandled();
   }

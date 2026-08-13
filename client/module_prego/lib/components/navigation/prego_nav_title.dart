@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 
-import "../../module_prego.dart";
+import "../../theme/prego_theme.dart";
 
 /// The centred title block of the app's top navigation bar, matching the
 /// `PregoTopNavigation` Figma component (node 338:3274, style "Glass", type
