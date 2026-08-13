@@ -283,14 +283,18 @@ void main() {
       find.descendant(
         of: find.byType(PromptInput),
         matching: find.byWidgetPredicate(
-          (widget) => widget is DecoratedBox && (widget.decoration as BoxDecoration?)?.gradient is LinearGradient,
+          (widget) =>
+              widget is DecoratedBox &&
+              widget.decoration is BoxDecoration &&
+              (widget.decoration as BoxDecoration).gradient is LinearGradient,
         ),
       ).first,
     );
     final gradient = (decoratedBox.decoration as BoxDecoration).gradient! as LinearGradient;
-    expect(gradient.colors[0].a, closeTo(0.98, 0.001));
-    expect(gradient.colors[1].a, closeTo(0.88, 0.001));
-    expect(gradient.colors[2].a, 0);
+    final surface = PregoDesignSystem.light.colors.bgSurface1;
+    expect(gradient.colors[0], surface.withValues(alpha: 0.98));
+    expect(gradient.colors[1], surface.withValues(alpha: 0.88));
+    expect(gradient.colors[2], surface.withValues(alpha: 0));
   });
 
   testWidgets("an empty newest page keeps older transcript paging reachable", (tester) async {
