@@ -207,7 +207,7 @@ as String?,
 /// @nodoc
 mixin _$PiSettingsDto {
 
-@JsonKey(fromJson: _stringOrNull) String? get sessionDir;
+@JsonKey(fromJson: _strictNullableString) String? get sessionDir;
 /// Create a copy of PiSettingsDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -234,7 +234,7 @@ abstract mixin class $PiSettingsDtoCopyWith<$Res>  {
   factory $PiSettingsDtoCopyWith(PiSettingsDto value, $Res Function(PiSettingsDto) _then) = _$PiSettingsDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? sessionDir
+@JsonKey(fromJson: _strictNullableString) String? sessionDir
 });
 
 
@@ -266,10 +266,10 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _PiSettingsDto implements PiSettingsDto {
-  const _PiSettingsDto({@JsonKey(fromJson: _stringOrNull) required this.sessionDir});
+  const _PiSettingsDto({@JsonKey(fromJson: _strictNullableString) required this.sessionDir});
   factory _PiSettingsDto.fromJson(Map<String, dynamic> json) => _$PiSettingsDtoFromJson(json);
 
-@override@JsonKey(fromJson: _stringOrNull) final  String? sessionDir;
+@override@JsonKey(fromJson: _strictNullableString) final  String? sessionDir;
 
 /// Create a copy of PiSettingsDto
 /// with the given fields replaced by the non-null parameter values.
@@ -297,7 +297,7 @@ abstract mixin class _$PiSettingsDtoCopyWith<$Res> implements $PiSettingsDtoCopy
   factory _$PiSettingsDtoCopyWith(_PiSettingsDto value, $Res Function(_PiSettingsDto) _then) = __$PiSettingsDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? sessionDir
+@JsonKey(fromJson: _strictNullableString) String? sessionDir
 });
 
 

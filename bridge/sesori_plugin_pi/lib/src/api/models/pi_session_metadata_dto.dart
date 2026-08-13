@@ -31,7 +31,7 @@ sealed class PiSessionMetadataDto with _$PiSessionMetadataDto {
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class PiSettingsDto with _$PiSettingsDto {
   const factory({
-    @JsonKey(fromJson: _stringOrNull) required String? sessionDir,
+    @JsonKey(fromJson: _strictNullableString) required String? sessionDir,
   }) = _PiSettingsDto;
 
   factory fromJson(Map<String, dynamic> json) => _$PiSettingsDtoFromJson(json);

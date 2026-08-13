@@ -125,6 +125,44 @@ void main() {
       expect(await api.listSessionMetadata(knownDirectories: const {}), isEmpty);
       expect(await api.resolveEffectiveSessionDirectory(directory: p.current), isNull);
     });
+
+    test("uses project-configured storage when no user home resolves", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("project");
+      final root = fixture.directory(p.join("project", "project-sessions"));
+      fixture.directory(p.join("project", ".pi"));
+      File(p.join(project, ".pi", "settings.json")).writeAsStringSync(
+        jsonEncode({"sessionDir": "project-sessions"}),
+      );
+      fixture.writeSession(root: root, id: "project-only", cwd: project);
+      final api = PiSessionStorageApi(environment: const {});
+
+      final sessions = await api.listSessionMetadata(knownDirectories: {project});
+
+      expect(sessions.map((session) => session.id), ["project-only"]);
+      expect(await api.resolveEffectiveSessionDirectory(directory: project), root);
+    });
+
+    test("invalid project session directory falls back to global settings", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("project");
+      final globalRoot = fixture.directory("global-sessions");
+      fixture.directory(p.join("project", ".pi"));
+      File(p.join(project, ".pi", "settings.json")).writeAsStringSync(
+        jsonEncode({"sessionDir": 42}),
+      );
+      File(p.join(fixture.agentDirectory, "settings.json")).writeAsStringSync(
+        jsonEncode({"sessionDir": globalRoot}),
+      );
+      fixture.writeSession(root: globalRoot, id: "global-fallback", cwd: project);
+
+      final sessions = await fixture.api().listSessionMetadata(knownDirectories: {project});
+
+      expect(sessions.map((session) => session.id), ["global-fallback"]);
+      expect(await fixture.api().resolveEffectiveSessionDirectory(directory: project), globalRoot);
+    });
   });
 
   group("metadata scanning", () {

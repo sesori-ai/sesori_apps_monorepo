@@ -204,6 +204,19 @@ _PiEffectiveDirectoryResult _resolveEffectiveSessionDirectory({
     );
   }
 
+  final projectSettings = _readSettings(
+    path: p.join(cwd, ".pi", "settings.json"),
+    diagnostics: diagnostics,
+  );
+  if (projectSettings case _PiSettingsConfigured(:final sessionDirectory)) {
+    final configuredPath = _pathValue(sessionDirectory);
+    if (configuredPath != null) {
+      return _PiEffectiveDirectoryResult(
+        path: _resolvePath(value: configuredPath, home: home, baseDirectory: cwd),
+        diagnostics: diagnostics,
+      );
+    }
+  }
   final agentDirectory = _resolveAgentDirectory(
     environment: environment,
     home: home,
@@ -212,17 +225,17 @@ _PiEffectiveDirectoryResult _resolveEffectiveSessionDirectory({
   if (agentDirectory == null) {
     return _PiEffectiveDirectoryResult(path: null, diagnostics: diagnostics);
   }
-  final projectSettings = _readSettings(
-    path: p.join(cwd, ".pi", "settings.json"),
-    diagnostics: diagnostics,
-  );
   final globalSettings = _readSettings(
     path: p.join(agentDirectory, "settings.json"),
     diagnostics: diagnostics,
   );
-  final configured = projectSettings.hasSessionDirectory
-      ? projectSettings.sessionDirectory
-      : globalSettings.sessionDirectory;
+  final configured = switch (projectSettings) {
+    _PiSettingsConfigured(:final sessionDirectory) => sessionDirectory,
+    _PiSettingsAbsent() => switch (globalSettings) {
+      _PiSettingsConfigured(:final sessionDirectory) => sessionDirectory,
+      _PiSettingsAbsent() => null,
+    },
+  };
   final configuredPath = _pathValue(configured);
   return _PiEffectiveDirectoryResult(
     path: configuredPath == null
@@ -279,21 +292,21 @@ _PiStorageLayout _buildStorageLayout({
   }
 
   final globalSettingsByPath = <String, _PiSettingsValue>{};
-  for (final scope in scopes) {
-    final base = scope.baseDirectory;
-    if (base == null) continue;
+  for (final base in bases) {
     final projectSettings = _readSettings(
       path: p.join(base, ".pi", "settings.json"),
       diagnostics: diagnostics,
     );
-    addRoot(
-      path: _resolvePath(
-        value: _pathValue(projectSettings.sessionDirectory),
-        home: home,
-        baseDirectory: base,
-      ),
-      kind: _PiScanRootKind.flat,
-    );
+    if (projectSettings case _PiSettingsConfigured(:final sessionDirectory)) {
+      addRoot(
+        path: _resolvePath(
+          value: _pathValue(sessionDirectory),
+          home: home,
+          baseDirectory: base,
+        ),
+        kind: _PiScanRootKind.flat,
+      );
+    }
   }
   for (final scope in scopes) {
     final settingsPath = p.join(scope.agentDirectory, "settings.json");
@@ -301,14 +314,16 @@ _PiStorageLayout _buildStorageLayout({
       settingsPath,
       () => _readSettings(path: settingsPath, diagnostics: diagnostics),
     );
-    addRoot(
-      path: _resolvePath(
-        value: _pathValue(settings.sessionDirectory),
-        home: home,
-        baseDirectory: scope.baseDirectory,
-      ),
-      kind: _PiScanRootKind.flat,
-    );
+    if (settings case _PiSettingsConfigured(:final sessionDirectory)) {
+      addRoot(
+        path: _resolvePath(
+          value: _pathValue(sessionDirectory),
+          home: home,
+          baseDirectory: scope.baseDirectory,
+        ),
+        kind: _PiScanRootKind.flat,
+      );
+    }
   }
   for (final agentDirectory in scopes.map((scope) => scope.agentDirectory).toSet()) {
     addRoot(path: p.join(agentDirectory, "sessions"), kind: _PiScanRootKind.defaultTree);
@@ -349,19 +364,17 @@ _PiScannedSession? _readSessionMetadata({
     var externalHeaderLimitReached = false;
 
     void consume(_PiScannedLine line, {required bool isFinal}) {
-      switch (line.kind) {
-        case _PiScannedLineKind.ignored:
+      switch (line) {
+        case _PiScannedLineIgnored():
           return;
-        case _PiScannedLineKind.nonMetadata:
+        case _PiScannedLineNonMetadata():
           if (header == null) invalidBeforeHeader = true;
           return;
-        case _PiScannedLineKind.oversizedMetadata:
+        case _PiScannedLineOversizedMetadata():
           diagnostics.oversizedMetadataRecords += 1;
           if (header == null) invalidBeforeHeader = true;
           return;
-        case _PiScannedLineKind.metadata:
-          final bytes = line.bytes;
-          if (bytes == null) return;
+        case _PiScannedLineMetadata(:final bytes):
           final PiSessionMetadataDto record;
           try {
             record = PiSessionMetadataDto.fromJson(jsonDecodeMap(utf8.decode(bytes)));
@@ -520,7 +533,7 @@ _PiSettingsValue _readSettings({required String path, required _PiScanDiagnostic
   RandomAccessFile? handle;
   late final List<int> bytes;
   try {
-    if (!file.existsSync()) return const _PiSettingsValue(hasSessionDirectory: false, sessionDirectory: null);
+    if (!file.existsSync()) return const _PiSettingsAbsent();
     handle = file.openSync();
     bytes = handle.readSync(PiSessionStorageApi.settingsByteLimit + 1);
   } on Object catch (error, stackTrace) {
@@ -530,7 +543,7 @@ _PiSettingsValue _readSettings({required String path, required _PiScanDiagnostic
       error: error,
       stackTrace: stackTrace,
     );
-    return const _PiSettingsValue(hasSessionDirectory: false, sessionDirectory: null);
+    return const _PiSettingsAbsent();
   } finally {
     try {
       handle?.closeSync();
@@ -545,22 +558,21 @@ _PiSettingsValue _readSettings({required String path, required _PiScanDiagnostic
   }
   if (bytes.length > PiSessionStorageApi.settingsByteLimit) {
     diagnostics.recordOversizedSettings(path: normalizedPath);
-    return const _PiSettingsValue(hasSessionDirectory: false, sessionDirectory: null);
+    return const _PiSettingsAbsent();
   }
   try {
     final json = jsonDecodeMap(utf8.decode(bytes));
     final settings = PiSettingsDto.fromJson(json);
-    return _PiSettingsValue(
-      hasSessionDirectory: json.containsKey("sessionDir"),
-      sessionDirectory: settings.sessionDir,
-    );
+    return json.containsKey("sessionDir")
+        ? _PiSettingsConfigured(sessionDirectory: settings.sessionDir)
+        : const _PiSettingsAbsent();
   } on Object catch (error, stackTrace) {
     diagnostics.recordMalformedSettings(
       path: normalizedPath,
       error: error,
       stackTrace: stackTrace,
     );
-    return const _PiSettingsValue(hasSessionDirectory: false, sessionDirectory: null);
+    return const _PiSettingsAbsent();
   }
 }
 
@@ -641,13 +653,6 @@ enum _PiScanRootKind() {
   defaultTree,
 }
 
-enum _PiScannedLineKind() {
-  ignored,
-  nonMetadata,
-  metadata,
-  oversizedMetadata,
-}
-
 enum _PiLineClassification() {
   pending,
   ignored,
@@ -661,9 +666,21 @@ final class const _PiStorageLayout({required final List<_PiScanRoot> roots});
 
 final class const _PiAgentScope({required final String agentDirectory, required final String? baseDirectory});
 
-final class const _PiSettingsValue({required final bool hasSessionDirectory, required final String? sessionDirectory});
+sealed class const _PiSettingsValue();
 
-final class const _PiScannedLine({required final _PiScannedLineKind kind, required final List<int>? bytes});
+final class const _PiSettingsAbsent() extends _PiSettingsValue;
+
+final class const _PiSettingsConfigured({required final String? sessionDirectory}) extends _PiSettingsValue;
+
+sealed class const _PiScannedLine();
+
+final class const _PiScannedLineIgnored() extends _PiScannedLine;
+
+final class const _PiScannedLineNonMetadata() extends _PiScannedLine;
+
+final class const _PiScannedLineMetadata({required final List<int> bytes}) extends _PiScannedLine;
+
+final class const _PiScannedLineOversizedMetadata() extends _PiScannedLine;
 
 final class const _PiScannedSession({
   required final String path,
@@ -788,19 +805,12 @@ final class _PiMetadataLineScanner() {
 
   _PiScannedLine finish() {
     final result = switch ((_classification, _oversized)) {
-      (_, true) => const _PiScannedLine(kind: _PiScannedLineKind.oversizedMetadata, bytes: null),
-      (_PiLineClassification.metadata, false) => _PiScannedLine(
-          kind: _PiScannedLineKind.metadata,
+      (_, true) => const _PiScannedLineOversizedMetadata(),
+      (_PiLineClassification.metadata, false) => _PiScannedLineMetadata(
           bytes: List<int>.unmodifiable(_metadataBytes!),
         ),
-      (_PiLineClassification.nonMetadata, false) => const _PiScannedLine(
-          kind: _PiScannedLineKind.nonMetadata,
-          bytes: null,
-        ),
-      (_PiLineClassification.pending || _PiLineClassification.ignored, false) => const _PiScannedLine(
-          kind: _PiScannedLineKind.ignored,
-          bytes: null,
-        ),
+      (_PiLineClassification.nonMetadata, false) => const _PiScannedLineNonMetadata(),
+      (_PiLineClassification.pending || _PiLineClassification.ignored, false) => const _PiScannedLineIgnored(),
     };
     _prefix.clear();
     _metadataBytes = null;

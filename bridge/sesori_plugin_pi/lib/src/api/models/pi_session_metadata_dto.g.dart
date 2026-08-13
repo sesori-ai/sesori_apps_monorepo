@@ -21,4 +21,4 @@ PiSessionInfoDto _$PiSessionInfoDtoFromJson(Map json) => PiSessionInfoDto(
 );
 
 _PiSettingsDto _$PiSettingsDtoFromJson(Map json) =>
-    _PiSettingsDto(sessionDir: _stringOrNull(json['sessionDir']));
+    _PiSettingsDto(sessionDir: _strictNullableString(json['sessionDir']));
