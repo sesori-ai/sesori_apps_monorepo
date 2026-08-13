@@ -31,10 +31,13 @@ class UpdateSessionArchiveStatusHandler({
     if (sessionId.isEmpty) {
       throw buildErrorResponse(request, 400, "empty session id");
     }
+    // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients can request branch
+    // deletion. Reject it explicitly so they do not report unperformed cleanup
+    // as success; remove the field when v1.7.1 clients are unsupported.
+    if (body.deleteBranch) {
+      throw buildErrorResponse(request, 422, "branch cleanup is no longer supported");
+    }
     try {
-      // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients still send
-      // deleteBranch. It is intentionally ignored; remove the field from the
-      // request model when v1.7.1 clients are unsupported.
       final update = await _sessionLifecycleService.updateArchiveStatus(
         sessionId: sessionId,
         archived: body.archived,

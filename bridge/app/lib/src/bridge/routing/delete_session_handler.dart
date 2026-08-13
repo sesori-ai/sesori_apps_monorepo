@@ -29,9 +29,12 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients still send
-    // deleteBranch. It is intentionally ignored; remove the field from the
-    // request model when v1.7.1 clients are unsupported.
+    // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients can request branch
+    // deletion. Reject it explicitly so they do not report unperformed cleanup
+    // as success; remove the field when v1.7.1 clients are unsupported.
+    if (body.deleteBranch) {
+      throw buildErrorResponse(request, 422, "branch cleanup is no longer supported");
+    }
     final cleanupResult = await _sessionDeletionService.deleteSession(
       sessionId: sessionId,
       deleteWorktree: body.deleteWorktree,

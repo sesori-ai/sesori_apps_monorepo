@@ -250,7 +250,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
     });
 
-    test("legacy deleteBranch=true is ignored while archiving", () async {
+    test("legacy deleteBranch=true is rejected before archiving", () async {
       await _insertSession(
         db: db,
         sessionId: "s1-legacy",
@@ -263,22 +263,25 @@ void main() {
         baseCommit: null,
       );
 
-      await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s1-legacy",
-          archived: true,
-          deleteWorktree: false,
-          deleteBranch: true,
-          force: false,
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/update/archive"),
+          body: _archiveRequest(
+            sessionId: "s1-legacy",
+            archived: true,
+            deleteWorktree: false,
+            deleteBranch: true,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((response) => response.status, "status", 422)),
       );
 
       final persisted = await db.sessionDao.getSession(sessionId: "s1-legacy");
-      expect(persisted?.archivedAt, isNotNull);
+      expect(persisted?.archivedAt, isNull);
       expect(worktreeService.checkCallCount, isZero);
       expect(worktreeService.removeCallCount, isZero);
     });
@@ -458,7 +461,7 @@ void main() {
               sessionId: "missing",
               archived: true,
               deleteWorktree: true,
-              deleteBranch: true,
+              deleteBranch: false,
               force: false,
             ).toJson(),
           ),
@@ -497,7 +500,7 @@ void main() {
               sessionId: "stale-plugin-session",
               archived: true,
               deleteWorktree: true,
-              deleteBranch: true,
+              deleteBranch: false,
               force: false,
             ).toJson(),
           ),
@@ -680,7 +683,7 @@ void main() {
           sessionId: "s1",
           archived: true,
           deleteWorktree: true,
-          deleteBranch: true,
+          deleteBranch: false,
           force: false,
         ),
         pathParams: {},

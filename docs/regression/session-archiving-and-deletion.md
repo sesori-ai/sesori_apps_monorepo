@@ -36,8 +36,9 @@ entirely along with its transcript and, optionally, its worktree.
   deleted only after cleanup succeeds, and both flows serialize against
   concurrent mutations of the same session family.
 - Published requests retain the retired `deleteBranch` field for mixed-version
-  compatibility. New clients always send `false`, and new bridges ignore either
-  value so old clients cannot cause branch deletion.
+  compatibility. New clients always send `false`, and new bridges explicitly
+  reject `true` before mutation so old clients cannot mistake unperformed branch
+  cleanup for success.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions.
 
