@@ -29,15 +29,23 @@ class ProjectRepository({
 }) {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
+  static const int _maxConcurrentWorktreeInspections = 8;
 
   Future<List<Project>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
-    final worktreeCapabilities = await Future.wait([
-      for (final row in rows) _supportsDedicatedWorktrees(path: row.path),
-    ]);
+    final worktreeCapabilities = <bool>[];
+    for (var start = 0; start < rows.length; start += _maxConcurrentWorktreeInspections) {
+      final end = start + _maxConcurrentWorktreeInspections;
+      worktreeCapabilities.addAll(
+        await Future.wait([
+          for (final row in rows.sublist(start, end < rows.length ? end : rows.length))
+            _supportsDedicatedWorktrees(path: row.path),
+        ]),
+      );
+    }
     return [
       for (final (index, row) in rows.indexed)
         _projectCatalogMapper.map(

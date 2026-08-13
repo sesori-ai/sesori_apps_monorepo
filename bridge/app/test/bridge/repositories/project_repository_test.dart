@@ -406,6 +406,45 @@ void main() {
       expect(result.single.time, const ProjectTime(created: 10, updated: 20));
     });
 
+    test("getProjects bounds concurrent Git worktree inspections", () async {
+      final paths = [
+        for (var index = 0; index < 9; index++) "/project-${index.toString().padLeft(2, "0")}",
+      ];
+      for (final (index, path) in paths.indexed) {
+        await db.projectsDao.setActivity(
+          projectId: path,
+          createdAt: 1,
+          updatedAt: paths.length - index,
+        );
+      }
+      final gitCliApi = _CompletingGitCliApi(paths: paths);
+      final boundedRepo = singlePluginProjectRepository(
+        gitCliApi: gitCliApi,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final listing = boundedRepo.getProjects();
+      await gitCliApi.inspectionLimitReached.future;
+
+      expect(gitCliApi.inspectedPaths, paths.take(8));
+      expect(gitCliApi.nextInspectionStarted.isCompleted, isFalse);
+      for (final path in paths.take(8)) {
+        gitCliApi.results[path]!.complete(true);
+      }
+
+      await gitCliApi.nextInspectionStarted.future;
+      expect(gitCliApi.inspectedPaths, paths);
+      gitCliApi.results[paths.last]!.complete(false);
+
+      final projects = await listing;
+      expect(projects.map((project) => project.path), paths);
+      expect(projects.take(8).every((project) => project.supportsDedicatedWorktrees), isTrue);
+      expect(projects.last.supportsDedicatedWorktrees, isFalse);
+    });
+
     test("getProjects breaks equal timestamps by project id descending", () async {
       plugin.projectsResult = const [
         PluginProject(id: "z", directory: "z", name: "Beta"),
@@ -1448,5 +1487,25 @@ class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends Proj
       await releaseSnapshot.future;
     }
     return projects;
+  }
+}
+
+class _CompletingGitCliApi({required List<String> paths}) extends FakeGitCliApi {
+  final Map<String, Completer<bool>> results = {
+    for (final path in paths) path: Completer<bool>(),
+  };
+  final List<String> inspectedPaths = [];
+  final Completer<void> inspectionLimitReached = Completer<void>();
+  final Completer<void> nextInspectionStarted = Completer<void>();
+
+  @override
+  Future<bool> isGitInitialized({required String projectPath}) async => true;
+
+  @override
+  Future<bool> hasAtLeastOneCommit({required String projectPath}) {
+    inspectedPaths.add(projectPath);
+    if (inspectedPaths.length == 8) inspectionLimitReached.complete();
+    if (inspectedPaths.length == 9) nextInspectionStarted.complete();
+    return results[projectPath]!.future;
   }
 }
