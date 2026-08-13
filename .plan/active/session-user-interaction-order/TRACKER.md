@@ -61,7 +61,7 @@
 - [x] Update plan-maker guidance with existing-state/history inspection.
 - [x] Run fresh architecture plan review and apply valid findings.
 - [x] Validate plan/tracker consistency and whitespace.
-- [ ] Commit, push, update PR #865 title/body, and resolve superseded discussion.
+- [x] Commit, push, update PR #865 title/body, and resolve superseded discussion.
 
 ## Step 2 Checklist
 
@@ -128,3 +128,6 @@
   findings. It confirmed bridge repository/service ownership, orchestrator SSE
   projection, existing tracker lifecycle ownership, client comparator
   ownership, and additive shared-wire compatibility.
+- Published the rewrite in `1ee36b9d0`, updated PR #865 to the exact four-step
+  title and zero-new-state body, and confirmed GitHub has no unresolved inline
+  review threads.
