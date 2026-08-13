@@ -72,7 +72,7 @@ class const SessionDetailMessageList({
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
-  required final ValueChanged<int> onCancelQueuedMessage,
+  required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
   final String? retryErrorMessage,
 
@@ -347,7 +347,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       ?oldWidget.sendingSubmission,
       ...oldWidget.queuedMessages,
     };
-    return widget.queuedMessages.any((submission) => !previous.contains(submission));
+    return [
+      ?widget.sendingSubmission,
+      ...widget.queuedMessages,
+    ].any((submission) => !previous.contains(submission));
   }
 
   /// Mirrors the domain transcript into the chat controller. Entries
@@ -610,6 +613,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final transientSubmission = transientSubmissions[entry.id];
     if (transientSubmission != null) {
       final submission = transientSubmission.submission;
+      final onCancelQueuedMessage = widget.onCancelQueuedMessage;
       return _revealable(
         createdAtMs: null,
         child: QueuedMessageBubble(
@@ -617,6 +621,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           submission: submission,
           presentation: transientSubmission.isSending
               ? const QueuedMessageBubblePresentation.sending()
+              : onCancelQueuedMessage == null
+              ? const QueuedMessageBubblePresentation.pendingReadOnly()
               : QueuedMessageBubblePresentation.pending(
                   onCancel: () => _cancelQueuedSubmission(submission: submission),
                 ),
@@ -644,9 +650,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {
+    final onCancelQueuedMessage = widget.onCancelQueuedMessage;
+    if (onCancelQueuedMessage == null) return;
     final index = widget.queuedMessages.indexWhere((candidate) => identical(candidate, submission));
     if (index < 0) return;
-    widget.onCancelQueuedMessage(index);
+    onCancelQueuedMessage(index);
   }
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.

@@ -121,7 +121,9 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           onLoadOlderMessages: state.olderMessagesCursor == null
                               ? null
                               : context.read<SessionDetailCubit>().loadOlderMessages,
-                          onCancelQueuedMessage: context.read<SessionDetailCubit>().cancelQueuedMessage,
+                          onCancelQueuedMessage: widget.readOnly
+                              ? null
+                              : context.read<SessionDetailCubit>().cancelQueuedMessage,
                           retryErrorMessage: state.retryErrorMessage,
                           // Pad the oldest-message edge clear of the bar it scrolls
                           // behind, and the newest-message edge clear of the floating

@@ -75,6 +75,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _queuedMessages = [..._queuedMessages, submission]);
   }
 
+  void sendDirectly(QueuedSessionSubmission submission) {
+    setState(() => _sendingSubmission = submission);
+  }
+
   void beginSending() {
     setState(() {
       _sendingSubmission = _queuedMessages.first;
@@ -621,6 +625,39 @@ void main() {
     expect(find.text("Sending"), findsOneWidget);
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("a new direct-to-sending submission returns a detached reader to latest", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const submission = QueuedSessionSubmission.text(
+      text: "Direct sending prompt",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _detachViewport(tester);
+
+    harnessKey.currentState!.sendDirectly(submission);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 181));
+    await tester.pump();
+
+    expect(find.text("Direct sending prompt"), findsOneWidget);
+    expect(find.text("Sending"), findsOneWidget);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+    expect(_position(tester).pixels, 0);
   });
 
   // --- Regression tests for the old "jump to top" / "view shifts" bugs ---

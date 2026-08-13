@@ -567,10 +567,22 @@ void main() {
 
   testWidgets("an archived session is read-only: no composer, no pending banners", (tester) async {
     // Archiving is permanent, so an archived session is audit-only.
-    final state = _loadedState(
-      pendingQuestions: const [_question],
-      pendingPermissions: const [_permission],
-    ).copyWith(isArchived: true);
+    final state =
+        _loadedState(
+          pendingQuestions: const [_question],
+          pendingPermissions: const [_permission],
+        ).copyWith(
+          isArchived: true,
+          queuedMessages: const [
+            QueuedSessionSubmission.text(
+              text: "Queued before archive",
+              inputMode: ComposerInputMode.typed,
+              attachments: [],
+              agent: "coder",
+              agentModel: null,
+            ),
+          ],
+        );
     when(() => cubit.state).thenReturn(state);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -581,6 +593,9 @@ void main() {
     // Pending requests can never be answered on an archived session.
     expect(find.text("1 pending question"), findsNothing);
     expect(find.text("1 permission request pending"), findsNothing);
+    expect(find.text("Queued before archive"), findsOneWidget);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
   });
 
   testWidgets("closes an open question when it leaves pending state", (tester) async {

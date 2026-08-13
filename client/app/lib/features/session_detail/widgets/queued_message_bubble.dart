@@ -8,12 +8,15 @@ import "user_message_card.dart";
 sealed class const QueuedMessageBubblePresentation() {
   const factory sending() = SendingMessageBubblePresentation;
   const factory pending({required VoidCallback onCancel}) = PendingMessageBubblePresentation;
+  const factory pendingReadOnly() = ReadOnlyPendingMessageBubblePresentation;
 }
 
 final class const SendingMessageBubblePresentation() extends QueuedMessageBubblePresentation;
 
 final class const PendingMessageBubblePresentation({required final VoidCallback onCancel})
     extends QueuedMessageBubblePresentation;
+
+final class const ReadOnlyPendingMessageBubblePresentation() extends QueuedMessageBubblePresentation;
 
 class const QueuedMessageBubble({
   super.key,
@@ -72,6 +75,15 @@ class const QueuedMessageBubble({
             ),
           ),
         ],
+      ),
+      ReadOnlyPendingMessageBubblePresentation() => _status(
+        prego: prego,
+        icon: Icon(
+          submission.isCommand ? TablerRegular.terminal : TablerRegular.clock,
+          size: 14,
+          color: prego.colors.textTertiary,
+        ),
+        label: submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
       ),
     };
 
