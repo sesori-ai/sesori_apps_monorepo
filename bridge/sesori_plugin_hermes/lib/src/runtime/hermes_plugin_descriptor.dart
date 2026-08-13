@@ -114,7 +114,9 @@ class const HermesPluginDescriptor({
         return PluginSetupRuntimeMissing(
           actionHint: explicitBin != null
               ? "Fix the configured Hermes CLI path, then restart the bridge."
-              : "Install Hermes Agent locally, then retry setup detection.",
+              : runtime.preAcpInstall
+                  ? "The installed Hermes does not expose the `acp` subcommand. Update Hermes, then retry setup detection."
+                  : "Install Hermes Agent locally, then retry setup detection.",
         );
       case _HermesRuntimeProbeState.outdated:
         return const PluginSetupUnavailable(
@@ -145,7 +147,19 @@ class const HermesPluginDescriptor({
         environment: environment,
         timeout: _versionProbeTimeout,
       );
-    } on Object {
+    } on TimeoutException catch (error, stackTrace) {
+      Log.w("[hermes] status probe '$executablePath status' did not exit within ${_versionProbeTimeout.inSeconds}s", error, stackTrace);
+      return const PluginSetupUnknown(
+        actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("[hermes] status probe could not launch '$executablePath status'", error, stackTrace);
+      return const PluginSetupUnknown(
+        actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
+      );
+    }
+    if (statusResult.exitCode != 0) {
+      Log.w("[hermes] status probe '$executablePath status' exited with code ${statusResult.exitCode}");
       return const PluginSetupUnknown(
         actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
       );
@@ -164,7 +178,7 @@ class const HermesPluginDescriptor({
     );
   }
 
-  Future<({_HermesRuntimeProbeState state, String? version})> _probeHermesRuntime({
+  Future<({_HermesRuntimeProbeState state, String? version, bool preAcpInstall})> _probeHermesRuntime({
     required String executablePath,
     required HostProcessService processes,
     required Map<String, String> environment,
@@ -189,35 +203,41 @@ class const HermesPluginDescriptor({
         "[hermes] availability probe '$executablePath acp --version' did not exit within "
         "${_versionProbeTimeout.inSeconds}s",
       );
-      return (state: _HermesRuntimeProbeState.unknown, version: null);
-    } on Object catch (error) {
-      // Spawn could not launch — almost always ENOENT: not installed / not on PATH.
-      Log.d("[hermes] availability probe could not launch '$executablePath acp --version': $error");
-      return (state: _HermesRuntimeProbeState.missing, version: null);
+      return (state: _HermesRuntimeProbeState.unknown, version: null, preAcpInstall: false);
+    } on io.ProcessException catch (error) {
+      // The host process seam reports spawn failures as ProcessException;
+      // ENOENT (errorCode 2) means not installed / not on PATH.
+      Log.d("[hermes] availability probe could not launch '$executablePath acp --version' (${error.errorCode})");
+      return (state: _HermesRuntimeProbeState.missing, version: null, preAcpInstall: false);
+    } on Object catch (error, stackTrace) {
+      // Any other spawn failure (host seam error, permission) is not proof of
+      // a missing runtime — report unknown rather than a misleading hint.
+      Log.w("[hermes] availability probe could not launch '$executablePath acp --version'", error, stackTrace);
+      return (state: _HermesRuntimeProbeState.unknown, version: null, preAcpInstall: false);
     }
 
     if (result.exitCode != 0) {
       Log.d("[hermes] availability probe '$executablePath acp --version' exited with code ${result.exitCode}");
       // A pre-ACP install answers `--version` but rejects the `acp` subcommand
-      // with a nonzero exit; treat that as missing, not unknown, so the setup
-      // hint points at updating the install.
+      // with a nonzero exit; surface that as missing with an update hint, not
+      // as an unknown failure.
       if (result.stderr.contains("acp") && (result.stderr.contains("invalid choice") || result.stderr.contains("error"))) {
-        return (state: _HermesRuntimeProbeState.missing, version: null);
+        return (state: _HermesRuntimeProbeState.missing, version: null, preAcpInstall: true);
       }
-      return (state: _HermesRuntimeProbeState.unknown, version: null);
+      return (state: _HermesRuntimeProbeState.unknown, version: null, preAcpInstall: false);
     }
 
     final parsed = HermesRuntimeManifest.tryParseVersion(value: result.stdout.trim());
     if (parsed == null) {
-      return (state: _HermesRuntimeProbeState.unrecognized, version: null);
+      return (state: _HermesRuntimeProbeState.unrecognized, version: null, preAcpInstall: false);
     }
     if (parsed.compareTo(HermesRuntimeManifest.minAcpVersion) < 0) {
       Log.w("[hermes] Hermes ACP adapter ${parsed.toString()} is below the supported minimum ${HermesRuntimeManifest.minAcpVersion.toString()}");
-      return (state: _HermesRuntimeProbeState.outdated, version: parsed.toString());
+      return (state: _HermesRuntimeProbeState.outdated, version: parsed.toString(), preAcpInstall: false);
     }
     final version = parsed.toString();
     Log.d("[hermes] available: '$executablePath acp --version' -> $version");
-    return (state: _HermesRuntimeProbeState.ready, version: version);
+    return (state: _HermesRuntimeProbeState.ready, version: version, preAcpInstall: false);
   }
 
   String _normalizedStatusOutput(CommandResult result) {
@@ -290,8 +310,8 @@ class const HermesPluginDescriptor({
     Future<Never> rollbackAborted() async {
       try {
         await plugin.shutdown(budget: null);
-      } on Object catch (error) {
-        Log.e("[hermes] rollback after aborted start failed: $error");
+      } on Object catch (error, stackTrace) {
+        Log.e("[hermes] rollback after aborted start failed", error, stackTrace);
       }
       throw const PluginStartAbortedException();
     }
