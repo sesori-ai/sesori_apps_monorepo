@@ -153,6 +153,57 @@ void main() {
       await runtime.dispose();
     });
 
+    test("surfaces plugin startup failures without waiting for metadata", () async {
+      final metadataGate = Completer<void>();
+      final runtime = createTestPluginRuntime(plugins: const <BridgePluginApi>[]);
+      metadataService
+        ..generateStarted = Completer<void>()
+        ..generateGate = metadataGate.future;
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        runtime: runtime,
+      );
+      final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      final localMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: repository,
+        sessionOperationDispatcher: localOperationDispatcher,
+      );
+      final localService = SessionCreationService(
+        metadataService: metadataService,
+        worktreeService: worktreeService,
+        sessionRepository: repository,
+        sessionMutationDispatcher: localMutationDispatcher,
+      );
+
+      final creation = localService.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      final failure = expectLater(
+        creation.timeout(const Duration(milliseconds: 100)),
+        throwsA(isA<PluginOperationException>()),
+      );
+      await metadataService.generateStarted!.future;
+      await failure;
+      metadataGate.complete();
+      await localOperationDispatcher.dispose();
+      await localMutationDispatcher.dispose();
+      await runtime.dispose();
+    });
+
     test("stores the created root with its explicit plugin and backend binding", () async {
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",
@@ -310,7 +361,7 @@ class _FakeMetadataService() extends MetadataService {
   @override
   Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
     generateCalls++;
-    generateStarted?.complete();
+    if (generateStarted case final started? when !started.isCompleted) started.complete();
     if (generateGate case final gate?) await gate;
     return null;
   }

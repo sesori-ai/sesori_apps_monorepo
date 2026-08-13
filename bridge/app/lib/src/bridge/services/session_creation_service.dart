@@ -24,13 +24,13 @@ class SessionCreationService({
     final userTexts = _extractTexts(parts: request.parts);
     final firstText = userTexts.firstOrNull;
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
-    final (_, metadata) = await (
-      _sessionRepository.ensurePluginRoutable(
-        pluginId: request.pluginId,
-        operation: SessionOperation.createSession,
-      ),
-      _generateMetadata(firstText: firstText),
-    ).wait;
+    final pluginRoutability = _sessionRepository.ensurePluginRoutable(
+      pluginId: request.pluginId,
+      operation: SessionOperation.createSession,
+    );
+    final metadataGeneration = _generateMetadata(firstText: firstText);
+    await pluginRoutability;
+    final metadata = await metadataGeneration;
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,

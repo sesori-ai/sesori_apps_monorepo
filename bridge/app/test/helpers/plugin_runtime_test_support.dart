@@ -187,7 +187,7 @@ class TestPluginRuntime({
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
-    useStarted?.complete();
+    if (useStarted case final started? when !started.isCompleted) started.complete();
     if (useGate case final gate?) await gate;
     final plugin = _plugins[pluginId];
     if (plugin == null) {
