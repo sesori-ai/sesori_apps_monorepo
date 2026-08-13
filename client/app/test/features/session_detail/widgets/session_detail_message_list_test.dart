@@ -25,6 +25,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
   late List<QueuedSessionSubmission> _queuedMessages;
+  QueuedSessionSubmission? _sendingSubmission;
   late String? _retryErrorMessage;
   bool _isLoadingOlderMessages = false;
   int? lastCancelledQueuedMessageIndex;
@@ -70,6 +71,17 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _queuedMessages = [..._queuedMessages]..removeAt(index));
   }
 
+  void enqueueSubmission(QueuedSessionSubmission submission) {
+    setState(() => _queuedMessages = [..._queuedMessages, submission]);
+  }
+
+  void beginSending() {
+    setState(() {
+      _sendingSubmission = _queuedMessages.first;
+      _queuedMessages = _queuedMessages.sublist(1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -82,7 +94,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
-          sendingSubmission: null,
+          sendingSubmission: _sendingSubmission,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
           streamingText: _streamingText,
@@ -540,6 +552,73 @@ void main() {
 
     expect(harnessKey.currentState!.lastCancelledQueuedMessageIndex, 0);
     expect(find.text("Queued while reading history"), findsNothing);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("submitting while detached returns to latest and shows the inline row", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const submission = QueuedSessionSubmission.text(
+      text: "New prompt from history",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _detachViewport(tester);
+
+    harnessKey.currentState!.enqueueSubmission(submission);
+    await tester.pumpAndSettle();
+
+    expect(find.text("New prompt from history"), findsOneWidget);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+    expect(_position(tester).pixels, 0);
+  });
+
+  testWidgets("promotion to sending stays live without reattaching a detached reader", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const submission = QueuedSessionSubmission.text(
+      text: "Queued before reconnect",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        initialQueuedMessages: const [submission],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_listViewKey),
+      delta: const Offset(0, 30),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    harnessKey.currentState!.beginSending();
+    await _pumpListUpdate(tester);
+
+    expect(find.text("Sending"), findsOneWidget);
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });

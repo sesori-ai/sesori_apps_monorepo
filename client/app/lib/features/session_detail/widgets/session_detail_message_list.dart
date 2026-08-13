@@ -98,8 +98,6 @@ class const SessionDetailMessageList({
 /// the viewport stays pinned to what the user was reading.
 typedef _DetachedSnapshot = ({
   List<MessageWithParts> messages,
-  QueuedSessionSubmission? sendingSubmission,
-  List<QueuedSessionSubmission> queuedMessages,
   Map<String, String> streamingText,
   List<Session> children,
   Map<String, SessionStatus> childStatuses,
@@ -252,6 +250,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return;
     }
     final frozen = _snapshot;
+    final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
+    if (frozen != null && transientSubmissionsChanged) {
+      _syncChatControllerTo(
+        messages: frozen.messages,
+        sendingSubmission: widget.sendingSubmission,
+        queuedMessages: widget.queuedMessages,
+        hasRetryError: frozen.retryErrorMessage != null,
+      );
+      if (_hasNewTransientSubmission(oldWidget: oldWidget)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _follow.following) return;
+          unawaited(_follow.animateToEdge());
+        });
+      }
+    }
     if (!olderPageRequestCompleted) return;
     _olderPageRequestInFlight = false;
     if (frozen == null) return;
@@ -267,8 +280,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     setState(() {
       _snapshot = (
         messages: List<MessageWithParts>.unmodifiable(merged),
-        sendingSubmission: frozen.sendingSubmission,
-        queuedMessages: frozen.queuedMessages,
         streamingText: frozen.streamingText,
         children: frozen.children,
         childStatuses: frozen.childStatuses,
@@ -285,8 +296,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // render agree on both the rows and the retry state.
     _syncChatControllerTo(
       messages: merged,
-      sendingSubmission: frozen.sendingSubmission,
-      queuedMessages: frozen.queuedMessages,
+      sendingSubmission: widget.sendingSubmission,
+      queuedMessages: widget.queuedMessages,
       hasRetryError: frozen.retryErrorMessage != null,
     );
   }
@@ -313,8 +324,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       } else {
         _snapshot ??= (
           messages: List<MessageWithParts>.unmodifiable(widget.messages),
-          sendingSubmission: widget.sendingSubmission,
-          queuedMessages: List<QueuedSessionSubmission>.unmodifiable(widget.queuedMessages),
           streamingText: Map<String, String>.unmodifiable(widget.streamingText),
           children: List<Session>.unmodifiable(widget.children),
           childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
@@ -322,6 +331,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         );
       }
     });
+  }
+
+  bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
+    if (!identical(oldWidget.sendingSubmission, widget.sendingSubmission)) return false;
+    if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
+    for (var i = 0; i < widget.queuedMessages.length; i++) {
+      if (!identical(oldWidget.queuedMessages[i], widget.queuedMessages[i])) return false;
+    }
+    return true;
+  }
+
+  bool _hasNewTransientSubmission({required SessionDetailMessageList oldWidget}) {
+    final previous = <QueuedSessionSubmission>{
+      ?oldWidget.sendingSubmission,
+      ...oldWidget.queuedMessages,
+    };
+    return widget.queuedMessages.any((submission) => !previous.contains(submission));
   }
 
   /// Mirrors the domain transcript into the chat controller. Entries
@@ -435,8 +461,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final loc = context.loc;
     final snap = _snapshot;
     final messages = snap?.messages ?? widget.messages;
-    final sendingSubmission = snap == null ? widget.sendingSubmission : snap.sendingSubmission;
-    final queuedMessages = snap == null ? widget.queuedMessages : snap.queuedMessages;
+    final sendingSubmission = widget.sendingSubmission;
+    final queuedMessages = widget.queuedMessages;
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
@@ -620,30 +646,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {
     final index = widget.queuedMessages.indexWhere((candidate) => identical(candidate, submission));
     if (index < 0) return;
-    final frozen = _snapshot;
-    if (frozen != null) {
-      final queuedMessages = [
-        for (final candidate in frozen.queuedMessages)
-          if (!identical(candidate, submission)) candidate,
-      ];
-      setState(() {
-        _snapshot = (
-          messages: frozen.messages,
-          sendingSubmission: frozen.sendingSubmission,
-          queuedMessages: List<QueuedSessionSubmission>.unmodifiable(queuedMessages),
-          streamingText: frozen.streamingText,
-          children: frozen.children,
-          childStatuses: frozen.childStatuses,
-          retryErrorMessage: frozen.retryErrorMessage,
-        );
-      });
-      _syncChatControllerTo(
-        messages: frozen.messages,
-        sendingSubmission: frozen.sendingSubmission,
-        queuedMessages: queuedMessages,
-        hasRetryError: frozen.retryErrorMessage != null,
-      );
-    }
     widget.onCancelQueuedMessage(index);
   }
 
