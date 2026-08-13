@@ -278,7 +278,10 @@ class const _AttachmentMetadataOverlay({
   Widget build(BuildContext context) {
     if (filename == null && mime == null && byteLength == null) return const SizedBox.shrink();
     final prego = context.prego;
-    final showDetails = MediaQuery.textScalerOf(context).scale(1) <= 2;
+    final details = [
+      ?mime,
+      if (byteLength case final byteLength?) context.loc.sessionDetailAttachmentSizeBytes(byteLength),
+    ].join(" / ");
     return IgnorePointer(
       child: Align(
         alignment: Alignment.bottomCenter,
@@ -310,22 +313,15 @@ class const _AttachmentMetadataOverlay({
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  if (showDetails)
-                    if (mime case final mime?)
-                      Text(
-                        mime,
-                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                  if (details.isNotEmpty)
+                    Text(
+                      details,
+                      style: prego.textTheme.textXs.regular.copyWith(
+                        color: prego.colors.textWhite.withValues(alpha: 0.7),
                       ),
-                  if (showDetails)
-                    if (byteLength case final byteLength?)
-                      Text(
-                        context.loc.sessionDetailAttachmentSizeBytes(byteLength),
-                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             ),

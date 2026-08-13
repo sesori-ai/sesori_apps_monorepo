@@ -74,9 +74,11 @@ class _FakeImageSharer() implements ImageSharer {
   }) async {}
 }
 
-Widget _app({required Widget child}) {
+Widget _app({required Widget child, ThemeMode themeMode = ThemeMode.light}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+    themeMode: themeMode,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(body: child),
@@ -170,7 +172,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("preview.png"), findsOneWidget);
-    expect(find.text("image/png"), findsOneWidget);
+    expect(find.text("image/png / 1024 bytes"), findsOneWidget);
     expect(find.byType(Image), findsNothing);
     expect(find.byKey(FilePartWidget.previewTapTargetKey), findsNothing);
   });
@@ -299,7 +301,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets("extreme text scaling keeps the filename without overflowing", (tester) async {
+  testWidgets("extreme text scaling keeps metadata without overflowing", (tester) async {
     await tester.pumpWidget(
       _app(
         child: const MediaQuery(
@@ -320,8 +322,23 @@ void main() {
     await tester.pump();
 
     expect(find.text("scaled.png"), findsOneWidget);
-    expect(find.text("image/png"), findsNothing);
+    expect(find.text("image/png"), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("dark metadata overlay keeps secondary text light", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        themeMode: ThemeMode.dark,
+        child: const FilePartWidget(
+          sessionId: "session-1",
+          attachment: MessageAttachment.metadata(mime: "image/png", filename: "dark.png"),
+        ),
+      ),
+    );
+
+    final details = tester.widget<Text>(find.text("image/png"));
+    expect(details.style?.color, PregoDesignSystem.dark.colors.textWhite.withValues(alpha: 0.7));
   });
 
   testWidgets("uses a static loading indicator when reduced motion is enabled", (tester) async {
@@ -375,7 +392,7 @@ void main() {
     final indicator = tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator));
     expect(indicator.value, isNotNull);
     expect(find.byType(AspectRatio), findsOneWidget);
-    expect(find.text("8 bytes"), findsOneWidget);
+    expect(find.text("image/png / 8 bytes"), findsOneWidget);
   });
 
   testWidgets("failed raster tile exposes retry semantics and retries the request", (tester) async {
