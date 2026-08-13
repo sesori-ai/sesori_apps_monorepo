@@ -5,3 +5,4 @@
 // only — no harness-specific protocol extensions.
 export "src/hermes_binary.dart";
 export "src/hermes_identity.dart";
+export "src/hermes_plugin_impl.dart";
