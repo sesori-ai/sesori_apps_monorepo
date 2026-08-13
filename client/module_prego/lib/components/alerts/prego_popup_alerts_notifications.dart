@@ -110,48 +110,52 @@ class const PregoPopupAlertsNotifications({
   Widget _buildContent(PregoDesignSystem prego) {
     final message = this.message;
     final hasActions = primaryAction != null || secondaryAction != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-        ),
-        if (message != null) ...[
-          const SizedBox(height: PregoSpacing.lg),
+    return IntrinsicWidth(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Text(
-            message,
-            style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
+            title,
+            style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
           ),
+          if (message != null) ...[
+            const SizedBox(height: PregoSpacing.lg),
+            Text(
+              message,
+              style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
+            ),
+          ],
+          if (hasActions) ...[
+            const SizedBox(height: PregoSpacing.lg),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (secondaryAction case final action?)
+                    PregoButtonsSolid(
+                      label: action.label,
+                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                      size: PregoButtonsSolidSize.sm,
+                      onPressed: action.onPressed,
+                    ),
+                  if (primaryAction case final action?) ...[
+                    const SizedBox(width: PregoSpacing.lg),
+                    PregoButtonsSolid(
+                      label: action.label,
+                      hierarchy: _primaryButtonHierarchy,
+                      size: PregoButtonsSolidSize.sm,
+                      type: _primaryButtonType,
+                      onPressed: action.onPressed,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
-        if (hasActions) ...[
-          const SizedBox(height: PregoSpacing.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (secondaryAction case final action?)
-                PregoButtonsSolid(
-                  label: action.label,
-                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                  size: PregoButtonsSolidSize.sm,
-                  onPressed: action.onPressed,
-                ),
-              if (primaryAction case final action?) ...[
-                const SizedBox(width: PregoSpacing.lg),
-                PregoButtonsSolid(
-                  label: action.label,
-                  hierarchy: _primaryButtonHierarchy,
-                  size: PregoButtonsSolidSize.sm,
-                  type: _primaryButtonType,
-                  onPressed: action.onPressed,
-                ),
-              ],
-            ],
-          ),
-        ],
-      ],
+      ),
     );
   }
 

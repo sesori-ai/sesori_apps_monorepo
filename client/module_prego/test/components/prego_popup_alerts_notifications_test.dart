@@ -155,6 +155,7 @@ void main() {
     presenter.show(
       title: "Saved",
       content: PregoPopupAlertContent(
+        message: "Your changes were saved successfully",
         primaryAction: PregoPopupAlertsNotificationsAction(label: "Open", onPressed: () {}),
       ),
       duration: null,
@@ -165,6 +166,9 @@ void main() {
       tester.getSize(find.byType(PregoPopupAlertsNotifications)).width,
       lessThan(800 - 2 * PregoSpacing.xl),
     );
+    final contentRight = tester.getTopRight(find.text("Your changes were saved successfully")).dx;
+    final buttonRight = tester.getTopRight(find.ancestor(of: find.text("Open"), matching: find.byType(Semantics)).first).dx;
+    expect(buttonRight, contentRight);
   });
 
   testWidgets("uses overlay status-bar padding when a modal strips its top padding", (tester) async {
