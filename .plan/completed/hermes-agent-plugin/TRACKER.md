@@ -31,15 +31,15 @@
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [x] | 1/9 | `🌱 [hermes-plugin] docs: plan Hermes Agent harness support [step 1/9]` | ~1,200-1,500 | Ready for PR |
-| [x] | 2/9 | `🌱 [hermes-plugin] feat(hermes): scaffold the ACP plugin package [step 2/9]` | 300-600 | Ready for PR (analyze+tests green) |
-| [x] | 3/9 | `⚙️ [hermes-plugin] feat(hermes): add the ACP plugin core [step 3/9]` | 700-1,100 | Ready for PR (tests green) |
-| [x] | 4/9 | `⚙️ [hermes-plugin] feat(hermes): add descriptor, runtime probe, and setup [step 4/9]` | 800-1,200 | Ready for PR (tests green) |
-| [x] | 5/9 | `⚙️ [hermes-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | 100-300 | Ready for PR (full suite green) |
-| [x] | 6/9 | `⚙️ [hermes-plugin] feat(client): brand the Hermes harness [step 6/9]` | 200-400 | Ready for PR (flutter tests green) |
-| [ ] | 7/9 | `⚙️ [hermes-plugin] docs: document Hermes harness behavior [step 7/9]` | 200-500 | Not started |
-| [x] | 8/9 | `🚧 [hermes-plugin] test(hermes): live-verify Hermes over ACP [step 8/9]` | 400-800 | Done locally (live E2E PASS 2026-08-13); PR pending |
-| [ ] | 9/9 | `🌱 [hermes-plugin] docs: retire the plan [step 9/9]` | 100-300 | Not started |
+| [x] | 1/9 | `🌱 [hermes-plugin] docs: plan Hermes Agent harness support [step 1/9]` | ~1,200-1,500 | PR #895 open (plan PR) |
+| [x] | 2/9 | `🌱 [hermes-plugin] feat(hermes): scaffold the ACP plugin package [step 2/9]` | 300-600 | PR #896 open |
+| [x] | 3/9 | `⚙️ [hermes-plugin] feat(hermes): add the ACP plugin core [step 3/9]` | 700-1,100 | PR #897 open |
+| [x] | 4/9 | `⚙️ [hermes-plugin] feat(hermes): add descriptor, runtime probe, and setup [step 4/9]` | 800-1,200 | PR #898 open |
+| [x] | 5/9 | `⚙️ [hermes-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | 100-300 | PR #899 open |
+| [x] | 6/9 | `⚙️ [hermes-plugin] feat(client): brand the Hermes harness [step 6/9]` | 200-400 | PR #900 open |
+| [x] | 7/9 | `⚙️ [hermes-plugin] docs: document Hermes harness behavior [step 7/9]` | 200-500 | PR #901 open |
+| [x] | 8/9 | `🚧 [hermes-plugin] test(hermes): live-verify Hermes over ACP [step 8/9]` | 400-800 | PR #902 open; live E2E PASS 2026-08-13 |
+| [x] | 9/9 | `🌱 [hermes-plugin] docs: retire the plan [step 9/9]` | 100-300 | PR #903 open |
 
 ## Verification Checklist (step 8/9 live gate)
 
