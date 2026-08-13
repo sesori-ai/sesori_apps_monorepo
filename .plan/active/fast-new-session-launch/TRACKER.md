@@ -47,6 +47,11 @@
   settles; no additional cache or persistence extends that lifetime.
 - [ ] `PromptInput` passes the exact trimmed `ComposerDraft`; do not reconstruct
   voice provenance from an input-mode enum.
+- [ ] Preserve creation warnings across reconnect/discovery/options refreshes;
+  clear them only on an explicit new submission or route exit.
+- [ ] Await the app-owned launch-frame gate before attachment/request encoding.
+- [ ] Preserve nullable title handoff; never convert missing title to `""`.
+- [ ] Extend `SesoriServerApi` for metadata; do not split one provider by use case.
 - [ ] One late-title future set and one shutdown abort signal only.
 - [ ] Keep the normalized event consumer alive through late-title drain, then
   drain its tails before dispatcher disposal.
@@ -104,7 +109,7 @@
 
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
-- Result after review fixes: `PLAN.md +692`, `TRACKER.md +128`, total `+820 / -0`
+- Result after review fixes: `PLAN.md +719`, `TRACKER.md +133`, total `+852 / -0`
   against the Step 1 target of 750-900 changed lines.
 
 ### Manual matrix

@@ -175,6 +175,14 @@ Discovery/options errors remain a separate variant with no submission or
 creation warning. This makes impossible states explicit instead of coordinating
 nullable text, command, attachment, and warning fields.
 
+Discovery, option, capability, and reconnect refreshes update the configuration
+inside `NewSessionCreationError`; they must not replace it with idle or a
+discovery error and erase the uncertain-outcome warning. The warning is cleared
+only by the next explicit submission (which enters `NewSessionSending`) or by
+leaving the new-session route. This requires replacing the current direct idle
+emit in `_discoverPlugins` with the same variant-preserving state update used by
+the other refresh paths.
+
 `PromptInput` extends its submit callback with the exact trimmed
 `ComposerDraft` it already computes before clearing the controller. This is the
 only source that can preserve voice-origin spans accurately; reconstructing a
@@ -212,6 +220,14 @@ mutable staging list, invokes the one-shot consumed callback post-frame, and
 never reapplies them on an ordinary parent rebuild. It does not expose
 attachment ownership or persist bytes. Existing-session callers pass `const []`
 and a no-op callback.
+
+The app-owned send callback also creates a `SchedulerBinding.endOfFrame` gate
+for the newly scheduled launch frame and passes it into the Cubit's creation
+intent. `NewSessionCubit` emits `NewSessionSending` synchronously, then awaits
+that gate before entering `SessionService`/`SessionApi`. This keeps Flutter out
+of `module_core` while ensuring `_buildParts` base64 work and relay JSON encoding
+cannot block the first launch-view paint. The request and all existing
+acceptance semantics remain otherwise synchronous.
 
 ### 2. Reusable detail-shaped launch presentation
 
@@ -294,6 +310,11 @@ the bridge-owned override and may supersede the backend catalog title, matching
 today's title precedence, but its conditional write cannot supersede an explicit
 user/local rename.
 
+On route replacement, `NewSessionScreen` passes `session.title` through as the
+nullable `sessionTitle`; it deletes the current `?? ""` conversion. This
+preserves missingness so `SessionDetailBody` shows its localized `New session`
+fallback until the snapshot or late title supplies a real value.
+
 No PR identity verification occurs because creation has never supplied a
 verified GitHub login. The single-session `enrichSession`,
 `enrichPluginSession`, and now-unused plugin-session mapping helpers are removed;
@@ -312,10 +333,11 @@ first-session activation signal. Worktree and plugin creation no longer await
 it.
 
 Replace the layer-skipping `MetadataService` with the normal bridge dependency
-flow:
+flow while keeping the auth server as one provider boundary:
 
-- Layer 1 `SessionMetadataApi` under `bridge/app/lib/src/api/` owns the typed
-  POST, abort/deadline behavior, status exception, and title-only response DTO;
+- Layer 1 existing `SesoriServerApi` owns the typed metadata POST alongside its
+  other auth-server operations, including abort/deadline behavior, a method-aware
+  status exception, and the title-only response DTO;
 - Layer 2 `SessionMetadataRepository` under `bridge/app/lib/src/repositories/`
   owns the 500-character payload bound, access-token acquisition, and one typed
   401 refresh/retry;
@@ -335,8 +357,8 @@ Late work is owned by `SessionCreationService`, not by a detached route future:
 - `drain` waits for tracked title work before session operations/listeners and
   the shared HTTP client are disposed.
 
-`SessionMetadataApi` uses an abortable HTTP request raced by its existing
-45-second deadline and the service-owned shutdown signal. A typed request abort
+`SesoriServerApi` uses an abortable metadata HTTP request raced by its configured
+deadline and the service-owned shutdown signal. A typed request abort
 is treated as expected only when that shutdown signal is set; deadline, token,
 status, and parse failures retain their original context, are logged by the
 creation service, and fail soft.
@@ -575,8 +597,11 @@ bridge and client production steps into one large PR.
   public `module_core` state and the shared `module_prego` package.
 - Prove URI remains `/new` while unresolved, duplicate Send is blocked, Back keeps
   background launch, late success cannot hijack another route, success replaces
-  with real ID, every failure restores text/voice/command/attachments, and
-  every creation-originated error warns before manual resend.
+  with real ID while retaining nullable title fallback, every failure restores
+  text/voice/command/attachments, and every creation-originated error warns
+  before manual resend. Cover failure followed by reconnect/discovery refresh.
+- With a maximum-sized attachment fixture, prove `NewSessionSending` paints
+  before base64/request serialization starts; do not use a wall-clock-only test.
 - Prove mixed typed/voice spans survive submission failure exactly, and the
   existing-session queue plus analytics retain their released input-mode
   behavior after the richer callback input.
@@ -620,7 +645,8 @@ plugins. Automated tests are not a substitute for that client/plugin boundary.
 - **Workspace:** in-place and dedicated; dedicated includes normal generated
   name, collision retry, and suffix fallback through automated tests.
 - **Failure:** definitive rejection plus timeout/relay-loss simulation restoring
-  the composer with honest warning.
+  the composer with honest warning; reconnect/discovery completion must not
+  erase that warning before another explicit submission or route exit.
 - **Compatibility:** current client against the minimum supported released
   bridge and current bridge response shape against an older released client or
   an equivalent wire fixture. Older bridge remains slower but functional;
@@ -641,7 +667,8 @@ Compare baseline and final builds under the same plugin/workspace conditions.
 The acceptance criterion is structural, not a brittle wall-clock SLA:
 
 - launch view appears in the next rendered frame without waiting for bridge
-  response;
+  response or synchronous attachment/request encoding; a maximum-sized fixture
+  verifies the launch view paints before serialization proceeds;
 - metadata/title completion cannot extend create response time;
 - route replacement occurs only after the real session is durable/queryable;
 - no accepted first input or command is moved behind the success response.
@@ -683,7 +710,7 @@ introduced.
   rules require applying valid findings directly rather than re-reviewing fixes.
 - **Applied findings:** specified exact `OrchestratorSession` admission/drain/
   disposal order; replaced layer-skipping `MetadataService` with
-  `SessionMetadataApi` -> `SessionMetadataRepository` ->
+  `SesoriServerApi` -> `SessionMetadataRepository` ->
   `SessionCreationService`; placed the reusable status primitive in
   `module_prego` with app-owned localization/session chrome.
 - **Additional consistency corrections:** specified one-shot attachment
