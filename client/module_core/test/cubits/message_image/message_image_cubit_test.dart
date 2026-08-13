@@ -155,6 +155,91 @@ void main() {
     expect(cubit.state.original, isA<MessageImageOriginalLoaded>());
   });
 
+  test("release drops loaded original bytes and ignores an in-flight result", () async {
+    final original = Completer<MessageImageLoadResult>();
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(const [1]),
+        mime: "image/png",
+        actionFilename: "image.png",
+        originalUri: null,
+      ),
+    );
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer((_) => original.future);
+    final cubit = MessageImageCubit(repository: repository, sessionId: "session-1", attachment: _stored);
+    addTearDown(cubit.close);
+    await cubit.stream.firstWhere((state) => state.preview is MessageImagePreviewLoaded);
+
+    final load = cubit.loadOriginal();
+    cubit.releaseOriginal();
+    expect(cubit.state.original, isA<MessageImageOriginalAvailable>());
+    original.complete(
+      MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(const [2]),
+        mime: "image/png",
+        actionFilename: "image.png",
+        originalUri: null,
+      ),
+    );
+    await load;
+
+    expect(cubit.state.original, isA<MessageImageOriginalAvailable>());
+    expect(cubit.state.preview, isA<MessageImagePreviewLoaded>());
+  });
+
+  test("release drops a completed original while preserving the preview", () async {
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(const [1]),
+        mime: "image/png",
+        actionFilename: "image.png",
+        originalUri: null,
+      ),
+    );
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer(
+      (_) async => MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(const [2]),
+        mime: "image/png",
+        actionFilename: "image.png",
+        originalUri: null,
+      ),
+    );
+    final cubit = MessageImageCubit(repository: repository, sessionId: "session-1", attachment: _stored);
+    addTearDown(cubit.close);
+    await cubit.stream.firstWhere((state) => state.preview is MessageImagePreviewLoaded);
+    final preview = cubit.state.preview;
+    await cubit.loadOriginal();
+
+    cubit.releaseOriginal();
+
+    expect(cubit.state.preview, same(preview));
+    expect(cubit.state.original, isA<MessageImageOriginalAvailable>());
+  });
+
   test("retry intents reload independent state machines", () async {
     var previewRequests = 0;
     var originalRequests = 0;

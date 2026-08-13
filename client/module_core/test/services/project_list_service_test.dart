@@ -9,7 +9,7 @@ import "package:test/test.dart";
 class _MockProjectRepository() extends Mock implements ProjectRepository;
 
 void main() {
-  test("running projects form an alphabetical prefix while the tail stays timestamp ordered", () {
+  test("running projects use activity while awaiting-only and inactive projects keep timestamp order", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),
       activityCalculator: const SessionActivityCalculator(),
@@ -23,10 +23,11 @@ void main() {
         _project(id: "running-a", name: "Alpha", updatedAt: 100),
       ],
       activityByProjectId: const {
-        "running-z": {"z": SessionActivityInfo(mainAgentRunning: true)},
-        "waiting-a": {"waiting": SessionActivityInfo(awaitingInput: true)},
-        "running-a": {"a": SessionActivityInfo(backgroundTaskCount: 1)},
+        "running-z": {"z": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 10, updatedAt: null)},
+        "waiting-a": {"waiting": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: 30, updatedAt: null)},
+        "running-a": {"a": SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: 20, updatedAt: null)},
       },
+      listStateByProjectId: const {},
     );
 
     expect(
@@ -35,7 +36,7 @@ void main() {
     );
   });
 
-  test("nameless running projects sort by their displayed directory basename", () {
+  test("live markers override summary activity and use the latest running root", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),
       activityCalculator: const SessionActivityCalculator(),
@@ -43,16 +44,91 @@ void main() {
 
     final result = service.orderProjects(
       projects: [
-        _project(id: "zulu", name: null, path: "/a/Zulu", updatedAt: 2),
-        _project(id: "alpha", name: null, path: r"C:\z\Alpha", updatedAt: 1),
+        _project(id: "project-a", name: "A", updatedAt: 2),
+        _project(id: "project-b", name: "B", updatedAt: 1),
       ],
       activityByProjectId: const {
-        "zulu": {"z": SessionActivityInfo(mainAgentRunning: true)},
-        "alpha": {"a": SessionActivityInfo(mainAgentRunning: true)},
+        "project-a": {
+          "a1": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 70, updatedAt: null),
+          "a2": SessionActivityInfo(isRetrying: true, lastUserActivityAt: 20, updatedAt: null),
+        },
+        "project-b": {"b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 80, updatedAt: null)},
+      },
+      listStateByProjectId: const {
+        "project-a": {"a2": (unseen: false, lastUserActivityAt: 90)},
       },
     );
 
-    expect(result.map((project) => project.id), ["alpha", "zulu"]);
+    expect(result.map((project) => project.id), ["project-a", "project-b"]);
+  });
+
+  test("a fresh summary marker overrides a stale cached marker after reconnect", () {
+    final service = ProjectListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+
+    final result = service.orderProjects(
+      projects: [
+        _project(id: "project-a", name: "A", updatedAt: 2),
+        _project(id: "project-b", name: "B", updatedAt: 1),
+      ],
+      activityByProjectId: const {
+        "project-a": {"a": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 100, updatedAt: 1)},
+        "project-b": {"b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 90, updatedAt: 200)},
+      },
+      listStateByProjectId: const {
+        "project-a": {"a": (unseen: false, lastUserActivityAt: 10)},
+      },
+    );
+
+    expect(result.map((project) => project.id), ["project-a", "project-b"]);
+  });
+
+  test("a live marker beats a markerless root's newer updated time", () {
+    final service = ProjectListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+
+    final result = service.orderProjects(
+      projects: [
+        _project(id: "project-a", name: "A", updatedAt: 2),
+        _project(id: "project-b", name: "B", updatedAt: 1),
+      ],
+      activityByProjectId: const {
+        "project-a": {"a": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: 100)},
+        "project-b": {"b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 75, updatedAt: 1)},
+      },
+      listStateByProjectId: const {
+        "project-a": {"a": (unseen: false, lastUserActivityAt: 50)},
+      },
+    );
+
+    expect(result.map((project) => project.id), ["project-b", "project-a"]);
+  });
+
+  test("old-bridge running projects fall back to project updated time and stable IDs", () {
+    final service = ProjectListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+
+    final result = service.orderProjects(
+      projects: [
+        _project(id: "older", name: "Alpha", updatedAt: 1),
+        _project(id: "newer-b", name: "Zulu", updatedAt: 2),
+        _project(id: "newer-a", name: "Beta", updatedAt: 2),
+      ],
+      activityByProjectId: const {
+        "older": {"older-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null)},
+        "newer-b": {"newer-b-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null)},
+        "newer-a": {"newer-a-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null)},
+      },
+      listStateByProjectId: const {},
+    );
+
+    expect(result.map((project) => project.id), ["newer-a", "newer-b", "older"]);
   });
 }
 

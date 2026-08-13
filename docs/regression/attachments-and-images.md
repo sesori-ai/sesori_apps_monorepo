@@ -38,6 +38,23 @@ content the transcript renders live and after reload.
 - Live streaming and history replay converge: same image, same message and part
   identity, same position relative to text and tool output. The viewer offers
   copy, share, and save on the original, and an unknown shape degrades safely.
+- Capable clients request stored references for normal history pages and live
+  subscriptions. Opening a stored image keeps its thumbnail visible while the
+  original loads and decodes, replaces it in place without resetting viewer
+  state, and enables copy, share, and save only after that decode succeeds.
+  Failure retains the thumbnail with an explicit accessible original retry;
+  closing the viewer releases Cubit bytes and evicts the full-resolution image
+  provider from Flutter's image cache, and scrolling never starts an original
+  request.
+- User, tool, and each maximal contiguous run of assistant file attachments use
+  the same left-aligned square collection, capped at 320 px and constrained by
+  the available parent width. One attachment spans the collection, two split a
+  row, three use one lead tile above a pair, and larger collections continue in
+  paired rows. Images center-crop within their square; metadata appears in a
+  bounded bottom gradient; loading, failure, retry, and metadata-only fallbacks
+  retain the same square geometry. Reduced-motion loading is static, retry is an
+  explicit accessible action, and non-file assistant parts retain chronology
+  between separate file runs.
 - History requests default to the released bounded inline shape. A client that
   explicitly requests stored references receives bridge-scoped image metadata
   in the same part and tool-attachment order, including after archive; a missing
@@ -59,7 +76,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; history projection and live event shaping preserve inline defaults and return stored references only when requested. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; attachment collections retain square layouts and chronology; stored viewers remain thumbnail-first through original decode, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin, generated and tool-output images displayed, text/image/text order preserved live and after reload, viewer copy/share/save. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
@@ -89,6 +106,13 @@ live, after paging back, or after a reopen, and vary the plugin.
 - A thumbnail cache path exposes a raw identity, persists an original, remains
   above its per-account budget after a successful prune, or survives retirement
   of its authenticated account scope.
+- An attachment collection exceeds its parent or 320 px cap, loses square tile
+  geometry between states, reorders assistant content, or offers a failed image
+  without an accessible retry action.
+- A stored viewer fetches an original before opening, blanks the cached
+  thumbnail while loading or after load/decode failure, resets zoom or drag when
+  the original appears, enables actions before original decode succeeds, or
+  retains original bytes/provider cache entries after closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 
@@ -103,10 +127,10 @@ live, after paging back, or after a reopen, and vary the plugin.
   covered by the remote-attachment guarantee.
 - Cursor path-only generated images are read locally inside its plugin and
   delivered as bounded attachments; the host path still never crosses the wire.
-- Stored-image fetching and persistent thumbnail caching exist in the client
-  data layer, but normal history and live subscriptions still request inline
-  delivery. Square-grid presentation, viewer original loading, and activation
-  follow in later steps.
+- Older apps continue to request inline delivery by default, and newer apps
+  continue to render inline images returned by older bridges. The current
+  viewer remains single-image; galleries and persistent original caching are
+  intentionally excluded.
 
 ## Sources
 

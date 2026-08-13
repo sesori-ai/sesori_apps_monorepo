@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 8 in review; Step 9 local successor next
-- **Current step:** 8/11
-- **Implementation base:** `origin/main` at `57e1d0ea`
+- **Series state:** Step 9 merged; Step 10 in review
+- **Current step:** 10/11
+- **Implementation base:** synchronized `origin/main` at `4b3d67f3`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876)
-- **Next action:** Monitor Step 8 CI/review and begin Step 9 locally
+- **Current PR:** [#891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891)
+- **Next action:** Monitor Step 10 CI and review
 
 ## Plan Review
 
@@ -38,9 +38,9 @@
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
 | [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
 | [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
-| [ ] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) in review |
-| [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
-| [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
+| [x] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) merged |
+| [x] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | [PR #889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889) merged |
+| [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | [PR #891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891) in review |
 | [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
 
 ## Locked Decisions
@@ -210,8 +210,60 @@
   lines), within the
   review-revised 1,250-1,600 target;
   `git diff --check origin/main...HEAD` passes. Published as
-  [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876); monitoring
-  is active.
+  [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876), which
+  merged as `57c2af97`.
+- Step 9 (local): Added one capped, parent-responsive square attachment
+  collection for user and tool attachments and maximal contiguous assistant
+  file runs. One item spans the row, two split evenly, three use a lead tile
+  plus a pair, and larger collections use paired rows. Loaded images center-crop
+  with bounded metadata overlays; loading, metadata, rejection, and retry states
+  retain square geometry, with static reduced-motion loading and an accessible
+  explicit retry. Existing remote URL safety, per-tile `MessageImageCubit`
+  ownership, and image-viewer behavior remain intact; normal history and live
+  requests still use inline delivery. All 29 focused file/assistant widget tests
+  pass, including new grid, width-cap, chronology, long-metadata,
+  reduced-motion, retry, and semantics coverage. After synchronizing with
+  `origin/main` at `6ee94bfe`, all mobile tests, mobile fatal analysis,
+  `dart pub get`, focused formatting, and `git diff --check` pass.
+  Architecture implementation review approved the presentation flow, cubit
+  ownership, backend neutrality, compatibility boundary, and chronology with no
+  findings. The local diff has 568 additions and 117 deletions across nine files
+  (685 changed lines), below the 900-1,450 estimate because the existing
+  `FilePartWidget`, `MessageImageCubit`, and viewer seams were reused without new
+  state infrastructure. No analytics event was added: passive tile rendering or
+  taps have no defined product decision or authoritative outcome to measure.
+  Published as [PR #889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889).
+  Review fixes preserved hidden assistant run boundaries, filtered unsupported
+  attachments before layout, stabilized tile identity, corrected semantics and
+  theme contrast, retained metadata under extreme scaling, kept overlays from
+  intercepting retry, and made immutable inline rejection terminal while
+  preserving retry for remote failures. Fatal analysis, 34 focused widget
+  tests, the full mobile suite, and CI passed; the PR squash-merged as
+  `4b3d67f3`.
+- Step 10 (local): The existing tile-owned `MessageImageCubit` now releases
+  original state on viewer close. Stored-image viewers open on the thumbnail,
+  start the original request only after opening, replace the in-memory provider
+  in place after validation, gate copy/share/save until then, and retain the
+  thumbnail with retry when the original is unavailable. History and SSE
+  requests now opt into `storedReference`; shared compatibility defaults remain
+  unchanged. Module-core fatal analysis and all 1,122 tests pass; mobile fatal
+  analysis and the full suite pass, including 36 focused file/assistant widget
+  tests; desktop fatal analysis and five focused bridge history/archive parity
+  tests pass. Module-core code generation succeeds with its expected external
+  registration warnings, and localization generation reproduces the intended
+  API. Architecture implementation review approved the transport activation,
+  cubit lifecycle, and app-shell presentation seams with no findings. An
+  isolated slot-1 source bridge authenticated, registered, exposed debug port
+  9971, connected to the relay, and shut down cleanly. That fresh slot imported
+  no backend projects or sessions, so cold/warm transcript and reconnect media
+  behavior could not be exercised meaningfully without creating external test
+  session data; the automated cache, history, SSE, and viewer coverage remains
+  the evidence for those paths. Against `origin/main` at `4b3d67f3`, the local
+  implementation diff excluding this tracker bookkeeping has 876 additions and
+  152 deletions across the other 14 files (1,028 changed lines), within the
+  900-1,450 estimate because Step 7 already supplied the bounded transport,
+  repository, and independent preview/original state machines; `git diff
+  --check` passes.
 
 ## Findings And Plan Deltas
 

@@ -57,6 +57,45 @@ void main() {
     expect(client.didResume, isTrue);
     verifyNever(roomKeyStorage.clearRoomKey);
   });
+
+  test("SSE subscription requests stored attachment references", () async {
+    final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
+    final roomKeyStorage = _MockRoomKeyStorage();
+    when(roomKeyStorage.getRoomKey).thenAnswer((_) async => roomKey);
+    final socket = _FakeWebSocket();
+    final client = RelayClient.withChannelConnector(
+      relayHost: "relay.example.com",
+      cryptoService: RelayCryptoService(),
+      roomKeyStorage: roomKeyStorage,
+      authToken: null,
+      channelConnector: (_) => socket.channel,
+    );
+    final outgoing = StreamIterator<Object?>(socket.outgoing);
+    addTearDown(() async {
+      await client.disconnect();
+      await outgoing.cancel();
+      await socket.close();
+    });
+
+    final resumeReady = outgoing.moveNext();
+    final connectFuture = client.connect();
+    expect(await resumeReady.timeout(const Duration(seconds: 1)), isTrue);
+    final encryptor = RelayCryptoService().createSessionEncryptor(SecretKey(roomKey));
+    socket.serverSink.add(
+      await frame(utf8.encode(jsonEncode(const RelayMessage.resumeAck().toJson())), encryptor: encryptor),
+    );
+    await connectFuture.timeout(const Duration(seconds: 1));
+
+    client.subscribeSse("/event");
+    expect(await outgoing.moveNext().timeout(const Duration(seconds: 1)), isTrue);
+    final payload = await unframe(Uint8List.fromList(outgoing.current! as List<int>), encryptor: encryptor);
+    final message = RelayMessage.fromJson(jsonDecode(utf8.decode(payload)) as Map<String, dynamic>);
+
+    expect(
+      message,
+      const RelayMessage.sseSubscribe(path: "/event", attachmentDelivery: MessageAttachmentDelivery.storedReference),
+    );
+  });
 }
 
 class _FakeWebSocket() {

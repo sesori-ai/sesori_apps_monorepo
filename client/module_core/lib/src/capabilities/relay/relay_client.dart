@@ -410,7 +410,7 @@ class RelayClient._({
     _sseController = controller;
     unawaited(
       _sendEncryptedMessage(
-        RelayMessage.sseSubscribe(path: path, attachmentDelivery: MessageAttachmentDelivery.inline),
+        RelayMessage.sseSubscribe(path: path, attachmentDelivery: MessageAttachmentDelivery.storedReference),
       ),
     );
     return controller.stream;

@@ -70,6 +70,9 @@ class ProjectListCubit(
     _subscriptions.add(
       _sessionUnseenTracker.projectUnseen.listen((_) => _onUnseenUpdated()),
     );
+    _subscriptions.add(
+      _sessionUnseenTracker.sessionUnseen.listen((_) => _onSessionListStateUpdated()),
+    );
 
     // 2. Auto-refresh: throttled project data fetch, active only while the
     //    projects page is visible. switchMap cancels the inner subscription
@@ -289,6 +292,24 @@ class ProjectListCubit(
       final ordered = _projectListService.orderProjects(
         projects: loaded.projects,
         activityByProjectId: activityByProjectId,
+        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
+      );
+      emit(
+        loaded.copyWith(
+          projects: ordered,
+          unseenByProjectId: _unseenByProjectId(ordered),
+        ),
+      );
+    }
+  }
+
+  void _onSessionListStateUpdated() {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      final ordered = _projectListService.orderProjects(
+        projects: loaded.projects,
+        activityByProjectId: _sseEventTracker.currentSessionActivity,
+        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
       );
       emit(
         loaded.copyWith(
@@ -312,6 +333,7 @@ class ProjectListCubit(
         final ordered = _projectListService.orderProjects(
           projects: merged.projects,
           activityByProjectId: _sseEventTracker.currentSessionActivity,
+          listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
         );
 
         emit(
@@ -594,6 +616,7 @@ class ProjectListCubit(
           projectId: projectId,
         ),
         activityByProjectId: _sseEventTracker.currentSessionActivity,
+        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
       );
       emit(
         loaded.copyWith(
@@ -750,6 +773,7 @@ class ProjectListCubit(
         final sortedProjects = _projectListService.orderProjects(
           projects: mergedProjects,
           activityByProjectId: _sseEventTracker.currentSessionActivity,
+          listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
         );
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last

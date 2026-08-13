@@ -1,13 +1,13 @@
-# Running Session User-Activity Order
+# Running Session And Project User-Activity Order
 
 ## Status
 
 - **Plan slug:** `session-user-interaction-order`
-- **Status:** Simplified after product and history review
+- **Status:** Completed and retired
 - **Plan date:** 2026-08-13
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `main` at `88059e200`
-- **Implementation branch/worktree:** `session-order-ux-review`
+- **Implementation base:** `main` at `6ee94bfe`
+- **Implementation branch/worktree:** `session-user-interaction-order-verification`
 - **Delivery:** four PRs: plan, implementation, regression contract,
   verification/retirement
 
@@ -18,8 +18,9 @@ its current semantics are stated honestly.
 
 ## Goal
 
-Keep running root sessions promoted at the top of a project's session list, but
-order that running prefix by the bridge's latest recorded user-side activity
+Keep running root sessions promoted at the top of a project's session list and
+projects with running roots promoted at the top of the project list, but order
+both running prefixes by the bridge's latest recorded user-side activity
 instead of alphabetically.
 
 The visible policy otherwise remains unchanged:
@@ -28,7 +29,7 @@ The visible policy otherwise remains unchanged:
 - awaiting-input alone does not promote a session;
 - inactive sessions remain ordered by `Session.time.updated` descending;
 - archived filtering remains unchanged; and
-- project and child-task ordering remain unchanged.
+- inactive project ordering and child-task ordering remain unchanged.
 
 "User-side activity" deliberately means the bridge's existing unseen-state
 marker, not perfect human-origin provenance. It advances for normalized user
@@ -54,8 +55,10 @@ The implementation must stay within all of these constraints:
   dedupe collection, timer, lock, registry, or lifecycle owner;
 - one existing persisted scalar projected additively onto existing REST and SSE
   shapes; and
-- one client running-prefix comparator, using existing activity and list-state
-  delivery.
+- two client running-prefix comparators, using existing activity and list-state
+  delivery; and
+- nullable ordering facts added to the existing active-session summary, with no
+  new route, event, cache, timer, or lifecycle owner.
 
 If implementation exceeds this budget, stop and ask before adding machinery.
 
@@ -64,6 +67,9 @@ If implementation exceeds this budget, stop and ask before adding machinery.
 - `SessionListService.visibleSessions` partitions running roots using
   `SessionActivityCalculator.isRunning`, alphabetizes the running prefix, then
   appends inactive sessions by `time.updated` descending.
+- `ProjectListService.orderProjects` uses the same running calculation,
+  alphabetizes the running project prefix, then appends inactive projects by
+  the existing project timestamp/name/ID order.
 - Session rows already persist nullable `last_user_message_at`. The bridge's
   ordered `SessionUnseenService` writes it from normalized user messages and
   manual question/permission replies.
@@ -93,7 +99,7 @@ If implementation exceeds this budget, stop and ask before adding machinery.
 
 ### Reuse the existing marker
 
-Expose the stored row's `lastUserMessageAt` as required nullable
+Expose the stored row's `lastUserMessageAt` as nullable
 `lastUserActivityAt` on shared `Session` and the existing
 `SesoriSseEvent.sessionUnseenChanged` variant.
 
@@ -167,17 +173,46 @@ Do not add optimistic interaction timestamps on send acceptance. The normalized
 event and existing patch are the authority; the list reorders when that event is
 committed, and reconnect/refresh self-heals a missed patch.
 
+### Project ordering follow-up
+
+The project list follows the same policy without adding project-owned marker
+state. Extend each existing `ActiveSession` in `projects.summary` with nullable
+`lastUserActivityAt` and `updatedAt` facts from its durable bridge
+session binding. The bridge does not calculate project order and plugins remain
+unaware of both fields.
+
+`SseEventTracker` carries those two nullable facts alongside the existing root
+activity status. `ProjectListService.orderProjects` keeps its current partition.
+For each running project, compare the maximum effective value among only its
+running roots:
+
+1. the newer committed marker from `SessionUnseenTracker` and the active
+   summary, when either is present;
+2. otherwise that active root's updated time;
+3. otherwise the project's updated time; and
+4. project ID ascending for deterministic ties.
+
+Inactive projects retain the existing `Project.time.updated`, effective name,
+and ID order. Awaiting-input alone still does not promote either a session or a
+project.
+
+`ProjectListCubit` reuses its existing `SessionUnseenTracker` dependency and
+subscribes to the tracker's existing per-session stream so a committed marker
+re-runs project ordering while status remains unchanged. No additional cache or
+business state is introduced.
+
 ## Compatibility
 
 - **New bridge, old app:** extra nullable keys on known REST/SSE shapes are
   ignored; that app retains its current alphabetical running order.
 - **Old bridge, new app:** omitted fields decode to null and running order falls
-  back to `time.updated`.
+  back to session or project `time.updated` as available.
 - **Existing databases:** no migration; every current marker remains intact.
 - **Internal packages:** shared, bridge, and clients update together; no plugin
   contract changes.
 
-No new route, event variant, capability, or compatibility shim is added.
+No new route, event variant, capability, or compatibility shim is added. The
+existing `projects.summary` shape gains only nullable keys that old apps ignore.
 
 ## Accepted Limitations
 
@@ -200,6 +235,9 @@ No new route, event variant, capability, or compatibility shim is added.
   activity a bridge-owned process cannot observe.
 - A new app connected to an old bridge, and a session whose marker is still
   null, falls back to `time.updated`.
+- An old bridge also omits active-root ordering facts, so a running project
+  falls back to its project updated time. This is useful but less precise than
+  current bridge data when inactive activity also advanced that project.
 - A patch missed across disconnect reorders on the next relevant event or list
   refresh; no replay repair or optimistic timestamp is added.
 - Server-paged third-party root requests retain server order. The current app
@@ -210,21 +248,22 @@ justify new persistence, classifier state, or cross-plugin coordination.
 
 ## Cleanup Assessment
 
-- Remove `_compareSessionsByTitleAndId` and replace alphabetical-running tests.
+- Remove `_compareSessionsByTitleAndId` and `_compareProjectsByNameAndId`, and
+  replace alphabetical-running tests.
 - Update `session.unseen_changed` and tracker documentation to describe their
   complete session-list state payload.
 - Keep `last_user_message_at`, its existing write logic, unseen calculations,
   and persistence tests unchanged; they remain required production behavior.
-- Do not restore `ActiveWorkSummaryService`, `userInteractionOrdered`, project
-  reordering, or any prototype plugin event/origin changes.
+- Do not restore `ActiveWorkSummaryService`, `userInteractionOrdered`,
+  bridge-owned project reordering, or any prototype plugin event/origin changes.
 
 No other service, cache, field, setting, job, or transport variant becomes
 obsolete.
 
 ## Delivery Plan
 
-All steps use the existing `session-order-ux-review` branch/worktree. No extra
-branch or worktree is created.
+The final step uses the existing `session-user-interaction-order-verification`
+branch/worktree. Prior step branches are recorded in the tracker.
 
 ### Step 1/4 - Plan
 
@@ -277,8 +316,13 @@ source is expected; no Drift generation occurs.
 ### Step 4/4 - Verify and retire
 
 **Exact PR title:**
-`🌱 [session-user-interaction-order] docs: verify and retire session activity ordering [step 4/4]`
+`⚙️ [session-user-interaction-order] feat: order active projects and verify activity ordering [step 4/4]`
 
+- Carry durable marker and updated-time facts through the existing active-root
+  summary and order running projects by their latest running-root activity.
+- Reuse the existing session list-state stream for live project reordering while
+  preserving awaiting-only and inactive project behavior.
+- Update regression coverage for project and session ordering.
 - Run cumulative L3 coverage below.
 - Record privacy-safe evidence and accepted limitations.
 - Move the plan to `.plan/completed/` only after required coverage passes.
@@ -302,7 +346,9 @@ Automated proof:
   visible comparator without waiting for another status event or refresh, while
   the initial replay remains guarded until `SessionListLoaded`;
 - running comparator, null fallback, deterministic ties, and unchanged inactive,
-  awaiting-only, archived, project, and child ordering; and
+  awaiting-only, archived, inactive-project, and child ordering;
+- running-project comparator, maximum across running roots, old-bridge fallback,
+  and live marker reordering without another status summary; and
 - Git diff proves no schema/migration or production plugin change.
 
 End-to-end proof:
@@ -310,9 +356,18 @@ End-to-end proof:
 - one release-target phone and bridge host;
 - one representative registered plugin, because ordering starts after the
   existing normalized event boundary and no plugin changes;
-- two running roots reorder after user-side activity while an awaiting-only root
-  is not promoted and inactive rows retain updated-time order; and
-- a current app decoding an omitted marker fixture uses the documented fallback.
+- two running roots reorder after user-side activity while inactive rows retain
+  updated-time order;
+- two projects with running roots follow the same activity order while inactive
+  projects retain their prior order; and
+- a current app connected to a pre-feature bridge that omits the marker uses the
+  documented fallback.
+
+The exact awaiting-only state is representable by an ACP idle permission
+request, but normal production root prompts remain running while awaiting input.
+Focused ACP protocol and client ordering tests therefore provide the
+proportionate proof that awaiting-only is not promoted; no synthetic backend
+flow is required for the release matrix.
 
 No every-plugin live matrix is required. Existing plugin event normalization is
 not changed or newly claimed by this work. Focused mapper analysis/tests cover
@@ -335,3 +390,9 @@ operation hooks. A fresh `architecture-plan-review` approved this revision on
 2026-08-13 with no findings. It confirmed bridge repository/service ownership,
 orchestrator SSE projection, existing tracker lifecycle ownership, client
 comparator ownership, and additive shared-wire compatibility.
+
+After the session implementation merged, the user identified on 2026-08-13 that
+the project list's running prefix should follow the same policy. Step 4 therefore
+changed from documentation-only retirement to a moderate additive follow-up.
+It reuses the same durable marker and client tracker rather than introducing a
+project marker or bridge-owned ordering service.

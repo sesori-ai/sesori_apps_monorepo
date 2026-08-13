@@ -2056,6 +2056,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+      await db.sessionDao.setUserMessageAt(sessionId: "w1", userMessageAt: 7);
       // The plugin groups the active worktree session under its own cwd (the
       // worktree) — exactly what the ACP plugin reports — plus a rowless
       // session under its own directory.
@@ -2095,6 +2096,8 @@ void main() {
       expect(byId.keys, isNot(contains(worktree)));
       expect(byId[parent]!.activeSessions.single.id, "w1");
       expect(byId[parent]!.activeSessions.single.mainAgentRunning, isTrue);
+      expect(byId[parent]!.activeSessions.single.updatedAt, 1);
+      expect(byId[parent]!.activeSessions.single.lastUserActivityAt, 7);
     });
 
     test("getProjectActivitySummaries excludes tombstoned backend sessions", () async {

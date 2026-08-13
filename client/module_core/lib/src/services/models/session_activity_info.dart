@@ -13,5 +13,7 @@ sealed class SessionActivityInfo with _$SessionActivityInfo {
     @Default(false) bool awaitingInput,
     @Default(0) int backgroundTaskCount,
     @Default(false) bool isRetrying,
+    required int? lastUserActivityAt,
+    required int? updatedAt,
   }) = _SessionActivityInfo;
 }

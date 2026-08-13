@@ -84,7 +84,13 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: true, childSessionIds: []),
+                ActiveSession(
+                  id: "s1",
+                  mainAgentRunning: true,
+                  childSessionIds: [],
+                  lastUserActivityAt: 20,
+                  updatedAt: 10,
+                ),
                 ActiveSession(id: "s2", mainAgentRunning: false, childSessionIds: []),
               ],
             ),
@@ -97,7 +103,11 @@ void main() {
       expect(activity.keys, equals({"/foo"}));
       expect(activity["/foo"]!.keys, unorderedEquals({"s1", "s2"}));
       expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
+      expect(activity["/foo"]!["s1"]!.lastUserActivityAt, 20);
+      expect(activity["/foo"]!["s1"]!.updatedAt, 10);
       expect(activity["/foo"]!["s2"]!.mainAgentRunning, isFalse);
+      expect(activity["/foo"]!["s2"]!.lastUserActivityAt, isNull);
+      expect(activity["/foo"]!["s2"]!.updatedAt, isNull);
 
       await subscription.cancel();
       await tracker.onDispose();

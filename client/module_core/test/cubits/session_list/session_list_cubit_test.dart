@@ -263,8 +263,8 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "C": const SessionActivityInfo(mainAgentRunning: true),
-            "A": const SessionActivityInfo(isRetrying: true),
+            "C": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "A": const SessionActivityInfo(isRetrying: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
         await Future<void>.delayed(Duration.zero);
@@ -285,8 +285,8 @@ void main() {
         mockRouteSource = MockRouteSource();
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "C": const SessionActivityInfo(mainAgentRunning: true),
-            "A": const SessionActivityInfo(isRetrying: true),
+            "C": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "A": const SessionActivityInfo(isRetrying: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
         when(
@@ -1543,8 +1543,8 @@ void main() {
         // Mock the repository to emit activity for this project.
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
-            "s2": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
         return buildCubit();
@@ -1554,8 +1554,8 @@ void main() {
           (s) => s.activeSessionIds,
           "activeSessionIds",
           {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
-            "s2": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         ),
       ],
@@ -1591,7 +1591,7 @@ void main() {
         // Emit initial activity
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
         // Wait for the activity update to be processed
@@ -1599,8 +1599,8 @@ void main() {
         // Emit updated activity
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
-            "s2": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
       },
@@ -1611,7 +1611,7 @@ void main() {
           (s) => s.activeSessionIds,
           "activeSessionIds after first update",
           {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         ),
         // Second activity update: both s1 and s2 are active
@@ -1619,8 +1619,8 @@ void main() {
           (s) => s.activeSessionIds,
           "activeSessionIds after second update",
           {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
-            "s2": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         ),
       ],
@@ -1650,11 +1650,11 @@ void main() {
         // Emit activity for this project and another.
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
           "project-2": {
-            "s2": const SessionActivityInfo(mainAgentRunning: true),
-            "s3": const SessionActivityInfo(mainAgentRunning: true),
+            "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "s3": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
         return buildCubit();
@@ -1664,7 +1664,7 @@ void main() {
           (s) => s.activeSessionIds,
           "activeSessionIds for this project only",
           {
-            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         ),
       ],
@@ -1783,7 +1783,7 @@ void main() {
         // Emit activity for a different project.
         mockSseEventTracker.emitSessionActivity({
           "project-2": {
-            "s2": const SessionActivityInfo(mainAgentRunning: true),
+            "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
         return buildCubit();
@@ -1818,7 +1818,12 @@ void main() {
         );
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "s1": const SessionActivityInfo(mainAgentRunning: true, awaitingInput: true),
+            "s1": const SessionActivityInfo(
+              mainAgentRunning: true,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
           },
         });
         return buildCubit();
@@ -1828,7 +1833,12 @@ void main() {
           (s) => s.activeSessionIds,
           "activeSessionIds with awaitingInput",
           {
-            "s1": const SessionActivityInfo(mainAgentRunning: true, awaitingInput: true),
+            "s1": const SessionActivityInfo(
+              mainAgentRunning: true,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
           },
         ),
       ],
@@ -1982,8 +1992,8 @@ void main() {
       );
       mockSseEventTracker.emitSessionActivity({
         projectId: {
-          "newer": const SessionActivityInfo(mainAgentRunning: true),
-          "older": const SessionActivityInfo(mainAgentRunning: true),
+          "newer": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          "older": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
         },
       });
 
@@ -2014,8 +2024,8 @@ void main() {
       ).thenAnswer((_) => response.future);
       mockSseEventTracker.emitSessionActivity({
         projectId: {
-          "s1": const SessionActivityInfo(mainAgentRunning: true),
-          "s2": const SessionActivityInfo(mainAgentRunning: true),
+          "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
         },
       });
 

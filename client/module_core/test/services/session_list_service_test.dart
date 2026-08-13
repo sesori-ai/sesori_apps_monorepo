@@ -24,9 +24,9 @@ void main() {
       ],
       showArchived: true,
       activityBySessionId: const {
-        "running-new-update": SessionActivityInfo(isRetrying: true),
-        "waiting": SessionActivityInfo(awaitingInput: true),
-        "running-new-activity": SessionActivityInfo(mainAgentRunning: true),
+        "running-new-update": SessionActivityInfo(isRetrying: true, lastUserActivityAt: null, updatedAt: null),
+        "waiting": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+        "running-new-activity": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
       },
       listStateBySessionId: const {
         "running-new-update": (unseen: false, lastUserActivityAt: 10),
@@ -53,8 +53,8 @@ void main() {
       ],
       showArchived: true,
       activityBySessionId: const {
-        "new-update": SessionActivityInfo(mainAgentRunning: true),
-        "new-activity": SessionActivityInfo(mainAgentRunning: true),
+        "new-update": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        "new-activity": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
       },
       listStateBySessionId: const {},
     );
@@ -77,8 +77,8 @@ void main() {
       ],
       showArchived: true,
       activityBySessionId: const {
-        "running-a": SessionActivityInfo(backgroundTaskCount: 1),
-        "running-b": SessionActivityInfo(mainAgentRunning: true),
+        "running-a": SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null),
+        "running-b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
       },
       listStateBySessionId: const {},
     );

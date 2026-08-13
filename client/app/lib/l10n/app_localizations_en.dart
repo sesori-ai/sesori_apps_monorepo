@@ -812,6 +812,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachedImage => 'Attached image';
 
   @override
+  String sessionDetailAttachmentSizeBytes(int count) {
+    return '$count bytes';
+  }
+
+  @override
   String get sessionDetailAttachmentTooLarge => 'That image is too large to attach.';
 
   @override
@@ -887,6 +892,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailImageOpenOriginal => 'Open original';
+
+  @override
+  String get sessionDetailImageOriginalLoadFailed => 'Couldn’t load the original image.';
+
+  @override
+  String get sessionDetailRetryOriginal => 'Retry original';
 
   @override
   String get sessionDetailImageSaved => 'Image saved';

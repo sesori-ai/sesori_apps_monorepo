@@ -1591,6 +1591,12 @@ abstract class AppLocalizations {
   /// **'Attached image'**
   String get sessionDetailAttachedImage;
 
+  /// Byte size shown in a transcript attachment metadata overlay.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} bytes'**
+  String sessionDetailAttachmentSizeBytes(int count);
+
   /// Snackbar shown when a picked image exceeds the inline attachment size limit.
   ///
   /// In en, this message translates to:
@@ -1728,6 +1734,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open original'**
   String get sessionDetailImageOpenOriginal;
+
+  /// Message shown over a stored image thumbnail when loading or decoding its full-resolution original fails or is rejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load the original image.'**
+  String get sessionDetailImageOriginalLoadFailed;
+
+  /// Accessible button label that retries loading and decoding the full-resolution stored image.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry original'**
+  String get sessionDetailRetryOriginal;
 
   /// No description provided for @sessionDetailImageSaved.
   ///

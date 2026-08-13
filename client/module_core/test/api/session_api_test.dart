@@ -324,6 +324,31 @@ void main() {
       ).called(1);
     });
 
+    test("getMessages requests stored attachment references", () async {
+      when(
+        () => client.post<MessageWithPartsResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async =>
+            ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[], nextCursor: null)),
+      );
+
+      await api.getMessages(sessionId: "session-1", limit: 50, before: 100);
+
+      final verification = verify(
+        () => client.post<MessageWithPartsResponse>(
+          "/session/messages",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      final request = verification.captured.single as SessionMessagesRequest;
+      expect(request.toJson()["attachmentDelivery"], "storedReference");
+    });
+
     test("getSessionDiffs posts the session id request", () async {
       when(
         () => client.post<SessionDiffsResponse>(

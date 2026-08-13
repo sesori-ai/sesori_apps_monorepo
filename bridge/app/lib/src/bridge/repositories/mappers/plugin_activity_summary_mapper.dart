@@ -5,6 +5,8 @@ extension PluginActiveSessionMapper on PluginActiveSession {
   ActiveSession toSharedActiveSession({
     required String sessionId,
     required List<String> childSessionIds,
+    required int? lastUserActivityAt,
+    required int updatedAt,
   }) {
     return ActiveSession(
       id: sessionId,
@@ -12,6 +14,8 @@ extension PluginActiveSessionMapper on PluginActiveSession {
       awaitingInput: awaitingInput,
       isRetrying: isRetrying,
       childSessionIds: childSessionIds,
+      lastUserActivityAt: lastUserActivityAt,
+      updatedAt: updatedAt,
     );
   }
 }
