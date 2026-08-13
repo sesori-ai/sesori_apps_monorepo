@@ -22,6 +22,11 @@ defaults and queued client sends coherent.
   finalized messages enter durable history matching a history read. Internal
   backend command records are not rendered as conversation messages or used as
   assistant model attribution.
+- Normalized user-message events feed the durable user-side activity marker used
+  to order running roots. Known event times are applied monotonically. Backend
+  input represented as a user message, including automatic compaction or other
+  generated input, can therefore count; the marker does not claim perfect human
+  provenance.
 - Prompt defaults update after a successful send and are published so other
   surfaces converge. Backend-originated mode changes such as an approved plan
   exit also persist and publish their effective defaults. A defaults-write
@@ -83,6 +88,9 @@ queue, turn length, and client count.
   as literal syntax.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
+- A normalized user message fails to advance the existing activity marker, or
+  assistant/tool/title-only updates replace an established marker and move the
+  running session as if they were user activity.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
 

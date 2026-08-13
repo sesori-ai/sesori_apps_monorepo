@@ -49,6 +49,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
 
       final json = session.toJson();
@@ -69,6 +70,7 @@ void main() {
         pullRequest: headline,
         pullRequestHistory: <PullRequestInfo>[historical],
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
 
       final decoded = Session.fromJson(session.toJson());

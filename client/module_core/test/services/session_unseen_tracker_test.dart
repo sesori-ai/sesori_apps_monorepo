@@ -18,6 +18,7 @@ class _MockConnectionService() extends Mock implements ConnectionService {
     required String sessionId,
     required bool unseen,
     required bool projectHasUnseenChanges,
+    required int? lastUserActivityAt,
   }) {
     _events.add(
       SseEvent(
@@ -26,9 +27,14 @@ class _MockConnectionService() extends Mock implements ConnectionService {
           sessionId: sessionId,
           unseen: unseen,
           projectHasUnseenChanges: projectHasUnseenChanges,
+          lastUserActivityAt: lastUserActivityAt,
         ),
       ),
     );
+  }
+
+  void emitSessionUpdated({required Session session}) {
+    _events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: session)));
   }
 }
 
@@ -57,10 +63,11 @@ void main() {
         sessionId: "s1",
         unseen: true,
         projectHasUnseenChanges: true,
+        lastUserActivityAt: null,
       );
       await pump();
 
-      expect(tracker.currentSessionUnseen["p1"], equals({"s1": true}));
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: true, lastUserActivityAt: null)}));
       expect(tracker.currentProjectUnseen["p1"], isTrue);
 
       connectionService.emitUnseenChanged(
@@ -68,11 +75,44 @@ void main() {
         sessionId: "s1",
         unseen: false,
         projectHasUnseenChanges: false,
+        lastUserActivityAt: null,
       );
       await pump();
 
-      expect(tracker.currentSessionUnseen["p1"], equals({"s1": false}));
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: false, lastUserActivityAt: null)}));
       expect(tracker.currentProjectUnseen["p1"], isFalse);
+    });
+
+    test("live patches replace unseen and max-merge non-null activity markers", () async {
+      connectionService.emitUnseenChanged(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: true,
+        projectHasUnseenChanges: true,
+        lastUserActivityAt: 20,
+      );
+      await pump();
+      connectionService.emitUnseenChanged(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: false,
+        projectHasUnseenChanges: false,
+        lastUserActivityAt: 10,
+      );
+      await pump();
+      connectionService.emitUnseenChanged(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: true,
+        projectHasUnseenChanges: true,
+        lastUserActivityAt: null,
+      );
+      await pump();
+
+      expect(
+        tracker.currentSessionUnseen["p1"]?["s1"],
+        equals((unseen: true, lastUserActivityAt: 20)),
+      );
     });
 
     test("seedSessions replaces the project's map, dropping deleted sessions", () async {
@@ -81,16 +121,26 @@ void main() {
         sessionId: "stale",
         unseen: true,
         projectHasUnseenChanges: true,
+        lastUserActivityAt: null,
       );
       await pump();
 
       tracker.seedSessions(
         projectId: "p1",
-        unseenBySessionId: const {"s1": true, "s2": false},
+        stateBySessionId: const {
+          "s1": (unseen: true, lastUserActivityAt: 10),
+          "s2": (unseen: false, lastUserActivityAt: null),
+        },
         sinceTick: tracker.tick,
       );
 
-      expect(tracker.currentSessionUnseen["p1"], equals({"s1": true, "s2": false}));
+      expect(
+        tracker.currentSessionUnseen["p1"],
+        equals({
+          "s1": (unseen: true, lastUserActivityAt: 10),
+          "s2": (unseen: false, lastUserActivityAt: null),
+        }),
+      );
     });
 
     test("a seed captured before a live update does not clobber it", () async {
@@ -102,19 +152,20 @@ void main() {
         sessionId: "s1",
         unseen: true,
         projectHasUnseenChanges: true,
+        lastUserActivityAt: null,
       );
       await pump();
 
       // The (stale) snapshot from that fetch reports everything seen.
       tracker.seedSessions(
         projectId: "p1",
-        unseenBySessionId: const {"s1": false},
+        stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: null)},
         sinceTick: preFetchTick,
       );
       tracker.seedProjects(const {"p1": false}, sinceTick: preFetchTick);
 
       // The live update is newer than the snapshot, so it wins.
-      expect(tracker.currentSessionUnseen["p1"], equals({"s1": true}));
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: true, lastUserActivityAt: null)}));
       expect(tracker.currentProjectUnseen["p1"], isTrue);
     });
 
@@ -126,6 +177,7 @@ void main() {
         sessionId: "s1",
         unseen: true,
         projectHasUnseenChanges: true,
+        lastUserActivityAt: null,
       );
       await pump();
 
@@ -142,6 +194,7 @@ void main() {
         sessionId: "s1",
         unseen: true,
         projectHasUnseenChanges: true,
+        lastUserActivityAt: null,
       );
       await pump();
 
@@ -149,27 +202,73 @@ void main() {
       // session was read on another phone while this client was disconnected.
       tracker.seedSessions(
         projectId: "p1",
-        unseenBySessionId: const {"s1": false},
+        stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: null)},
         sinceTick: tracker.tick,
       );
       tracker.seedProjects(const {"p1": false}, sinceTick: tracker.tick);
 
-      expect(tracker.currentSessionUnseen["p1"], equals({"s1": false}));
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: false, lastUserActivityAt: null)}));
       expect(tracker.currentProjectUnseen["p1"], isFalse);
     });
 
-    test("applyLocalSessionUnseen touches only the session flag, never the aggregate", () async {
+    test("an unchanged session update marker does not invalidate an in-flight seed", () async {
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: true, lastUserActivityAt: 20)},
+        sinceTick: tracker.tick,
+      );
+      final preFetchTick = tracker.tick;
+
+      connectionService.emitSessionUpdated(
+        session: testSession(id: "s1", lastUserActivityAt: 20).copyWith(projectID: "p1"),
+      );
+      await pump();
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: 20)},
+        sinceTick: preFetchTick,
+      );
+
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], (unseen: false, lastUserActivityAt: 20));
+    });
+
+    test("a newer session update marker survives REST without invalidating the project seed", () async {
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: true, lastUserActivityAt: 20)},
+        sinceTick: tracker.tick,
+      );
+      tracker.seedProjects(const {"p1": true}, sinceTick: tracker.tick);
+      final preFetchTick = tracker.tick;
+
+      connectionService.emitSessionUpdated(
+        session: testSession(id: "s1", lastUserActivityAt: 30).copyWith(projectID: "p1"),
+      );
+      await pump();
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: 20)},
+        sinceTick: preFetchTick,
+      );
+      tracker.seedProjects(const {"p1": false}, sinceTick: preFetchTick);
+
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], (unseen: false, lastUserActivityAt: 30));
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+    });
+
+    test("applyLocalSessionUnseen preserves the marker and never touches the aggregate", () async {
       connectionService.emitUnseenChanged(
         projectId: "p1",
         sessionId: "s1",
         unseen: true,
         projectHasUnseenChanges: true,
+        lastUserActivityAt: 20,
       );
       await pump();
 
       tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false);
 
-      expect(tracker.currentSessionUnseen["p1"], equals({"s1": false}));
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: false, lastUserActivityAt: 20)}));
       // The aggregate is bridge-owned; the echo settles it.
       expect(tracker.currentProjectUnseen["p1"], isTrue);
     });
@@ -182,11 +281,11 @@ void main() {
       // The stale snapshot (fetched before the user's action) says seen.
       tracker.seedSessions(
         projectId: "p1",
-        unseenBySessionId: const {"s1": false},
+        stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: null)},
         sinceTick: preFetchTick,
       );
 
-      expect(tracker.currentSessionUnseen["p1"], equals({"s1": true}));
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: true, lastUserActivityAt: null)}));
     });
 
     test("streams replay the latest value to late subscribers", () async {
@@ -195,6 +294,7 @@ void main() {
         sessionId: "s1",
         unseen: true,
         projectHasUnseenChanges: true,
+        lastUserActivityAt: null,
       );
       await pump();
 
@@ -202,7 +302,7 @@ void main() {
       expect(
         await tracker.sessionUnseen.first,
         equals({
-          "p1": {"s1": true},
+          "p1": {"s1": (unseen: true, lastUserActivityAt: null)},
         }),
       );
     });

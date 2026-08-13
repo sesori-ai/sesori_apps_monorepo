@@ -776,6 +776,7 @@ Session _deletedSessionInfo(String sessionId) => Session(
   time: null,
   pullRequest: null,
   promptDefaults: null,
+  lastUserActivityAt: null,
 );
 
 Future<void> recordSessionBinding({
@@ -891,6 +892,7 @@ class _NoopSessionRepository() implements SessionRepository {
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
   );
   @override
   Future<List<Session>> getSessionsForProject({
@@ -1066,6 +1068,7 @@ class _NoopSessionRepository() implements SessionRepository {
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
   );
 
   @override
@@ -1185,6 +1188,7 @@ class FakeSessionRepository({
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
   );
 
   @override
@@ -1599,6 +1603,7 @@ class FakeSessionRepository({
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
   );
 
   @override

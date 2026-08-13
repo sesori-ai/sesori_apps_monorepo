@@ -984,6 +984,7 @@ class OrchestratorSession._({
                 sessionId: change.sessionId,
                 unseen: change.unseen,
                 projectHasUnseenChanges: change.projectHasUnseenChanges,
+                lastUserActivityAt: change.lastUserActivityAt,
               ),
             );
           })

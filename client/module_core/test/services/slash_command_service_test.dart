@@ -45,7 +45,8 @@ void main() {
 
     test("createSessionWithMessage forwards raw variant", () async {
       when(
-        () => mockRepository.createSessionWithMessage(attachments: const [],
+        () => mockRepository.createSessionWithMessage(
+          attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -57,7 +58,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(_session()));
 
-      await service.createSessionWithMessage(attachments: const [],
+      await service.createSessionWithMessage(
+        attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
         text: "lib/main.dart",
@@ -70,7 +72,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.createSessionWithMessage(attachments: const [],
+        () => mockRepository.createSessionWithMessage(
+          attachments: const [],
           projectId: "project-1",
           pluginId: "plugin-1",
           text: "lib/main.dart",
@@ -85,7 +88,8 @@ void main() {
 
     test("sendMessage forwards raw variant", () async {
       when(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
@@ -95,7 +99,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(attachments: const [],
+      await service.sendMessage(
+        attachments: const [],
         sessionId: "session-1",
         text: "lib/main.dart",
         agent: "build",
@@ -106,7 +111,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: "session-1",
           text: "lib/main.dart",
           agent: "build",
@@ -119,7 +125,8 @@ void main() {
 
     test("sendMessage preserves agent model and variant when command is present", () async {
       when(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
@@ -129,7 +136,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(attachments: const [],
+      await service.sendMessage(
+        attachments: const [],
         sessionId: "session-1",
         text: "lib/main.dart",
         agent: "build",
@@ -140,7 +148,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: "session-1",
           text: "lib/main.dart",
           agent: "build",
@@ -153,7 +162,8 @@ void main() {
 
     test("sendMessage normalizes blank provider and model ids to null", () async {
       when(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
@@ -163,7 +173,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(attachments: const [],
+      await service.sendMessage(
+        attachments: const [],
         sessionId: "session-1",
         text: "hello",
         agent: "build",
@@ -174,7 +185,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: "session-1",
           text: "hello",
           agent: "build",
@@ -187,7 +199,8 @@ void main() {
 
     test("sendMessage treats blank command as null and preserves agent and model ids", () async {
       when(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
@@ -197,7 +210,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(attachments: const [],
+      await service.sendMessage(
+        attachments: const [],
         sessionId: "session-1",
         text: "hello",
         agent: "build",
@@ -208,7 +222,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(attachments: const [],
+        () => mockRepository.sendMessage(
+          attachments: const [],
           sessionId: "session-1",
           text: "hello",
           agent: "build",
@@ -221,7 +236,8 @@ void main() {
 
     test("createSessionWithMessage treats blank command as null and preserves agent/model", () async {
       when(
-        () => mockRepository.createSessionWithMessage(attachments: const [],
+        () => mockRepository.createSessionWithMessage(
+          attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -233,7 +249,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(_session()));
 
-      await service.createSessionWithMessage(attachments: const [],
+      await service.createSessionWithMessage(
+        attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
         text: "hello",
@@ -246,7 +263,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.createSessionWithMessage(attachments: const [],
+        () => mockRepository.createSessionWithMessage(
+          attachments: const [],
           projectId: "project-1",
           pluginId: "plugin-1",
           text: "hello",
@@ -273,5 +291,6 @@ Session _session() {
     time: SessionTime(created: 1, updated: 1, archived: null),
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
   );
 }

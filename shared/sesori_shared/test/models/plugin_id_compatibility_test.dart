@@ -15,6 +15,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
 
       expect(Session.fromJson(session.toJson()).pluginId, "opencode");

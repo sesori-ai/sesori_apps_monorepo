@@ -267,6 +267,7 @@ Map<String, dynamic> _sessionInfo({required String sessionId, required String? p
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
     branchName: null,
   ).toJson();
 }

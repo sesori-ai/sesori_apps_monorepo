@@ -101,12 +101,15 @@ SessionRepository singlePluginSessionRepository({
   required PullRequestDao pullRequestDao,
   required SessionUnseenCalculator unseenCalculator,
   Set<String>? eligiblePluginIds,
+  TestPluginRuntime? runtime,
 }) {
   return SessionRepository(
-    runtime: createTestPluginRuntime(
-      plugins: [plugin],
-      eligiblePluginIds: eligiblePluginIds,
-    ),
+    runtime:
+        runtime ??
+        createTestPluginRuntime(
+          plugins: [plugin],
+          eligiblePluginIds: eligiblePluginIds,
+        ),
     bridgeDerivedProjectPluginIds: {
       if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
     },

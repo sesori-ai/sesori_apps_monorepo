@@ -353,6 +353,7 @@ void main() {
       expect(last.projectId, "p1");
       expect(last.unseen, isFalse);
       expect(last.projectHasUnseenChanges, isFalse);
+      expect(last.lastUserActivityAt, isNull);
       await sub.cancel();
     });
 
@@ -730,6 +731,11 @@ void main() {
       expect(last.projectId, "p1");
       expect(last.unseen, isTrue);
       expect(last.projectHasUnseenChanges, isTrue);
+      expect(last.lastUserActivityAt, isNull);
+
+      await service.recordActivity(sessionId: "root", isUserMessage: true, occurredAt: 2000);
+      await Future<void>.delayed(Duration.zero);
+      expect(events.last.lastUserActivityAt, 2000);
 
       await sub.cancel();
     });
