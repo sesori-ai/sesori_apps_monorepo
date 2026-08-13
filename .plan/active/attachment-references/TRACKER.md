@@ -198,8 +198,8 @@
   product-analytics enum generator crash. Architecture implementation review
   approved the foundation, repository/service, platform, DI, privacy, and
   lifecycle seams with no blockers. After synchronization with `origin/main` at
-  `b87e4343`, the PR diff has 1,342 additions and 78 deletions across 17 files
-  (1,420 changed lines), within the revised 1,250-1,500 target;
+  `b87e4343`, the PR diff has 1,345 additions and 78 deletions across 17 files
+  (1,423 changed lines), within the revised 1,250-1,500 target;
   `git diff --check origin/main...HEAD` passes.
 
 ## Findings And Plan Deltas
