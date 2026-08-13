@@ -179,16 +179,19 @@ class PiSessionHistoryStorageApi({required final PiSessionStorageApi storageApi}
 }
 
 _PiHistoryReadResult _readPiSessionHistory({required String path}) {
-  final resolvedPath = _absolute(File(path).resolveSymbolicLinksSync());
-  final file = File(resolvedPath);
+  var resolvedPath = _absolute(path);
   final entries = <PiSessionFileEntryDto>[];
   PiSessionFileHeaderDto? header;
   Object? firstFailure;
   StackTrace? firstFailureStack;
+  Object? fatalFailure;
+  StackTrace? fatalFailureStack;
   var invalidFirstParsedRecord = false;
   var malformedLineCount = 0;
   RandomAccessFile? handle;
   try {
+    resolvedPath = _absolute(File(path).resolveSymbolicLinksSync());
+    final file = File(resolvedPath);
     handle = file.openSync();
     final decoder = const Utf8Decoder(allowMalformed: false).startChunkedConversion(
       _PiHistoryStringSink(
@@ -223,19 +226,19 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
     }
     decoder.close();
   } on Object catch (error, stackTrace) {
-    firstFailure ??= error;
-    firstFailureStack ??= stackTrace;
+    fatalFailure = error;
+    fatalFailureStack = stackTrace;
   } finally {
     handle?.closeSync();
   }
 
   final parsedHeader = header;
-  if (parsedHeader == null) {
-    final cause = firstFailure ?? const FormatException("Missing session header");
+  if (parsedHeader == null || fatalFailure != null) {
+    final cause = fatalFailure ?? firstFailure ?? const FormatException("Missing session header");
     return _PiHistoryReadFailure(
       path: resolvedPath,
       error: PiInvalidSessionHistoryException(path: resolvedPath, cause: cause),
-      stackTrace: firstFailureStack ?? StackTrace.current,
+      stackTrace: fatalFailureStack ?? firstFailureStack ?? StackTrace.current,
       malformedLineCount: malformedLineCount,
     );
   }

@@ -774,6 +774,34 @@ void main() {
       );
     });
 
+    test("normalizes missing files and fatal UTF-8 after a valid header", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final missingPath = p.join(fixture.root.path, "missing.jsonl");
+
+      await expectLater(
+        fixture.historyApi().readSessionHistory(path: missingPath),
+        throwsA(isA<PiInvalidSessionHistoryException>()),
+      );
+
+      final invalidUtf8Path = p.join(fixture.root.path, "invalid-utf8.jsonl");
+      File(invalidUtf8Path).writeAsBytesSync([
+        ...utf8.encode("${jsonEncode(_historyHeader(fixture: fixture))}\n"),
+        0xC3,
+        0x28,
+      ]);
+      await expectLater(
+        fixture.historyApi().readSessionHistory(path: invalidUtf8Path),
+        throwsA(
+          isA<PiInvalidSessionHistoryException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<FormatException>(),
+          ),
+        ),
+      );
+    });
+
     test("rejects first parsed non-header with private path and original cause", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);

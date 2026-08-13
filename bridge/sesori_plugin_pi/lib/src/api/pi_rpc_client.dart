@@ -195,6 +195,7 @@ class PiRpcClient({
     );
 
     final stdoutDone = Completer<void>();
+    final stderrDone = Completer<void>();
 
     process.stdout
         // One malformed byte must not tear down the unconditional stdout drain.
@@ -228,13 +229,19 @@ class PiRpcClient({
           (line) {
             if (generation == _generation) _recordStderr(line);
           },
-          onError: (Object error, StackTrace stack) => Log.w("[pi] stderr stream failed", error, stack),
+          onError: (Object error, StackTrace stack) {
+            if (!stderrDone.isCompleted) stderrDone.complete();
+            Log.w("[pi] stderr stream failed", error, stack);
+          },
+          onDone: () {
+            if (!stderrDone.isCompleted) stderrDone.complete();
+          },
           cancelOnError: false,
         );
 
     unawaited(
       process.exitCode.then((code) async {
-        await stdoutDone.future;
+        await Future.wait([stdoutDone.future, stderrDone.future]);
         _exitCode = code;
         if (!_exited.isCompleted) _exited.complete(code);
         if (generation != _generation) return;

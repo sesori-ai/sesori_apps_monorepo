@@ -24,6 +24,11 @@ final class const PiSessionHistoryLoadException({required final Object innerErro
   String toString() => "PiSessionHistoryLoadException";
 }
 
+final class const PiSessionHistoryParseException({required final Object innerError}) implements Exception {
+  @override
+  String toString() => "PiSessionHistoryParseException";
+}
+
 final class PiSessionProcessRepository({
   required final PiSessionStorageApi _storageApi,
   required final PiSessionHistoryStorageApi _historyStorageApi,
@@ -102,7 +107,11 @@ final class PiSessionProcessRepository({
           arguments: const {},
           timeout: _historyRpcTimeout,
         );
-        return PiSessionEntriesDto.fromJson(response.data.cast<String, dynamic>());
+        try {
+          return PiSessionEntriesDto.fromJson(response.data.cast<String, dynamic>());
+        } on Object catch (error, stack) {
+          Error.throwWithStackTrace(PiSessionHistoryParseException(innerError: error), stack);
+        }
       } on PiRpcProcessExitException catch (error) {
         if (!_isNoModelStartupFailure(client.stderrDiagnostics)) rethrow;
         throw PiHistoryRpcStartupUnavailableException(cause: error);
@@ -256,7 +265,7 @@ final class PiSessionProcessRepository({
 
   Never _throwLoadFailure({required String path, required Object error, required StackTrace stack}) {
     final localError = switch (error) {
-      PiInvalidSessionHistoryException(:final cause) => cause,
+      PiInvalidSessionHistoryException(:final cause) => PiSessionHistoryParseException(innerError: cause),
       _ => error,
     };
     Log.w("[pi] failed to load session history at '$path'", localError, stack);

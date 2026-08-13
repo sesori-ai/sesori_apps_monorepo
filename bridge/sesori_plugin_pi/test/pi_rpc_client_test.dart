@@ -452,6 +452,18 @@ void main() {
   });
 
   group("stderr diagnostics", () {
+    test("process exit waits for stderr diagnostics to drain", () async {
+      final started = await startTestClient();
+      addTearDown(started.client.dispose);
+
+      final exit = started.client.processExit;
+      started.process.emitStderrRaw(bytes: utf8.encode("late diagnostic\n"));
+      started.process.exit(code: 1);
+
+      expect(await exit, 1);
+      expect(started.client.stderrDiagnostics, contains("late diagnostic"));
+    });
+
     test("retains a bounded redacted tail and survives non-UTF-8 output", () async {
       final started = await startTestClient();
       addTearDown(started.client.dispose);

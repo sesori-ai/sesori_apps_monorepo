@@ -50,24 +50,29 @@ void main() {
       final process = FakePiProcess();
       final repository = _repository(processFactory: ({required spec}) async => process);
 
-      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
-      final command = await waitForCommand(process: process, type: "get_entries");
-      process.emitResponse(
-        id: command["id"]! as String,
-        command: "get_entries",
-        data: {"entries": "private malformed payload", "leafId": null},
+      final warnings = await _captureWarnings(
+        () async {
+          final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+          final command = await waitForCommand(process: process, type: "get_entries");
+          process.emitResponse(
+            id: command["id"]! as String,
+            command: "get_entries",
+            data: {"entries": "private malformed payload", "leafId": null},
+          );
+          await expectLater(
+            pending,
+            throwsA(
+              isA<PluginOperationException>()
+                  .having((error) => error.operation, "operation", "load Pi session history")
+                  .having((error) => error.message, "message", "Pi session history could not be loaded.")
+                  .having((error) => error.cause, "cause", isA<PiSessionHistoryLoadException>())
+                  .having((error) => error.toString(), "presentation", isNot(contains("private malformed payload"))),
+            ),
+          );
+        },
       );
-
-      await expectLater(
-        pending,
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.operation, "operation", "load Pi session history")
-              .having((error) => error.message, "message", "Pi session history could not be loaded.")
-              .having((error) => error.cause, "cause", isA<PiSessionHistoryLoadException>())
-              .having((error) => error.toString(), "presentation", isNot(contains("private malformed payload"))),
-        ),
-      );
+      expect(warnings, contains("PiSessionHistoryParseException"));
+      expect(warnings, isNot(contains("private malformed payload")));
       expect(process.stdinClosed, isTrue);
       expect(process.killed, isTrue);
     });

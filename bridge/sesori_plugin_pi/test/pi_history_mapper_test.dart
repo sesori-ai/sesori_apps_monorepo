@@ -34,6 +34,12 @@ void main() {
       );
       expect(
         const PiPersistedUserTextCodec().decodeVisibleText(
+          persistedText: "${PiPersistedUserTextCodec.marker}ordinary authored text",
+        ),
+        "${PiPersistedUserTextCodec.marker}ordinary authored text",
+      );
+      expect(
+        const PiPersistedUserTextCodec().decodeVisibleText(
           persistedText: "${PiPersistedUserTextCodec.marker}1:99:forged",
         ),
         isEmpty,
@@ -456,7 +462,7 @@ void main() {
       final output = "🙂" * (maxToolOutputLength + 3);
       final bash = PiAgentMessageDto.fromJson({
         "role": "bashExecution",
-        "command": "pwd",
+        "command": "🙂" * (maxToolOutputLength + 10),
         "output": output,
         "exitCode": 0,
         "cancelled": false,
@@ -474,7 +480,41 @@ void main() {
       final part = messages.single.parts.single;
       expect(part.tool, "bash");
       expect(part.state?.output?.runes.length, maxToolOutputLength);
+      expect(part.state?.title?.runes.length, maxToolOutputLength);
       expect(messages.toString(), isNot(contains(privatePath)));
+    });
+
+    test("bounds combined tool-result text while preserving later attachments", () {
+      const assistant = PiAgentMessageDto.assistant(
+        content: [PiContentDto.toolCall(id: "call", name: "tool")],
+        provider: "provider",
+        model: "model",
+        stopReason: PiAssistantStopReason.stop,
+        timestamp: 1,
+      );
+      final result = PiAgentMessageDto.toolResult(
+        toolCallId: "call",
+        toolName: "tool",
+        content: [
+          PiContentDto.text(text: "x" * (maxToolOutputLength * 20)),
+          const PiContentDto.image(data: "YQ==", mimeType: "image/png"),
+        ],
+        isError: false,
+        timestamp: 2,
+      );
+
+      final messages = mapper.map(
+        sessionId: sessionId,
+        entries: [
+          _message(id: "assistant", parentId: null, message: assistant),
+          _message(id: "result", parentId: "assistant", message: result),
+        ],
+        leafId: "result",
+      );
+
+      final state = messages.single.parts.single.state!;
+      expect(state.output?.runes.length, maxToolOutputLength);
+      expect(state.attachments, hasLength(1));
     });
 
     test("bounds unknown diagnostics without payload logging", () async {

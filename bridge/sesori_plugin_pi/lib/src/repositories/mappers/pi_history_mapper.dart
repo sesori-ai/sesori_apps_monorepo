@@ -175,7 +175,7 @@ final class PiHistoryMapper({required final String pluginId}) {
                   messageId: messageId,
                   timestamp: timestamp,
                   tool: "bash",
-                  title: command,
+                  title: _clip(command),
                   output: failed ? null : clippedOutput,
                   error: failed ? clippedOutput : null,
                   status: failed ? PluginToolStatus.error : PluginToolStatus.completed,
@@ -338,13 +338,15 @@ final class PiHistoryMapper({required final String pluginId}) {
     required List<PiContentDto> content,
     required Set<_PiHistoryWarning> warnings,
   }) {
-    final text = StringBuffer();
+    final textRunes = <int>[];
     final attachments = <PluginMessageAttachment>[];
     final images = _ImageBudget();
     for (final block in content) {
       switch (block) {
         case PiTextContentDto(text: final value):
-          text.write(value);
+          if (textRunes.length < maxToolOutputLength) {
+            textRunes.addAll(value.runes.take(maxToolOutputLength - textRunes.length));
+          }
         case PiImageContentDto(:final data, :final mimeType):
           final attachment = _mapImage(data: data, mimeType: mimeType, budget: images, warnings: warnings);
           if (attachment != null) attachments.add(attachment);
@@ -354,7 +356,7 @@ final class PiHistoryMapper({required final String pluginId}) {
           _warnOnce(reason: _PiHistoryWarning.unsupportedToolContent, warnings: warnings);
       }
     }
-    final output = text.isEmpty ? null : _clip(text.toString());
+    final output = textRunes.isEmpty ? null : String.fromCharCodes(textRunes);
     return _MappedToolResult(output: output, attachments: attachments);
   }
 

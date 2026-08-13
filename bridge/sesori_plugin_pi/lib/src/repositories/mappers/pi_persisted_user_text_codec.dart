@@ -18,9 +18,9 @@ final class const PiPersistedUserTextCodec() {
   String decodeVisibleText({required String persistedText}) {
     if (!persistedText.startsWith(marker)) return persistedText;
     final hiddenSeparator = persistedText.indexOf(":", marker.length);
-    if (hiddenSeparator < 0) return "";
+    if (hiddenSeparator < 0) return persistedText;
     final visibleSeparator = persistedText.indexOf(":", hiddenSeparator + 1);
-    if (visibleSeparator < 0) return "";
+    if (visibleSeparator < 0) return persistedText;
     final hiddenLength = _parseLength(persistedText.substring(marker.length, hiddenSeparator));
     final visibleLength = _parseLength(persistedText.substring(hiddenSeparator + 1, visibleSeparator));
     if (hiddenLength == null || visibleLength == null) return "";
