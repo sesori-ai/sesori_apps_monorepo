@@ -64,8 +64,8 @@
   shutdown, and deadline-bound standalone token refresh.
 - [ ] Keep the normalized event consumer alive through late-title drain, then
   drain its tails before dispatcher disposal.
-- [ ] Shared encryption returns preallocated typed bytes; maximum-size framing
-  must not spread ciphertext into boxed integer lists.
+- [ ] Shared encryption returns preallocated typed bytes without boxed integer
+  framing; analyze/test shared crypto and bridge relay callers explicitly.
 - [ ] Generalize the existing deletion stream/listener; do not add a second
   local mutation stream.
 - [ ] Delete obsolete overlay, metadata naming, preferred-name, enrichment, and
@@ -121,7 +121,7 @@
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational result including this record, within the 750-900 target:
-  `PLAN.md +754`, `TRACKER.md +144`, total `+898 / -0`.
+  `PLAN.md +756`, `TRACKER.md +144`, total `+900 / -0`.
 
 ### Manual matrix
 

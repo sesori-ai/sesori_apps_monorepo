@@ -634,8 +634,10 @@ bridge and client production steps into one large PR.
 - `client/app`: new-session, split-shell, detail-title/loading, accessibility,
   reduced-motion, navigation, and attachment restoration widget tests plus
   analysis.
-- Validate both mobile and desktop downstream shells because Step 4 changes
-  public `module_core` state and the shared `module_prego` package.
+- `shared/sesori_shared`: crypto layout/typed-return tests and strict analysis;
+  `bridge/app`: relay encryption/framing tests and strict analysis.
+- Validate mobile/desktop client shells and bridge callers because Step 4 changes
+  shared client packages and crypto.
 - Prove URI remains `/projects/<projectId>/sessions/new` while unresolved,
   duplicate Send is blocked, Back keeps background launch, late success cannot
   hijack another route, success replaces with real ID while retaining nullable
