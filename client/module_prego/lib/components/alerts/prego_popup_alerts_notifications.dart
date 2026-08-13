@@ -129,7 +129,7 @@ class const PregoPopupAlertsNotifications({
           const SizedBox(height: PregoSpacing.lg),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
-            mainAxisSize: MainAxisSize.max,
+            mainAxisSize: MainAxisSize.min,
             children: [
               if (secondaryAction case final action?)
                 PregoButtonsSolid(

@@ -139,6 +139,34 @@ void main() {
     expect(tester.getSize(find.text(longTitle)).height, greaterThan(shortTextHeight));
   });
 
+  testWidgets("keeps action-bearing alerts sized to their content", (tester) async {
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      _harness(
+        Builder(
+          builder: (context) {
+            presenter = PregoPopupAlertPresenter.of(context);
+            return const SizedBox.expand();
+          },
+        ),
+      ),
+    );
+
+    presenter.show(
+      title: "Saved",
+      content: PregoPopupAlertContent(
+        primaryAction: PregoPopupAlertsNotificationsAction(label: "Open", onPressed: () {}),
+      ),
+      duration: null,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(PregoPopupAlertsNotifications)).width,
+      lessThan(800 - 2 * PregoSpacing.xl),
+    );
+  });
+
   testWidgets("uses overlay status-bar padding when a modal strips its top padding", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(
