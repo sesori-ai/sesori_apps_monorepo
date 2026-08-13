@@ -28,6 +28,12 @@ child sessions with titles, activity, statuses, and unseen state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- Pi import discovers persisted JSONL sessions from its inherited environment,
+  configured storage, default per-project storage, and bridge-known directories.
+  Enumeration is metadata-only and bounded: it reads session headers and
+  explicit `session_info` names, uses file modification time for activity,
+  preserves resolvable parent-session lineage, and never decodes transcript
+  messages to derive titles.
 - Statuses report per-session idle/busy/retry plus unavailable plugins. A
   payload without plugin attribution means the historical OpenCode identity,
   never "the first enabled plugin".
@@ -38,7 +44,7 @@ child sessions with titles, activity, statuses, and unseen state.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
 | L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed; unseen advances and clears; statuses report idle/busy. |
-| L3 Release | Client end to end (phone), every supporting production plugin: native and derived project ownership both list correctly; explicit import commits atomically with attributed progress; child sessions resolve under their root; lists, ordering, and unseen badges render. |
+| L3 Release | Client end to end (phone), every supporting production plugin: native and derived project ownership both list correctly; explicit import commits atomically with attributed progress; Pi imports configured/default/known roots with explicit names and resolvable lineage; child sessions resolve under their root; lists, ordering, and unseen badges render. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
@@ -57,6 +63,9 @@ disposable sessions and projects and restore hidden-state changes afterwards.
   identity instead of being discovered as new.
 - Sessions lose attribution, land under the wrong project, or a child lists as a
   root.
+- Pi import exposes prompt/transcript text, treats it as a title, follows an
+  unbounded symlink/parent tree, or loses sessions stored under a configured or
+  bridge-known directory.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 
@@ -74,7 +83,11 @@ disposable sessions and projects and restore hidden-state changes afterwards.
   session), `bridge/services/project_*`, `services/catalog_import_service.dart`,
   catalog and session handlers in `bridge/routing/`
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`
+- Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
+  `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
 - Tests: `bridge/app/test/bridge/routing/catalog_read_handlers_test.dart`,
-  `test/bridge/repositories/project_repository_test.dart`
+  `test/bridge/repositories/project_repository_test.dart`,
+  `bridge/sesori_plugin_pi/test/pi_session_storage_api_test.dart`,
+  `bridge/sesori_plugin_pi/test/pi_session_catalog_repository_test.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
   `setup-aware-plugin-management`, `relay-request-concurrency`
