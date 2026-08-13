@@ -259,10 +259,11 @@
   behavior could not be exercised meaningfully without creating external test
   session data; the automated cache, history, SSE, and viewer coverage remains
   the evidence for those paths. Against `origin/main` at `4b3d67f3`, the local
-  diff has 578 additions and 62 deletions across 15 files (640 changed lines),
-  below the 900-1,450 estimate because Step 7 already supplied the bounded
-  transport, repository, and independent preview/original state machines;
-  `git diff --check` passes.
+  implementation diff excluding this tracker bookkeeping has 876 additions and
+  152 deletions across the other 14 files (1,028 changed lines), within the
+  900-1,450 estimate because Step 7 already supplied the bounded transport,
+  repository, and independent preview/original state machines; `git diff
+  --check` passes.
 
 ## Findings And Plan Deltas
 

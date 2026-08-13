@@ -532,7 +532,11 @@
   "sessionDetailImageOpenOriginal": "Open original",
   "sessionDetailImageOriginalLoadFailed": "Couldn’t load the original image.",
   "@sessionDetailImageOriginalLoadFailed": {
-    "description": "Message shown over a stored image thumbnail when loading its full-resolution original fails or is rejected."
+    "description": "Message shown over a stored image thumbnail when loading or decoding its full-resolution original fails or is rejected."
+  },
+  "sessionDetailRetryOriginal": "Retry original",
+  "@sessionDetailRetryOriginal": {
+    "description": "Accessible button label that retries loading and decoding the full-resolution stored image."
   },
   "sessionDetailImageSaved": "Image saved",
   "sessionDetailImageSaveFailed": "Couldn’t save image",

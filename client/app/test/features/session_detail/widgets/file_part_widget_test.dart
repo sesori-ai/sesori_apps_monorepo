@@ -459,9 +459,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets("stored viewer loads original after opening, gates actions, swaps bytes, and releases on close", (
-    tester,
-  ) async {
+  testWidgets("stored viewer decodes before swapping or enabling actions and evicts on close", (tester) async {
     final repository = _MockMessageImageRepository();
     final original = Completer<MessageImageLoadResult>();
     var originalRequests = 0;
@@ -524,6 +522,10 @@ void main() {
 
     expect(originalRequests, 1);
     final thumbnailImage = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
+    final transformationController = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController!;
+    transformationController.value = Matrix4.diagonal3Values(2, 2, 1);
     expect(find.byIcon(Icons.content_copy), findsNothing);
     expect(find.byIcon(Icons.share_outlined), findsNothing);
     expect(find.byIcon(Icons.download_outlined), findsNothing);
@@ -537,23 +539,40 @@ void main() {
         originalUri: null,
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+
+    expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image, same(thumbnailImage.image));
+    expect(find.byIcon(Icons.content_copy), findsNothing);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+
+    await _finishAsyncDecode(tester: tester);
 
     final originalImage = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
-    expect(identical(originalImage.image, thumbnailImage.image), isFalse);
-    expect((originalImage.image as MemoryImage).bytes, same(originalBytes));
+    final originalProvider = originalImage.image as MemoryImage;
+    expect(originalProvider.bytes, same(originalBytes));
+    expect(transformationController.value.getMaxScaleOnAxis(), 2);
+    expect(
+      tester.widget<InteractiveViewer>(find.byType(InteractiveViewer)).transformationController,
+      same(transformationController),
+    );
     expect(find.byIcon(Icons.content_copy), findsOneWidget);
     expect(find.byIcon(Icons.share_outlined), findsOneWidget);
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(await originalProvider.obtainCacheStatus(configuration: ImageConfiguration.empty), isNotNull);
 
     await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
 
     final cubit = tester.element(find.byKey(FilePartWidget.previewTapTargetKey)).read<MessageImageCubit>();
     expect(cubit.state.original, isA<MessageImageOriginalAvailable>());
+    final evictedStatus = await originalProvider.obtainCacheStatus(configuration: ImageConfiguration.empty);
+    expect(evictedStatus?.pending, isFalse);
+    expect(evictedStatus?.keepAlive, isFalse);
+    expect(evictedStatus?.live, isFalse);
   });
 
-  testWidgets("stored viewer retains thumbnail and retries original after failure", (tester) async {
+  testWidgets("stored viewer retains thumbnail and exposes accessible retry after request failure", (tester) async {
     final repository = _MockMessageImageRepository();
     var originalRequests = 0;
     const attachment = MessageAttachment.storedImage(
@@ -592,6 +611,7 @@ void main() {
     await GetIt.instance.unregister<MessageImageRepository>();
     GetIt.instance.registerSingleton<MessageImageRepository>(repository);
 
+    final semantics = tester.ensureSemantics();
     await tester.pumpWidget(
       _app(
         child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
@@ -603,12 +623,91 @@ void main() {
     expect(find.text("Couldn’t load the original image."), findsOneWidget);
     expect(find.byIcon(Icons.content_copy), findsNothing);
     expect(originalRequests, 1);
+    expect(
+      tester.getSemantics(find.text("Retry original")).getSemanticsData().hasAction(SemanticsAction.tap),
+      isTrue,
+    );
 
-    await tester.tap(find.widgetWithText(TextButton, "Retry"));
+    await tester.tap(find.widgetWithText(TextButton, "Retry original"));
     await tester.pumpAndSettle();
 
     expect(originalRequests, 2);
     expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image, same(thumbnailProvider));
+    semantics.dispose();
+  });
+
+  testWidgets("stored viewer retains thumbnail and disables actions when original decode fails", (tester) async {
+    final repository = _MockMessageImageRepository();
+    var originalRequests = 0;
+    const attachment = MessageAttachment.storedImage(
+      attachmentId: "attachment-1",
+      bridgeId: "bridge-1",
+      mime: "image/png",
+      filename: "stored.png",
+      byteLength: 68,
+    );
+    when(() => repository.canLoad(attachment: attachment)).thenReturn(true);
+    when(() => repository.canLoadOriginal(attachment: attachment)).thenReturn(true);
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: attachment,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(base64Decode(_pngBase64)),
+        mime: "image/png",
+        actionFilename: "stored.png",
+        originalUri: null,
+      ),
+    );
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: attachment,
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer((_) async {
+      originalRequests++;
+      return MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47]),
+        mime: "image/png",
+        actionFilename: "stored.png",
+        originalUri: null,
+      );
+    });
+    await GetIt.instance.unregister<MessageImageRepository>();
+    GetIt.instance.registerSingleton<MessageImageRepository>(repository);
+    final semantics = tester.ensureSemantics();
+
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
+    await _openImageViewer(tester: tester);
+
+    final thumbnailProvider = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image;
+    expect(originalRequests, 1);
+    expect(find.text("Couldn’t load the original image."), findsOneWidget);
+    expect(find.text("Retry original"), findsOneWidget);
+    expect(find.byIcon(Icons.content_copy), findsNothing);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image, same(thumbnailProvider));
+    expect(
+      tester.getSemantics(find.text("Retry original")).getSemanticsData().hasAction(SemanticsAction.tap),
+      isTrue,
+    );
+
+    await tester.tap(find.widgetWithText(TextButton, "Retry original"));
+    await _finishAsyncDecode(tester: tester);
+
+    expect(originalRequests, 2);
+    expect(find.text("Couldn’t load the original image."), findsOneWidget);
+    expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image, same(thumbnailProvider));
+    semantics.dispose();
   });
 
   testWidgets("opens inline images in a zoomable Hero viewer using the same provider", (tester) async {
@@ -894,22 +993,12 @@ void main() {
 
     await tester.pumpWidget(
       _app(
-        child: BlocProvider(
-          create: (_) => ImageAttachmentActionsCubit(
-            imageSaver: imageSaver,
-            imageClipboard: imageClipboard,
-            imageSharer: imageSharer,
-            bytes: bytes,
-            mime: "image/png",
-            actionFilename: "unsafe.png",
-          ),
-          child: ImageAttachmentViewer(
-            image: image,
-            filename: "../../unsafe.exe",
-            heroTag: UniqueKey(),
-            originalState: null,
-            onRetryOriginal: null,
-          ),
+        child: ImageAttachmentViewer(
+          image: image,
+          filename: "../../unsafe.exe",
+          heroTag: UniqueKey(),
+          originalPresentation: ImageAttachmentOriginalPresentation.idle,
+          onRetryOriginal: null,
         ),
       ),
     );

@@ -40,10 +40,12 @@ content the transcript renders live and after reload.
   copy, share, and save on the original, and an unknown shape degrades safely.
 - Capable clients request stored references for normal history pages and live
   subscriptions. Opening a stored image keeps its thumbnail visible while the
-  original loads, replaces it in place after validation, and enables copy,
-  share, and save only for the original. Failure retains the thumbnail with an
-  explicit retry; closing the viewer releases completed or in-flight original
-  state, and scrolling never starts an original request.
+  original loads and decodes, replaces it in place without resetting viewer
+  state, and enables copy, share, and save only after that decode succeeds.
+  Failure retains the thumbnail with an explicit accessible original retry;
+  closing the viewer releases Cubit bytes and evicts the full-resolution image
+  provider from Flutter's image cache, and scrolling never starts an original
+  request.
 - User, tool, and each maximal contiguous run of assistant file attachments use
   the same left-aligned square collection, capped at 320 px and constrained by
   the available parent width. One attachment spans the collection, two split a
@@ -74,7 +76,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; attachment collections retain square layouts and chronology; stored viewers remain thumbnail-first, gate original actions, retry failures, and release original state on close. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; attachment collections retain square layouts and chronology; stored viewers remain thumbnail-first through original decode, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin, generated and tool-output images displayed, text/image/text order preserved live and after reload, viewer copy/share/save. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
@@ -108,8 +110,9 @@ live, after paging back, or after a reopen, and vary the plugin.
   geometry between states, reorders assistant content, or offers a failed image
   without an accessible retry action.
 - A stored viewer fetches an original before opening, blanks the cached
-  thumbnail while loading or after failure, enables actions against thumbnail
-  bytes, or retains original bytes after closing.
+  thumbnail while loading or after load/decode failure, resets zoom or drag when
+  the original appears, enables actions before original decode succeeds, or
+  retains original bytes/provider cache entries after closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 
