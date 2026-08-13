@@ -128,6 +128,8 @@ void main() {
 
   testWidgets("a snackbar clears the keyboard", (tester) async {
     late BuildContext bodyContext;
+    const keyboardInset = 180.0;
+    final devicePixelRatio = tester.view.devicePixelRatio;
     addTearDown(tester.view.resetViewInsets);
     await tester.pumpWidget(
       MaterialApp(
@@ -149,10 +151,11 @@ void main() {
       ),
     );
 
-    tester.view.viewInsets = const FakeViewPadding(bottom: 180);
+    tester.view.viewInsets = FakeViewPadding(bottom: keyboardInset * devicePixelRatio);
     ScaffoldMessenger.of(bodyContext).showSnackBar(const SnackBar(content: Text("Notice")));
     await tester.pumpAndSettle();
 
-    expect(tester.getRect(find.byType(SnackBar)).bottom, lessThanOrEqualTo(tester.view.physicalSize.height - 180));
+    final logicalHeight = tester.view.physicalSize.height / devicePixelRatio;
+    expect(tester.getRect(find.byType(SnackBar)).bottom, lessThanOrEqualTo(logicalHeight - keyboardInset));
   });
 }
