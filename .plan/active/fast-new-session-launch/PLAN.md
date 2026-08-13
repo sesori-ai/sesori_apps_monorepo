@@ -372,20 +372,21 @@ registers the complete metadata-to-title workflow in the tracked set before it
 can return the canonical session:
 
 - one set tracks accepted title-completion futures;
-- one shutdown signal bounds the complete token-acquisition, metadata-request,
-  and title-application workflow, while the API deadline bounds normal runtime;
-- `beginShutdown` stops accepting new late work and triggers that workflow abort;
+- standalone `TokenManager` refresh HTTP gains an injected request deadline, so
+  token acquisition always settles; the desktop control-channel implementation
+  retains its existing timeout;
+- one shutdown signal aborts in-flight metadata HTTP;
+- `beginShutdown` stops accepting new late work and triggers that request abort;
 - `drain` waits for tracked title work before session operations/listeners and
   the shared HTTP client are disposed.
 
-`SessionCreationService` races each complete tracked workflow against its
-service-owned shutdown signal and the metadata deadline, so a stalled token
-refresh cannot hold `drain` open. The losing operation remains observed to avoid
-an unhandled late error. `SesoriServerApi` additionally aborts an in-flight
-metadata HTTP request when shutdown wins. A typed request abort is treated as
-expected only when that shutdown signal is set; deadline, token, status, and
-parse failures retain their original context, are logged by the creation
-service, and fail soft.
+`drain` awaits the actual tracked workflows, never only a race wrapper while a
+losing operation continues. `SesoriServerApi` aborts an in-flight metadata HTTP
+request when shutdown wins; token acquisition settles through its provider's
+bounded request behavior before the tracked workflow completes. A typed request
+abort is treated as expected only when the shutdown signal is set; deadline,
+token, status, and parse failures retain their original context, are logged by
+the creation service, and fail soft.
 
 The composition root wires lifecycle ownership explicitly:
 
@@ -607,7 +608,9 @@ bridge and client production steps into one large PR.
   response.
 - Prove late title reaches list/detail through existing `session.updated`, user
   rename/deletion wins, propagation failure retains the local title, and shutdown
-  aborts/drains without an unhandled future.
+  aborts metadata HTTP and drains the actual underlying workflow before disposing
+  dependencies. Cover a stalled standalone token refresh settling at its request
+  deadline without an unhandled future.
 
 ### Step 4
 

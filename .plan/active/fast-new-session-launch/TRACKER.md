@@ -56,8 +56,8 @@
 - [ ] A background failure after route exit must not restore shared draft state.
 - [ ] Preserve nullable title handoff; never convert missing title to `""`.
 - [ ] Extend `SesoriServerApi` for metadata; do not split one provider by use case.
-- [ ] One late-title future set and one shutdown signal bounding the complete
-  token-plus-metadata workflow only.
+- [ ] One late-title future set; drain actual workflows, abort metadata HTTP on
+  shutdown, and deadline-bound standalone token refresh.
 - [ ] Keep the normalized event consumer alive through late-title drain, then
   drain its tails before dispatcher disposal.
 - [ ] Generalize the existing deletion stream/listener; do not add a second
@@ -116,7 +116,7 @@
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational merge-base result, including this verification record itself and
   within the 750-900 Step 1 changed-line target:
-  `PLAN.md +747`, `TRACKER.md +139`, total `+886 / -0`.
+  `PLAN.md +750`, `TRACKER.md +139`, total `+889 / -0`.
 
 ### Manual matrix
 
