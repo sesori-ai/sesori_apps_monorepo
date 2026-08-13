@@ -2003,6 +2003,49 @@ void main() {
       expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["older", "newer"]);
     });
 
+    test("newer session.updated marker replaces an older cached marker", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [
+              testSession(id: "updated", lastUserActivityAt: 10),
+              testSession(id: "other", lastUserActivityAt: 20),
+            ],
+          ),
+        ),
+      );
+      mockSseEventTracker.emitSessionActivity({
+        projectId: {
+          "updated": const SessionActivityInfo(mainAgentRunning: true),
+          "other": const SessionActivityInfo(mainAgentRunning: true),
+        },
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+      expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["other", "updated"]);
+
+      eventController.add(
+        SseEvent(
+          data: SesoriSseEvent.sessionUpdated(
+            info: testSession(id: "updated", lastUserActivityAt: 30),
+          ),
+        ),
+      );
+      await cubit.stream.firstWhere(
+        (state) => state is SessionListLoaded && state.sessions.first.id == "updated",
+      );
+
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["updated"]?.lastUserActivityAt, 30);
+    });
+
     test("live marker received during REST fetch wins over the stale seed", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       final response = Completer<ApiResponse<SessionListResponse>>();

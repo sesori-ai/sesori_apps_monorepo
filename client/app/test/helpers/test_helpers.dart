@@ -27,7 +27,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         SessionOptionsCatalog,
         SessionOptionsRepositoryAvailable,
         SessionOptionsRepositoryFailure,
-        SessionOptionsRequestMode;
+        SessionOptionsRequestMode,
+        latestUserActivityAt;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
@@ -289,6 +290,26 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
     projectSessions[sessionId] = (
       unseen: unseen,
       lastUserActivityAt: projectSessions[sessionId]?.lastUserActivityAt,
+    );
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+  }
+
+  @override
+  void applySessionActivity({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+    required int? lastUserActivityAt,
+  }) {
+    if (lastUserActivityAt == null) return;
+    _projectTick[projectId] = ++_tick;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    final current = projectSessions[sessionId];
+    projectSessions[sessionId] = (
+      unseen: current?.unseen ?? unseen,
+      lastUserActivityAt: latestUserActivityAt(first: current?.lastUserActivityAt, second: lastUserActivityAt),
     );
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);

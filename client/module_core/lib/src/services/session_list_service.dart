@@ -79,11 +79,10 @@ class SessionListService({
       pullRequestHistory: session.pullRequestHistory.isEmpty
           ? existingSession.pullRequestHistory
           : session.pullRequestHistory,
-      lastUserActivityAt: switch ((existingSession.lastUserActivityAt, session.lastUserActivityAt)) {
-        (null, final incoming) => incoming,
-        (final existing?, null) => existing,
-        (final existing?, final incoming?) => existing > incoming ? existing : incoming,
-      },
+      lastUserActivityAt: latestUserActivityAt(
+        first: existingSession.lastUserActivityAt,
+        second: session.lastUserActivityAt,
+      ),
     );
     return upsertSession(sessions: sessions, session: merged);
   }

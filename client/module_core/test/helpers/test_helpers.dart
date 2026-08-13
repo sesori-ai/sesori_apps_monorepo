@@ -157,6 +157,26 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
     _sessionUnseen.add(sessions);
   }
 
+  @override
+  void applySessionActivity({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+    required int? lastUserActivityAt,
+  }) {
+    if (lastUserActivityAt == null) return;
+    _projectTick[projectId] = ++_tick;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    final current = projectSessions[sessionId];
+    projectSessions[sessionId] = (
+      unseen: current?.unseen ?? unseen,
+      lastUserActivityAt: latestUserActivityAt(first: current?.lastUserActivityAt, second: lastUserActivityAt),
+    );
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+  }
+
   void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
 
   void emitSessionUnseen(Map<String, Map<String, SessionListItemState>> unseen) {

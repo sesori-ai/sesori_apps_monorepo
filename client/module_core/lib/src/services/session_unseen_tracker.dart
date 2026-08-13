@@ -115,6 +115,25 @@ class SessionUnseenTracker(
     _sessionUnseen.add(sessions);
   }
 
+  void applySessionActivity({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+    required int? lastUserActivityAt,
+  }) {
+    if (_sessionUnseen.isClosed || lastUserActivityAt == null) return;
+    _projectTick[projectId] = ++_tick;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    final current = projectSessions[sessionId];
+    projectSessions[sessionId] = (
+      unseen: current?.unseen ?? unseen,
+      lastUserActivityAt: latestUserActivityAt(first: current?.lastUserActivityAt, second: lastUserActivityAt),
+    );
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+  }
+
   void _handleEvent(SseEvent event) {
     try {
       if (event.data case SesoriSessionUnseenChanged(
@@ -139,11 +158,7 @@ class SessionUnseenTracker(
         final cachedActivityAt = projectSessions[sessionId]?.lastUserActivityAt;
         projectSessions[sessionId] = (
           unseen: unseen,
-          lastUserActivityAt: switch ((cachedActivityAt, lastUserActivityAt)) {
-            (null, final incoming) => incoming,
-            (final cached?, null) => cached,
-            (final cached?, final incoming?) => cached > incoming ? cached : incoming,
-          },
+          lastUserActivityAt: latestUserActivityAt(first: cachedActivityAt, second: lastUserActivityAt),
         );
         sessions[projectID] = projectSessions;
         _sessionUnseen.add(sessions);
