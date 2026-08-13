@@ -109,8 +109,8 @@
 
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
-- Result after review fixes: `PLAN.md +719`, `TRACKER.md +133`, total `+852 / -0`
-  against the Step 1 target of 750-900 changed lines.
+- Informational merge-base result, including this verification record itself:
+  `PLAN.md +726`, `TRACKER.md +133`, total `+859 / -0`.
 
 ### Manual matrix
 

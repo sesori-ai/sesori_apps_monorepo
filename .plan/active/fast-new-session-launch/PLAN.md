@@ -110,8 +110,8 @@ second session and worktree.
 
 ## Locked Product Decisions
 
-- The immediate transition is presentation-only and remains on the `/new`
-  route until a durable Sesori ID exists.
+- The immediate transition is presentation-only and remains on the
+  `/projects/<projectId>/sessions/new` route until a durable Sesori ID exists.
 - Launching uses normal detail chrome, a centered status, and refreshed friendly
   rotating copy. It does not fabricate transcript rows.
 - A reusable presentation widget is allowed; no client attempt model is added
@@ -327,10 +327,13 @@ completion and returns the canonical committed session immediately.
 
 ### 5. Managed late generated title
 
-Metadata starts only after project validation, as today, so unknown projects
-cause no metadata or plugin/git side effects and the auth server retains its
-first-session activation signal. Worktree and plugin creation no longer await
-it.
+Metadata starts only after durable creation and first-input/slash-command
+acceptance. Unknown projects and failed creations therefore cause no metadata
+side effect, while each successfully accepted first session still reaches the
+auth server's activation path. Metadata no longer overlaps worktree/plugin
+creation, but because it starts as tracked late work immediately before the
+canonical response returns, it cannot delay that response or escape lifecycle
+ownership on an earlier failure path.
 
 Replace the layer-skipping `MetadataService` with the normal bridge dependency
 flow while keeping the auth server as one provider boundary:
@@ -349,7 +352,10 @@ The title-only DTO ignores the deployed response's extra `branchName` and
 bridges. API/repository errors retain status/cause/stack context; only the
 creation service converts them into the best-effort result.
 
-Late work is owned by `SessionCreationService`, not by a detached route future:
+Late work is owned by `SessionCreationService`, not by a detached route future.
+Immediately after all synchronous acceptance gates pass, the service starts and
+registers the complete metadata-to-title workflow in the tracked set before it
+can return the canonical session:
 
 - one set tracks accepted title-completion futures;
 - one abort signal cancels in-flight metadata HTTP during bridge shutdown;
@@ -546,7 +552,7 @@ stop and ask before expanding scope.
 |---|---|---:|---|
 | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | 750-900 lines | Add this reviewed plan and tracker only. |
 | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | 200-500 lines | Generate color-animal worktree/branch slugs and remove obsolete preferred-name code/tests. Metadata response fields are removed once in Step 3 with the API/repository replacement. |
-| 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | 950-1,450 lines | Add shared typed metadata request plus bridge API/repository layering, return canonical committed sessions, run title generation after response with exact shutdown ownership, conditional local title update, local `session.updated`, generated output, and obsolete-path deletion. |
+| 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | 950-1,450 lines | Add shared typed metadata request plus bridge API/repository layering, return canonical committed sessions, run title generation off the response path with exact shutdown ownership, conditional local title update, local `session.updated`, generated output, and obsolete-path deletion. |
 | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | 800-1,400 lines | Add sealed submission restoration, reusable Prego launch status, detail-shaped launch/loading, honest error warning, delete overlay/dependency/tests, regenerate state/localization. |
 | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | 80-180 lines | Reconcile affected regression docs and complete cleanup audit against actual implementation. |
 | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | 80-250 lines | Run the recorded level/matrix, record automated/manual results and timings, then move this plan from `active` to `completed` only on full required coverage. |
@@ -595,11 +601,12 @@ bridge and client production steps into one large PR.
   analysis.
 - Validate both mobile and desktop downstream shells because Step 4 changes
   public `module_core` state and the shared `module_prego` package.
-- Prove URI remains `/new` while unresolved, duplicate Send is blocked, Back keeps
-  background launch, late success cannot hijack another route, success replaces
-  with real ID while retaining nullable title fallback, every failure restores
-  text/voice/command/attachments, and every creation-originated error warns
-  before manual resend. Cover failure followed by reconnect/discovery refresh.
+- Prove URI remains `/projects/<projectId>/sessions/new` while unresolved,
+  duplicate Send is blocked, Back keeps background launch, late success cannot
+  hijack another route, success replaces with real ID while retaining nullable
+  title fallback, every failure restores text/voice/command/attachments, and
+  every creation-originated error warns before manual resend. Cover failure
+  followed by reconnect/discovery refresh.
 - With a maximum-sized attachment fixture, prove `NewSessionSending` paints
   before base64/request serialization starts; do not use a wall-clock-only test.
 - Prove mixed typed/voice spans survive submission failure exactly, and the
