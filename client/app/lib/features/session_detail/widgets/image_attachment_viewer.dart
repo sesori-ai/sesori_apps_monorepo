@@ -32,6 +32,19 @@ final class const ViewOnlyMessageImage({
   this : super();
 }
 
+final class const StoredMessageImage({
+  required final ViewOnlyMessageImage thumbnail,
+  required final MessageImageCubit cubit,
+}) extends MessageImageViewerImage {
+  this : super();
+
+  @override
+  ImageProvider get provider => thumbnail.provider;
+
+  @override
+  Uri? get originalUri => thumbnail.originalUri;
+}
+
 Future<void> showImageAttachmentViewer({
   required BuildContext context,
   required MessageImageViewerImage image,
@@ -46,29 +59,32 @@ Future<void> showImageAttachmentViewer({
     opaque: false,
     transitionDuration: const Duration(milliseconds: 260),
     reverseTransitionDuration: const Duration(milliseconds: 220),
-    pageBuilder: (_, _, _) {
-      final viewer = ScaffoldMessenger(
-        child: ImageAttachmentViewer(
+    pageBuilder: (_, _, _) => ScaffoldMessenger(
+      child: switch (image) {
+        LoadedMessageImage() => BlocProvider(
+          create: (_) => _createActionsCubit(image: image),
+          child: ImageAttachmentViewer(
+            image: image,
+            filename: filename,
+            heroTag: heroTag,
+            originalState: null,
+            onRetryOriginal: null,
+          ),
+        ),
+        ViewOnlyMessageImage() => ImageAttachmentViewer(
+          image: image,
+          filename: filename,
+          heroTag: heroTag,
+          originalState: null,
+          onRetryOriginal: null,
+        ),
+        StoredMessageImage() => _StoredImageAttachmentViewer(
           image: image,
           filename: filename,
           heroTag: heroTag,
         ),
-      );
-      return switch (image) {
-        LoadedMessageImage() => BlocProvider(
-          create: (_) => ImageAttachmentActionsCubit(
-            imageSaver: getIt<ImageSaver>(),
-            imageClipboard: getIt<ImageClipboard>(),
-            imageSharer: getIt<ImageSharer>(),
-            bytes: image.bytes,
-            mime: image.mime,
-            actionFilename: image.actionFilename,
-          ),
-          child: viewer,
-        ),
-        ViewOnlyMessageImage() => viewer,
-      };
-    },
+      },
+    ),
     transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );
   var shouldDismissViewerWithHistory = true;
@@ -86,7 +102,82 @@ Future<void> showImageAttachmentViewer({
   return result.whenComplete(() {
     shouldDismissViewerWithHistory = false;
     historyEntry.remove();
+    if (image case StoredMessageImage(:final cubit)) cubit.releaseOriginal();
   });
+}
+
+ImageAttachmentActionsCubit _createActionsCubit({required LoadedMessageImage image}) => ImageAttachmentActionsCubit(
+  imageSaver: getIt<ImageSaver>(),
+  imageClipboard: getIt<ImageClipboard>(),
+  imageSharer: getIt<ImageSharer>(),
+  bytes: image.bytes,
+  mime: image.mime,
+  actionFilename: image.actionFilename,
+);
+
+class const _StoredImageAttachmentViewer({
+  required final StoredMessageImage image,
+  required final String? filename,
+  required final Key heroTag,
+}) extends StatefulWidget {
+  @override
+  State<_StoredImageAttachmentViewer> createState() => _StoredImageAttachmentViewerState();
+}
+
+class _StoredImageAttachmentViewerState() extends State<_StoredImageAttachmentViewer> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(widget.image.cubit.loadOriginal());
+  }
+
+  @override
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: widget.image.cubit,
+    child: _StoredImageAttachmentViewerContent(
+      thumbnail: widget.image.thumbnail,
+      filename: widget.filename,
+      heroTag: widget.heroTag,
+    ),
+  );
+}
+
+class const _StoredImageAttachmentViewerContent({
+  required final ViewOnlyMessageImage thumbnail,
+  required final String? filename,
+  required final Key heroTag,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final original = context.watch<MessageImageCubit>().state.original;
+    final loaded = switch (original) {
+      MessageImageOriginalLoaded(:final bytes, :final mime, :final actionFilename) => LoadedMessageImage(
+        bytes: bytes,
+        provider: MemoryImage(bytes),
+        mime: mime,
+        actionFilename: actionFilename,
+        originalUri: null,
+      ),
+      MessageImageOriginalAvailable() ||
+      MessageImageOriginalUnavailable() ||
+      MessageImageOriginalLoading() ||
+      MessageImageOriginalRejected() ||
+      MessageImageOriginalFailed() => null,
+    };
+    final viewer = ImageAttachmentViewer(
+      image: loaded ?? thumbnail,
+      filename: filename,
+      heroTag: heroTag,
+      originalState: original,
+      onRetryOriginal: () => unawaited(context.read<MessageImageCubit>().retryOriginal()),
+    );
+    if (loaded == null) return viewer;
+    return BlocProvider(
+      key: ValueKey(loaded.bytes),
+      create: (_) => _createActionsCubit(image: loaded),
+      child: viewer,
+    );
+  }
 }
 
 class const ImageAttachmentViewer({
@@ -94,6 +185,8 @@ class const ImageAttachmentViewer({
   required final MessageImageViewerImage image,
   required final String? filename,
   required final Key heroTag,
+  required final MessageImageOriginalState? originalState,
+  required final VoidCallback? onRetryOriginal,
 }) extends StatefulWidget {
   static const imageKey = ValueKey("imageAttachmentViewer.image");
 
@@ -377,37 +470,85 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
               ),
             ),
             Expanded(
-              child: Transform.translate(
-                offset: _dragOffset,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onDoubleTapDown: (details) => _captureDoubleTapPosition(details: details),
-                  onDoubleTap: _toggleZoom,
-                  child: InteractiveViewer(
-                    transformationController: _transformationController,
-                    minScale: 0.8,
-                    maxScale: 5,
-                    onInteractionStart: (details) => _handleInteractionStart(details: details),
-                    onInteractionUpdate: (details) => _handleInteractionUpdate(details: details),
-                    onInteractionEnd: (details) => _handleInteractionEnd(details: details),
-                    child: Hero(
-                      tag: widget.heroTag,
-                      child: SizedBox.expand(
-                        child: Image(
-                          key: ImageAttachmentViewer.imageKey,
-                          image: image.provider,
-                          fit: BoxFit.contain,
-                          semanticLabel: widget.filename,
-                          errorBuilder: (_, _, _) => Icon(
-                            Icons.broken_image,
-                            size: prego.spacing.x6l,
-                            color: prego.colors.textTertiary,
+              child: Stack(
+                children: [
+                  Transform.translate(
+                    offset: _dragOffset,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onDoubleTapDown: (details) => _captureDoubleTapPosition(details: details),
+                      onDoubleTap: _toggleZoom,
+                      child: InteractiveViewer(
+                        transformationController: _transformationController,
+                        minScale: 0.8,
+                        maxScale: 5,
+                        onInteractionStart: (details) => _handleInteractionStart(details: details),
+                        onInteractionUpdate: (details) => _handleInteractionUpdate(details: details),
+                        onInteractionEnd: (details) => _handleInteractionEnd(details: details),
+                        child: Hero(
+                          tag: widget.heroTag,
+                          child: SizedBox.expand(
+                            child: Image(
+                              key: ImageAttachmentViewer.imageKey,
+                              image: image.provider,
+                              fit: BoxFit.contain,
+                              semanticLabel: widget.filename,
+                              errorBuilder: (_, _, _) => Icon(
+                                Icons.broken_image,
+                                size: prego.spacing.x6l,
+                                color: prego.colors.textTertiary,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                  if (widget.originalState is MessageImageOriginalLoading)
+                    PositionedDirectional(
+                      bottom: prego.spacing.lg,
+                      end: prego.spacing.lg,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: prego.colors.fgBrandPrimary,
+                      ),
+                    ),
+                  if (widget.originalState is MessageImageOriginalRejected ||
+                      widget.originalState is MessageImageOriginalFailed ||
+                      widget.originalState is MessageImageOriginalUnavailable)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: EdgeInsets.all(prego.spacing.lg),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: prego.colors.bgSurface2,
+                            borderRadius: BorderRadius.circular(prego.radius.lg),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(prego.spacing.md),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    context.loc.sessionDetailImageOriginalLoadFailed,
+                                    style: prego.textTheme.textSm.regular,
+                                  ),
+                                ),
+                                SizedBox(width: prego.spacing.md),
+                                TextButton.icon(
+                                  onPressed: widget.onRetryOriginal,
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(context.loc.sessionDetailRetry),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],

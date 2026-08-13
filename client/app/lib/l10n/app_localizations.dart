@@ -1735,6 +1735,12 @@ abstract class AppLocalizations {
   /// **'Open original'**
   String get sessionDetailImageOpenOriginal;
 
+  /// Message shown over a stored image thumbnail when loading its full-resolution original fails or is rejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load the original image.'**
+  String get sessionDetailImageOriginalLoadFailed;
+
   /// No description provided for @sessionDetailImageSaved.
   ///
   /// In en, this message translates to:

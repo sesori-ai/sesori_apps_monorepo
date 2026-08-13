@@ -38,6 +38,12 @@ content the transcript renders live and after reload.
 - Live streaming and history replay converge: same image, same message and part
   identity, same position relative to text and tool output. The viewer offers
   copy, share, and save on the original, and an unknown shape degrades safely.
+- Capable clients request stored references for normal history pages and live
+  subscriptions. Opening a stored image keeps its thumbnail visible while the
+  original loads, replaces it in place after validation, and enables copy,
+  share, and save only for the original. Failure retains the thumbnail with an
+  explicit retry; closing the viewer releases completed or in-flight original
+  state, and scrolling never starts an original request.
 - User, tool, and each maximal contiguous run of assistant file attachments use
   the same left-aligned square collection, capped at 320 px and constrained by
   the available parent width. One attachment spans the collection, two split a
@@ -68,7 +74,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; history projection and live event shaping preserve inline defaults and return stored references only when requested; attachment collections retain square one/two/three/four layouts, width caps, assistant chronology, bounded metadata, reduced-motion loading, and accessible retry. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; attachment collections retain square layouts and chronology; stored viewers remain thumbnail-first, gate original actions, retry failures, and release original state on close. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin, generated and tool-output images displayed, text/image/text order preserved live and after reload, viewer copy/share/save. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
@@ -101,6 +107,9 @@ live, after paging back, or after a reopen, and vary the plugin.
 - An attachment collection exceeds its parent or 320 px cap, loses square tile
   geometry between states, reorders assistant content, or offers a failed image
   without an accessible retry action.
+- A stored viewer fetches an original before opening, blanks the cached
+  thumbnail while loading or after failure, enables actions against thumbnail
+  bytes, or retains original bytes after closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 
@@ -115,11 +124,10 @@ live, after paging back, or after a reopen, and vary the plugin.
   covered by the remote-attachment guarantee.
 - Cursor path-only generated images are read locally inside its plugin and
   delivered as bounded attachments; the host path still never crosses the wire.
-- Stored-image fetching and persistent thumbnail caching exist in the client
-  data layer, but normal history and live subscriptions still request inline
-  delivery. Square-grid presentation is active for existing inline, remote, and
-  metadata attachments; viewer original loading and reference activation follow
-  in a later step.
+- Older apps continue to request inline delivery by default, and newer apps
+  continue to render inline images returned by older bridges. The current
+  viewer remains single-image; galleries and persistent original caching are
+  intentionally excluded.
 
 ## Sources
 

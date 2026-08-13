@@ -76,6 +76,19 @@ class MessageImageCubit({
 
   Future<void> retryOriginal() => loadOriginal();
 
+  void releaseOriginal() {
+    if (isClosed) return;
+    _originalGeneration++;
+    emit(
+      MessageImageState(
+        preview: state.preview,
+        original: _repository.canLoadOriginal(attachment: _attachment)
+            ? const MessageImageOriginalAvailable()
+            : const MessageImageOriginalUnavailable(),
+      ),
+    );
+  }
+
   Future<void> _loadPreview() async {
     final generation = ++_previewGeneration;
     final result = await _repository.load(

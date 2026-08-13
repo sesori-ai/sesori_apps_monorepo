@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `attachment-references`
-- **Status:** Step 8/11 - client thumbnail cache ready for review
+- **Status:** Step 10/11 - viewer and stored-reference activation in progress
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `57e1d0ea`
+- **Implementation base:** `origin/main` at `4b3d67f3`
 - **Delivery:** one plan PR, nine sequential implementation PRs, and one
   plan-retirement PR
 - **Related future work:** prompt-upload decisions are recorded separately in

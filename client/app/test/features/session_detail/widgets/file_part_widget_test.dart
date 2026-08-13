@@ -29,12 +29,15 @@ class _MockAuthSession() extends Mock implements AuthSession;
 
 class _MockAttachmentThumbnailStorage() extends Mock implements AttachmentThumbnailStorage;
 
+class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
+
 const _authUser = AuthUser(
   id: "account-a",
   provider: AuthProvider.github,
   providerUserId: "provider-a",
   providerUsername: "alice",
 );
+const _pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
 
 class _FakeImageSaver() implements ImageSaver {
   Uint8List? savedBytes;
@@ -124,6 +127,8 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Uri());
     registerFallbackValue(UrlLaunchMode.externalApp);
+    registerFallbackValue(const MessageAttachment.unknown());
+    registerFallbackValue(SessionAttachmentRendition.thumbnail);
   });
 
   setUp(() async {
@@ -454,6 +459,158 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets("stored viewer loads original after opening, gates actions, swaps bytes, and releases on close", (
+    tester,
+  ) async {
+    final repository = _MockMessageImageRepository();
+    final original = Completer<MessageImageLoadResult>();
+    var originalRequests = 0;
+    const attachment = MessageAttachment.storedImage(
+      attachmentId: "attachment-1",
+      bridgeId: "bridge-1",
+      mime: "image/png",
+      filename: "stored.png",
+      byteLength: 68,
+    );
+    when(() => repository.canLoad(attachment: attachment)).thenReturn(true);
+    when(() => repository.canLoadOriginal(attachment: attachment)).thenReturn(true);
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: attachment,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(base64Decode(_pngBase64)),
+        mime: "image/png",
+        actionFilename: "stored.png",
+        originalUri: null,
+      ),
+    );
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: attachment,
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer((_) {
+      originalRequests++;
+      return original.future;
+    });
+    await GetIt.instance.unregister<MessageImageRepository>();
+    GetIt.instance.registerSingleton<MessageImageRepository>(repository);
+
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
+    await _finishAsyncDecode(tester: tester);
+    expect(originalRequests, 0);
+
+    final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
+    await tester.runAsync(
+      () => precacheImage(
+        preview.image,
+        tester.element(find.byKey(FilePartWidget.previewImageKey)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    expect(originalRequests, 1);
+    final thumbnailImage = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(find.byIcon(Icons.content_copy), findsNothing);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+
+    final originalBytes = Uint8List.fromList(base64Decode(_pngBase64));
+    original.complete(
+      MessageImageLoadSuccess(
+        bytes: originalBytes,
+        mime: "image/png",
+        actionFilename: "stored.png",
+        originalUri: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final originalImage = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(identical(originalImage.image, thumbnailImage.image), isFalse);
+    expect((originalImage.image as MemoryImage).bytes, same(originalBytes));
+    expect(find.byIcon(Icons.content_copy), findsOneWidget);
+    expect(find.byIcon(Icons.share_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+
+    final cubit = tester.element(find.byKey(FilePartWidget.previewTapTargetKey)).read<MessageImageCubit>();
+    expect(cubit.state.original, isA<MessageImageOriginalAvailable>());
+  });
+
+  testWidgets("stored viewer retains thumbnail and retries original after failure", (tester) async {
+    final repository = _MockMessageImageRepository();
+    var originalRequests = 0;
+    const attachment = MessageAttachment.storedImage(
+      attachmentId: "attachment-1",
+      bridgeId: "bridge-1",
+      mime: "image/png",
+      filename: "stored.png",
+      byteLength: 68,
+    );
+    when(() => repository.canLoad(attachment: attachment)).thenReturn(true);
+    when(() => repository.canLoadOriginal(attachment: attachment)).thenReturn(true);
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: attachment,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => MessageImageLoadSuccess(
+        bytes: Uint8List.fromList(base64Decode(_pngBase64)),
+        mime: "image/png",
+        actionFilename: "stored.png",
+        originalUri: null,
+      ),
+    );
+    when(
+      () => repository.load(
+        sessionId: "session-1",
+        attachment: attachment,
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer((_) async {
+      originalRequests++;
+      return const MessageImageLoadRejected();
+    });
+    await GetIt.instance.unregister<MessageImageRepository>();
+    GetIt.instance.registerSingleton<MessageImageRepository>(repository);
+
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
+    await _openImageViewer(tester: tester);
+
+    final thumbnailProvider = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image;
+    expect(find.text("Couldn’t load the original image."), findsOneWidget);
+    expect(find.byIcon(Icons.content_copy), findsNothing);
+    expect(originalRequests, 1);
+
+    await tester.tap(find.widgetWithText(TextButton, "Retry"));
+    await tester.pumpAndSettle();
+
+    expect(originalRequests, 2);
+    expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image, same(thumbnailProvider));
+  });
+
   testWidgets("opens inline images in a zoomable Hero viewer using the same provider", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
@@ -750,6 +907,8 @@ void main() {
             image: image,
             filename: "../../unsafe.exe",
             heroTag: UniqueKey(),
+            originalState: null,
+            onRetryOriginal: null,
           ),
         ),
       ),

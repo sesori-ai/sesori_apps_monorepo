@@ -399,6 +399,13 @@ class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final cubit = context.read<MessageImageCubit>();
+    final viewerImage = cubit.state.original is MessageImageOriginalUnavailable
+        ? _image
+        : StoredMessageImage(
+            thumbnail: ViewOnlyMessageImage(provider: _image.provider, originalUri: _image.originalUri),
+            cubit: cubit,
+          );
     return Semantics(
       button: _isDecoded,
       label: context.loc.sessionDetailImageOpen,
@@ -410,7 +417,7 @@ class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
             : () => unawaited(
                 showImageAttachmentViewer(
                   context: context,
-                  image: _image,
+                  image: viewerImage,
                   filename: widget.filename,
                   heroTag: _heroTag,
                 ),

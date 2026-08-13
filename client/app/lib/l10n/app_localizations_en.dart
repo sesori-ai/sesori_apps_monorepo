@@ -894,6 +894,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailImageOpenOriginal => 'Open original';
 
   @override
+  String get sessionDetailImageOriginalLoadFailed => 'Couldn’t load the original image.';
+
+  @override
   String get sessionDetailImageSaved => 'Image saved';
 
   @override

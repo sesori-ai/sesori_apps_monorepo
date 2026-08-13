@@ -255,7 +255,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         sessionId: sessionId,
         limit: limit,
         before: before,
-        attachmentDelivery: MessageAttachmentDelivery.inline,
+        attachmentDelivery: MessageAttachmentDelivery.storedReference,
       ),
     );
   }

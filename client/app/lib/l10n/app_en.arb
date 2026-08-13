@@ -530,6 +530,10 @@
   "sessionDetailImageCopy": "Copy image",
   "sessionDetailImageSave": "Save image",
   "sessionDetailImageOpenOriginal": "Open original",
+  "sessionDetailImageOriginalLoadFailed": "Couldn’t load the original image.",
+  "@sessionDetailImageOriginalLoadFailed": {
+    "description": "Message shown over a stored image thumbnail when loading its full-resolution original fails or is rejected."
+  },
   "sessionDetailImageSaved": "Image saved",
   "sessionDetailImageSaveFailed": "Couldn’t save image",
   "sessionDetailImageShareFailed": "Couldn’t share image",
