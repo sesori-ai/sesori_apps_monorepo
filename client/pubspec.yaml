@@ -14,8 +14,9 @@ workspace:
   - desktop
 
 dependency_overrides:
-  # Freezed 4.0.0-dev.3 still caps analyzer below 14, while lean_builder 1.2.1
-  # otherwise selects the analyzer 14 frontend despite having unchanged code.
+  # TODO(2026-08-13): Remove this override after Freezed and analyzer_buffer
+  # publish analyzer 14 support; then verify pub-get, codegen, and analyze in CI.
+  # lean_builder 1.2.1 changed only its frontend constraints from 1.2.0.
   _fe_analyzer_shared: 103.0.0
   record_android:
     git:
