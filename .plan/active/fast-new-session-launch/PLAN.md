@@ -349,17 +349,17 @@ flow while keeping the auth server as one provider boundary:
 
 - Layer 1 existing `SesoriServerApi` owns the typed metadata POST alongside its
   other auth-server operations, including abort/deadline behavior, a method-aware
-  status exception, and the title-only response DTO;
+  status exception, token acquisition through injected `TokenRefresher`, one
+  typed 401 force-refresh/retry, and the title-only response DTO;
 - Layer 2 `SessionMetadataRepository` under `bridge/app/lib/src/repositories/`
-  owns the 500-character payload bound, access-token acquisition, and one typed
-  401 refresh/retry;
+  owns the 500-character payload normalization and maps the typed API result;
 - Layer 3 `SessionCreationService` consumes the repository and owns the product
   decision that metadata failure is logged and degraded to no generated title.
 
-Credential acquisition remains repository orchestration, matching the existing
-`SesoriServerApi` contract whose typed operations receive an access token. The
-API owns HTTP authentication headers and exposes typed status failure; it does
-not depend upward on token lifecycle or decide when credentials are refreshed.
+This follows the bridge architecture's explicit authenticated-provider boundary:
+`SesoriServerApi` consumes `TokenRefresher` and owns the complete authenticated
+HTTP operation. The repository does not inspect HTTP status or coordinate token
+lifecycle.
 
 The title-only DTO ignores the deployed response's extra `branchName` and
 `worktreeName` keys. The auth server response remains unchanged for released
