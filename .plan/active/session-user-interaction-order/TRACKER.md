@@ -152,10 +152,10 @@
 - Published the rewrite in `1ee36b9d0`, updated PR #865 to the exact four-step
   title and zero-new-state body, and confirmed GitHub has no unresolved inline
   review threads.
-- Against the Step 1 publication baseline, `git diff --numstat $(git merge-base
-  origin/main 49e762c8) 49e762c8 -- .plan/active/session-user-interaction-order/PLAN.md
+- Against the current Step 1 head, `git diff --numstat $(git merge-base
+  origin/main HEAD) HEAD -- .plan/active/session-user-interaction-order/PLAN.md
   .plan/active/session-user-interaction-order/TRACKER.md
-  .agents/skills/sesori-plan-maker/SKILL.md` reports PLAN `+298/-0`, TRACKER
-  `+133/-0`, and skill `+31/-0`. The plan/tracker documentation total is 431
+  .agents/skills/sesori-plan-maker/SKILL.md` reports PLAN `+337/-0`, TRACKER
+  `+161/-0`, and skill `+31/-0`. The plan/tracker documentation total is 498
   lines within the recorded 350-650 target; total Step 1 additions including the
-  skill are 462 lines. The same range passes `git diff --check`.
+  skill are 529 lines. The same range passes `git diff --check`.
