@@ -246,6 +246,8 @@ void main() {
     expect(gradient.colors[0], surface.withValues(alpha: surface.a * 0.98));
     expect(gradient.colors[1], surface.withValues(alpha: surface.a * 0.88));
     expect(gradient.colors[2], surface.withValues(alpha: 0));
+    expect(gradient.begin, Alignment.topCenter);
+    expect(gradient.end, Alignment.bottomCenter);
     expect(
       tester.getSize(gradientFinder).height,
       PregoTopNavigation.barHeight + _bannerHeight,
