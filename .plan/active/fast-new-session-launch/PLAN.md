@@ -23,15 +23,16 @@ The delivered experience is:
 
 1. Send immediately replaces the composer presentation with the normal
    session-detail chrome, a generic `New session` title, one activity indicator,
-   and honest rotating launch copy. The URL remains `/sessions/new` until the
-   bridge returns a real durable session.
+   and honest rotating launch copy. The URL remains
+   `/projects/<projectId>/sessions/new` until the bridge returns a real durable
+   session.
 2. The bridge creates the backend session, waits for the initial prompt,
    attachment, or slash command to be accepted, commits the stable Sesori
    `ses_...` binding, and returns the canonical catalog `Session` without waiting
    for generated metadata or backend title propagation.
-3. The client replaces `/sessions/new` with the real
-   `/sessions/<ses-id>` route. Existing SSE plus the detail snapshot hydrate the
-   final title and transcript.
+3. The client replaces `/projects/<projectId>/sessions/new` with the real
+   `/projects/<projectId>/sessions/<ses-id>` route. Existing SSE plus the detail
+   snapshot hydrate the final title and transcript.
 4. A failed or unconfirmed creation returns automatically to the filled
    composer. Timeout/disconnect/bad-response copy warns that the session may
    still appear in the list before the user resubmits.
@@ -244,9 +245,9 @@ created and that resending may duplicate it. The current transport/server error
 taxonomy cannot distinguish project validation from a slash-command rejection
 that occurs after durable commit, so narrower copy would be dishonest.
 
-The URI remains `/projects/<project>/sessions/new` throughout sending. Success
-still uses `replaceRoute` only after a real `Session.id` returns, preserving
-late-navigation hijack protection and split-view behavior.
+The URI remains `/projects/<projectId>/sessions/new` throughout sending.
+Success still uses `replaceRoute` only after a real `Session.id` returns,
+preserving late-navigation hijack protection and split-view behavior.
 
 ### 3. Local workspace naming
 

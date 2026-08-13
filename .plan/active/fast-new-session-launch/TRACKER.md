@@ -13,7 +13,8 @@
 
 - [x] Sesori has a stable `ses_...` ID, but allocates it only after plugin
   creation; no pending stable route is added.
-- [x] Send immediately renders detail-shaped launch UI on `/sessions/new`.
+- [x] Send immediately renders detail-shaped launch UI on
+  `/projects/<projectId>/sessions/new`.
 - [x] Real route replacement waits for a durable, queryable Sesori session.
 - [x] Metadata/title leaves the create-response critical path.
 - [x] Initial prompt, attachment, and slash-command acceptance remain
@@ -101,7 +102,10 @@
 
 ### Automated
 
-Pending implementation.
+- Step 1 merge-base size:
+  `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
+- Result after review fixes: `PLAN.md +692`, `TRACKER.md +128`, total `+820 / -0`
+  against the Step 1 target of 750-900 changed lines.
 
 ### Manual matrix
 
