@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Steps 1-10 merged; Step 11 retirement in progress
+- **Series state:** Steps 1-10 merged; Step 11 retirement in review
 - **Current step:** 11/11
 - **Implementation base:** synchronized `origin/main` at `14a4e405`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** Pending
-- **Next action:** Publish the plan-retirement PR
+- **Current PR:** [#893](https://github.com/sesori-ai/sesori_apps_monorepo/pull/893)
+- **Next action:** Monitor and merge the plan-retirement PR
 
 ## Plan Review
 
@@ -41,7 +41,7 @@
 | [x] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) merged |
 | [x] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | [PR #889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889) merged |
 | [x] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | [PR #891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891) merged |
-| [x] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Retirement PR pending |
+| [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | [PR #893](https://github.com/sesori-ai/sesori_apps_monorepo/pull/893) in review |
 
 ## Locked Decisions
 
@@ -280,6 +280,12 @@
   the session from cold history. The slot bridge and simulator were shut down
   after the check. Together with the Step 10 automated matrix, this completes
   the required regression evidence for retirement.
+- Step 11 (in review): Against merge base `14a4e405`, `git diff --numstat`
+  reports 27 additions and 11 deletions across four documentation files (38
+  changed lines), below the 50-200 estimate because Git records the active-to-
+  completed plan move as renames rather than deleting and re-adding both files;
+  `git diff --check` passes. Published as
+  [PR #893](https://github.com/sesori-ai/sesori_apps_monorepo/pull/893).
 
 ## Findings And Plan Deltas
 

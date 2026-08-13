@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `attachment-references`
-- **Status:** Completed - all 11 steps delivered and verified
+- **Status:** Steps 1-10 merged and verified; Step 11 retirement in review
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at `14a4e405`
