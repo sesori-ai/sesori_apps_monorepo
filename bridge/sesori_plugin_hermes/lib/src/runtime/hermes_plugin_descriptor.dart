@@ -160,11 +160,12 @@ class const HermesPluginDescriptor({
     }
     if (statusResult.exitCode != 0) {
       Log.w("[hermes] status probe '$executablePath status' exited with code ${statusResult.exitCode}");
-      return const PluginSetupUnknown(
-        actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
-      );
     }
     final statusOutput = _normalizedStatusOutput(statusResult);
+    // Output is the source of truth: a nonzero exit with a real `Model:` value
+    // still means the model is configured (the ACP handshake is the actual
+    // auth gate at connect time); the exit code only breaks ties when the
+    // output is ambiguous.
     if (_statusIndicatesConfigured(statusOutput)) {
       return const PluginSetupReady();
     }
