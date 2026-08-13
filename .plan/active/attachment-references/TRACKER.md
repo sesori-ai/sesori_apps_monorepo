@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 8 merged; Step 9 implemented and verified locally
+- **Series state:** Step 8 merged; Step 9 in review
 - **Current step:** 9/11
 - **Implementation base:** synchronized `origin/main` at `6ee94bfe`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** Pending for Step 9
-- **Next action:** Publish and monitor the Step 9 PR
+- **Current PR:** [#889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889)
+- **Next action:** Monitor Step 9 CI and review
 
 ## Plan Review
 
@@ -39,7 +39,7 @@
 | [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
 | [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
 | [x] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) merged |
-| [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Implemented locally; verifying |
+| [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | [PR #889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889) in review |
 | [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
 | [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
 
@@ -232,6 +232,7 @@
   `FilePartWidget`, `MessageImageCubit`, and viewer seams were reused without new
   state infrastructure. No analytics event was added: passive tile rendering or
   taps have no defined product decision or authoritative outcome to measure.
+  Published as [PR #889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889).
 
 ## Findings And Plan Deltas
 
