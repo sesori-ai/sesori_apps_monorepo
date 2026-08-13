@@ -7,6 +7,8 @@ import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
 
+// ignore_for_file: prefer_required_named_parameters, optional alert content defaults to absent
+
 /// Visual variant for [PregoPopupAlertsNotifications].
 enum PregoPopupAlertsNotificationsVariant() {
   info,
@@ -210,7 +212,6 @@ final class PregoPopupAlertPresenter._({required final OverlayState _overlay}) {
   void show({
     required String title,
     PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.info,
-    // ignore: prefer_required_named_parameters, optional alert content defaults to absent
     String? message,
     PregoPopupAlertsNotificationsAction? primaryAction,
     PregoPopupAlertsNotificationsAction? secondaryAction,
