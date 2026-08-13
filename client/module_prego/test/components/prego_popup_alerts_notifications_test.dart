@@ -73,6 +73,40 @@ void main() {
     expect(find.text("Copied"), findsNothing);
   });
 
+  testWidgets("uses overlay status-bar padding when a modal strips its top padding", (tester) async {
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.dark]),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(padding: const EdgeInsets.only(top: 24)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(padding: EdgeInsets.zero),
+              child: Builder(
+                builder: (modalContext) {
+                  presenter = PregoPopupAlertPresenter.of(modalContext);
+                  return const SizedBox.expand();
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    presenter.show(title: "Modal alert", duration: null);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+      24 + PregoTopNavigation.barHeight + PregoSpacing.xl,
+    );
+  });
+
   testWidgets("new alerts replace old alerts and close immediately on tap", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(

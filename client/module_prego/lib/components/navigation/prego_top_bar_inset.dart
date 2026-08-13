@@ -16,10 +16,13 @@ class const PregoTopBarInsetScope({
 }
 
 /// Returns the current top inset, including any visible navigation banner.
-double pregoTopBarInsetOf(BuildContext context) {
+double pregoTopBarInsetOf({
+  required BuildContext context,
+  required double fallbackTopPadding,
+}) {
   final scope = context.dependOnInheritedWidgetOfExactType<PregoTopBarInsetScope>();
   if (scope == null) {
-    return MediaQuery.paddingOf(context).top + PregoTopNavigation.barHeight;
+    return fallbackTopPadding + PregoTopNavigation.barHeight;
   }
   return scope.baseInset + scope.bannerHeight.value;
 }

@@ -222,9 +222,13 @@ final class PregoPopupAlertPresenter._({
   /// Captures the nearest overlay so an alert can still be shown after the
   /// source widget is removed or a modal route is dismissed.
   static PregoPopupAlertPresenter of(BuildContext context) {
+    final overlay = Overlay.of(context);
     return PregoPopupAlertPresenter._(
-      overlay: Overlay.of(context),
-      topInset: pregoTopBarInsetOf(context),
+      overlay: overlay,
+      topInset: pregoTopBarInsetOf(
+        context: context,
+        fallbackTopPadding: MediaQuery.paddingOf(overlay.context).top,
+      ),
     );
   }
 
