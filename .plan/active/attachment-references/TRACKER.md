@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 8 ready to open
+- **Series state:** Step 8 in review; Step 9 local successor next
 - **Current step:** 8/11
 - **Implementation base:** `origin/main` at `b87e4343`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** None
-- **Next action:** Commit, synchronize, and open the Step 8 PR
+- **Current PR:** [#876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876)
+- **Next action:** Monitor Step 8 CI/review and begin Step 9 locally
 
 ## Plan Review
 
@@ -38,7 +38,7 @@
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
 | [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
 | [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
-| [ ] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,500 | Ready to open |
+| [ ] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,500 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) in review |
 | [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
 | [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
 | [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
@@ -200,7 +200,9 @@
   lifecycle seams with no blockers. After synchronization with `origin/main` at
   `b87e4343`, the PR diff has 1,345 additions and 78 deletions across 17 files
   (1,423 changed lines), within the revised 1,250-1,500 target;
-  `git diff --check origin/main...HEAD` passes.
+  `git diff --check origin/main...HEAD` passes. Published as
+  [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876); monitoring
+  is active.
 
 ## Findings And Plan Deltas
 
