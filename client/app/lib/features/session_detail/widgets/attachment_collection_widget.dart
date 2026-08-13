@@ -15,34 +15,14 @@ class const AttachmentCollectionWidget({
 
   @override
   Widget build(BuildContext context) {
-    if (attachments.isEmpty) return const SizedBox.shrink();
+    final visibleAttachments = attachments.where((attachment) => attachment is! MessageAttachmentUnknown).toList();
+    if (visibleAttachments.isEmpty) return const SizedBox.shrink();
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = math.min(constraints.maxWidth, PregoWidths.xxs);
-        final rows = <Widget>[];
-        var index = 0;
-        if (attachments.length.isOdd) {
-          rows.add(_tile(index: 0, attachment: attachments.first));
-          index = 1;
-        }
-        while (index < attachments.length) {
-          rows.add(
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _tile(index: index, attachment: attachments[index]),
-                ),
-                const SizedBox(width: PregoSpacing.sm),
-                Expanded(
-                  child: _tile(index: index + 1, attachment: attachments[index + 1]),
-                ),
-              ],
-            ),
-          );
-          index += 2;
-        }
+        final pairedWidth = (width - PregoSpacing.sm) / 2;
+        final duplicateCounts = <String, int>{};
 
         return Align(
           alignment: Alignment.centerLeft,
@@ -51,10 +31,19 @@ class const AttachmentCollectionWidget({
             width: width,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xs),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Wrap(
                 spacing: PregoSpacing.sm,
-                children: rows,
+                runSpacing: PregoSpacing.sm,
+                children: [
+                  for (final (index, attachment) in visibleAttachments.indexed)
+                    SizedBox(
+                      width: index == 0 && visibleAttachments.length.isOdd ? width : pairedWidth,
+                      child: _tile(
+                        attachment: attachment,
+                        duplicateCounts: duplicateCounts,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -63,9 +52,21 @@ class const AttachmentCollectionWidget({
     );
   }
 
-  Widget _tile({required int index, required MessageAttachment attachment}) => FilePartWidget(
-    key: ValueKey((index, attachment)),
-    sessionId: sessionId,
-    attachment: attachment,
-  );
+  Widget _tile({required MessageAttachment attachment, required Map<String, int> duplicateCounts}) {
+    final identity = _identity(attachment: attachment);
+    final duplicate = duplicateCounts.update(identity, (count) => count + 1, ifAbsent: () => 0);
+    return FilePartWidget(
+      key: ValueKey((identity, duplicate)),
+      sessionId: sessionId,
+      attachment: attachment,
+    );
+  }
+
+  String _identity({required MessageAttachment attachment}) => switch (attachment) {
+    MessageAttachmentStoredImage(:final attachmentId, :final bridgeId) => "stored:$bridgeId:$attachmentId",
+    MessageAttachmentRemoteUrl(:final url) => "remote:$url",
+    MessageAttachmentInlineImage(:final mime, :final filename) => "inline:$mime:$filename",
+    MessageAttachmentMetadata(:final mime, :final filename) => "metadata:$mime:$filename",
+    MessageAttachmentUnknown() => throw StateError("Unknown attachments are filtered before layout"),
+  };
 }

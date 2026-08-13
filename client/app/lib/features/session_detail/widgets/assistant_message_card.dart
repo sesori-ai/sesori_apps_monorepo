@@ -19,15 +19,13 @@ class const AssistantMessageCard({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final visibleParts = message.parts.where(_isVisible).toList();
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: SelectionArea(
         child: Column(
           crossAxisAlignment: .start,
           children: [
-            ..._buildParts(context: context, parts: visibleParts),
+            ..._buildParts(context: context, parts: message.parts),
           ],
         ),
       ),
@@ -40,7 +38,7 @@ class const AssistantMessageCard({
     while (index < parts.length) {
       final part = parts[index];
       if (part.type != MessagePartType.file) {
-        widgets.add(_buildPart(context: context, part: part));
+        if (_isVisible(part)) widgets.add(_buildPart(context: context, part: part));
         index++;
         continue;
       }
@@ -54,7 +52,7 @@ class const AssistantMessageCard({
       if (attachments.isNotEmpty) {
         widgets.add(
           AttachmentCollectionWidget(
-            key: ValueKey((run.first.id, run.last.id)),
+            key: ValueKey(run.first.id),
             sessionId: run.first.sessionID,
             attachments: attachments,
           ),

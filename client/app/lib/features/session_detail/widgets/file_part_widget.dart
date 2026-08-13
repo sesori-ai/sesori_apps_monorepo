@@ -49,6 +49,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
           actionFilename: actionFilename,
           originalUri: originalUri,
           filename: _displayFilename(filename: _attachmentFilename),
+          byteLength: _attachmentByteLength,
         ),
       MessageImagePreviewUnsupported() => _buildFallbackAttachment(
         context: context,
@@ -71,6 +72,14 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
     MessageAttachmentUnknown() => null,
   };
 
+  int? get _attachmentByteLength => switch (attachment) {
+    MessageAttachmentStoredImage(:final byteLength) => byteLength,
+    MessageAttachmentInlineImage() ||
+    MessageAttachmentRemoteUrl() ||
+    MessageAttachmentMetadata() ||
+    MessageAttachmentUnknown() => null,
+  };
+
   Widget _buildLoadingAttachment({required BuildContext context}) {
     return switch (attachment) {
       MessageAttachmentInlineImage(:final mime, :final filename) => _buildFileTile(
@@ -81,6 +90,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         icon: Icons.image_outlined,
         loading: true,
         retryable: false,
+        byteLength: null,
       ),
       MessageAttachmentRemoteUrl(:final mime, :final filename) => _buildFileTile(
         context: context,
@@ -90,6 +100,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         icon: Icons.image_outlined,
         loading: true,
         retryable: false,
+        byteLength: null,
       ),
       MessageAttachmentStoredImage(:final mime, :final filename) => _buildFileTile(
         context: context,
@@ -99,6 +110,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         icon: Icons.image_outlined,
         loading: true,
         retryable: false,
+        byteLength: _attachmentByteLength,
       ),
       MessageAttachmentMetadata() || MessageAttachmentUnknown() => _buildFallbackAttachment(
         context: context,
@@ -122,6 +134,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         icon: imageLoadFailed ? Icons.broken_image : Icons.insert_drive_file,
         loading: false,
         retryable: retryable,
+        byteLength: null,
       ),
       MessageAttachmentMetadata(:final mime, :final filename) => _buildFileTile(
         context: context,
@@ -131,6 +144,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         icon: Icons.insert_drive_file,
         loading: false,
         retryable: false,
+        byteLength: null,
       ),
       MessageAttachmentStoredImage(:final mime, :final filename) => _buildFileTile(
         context: context,
@@ -140,6 +154,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         icon: imageLoadFailed ? Icons.broken_image : Icons.insert_drive_file,
         loading: false,
         retryable: retryable,
+        byteLength: _attachmentByteLength,
       ),
       MessageAttachmentInlineImage(:final mime, :final filename) => _buildFileTile(
         context: context,
@@ -149,6 +164,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         icon: Icons.broken_image,
         loading: false,
         retryable: retryable,
+        byteLength: null,
       ),
       MessageAttachmentUnknown() => const SizedBox.shrink(),
     };
@@ -174,6 +190,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
     required IconData icon,
     required bool loading,
     required bool retryable,
+    required int? byteLength,
   }) {
     final prego = context.prego;
     final onTap = uri == null ? null : () => unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp));
@@ -199,7 +216,13 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
                         : Icon(icon, size: prego.spacing.x6l, color: prego.colors.textSecondary),
                   ),
                 ),
-                _AttachmentMetadataOverlay(filename: filename, mime: mime),
+                ExcludeSemantics(
+                  child: _AttachmentMetadataOverlay(
+                    filename: filename,
+                    mime: mime,
+                    byteLength: byteLength,
+                  ),
+                ),
                 if (retryable)
                   Center(
                     child: Semantics(
@@ -246,20 +269,23 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
   }
 }
 
-class const _AttachmentMetadataOverlay({required final String? filename, required final String? mime})
-    extends StatelessWidget {
+class const _AttachmentMetadataOverlay({
+  required final String? filename,
+  required final String? mime,
+  required final int? byteLength,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    if (filename == null && mime == null) return const SizedBox.shrink();
+    if (filename == null && mime == null && byteLength == null) return const SizedBox.shrink();
     final prego = context.prego;
     return Align(
       alignment: Alignment.bottomCenter,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Color(0xCC000000)],
+            colors: [prego.colors.alphaBlack10.withValues(alpha: 0), prego.colors.alphaBlack80],
           ),
         ),
         child: Padding(
@@ -278,14 +304,21 @@ class const _AttachmentMetadataOverlay({required final String? filename, require
                 if (filename case final filename?)
                   Text(
                     filename,
-                    style: prego.textTheme.textXs.medium.copyWith(color: Colors.white),
+                    style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textWhite),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 if (mime case final mime?)
                   Text(
                     mime,
-                    style: prego.textTheme.textXs.regular.copyWith(color: Colors.white70),
+                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (byteLength case final byteLength?)
+                  Text(
+                    context.loc.sessionDetailAttachmentSizeBytes(byteLength),
+                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -304,6 +337,7 @@ class const _LoadedImageAttachment({
   required final String actionFilename,
   required final Uri? originalUri,
   required final String? filename,
+  required final int? byteLength,
 }) extends StatefulWidget {
   @override
   State<_LoadedImageAttachment> createState() => _LoadedImageAttachmentState();
@@ -393,19 +427,64 @@ class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
                       if (frame != null) _markImageDecoded();
                       return child;
                     },
-                    errorBuilder: (_, _, _) => Icon(
-                      Icons.broken_image,
-                      size: prego.spacing.x6l,
-                      color: prego.colors.textTertiary,
+                    errorBuilder: (_, _, _) => const _ImageDecodeFailure(),
+                  ),
+                  ExcludeSemantics(
+                    child: _AttachmentMetadataOverlay(
+                      filename: widget.filename,
+                      mime: widget.mime,
+                      byteLength: widget.byteLength,
                     ),
                   ),
-                  _AttachmentMetadataOverlay(filename: widget.filename, mime: widget.mime),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class const _ImageDecodeFailure() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(
+          color: prego.colors.bgSurface2,
+          child: Icon(Icons.broken_image, size: prego.spacing.x6l, color: prego.colors.textTertiary),
+        ),
+        Center(
+          child: Semantics(
+            button: true,
+            label: context.loc.sessionDetailRetry,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => unawaited(context.read<MessageImageCubit>().retryPreview()),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: prego.colors.bgSurface1.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(prego.radius.full),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg, vertical: prego.spacing.sm),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.refresh, size: prego.spacing.x2l, color: prego.colors.textPrimary),
+                      SizedBox(width: prego.spacing.xs),
+                      Text(context.loc.sessionDetailRetry, style: prego.textTheme.textXs.medium),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

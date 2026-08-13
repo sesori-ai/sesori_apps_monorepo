@@ -259,6 +259,46 @@ void main() {
     expect(find.text("image/png"), findsOneWidget);
   });
 
+  testWidgets("unknown attachments do not occupy collection slots", (tester) async {
+    const filename = "visible.png";
+    await tester.pumpWidget(
+      _app(
+        child: const SizedBox(
+          width: 320,
+          child: AttachmentCollectionWidget(
+            sessionId: "session-1",
+            attachments: [
+              MessageAttachment.metadata(mime: "image/png", filename: filename),
+              MessageAttachment.unknown(),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final tile = find.descendant(
+      of: find.byType(AttachmentCollectionWidget),
+      matching: find.byType(AspectRatio),
+    );
+    expect(tile, findsOneWidget);
+    expect(tester.getSize(tile).width, 320);
+  });
+
+  testWidgets("fallback metadata is announced once", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(
+          sessionId: "session-1",
+          attachment: MessageAttachment.metadata(mime: "application/pdf", filename: "report.pdf"),
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel("report.pdf"), findsOneWidget);
+    semantics.dispose();
+  });
+
   testWidgets("uses a static loading indicator when reduced motion is enabled", (tester) async {
     const attachment = MessageAttachment.storedImage(
       attachmentId: "loading",
@@ -310,6 +350,7 @@ void main() {
     final indicator = tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator));
     expect(indicator.value, isNotNull);
     expect(find.byType(AspectRatio), findsOneWidget);
+    expect(find.text("8 bytes"), findsOneWidget);
   });
 
   testWidgets("failed raster tile exposes retry semantics and retries the request", (tester) async {
@@ -747,16 +788,20 @@ void main() {
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
   });
 
-  testWidgets("does not open viewer actions for corrupt image bytes", (tester) async {
+  testWidgets("corrupt image bytes expose retry without opening the viewer", (tester) async {
+    var requests = 0;
     await GetIt.instance.unregister<MessageImageRepository>();
     GetIt.instance.registerSingleton<MessageImageRepository>(
       MessageImageRepository(
         api: MessageImageApi(
           client: MockClient(
-            (_) async => http.Response.bytes(
-              Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
-              200,
-            ),
+            (_) async {
+              requests++;
+              return http.Response.bytes(
+                Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+                200,
+              );
+            },
           ),
         ),
         sessionApi: sessionApi,
@@ -781,6 +826,15 @@ void main() {
 
     expect(find.byType(ImageAttachmentViewer), findsNothing);
     expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.text("Retry"), findsOneWidget);
+    final requestsAfterTap = requests;
+    await tester.tap(find.text("Retry"));
+    await tester.runAsync(() async {
+      while (requests <= requestsAfterTap) {
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+      }
+    });
+    expect(requests, greaterThan(requestsAfterTap));
     expect(tester.takeException(), isNull);
   });
 

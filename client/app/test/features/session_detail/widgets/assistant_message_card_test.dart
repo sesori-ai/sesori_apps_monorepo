@@ -138,6 +138,25 @@ MessagePart _filePart({required String id, String filename = "report.pdf"}) {
   );
 }
 
+MessagePart _hiddenPart({required String id}) {
+  return MessagePart(
+    id: id,
+    sessionID: "session-1",
+    messageID: "assistant-1",
+    type: MessagePartType.snapshot,
+    text: null,
+    tool: null,
+    state: null,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: null,
+  );
+}
+
 void main() {
   setUp(() async {
     await GetIt.instance.reset();
@@ -368,5 +387,24 @@ void main() {
     expect(firstCollectionY, lessThan(toolY));
     expect(toolY, lessThan(secondCollectionY));
     expect(secondCollectionY, lessThan(afterY));
+  });
+
+  testWidgets("hidden assistant parts remain attachment run boundaries", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [
+            _filePart(id: "file-1", filename: "one.pdf"),
+            _hiddenPart(id: "snapshot"),
+            _filePart(id: "file-2", filename: "two.pdf"),
+          ],
+        ),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.byType(AttachmentCollectionWidget), findsNWidgets(2));
   });
 }

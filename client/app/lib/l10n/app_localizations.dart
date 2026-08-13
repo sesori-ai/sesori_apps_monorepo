@@ -1591,6 +1591,12 @@ abstract class AppLocalizations {
   /// **'Attached image'**
   String get sessionDetailAttachedImage;
 
+  /// Byte size shown in a transcript attachment metadata overlay.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} bytes'**
+  String sessionDetailAttachmentSizeBytes(int count);
+
   /// Snackbar shown when a picked image exceeds the inline attachment size limit.
   ///
   /// In en, this message translates to:

@@ -473,6 +473,11 @@
   "@sessionDetailAttachedImage": {
     "description": "Fallback accessibility label of a staged attachment thumbnail when the image has no filename."
   },
+  "sessionDetailAttachmentSizeBytes": "{count} bytes",
+  "@sessionDetailAttachmentSizeBytes": {
+    "description": "Byte size shown in a transcript attachment metadata overlay.",
+    "placeholders": {"count": {"type": "int"}}
+  },
   "sessionDetailAttachmentTooLarge": "That image is too large to attach.",
   "@sessionDetailAttachmentTooLarge": {
     "description": "Snackbar shown when a picked image exceeds the inline attachment size limit."

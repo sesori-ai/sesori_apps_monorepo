@@ -812,6 +812,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachedImage => 'Attached image';
 
   @override
+  String sessionDetailAttachmentSizeBytes(int count) {
+    return '$count bytes';
+  }
+
+  @override
   String get sessionDetailAttachmentTooLarge => 'That image is too large to attach.';
 
   @override
