@@ -361,7 +361,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Architecture implementation review findings on internal DTO seams, injected
   plugin identity, and original local file-read causes were applied.
 - Diff from merge base after review feedback: +7,286/-22 = 7,308 changed
-  lines; generated lines: 4,268; tests run: 134.
+  lines; generated lines: 4,268; tests run: 135.
 - Recorded overage: generated closed history unions, RPC/file normalization,
   privacy-safe mapping, and focused regression tests are one replay seam;
   splitting would publish incomplete history or live-parity contracts.
