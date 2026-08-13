@@ -508,18 +508,6 @@ class GitCliApi({
     return removed;
   }
 
-  Future<bool> deleteBranch({
-    required String projectPath,
-    required String branchName,
-    required bool force,
-  }) async {
-    final result = await runGit(
-      projectPath: projectPath,
-      arguments: ["branch", force ? "-D" : "-d", "--", branchName],
-    );
-    return result.exitCode == 0;
-  }
-
   Future<ProcessResult> runGit({required String projectPath, required List<String> arguments}) {
     return _processRunner.run("git", arguments, workingDirectory: projectPath);
   }

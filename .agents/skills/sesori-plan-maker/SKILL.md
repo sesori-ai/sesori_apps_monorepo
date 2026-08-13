@@ -75,6 +75,37 @@ retirement.
 
 ## Evidence And Proportionality
 
+### Prefer Elegant, Low-State Designs
+
+- Before adding persistence or coordination, inspect existing fields, event
+  shapes, and relevant Git history. Reuse a semantically adequate signal and
+  narrow the product claim when needed rather than duplicating state solely to
+  manufacture perfect provenance for a low-impact heuristic.
+- Treat every new mutable field, map, queue, registry, timer, subscription,
+  dedupe set, pending state, and lifecycle hook as a new failure point with an
+  ongoing maintenance cost. Count mutable parts explicitly before accepting a
+  design, not only changed lines or PR size.
+- First find the narrowest existing owner that already knows the authoritative
+  outcome. Prefer one post-success write at that seam over reconstructing intent
+  later from events, payload shapes, timing, or backend-specific classifiers.
+- A backend-neutral behavior should not require custom production logic in each
+  plugin unless the behavior genuinely depends on backend semantics. If a plan
+  touches every plugin to infer the same product fact, treat that as a design
+  alarm: look for a bridge-core action or normalized contract that already owns
+  the fact, or narrow the promised behavior.
+- Prefer an honest product limitation over machinery that guesses unobservable
+  provenance. Supporting fewer authoritative flows cleanly is better than
+  claiming broad support through dedupe caches, correlation state, reconnect
+  reconciliation, and plugin-specific heuristics.
+- Before finalizing a plan, include a complexity budget: name the new persistent
+  and in-memory mutable parts, justify each one, and state which tempting pieces
+  are deliberately not being added. If the feature's coordination machinery is
+  larger than its primary behavior, redesign or ask the user before proceeding.
+- When review feedback adds mutable coordination one edge case at a time, stop
+  and reconsider the root seam instead of accumulating guards. Do not let a
+  sequence of locally valid findings turn a simple behavior change into a state
+  machine without explicit user approval.
+
 - Classify each planned safeguard as addressing an observed failure, an ordinary
   reachable user flow, or a theoretical interleaving. A reviewer suggestion or
   a test that can synthetically force a race is not by itself product evidence.

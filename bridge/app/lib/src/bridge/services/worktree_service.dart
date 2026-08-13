@@ -194,18 +194,6 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     );
   }
 
-  Future<bool> deleteBranch({
-    required String projectId,
-    required String branchName,
-    required bool force,
-  }) async {
-    return await _worktreeRepository.deleteBranch(
-      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
-      branchName: branchName,
-      force: force,
-    );
-  }
-
   Future<bool> branchExists({
     required String projectId,
     required String branchName,

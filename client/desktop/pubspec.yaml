@@ -38,10 +38,10 @@ dev_dependencies:
   no_slop_linter:
     path: "../../shared/no_slop_linter"
   bloc_test: ^10.0.0
-  build_runner: any
+  build_runner: ^2.16.0
   flutter_test:
     sdk: flutter
-  injectable_generator: ^3.0.2
+  injectable_generator: ^3.1.2
   mocktail: ^1.0.5
 
 flutter:

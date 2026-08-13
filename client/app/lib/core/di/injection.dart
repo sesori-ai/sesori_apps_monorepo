@@ -24,4 +24,5 @@ void configureDependencies({
 
   configureAuthDependencies(getIt);
   configureCoreDependencies(getIt);
+  getIt<MessageThumbnailCacheService>();
 }

@@ -14,7 +14,6 @@ class SessionDeletionService({
   Future<CleanupResult> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) {
     // The two stores are coordinated here rather than inside
@@ -24,7 +23,6 @@ class SessionDeletionService({
       cleanup: () => _sessionLifecycleService.cleanupAlreadyReserved(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
         force: force,
       ),
       onDeleted: _purgeHistory,

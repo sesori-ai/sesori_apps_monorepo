@@ -822,7 +822,6 @@
   "newSessionOptionsUpdateFailedRetained": "Couldn’t update options. Previously cached options are still available.",
   "newSessionOptionsRefreshFailedUnavailable": "Refresh failed and no valid cached options remain. You can create with defaults.",
   "sessionListDeleteWorktreeCheckbox": "Delete worktree",
-  "sessionListDeleteBranchCheckbox": "Delete branch",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
   "sessionListArchiveConfirmTitle": "Archive session?",
   "sessionListArchiveConfirmMessage": "Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.",
