@@ -1,6 +1,7 @@
 import "package:claude_plugin/claude_plugin.dart" show ClaudePluginDescriptor;
 import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:cursor_plugin/cursor_plugin.dart" show CursorPluginDescriptor;
+import "package:hermes_plugin/hermes_plugin.dart" show HermesPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginDescriptor;
 
@@ -13,6 +14,7 @@ const List<BridgePluginDescriptor> knownPlugins = [
   CodexPluginDescriptor(),
   CursorPluginDescriptor(),
   ClaudePluginDescriptor(),
+  HermesPluginDescriptor(),
 ];
 
 /// Product-preferred default when OpenCode is selectable. Lifecycle policy
