@@ -403,8 +403,8 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      backgroundColor.withMultipliedOpacity(0.9),
-                      backgroundColor.withMultipliedOpacity(0.7),
+                      backgroundColor.withMultipliedOpacity(0.98),
+                      backgroundColor.withMultipliedOpacity(0.88),
                       backgroundColor.withMultipliedOpacity(0),
                     ],
                     stops: const [0, 0.8, 1.0],

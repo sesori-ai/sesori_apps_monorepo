@@ -240,6 +240,11 @@ void main() {
 
     await tester.pumpWidget(_harness(banner: _banner()));
     await tester.pumpAndSettle();
+    final gradient =
+        (tester.widget<Container>(gradientFinder).decoration! as BoxDecoration).gradient! as LinearGradient;
+    expect(gradient.colors[0].a, closeTo(0.98, 0.001));
+    expect(gradient.colors[1].a, closeTo(0.88, 0.001));
+    expect(gradient.colors[2].a, 0);
     expect(
       tester.getSize(gradientFinder).height,
       PregoTopNavigation.barHeight + _bannerHeight,

@@ -832,8 +832,8 @@ class _PromptInputState() extends State<PromptInput> {
           begin: Alignment.center,
           end: Alignment.topCenter,
           colors: [
-            prego.colors.bgSurface1.withValues(alpha: 0.9),
-            prego.colors.bgSurface1.withValues(alpha: 0.7),
+            prego.colors.bgSurface1.withValues(alpha: 0.98),
+            prego.colors.bgSurface1.withValues(alpha: 0.88),
             prego.colors.bgSurface1.withValues(alpha: 0),
           ],
           stops: const [0, 0.8, 1.0],

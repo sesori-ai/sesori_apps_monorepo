@@ -43,6 +43,9 @@ defaults and queued client sends coherent.
   same timestamp rather than reordering an established turn. Finalized parts
   that arrive before their envelope are retained and reconciled without showing
   an empty user bubble or switching the composer to follow-up wording.
+- Transcript content scrolling behind the top navigation or floating composer
+  dissolves into a strong surface-colour fade, keeping the title and controls
+  visually separate and screenshot-readable without text collisions.
 
 ## Regression Levels
 
@@ -78,6 +81,8 @@ queue, turn length, and client count.
   visually unrelated surface or renders authored Markdown as literal syntax.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
+- Scrolled transcript text remains clearly visible through the fade and collides
+  with the navigation title or floating composer controls.
 
 ## Known Limitations
 
