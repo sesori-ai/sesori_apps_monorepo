@@ -100,6 +100,34 @@ void main() {
     expect(find.text("Copied"), findsNothing);
   });
 
+  testWidgets("sizes to short text and caps long text at 16 pixel side insets", (tester) async {
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      _harness(
+        Builder(
+          builder: (context) {
+            presenter = PregoPopupAlertPresenter.of(context);
+            return const SizedBox.expand();
+          },
+        ),
+      ),
+    );
+
+    presenter.show(title: "Copied", duration: null);
+    await tester.pumpAndSettle();
+    final shortWidth = tester.getSize(find.byType(PregoPopupAlertsNotifications)).width;
+    final shortTextHeight = tester.getSize(find.text("Copied")).height;
+
+    const longTitle =
+        "This popup has enough text to reach the available width and then continue naturally onto another line";
+    presenter.show(title: longTitle, duration: null);
+    await tester.pumpAndSettle();
+
+    expect(shortWidth, lessThan(800 - 2 * PregoSpacing.xl));
+    expect(tester.getSize(find.byType(PregoPopupAlertsNotifications)).width, 800 - 2 * PregoSpacing.xl);
+    expect(tester.getSize(find.text(longTitle)).height, greaterThan(shortTextHeight));
+  });
+
   testWidgets("uses overlay status-bar padding when a modal strips its top padding", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(

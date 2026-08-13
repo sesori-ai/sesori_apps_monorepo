@@ -85,11 +85,12 @@ class const PregoPopupAlertsNotifications({
                   PregoSpacing.xl,
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLeading(colors),
                     const SizedBox(width: PregoSpacing.lg),
-                    Expanded(child: _buildContent(prego)),
+                    Flexible(child: _buildContent(prego)),
                   ],
                 ),
               ),
@@ -388,23 +389,20 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
           top: false,
           bottom: false,
           child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 343),
-              child: FadeTransition(
-                opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, -0.12),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
-                  child: PregoPopupAlertsNotifications(
-                    title: widget.title,
-                    message: widget.message,
-                    variant: widget.variant,
-                    primaryAction: widget.primaryAction,
-                    secondaryAction: widget.secondaryAction,
-                    onClose: widget.showCloseButton ? _dismiss : null,
-                  ),
+            child: FadeTransition(
+              opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -0.12),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
+                child: PregoPopupAlertsNotifications(
+                  title: widget.title,
+                  message: widget.message,
+                  variant: widget.variant,
+                  primaryAction: widget.primaryAction,
+                  secondaryAction: widget.secondaryAction,
+                  onClose: widget.showCloseButton ? _dismiss : null,
                 ),
               ),
             ),
