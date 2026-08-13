@@ -42,17 +42,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
-    gh.lazySingleton<_i948.SecureStorage>(
-      () => _i757.DesktopSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
-    );
-    gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
-    gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
-    gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
     gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
       () => _i20.DesktopOAuthDeviceDescriptorProvider(
         gh<_i833.DeviceInfoPlugin>(),
       ),
     );
+    gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
+    gh.lazySingleton<_i948.SecureStorage>(
+      () => _i757.DesktopSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
+    );
+    gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
+    gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
     return this;
   }
 }

@@ -112,6 +112,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i908.TemporaryDirectoryClient>(
       () => _i908.TemporaryDirectoryClient(),
     );
+    gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
+      () => _i363.FlutterOAuthDeviceDescriptorProvider(
+        gh<_i833.DeviceInfoPlugin>(),
+      ),
+    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
     gh.lazySingleton<_i948.LocalNotificationClient>(
@@ -127,14 +132,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.RouteDispatcher>(
       () => _i610.GoRouterRouteDispatcher(),
     );
+    gh.lazySingleton<_i948.SecureStorage>(
+      () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
+    );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
     );
     gh.lazySingleton<_i140.ComposerImagePicker>(
       () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
-    );
-    gh.lazySingleton<_i948.SecureStorage>(
-      () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
     gh.lazySingleton<_i982.FirebaseApp>(
@@ -164,11 +169,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseDisabled},
-    );
-    gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
-      () => _i363.FlutterOAuthDeviceDescriptorProvider(
-        gh<_i833.DeviceInfoPlugin>(),
-      ),
     );
     gh.lazySingleton<_i948.AttachmentThumbnailStorage>(
       () => _i963.FlutterAttachmentThumbnailStorage(
@@ -215,6 +215,13 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseDisabled},
     );
+    gh.lazySingleton<_i901.DeepLinkService>(
+      () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i553.FailureReporter>(
+      () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
+    );
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
         voiceApi: gh<_i948.VoiceApi>(),
@@ -224,10 +231,6 @@ extension GetItInjectableX on _i174.GetIt {
         wakeLockService: gh<_i511.WakeLockService>(),
         audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
-      dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i901.DeepLinkService>(
-      () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i948.PushMessagingSource>(
@@ -241,9 +244,6 @@ extension GetItInjectableX on _i174.GetIt {
         analytics: gh<_i398.FirebaseAnalytics>(),
         capability: gh<_i948.AnalyticsRuntimeCapability>(),
       ),
-    );
-    gh.lazySingleton<_i553.FailureReporter>(
-      () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
     );
     return this;
   }

@@ -84,7 +84,7 @@ flutter:
 dev_dependencies:
   no_slop_linter:
     path: "../../shared/no_slop_linter"
-  build_runner: any
+  build_runner: ^2.16.0
   flutter_test:
     sdk: flutter
   mocktail: ^1.0.5
