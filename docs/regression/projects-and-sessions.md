@@ -99,10 +99,10 @@ after a marker has been established.
   catalog and session handlers in `bridge/routing/`
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`
 - Tests: `bridge/app/test/bridge/routing/catalog_read_handlers_test.dart`,
-  `test/bridge/repositories/project_repository_test.dart`;
+  `bridge/app/test/bridge/repositories/project_repository_test.dart`;
   `client/module_core/test/services/session_list_service_test.dart`,
-  `test/services/session_unseen_tracker_test.dart`,
-  `test/cubits/session_list/session_list_cubit_test.dart`
+  `client/module_core/test/services/session_unseen_tracker_test.dart`,
+  `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
   `setup-aware-plugin-management`, `relay-request-concurrency`;
   `.plan/active/session-user-interaction-order`
