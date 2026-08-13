@@ -63,7 +63,7 @@
 - [ ] One late-title future set; drain actual workflows, abort metadata HTTP on
   shutdown, and deadline-bound standalone token refresh.
 - [ ] Keep the normalized event consumer alive through late-title drain, then
-  drain its tails before dispatcher disposal.
+  fence mutation producers before draining its listener and event tails.
 - [ ] Shared encryption returns preallocated typed bytes without boxed integer
   framing; analyze/test shared crypto and bridge relay callers explicitly.
 - [ ] Generalize the existing deletion stream/listener; do not add a second
@@ -121,7 +121,7 @@
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational result including this record, within the 750-900 target:
-  `PLAN.md +750`, `TRACKER.md +144`, total `+894 / -0`.
+  `PLAN.md +751`, `TRACKER.md +144`, total `+895 / -0`.
 
 ### Manual matrix
 

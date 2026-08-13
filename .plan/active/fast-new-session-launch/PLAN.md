@@ -417,17 +417,18 @@ The composition root wires lifecycle ownership explicitly:
    subscription move out of the broad `_subscriptions` composite. `_teardown`
    keeps both live while draining routed requests and relay completions, so no
    accepted route can still reach late-title registration.
-4. `_teardown` awaits `SessionCreationService.drain`; `OrchestratorSession` maps
-   each typed listener output to `SessionEventDispatcher`. It then disposes the
-   listener, awaits that local subscription, and disposes the event dispatcher,
-   which drains its per-plugin tails before closing normalized output.
-5. `_teardown` then awaits the latest `_pluginEventProcessingTails` and
+4. `_teardown` awaits `SessionCreationService.drain`, then begins/drains
+   `SessionOperationDispatcher` while `OrchestratorSession` still maps typed
+   local mutations to `SessionEventDispatcher`.
+5. With all mutation producers fenced, `_teardown` disposes
+   `SessionMutationDispatcher`, then the listener, and awaits the Orchestrator's
+   local-mutation subscription. It disposes `SessionEventDispatcher`, which
+   drains per-plugin tails before closing normalized output.
+6. `_teardown` then awaits the latest `_pluginEventProcessingTails` and
    `_pendingPartCaptures`, which drains delivery of those final normalized
    outputs, and only then cancels the normalized event subscription.
-6. Only after the full event path drains does `_teardown` begin/drain
-   `SessionOperationDispatcher` and dispose `SessionMutationDispatcher`. The
-   shutdown coordinator closes the shared HTTP client/database only after the
-   whole `OrchestratorSession` drain phase.
+7. The shutdown coordinator closes the shared HTTP client/database only after
+   the whole `OrchestratorSession` drain phase.
 
 This order gives every tracked title task live mutation/event dependencies,
 admits no task after the drain snapshot, and requires no global job registry.
