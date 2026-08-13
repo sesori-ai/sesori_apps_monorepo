@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 9 merged; Step 10 in progress
+- **Series state:** Step 9 merged; Step 10 in review
 - **Current step:** 10/11
 - **Implementation base:** synchronized `origin/main` at `4b3d67f3`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** Pending
-- **Next action:** Verify Step 10 viewer activation and stored-reference delivery
+- **Current PR:** [#891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891)
+- **Next action:** Monitor Step 10 CI and review
 
 ## Plan Review
 
@@ -40,7 +40,7 @@
 | [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
 | [x] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) merged |
 | [x] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | [PR #889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889) merged |
-| [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | In progress |
+| [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | [PR #891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891) in review |
 | [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
 
 ## Locked Decisions
