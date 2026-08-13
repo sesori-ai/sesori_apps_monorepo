@@ -32,11 +32,14 @@ The visible policy otherwise remains unchanged:
 
 "User-side activity" deliberately means the bridge's existing unseen-state
 marker, not perfect human-origin provenance. It advances for normalized user
-messages and manual question/permission replies, and it excludes permission
-replies consumed by bridge auto-approval before normal event routing. A backend
-that represents automatic compaction or other generated input as a user message
-can advance it. This is accepted for a low-impact running-list heuristic rather
-than adding per-plugin inference and correlation state.
+messages and question/permission reply or rejection events, and it excludes
+permission replies consumed by bridge auto-approval before normal event routing.
+Lifecycle cleanup also emits those normalized events when abort, thread close,
+process exit, or disposal cancels pending input, so that cleanup can advance the
+marker without a human reply. A backend that represents automatic compaction or
+other generated input as a user message can also advance it. These are accepted
+for a low-impact running-list heuristic rather than adding per-plugin inference
+and correlation state.
 
 ## Complexity Budget
 
@@ -44,7 +47,9 @@ The implementation must stay within all of these constraints:
 
 - no database column, schema migration, or backfill;
 - no new bridge or client long-lived mutable state;
-- no plugin API or production plugin change;
+- no plugin API, classifier, or behavioral plugin change; mechanical shared
+  `Session` constructor updates pass null where a plugin builds a pre-enrichment
+  event payload;
 - no dispatcher flag, operation hook, backend classifier, message correlation,
   dedupe collection, timer, lock, registry, or lifecycle owner;
 - one existing persisted scalar projected additively onto existing REST and SSE
@@ -67,6 +72,10 @@ If implementation exceeds this budget, stop and ask before adding machinery.
   the service's strictly monotonic local timestamp.
 - Permission auto-approval replies are consumed in `Orchestrator` before mapping
   and therefore do not advance the marker.
+- ACP abort/dispose cleanup, Codex thread-close cleanup, and Claude process-exit
+  cleanup emit ordinary normalized reply/rejection events so open clients retire
+  pending input. Those events currently advance the same marker and are part of
+  its accepted lifecycle semantics.
 - Root REST projections already read the stored row but currently expose only
   the derived `unseen` boolean. The existing `session.unseen_changed` event is
   emitted after each relevant marker write but also omits the timestamp.
@@ -102,6 +111,9 @@ the source provides.
   fields from old bridges decode as null.
 - Plugin-originated session DTOs remain unaware of the field; bridge enrichment
   adds the durable value after the normalized plugin boundary.
+- Existing ACP and Codex mappers that directly construct shared `Session`
+  payloads pass `lastUserActivityAt: null`. These are required mechanical
+  constructor updates only; plugins neither derive nor own the marker.
 
 No write path changes. Existing timestamp ordering, idempotence, auto-approval
 filtering, and persistence preservation remain authoritative.
@@ -133,8 +145,11 @@ business logic.
 map and passes it with the current activity map to `SessionListService`.
 Its tracker subscription must call `_emitFiltered` so a committed activity
 patch re-runs the comparator even when the session was already running and no
-separate status event follows. Replace the current unseen-only callback behavior;
-do not add another subscription or stream.
+separate status event follows. Retain the existing `SessionListLoaded` guard
+before calling `_emitFiltered`: the tracker's seeded `BehaviorSubject` replays
+during initial loading and must not replace the loading state with an empty
+loaded list. Replace only the current loaded-state unseen update after that
+guard; do not add another subscription or stream.
 
 `SessionListService.visibleSessions` keeps its existing partition. For running
 roots, compare:
@@ -169,6 +184,10 @@ No new route, event variant, capability, or compatibility shim is added.
 - Automatic compaction or generated backend input normalized as a user message
   can move a running session. The marker is explicitly user-side activity, not a
   proof of human intent.
+- Lifecycle-generated permission replies and question rejections used to clear
+  pending UI can move a running session after abort, thread close, process exit,
+  or disposal. They retain their existing unseen-routing semantics; this plan
+  does not add plugin-specific origin metadata to distinguish them.
 - Markers carrying backend event times are comparable only when those backends
   share a sufficiently aligned clock domain. A remote or clock-skewed backend
   can pin one running session above or below genuinely newer activity from
@@ -229,6 +248,8 @@ branch or worktree is created.
 - Add nullable `lastUserActivityAt` to shared `Session` and
   `session.unseen_changed`, then regenerate shared source.
 - Project `last_user_message_at` through bridge REST and post-write patch seams.
+- Add required null arguments to existing ACP/Codex shared `Session`
+  constructors without changing plugin behavior or marker ownership.
 - Replace the existing unseen tracker value with typed session-list state while
   retaining its one cache/tick/subscription lifecycle.
 - Replace alphabetical running order with activity recency and stable ties.
@@ -273,10 +294,13 @@ Automated proof:
 - bridge catalog/detail projections and committed unseen patches carry the
   existing marker without changing any write or unseen formula;
 - permission auto-approval remains filtered before marker routing;
+- lifecycle-generated reply/rejection events retain their documented activity
+  semantics and clear pending input without new provenance state;
 - tracker live max-merge, REST replacement, optimistic unseen update, initial
   load, and in-flight fetch behavior retain the latest marker;
 - a tracker patch while the target is already running immediately re-runs the
-  visible comparator without waiting for another status event or refresh;
+  visible comparator without waiting for another status event or refresh, while
+  the initial replay remains guarded until `SessionListLoaded`;
 - running comparator, null fallback, deterministic ties, and unchanged inactive,
   awaiting-only, archived, project, and child ordering; and
 - Git diff proves no schema/migration or production plugin change.
@@ -291,7 +315,9 @@ End-to-end proof:
 - a current app decoding an omitted marker fixture uses the documented fallback.
 
 No every-plugin live matrix is required. Existing plugin event normalization is
-not changed or newly claimed by this work.
+not changed or newly claimed by this work. Focused mapper analysis/tests cover
+the mechanical null constructor updates in packages that directly build shared
+`Session` payloads.
 
 ## Architecture Review History
 

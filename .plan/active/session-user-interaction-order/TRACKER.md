@@ -14,7 +14,8 @@
 ## Simplicity Contract
 
 - [x] Zero new database columns or migrations.
-- [x] Zero plugin API or production plugin changes.
+- [x] Zero plugin API, classifier, or behavioral plugin changes; required
+  shared-`Session` constructors may receive mechanical null arguments.
 - [x] Zero dispatcher flags or bridge operation hooks.
 - [x] Zero classifiers, correlation maps, dedupe collections, timers, locks,
   registries, or new lifecycle owners.
@@ -36,6 +37,8 @@
 - [x] Archived filtering and project/child ordering remain unchanged.
 - [x] Auto-approved permission replies remain excluded by current orchestrator
   filtering.
+- [x] Lifecycle-generated reply/rejection events can count when abort, thread
+  close, process exit, or disposal clears pending input.
 - [x] Automatic compaction/generated input can count when normalized as a user
   message; no plugin inference is added.
 - [x] Cross-backend activity order assumes sufficiently aligned source clocks;
@@ -71,12 +74,16 @@
 - [ ] Add nullable `lastUserActivityAt` to shared `Session` and the existing
   list-state patch; regenerate source.
 - [ ] Map existing persisted markers through bridge REST/detail and patch seams.
+- [ ] Pass null through ACP/Codex shared `Session` constructors without deriving
+  or owning the bridge marker in plugin code.
 - [ ] Replace tracker boolean values with typed unseen/activity list state while
   retaining its existing cache, tick, subscription, and lifecycle.
 - [ ] Preserve marker values across live max-merge, REST seeding, and optimistic
   unseen updates.
 - [ ] Re-run `_emitFiltered` directly from the existing tracker subscription so
   an activity patch reorders an already-running session immediately.
+- [ ] Preserve the `SessionListLoaded` guard around that callback so seeded
+  tracker replay cannot replace initial loading with an empty loaded list.
 - [ ] Replace alphabetical running order with activity/fallback recency and IDs.
 - [ ] Prove unchanged inactive, awaiting-only, archived, project, child, and
   auto-approval behavior.
@@ -121,6 +128,11 @@
   marker would require the second persisted scalar this redesign intentionally
   removed; the effect is limited to running-list order and refresh cannot make
   incomparable clocks comparable.
+- **2026-08-13 lifecycle/constructor review:** recorded that existing plugin
+  lifecycle cancellation replies share the marker's normalized activity
+  semantics. Allowed required null arguments at ACP/Codex shared `Session`
+  constructors while preserving zero plugin behavior/classifier changes, and
+  retained the loaded-state guard around live re-filtering.
 
 ## Verification Log
 
