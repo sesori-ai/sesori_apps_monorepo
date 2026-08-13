@@ -8,7 +8,7 @@
 - **Plan PR:** [#865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865)
 - **Series state:** Step 1/4 rewritten around existing persisted state
 - **Current step:** 1/4 in review; no production source published
-- **Next action:** publish revised plan/skill and update PR #865
+- **Next action:** monitor Step 1 review and merge readiness
 - **Production source changes published:** none
 
 ## Simplicity Contract
@@ -131,3 +131,10 @@
 - Published the rewrite in `1ee36b9d0`, updated PR #865 to the exact four-step
   title and zero-new-state body, and confirmed GitHub has no unresolved inline
   review threads.
+- Against the current merge base, `git diff --numstat $(git merge-base
+  origin/main HEAD) HEAD -- .plan/active/session-user-interaction-order/PLAN.md
+  .plan/active/session-user-interaction-order/TRACKER.md
+  .agents/skills/sesori-plan-maker/SKILL.md` reports PLAN `+298/-0`, TRACKER
+  `+133/-0`, and skill `+31/-0`. The plan/tracker documentation total is 431
+  lines within the recorded 350-650 target; total Step 1 additions including the
+  skill are 462 lines. The same range passes `git diff --check`.
