@@ -29,6 +29,11 @@ final class const PiSessionHistoryParseException({required final Object innerErr
   String toString() => "PiSessionHistoryParseException";
 }
 
+final class const PiSessionHistoryCommandDiagnostic({required final String detail}) implements Exception {
+  @override
+  String toString() => "Pi session history command failed: $detail";
+}
+
 final class PiSessionProcessRepository({
   required final PiSessionStorageApi _storageApi,
   required final PiSessionHistoryStorageApi _historyStorageApi,
@@ -266,6 +271,7 @@ final class PiSessionProcessRepository({
   Never _throwLoadFailure({required String path, required Object error, required StackTrace stack}) {
     final localError = switch (error) {
       PiInvalidSessionHistoryException(:final cause) => PiSessionHistoryParseException(innerError: cause),
+      PiRpcCommandFailureException(:final error) => PiSessionHistoryCommandDiagnostic(detail: error),
       _ => error,
     };
     Log.w("[pi] failed to load session history at '$path'", localError, stack);

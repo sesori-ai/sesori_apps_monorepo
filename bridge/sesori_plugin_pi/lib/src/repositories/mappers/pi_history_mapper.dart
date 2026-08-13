@@ -169,6 +169,7 @@ final class PiHistoryMapper({required final String pluginId}) {
               final messageId = identities.next(role: PiMessageIdentityRole.bashExecution, timestamp: timestamp);
               final failed = cancelled || (exitCode != null && exitCode != 0);
               final clippedOutput = _clip(output);
+              final visibleOutput = clippedOutput.isEmpty ? null : clippedOutput;
               messages.add(
                 _toolMessage(
                   sessionId: sessionId,
@@ -176,8 +177,8 @@ final class PiHistoryMapper({required final String pluginId}) {
                   timestamp: timestamp,
                   tool: "bash",
                   title: _clip(command),
-                  output: failed ? null : clippedOutput,
-                  error: failed ? clippedOutput : null,
+                  output: failed ? null : visibleOutput,
+                  error: failed ? visibleOutput : null,
                   status: failed ? PluginToolStatus.error : PluginToolStatus.completed,
                 ),
               );

@@ -484,6 +484,25 @@ void main() {
       expect(messages.toString(), isNot(contains(privatePath)));
     });
 
+    test("uses null for silent bash output", () {
+      const bash = PiAgentMessageDto.bashExecution(
+        command: "true",
+        output: "",
+        exitCode: 0,
+        cancelled: false,
+        truncated: false,
+        timestamp: 9,
+      );
+
+      final messages = mapper.map(
+        sessionId: sessionId,
+        entries: [_message(id: "silent", parentId: null, message: bash)],
+        leafId: "silent",
+      );
+
+      expect(messages.single.parts.single.state?.output, isNull);
+    });
+
     test("bounds combined tool-result text while preserving later attachments", () {
       const assistant = PiAgentMessageDto.assistant(
         content: [PiContentDto.toolCall(id: "call", name: "tool")],

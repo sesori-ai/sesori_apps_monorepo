@@ -170,6 +170,30 @@ void main() {
       expect(process.killed, isTrue);
     });
 
+    test("logs command failure detail locally without exposing it remotely", () async {
+      const detail = "model selection failed before history read";
+      final process = FakePiProcess();
+      final repository = _repository(processFactory: ({required spec}) async => process);
+
+      final warnings = await _captureWarnings(() async {
+        final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+        final command = await waitForCommand(process: process, type: "get_entries");
+        process.emitFailure(id: command["id"]! as String, command: "get_entries", error: detail);
+        await expectLater(
+          pending,
+          throwsA(
+            isA<PluginOperationException>().having(
+              (error) => error.toString(),
+              "remote error",
+              isNot(contains(detail)),
+            ),
+          ),
+        );
+      });
+
+      expect(warnings, contains(detail));
+    });
+
     test("does not fall back for process exit without exact no-model diagnostic", () async {
       final process = FakePiProcess();
       final repository = _repository(
