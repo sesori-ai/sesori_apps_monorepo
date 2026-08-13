@@ -38,13 +38,13 @@ class HermesPlugin._({
     final sessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
-      pluginId: HermesIdentity.pluginId,
-      agentDisplayName: HermesIdentity.displayName,
+      pluginId: HermesPluginIdentity.pluginId,
+      agentDisplayName: HermesPluginIdentity.displayName,
     );
     final mapper = AcpEventMapper(
       launchDirectory: cwd,
-      agentId: HermesIdentity.pluginId,
-      pluginId: HermesIdentity.pluginId,
+      agentId: HermesPluginIdentity.pluginId,
+      pluginId: HermesPluginIdentity.pluginId,
       configurationTracker: configurationTracker,
       contentMapper: contentMapper,
     );
@@ -61,15 +61,15 @@ class HermesPlugin._({
 
   this
     : super(
-        id: HermesIdentity.pluginId,
-        agentDisplayName: HermesIdentity.displayName,
+        id: HermesPluginIdentity.pluginId,
+        agentDisplayName: HermesPluginIdentity.displayName,
       );
 
   @override
-  String get clientName => HermesIdentity.clientName;
+  String get clientName => HermesPluginIdentity.clientName;
 
   @override
-  String get clientVersion => HermesIdentity.clientVersion;
+  String get clientVersion => HermesPluginIdentity.clientVersion;
 
   /// Hermes advertises the configured provider as an agent auth method first
   /// and a terminal-setup method after it (see `build_auth_methods`); `null`
