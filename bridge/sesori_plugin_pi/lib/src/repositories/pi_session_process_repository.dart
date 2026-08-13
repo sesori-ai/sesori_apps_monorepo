@@ -1,3 +1,5 @@
+import "dart:async" show TimeoutException;
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginMessageWithParts, PluginOperationException;
 
@@ -41,6 +43,7 @@ final class PiSessionProcessRepository({
   required Map<String, String> environment,
   required final PiProcessFactory _processFactory,
   required final PiHistoryMapper _historyMapper,
+  required final Duration _startupExitTimeout,
 }) {
   static const Duration _historyRpcTimeout = Duration(seconds: 15);
 
@@ -121,7 +124,11 @@ final class PiSessionProcessRepository({
         if (!_isNoModelStartupFailure(client.stderrDiagnostics)) rethrow;
         Error.throwWithStackTrace(PiHistoryRpcStartupUnavailableException(cause: error), stack);
       } on PiRpcStdinException catch (error, stack) {
-        await client.processExit;
+        try {
+          await client.processExit.timeout(_startupExitTimeout);
+        } on TimeoutException {
+          Error.throwWithStackTrace(error, stack);
+        }
         if (!_isNoModelStartupFailure(client.stderrDiagnostics)) rethrow;
         Error.throwWithStackTrace(PiHistoryRpcStartupUnavailableException(cause: error), stack);
       }

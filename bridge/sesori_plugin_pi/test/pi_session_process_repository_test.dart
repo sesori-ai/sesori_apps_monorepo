@@ -193,6 +193,34 @@ void main() {
       expect(messages.single.parts.single.text, "from file");
     });
 
+    test("bounds stdin-failure exit wait and rethrows the original failure", () async {
+      final process = FakePiProcess();
+      final repository = _repository(
+        processFactory: ({required spec}) async => process,
+        startupExitTimeout: const Duration(milliseconds: 10),
+      );
+
+      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      await waitForCommand(process: process, type: "get_entries");
+      process.failStdin(error: const SocketException("stalled startup"));
+
+      await expectLater(
+        pending,
+        throwsA(
+          isA<PluginOperationException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PiSessionHistoryLoadException>().having(
+              (error) => error.innerError,
+              "innerError",
+              isA<PiRpcStdinException>(),
+            ),
+          ),
+        ),
+      );
+      expect(process.killed, isTrue);
+    });
+
     test("logs command failure detail locally without exposing it remotely", () async {
       const detail = "model selection failed before history read";
       final process = FakePiProcess();
@@ -311,6 +339,7 @@ void main() {
 PiSessionProcessRepository _repository({
   PiSessionStorageApi? storageApi,
   required PiProcessFactory processFactory,
+  Duration startupExitTimeout = const Duration(seconds: 5),
 }) {
   final storage = storageApi ?? _FakeStorageApi();
   return PiSessionProcessRepository(
@@ -320,6 +349,7 @@ PiSessionProcessRepository _repository({
     environment: const {"EXTRA": "value"},
     processFactory: processFactory,
     historyMapper: PiHistoryMapper(pluginId: "pi"),
+    startupExitTimeout: startupExitTimeout,
   );
 }
 
