@@ -68,8 +68,12 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
 
   void _logDiagnostics(_PiScanDiagnostics diagnostics) {
     for (final failure in diagnostics.malformedMetadataFailures) {
+      final validationReason = switch (failure.error) {
+        _PiInvalidSessionHeaderException(:final reason) => ": $reason",
+        _ => "",
+      };
       Log.w(
-        "[pi] skipped malformed session metadata at '${failure.path}'",
+        "[pi] skipped malformed session metadata$validationReason at '${failure.path}'",
         _PiMetadataParseException(cause: failure.error),
         failure.stackTrace,
       );
@@ -416,7 +420,17 @@ _PiScannedSession? _readSessionMetadata({
               final id = _pathValue(record.id);
               final cwd = _pathValue(record.cwd);
               if (id == null || cwd == null || !p.isAbsolute(cwd)) {
-                diagnostics.malformedMetadataRecords += 1;
+                diagnostics.recordMalformedMetadata(
+                  path: resolvedPath,
+                  error: _PiInvalidSessionHeaderException(
+                    reason: id == null
+                        ? "invalid session id"
+                        : cwd == null
+                        ? "invalid working directory"
+                        : "non-absolute working directory",
+                  ),
+                  stackTrace: StackTrace.current,
+                );
                 invalidBeforeHeader = true;
                 return;
               }
@@ -827,6 +841,11 @@ final class const _PiSettingsParseException({required final Object cause}) imple
 final class const _PiMetadataParseException({required final Object cause}) implements Exception {
   @override
   String toString() => "Invalid Pi session metadata";
+}
+
+final class const _PiInvalidSessionHeaderException({required final String reason}) implements Exception {
+  @override
+  String toString() => "Invalid Pi session header: $reason";
 }
 
 final class _PiMetadataLineScanner() {

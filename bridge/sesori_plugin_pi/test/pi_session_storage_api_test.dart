@@ -412,6 +412,31 @@ void main() {
       expect(warnings, isNot(contains(project)));
     });
 
+    test("logs an invalid header path and validation reason", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final root = fixture.directory("sessions");
+      final path = p.join(root, "old-empty-cwd.jsonl");
+      File(path).writeAsStringSync(
+        '${jsonEncode({"type": "session", "id": "old-session", "cwd": ""})}\n',
+      );
+
+      final warnings = await _captureWarnings(() async {
+        expect(
+          await fixture
+              .api(
+                environment: {"PI_CODING_AGENT_SESSION_DIR": root},
+              )
+              .listSessionMetadata(knownDirectories: const {}),
+          isEmpty,
+        );
+      });
+
+      expect(warnings, contains(File(path).resolveSymbolicLinksSync()));
+      expect(warnings, contains("invalid working directory"));
+      expect(warnings, isNot(contains("old-session")));
+    });
+
     test("malformed and oversized settings fall back without logging their content", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);
