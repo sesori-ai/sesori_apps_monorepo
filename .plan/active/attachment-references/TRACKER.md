@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 7 PR open
-- **Current step:** 7/11
-- **Implementation base:** `origin/main` at `3ae9dd43`
+- **Series state:** Step 8 ready to open
+- **Current step:** 8/11
+- **Implementation base:** `origin/main` at `88059e20`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864)
-- **Next action:** Monitor Step 7 while implementing Step 8 locally
+- **Current PR:** None
+- **Next action:** Commit, synchronize, and open the Step 8 PR
 
 ## Plan Review
 
@@ -37,8 +37,8 @@
 | [x] | 4/11 | `⚙️ [attachment-references] feat(bridge): reference images in history pages [step 4/11]` | 700-1,150 | [PR #843](https://github.com/sesori-ai/sesori_apps_monorepo/pull/843) merged |
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
 | [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
-| [ ] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) open |
-| [ ] | 8/11 | `⚙️ [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 850-1,350 | Pending |
+| [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
+| [ ] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,500 | Ready to open |
 | [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
 | [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
 | [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
@@ -177,8 +177,36 @@
   moderate to complex.
   Committed as `f8c5a3b5`, pushed, and opened as
   [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864).
+  Review fixes tightened original bounds, preserved failure context, scoped
+  Cubit/request reuse, coalesced raw transport before per-caller mapping, and
+  moved strict base64 validation into the decode isolate. CI passed 12/12 and
+  the PR squash-merged as `88059e20`.
+- Step 8 (local): Added a pure-Dart thumbnail storage capability and a mobile
+  app-private temporary-directory adapter with atomic writes, safe path
+  segments, and metadata listing. `MessageImageRepository` now persists only
+  validated thumbnail bytes under SHA-256 account/attachment identities,
+  recovers from missing or corrupt entries, coalesces matching work, prunes each
+  account scope to 64 MiB by oldest modification time, and fences auth cleanup
+  against late fetches and writes. Mobile eagerly activates the disposable auth
+  cleanup service after core DI; desktop remains bootable with no storage
+  binding or cache-service resolution. History and SSE requests remain inline.
+  Fatal analysis passes in module_core, mobile, and desktop; all 1,105
+  module-core, 972 mobile, and 16 desktop tests pass, including 28 focused
+  cache-policy tests, 31 focused mobile storage/DI/widget tests, and two desktop
+  DI tests. DI generation refreshed the intended registrations but exits
+  non-zero on unrelated existing primary-constructor parser errors and the
+  product-analytics enum generator crash. Architecture implementation review
+  approved the foundation, repository/service, platform, DI, privacy, and
+  lifecycle seams with no blockers. `git diff --check` passes.
 
 ## Findings And Plan Deltas
+
+- **2026-08-13 - Thumbnail cache budget:** The user approved a 64 MiB
+  per-account cache scope with oldest-on-write pruning. Reads do not update file
+  timestamps, avoiding an LRU index or background worker.
+- **2026-08-13 - Step 8 complexity:** Persistence, auth-generation cleanup,
+  mobile eager lifecycle activation, and desktop lazy-startup boundaries raised
+  Step 8 from moderate/850-1,350 to complex/1,250-1,500 changed lines.
 
 - **2026-08-10 - Scope split:** The user approved one active transcript-viewing
   plan and a separate considerations-only record for prompt uploads rather than

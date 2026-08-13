@@ -24,6 +24,8 @@ class _MockSessionApi extends Mock implements SessionApi;
 
 class _MockAuthSession extends Mock implements AuthSession;
 
+class _MockAttachmentThumbnailStorage extends Mock implements AttachmentThumbnailStorage;
+
 class _FakeImageSaver implements ImageSaver {
   Uint8List? savedBytes;
   String? savedFilename;
@@ -105,6 +107,7 @@ void main() {
   late _FakeImageSharer imageSharer;
   late _MockSessionApi sessionApi;
   late _MockAuthSession authSession;
+  late _MockAttachmentThumbnailStorage thumbnailStorage;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -119,6 +122,7 @@ void main() {
     imageSharer = _FakeImageSharer();
     sessionApi = _MockSessionApi();
     authSession = _MockAuthSession();
+    thumbnailStorage = _MockAttachmentThumbnailStorage();
     when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
     when(() => urlLauncher.launch(any(), mode: any(named: "mode"))).thenAnswer((_) async => true);
     GetIt.instance.registerSingleton<UrlLauncher>(urlLauncher);
@@ -132,6 +136,7 @@ void main() {
         ),
         sessionApi: sessionApi,
         authSession: authSession,
+        attachmentThumbnailStorage: thumbnailStorage,
       ),
     );
   });
@@ -534,6 +539,7 @@ void main() {
         ),
         sessionApi: sessionApi,
         authSession: authSession,
+        attachmentThumbnailStorage: thumbnailStorage,
       ),
     );
     const attachment = MessageAttachment.remoteUrl(
@@ -569,6 +575,7 @@ void main() {
         ),
         sessionApi: sessionApi,
         authSession: authSession,
+        attachmentThumbnailStorage: thumbnailStorage,
       ),
     );
     const attachment = MessageAttachment.remoteUrl(

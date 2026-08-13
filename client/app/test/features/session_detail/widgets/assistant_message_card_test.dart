@@ -22,6 +22,8 @@ class _MockSessionApi extends Mock implements SessionApi;
 
 class _MockAuthSession extends Mock implements AuthSession;
 
+class _MockAttachmentThumbnailStorage extends Mock implements AttachmentThumbnailStorage;
+
 class _AssistantMessageCardHarness extends StatefulWidget {
   final MessageWithParts message;
   final Map<String, String> streamingText;
@@ -150,6 +152,7 @@ void main() {
         api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
         sessionApi: _MockSessionApi(),
         authSession: authSession,
+        attachmentThumbnailStorage: _MockAttachmentThumbnailStorage(),
       ),
     );
   });

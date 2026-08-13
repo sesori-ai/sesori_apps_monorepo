@@ -1,13 +1,17 @@
+import "dart:async";
 import "dart:convert";
 import "dart:isolate";
 import "dart:typed_data";
 
+import "package:cryptography/cryptography.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/message_image_api.dart";
 import "../api/session_api.dart";
+import "../foundation/platform/attachment_thumbnail_storage.dart";
+import "../logging/logging.dart";
 
 typedef _StoredRequestScope = ({
   String accountId,
@@ -15,7 +19,26 @@ typedef _StoredRequestScope = ({
   String sessionId,
   String attachmentId,
   SessionAttachmentRendition rendition,
+  int accountGeneration,
 });
+
+typedef _StoredImageData = ({Uint8List bytes, String mime});
+
+sealed class _StoredDataResult {
+  const _StoredDataResult();
+}
+
+final class _StoredDataSuccess extends _StoredDataResult {
+  final _StoredImageData data;
+
+  const _StoredDataSuccess({required this.data});
+}
+
+final class _StoredDataTerminal extends _StoredDataResult {
+  final MessageImageLoadResult result;
+
+  const _StoredDataTerminal({required this.result});
+}
 
 final _strictBase64 = RegExp(r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
 
@@ -102,6 +125,8 @@ final class MessageImageRequestException implements Exception {
 class MessageImageRepository {
   static const _remoteFetchTimeout = Duration(seconds: 15);
   static const _maxFilenameBytes = 255;
+  static const _thumbnailCacheMaxBytes = 64 * 1024 * 1024;
+  static const _thumbnailCacheVersion = "message-thumbnail-v1";
   static const _supportedRasterMimes = {
     "image/bmp",
     "image/gif",
@@ -113,15 +138,22 @@ class MessageImageRepository {
   final MessageImageApi _api;
   final SessionApi _sessionApi;
   final AuthSession _authSession;
-  final Map<_StoredRequestScope, Future<ApiResponse<SessionAttachmentResponse>>> _activeStoredLoads = {};
+  final AttachmentThumbnailStorage _thumbnailStorage;
+  final Sha256 _sha256 = Sha256();
+  final Map<_StoredRequestScope, Future<_StoredDataResult>> _activeStoredLoads = {};
+  final Map<String, int> _accountGenerations = {};
+  final Map<String, Set<Future<_StoredDataResult>>> _startedAccountOperations = {};
+  final Map<String, Future<void>> _accountCleanups = {};
 
   MessageImageRepository({
     required MessageImageApi api,
     required SessionApi sessionApi,
     required AuthSession authSession,
+    required AttachmentThumbnailStorage attachmentThumbnailStorage,
   }) : _api = api,
        _sessionApi = sessionApi,
-       _authSession = authSession;
+       _authSession = authSession,
+       _thumbnailStorage = attachmentThumbnailStorage;
 
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
     MessageAttachmentInlineImage(:final mime) ||
@@ -233,16 +265,8 @@ class MessageImageRepository {
     required MessageAttachmentStoredImage attachment,
     required SessionAttachmentRendition rendition,
   }) async {
-    final accountId = switch (_authSession.currentState) {
-      AuthAuthenticated(:final user) => user.id,
-      AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
-    };
-    if (accountId == null) {
-      return MessageImageLoadFailure(
-        cause: const MessageImageAuthenticationRequiredException(),
-        stackTrace: StackTrace.current,
-      );
-    }
+    final accountId = _authenticatedAccountId;
+    if (accountId == null) return _authenticationRequired();
     if (accountId.trim().isEmpty ||
         attachment.bridgeId.trim().isEmpty ||
         attachment.attachmentId.trim().isEmpty ||
@@ -251,55 +275,124 @@ class MessageImageRepository {
       return const MessageImageLoadRejected();
     }
 
+    if (rendition == SessionAttachmentRendition.thumbnail) {
+      await waitForAccountCleanup(accountId: accountId);
+      if (_authenticatedAccountId != accountId) return _authenticationRequired();
+    }
     final scope = (
       accountId: accountId,
       bridgeId: attachment.bridgeId,
       sessionId: sessionId,
       attachmentId: attachment.attachmentId,
       rendition: rendition,
+      accountGeneration: _accountGenerations[accountId] ?? 0,
     );
-    final active = _activeStoredLoads[scope];
-    final request =
-        active ??
-        _sessionApi.getAttachment(
-          sessionId: sessionId,
-          attachmentId: attachment.attachmentId,
-          rendition: rendition,
-        );
-    _activeStoredLoads[scope] = request;
+    final operation = _activeStoredLoads[scope] ?? _startStoredLoad(scope: scope);
+    final result = await operation;
+    return switch (result) {
+      _StoredDataSuccess(:final data)
+          when rendition == SessionAttachmentRendition.original &&
+              (data.mime != _normalizedMime(mime: attachment.mime) || data.bytes.length != attachment.byteLength) =>
+        const MessageImageLoadRejected(),
+      _StoredDataSuccess(:final data) => MessageImageLoadSuccess(
+        bytes: data.bytes,
+        mime: data.mime,
+        actionFilename: _actionFilename(filename: attachment.filename, mime: data.mime),
+        originalUri: null,
+      ),
+      _StoredDataTerminal(:final result) => result,
+    };
+  }
+
+  Future<_StoredDataResult> _startStoredLoad({required _StoredRequestScope scope}) {
+    final generation = scope.accountGeneration;
+    late final Future<_StoredDataResult> operation;
+    operation = _loadStoredDataWithDerivedKey(scope: scope, generation: generation).whenComplete(() {
+      if (identical(_activeStoredLoads[scope], operation)) {
+        _activeStoredLoads.remove(scope);
+      }
+      _startedAccountOperations[scope.accountId]?.remove(operation);
+      if (_startedAccountOperations[scope.accountId]?.isEmpty ?? false) {
+        _startedAccountOperations.remove(scope.accountId);
+      }
+    });
+    _activeStoredLoads[scope] = operation;
+    if (scope.rendition == SessionAttachmentRendition.thumbnail) {
+      (_startedAccountOperations[scope.accountId] ??= {}).add(operation);
+    }
+    return operation;
+  }
+
+  Future<_StoredDataResult> _loadStoredDataWithDerivedKey({
+    required _StoredRequestScope scope,
+    required int generation,
+  }) async => _loadStoredData(
+    scope: scope,
+    generation: generation,
+    cacheScope: scope.rendition == SessionAttachmentRendition.thumbnail
+        ? await _accountCacheScope(accountId: scope.accountId)
+        : null,
+    cacheKey: scope.rendition == SessionAttachmentRendition.thumbnail
+        ? await _thumbnailCacheKey(
+            bridgeId: scope.bridgeId,
+            sessionId: scope.sessionId,
+            attachmentId: scope.attachmentId,
+          )
+        : null,
+  );
+
+  Future<_StoredDataResult> _loadStoredData({
+    required _StoredRequestScope scope,
+    required int generation,
+    required String? cacheScope,
+    required String? cacheKey,
+  }) async {
+    if (cacheScope != null && cacheKey != null) {
+      final cached = await _readCachedThumbnail(scope: cacheScope, key: cacheKey);
+      if (cached != null) return _StoredDataSuccess(data: cached);
+    }
+
     try {
-      final response = await request;
-      return switch (response) {
+      final response = await _sessionApi.getAttachment(
+        sessionId: scope.sessionId,
+        attachmentId: scope.attachmentId,
+        rendition: scope.rendition,
+      );
+      final result = switch (response) {
         SuccessResponse(:final data) => await _validateStoredResponse(
           response: data,
-          attachment: attachment,
-          rendition: rendition,
+          expectedOriginalMime: null,
+          expectedOriginalByteLength: null,
+          rendition: scope.rendition,
         ),
-        ErrorResponse(:final error) => _storedRequestFailure(error: error),
+        ErrorResponse(:final error) => _StoredDataTerminal(result: _storedRequestFailure(error: error)),
       };
-    } on Object catch (cause, stackTrace) {
-      return MessageImageLoadFailure(
-        cause: MessageImageRequestException(
-          kind: MessageImageRequestFailureKind.unknown,
-          statusCode: null,
-          innerError: cause,
-        ),
-        stackTrace: stackTrace,
-      );
-    } finally {
-      if (identical(_activeStoredLoads[scope], request)) {
-        final _ = _activeStoredLoads.remove(scope);
+      if (result case _StoredDataSuccess(:final data)
+          when cacheScope != null && cacheKey != null && generation == (_accountGenerations[scope.accountId] ?? 0)) {
+        await _writeAndPruneThumbnail(scope: cacheScope, key: cacheKey, bytes: data.bytes);
       }
+      return result;
+    } on Object catch (cause, stackTrace) {
+      return _StoredDataTerminal(
+        result: MessageImageLoadFailure(
+          cause: MessageImageRequestException(
+            kind: MessageImageRequestFailureKind.unknown,
+            statusCode: null,
+            innerError: cause,
+          ),
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
-  Future<MessageImageLoadResult> _validateStoredResponse({
+  Future<_StoredDataResult> _validateStoredResponse({
     required SessionAttachmentResponse response,
-    required MessageAttachmentStoredImage attachment,
+    required String? expectedOriginalMime,
+    required int? expectedOriginalByteLength,
     required SessionAttachmentRendition rendition,
   }) async {
     final mime = _normalizedMime(mime: response.mime);
-    final declaredMime = _normalizedMime(mime: attachment.mime);
     final maxBytes = switch (rendition) {
       SessionAttachmentRendition.thumbnail => maxInlineMessageAttachmentBytes,
       SessionAttachmentRendition.original => maxTranscriptImageBytes,
@@ -312,29 +405,161 @@ class MessageImageRepository {
         base64Length: response.base64.length,
       ),
     };
-    if ((rendition == SessionAttachmentRendition.original && mime != declaredMime) ||
+    if ((expectedOriginalMime != null && mime != expectedOriginalMime) ||
         !_supportedRasterMimes.contains(mime) ||
         response.byteLength < 0 ||
         response.byteLength > maxBytes ||
         !base64WithinLimit) {
-      return const MessageImageLoadRejected();
+      return const _StoredDataTerminal(result: MessageImageLoadRejected());
     }
 
     final bytes = await Isolate.run(() => _tryDecodeStrictBase64Image(response.base64));
     if (bytes == null ||
         bytes.length != response.byteLength ||
         bytes.length > maxBytes ||
-        (rendition == SessionAttachmentRendition.original && bytes.length != attachment.byteLength) ||
+        (expectedOriginalByteLength != null && bytes.length != expectedOriginalByteLength) ||
         !_hasExpectedSignature(bytes: bytes, mime: mime)) {
-      return const MessageImageLoadRejected();
+      return const _StoredDataTerminal(result: MessageImageLoadRejected());
     }
-    return MessageImageLoadSuccess(
-      bytes: bytes,
-      mime: mime,
-      actionFilename: _actionFilename(filename: attachment.filename, mime: mime),
-      originalUri: null,
-    );
+    return _StoredDataSuccess(data: (bytes: bytes, mime: mime));
   }
+
+  Future<_StoredImageData?> _readCachedThumbnail({
+    required String scope,
+    required String key,
+  }) async {
+    Uint8List? bytes;
+    try {
+      bytes = await _thumbnailStorage.read(scope: scope, key: key);
+    } on Object catch (cause, stackTrace) {
+      logw("Failed to read stored message thumbnail cache", cause, stackTrace);
+      return null;
+    }
+    if (bytes == null) return null;
+    final mime = _detectedRasterMime(bytes: bytes);
+    if (bytes.isEmpty || bytes.length > maxInlineMessageAttachmentBytes || mime == null) {
+      try {
+        await _thumbnailStorage.delete(scope: scope, key: key);
+      } on Object catch (cause, stackTrace) {
+        logw("Failed to delete corrupt stored message thumbnail cache entry", cause, stackTrace);
+      }
+      return null;
+    }
+    return (bytes: bytes, mime: mime);
+  }
+
+  Future<void> _writeAndPruneThumbnail({
+    required String scope,
+    required String key,
+    required Uint8List bytes,
+  }) async {
+    try {
+      await _thumbnailStorage.write(scope: scope, key: key, bytes: bytes);
+    } on Object catch (cause, stackTrace) {
+      logw("Failed to write stored message thumbnail cache", cause, stackTrace);
+      return;
+    }
+
+    List<AttachmentThumbnailMetadata> entries;
+    try {
+      entries = await _thumbnailStorage.listMetadata(scope: scope);
+    } on Object catch (cause, stackTrace) {
+      logw("Failed to list stored message thumbnail cache", cause, stackTrace);
+      return;
+    }
+    entries.sort((left, right) {
+      final modifiedOrder = left.modifiedAt.compareTo(right.modifiedAt);
+      return modifiedOrder == 0 ? left.key.compareTo(right.key) : modifiedOrder;
+    });
+    var totalBytes = entries.fold<int>(0, (total, entry) => total + entry.sizeBytes);
+    for (final entry in entries) {
+      if (totalBytes <= _thumbnailCacheMaxBytes) break;
+      try {
+        await _thumbnailStorage.delete(scope: scope, key: entry.key);
+        totalBytes -= entry.sizeBytes;
+      } on Object catch (cause, stackTrace) {
+        logw("Failed to prune stored message thumbnail cache", cause, stackTrace);
+      }
+    }
+  }
+
+  Future<String> _accountCacheScope({required String accountId}) => _hashedSegment(
+    value: "$_thumbnailCacheVersion\u0000account\u0000${utf8.encode(accountId).length}\u0000$accountId",
+  );
+
+  Future<String> _thumbnailCacheKey({
+    required String bridgeId,
+    required String sessionId,
+    required String attachmentId,
+  }) => _hashedSegment(
+    value:
+        "$_thumbnailCacheVersion\u0000thumbnail\u0000${utf8.encode(bridgeId).length}\u0000$bridgeId"
+        "\u0000${utf8.encode(sessionId).length}\u0000$sessionId"
+        "\u0000${utf8.encode(attachmentId).length}\u0000$attachmentId",
+  );
+
+  Future<String> _hashedSegment({required String value}) async {
+    final hash = await _sha256.hash(utf8.encode(value));
+    return hash.bytes.map((byte) => byte.toRadixString(16).padLeft(2, "0")).join();
+  }
+
+  Future<void> waitForAccountCleanup({required String accountId}) async {
+    while (true) {
+      final cleanup = _accountCleanups[accountId];
+      if (cleanup == null) return;
+      await cleanup;
+    }
+  }
+
+  Future<void> retireAccountThumbnailCache({required String accountId}) {
+    _accountGenerations[accountId] = (_accountGenerations[accountId] ?? 0) + 1;
+    final previousCleanup = _accountCleanups[accountId];
+    late final Future<void> cleanup;
+    cleanup =
+        _retireAccountThumbnailCache(
+          accountId: accountId,
+          previousCleanup: previousCleanup,
+        ).whenComplete(() {
+          if (identical(_accountCleanups[accountId], cleanup)) {
+            _accountCleanups.remove(accountId);
+          }
+        });
+    _accountCleanups[accountId] = cleanup;
+    return cleanup;
+  }
+
+  Future<void> _retireAccountThumbnailCache({
+    required String accountId,
+    required Future<void>? previousCleanup,
+  }) async {
+    if (previousCleanup != null) await previousCleanup;
+    final started = _startedAccountOperations[accountId]?.toList() ?? const <Future<_StoredDataResult>>[];
+    await Future.wait(started);
+    final scope = await _accountCacheScope(accountId: accountId);
+    try {
+      await _thumbnailStorage.deleteScope(scope: scope);
+    } on Object catch (cause, stackTrace) {
+      logw("Failed to delete retired account thumbnail cache", cause, stackTrace);
+    }
+  }
+
+  Future<void> waitForThumbnailCacheCleanup() async {
+    while (true) {
+      final cleanups = _accountCleanups.values.toList();
+      if (cleanups.isEmpty) return;
+      await Future.wait(cleanups);
+    }
+  }
+
+  String? get _authenticatedAccountId => switch (_authSession.currentState) {
+    AuthAuthenticated(:final user) => user.id,
+    AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
+  };
+
+  MessageImageLoadFailure _authenticationRequired() => MessageImageLoadFailure(
+    cause: const MessageImageAuthenticationRequiredException(),
+    stackTrace: StackTrace.current,
+  );
 
   MessageImageLoadFailure _storedRequestFailure({required ApiError error}) {
     final cause = switch (error) {
@@ -370,6 +595,13 @@ class MessageImageRepository {
       _ => error.stackTrace ?? StackTrace.current,
     };
     return MessageImageLoadFailure(cause: cause, stackTrace: stackTrace);
+  }
+
+  String? _detectedRasterMime({required Uint8List bytes}) {
+    for (final mime in _supportedRasterMimes) {
+      if (_hasExpectedSignature(bytes: bytes, mime: mime)) return mime;
+    }
+    return null;
   }
 
   static String _normalizedMime({required String mime}) => mime.split(";").first.trim().toLowerCase();
