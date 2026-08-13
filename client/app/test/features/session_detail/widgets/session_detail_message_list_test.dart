@@ -1,6 +1,7 @@
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
@@ -12,6 +13,7 @@ class const _SessionDetailMessageListHarness({
   super.key,
   required final List<MessageWithParts> initialMessages,
   required final Map<String, String> initialStreamingText,
+  final List<QueuedSessionSubmission> initialQueuedMessages = const [],
   final String? initialRetryErrorMessage,
   final Future<void> Function()? onLoadOlderMessages,
 }) extends StatefulWidget {
@@ -22,14 +24,17 @@ class const _SessionDetailMessageListHarness({
 class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessageListHarness> {
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
+  late List<QueuedSessionSubmission> _queuedMessages;
   late String? _retryErrorMessage;
   bool _isLoadingOlderMessages = false;
+  int? lastCancelledQueuedMessageIndex;
 
   @override
   void initState() {
     super.initState();
     _messages = widget.initialMessages;
     _streamingText = widget.initialStreamingText;
+    _queuedMessages = widget.initialQueuedMessages;
     _retryErrorMessage = widget.initialRetryErrorMessage;
   }
 
@@ -60,6 +65,11 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _retryErrorMessage = message);
   }
 
+  void cancelQueuedMessage(int index) {
+    lastCancelledQueuedMessageIndex = index;
+    setState(() => _queuedMessages = [..._queuedMessages]..removeAt(index));
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -72,11 +82,14 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
+          sendingSubmission: null,
+          queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
           retryErrorMessage: _retryErrorMessage,
+          onCancelQueuedMessage: cancelQueuedMessage,
         ),
       ),
     );
@@ -490,6 +503,45 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_position(tester).pixels, 0);
+  });
+
+  testWidgets("canceling a queued row while detached removes its frozen row", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const submission = QueuedSessionSubmission.text(
+      text: "Queued while reading history",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        initialQueuedMessages: const [submission],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_listViewKey),
+      delta: const Offset(0, 30),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, "Cancel"));
+    await _pumpListUpdate(tester);
+
+    expect(harnessKey.currentState!.lastCancelledQueuedMessageIndex, 0);
+    expect(find.text("Queued while reading history"), findsNothing);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 
   // --- Regression tests for the old "jump to top" / "view shifts" bugs ---

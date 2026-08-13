@@ -1,12 +1,10 @@
 import "package:flutter/material.dart";
-import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/remote_failure_x.dart";
-import "queued_message_bubble.dart";
 
 /// A floating call-to-action pinned below the top bar when the session has a
 /// pending question or permission. Rendered as a semantic-tinted liquid-glass
@@ -67,37 +65,6 @@ class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
           titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
       ),
-    );
-  }
-}
-
-class const SessionDetailQueuedMessagesSection({
-  super.key,
-  required final QueuedSessionSubmission? sendingSubmission,
-  required final List<QueuedSessionSubmission> messages,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // beginSend moves this exact submission instance from pending to active;
-        // identity keeps its bubble element mounted so it can animate the change.
-        if (sendingSubmission case final submission?)
-          QueuedMessageBubble(
-            key: ObjectKey(submission),
-            submission: submission,
-            presentation: const QueuedMessageBubblePresentation.sending(),
-          ),
-        for (var i = 0; i < messages.length; i++)
-          QueuedMessageBubble(
-            key: ObjectKey(messages[i]),
-            submission: messages[i],
-            presentation: QueuedMessageBubblePresentation.pending(
-              onCancel: () => context.read<SessionDetailCubit>().cancelQueuedMessage(i),
-            ),
-          ),
-      ],
     );
   }
 }

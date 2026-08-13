@@ -27,56 +27,53 @@ class const QueuedMessageBubble({
     final reducedMotion = context.isReducedMotion;
     final duration = reducedMotion ? Duration.zero : const Duration(milliseconds: 240);
     final isPending = presentation is PendingMessageBubblePresentation;
-    final status = KeyedSubtree(
-      key: ValueKey(presentation.runtimeType),
-      child: switch (presentation) {
-        SendingMessageBubblePresentation() => _status(
-          prego: prego,
-          icon: ExcludeSemantics(
-            child: SizedBox.square(
-              dimension: 14,
-              child: CircularProgressIndicator(
-                value: reducedMotion ? 0.75 : null,
-                strokeWidth: 1.5,
-                strokeCap: StrokeCap.round,
-                color: prego.colors.textTertiary,
-              ),
+    final status = switch (presentation) {
+      SendingMessageBubblePresentation() => _status(
+        prego: prego,
+        icon: ExcludeSemantics(
+          child: SizedBox.square(
+            dimension: 14,
+            child: CircularProgressIndicator(
+              value: reducedMotion ? 0.75 : null,
+              strokeWidth: 1.5,
+              strokeCap: StrokeCap.round,
+              color: prego.colors.textTertiary,
             ),
           ),
-          label: loc.sessionDetailSendingMessage,
         ),
-        PendingMessageBubblePresentation(:final onCancel) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _status(
-              prego: prego,
-              icon: Icon(
-                submission.isCommand ? TablerRegular.terminal : TablerRegular.clock,
-                size: 14,
-                color: prego.colors.textTertiary,
-              ),
-              label: submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+        label: loc.sessionDetailSendingMessage,
+      ),
+      PendingMessageBubblePresentation(:final onCancel) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _status(
+            prego: prego,
+            icon: Icon(
+              submission.isCommand ? TablerRegular.terminal : TablerRegular.clock,
+              size: 14,
+              color: prego.colors.textTertiary,
             ),
-            const SizedBox(width: PregoSpacing.xs),
-            TextButton.icon(
-              onPressed: onCancel,
-              icon: const Icon(TablerRegular.x, size: 14),
-              label: Text(loc.sessionDetailCancelQueued),
-              style: TextButton.styleFrom(
-                foregroundColor: prego.colors.textTertiary,
-                minimumSize: const Size(44, 44),
-                padding: const EdgeInsetsDirectional.symmetric(
-                  horizontal: PregoSpacing.md,
-                ),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                textStyle: prego.textTheme.textXs.medium,
-                shape: const StadiumBorder(),
+            label: submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+          ),
+          const SizedBox(width: PregoSpacing.xs),
+          TextButton.icon(
+            onPressed: onCancel,
+            icon: const Icon(TablerRegular.x, size: 14),
+            label: Text(loc.sessionDetailCancelQueued),
+            style: TextButton.styleFrom(
+              foregroundColor: prego.colors.textTertiary,
+              minimumSize: const Size(44, 44),
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: PregoSpacing.md,
               ),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: prego.textTheme.textXs.medium,
+              shape: const StadiumBorder(),
             ),
-          ],
-        ),
-      },
-    );
+          ),
+        ],
+      ),
+    };
 
     return Column(
       crossAxisAlignment: .end,
@@ -93,40 +90,7 @@ class const QueuedMessageBubble({
             end: PregoSpacing.x2l,
             bottom: PregoSpacing.xs,
           ),
-          child: reducedMotion
-              ? status
-              : AnimatedSize(
-                  duration: duration,
-                  curve: Curves.easeInOutCubic,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: AnimatedSwitcher(
-                    duration: duration,
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: SizeTransition(
-                        axis: Axis.horizontal,
-                        alignment: AlignmentDirectional.centerEnd,
-                        sizeFactor: animation,
-                        child: child,
-                      ),
-                    ),
-                    layoutBuilder: (currentChild, previousChildren) => Stack(
-                      alignment: AlignmentDirectional.centerEnd,
-                      children: [
-                        for (final child in previousChildren)
-                          IgnorePointer(
-                            child: ExcludeFocus(
-                              child: ExcludeSemantics(child: child),
-                            ),
-                          ),
-                        ?currentChild,
-                      ],
-                    ),
-                    child: status,
-                  ),
-                ),
+          child: status,
         ),
       ],
     );
