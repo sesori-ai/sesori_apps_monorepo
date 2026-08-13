@@ -172,9 +172,10 @@ class const PregoPopupAlertsNotifications({
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
-          center: Alignment.topCenter,
-          radius: 1.15,
-          colors: [Colors.transparent, accent.withValues(alpha: 0.30)],
+          center: const Alignment(0, -0.885),
+          radius: 0.94,
+          transform: const _WideEllipseGradientTransform(6.7),
+          colors: [const Color(0x08FFFFFF), accent.withValues(alpha: 0.30)],
         ),
       ),
     );
@@ -210,6 +211,32 @@ class const PregoPopupAlertsNotifications({
     PregoPopupAlertsNotificationsVariant.info ||
     PregoPopupAlertsNotificationsVariant.loading => PregoButtonsSolidType.regular,
   };
+}
+
+/// Stretches the accent radial into Figma's broad, shallow lower-edge glow.
+class const _WideEllipseGradientTransform(final double scaleX) extends GradientTransform {
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    final centerX = bounds.center.dx;
+    return Matrix4(
+      scaleX,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      centerX * (1 - scaleX),
+      0,
+      0,
+      1,
+    );
+  }
 }
 
 /// A stable presentation target that can be captured before asynchronous work.

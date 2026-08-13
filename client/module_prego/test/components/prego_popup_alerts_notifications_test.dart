@@ -46,6 +46,33 @@ void main() {
     );
   });
 
+  testWidgets("uses Figma's shallow lower-edge accent gradient", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        const PregoPopupAlertsNotifications(
+          title: "Accepted",
+          variant: PregoPopupAlertsNotificationsVariant.success,
+        ),
+      ),
+    );
+
+    final gradient = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.gradient)
+        .whereType<RadialGradient>()
+        .single;
+
+    expect(gradient.center, const Alignment(0, -0.885));
+    expect(gradient.radius, 0.94);
+    expect(gradient.transform, isNotNull);
+    expect(gradient.colors, [
+      const Color(0x08FFFFFF),
+      PregoDesignSystem.dark.colors.fgSuccessSecondary.withValues(alpha: 0.30),
+    ]);
+  });
+
   testWidgets("presenter places the alert below navigation and auto dismisses", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(
