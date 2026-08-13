@@ -207,6 +207,29 @@ void main() {
       expect(tracker.currentProjectUnseen["p1"], isFalse);
     });
 
+    test("an unchanged session update marker does not invalidate an in-flight seed", () {
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: true, lastUserActivityAt: 20)},
+        sinceTick: tracker.tick,
+      );
+      final preFetchTick = tracker.tick;
+
+      tracker.applySessionActivity(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: true,
+        lastUserActivityAt: 20,
+      );
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: 20)},
+        sinceTick: preFetchTick,
+      );
+
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], (unseen: false, lastUserActivityAt: 20));
+    });
+
     test("applyLocalSessionUnseen preserves the marker and never touches the aggregate", () async {
       connectionService.emitUnseenChanged(
         projectId: "p1",
