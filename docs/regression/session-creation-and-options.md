@@ -13,6 +13,10 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's plugin-scoped discovery runs in its host-created state directory,
   never a selected project or the bridge process's launch directory. This keeps
   its global option probe on a valid, stable path when projects move or disappear.
+- Hermes Agent is a stock ACP v1 server: its option discovery uses the base
+  single-agent synthesis (no model picker — the backend's configured model is
+  authoritative), and it advertises image prompt capability so inline attachments
+  are accepted.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
