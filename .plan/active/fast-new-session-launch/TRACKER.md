@@ -67,7 +67,7 @@
 - [ ] Shared encryption returns preallocated typed bytes without boxed integer
   framing; analyze/test shared crypto and bridge relay callers explicitly.
 - [ ] Generalize the existing deletion stream/listener; do not add a second
-  local mutation stream.
+  local mutation stream; Orchestrator owns event dispatch decisions.
 - [ ] Delete obsolete overlay, metadata naming, preferred-name, enrichment, and
   tests in the same owning steps.
 
@@ -121,7 +121,7 @@
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational result including this record, within the 750-900 target:
-  `PLAN.md +756`, `TRACKER.md +144`, total `+900 / -0`.
+  `PLAN.md +750`, `TRACKER.md +144`, total `+894 / -0`.
 
 ### Manual matrix
 

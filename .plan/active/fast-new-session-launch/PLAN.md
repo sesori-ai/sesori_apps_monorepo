@@ -413,19 +413,14 @@ The composition root wires lifecycle ownership explicitly:
    metadata HTTP. An already accepted create may still finish its request, but
    if it reaches durable commit after this fence it returns without scheduling a
    generated title; title generation is best-effort during shutdown.
-3. The normalized `SessionEventDispatcher.events` subscription moves out of the
-   broad `_subscriptions` composite into its own field. `_teardown` cancels
-   external/plugin event producers but deliberately keeps both that normalized
-   event consumer and `SessionMutationListener` subscribed. It drains routed
-   requests and relay completions first, so no accepted route can still reach
-   the late-title registration seam.
-4. `_teardown` then awaits `SessionCreationService.drain`. While it drains, a
-   successful title mutation flows through the still-live listener and
-   normalized event consumer. Afterward it disposes `SessionMutationListener`
-   to fence the final local source, then disposes `SessionEventDispatcher` while
-   the normalized consumer is still live; dispatcher disposal waits its existing
-   per-plugin tails and closes the stream only after every normalized output was
-   published.
+3. The normalized event subscription and Orchestrator-owned local-mutation
+   subscription move out of the broad `_subscriptions` composite. `_teardown`
+   keeps both live while draining routed requests and relay completions, so no
+   accepted route can still reach late-title registration.
+4. `_teardown` awaits `SessionCreationService.drain`; `OrchestratorSession` maps
+   each typed listener output to `SessionEventDispatcher`. It then disposes the
+   listener, awaits that local subscription, and disposes the event dispatcher,
+   which drains its per-plugin tails before closing normalized output.
 5. `_teardown` then awaits the latest `_pluginEventProcessingTails` and
    `_pendingPartCaptures`, which drains delivery of those final normalized
    outputs, and only then cancels the normalized event subscription.
@@ -445,11 +440,10 @@ an ordinary reachable flow, not a title state machine.
 
 Generalize the dispatcher's existing deletion-only local mutation stream to a
 sealed stream with `titleUpdated(Session)` and `deleted(Session)` variants.
-Rename `SessionDeletionListener` to `SessionMutationListener`; it forwards the
-appropriate event through `SessionEventDispatcher`. A local title success emits
-the existing backend-neutral `session.updated` wire event immediately, then
-performs best-effort plugin propagation. Clients already consume this event in
-session list and detail cubits, so no new wire model is needed.
+Rename `SessionDeletionListener` to `SessionMutationListener`; it exposes typed
+local output only. `OrchestratorSession` decides and dispatches the corresponding
+backend-neutral event (`session.updated` for title success) before best-effort
+plugin propagation. Clients already consume it, so no new wire model is needed.
 
 ## Failure Semantics
 
