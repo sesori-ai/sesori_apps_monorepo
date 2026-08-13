@@ -29,7 +29,8 @@ class const QueuedMessageBubble({
     final loc = context.loc;
     final reducedMotion = context.isReducedMotion;
     final duration = reducedMotion ? Duration.zero : const Duration(milliseconds: 240);
-    final isPending = presentation is PendingMessageBubblePresentation;
+    final isPending =
+        presentation is PendingMessageBubblePresentation || presentation is ReadOnlyPendingMessageBubblePresentation;
     final status = switch (presentation) {
       SendingMessageBubblePresentation() => _status(
         prego: prego,

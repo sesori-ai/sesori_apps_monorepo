@@ -596,6 +596,10 @@ void main() {
     expect(find.text("Queued before archive"), findsOneWidget);
     expect(find.text("Queued"), findsOneWidget);
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(
+      tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
+      isTrue,
+    );
   });
 
   testWidgets("closes an open question when it leaves pending state", (tester) async {
