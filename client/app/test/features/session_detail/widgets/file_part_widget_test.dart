@@ -929,6 +929,7 @@ void main() {
 
     expect(find.text("broken.png"), findsOneWidget);
     expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.text("Retry"), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

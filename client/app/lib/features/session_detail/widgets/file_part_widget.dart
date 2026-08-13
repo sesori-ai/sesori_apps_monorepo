@@ -56,7 +56,12 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         imageLoadFailed: false,
         retryable: false,
       ),
-      MessageImagePreviewRejected() || MessageImagePreviewFailed() => _buildFallbackAttachment(
+      MessageImagePreviewRejected() => _buildFallbackAttachment(
+        context: context,
+        imageLoadFailed: true,
+        retryable: attachment is! MessageAttachmentInlineImage,
+      ),
+      MessageImagePreviewFailed() => _buildFallbackAttachment(
         context: context,
         imageLoadFailed: true,
         retryable: true,

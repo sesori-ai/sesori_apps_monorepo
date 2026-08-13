@@ -17,11 +17,12 @@ class const AttachmentCollectionWidget({
   Widget build(BuildContext context) {
     final visibleAttachments = attachments.where((attachment) => attachment is! MessageAttachmentUnknown).toList();
     if (visibleAttachments.isEmpty) return const SizedBox.shrink();
+    final prego = context.prego;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = math.min(constraints.maxWidth, PregoWidths.xxs);
-        final pairedWidth = (width - PregoSpacing.sm) / 2;
+        final width = math.min(constraints.maxWidth, prego.widths.xxs);
+        final pairedWidth = (width - prego.spacing.sm) / 2;
         final duplicateCounts = <String, int>{};
 
         return Align(
@@ -30,10 +31,10 @@ class const AttachmentCollectionWidget({
             key: surfaceKey,
             width: width,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xs),
+              padding: EdgeInsets.symmetric(vertical: prego.spacing.xs),
               child: Wrap(
-                spacing: PregoSpacing.sm,
-                runSpacing: PregoSpacing.sm,
+                spacing: prego.spacing.sm,
+                runSpacing: prego.spacing.sm,
                 children: [
                   for (final (index, attachment) in visibleAttachments.indexed)
                     SizedBox(
