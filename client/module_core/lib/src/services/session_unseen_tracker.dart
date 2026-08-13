@@ -125,12 +125,11 @@ class SessionUnseenTracker(
     _sessionUnseen.add(sessions);
   }
 
-  void applySessionActivity({
-    required String projectId,
-    required String sessionId,
-    required bool unseen,
-    required int? lastUserActivityAt,
-  }) {
+  void _applySessionActivity({required Session session}) {
+    final projectId = session.projectID;
+    final sessionId = session.id;
+    final unseen = session.unseen;
+    final lastUserActivityAt = session.lastUserActivityAt;
     if (_sessionUnseen.isClosed || lastUserActivityAt == null) return;
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
@@ -147,6 +146,10 @@ class SessionUnseenTracker(
 
   void _handleEvent(SseEvent event) {
     try {
+      if (event.data case SesoriSessionUpdated(:final info)) {
+        _applySessionActivity(session: info);
+        return;
+      }
       if (event.data case SesoriSessionUnseenChanged(
         :final projectID,
         :final sessionId,

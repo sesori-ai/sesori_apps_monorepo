@@ -278,13 +278,6 @@ class SessionListCubit({
       existingSession: _allSessions[index],
       session: session,
     );
-    final updatedSession = _allSessions.firstWhere((candidate) => candidate.id == session.id);
-    _sessionUnseenTracker.applySessionActivity(
-      projectId: _projectId,
-      sessionId: updatedSession.id,
-      unseen: updatedSession.unseen,
-      lastUserActivityAt: updatedSession.lastUserActivityAt,
-    );
     logt("[SessionList] session.updated updated id=${session.id}");
     _emitFiltered();
   }

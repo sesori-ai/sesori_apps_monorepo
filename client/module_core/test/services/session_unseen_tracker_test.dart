@@ -32,6 +32,10 @@ class _MockConnectionService() extends Mock implements ConnectionService {
       ),
     );
   }
+
+  void emitSessionUpdated({required Session session}) {
+    _events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: session)));
+  }
 }
 
 void main() {
@@ -207,7 +211,7 @@ void main() {
       expect(tracker.currentProjectUnseen["p1"], isFalse);
     });
 
-    test("an unchanged session update marker does not invalidate an in-flight seed", () {
+    test("an unchanged session update marker does not invalidate an in-flight seed", () async {
       tracker.seedSessions(
         projectId: "p1",
         stateBySessionId: const {"s1": (unseen: true, lastUserActivityAt: 20)},
@@ -215,12 +219,10 @@ void main() {
       );
       final preFetchTick = tracker.tick;
 
-      tracker.applySessionActivity(
-        projectId: "p1",
-        sessionId: "s1",
-        unseen: true,
-        lastUserActivityAt: 20,
+      connectionService.emitSessionUpdated(
+        session: testSession(id: "s1", lastUserActivityAt: 20).copyWith(projectID: "p1"),
       );
+      await pump();
       tracker.seedSessions(
         projectId: "p1",
         stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: 20)},
@@ -230,7 +232,7 @@ void main() {
       expect(tracker.currentSessionUnseen["p1"]?["s1"], (unseen: false, lastUserActivityAt: 20));
     });
 
-    test("a newer session update marker survives REST without invalidating the project seed", () {
+    test("a newer session update marker survives REST without invalidating the project seed", () async {
       tracker.seedSessions(
         projectId: "p1",
         stateBySessionId: const {"s1": (unseen: true, lastUserActivityAt: 20)},
@@ -239,12 +241,10 @@ void main() {
       tracker.seedProjects(const {"p1": true}, sinceTick: tracker.tick);
       final preFetchTick = tracker.tick;
 
-      tracker.applySessionActivity(
-        projectId: "p1",
-        sessionId: "s1",
-        unseen: true,
-        lastUserActivityAt: 30,
+      connectionService.emitSessionUpdated(
+        session: testSession(id: "s1", lastUserActivityAt: 30).copyWith(projectID: "p1"),
       );
+      await pump();
       tracker.seedSessions(
         projectId: "p1",
         stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: 20)},
