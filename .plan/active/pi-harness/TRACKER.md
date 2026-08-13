@@ -360,8 +360,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   or client-UI change; Pi remains app-invisible until Step 18.
 - Architecture implementation review findings on internal DTO seams, injected
   plugin identity, and original local file-read causes were applied.
-- Diff from merge base: +7,009/-20 = 7,029 changed lines; generated lines:
-  4,262; tests run: 128 before review feedback.
+- Diff from merge base after review feedback: +7,119/-22 = 7,141 changed
+  lines; generated lines: 4,262; tests run: 131.
 - Recorded overage: generated closed history unions, RPC/file normalization,
   privacy-safe mapping, and focused regression tests are one replay seam;
   splitting would publish incomplete history or live-parity contracts.
