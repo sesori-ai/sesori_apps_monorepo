@@ -452,10 +452,14 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             builder: (context, bannerHeight, _) => buildScaffold(bannerHeight),
           );
 
-    return _TopBarInsetScope(
-      baseInset: topPad + PregoTopNavigation.barHeight,
-      bannerHeight: _bannerHeight,
-      child: scaffold,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false,
+      body: _TopBarInsetScope(
+        baseInset: topPad + PregoTopNavigation.barHeight,
+        bannerHeight: _bannerHeight,
+        child: scaffold,
+      ),
     );
   }
 }
