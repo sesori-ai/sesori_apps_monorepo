@@ -427,7 +427,7 @@ void main() {
       );
 
       final listing = boundedRepo.getProjects();
-      await gitCliApi.inspectionLimitReached.future;
+      await gitCliApi.inspectionLimitReached.future.timeout(const Duration(seconds: 1));
 
       expect(gitCliApi.inspectedPaths, paths.take(8));
       expect(gitCliApi.nextInspectionStarted.isCompleted, isFalse);
@@ -435,7 +435,7 @@ void main() {
         gitCliApi.results[path]!.complete(true);
       }
 
-      await gitCliApi.nextInspectionStarted.future;
+      await gitCliApi.nextInspectionStarted.future.timeout(const Duration(seconds: 1));
       expect(gitCliApi.inspectedPaths, paths);
       gitCliApi.results[paths.last]!.complete(false);
 
