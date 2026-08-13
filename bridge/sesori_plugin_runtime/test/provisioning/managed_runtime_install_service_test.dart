@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -123,9 +124,11 @@ void main() {
     bool hasAsset = true,
     bool checksumValid = true,
     RuntimeVersion? managedVersion,
+    RuntimeAssetResolver? assetResolver,
   }) {
+    final manifest = _StubManifest(hasAsset: hasAsset);
     return ManagedRuntimeInstallService(
-      manifest: _StubManifest(hasAsset: hasAsset),
+      manifest: manifest,
       versionValidator: _FakeValidator(managedVersion: managedVersion),
       installService: RuntimeInstallService(
         downloadClient: const _FakeDownloadClient(),
@@ -135,6 +138,7 @@ void main() {
         runtimeId: "opencode",
       ),
       cleaner: ManagedRuntimeCleaner(runtimeId: "opencode"),
+      assetResolver: assetResolver ?? ({required target}) async => manifest.assetFor(target: target),
     );
   }
 
@@ -160,6 +164,41 @@ void main() {
 
     expect(events.last, isA<ProvisionFailed>());
     expect((events.last as ProvisionFailed).message, contains("no managed runtime for this platform"));
+  });
+
+  test("awaits async asset resolution and sanitizes resolver failures", () async {
+    final events = await install(
+      build(
+        assetResolver: ({required target}) async {
+          await Future<void>.delayed(Duration.zero);
+          throw StateError("private host evidence");
+        },
+      ),
+    );
+
+    expect(events.last, isA<ProvisionFailed>());
+    final message = (events.last as ProvisionFailed).message;
+    expect(message, contains("Could not select the OpenCode runtime"));
+    expect(message, isNot(contains("private host evidence")));
+  });
+
+  test("preserves an abort that occurs before asset resolution fails", () async {
+    final aborted = StartAbortController();
+    final resolverStarted = Completer<void>();
+    final resolverMayFail = Completer<void>();
+    final events = build(
+      assetResolver: ({required target}) async {
+        resolverStarted.complete();
+        await resolverMayFail.future;
+        throw StateError("resolver stopped");
+      },
+    ).install(environment: const {}, stateDirectory: stateDir.path, startAborted: aborted.signal).toList();
+
+    await resolverStarted.future;
+    aborted.abort();
+    resolverMayFail.complete();
+
+    await expectLater(events, throwsA(isA<PluginStartAbortedException>()));
   });
 
   test("maps a checksum failure to a sanitized ProvisionFailed", () async {

@@ -178,6 +178,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
         branchName: null,
       );
 
@@ -229,6 +230,7 @@ PendingSessionEvent _pending({
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    lastUserActivityAt: null,
     branchName: null,
   );
   return PendingSessionEvent(

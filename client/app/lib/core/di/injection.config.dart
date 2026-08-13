@@ -48,6 +48,8 @@ import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
     as _i326;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
+import 'package:sesori_mobile/core/platform/flutter_attachment_thumbnail_storage.dart'
+    as _i963;
 import 'package:sesori_mobile/core/platform/flutter_image_clipboard.dart'
     as _i274;
 import 'package:sesori_mobile/core/platform/flutter_image_sharer.dart' as _i617;
@@ -167,6 +169,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i948.AttachmentThumbnailStorage>(
+      () => _i963.FlutterAttachmentThumbnailStorage(
+        temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
+      ),
     );
     gh.lazySingleton<_i948.ImageSaver>(
       () => registerModule.imageSaver(

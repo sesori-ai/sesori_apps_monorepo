@@ -192,6 +192,7 @@ void main() {
         pullRequest: null,
         time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
         promptDefaults: null,
+        lastUserActivityAt: null,
       );
       globalEvents.add(
         SseEvent(data: const SesoriSessionCreated(info: childSession)),

@@ -14,6 +14,8 @@ enum RuntimeArchiveLayout() { singleBinary, packageDirectory }
 /// its publisher [assetName] and verified against [sha256] before placement.
 sealed class const RuntimeAsset({required final String assetName, required final String sha256});
 
+typedef RuntimeAssetResolver = Future<RuntimeAsset?> Function({required PlatformTarget target});
+
 /// A runtime release artifact distributed inside an archive.
 ///
 /// [archiveBinaryName] is distinct from [RuntimeManifest.binaryFileName] (the
@@ -80,7 +82,9 @@ abstract class const RuntimeManifest() {
   /// one scheme per runtime.
   RuntimeVersion? parseVersion({required String value});
 
-  /// The pinned asset for [target], or `null` when the platform is unsupported.
+  /// The pinned asset for [target], or `null` when the platform is unsupported
+  /// or requires asynchronous host-specific selection by the installer's
+  /// [RuntimeAssetResolver].
   RuntimeAsset? assetFor({required PlatformTarget target});
 
   /// The download URL for [asset] at [bundledVersion].

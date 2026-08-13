@@ -1,7 +1,7 @@
 import "dart:ui" as ui;
 
-import "package:flutter/material.dart";
 import "package:flutter_svg/flutter_svg.dart";
+import "package:material_ui/material_ui.dart";
 import "package:vector_graphics/vector_graphics.dart";
 
 /// The Sesori app icon: the wave artwork (rendered from the compiled SVG) plus

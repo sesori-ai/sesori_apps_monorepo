@@ -1,6 +1,6 @@
-import "package:flutter/material.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
+import "package:material_ui/material_ui.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";

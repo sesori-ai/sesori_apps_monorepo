@@ -35,6 +35,11 @@ void main() {
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
     expect(getIt<AnalyticsRouteListener>(), isA<AnalyticsRouteListener>());
+    expect(getIt.isRegistered<AttachmentThumbnailStorage>(), isTrue);
+    expect(
+      getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(),
+      isTrue,
+    );
 
     final staticAdapter = getIt<FirebaseMessagingStaticAdapter>();
     staticAdapter.registerBackgroundHandler(handler: (_) async {});

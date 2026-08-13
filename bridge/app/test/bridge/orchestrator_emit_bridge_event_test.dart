@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
@@ -238,6 +239,60 @@ void main() {
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
     await secondMessages.cancel();
+  });
+
+  test("committed user activity emits its durable marker in the unseen patch", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await harness.database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
+    await harness.database.sessionDao.insertSession(
+      sessionId: "session",
+      backendSessionId: "session",
+      projectId: "project",
+      isDedicated: false,
+      createdAt: 1,
+      worktreePath: null,
+      branchName: null,
+      baseBranch: null,
+      baseCommit: null,
+      lastAgent: null,
+      lastAgentModel: null,
+      pluginId: "one",
+    );
+    final patch = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUnseenChanged)
+        .cast<SesoriSessionUnseenChanged>()
+        .first;
+
+    harness.plugins.single.emitEvent(
+      BridgeSseMessageUpdated(
+        info: const Message.user(
+          id: "message",
+          sessionID: "session",
+          agent: null,
+          time: MessageTime(created: 1234, completed: null),
+        ).toJson(),
+      ),
+    );
+
+    final event = await patch.timeout(const Duration(seconds: 2));
+    expect(event.sessionId, "session");
+    expect(event.lastUserActivityAt, 1234);
+    expect((await harness.database.sessionDao.getSession(sessionId: "session"))?.lastUserMessageAt, 1234);
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
   });
 
   test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {
@@ -849,6 +904,7 @@ class const _OrchestratorHarness({
   required final PluginLifecycleService lifecycleService,
   required final OrchestratorComposition composition,
   required final BridgeRuntime runtime,
+  required final AppDatabase database,
   required final http.Client httpClient,
 }) {
   static Future<_OrchestratorHarness> create({
@@ -905,6 +961,7 @@ class const _OrchestratorHarness({
       lifecycleService: lifecycleService,
       composition: composition,
       runtime: runtime,
+      database: database,
       httpClient: httpClient,
     );
   }

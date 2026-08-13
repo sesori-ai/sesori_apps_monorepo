@@ -29,4 +29,19 @@ void main() {
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
   });
+
+  test("desktop bootstrap leaves the mobile thumbnail cache unbound and unresolved", () {
+    configureDesktopDependencies();
+
+    expect(getIt.isRegistered<AttachmentThumbnailStorage>(), isFalse);
+    expect(getIt.isRegistered<MessageThumbnailCacheService>(), isTrue);
+    expect(
+      getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(),
+      isFalse,
+    );
+    expect(
+      getIt.checkLazySingletonInstanceExists<MessageImageRepository>(),
+      isFalse,
+    );
+  });
 }

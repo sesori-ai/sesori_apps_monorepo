@@ -59,6 +59,8 @@ class TestPluginRuntime({
   /// Plugin ids that are registered but not running, so `useIfActive` reports
   /// them as unavailable while `use` would start them.
   final Set<String> stoppedPluginIds = {};
+  Completer<void>? useStarted;
+  Future<void>? useGate;
   bool generationCurrent = true;
   bool eventGenerationCurrent = true;
   int currentGeneration = 1;
@@ -185,6 +187,8 @@ class TestPluginRuntime({
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
+    if (useStarted case final started? when !started.isCompleted) started.complete();
+    if (useGate case final gate?) await gate;
     final plugin = _plugins[pluginId];
     if (plugin == null) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");

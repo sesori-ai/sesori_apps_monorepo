@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:cue/cue.dart";
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";

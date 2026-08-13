@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../../core/extensions/text_style_x.dart";
 import "../models/diff_file_view_model.dart";

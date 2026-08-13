@@ -1,8 +1,8 @@
 import "dart:async";
 
-import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
@@ -414,7 +414,6 @@ void main() {
       () => harness.sessionRepository.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -472,7 +471,6 @@ void main() {
       () => harness.sessionRepository.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async => ApiResponse<void>.success(null));

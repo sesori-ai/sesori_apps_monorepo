@@ -22,6 +22,11 @@ defaults and queued client sends coherent.
   finalized messages enter durable history matching a history read. Internal
   backend command records are not rendered as conversation messages or used as
   assistant model attribution.
+- Normalized user-message events feed the durable user-side activity marker used
+  to order running roots. Known event times are applied monotonically. Backend
+  input represented as a user message, including automatic compaction or other
+  generated input, can therefore count; the marker does not claim perfect human
+  provenance.
 - Prompt defaults update after a successful send and are published so other
   surfaces converge. Backend-originated mode changes such as an approved plan
   exit also persist and publish their effective defaults. A defaults-write
@@ -33,16 +38,20 @@ defaults and queued client sends coherent.
   dropped. Each queued send retains the agent, model, and variant selected when
   it was submitted. A submitted prompt remains visible while the bridge is
   accepting it, including during a cold backend startup, and a failed acceptance
-  returns it to the head of the queue. Queued and sending text uses the same brand
-  bubble and Markdown rendering as settled user text; a compact status rail and
-  subtle queued outline carry the transient state, with queued-to-sending changes
-  animated when reduced motion is not requested. A turn started on one client is
-  visible to every other client of that bridge.
+  returns it to the head of the queue. Queued and sending text render as the
+  newest rows inside the scrollable transcript, never as controls pinned above
+  the composer. It uses the same brand bubble and Markdown rendering as settled
+  user text; a compact status rail and subtle queued outline carry the transient
+  state, with the outline change animated when reduced motion is not requested.
+  A turn started on one client is visible to every other client of that bridge.
 - Live message envelopes render in transcript timestamp order even when events
   arrive out of order; late envelopes append after existing envelopes with the
   same timestamp rather than reordering an established turn. Finalized parts
   that arrive before their envelope are retained and reconciled without showing
   an empty user bubble or switching the composer to follow-up wording.
+- Transcript content scrolling behind the top navigation or floating composer
+  dissolves into a strong surface-colour fade, keeping the title and controls
+  visually separate and screenshot-readable without text collisions.
 
 ## Regression Levels
 
@@ -75,9 +84,15 @@ queue, turn length, and client count.
   completion notification, or queued sends reorder, vanish, or resend while the
   session-detail cubit remains alive. Submitted text disappears while bridge
   acceptance or backend startup is still pending, or queued feedback uses a
-  visually unrelated surface or renders authored Markdown as literal syntax.
+  visually unrelated or composer-pinned surface, or renders authored Markdown
+  as literal syntax.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
+- A normalized user message fails to advance the existing activity marker, or
+  assistant/tool/title-only updates replace an established marker and move the
+  running session as if they were user activity.
+- Scrolled transcript text remains clearly visible through the fade and collides
+  with the navigation title or floating composer controls.
 
 ## Known Limitations
 

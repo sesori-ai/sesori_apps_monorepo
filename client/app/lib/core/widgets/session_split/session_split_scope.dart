@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 /// Inherited widget that exposes adaptive split state to descendants.
 ///

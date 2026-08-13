@@ -122,6 +122,26 @@ void main() {
       ).called(1);
     });
 
+    test("initial tracker replay leaves the cubit loading until REST completes", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      final response = Completer<ApiResponse<SessionListResponse>>();
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) => response.future);
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cubit.state, isA<SessionListLoading>());
+
+      response.complete(ApiResponse.success(const SessionListResponse(items: [])));
+      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+    });
+
     test("failed initial list render marks its project claim failed", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       when(
@@ -218,7 +238,7 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
-      "running activity received after REST creates an alphabetical prefix",
+      "running activity received after REST creates a timestamp-ordered prefix",
       build: () {
         mockRouteSource = MockRouteSource();
         when(
@@ -260,7 +280,7 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
-      "running activity received before REST is applied when sessions arrive",
+      "running activity received before REST uses timestamps when sessions arrive",
       build: () {
         mockRouteSource = MockRouteSource();
         mockSseEventTracker.emitSessionActivity({
@@ -442,7 +462,6 @@ void main() {
           () => mockSessionService.archiveSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
@@ -454,7 +473,6 @@ void main() {
         final result = await cubit.archiveSession(
           sessionId: "s1",
           deleteWorktree: false,
-          deleteBranch: false,
           force: false,
         );
         expect(result, isTrue);
@@ -487,7 +505,6 @@ void main() {
           () => mockSessionService.archiveSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -498,7 +515,6 @@ void main() {
         final result = await cubit.archiveSession(
           sessionId: "s1",
           deleteWorktree: false,
-          deleteBranch: false,
           force: false,
         );
         expect(result, isFalse);
@@ -533,7 +549,6 @@ void main() {
           () => mockSessionService.archiveSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenThrow(
@@ -550,7 +565,6 @@ void main() {
         final result = await cubit.archiveSession(
           sessionId: "s1",
           deleteWorktree: true,
-          deleteBranch: true,
           force: false,
         );
         expect(result, isFalse);
@@ -580,7 +594,6 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -591,7 +604,6 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: false,
-          deleteBranch: false,
           force: false,
         );
         expect(result, isTrue);
@@ -619,7 +631,6 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
-            deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
         ).thenThrow(
@@ -636,7 +647,6 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: true,
-          deleteBranch: true,
           force: false,
         );
         expect(result, isFalse);
@@ -849,6 +859,7 @@ void main() {
           time: SessionTime(created: 1, updated: 2, archived: null),
           pullRequest: null,
           promptDefaults: null,
+          lastUserActivityAt: null,
         );
         when(
           () => mockProjectRepository.listSessions(
@@ -876,6 +887,7 @@ void main() {
                 time: SessionTime(created: 3, updated: 4, archived: null),
                 pullRequest: null,
                 promptDefaults: null,
+                lastUserActivityAt: null,
               ),
             ),
           ),
@@ -966,21 +978,17 @@ void main() {
           data: SesoriSseEvent.sessionUpdated(info: withoutPullRequest),
         ),
       );
-      final afterSessionUpdate =
-          await cubit.stream.firstWhere(
-                (state) => state is SessionListLoaded && state.sessions.single.title == "Updated",
-              )
-              as SessionListLoaded;
+      final afterSessionUpdate = await cubit.stream.firstWhere(
+        (state) => state is SessionListLoaded && state.sessions.single.title == "Updated",
+      ) as SessionListLoaded;
       expect(afterSessionUpdate.sessions.single.pullRequest, mergedPullRequest);
 
       eventController.add(
         SseEvent(data: const SesoriSessionsUpdated(projectID: projectId)),
       );
-      final afterAuthoritativeRefresh =
-          await cubit.stream.firstWhere(
-                (state) => state is SessionListLoaded && state.sessions.single.pullRequest == null,
-              )
-              as SessionListLoaded;
+      final afterAuthoritativeRefresh = await cubit.stream.firstWhere(
+        (state) => state is SessionListLoaded && state.sessions.single.pullRequest == null,
+      ) as SessionListLoaded;
       expect(afterAuthoritativeRefresh.sessions.single.pullRequest, isNull);
     });
 
@@ -1111,6 +1119,7 @@ void main() {
                 time: SessionTime(created: 1, updated: 2, archived: null),
                 pullRequest: null,
                 promptDefaults: null,
+                lastUserActivityAt: null,
               ),
             ),
           ),
@@ -1352,6 +1361,7 @@ void main() {
                 time: SessionTime(created: 1, updated: 2, archived: null),
                 pullRequest: null,
                 promptDefaults: null,
+                lastUserActivityAt: null,
               ),
             ),
           ),
@@ -1392,6 +1402,7 @@ void main() {
                 time: SessionTime(created: 1, updated: 3, archived: null),
                 pullRequest: null,
                 promptDefaults: null,
+                lastUserActivityAt: null,
               ),
             ),
           ),
@@ -1430,6 +1441,7 @@ void main() {
                 time: SessionTime(created: 1, updated: 2, archived: null),
                 pullRequest: null,
                 promptDefaults: null,
+                lastUserActivityAt: null,
               ),
             ),
           ),
@@ -1459,6 +1471,7 @@ void main() {
             time: SessionTime(created: 1, updated: 2, archived: null),
             pullRequest: null,
             promptDefaults: null,
+            lastUserActivityAt: null,
           ),
           Session(
             branchName: null,
@@ -1471,6 +1484,7 @@ void main() {
             time: SessionTime(created: 3, updated: 4, archived: null),
             pullRequest: null,
             promptDefaults: null,
+            lastUserActivityAt: null,
           ),
         ];
         when(
@@ -1924,7 +1938,7 @@ void main() {
         (_) async => ApiResponse.success(
           SessionListResponse(
             items: [
-              testSession(id: "s1", unseen: true),
+              testSession(id: "s1", unseen: true, lastUserActivityAt: 20),
               testSession(id: "s2"),
             ],
           ),
@@ -1936,10 +1950,97 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(
-        fakeSessionUnseenTracker.seededSessions.single.unseenBySessionId,
-        equals({"s1": true, "s2": false}),
+        fakeSessionUnseenTracker.seededSessions.single.stateBySessionId,
+        equals({
+          "s1": (unseen: true, lastUserActivityAt: 20),
+          "s2": (unseen: false, lastUserActivityAt: null),
+        }),
       );
       expect((cubit.state as SessionListLoaded).unseenBySessionId, equals({"s1": true, "s2": false}));
+    });
+
+    test("live tracker marker reorders sessions that are already running", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [
+              testSession(id: "newer").copyWith(
+                time: const SessionTime(created: 1, updated: 20, archived: null),
+              ),
+              testSession(id: "older").copyWith(
+                time: const SessionTime(created: 1, updated: 10, archived: null),
+              ),
+            ],
+          ),
+        ),
+      );
+      mockSseEventTracker.emitSessionActivity({
+        projectId: {
+          "newer": const SessionActivityInfo(mainAgentRunning: true),
+          "older": const SessionActivityInfo(mainAgentRunning: true),
+        },
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+      expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["newer", "older"]);
+
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        projectId: {
+          "newer": (unseen: false, lastUserActivityAt: 20),
+          "older": (unseen: true, lastUserActivityAt: 30),
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["older", "newer"]);
+    });
+
+    test("live marker received during REST fetch wins over the stale seed", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      final response = Completer<ApiResponse<SessionListResponse>>();
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) => response.future);
+      mockSseEventTracker.emitSessionActivity({
+        projectId: {
+          "s1": const SessionActivityInfo(mainAgentRunning: true),
+          "s2": const SessionActivityInfo(mainAgentRunning: true),
+        },
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        projectId: {
+          "s1": (unseen: true, lastUserActivityAt: 30),
+          "s2": (unseen: false, lastUserActivityAt: 10),
+        },
+      });
+      response.complete(
+        ApiResponse.success(
+          SessionListResponse(
+            items: [
+              testSession(id: "s1", lastUserActivityAt: 5),
+              testSession(id: "s2", lastUserActivityAt: 40),
+            ],
+          ),
+        ),
+      );
+      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+      expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["s1", "s2"]);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.lastUserActivityAt, 30);
     });
 
     test("live tracker updates re-emit the merged unseen map", () async {
@@ -1959,7 +2060,7 @@ void main() {
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
 
       fakeSessionUnseenTracker.emitSessionUnseen({
-        projectId: {"s1": true},
+        projectId: {"s1": (unseen: true, lastUserActivityAt: null)},
       });
       await Future<void>.delayed(Duration.zero);
 
@@ -1988,7 +2089,7 @@ void main() {
       await cubit.markSessionSeen(sessionId: "s1", read: true);
       await Future<void>.delayed(Duration.zero);
 
-      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isFalse);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isFalse);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
       verify(() => mockSessionService.markSessionSeen(sessionId: "s1", read: true)).called(1);
     });
@@ -2023,7 +2124,7 @@ void main() {
           waitForPrData: any(named: "waitForPrData"),
         ),
       ).called(1);
-      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isTrue);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
   });

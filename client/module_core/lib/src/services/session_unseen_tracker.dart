@@ -8,12 +8,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
 import "../logging/logging.dart";
+import "models/session_list_item_state.dart";
 
-/// Layer-3 tracker that mirrors the bridge's unseen (new-changes) state for
-/// projects and sessions. The bridge is the single authority: this class only
-/// records what the bridge said — live `SesoriSessionUnseenChanged` SSE events
-/// and REST-fetched flags (via the `seed*` methods) — and never computes or
-/// adjusts unseen state itself. Momentary inconsistency in a rare
+/// Layer-3 tracker that mirrors the bridge's session-list state for projects
+/// and sessions. The bridge is the single authority: this class only records
+/// what the bridge said — live `SesoriSessionUnseenChanged` SSE events and
+/// REST-fetched values (via the `seed*` methods) — and never derives state
+/// itself. Momentary inconsistency in a rare
 /// event-vs-fetch interleaving is accepted; it self-heals on the next event or
 /// refetch (both list cubits already refetch on reconnect).
 ///
@@ -32,8 +33,10 @@ class SessionUnseenTracker(
   // project ID -> whether the project has any unseen session.
   final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
 
-  // project ID -> (session ID -> unseen).
-  final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
+  // project ID -> (session ID -> list state).
+  final BehaviorSubject<Map<String, Map<String, SessionListItemState>>> _sessionUnseen = BehaviorSubject.seeded(
+    const {},
+  );
 
   int _tick = 0;
   // project ID -> tick of its last live/local update.
@@ -53,11 +56,11 @@ class SessionUnseenTracker(
 
   Map<String, bool> get currentProjectUnseen => _projectUnseen.value;
 
-  /// project ID -> (session ID -> unseen). Late subscribers get the latest
+  /// project ID -> (session ID -> list state). Late subscribers get the latest
   /// cached value.
-  ValueStream<Map<String, Map<String, bool>>> get sessionUnseen => _sessionUnseen.stream;
+  ValueStream<Map<String, Map<String, SessionListItemState>>> get sessionUnseen => _sessionUnseen.stream;
 
-  Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
+  Map<String, Map<String, SessionListItemState>> get currentSessionUnseen => _sessionUnseen.value;
 
   /// Seeds the per-project aggregates from a `/projects` response. Projects
   /// updated live since [sinceTick] keep their (fresher) live value.
@@ -71,19 +74,29 @@ class SessionUnseenTracker(
     _projectUnseen.add(projects);
   }
 
-  /// Seeds the per-session flags for [projectId] from a `/sessions` response,
+  /// Seeds the per-session values for [projectId] from a `/sessions` response,
   /// REPLACING the project's tracked map (sessions absent from the
   /// authoritative list — deleted rows — drop out naturally). Skipped entirely
   /// when the project was updated live since [sinceTick].
   void seedSessions({
     required String projectId,
-    required Map<String, bool> unseenBySessionId,
+    required Map<String, SessionListItemState> stateBySessionId,
     required int sinceTick,
   }) {
     if (_sessionUnseen.isClosed) return;
     if ((_projectTick[projectId] ?? 0) > sinceTick) return;
-    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
-    sessions[projectId] = Map<String, bool>.unmodifiable(unseenBySessionId);
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final current = sessions[projectId] ?? const <String, SessionListItemState>{};
+    sessions[projectId] = Map<String, SessionListItemState>.unmodifiable({
+      for (final entry in stateBySessionId.entries)
+        entry.key: (
+          unseen: entry.value.unseen,
+          lastUserActivityAt: latestUserActivityAt(
+            first: current[entry.key]?.lastUserActivityAt,
+            second: entry.value.lastUserActivityAt,
+          ),
+        ),
+    });
     _sessionUnseen.add(sessions);
   }
 
@@ -102,20 +115,47 @@ class SessionUnseenTracker(
     // Stamp the tick so an in-flight stale snapshot can't clobber the user's
     // explicit action before the bridge echo settles it.
     _projectTick[projectId] = ++_tick;
-    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
-    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
-    projectSessions[sessionId] = unseen;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    projectSessions[sessionId] = (
+      unseen: unseen,
+      lastUserActivityAt: projectSessions[sessionId]?.lastUserActivityAt,
+    );
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+  }
+
+  void _applySessionActivity({required Session session}) {
+    final projectId = session.projectID;
+    final sessionId = session.id;
+    final unseen = session.unseen;
+    final lastUserActivityAt = session.lastUserActivityAt;
+    if (_sessionUnseen.isClosed || lastUserActivityAt == null) return;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    final current = projectSessions[sessionId];
+    final mergedActivityAt = latestUserActivityAt(first: current?.lastUserActivityAt, second: lastUserActivityAt);
+    if (current != null && mergedActivityAt == current.lastUserActivityAt) return;
+    projectSessions[sessionId] = (
+      unseen: current?.unseen ?? unseen,
+      lastUserActivityAt: mergedActivityAt,
+    );
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
   }
 
   void _handleEvent(SseEvent event) {
     try {
+      if (event.data case SesoriSessionUpdated(:final info)) {
+        _applySessionActivity(session: info);
+        return;
+      }
       if (event.data case SesoriSessionUnseenChanged(
         :final projectID,
         :final sessionId,
         :final unseen,
         :final projectHasUnseenChanges,
+        :final lastUserActivityAt,
       )) {
         // A late event can race disposal (the subscription cancel is not
         // awaited); adding to a closed subject would throw and be reported as
@@ -127,9 +167,13 @@ class SessionUnseenTracker(
         projects[projectID] = projectHasUnseenChanges;
         _projectUnseen.add(projects);
 
-        final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
-        final projectSessions = Map<String, bool>.from(sessions[projectID] ?? const {});
-        projectSessions[sessionId] = unseen;
+        final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+        final projectSessions = Map<String, SessionListItemState>.from(sessions[projectID] ?? const {});
+        final cachedActivityAt = projectSessions[sessionId]?.lastUserActivityAt;
+        projectSessions[sessionId] = (
+          unseen: unseen,
+          lastUserActivityAt: latestUserActivityAt(first: cachedActivityAt, second: lastUserActivityAt),
+        );
         sessions[projectID] = projectSessions;
         _sessionUnseen.add(sessions);
       }

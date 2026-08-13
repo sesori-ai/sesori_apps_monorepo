@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Floating pill overlay shown over a detached scrollable, inviting the

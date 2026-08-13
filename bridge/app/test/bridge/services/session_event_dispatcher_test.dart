@@ -48,6 +48,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
         branchName: null,
       ),
     );

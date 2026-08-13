@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Gap between a section header and its card, from the Figma settings layout.

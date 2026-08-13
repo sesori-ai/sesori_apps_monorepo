@@ -14,6 +14,8 @@ management API, when it reports its runtime as missing or too old.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
+  OMP selects its official Linux glibc or musl executable from bounded Alpine-marker and
+  `ldd` evidence; macOS and Windows use direct target mapping, and Windows arm64 remains unsupported.
   Artifacts are checksum-verified, and no partial binary or package is adopted.
 - The command is accepted immediately because an install can outlast a request budget;
   progress reports phases with a percentage, and the terminal outcome also lands in the
@@ -64,7 +66,7 @@ download, verification, or placement. Use a disposable data directory.
 ## Sources
 
 - `bridge/sesori_plugin_interface/.../bridge_plugin_descriptor.dart`,
-  `bridge/sesori_plugin_runtime/lib/src/provisioning/`, OpenCode, Codex, and Cursor manifests
+  `bridge/sesori_plugin_runtime/lib/src/provisioning/`, OpenCode, Codex, Cursor, and OMP manifests
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`, `.../plugin_registry.dart`
 - `client/module_core/.../plugin_management_service.dart`,
   `client/app/lib/features/settings/harnesses_settings_screen.dart`

@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 /// Cross-platform monospace fallbacks, in priority order, used when the
 /// platform "monospace" alias is unavailable.

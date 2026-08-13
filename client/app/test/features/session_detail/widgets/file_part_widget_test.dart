@@ -1,13 +1,13 @@
 import "dart:convert";
 import "dart:typed_data";
 
-import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
+import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
@@ -23,6 +23,8 @@ class _MockUrlLauncher() extends Mock implements UrlLauncher;
 class _MockSessionApi() extends Mock implements SessionApi;
 
 class _MockAuthSession() extends Mock implements AuthSession;
+
+class _MockAttachmentThumbnailStorage() extends Mock implements AttachmentThumbnailStorage;
 
 class _FakeImageSaver() implements ImageSaver {
   Uint8List? savedBytes;
@@ -105,6 +107,7 @@ void main() {
   late _FakeImageSharer imageSharer;
   late _MockSessionApi sessionApi;
   late _MockAuthSession authSession;
+  late _MockAttachmentThumbnailStorage thumbnailStorage;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -119,6 +122,7 @@ void main() {
     imageSharer = _FakeImageSharer();
     sessionApi = _MockSessionApi();
     authSession = _MockAuthSession();
+    thumbnailStorage = _MockAttachmentThumbnailStorage();
     when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
     when(() => urlLauncher.launch(any(), mode: any(named: "mode"))).thenAnswer((_) async => true);
     GetIt.instance.registerSingleton<UrlLauncher>(urlLauncher);
@@ -132,6 +136,7 @@ void main() {
         ),
         sessionApi: sessionApi,
         authSession: authSession,
+        attachmentThumbnailStorage: thumbnailStorage,
       ),
     );
   });
@@ -534,6 +539,7 @@ void main() {
         ),
         sessionApi: sessionApi,
         authSession: authSession,
+        attachmentThumbnailStorage: thumbnailStorage,
       ),
     );
     const attachment = MessageAttachment.remoteUrl(
@@ -569,6 +575,7 @@ void main() {
         ),
         sessionApi: sessionApi,
         authSession: authSession,
+        attachmentThumbnailStorage: thumbnailStorage,
       ),
     );
     const attachment = MessageAttachment.remoteUrl(

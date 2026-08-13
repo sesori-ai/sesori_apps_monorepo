@@ -51,6 +51,8 @@ import 'package:sesori_dart_core/src/foundation/models/product_analytics/analyti
     as _i684;
 import 'package:sesori_dart_core/src/foundation/platform/analytics_client.dart'
     as _i791;
+import 'package:sesori_dart_core/src/foundation/platform/attachment_thumbnail_storage.dart'
+    as _i894;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
 import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
     as _i1037;
@@ -106,6 +108,8 @@ import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
+import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
+    as _i72;
 import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
     as _i74;
 import 'package:sesori_dart_core/src/services/new_session_plugin_service.dart'
@@ -411,13 +415,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
     );
-    gh.lazySingleton<_i531.MessageImageRepository>(
-      () => _i531.MessageImageRepository(
-        api: gh<_i938.MessageImageApi>(),
-        sessionApi: gh<_i603.SessionApi>(),
-        authSession: gh<_i442.AuthSession>(),
-      ),
-    );
     gh.lazySingleton<_i102.BridgeSettingsRepository>(
       () => _i102.BridgeSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
@@ -425,6 +422,14 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i12.SessionService>(
       () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),
+    );
+    gh.lazySingleton<_i531.MessageImageRepository>(
+      () => _i531.MessageImageRepository(
+        api: gh<_i938.MessageImageApi>(),
+        sessionApi: gh<_i603.SessionApi>(),
+        authSession: gh<_i442.AuthSession>(),
+        attachmentThumbnailStorage: gh<_i894.AttachmentThumbnailStorage>(),
+      ),
     );
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
@@ -479,6 +484,13 @@ extension GetItInjectableX on _i174.GetIt {
         pluginRepository: gh<_i337.PluginRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
       ),
+    );
+    gh.lazySingleton<_i72.MessageThumbnailCacheService>(
+      () => _i72.MessageThumbnailCacheService(
+        repository: gh<_i531.MessageImageRepository>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     return this;
   }

@@ -57,6 +57,8 @@ sealed class Session with _$Session {
     // the session or an explicit mark-as-read. Defaults to false so older
     // payloads (and the baseline) deserialize as "seen".
     @Default(false) bool unseen,
+    // COMPATIBILITY 2026-08-13 (v1.9.0): Older bridges omit lastUserActivityAt, which means no durable marker is known. Remove this comment after the minimum supported bridge always sends this field.
+    required int? lastUserActivityAt,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

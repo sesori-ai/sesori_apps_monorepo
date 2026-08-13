@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** `origin/main` at `3ae9dd43e`
-- **Series state:** Step 7/21 merged; Step 8/21 in review
-- **Current step:** 8/21, install direct binary runtime assets
+- **Implementation base:** current `origin/main` with Step 9 merged
+- **Series state:** Step 9/21 merged; Step 10/21 ready for PR
+- **Current step:** 10/21, persisted Pi session enumeration
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -15,7 +15,8 @@
 - **Step 7 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/846
 - **Prerequisite PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/857
 - **Step 8 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/862
-- **Next action:** monitor Step 8; Step 9 remains local until Step 8 merges
+- **Step 9 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/866
+- **Next action:** open and monitor the Step 10 PR, then start Step 11 locally
 
 ## Locked Decisions
 
@@ -49,9 +50,9 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 5/21 | `⚙️ [pi-harness] feat(acp): bridge form elicitations [step 5/21]` | 900-1,300 (recorded overage) | Merged as PR #832 |
 | [x] | 6/21 | `⚙️ [pi-harness] feat(omp): add the ACP plugin core [step 6/21]` | 900-1,300 | Merged as PR #838 |
 | [x] | 7/21 | `🚧 [pi-harness] feat(omp): expose options and persisted cleanup [step 7/21]` | 1,100-1,500 (recorded overage) | Merged as PR #846 |
-| [ ] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | In review as PR #862; dependency merged as PR #857 |
-| [ ] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Blocked on Step 8 |
-| [ ] | 10/21 | `⚙️ [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 | Not started |
+| [x] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Merged as PR #862; dependency merged as PR #857 |
+| [x] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Merged as PR #866 |
+| [ ] | 10/21 | `🚧 [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 (recorded overage) | Ready for PR |
 | [ ] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 | Not started |
 | [ ] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 | Not started |
 | [ ] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Not started |
@@ -266,6 +267,78 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   client-UI change; OMP remains app-invisible until Step 18.
 - `git diff --check`: pass.
 - Diff: +238/-113 = 351 changed lines; generated lines: 0; tests run: 1,046.
+
+### Step 9/21
+
+- Added `OmpRuntimeManifest` at `v17.2.13` with seven official direct assets,
+  `omp/<semver>` parsing, normalized managed executable naming, and explicit
+  unsupported Windows arm64 behavior.
+- Added bounded Alpine-marker/`ldd` libc evidence through OMP-owned API,
+  repository, and service layers, plus the smallest async asset-resolver seam in
+  `ManagedRuntimeInstallService`; OpenCode, Codex, Cursor, and runtime tests were
+  updated in lockstep.
+- Added app-invisible `OmpPluginDescriptor` runtime precedence, setup/install,
+  eager ACP connection, degraded recovery, abort rollback, shutdown, and host
+  environment preservation using `AcpBridgePlugin` directly.
+- Refreshed runtime regression coverage and the `update-backend-runtimes` skill.
+  OMP remains absent from app dependencies and `knownPlugins` until Step 18.
+- `dart pub get` from `bridge/`: pass.
+- `dart test` and `dart analyze --fatal-infos` from `sesori_plugin_omp`: pass,
+  49 tests.
+- `dart test` and `dart analyze --fatal-infos` from `sesori_plugin_runtime`:
+  pass, 131 tests.
+- Focused descriptor tests plus fatal analysis from OpenCode, Codex, and Cursor:
+  pass; final fatal analysis also passes in all three packages.
+- Official release verification: all seven GitHub digests match
+  `SHA256SUMS.txt`; macOS arm64 digest and `omp/17.2.13` pass. Shared managed
+  installer download/checksum/chmod/version/sentinel path passes in disposable
+  state.
+- Isolated official ACP probe passes v1 `initialize`, `authenticate(agent)`,
+  empty `session/list`, `session/new`, `session/load`, `/session delete` with
+  `end_turn`, and `session/close`; normal user profile remains untouched.
+- Linux glibc/musl and Windows runtime execution were not available locally;
+  mappings and Alpine/`ldd` selection are covered by focused tests.
+- Architecture implementation review found split Linux asset-selection
+  authority and nullable libc evidence combinations. The implementation now
+  uses one async Linux selector, a separate pure support query, and sealed
+  Alpine/`ldd` evidence variants; the second pass confirmed the evidence fix
+  and identified one stale capability call site, which was corrected.
+- No user-visible, database, persisted-data, client/bridge wire-contract, or
+  client-UI change.
+- `git diff --check`: pass.
+- Step 9 implementation and review-fix diff `88059e200...9cd87d646`:
+  +1,317/-17 = 1,334 changed lines; generated lines: 0; tests run: 180
+  full-suite tests plus 41 focused descriptor tests. Later commits only record
+  this measurement.
+
+### Step 10/21
+
+- Added generated session-header, `session_info`, and settings DTOs plus an
+  isolate-backed `PiSessionStorageApi` that discovers inherited environment,
+  configured, default, and bridge-known roots without reading `HOME` directly.
+- Added a bounded metadata-only JSONL scanner: transcript records are discarded
+  without decoding, metadata records and external lineage headers are byte
+  bounded, physical symlink aliases deduplicate, and only exact resolved file
+  paths remain available for later resume/history operations.
+- Added `PiSessionCatalogRepository` mapping for normalized derived projects,
+  explicit latest titles, file activity times, parent IDs, pagination, direct
+  children, ID lookup, and lazy bridge attribution retained as future scan roots.
+- Focused coverage includes malformed/half-written/oversized records, malformed
+  title records, title clears, root precedence/deduplication, duplicate IDs,
+  deleted cwd, external ancestry and its bounds, symlink aliases/loops, settings
+  fallback, privacy-safe diagnostics, and a structural real-root scan.
+- `dart pub get`, `dart run build_runner build`, `dart test` (94 tests),
+  `dart analyze --fatal-infos`, and `git diff --check`: pass.
+- The pinned Dart formatter crashes on primary-constructor enums in
+  `pi_session_storage_api.dart`; all other changed hand-written Dart files format
+  cleanly, and fatal analysis passes for the unformatted-by-tool scanner file.
+- No client/bridge wire-contract, database, or client-UI change; Pi remains
+  app-invisible until Step 18. Existing Pi JSONL files are read but not mutated.
+- Architecture implementation review: approved with no findings.
+- Diff: +2,226/-8 = 2,234 changed lines; generated lines: 351; tests run: 94.
+- Recorded overage: root discovery, bounded privacy-sensitive scanning, lineage,
+  codegen, and focused tests form one catalog seam; splitting would publish an
+  incomplete resolver or mapping contract.
 
 ## Findings And Plan Deltas
 

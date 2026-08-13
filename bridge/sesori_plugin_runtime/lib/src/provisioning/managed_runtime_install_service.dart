@@ -34,6 +34,7 @@ class ManagedRuntimeInstallService({
   required final RuntimeVersionValidator _versionValidator,
   required final RuntimeInstallService _installService,
   required final ManagedRuntimeCleaner _cleaner,
+  required final RuntimeAssetResolver _assetResolver,
 }) {
   Stream<RuntimeProvisionProgress> install({
     required Map<String, String> environment,
@@ -57,7 +58,20 @@ class ManagedRuntimeInstallService({
       );
       return;
     }
-    final RuntimeAsset? asset = _manifest.assetFor(target: target);
+    final RuntimeAsset? asset;
+    try {
+      asset = await _assetResolver(target: target);
+    } on PluginStartAbortedException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      _throwIfAborted(startAborted: startAborted);
+      Log.w("[$id] managed $name runtime asset resolution failed", error, stackTrace);
+      yield ProvisionFailed(
+        message: "Could not select the $name runtime for this machine. Check the bridge logs for details.",
+      );
+      return;
+    }
+    _throwIfAborted(startAborted: startAborted);
     if (asset == null) {
       yield ProvisionFailed(
         message: "$name has no managed runtime for this platform (${target.key}).",

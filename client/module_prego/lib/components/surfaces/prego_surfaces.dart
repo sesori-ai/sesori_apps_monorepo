@@ -8,8 +8,8 @@
 /// cards such as the background-tasks card.
 library;
 
-import "package:flutter/material.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";

@@ -325,6 +325,7 @@ class AcpEventMapper({
               ),
         pullRequest: null,
         promptDefaults: null,
+        lastUserActivityAt: null,
       ).toJson(),
     );
   }
@@ -931,6 +932,7 @@ class AcpEventMapper({
             ),
       pullRequest: null,
       promptDefaults: null,
+      lastUserActivityAt: null,
     );
   }
 

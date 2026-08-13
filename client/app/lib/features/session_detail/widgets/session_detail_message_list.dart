@@ -1,9 +1,9 @@
 import "dart:async";
 
 import "package:flutter/gestures.dart";
-import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
 import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -13,6 +13,7 @@ import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
 import "message_timestamp_reveal.dart";
+import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "user_message_card.dart";
@@ -25,7 +26,7 @@ import "user_message_card.dart";
 ///
 /// - The [chat_core.ChatController] holds **content-stable index
 ///   entries** only — one `CustomMessage(id, authorId)` per domain
-///   message (plus one synthetic entry for the retry-error row). All
+///   message, plus synthetic retry-error and transient-submission rows. All
 ///   visible content (message parts, streaming text, tool state) is
 ///   resolved from the cubit-provided widget props inside the row
 ///   builders, keyed by message id. Token deltas therefore never
@@ -49,7 +50,8 @@ import "user_message_card.dart";
 ///   false`; the at-bottom variant is a no-op for reversed lists).
 /// - While **detached** (user dragged / trackpad-scrolled / pan-zoomed
 ///   away from the bottom), the full set of rendered inputs
-///   (`messages`, `streamingText`, `children`, `childStatuses`) is
+///   (`messages`, transient submissions, `streamingText`, `children`,
+///   `childStatuses`) is
 ///   snapshotted AND controller syncing is suspended, so nothing below
 ///   (or above) the user's viewport can grow, shrink, or reorder under
 ///   them. Both freezes lift the moment the user reattaches.
@@ -61,6 +63,8 @@ class const SessionDetailMessageList({
   super.key,
   required final String? projectId,
   required final List<MessageWithParts> messages,
+  required final QueuedSessionSubmission? sendingSubmission,
+  required final List<QueuedSessionSubmission> queuedMessages,
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
@@ -68,6 +72,7 @@ class const SessionDetailMessageList({
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
+  required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
   final String? retryErrorMessage,
 
@@ -99,6 +104,8 @@ typedef _DetachedSnapshot = ({
   String? retryErrorMessage,
 });
 
+typedef _TransientSubmission = ({QueuedSessionSubmission submission, bool isSending});
+
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
   static const _kJumpToLatestKey = Key("session-detail-jump-to-latest");
@@ -118,6 +125,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// pinned at the newest edge. Domain message ids come from the
   /// assistant backend and cannot collide with this.
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
+  static const _kTransientSubmissionRowPrefix = "session-detail-transient-submission-";
 
   static const _kUserAuthorId = "user";
   static const _kAgentAuthorId = "agent";
@@ -132,6 +140,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static const _kUserRole = "user";
   static const _kAssistantRole = "assistant";
   static const _kErrorRole = "error";
+  static const _kTransientSubmissionRole = "transient-submission";
 
   late final ScrollFollowTracker _follow;
   late final chat_core.InMemoryChatController _chatController;
@@ -185,6 +194,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// flush — recompute only when the underlying [ThemeData] changes.
   (ThemeData, chat_core.ChatTheme)? _chatThemeCache;
 
+  /// The chat controller needs string IDs; object identity keeps one row stable
+  /// as the queue moves the same submission from pending to sending.
+  final Expando<String> _transientSubmissionEntryIds = Expando<String>();
+  int _nextTransientSubmissionEntryId = 0;
+
   @override
   void initState() {
     super.initState();
@@ -198,6 +212,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _chatController = chat_core.InMemoryChatController(
       messages: _chatEntriesFor(
         messages: widget.messages,
+        sendingSubmission: widget.sendingSubmission,
+        queuedMessages: widget.queuedMessages,
         hasRetryError: widget.retryErrorMessage != null,
       ),
     );
@@ -234,6 +250,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return;
     }
     final frozen = _snapshot;
+    final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
+    if (frozen != null && transientSubmissionsChanged) {
+      _syncChatControllerTo(
+        messages: frozen.messages,
+        sendingSubmission: widget.sendingSubmission,
+        queuedMessages: widget.queuedMessages,
+        hasRetryError: frozen.retryErrorMessage != null,
+      );
+      if (_hasNewTransientSubmission(oldWidget: oldWidget)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _follow.following) return;
+          unawaited(_follow.animateToEdge());
+        });
+      }
+    }
     if (!olderPageRequestCompleted) return;
     _olderPageRequestInFlight = false;
     if (frozen == null) return;
@@ -265,6 +296,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // render agree on both the rows and the retry state.
     _syncChatControllerTo(
       messages: merged,
+      sendingSubmission: widget.sendingSubmission,
+      queuedMessages: widget.queuedMessages,
       hasRetryError: frozen.retryErrorMessage != null,
     );
   }
@@ -300,6 +333,26 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     });
   }
 
+  bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
+    if (!identical(oldWidget.sendingSubmission, widget.sendingSubmission)) return false;
+    if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
+    for (var i = 0; i < widget.queuedMessages.length; i++) {
+      if (!identical(oldWidget.queuedMessages[i], widget.queuedMessages[i])) return false;
+    }
+    return true;
+  }
+
+  bool _hasNewTransientSubmission({required SessionDetailMessageList oldWidget}) {
+    final previous = <QueuedSessionSubmission>{
+      ?oldWidget.sendingSubmission,
+      ...oldWidget.queuedMessages,
+    };
+    return [
+      ?widget.sendingSubmission,
+      ...widget.queuedMessages,
+    ].any((submission) => !previous.contains(submission));
+  }
+
   /// Mirrors the domain transcript into the chat controller. Entries
   /// are value-equal for unchanged messages, so the controller's
   /// diff-based `setMessages` emits insert/remove operations only for
@@ -308,15 +361,24 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _syncChatController() {
     _syncChatControllerTo(
       messages: widget.messages,
+      sendingSubmission: widget.sendingSubmission,
+      queuedMessages: widget.queuedMessages,
       hasRetryError: widget.retryErrorMessage != null,
     );
   }
 
   void _syncChatControllerTo({
     required List<MessageWithParts> messages,
+    required QueuedSessionSubmission? sendingSubmission,
+    required List<QueuedSessionSubmission> queuedMessages,
     required bool hasRetryError,
   }) {
-    final target = _chatEntriesFor(messages: messages, hasRetryError: hasRetryError);
+    final target = _chatEntriesFor(
+      messages: messages,
+      sendingSubmission: sendingSubmission,
+      queuedMessages: queuedMessages,
+      hasRetryError: hasRetryError,
+    );
     final current = _chatController.messages;
     if (_entriesMatch(current: current, target: target)) return;
     unawaited(
@@ -345,6 +407,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   List<chat_core.Message> _chatEntriesFor({
     required List<MessageWithParts> messages,
+    required QueuedSessionSubmission? sendingSubmission,
+    required List<QueuedSessionSubmission> queuedMessages,
     required bool hasRetryError,
   }) {
     return <chat_core.Message>[
@@ -370,7 +434,27 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             },
           ),
       if (hasRetryError) const chat_core.Message.custom(id: _kRetryErrorRowId, authorId: _kAgentAuthorId),
+      if (sendingSubmission != null) _chatEntryFor(submission: sendingSubmission),
+      for (final submission in queuedMessages) _chatEntryFor(submission: submission),
     ];
+  }
+
+  chat_core.Message _chatEntryFor({required QueuedSessionSubmission submission}) {
+    return chat_core.Message.custom(
+      id: _entryIdFor(submission: submission),
+      authorId: _kUserAuthorId,
+      metadata: const <String, String>{
+        _kRoleMetadataKey: _kTransientSubmissionRole,
+      },
+    );
+  }
+
+  String _entryIdFor({required QueuedSessionSubmission submission}) {
+    final existing = _transientSubmissionEntryIds[submission];
+    if (existing != null) return existing;
+    final id = "$_kTransientSubmissionRowPrefix${_nextTransientSubmissionEntryId++}";
+    _transientSubmissionEntryIds[submission] = id;
+    return id;
   }
 
   static Future<chat_core.User?> _resolveUser(String id) async => chat_core.User(id: id);
@@ -380,12 +464,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final loc = context.loc;
     final snap = _snapshot;
     final messages = snap?.messages ?? widget.messages;
+    final sendingSubmission = widget.sendingSubmission;
+    final queuedMessages = widget.queuedMessages;
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
 
     final indexById = _indexByIdFor(messages: messages);
+    final transientSubmissions = <String, _TransientSubmission>{
+      if (sendingSubmission != null)
+        _entryIdFor(submission: sendingSubmission): (submission: sendingSubmission, isSending: true),
+      for (final submission in queuedMessages)
+        _entryIdFor(submission: submission): (submission: submission, isSending: false),
+    };
 
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
@@ -465,13 +557,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   entry: message,
                   messages: messages,
                   indexById: indexById,
+                  transientSubmissions: transientSubmissions,
                   streamingText: streamingText,
                   children: children,
                   childStatuses: childStatuses,
                   retryErrorMessage: retryErrorMessage,
                 ),
-            // The prompt input, queued bubbles and tasks bar live outside
-            // this widget; reserve no composer space inside the list.
+            // The prompt input and tasks bar live outside this widget; reserve
+            // no composer space inside the list.
             composerBuilder: (context) => const SizedBox.shrink(),
             // Follow/detach owns the jump affordance via the overlay pill.
             scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
@@ -506,6 +599,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required chat_core.CustomMessage entry,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
+    required Map<String, _TransientSubmission> transientSubmissions,
     required Map<String, String> streamingText,
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
@@ -515,6 +609,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       if (retryErrorMessage == null) return const SizedBox.shrink();
       // Synthetic row: no timestamp, but it still slides with the rest.
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
+    }
+    final transientSubmission = transientSubmissions[entry.id];
+    if (transientSubmission != null) {
+      final submission = transientSubmission.submission;
+      final onCancelQueuedMessage = widget.onCancelQueuedMessage;
+      return _revealable(
+        createdAtMs: null,
+        child: QueuedMessageBubble(
+          key: ObjectKey(submission),
+          submission: submission,
+          presentation: transientSubmission.isSending
+              ? const QueuedMessageBubblePresentation.sending()
+              : onCancelQueuedMessage == null
+              ? const QueuedMessageBubblePresentation.pendingReadOnly()
+              : QueuedMessageBubblePresentation.pending(
+                  onCancel: () => _cancelQueuedSubmission(submission: submission),
+                ),
+        ),
+      );
     }
     final index = indexById[entry.id];
     if (index == null || index >= messages.length) return const SizedBox.shrink();
@@ -534,6 +647,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       final MessageError messageError => ErrorMessageCard(message: messageError),
     };
     return _revealable(createdAtMs: message.info.time?.created, child: card);
+  }
+
+  void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {
+    final onCancelQueuedMessage = widget.onCancelQueuedMessage;
+    if (onCancelQueuedMessage == null) return;
+    final index = widget.queuedMessages.indexWhere((candidate) => identical(candidate, submission));
+    if (index < 0) return;
+    onCancelQueuedMessage(index);
   }
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
@@ -690,7 +811,28 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   chat_core.ChatTheme _chatThemeFor({required ThemeData theme}) {
     final cached = _chatThemeCache;
     if (cached != null && identical(cached.$1, theme)) return cached.$2;
-    final derived = chat_core.ChatTheme.fromThemeData(theme);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final derived = chat_core.ChatTheme(
+      colors: chat_core.ChatColors(
+        primary: colorScheme.primary,
+        onPrimary: colorScheme.onPrimary,
+        surface: colorScheme.surface,
+        onSurface: colorScheme.onSurface,
+        surfaceContainerLow: colorScheme.surfaceContainerLow,
+        surfaceContainer: colorScheme.surfaceContainer,
+        surfaceContainerHigh: colorScheme.surfaceContainerHigh,
+      ),
+      typography: chat_core.ChatTypography(
+        bodyLarge: textTheme.bodyLarge ?? const TextStyle(),
+        bodyMedium: textTheme.bodyMedium ?? const TextStyle(),
+        bodySmall: textTheme.bodySmall ?? const TextStyle(),
+        labelLarge: textTheme.labelLarge ?? const TextStyle(),
+        labelMedium: textTheme.labelMedium ?? const TextStyle(),
+        labelSmall: textTheme.labelSmall ?? const TextStyle(),
+      ),
+      shape: const BorderRadius.all(Radius.circular(12)),
+    );
     _chatThemeCache = (theme, derived);
     return derived;
   }

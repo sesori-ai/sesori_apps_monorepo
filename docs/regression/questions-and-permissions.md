@@ -25,6 +25,11 @@ reaches the backend so the turn continues.
   process-wide so another session cannot become the attribution target.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression.
+- Normalized question and permission replies or rejections feed the existing
+  durable user-side activity marker. Lifecycle cleanup that emits those events
+  to retire pending UI on abort, thread close, process exit, or disposal can
+  therefore advance the marker. Permission replies consumed by bridge
+  auto-approval before normal event routing do not advance it.
 - Child or sub-agent requests surface under their display root.
 - Per-session pending lists are empty while a plugin is stopped or terminally
   failed and never start it. A project-wide question list reports unavailable
@@ -60,6 +65,8 @@ different combination than the previous recorded run.
   backend value, reaches the wrong session, or remains pending after abort.
 - A resolved request stays visible, keeps suppressing notifications, or returns
   after reconnect.
+- A manually routed reply/rejection fails to advance the existing activity
+  marker, or an auto-approved permission reply advances it.
 - Reading pending state starts an intentionally stopped backend.
 - An archived session accepts a reply.
 

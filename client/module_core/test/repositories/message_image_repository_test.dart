@@ -5,6 +5,7 @@ import "dart:typed_data";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -12,6 +13,87 @@ import "package:test/test.dart";
 class _MockSessionApi() extends Mock implements SessionApi;
 
 class _MockAuthSession() extends Mock implements AuthSession;
+
+class _FakeAuthSession(AuthState initial) extends Fake implements AuthSession {
+  final BehaviorSubject<AuthState> states = BehaviorSubject.seeded(initial);
+
+  @override
+  ValueStream<AuthState> get authStateStream => states.stream;
+
+  @override
+  AuthState get currentState => states.value;
+
+  void emit(AuthState state) => states.add(state);
+}
+
+class _FakeAttachmentThumbnailStorage() implements AttachmentThumbnailStorage {
+  final Map<String, Map<String, Uint8List>> entries = {};
+  final Map<String, Map<String, DateTime>> modifiedAt = {};
+  final Map<String, int> sizeOverrides = {};
+  final List<({String scope, String key})> reads = [];
+  final List<({String scope, String key})> writes = [];
+  final List<({String scope, String key})> deletes = [];
+  final List<String> deletedScopes = [];
+  Object? readFailure;
+  Object? writeFailure;
+  Object? listFailure;
+  Object? deleteFailure;
+  Object? deleteScopeFailure;
+  Completer<void>? writeGate;
+  Completer<void>? writeStarted;
+  Completer<void>? deleteScopeGate;
+  DateTime clock = DateTime.utc(2026);
+
+  @override
+  Future<Uint8List?> read({required String scope, required String key}) async {
+    reads.add((scope: scope, key: key));
+    if (readFailure case final failure?) throw failure;
+    final bytes = entries[scope]?[key];
+    return bytes == null ? null : Uint8List.fromList(bytes);
+  }
+
+  @override
+  Future<void> write({required String scope, required String key, required Uint8List bytes}) async {
+    writes.add((scope: scope, key: key));
+    if (writeFailure case final failure?) throw failure;
+    final started = writeStarted;
+    if (started != null && !started.isCompleted) started.complete();
+    if (writeGate case final gate?) await gate.future;
+    entries.putIfAbsent(scope, () => {})[key] = Uint8List.fromList(bytes);
+    modifiedAt.putIfAbsent(scope, () => {})[key] = clock;
+    clock = clock.add(const Duration(seconds: 1));
+  }
+
+  @override
+  Future<List<AttachmentThumbnailMetadata>> listMetadata({required String scope}) async {
+    if (listFailure case final failure?) throw failure;
+    return [
+      for (final entry in entries[scope]?.entries ?? const <MapEntry<String, Uint8List>>[])
+        AttachmentThumbnailMetadata(
+          key: entry.key,
+          sizeBytes: sizeOverrides[entry.key] ?? entry.value.length,
+          modifiedAt: modifiedAt[scope]![entry.key]!,
+        ),
+    ];
+  }
+
+  @override
+  Future<void> delete({required String scope, required String key}) async {
+    deletes.add((scope: scope, key: key));
+    if (deleteFailure case final failure?) throw failure;
+    entries[scope]?.remove(key);
+    modifiedAt[scope]?.remove(key);
+  }
+
+  @override
+  Future<void> deleteScope({required String scope}) async {
+    deletedScopes.add(scope);
+    if (deleteScopeFailure case final failure?) throw failure;
+    if (deleteScopeGate case final gate?) await gate.future;
+    entries.remove(scope);
+    modifiedAt.remove(scope);
+  }
+}
 
 const _userA = AuthUser(
   id: "account-a",
@@ -41,16 +123,19 @@ void main() {
 
   late _MockSessionApi sessionApi;
   late _MockAuthSession authSession;
+  late _FakeAttachmentThumbnailStorage thumbnailStorage;
   late MessageImageRepository repository;
 
   setUp(() {
     sessionApi = _MockSessionApi();
     authSession = _MockAuthSession();
+    thumbnailStorage = _FakeAttachmentThumbnailStorage();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
     repository = MessageImageRepository(
       api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
       sessionApi: sessionApi,
       authSession: authSession,
+      attachmentThumbnailStorage: thumbnailStorage,
     );
   });
 
@@ -64,6 +149,7 @@ void main() {
       api: MessageImageApi(client: MockClient((_) async => responses[index++])),
       sessionApi: sessionApi,
       authSession: authSession,
+      attachmentThumbnailStorage: thumbnailStorage,
     );
     const attachment = MessageAttachment.remoteUrl(
       mime: "image/png",
@@ -94,6 +180,7 @@ void main() {
       ),
       sessionApi: sessionApi,
       authSession: authSession,
+      attachmentThumbnailStorage: thumbnailStorage,
     );
 
     expect(
@@ -120,6 +207,7 @@ void main() {
       ),
       sessionApi: sessionApi,
       authSession: authSession,
+      attachmentThumbnailStorage: thumbnailStorage,
     );
 
     expect(
@@ -228,6 +316,7 @@ void main() {
       attachment: _stored,
       rendition: SessionAttachmentRendition.thumbnail,
     );
+    await Future<void>.delayed(Duration.zero);
     expect(requests, 1);
 
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userB));
@@ -236,6 +325,7 @@ void main() {
       attachment: _stored,
       rendition: SessionAttachmentRendition.thumbnail,
     );
+    await Future<void>.delayed(Duration.zero);
     expect(requests, 2);
 
     first.complete(
@@ -252,7 +342,7 @@ void main() {
       attachment: _stored,
       rendition: SessionAttachmentRendition.thumbnail,
     );
-    expect(requests, 3, reason: "completed requests must leave active map");
+    expect(requests, 2, reason: "completed thumbnail requests must use persisted cache");
   });
 
   test("scope separates bridge, session, attachment, and rendition", () async {
@@ -337,6 +427,7 @@ void main() {
       rendition: SessionAttachmentRendition.thumbnail,
     );
 
+    await Future<void>.delayed(Duration.zero);
     expect(requests, 1);
     response.complete(
       ApiResponse.success(
@@ -513,5 +604,582 @@ void main() {
         rendition: any(named: "rendition"),
       ),
     );
+  });
+
+  test("reuses validated thumbnail across repository instances without exposing raw IDs", () async {
+    var requests = 0;
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer((_) async {
+      requests++;
+      return ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      );
+    });
+
+    expect(
+      await repository.load(
+        sessionId: "private-session",
+        attachment: _stored.copyWith(attachmentId: "private-attachment", bridgeId: "private-bridge"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    final restartedRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: authSession,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    final warm = await restartedRepository.load(
+      sessionId: "private-session",
+      attachment: _stored.copyWith(
+        attachmentId: "private-attachment",
+        bridgeId: "private-bridge",
+        filename: "warm.gif",
+      ),
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+
+    expect(requests, 1);
+    expect((warm as MessageImageLoadSuccess).actionFilename, "warm.png");
+    final storedIdentity = "${thumbnailStorage.writes.single.scope}/${thumbnailStorage.writes.single.key}";
+    expect(storedIdentity, matches(RegExp(r"^[a-f0-9]{64}/[a-f0-9]{64}$")));
+    for (final rawId in ["account-a", "private-bridge", "private-session", "private-attachment"]) {
+      expect(storedIdentity, isNot(contains(rawId)));
+    }
+  });
+
+  test("deletes corrupt warm entry and refetches it", () async {
+    var requests = 0;
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer((_) async {
+      requests++;
+      return ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      );
+    });
+    await repository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    final stored = thumbnailStorage.writes.single;
+    thumbnailStorage.entries[stored.scope]![stored.key] = Uint8List.fromList([1, 2, 3]);
+
+    final restartedRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: authSession,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    expect(
+      await restartedRepository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+
+    expect(requests, 2);
+    expect(thumbnailStorage.deletes, contains(stored));
+  });
+
+  test("original requests bypass thumbnail storage", () async {
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: "session-1",
+        attachmentId: "attachment-1",
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+
+    expect(
+      await repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.original,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    expect(thumbnailStorage.reads, isEmpty);
+    expect(thumbnailStorage.writes, isEmpty);
+    expect(thumbnailStorage.deletedScopes, isEmpty);
+  });
+
+  test("late thumbnail fetch during logout never writes", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+    final response = Completer<ApiResponse<SessionAttachmentResponse>>();
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer((_) => response.future);
+
+    final load = serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    await Future<void>.delayed(Duration.zero);
+    session.emit(const AuthState.unauthenticated());
+    await Future<void>.delayed(Duration.zero);
+    response.complete(
+      ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+
+    expect(await load, isA<MessageImageLoadSuccess>());
+    await serviceRepository.waitForThumbnailCacheCleanup();
+    expect(thumbnailStorage.writes, isEmpty);
+    expect(thumbnailStorage.deletedScopes, hasLength(1));
+    await service.dispose();
+    await session.states.close();
+  });
+
+  test("same-account logout and relogin waits for cleanup then writes", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+    final cleanupGate = Completer<void>();
+    thumbnailStorage.deleteScopeGate = cleanupGate;
+    session.emit(const AuthState.unauthenticated());
+    session.emit(const AuthState.authenticated(user: _userA));
+    await Future<void>.delayed(Duration.zero);
+    var requests = 0;
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer((_) async {
+      requests++;
+      return ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      );
+    });
+
+    final reloginLoad = serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(requests, 0);
+    expect(thumbnailStorage.writes, isEmpty);
+
+    cleanupGate.complete();
+    expect(await reloginLoad, isA<MessageImageLoadSuccess>());
+    expect(requests, 1);
+    expect(thumbnailStorage.writes, hasLength(1));
+    await service.dispose();
+    await session.states.close();
+  });
+
+  test("load waiting for cleanup rejects after the account logs out again", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+    final cleanupGate = Completer<void>();
+    thumbnailStorage.deleteScopeGate = cleanupGate;
+    session.emit(const AuthState.unauthenticated());
+    session.emit(const AuthState.authenticated(user: _userA));
+    await Future<void>.delayed(Duration.zero);
+    var requests = 0;
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer((_) async {
+      requests++;
+      return ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      );
+    });
+
+    final load = serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    await Future<void>.delayed(Duration.zero);
+    session.emit(const AuthState.unauthenticated());
+    cleanupGate.complete();
+
+    expect(
+      await load,
+      isA<MessageImageLoadFailure>().having(
+        (result) => result.cause,
+        "cause",
+        isA<MessageImageAuthenticationRequiredException>(),
+      ),
+    );
+    expect(requests, 0);
+    expect(thumbnailStorage.writes, isEmpty);
+    await service.dispose();
+    await session.states.close();
+  });
+
+  test("logout waits for a started thumbnail write before deleting its scope", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+    final writeStarted = Completer<void>();
+    final writeGate = Completer<void>();
+    thumbnailStorage
+      ..writeStarted = writeStarted
+      ..writeGate = writeGate;
+
+    final load = serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    await writeStarted.future;
+    final scope = thumbnailStorage.writes.single.scope;
+    session.emit(const AuthState.unauthenticated());
+    await Future<void>.delayed(Duration.zero);
+    expect(thumbnailStorage.deletedScopes, isEmpty);
+
+    writeGate.complete();
+    expect(await load, isA<MessageImageLoadSuccess>());
+    await serviceRepository.waitForThumbnailCacheCleanup();
+    expect(thumbnailStorage.deletedScopes, [scope]);
+    expect(thumbnailStorage.entries, isNot(contains(scope)));
+    await service.dispose();
+    await session.states.close();
+  });
+
+  test("prunes oldest entries and breaks modified-time ties by key", () async {
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+    await repository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    final stored = thumbnailStorage.writes.single;
+    final scopeEntries = thumbnailStorage.entries[stored.scope]!;
+    final scopeTimes = thumbnailStorage.modifiedAt[stored.scope]!;
+    final oldTime = DateTime.utc(2025);
+    final tiedTime = DateTime.utc(2025, 1, 2);
+    scopeEntries
+      ..["old"] = Uint8List(1)
+      ..["z"] = Uint8List(1)
+      ..["a"] = Uint8List(1);
+    scopeTimes
+      ..["old"] = oldTime
+      ..["z"] = tiedTime
+      ..["a"] = tiedTime;
+    thumbnailStorage.sizeOverrides
+      ..["old"] = 10 * 1024 * 1024
+      ..["z"] = 30 * 1024 * 1024
+      ..["a"] = 30 * 1024 * 1024
+      ..[stored.key] = 8 * 1024 * 1024;
+
+    await repository.load(
+      sessionId: "session-1",
+      attachment: _stored.copyWith(attachmentId: "attachment-2"),
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+
+    expect(thumbnailStorage.deletes.map((entry) => entry.key), ["old", "a"]);
+  });
+
+  test("recovers from storage read, write, list, corrupt-delete, and prune-delete failures", () async {
+    var requests = 0;
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer((_) async {
+      requests++;
+      return ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      );
+    });
+
+    thumbnailStorage.readFailure = StateError("read");
+    expect(
+      await repository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    thumbnailStorage.readFailure = null;
+    thumbnailStorage.writeFailure = StateError("write");
+    expect(
+      await repository.load(
+        sessionId: "session-1",
+        attachment: _stored.copyWith(attachmentId: "write-failure"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    thumbnailStorage.writeFailure = null;
+    thumbnailStorage.listFailure = StateError("list");
+    expect(
+      await repository.load(
+        sessionId: "session-1",
+        attachment: _stored.copyWith(attachmentId: "list-failure"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    thumbnailStorage.listFailure = null;
+
+    final stored = thumbnailStorage.writes.last;
+    thumbnailStorage.entries[stored.scope]![stored.key] = Uint8List.fromList([1]);
+    thumbnailStorage.deleteFailure = StateError("delete");
+    expect(
+      await repository.load(
+        sessionId: "session-1",
+        attachment: _stored.copyWith(attachmentId: "list-failure"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    final oversizedKey = thumbnailStorage.writes.last.key;
+    thumbnailStorage.sizeOverrides[oversizedKey] = 65 * 1024 * 1024;
+    expect(
+      await repository.load(
+        sessionId: "session-1",
+        attachment: _stored.copyWith(attachmentId: "prune-failure"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    thumbnailStorage.deleteFailure = null;
+    expect(requests, 5);
+  });
+
+  test("cache service deletes switched account scope and permits next account writes", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+
+    await serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    final accountAScope = thumbnailStorage.writes.single.scope;
+    session.emit(const AuthState.authenticated(user: _userB));
+    await Future<void>.delayed(Duration.zero);
+    await serviceRepository.waitForThumbnailCacheCleanup();
+    expect(thumbnailStorage.deletedScopes, [accountAScope]);
+
+    await serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    expect(thumbnailStorage.writes, hasLength(2));
+    expect(thumbnailStorage.writes.last.scope, isNot(accountAScope));
+    await service.dispose();
+    await session.states.close();
+  });
+
+  test("cache service retries failed cleanup before same-account cache access", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+    thumbnailStorage.deleteScopeFailure = StateError("cleanup");
+
+    session.emit(const AuthState.unauthenticated());
+    await Future<void>.delayed(Duration.zero);
+    await serviceRepository.waitForThumbnailCacheCleanup();
+    thumbnailStorage.deleteScopeFailure = null;
+    session.emit(const AuthState.authenticated(user: _userA));
+    expect(
+      await serviceRepository.load(
+        sessionId: "session-1",
+        attachment: _stored,
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+      isA<MessageImageLoadSuccess>(),
+    );
+    expect(thumbnailStorage.deletedScopes, hasLength(2));
+    expect(thumbnailStorage.writes, hasLength(1));
+    await service.dispose();
+    await session.states.close();
+  });
+
+  test("continued cleanup failure bypasses stale same-account cache", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: any(named: "sessionId"),
+        attachmentId: any(named: "attachmentId"),
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+    await serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+    final stored = thumbnailStorage.writes.single;
+    thumbnailStorage.entries[stored.scope]![stored.key] = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47]);
+    thumbnailStorage.deleteScopeFailure = StateError("cleanup");
+
+    session.emit(const AuthState.unauthenticated());
+    await serviceRepository.waitForThumbnailCacheCleanup();
+    session.emit(const AuthState.authenticated(user: _userA));
+    final result = await serviceRepository.load(
+      sessionId: "session-1",
+      attachment: _stored,
+      rendition: SessionAttachmentRendition.thumbnail,
+    );
+
+    expect(result, isA<MessageImageLoadSuccess>());
+    expect(thumbnailStorage.deletedScopes, hasLength(2));
+    expect(thumbnailStorage.reads, hasLength(1));
+    expect(thumbnailStorage.writes, hasLength(1));
+    verify(
+      () => sessionApi.getAttachment(
+        sessionId: "session-1",
+        attachmentId: "attachment-1",
+        rendition: SessionAttachmentRendition.thumbnail,
+      ),
+    ).called(2);
+    await service.dispose();
+    await session.states.close();
+  });
+
+  test("cache service disposal waits for active cleanup and cancels auth listener", () async {
+    final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
+    final serviceRepository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      sessionApi: sessionApi,
+      authSession: session,
+      attachmentThumbnailStorage: thumbnailStorage,
+    );
+    final service = MessageThumbnailCacheService(repository: serviceRepository, authSession: session);
+    final cleanupGate = Completer<void>();
+    thumbnailStorage.deleteScopeGate = cleanupGate;
+
+    session.emit(const AuthState.unauthenticated());
+    await Future<void>.delayed(Duration.zero);
+    var disposed = false;
+    final disposal = service.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+
+    cleanupGate.complete();
+    await disposal;
+    session.emit(const AuthState.authenticated(user: _userA));
+    await Future<void>.delayed(Duration.zero);
+    expect(thumbnailStorage.deletedScopes, hasLength(1));
+    await session.states.close();
   });
 }

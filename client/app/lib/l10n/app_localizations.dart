@@ -2839,12 +2839,6 @@ abstract class AppLocalizations {
   /// **'Delete worktree'**
   String get sessionListDeleteWorktreeCheckbox;
 
-  /// No description provided for @sessionListDeleteBranchCheckbox.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete branch'**
-  String get sessionListDeleteBranchCheckbox;
-
   /// No description provided for @sessionDetailArchivedNotice.
   ///
   /// In en, this message translates to:

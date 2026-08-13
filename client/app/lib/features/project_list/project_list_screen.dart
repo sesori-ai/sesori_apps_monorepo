@@ -1,9 +1,9 @@
 import "dart:async";
 
-import "package:flutter/cupertino.dart" show CupertinoColors, CupertinoDynamicColor;
-import "package:flutter/material.dart";
+import "package:cupertino_ui/cupertino_ui.dart" show CupertinoColors, CupertinoDynamicColor;
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";

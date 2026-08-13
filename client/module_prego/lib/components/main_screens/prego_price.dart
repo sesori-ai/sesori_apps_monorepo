@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";

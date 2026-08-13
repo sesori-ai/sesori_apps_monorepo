@@ -56,7 +56,7 @@ void main() {
           filesystemRepository: filesystemRepository,
           sessionOperationDispatcher: operationDispatcher,
           archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
-        chatHistoryService: createTestChatHistory().service,
+          chatHistoryService: createTestChatHistory().service,
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );
@@ -152,7 +152,6 @@ void main() {
 
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
@@ -251,25 +250,24 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
     });
 
-    test("failed branch deletion preserves the unarchived session for retry", () async {
+    test("legacy deleteBranch=true is rejected before archiving", () async {
       await _insertSession(
         db: db,
-        sessionId: "s1-failed",
+        sessionId: "s1-legacy",
         projectId: "/repo",
         isDedicated: true,
-        worktreePath: "/repo/.worktrees/session-001-failed",
-        branchName: "session-001-failed",
+        worktreePath: "/repo/.worktrees/session-001-legacy",
+        branchName: "session-001-legacy",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
       );
-      worktreeService.deleteBranchResult = false;
 
       await expectLater(
         () => handler.handle(
           makeRequest("PATCH", "/session/update/archive"),
           body: _archiveRequest(
-            sessionId: "s1-failed",
+            sessionId: "s1-legacy",
             archived: true,
             deleteWorktree: false,
             deleteBranch: true,
@@ -279,12 +277,13 @@ void main() {
           queryParams: {},
           fragment: null,
         ),
-        throwsA(isA<SessionCleanupFailedException>()),
+        throwsA(isA<RelayResponse>().having((response) => response.status, "status", 422)),
       );
 
-      final persisted = await db.sessionDao.getSession(sessionId: "s1-failed");
+      final persisted = await db.sessionDao.getSession(sessionId: "s1-legacy");
       expect(persisted?.archivedAt, isNull);
-      expect(worktreeService.deleteBranchCallCount, equals(1));
+      expect(worktreeService.checkCallCount, isZero);
+      expect(worktreeService.removeCallCount, isZero);
     });
 
     test("archive with cleanup on dirty worktree throws 409", () async {
@@ -462,7 +461,7 @@ void main() {
               sessionId: "missing",
               archived: true,
               deleteWorktree: true,
-              deleteBranch: true,
+              deleteBranch: false,
               force: false,
             ).toJson(),
           ),
@@ -476,7 +475,6 @@ void main() {
       expect(plugin.lastArchiveSessionId, isNull);
       expect(worktreeService.checkCallCount, 0);
       expect(worktreeService.removeCallCount, 0);
-      expect(worktreeService.deleteBranchCallCount, 0);
     });
 
     test("stored plugin mismatch returns 503 before plugin I/O or cleanup", () async {
@@ -502,7 +500,7 @@ void main() {
               sessionId: "stale-plugin-session",
               archived: true,
               deleteWorktree: true,
-              deleteBranch: true,
+              deleteBranch: false,
               force: false,
             ).toJson(),
           ),
@@ -516,7 +514,6 @@ void main() {
       expect(plugin.lastArchiveSessionId, isNull);
       expect(worktreeService.checkCallCount, 0);
       expect(worktreeService.removeCallCount, 0);
-      expect(worktreeService.deleteBranchCallCount, 0);
       expect((await db.sessionDao.getSession(sessionId: "stale-plugin-session"))?.archivedAt, isNull);
     });
 
@@ -686,7 +683,7 @@ void main() {
           sessionId: "s1",
           archived: true,
           deleteWorktree: true,
-          deleteBranch: true,
+          deleteBranch: false,
           force: false,
         ),
         pathParams: {},
@@ -696,7 +693,6 @@ void main() {
 
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
     });
@@ -856,20 +852,15 @@ Future<void> _insertSession({
 class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
-  bool deleteBranchResult = true;
   bool branchExistsResult = true;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
-  int deleteBranchCallCount = 0;
 
   String? lastCheckWorktreePath;
   String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
-  String? lastDeleteBranchProjectId;
-  String? lastDeleteBranchName;
-  bool? lastDeleteBranchForce;
 
   this
     : super(
@@ -905,19 +896,6 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
     lastRemoveWorktreePath = worktreePath;
     lastRemoveForce = force;
     return removeResult;
-  }
-
-  @override
-  Future<bool> deleteBranch({
-    required String projectId,
-    required String branchName,
-    required bool force,
-  }) async {
-    deleteBranchCallCount++;
-    lastDeleteBranchProjectId = projectId;
-    lastDeleteBranchName = branchName;
-    lastDeleteBranchForce = force;
-    return deleteBranchResult;
   }
 
   @override

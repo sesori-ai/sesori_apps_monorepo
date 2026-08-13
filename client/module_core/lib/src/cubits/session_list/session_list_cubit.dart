@@ -17,6 +17,7 @@ import "../../repositories/models/repo_provider.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/models/session_list_item_state.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
@@ -177,15 +178,15 @@ class SessionListCubit({
     if (isClosed) return;
     final current = state;
     if (current is! SessionListLoaded) return;
-    emit(current.copyWith(unseenBySessionId: _unseenBySessionId(current.sessions)));
+    _emitFiltered();
   }
 
   /// Merges the REST-loaded `Session.unseen` with the live tracker map (the
   /// tracker takes precedence once it has an entry).
   Map<String, bool> _unseenBySessionId(List<Session> sessions) {
-    final live = _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, bool>{};
+    final live = _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, SessionListItemState>{};
     return {
-      for (final session in sessions) session.id: live[session.id] ?? session.unseen,
+      for (final session in sessions) session.id: live[session.id]?.unseen ?? session.unseen,
     };
   }
 
@@ -346,7 +347,6 @@ class SessionListCubit({
   Future<bool> archiveSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     if (state is! SessionListLoaded) return false;
@@ -376,7 +376,6 @@ class SessionListCubit({
       response = await _sessionService.archiveSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
         force: force,
       );
     } on SessionCleanupRejectedException catch (error) {
@@ -417,7 +416,6 @@ class SessionListCubit({
   Future<bool> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     if (state is! SessionListLoaded) return false;
@@ -441,7 +439,6 @@ class SessionListCubit({
       response = await _sessionService.deleteSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
         force: force,
       );
     } on SessionCleanupRejectedException catch (error) {
@@ -487,6 +484,8 @@ class SessionListCubit({
       sessions: _allSessions,
       showArchived: _showArchived,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
+      listStateBySessionId:
+          _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, SessionListItemState>{},
     );
 
     if (isClosed) return;
@@ -593,7 +592,13 @@ class SessionListCubit({
         // (e.g. the session was read on another phone while reconnecting).
         _sessionUnseenTracker.seedSessions(
           projectId: _projectId,
-          unseenBySessionId: {for (final s in data.items) s.id: s.unseen},
+          stateBySessionId: {
+            for (final session in data.items)
+              session.id: (
+                unseen: session.unseen,
+                lastUserActivityAt: session.lastUserActivityAt,
+              ),
+          },
           sinceTick: unseenTick,
         );
         _emitFiltered();

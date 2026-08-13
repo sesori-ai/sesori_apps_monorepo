@@ -208,6 +208,7 @@ class const CursorPluginDescriptor({
           runtimeId: manifest.runtimeId,
         ),
         cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+        assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* installService.install(
         environment: environment,

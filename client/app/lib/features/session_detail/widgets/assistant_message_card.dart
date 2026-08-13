@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "agent_part_widget.dart";

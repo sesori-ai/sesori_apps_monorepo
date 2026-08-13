@@ -1,7 +1,8 @@
-import "package:flutter/cupertino.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
-import "package:flutter/material.dart";
+import "package:cupertino_ui/cupertino_ui.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
+import "package:flutter/foundation.dart";
 import "package:flutter/rendering.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 
 import "../../module_prego.dart";
 import "../../utils/color_extensions.dart";
@@ -403,8 +404,8 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      backgroundColor.withMultipliedOpacity(0.9),
-                      backgroundColor.withMultipliedOpacity(0.7),
+                      backgroundColor.withMultipliedOpacity(0.98),
+                      backgroundColor.withMultipliedOpacity(0.88),
                       backgroundColor.withMultipliedOpacity(0),
                     ],
                     stops: const [0, 0.8, 1.0],

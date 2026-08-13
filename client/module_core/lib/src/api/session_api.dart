@@ -126,7 +126,6 @@ class SessionApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     final response = await _client.patch(
@@ -136,7 +135,9 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         sessionId: sessionId,
         archived: true,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
+        // COMPATIBILITY 2026-08-13 (v1.7.1): Published bridges require this
+        // retired field. Remove it when v1.7.1 bridges are unsupported.
+        deleteBranch: false,
         force: force,
       ),
     );
@@ -156,7 +157,6 @@ class SessionApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     final response = await _client.delete(
@@ -165,7 +165,9 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       body: DeleteSessionRequest(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
+        // COMPATIBILITY 2026-08-13 (v1.7.1): Published bridges require this
+        // retired field. Remove it when v1.7.1 bridges are unsupported.
+        deleteBranch: false,
         force: force,
       ),
     );

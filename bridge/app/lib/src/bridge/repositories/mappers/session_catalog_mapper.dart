@@ -26,6 +26,7 @@ class const SessionCatalogMapper() {
           : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel),
       hasWorktree: row.worktreePath != null,
       unseen: unseen,
+      lastUserActivityAt: row.lastUserMessageAt,
     );
   }
 }

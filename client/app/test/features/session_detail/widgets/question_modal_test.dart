@@ -1,9 +1,9 @@
 import "dart:async";
 import "dart:ui" show SemanticsAction;
 
-import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_mobile/features/session_detail/widgets/question_modal.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
