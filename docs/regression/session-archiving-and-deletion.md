@@ -35,6 +35,10 @@ entirely along with its transcript and, optionally, its worktree and branch.
   worktree with its branch still present; retry can finish the residue. The session
   is deleted only after cleanup succeeds, and both flows serialize against
   concurrent mutations of the same session family.
+- Selecting both worktree and branch cleanup authorizes removal of the
+  session-owned branch after worktree safety checks pass, including when that
+  branch has unmerged commits. Branch-only cleanup remains non-forcing unless the
+  user explicitly confirms a forced retry.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions.
 

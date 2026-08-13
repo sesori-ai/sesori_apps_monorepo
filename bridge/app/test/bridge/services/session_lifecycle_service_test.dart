@@ -187,7 +187,7 @@ void main() {
           branchName: "session-002-retry",
           deleteWorktree: true,
           deleteBranch: true,
-          force: true,
+          force: false,
         ),
         throwsA(isA<SessionCleanupFailedException>()),
       );
@@ -203,12 +203,13 @@ void main() {
         branchName: "session-002-retry",
         deleteWorktree: true,
         deleteBranch: true,
-        force: true,
+        force: false,
       );
 
       expect(retryResult, isA<CleanupSuccess>());
       expect(worktreeService.removeCallCount, equals(2));
       expect(worktreeService.deleteBranchCallCount, equals(2));
+      expect(worktreeService.lastDeleteBranchForce, isTrue);
     });
 
     test("dirty worktree without force rejects with mapped issues", () async {
@@ -283,7 +284,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchForce, isFalse);
+      expect(worktreeService.lastDeleteBranchForce, isTrue);
     });
 
     test("failed branch deletion throws instead of reporting success", () async {
