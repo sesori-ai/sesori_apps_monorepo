@@ -234,9 +234,16 @@ first yields one event-loop turn, then incrementally base64-encodes attachment
 bytes and assembles request JSON in bounded chunks, yielding between chunks.
 This lets Flutter render the scheduled launch frame without passing frame
 lifecycle into shared business logic and without copying retained attachment
-buffers through an isolate port. Text-only requests retain the direct path. The
-serializer returns the complete JSON string to `RelayHttpApiClient`; the request
-and all existing acceptance semantics remain otherwise synchronous.
+buffers through an isolate port. Text-only requests retain the direct path.
+
+Bounded serialization continues through the existing relay envelope:
+`RelayHttpApiClient` passes the pre-encoded inner body as today, and
+`RelayClient` incrementally JSON-escapes that body and UTF-8-encodes the complete
+`RelayMessage.request` envelope into its plaintext byte builder with yields
+between bounded chunks. Encryption still receives the complete plaintext bytes
+and the wire JSON shape remains byte-equivalent; no new relay or client-bridge
+contract is introduced. Small/non-request relay messages retain the direct encoder.
+The request and all existing acceptance semantics remain otherwise synchronous.
 
 ### 2. Reusable detail-shaped launch presentation
 
@@ -630,9 +637,10 @@ bridge and client production steps into one large PR.
   followed by reconnect/discovery refresh during both restoration variants, and
   prove background failure after route exit does not repopulate the shared draft.
 - With a maximum-sized attachment fixture, prove bounded serialization yields
-  before and between chunks, preserves the exact wire payload, does not copy
-  attachment buffers, and does not block launch rendering; do not use a
-  wall-clock-only test.
+  before and between chunks across attachment base64, inner request JSON, and
+  outer relay-envelope JSON/UTF-8 encoding. Prove it preserves the exact wire
+  payload, does not copy attachment buffers through an isolate, and does not
+  block launch rendering; do not use a wall-clock-only test.
 - Prove mixed typed/voice spans survive submission failure exactly, and the
   existing-session queue plus analytics retain their released input-mode
   behavior after the richer callback input.
@@ -698,8 +706,9 @@ Compare baseline and final builds under the same plugin/workspace conditions.
 The acceptance criterion is structural, not a brittle wall-clock SLA:
 
 - launch view appears in the next rendered frame without waiting for bridge
-  response or synchronous attachment/request encoding; a maximum-sized fixture
-  verifies the launch view paints before serialization proceeds;
+  response or synchronous attachment/request/relay-envelope encoding; a
+  maximum-sized fixture verifies the launch view paints and remains schedulable
+  while every large serialization stage proceeds;
 - metadata/title completion cannot extend create response time;
 - route replacement occurs only after the real session is durable/queryable;
 - no accepted first input or command is moved behind the success response.

@@ -51,8 +51,9 @@
   discovery/options refreshes; clear only on consumption, explicit submission,
   or route exit as appropriate.
 - [ ] Incrementally encode attachment-bearing create requests with bounded
-  event-loop yields; do not copy bytes through isolates or couple the Cubit to
-  frame lifecycle.
+  event-loop yields through base64, inner JSON, and outer relay-envelope
+  JSON/UTF-8; do not copy bytes through isolates or couple the Cubit to frame
+  lifecycle.
 - [ ] A background failure after route exit must not restore shared draft state.
 - [ ] Preserve nullable title handoff; never convert missing title to `""`.
 - [ ] Extend authenticated `SesoriServerApi` for metadata, including token
@@ -117,7 +118,7 @@
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational merge-base result, including this verification record itself and
   within the 750-900 Step 1 changed-line target:
-  `PLAN.md +750`, `TRACKER.md +140`, total `+890 / -0`.
+  `PLAN.md +759`, `TRACKER.md +141`, total `+900 / -0`.
 
 ### Manual matrix
 
