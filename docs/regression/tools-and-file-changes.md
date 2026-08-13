@@ -70,4 +70,4 @@ multi-byte, and empty output; compare live with a later reload.
   `bridge/sesori_plugin_*/`; `client/app/lib/features/session_detail/widgets/`
 - Tests: `bridge/app/test/bridge/sse/bridge_event_mapper_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
-  `.plan/active/attachment-references`
+  `.plan/completed/attachment-references`

@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `attachment-references`
-- **Status:** Step 10/11 - viewer and stored-reference activation in progress
+- **Status:** Completed - all 11 steps delivered and verified
 - **Plan date:** 2026-08-10
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `4b3d67f3`
+- **Implementation base:** `origin/main` at `14a4e405`
 - **Delivery:** one plan PR, nine sequential implementation PRs, and one
   plan-retirement PR
 - **Related future work:** prompt-upload decisions are recorded separately in

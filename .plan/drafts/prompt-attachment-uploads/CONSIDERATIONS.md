@@ -5,7 +5,7 @@
 - **State:** Discussion record only; not an active implementation plan
 - **Date:** 2026-08-10
 - **Depends on:** the attachment fetch/reference contract being implemented and
-  proven by `.plan/active/attachment-references/`
+  proven by `.plan/completed/attachment-references/`
 - **No fixed PR count, titles, branches, estimates, or architecture are approved
   by this document.** Create a fresh active plan from then-current code before
   implementation.

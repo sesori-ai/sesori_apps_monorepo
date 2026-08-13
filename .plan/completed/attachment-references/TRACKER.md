@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 9 merged; Step 10 in review
-- **Current step:** 10/11
-- **Implementation base:** synchronized `origin/main` at `4b3d67f3`
+- **Series state:** Steps 1-10 merged; Step 11 retirement in progress
+- **Current step:** 11/11
+- **Implementation base:** synchronized `origin/main` at `14a4e405`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891)
-- **Next action:** Monitor Step 10 CI and review
+- **Current PR:** Pending
+- **Next action:** Publish the plan-retirement PR
 
 ## Plan Review
 
@@ -40,8 +40,8 @@
 | [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
 | [x] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) merged |
 | [x] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | [PR #889](https://github.com/sesori-ai/sesori_apps_monorepo/pull/889) merged |
-| [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | [PR #891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891) in review |
-| [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
+| [x] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | [PR #891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891) merged |
+| [x] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Retirement PR pending |
 
 ## Locked Decisions
 
@@ -264,6 +264,22 @@
   900-1,450 estimate because Step 7 already supplied the bounded transport,
   repository, and independent preview/original state machines; `git diff
   --check` passes.
+- Step 10 (merged): Review fixes stage Flutter decoding before swapping the
+  original or enabling actions, retain the thumbnail on decode failure, preserve
+  viewer zoom/drag/Hero state, evict the full-resolution provider on close, and
+  keep action Cubit ownership under `BlocProvider(create:)`. Fatal analysis, 37
+  focused widget tests, the full mobile suite, CI 13/13, and Cubic approval
+  passed; [PR #891](https://github.com/sesori-ai/sesori_apps_monorepo/pull/891)
+  squash-merged as `14a4e405` with no unresolved threads.
+- Step 11 retirement gate: On the slot-owned `sesori-dev-1` simulator and
+  authenticated slot-1 source bridge, a fresh Codex session generated a real
+  PNG attachment. The app received a stored reference, rendered its 320 px
+  square thumbnail, opened thumbnail-first, enabled copy/share/save after the
+  original decoded, reopened from the warm thumbnail cache, survived a bridge
+  stop/start and relay reconnect, and rendered again after leaving and reopening
+  the session from cold history. The slot bridge and simulator were shut down
+  after the check. Together with the Step 10 automated matrix, this completes
+  the required regression evidence for retirement.
 
 ## Findings And Plan Deltas
 
