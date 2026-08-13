@@ -98,6 +98,9 @@ Future<void> main(List<String> args) async {
     if (assistantText.trim().isEmpty) {
       stderr.writeln("FAIL: no assistant text in replayed history");
       exitCode = 1;
+    } else if (!assistantText.toLowerCase().contains("ok")) {
+      stderr.writeln("FAIL: assistant reply did not match the requested 'OK' (got: ${assistantText.trim()})");
+      exitCode = 1;
     } else {
       stdout.writeln("    assistant reply present");
     }
@@ -110,6 +113,15 @@ Future<void> main(List<String> args) async {
       "[5] live events: ${events.length} total "
       "($messageUpdates message envelopes, $partDeltas part deltas, $partUpdates part updates)",
     );
+    if (events.isEmpty) {
+      stderr.writeln("FAIL: no live SSE events were delivered (streaming path broken)");
+      exitCode = 1;
+    } else if (partDeltas == 0) {
+      stderr.writeln("FAIL: no streamed part deltas were delivered");
+      exitCode = 1;
+    } else {
+      stdout.writeln("    live streaming delivered");
+    }
   } on TimeoutException catch (error) {
     stderr.writeln("FAIL: timeout — $error");
     exitCode = 1;
