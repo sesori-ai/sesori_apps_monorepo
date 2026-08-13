@@ -86,7 +86,17 @@ class SessionUnseenTracker(
     if (_sessionUnseen.isClosed) return;
     if ((_projectTick[projectId] ?? 0) > sinceTick) return;
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
-    sessions[projectId] = Map<String, SessionListItemState>.unmodifiable(stateBySessionId);
+    final current = sessions[projectId] ?? const <String, SessionListItemState>{};
+    sessions[projectId] = Map<String, SessionListItemState>.unmodifiable({
+      for (final entry in stateBySessionId.entries)
+        entry.key: (
+          unseen: entry.value.unseen,
+          lastUserActivityAt: latestUserActivityAt(
+            first: current[entry.key]?.lastUserActivityAt,
+            second: entry.value.lastUserActivityAt,
+          ),
+        ),
+    });
     _sessionUnseen.add(sessions);
   }
 
@@ -127,7 +137,6 @@ class SessionUnseenTracker(
     final current = projectSessions[sessionId];
     final mergedActivityAt = latestUserActivityAt(first: current?.lastUserActivityAt, second: lastUserActivityAt);
     if (current != null && mergedActivityAt == current.lastUserActivityAt) return;
-    _projectTick[projectId] = ++_tick;
     projectSessions[sessionId] = (
       unseen: current?.unseen ?? unseen,
       lastUserActivityAt: mergedActivityAt,

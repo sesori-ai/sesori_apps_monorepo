@@ -230,6 +230,32 @@ void main() {
       expect(tracker.currentSessionUnseen["p1"]?["s1"], (unseen: false, lastUserActivityAt: 20));
     });
 
+    test("a newer session update marker survives REST without invalidating the project seed", () {
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: true, lastUserActivityAt: 20)},
+        sinceTick: tracker.tick,
+      );
+      tracker.seedProjects(const {"p1": true}, sinceTick: tracker.tick);
+      final preFetchTick = tracker.tick;
+
+      tracker.applySessionActivity(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: true,
+        lastUserActivityAt: 30,
+      );
+      tracker.seedSessions(
+        projectId: "p1",
+        stateBySessionId: const {"s1": (unseen: false, lastUserActivityAt: 20)},
+        sinceTick: preFetchTick,
+      );
+      tracker.seedProjects(const {"p1": false}, sinceTick: preFetchTick);
+
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], (unseen: false, lastUserActivityAt: 30));
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+    });
+
     test("applyLocalSessionUnseen preserves the marker and never touches the aggregate", () async {
       connectionService.emitUnseenChanged(
         projectId: "p1",
