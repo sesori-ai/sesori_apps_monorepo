@@ -59,9 +59,10 @@ class const _ProfileBody() extends StatelessWidget {
           case SettingsLogoutStatus.success:
             context.goRoute(const AppRoute.splash());
           case SettingsLogoutStatus.failure:
-            ScaffoldMessenger.of(context)
-              ..clearSnackBars()
-              ..showSnackBar(SnackBar(content: Text(loc.connectErrorUnknown)));
+            PregoPopupAlertPresenter.of(context).show(
+              title: loc.connectErrorUnknown,
+              variant: PregoPopupAlertsNotificationsVariant.error,
+            );
           case SettingsLogoutStatus.idle:
           case SettingsLogoutStatus.inProgress:
             break;

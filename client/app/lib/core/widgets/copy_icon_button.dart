@@ -6,7 +6,7 @@ import "package:theme_prego/module_prego.dart";
 
 /// Small icon button that copies [text] to the clipboard and briefly confirms
 /// with a check mark plus light haptic feedback. Self-contained — no snackbar
-/// or `ScaffoldMessenger` dependency, so it is safe to embed inside a
+/// or popup-alert dependency, so it is safe to embed inside a
 /// [SelectionArea] (e.g. message cards, code blocks, tool output).
 class const CopyIconButton({
   super.key,

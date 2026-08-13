@@ -7,7 +7,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/constants.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/imperative_pane_route.dart";
@@ -220,13 +219,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           answers: answers,
         );
         if (!mounted) return;
-        if (!success) return _showFailureSnackBar(context.loc.questionReplyFailed);
+        if (!success) return _showFailureAlert(context.loc.questionReplyFailed);
         _scheduleNextQuestionModal();
       },
       onReject: (requestId) async {
         final success = await context.read<SessionDetailCubit>().rejectQuestion(requestId);
         if (!mounted) return;
-        if (!success) return _showFailureSnackBar(context.loc.questionRejectFailed);
+        if (!success) return _showFailureAlert(context.loc.questionRejectFailed);
         _scheduleNextQuestionModal();
       },
     );
@@ -261,7 +260,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
               reply: reply,
             );
             if (!mounted) return;
-            if (!success) return _showFailureSnackBar(context.loc.permissionReplyFailed);
+            if (!success) return _showFailureAlert(context.loc.permissionReplyFailed);
             _scheduleNextPermissionModal();
           },
     );
@@ -298,9 +297,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
 
   bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent ?? false;
 
-  void _showFailureSnackBar(String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message), duration: kSnackBarDuration));
+  void _showFailureAlert(String message) {
+    PregoPopupAlertPresenter.of(context).show(
+      title: message,
+      variant: PregoPopupAlertsNotificationsVariant.error,
+    );
   }
 }

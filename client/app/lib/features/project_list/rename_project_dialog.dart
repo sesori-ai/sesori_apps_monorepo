@@ -4,7 +4,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 
 /// Shows the Rename Project modal bottom sheet.
@@ -58,7 +57,7 @@ class _RenameProjectDialogState() extends State<RenameProjectDialog> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
-    final messenger = ScaffoldMessenger.of(context);
+    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
 
     setState(() => _actionLoading = true);
@@ -73,18 +72,14 @@ class _RenameProjectDialogState() extends State<RenameProjectDialog> {
 
     if (success) {
       _dismissDialog();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(loc.renameProjectSuccess),
-          duration: kSnackBarDuration,
-        ),
+      popupAlertPresenter.show(
+        title: loc.renameProjectSuccess,
+        variant: PregoPopupAlertsNotificationsVariant.success,
       );
     } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(loc.renameProjectFailed),
-          duration: kSnackBarDuration,
-        ),
+      popupAlertPresenter.show(
+        title: loc.renameProjectFailed,
+        variant: PregoPopupAlertsNotificationsVariant.error,
       );
     }
   }

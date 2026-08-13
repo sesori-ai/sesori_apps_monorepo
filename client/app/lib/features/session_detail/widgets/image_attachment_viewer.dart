@@ -47,12 +47,10 @@ Future<void> showImageAttachmentViewer({
     transitionDuration: const Duration(milliseconds: 260),
     reverseTransitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (_, _, _) {
-      final viewer = ScaffoldMessenger(
-        child: ImageAttachmentViewer(
-          image: image,
-          filename: filename,
-          heroTag: heroTag,
-        ),
+      final viewer = ImageAttachmentViewer(
+        image: image,
+        filename: filename,
+        heroTag: heroTag,
       );
       return switch (image) {
         LoadedMessageImage() => BlocProvider(
@@ -278,7 +276,15 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
       ImageAttachmentActionsIdle() || ImageAttachmentActionRunning() => null,
     };
     if (message == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    final variant = switch (state) {
+      ImageAttachmentSaved() || ImageAttachmentCopied() => PregoPopupAlertsNotificationsVariant.success,
+      ImageAttachmentSaveAccessDenied() => PregoPopupAlertsNotificationsVariant.warning,
+      ImageAttachmentCopyFailed() ||
+      ImageAttachmentShareFailed() ||
+      ImageAttachmentSaveFailed() => PregoPopupAlertsNotificationsVariant.error,
+      ImageAttachmentActionsIdle() || ImageAttachmentActionRunning() => PregoPopupAlertsNotificationsVariant.info,
+    };
+    PregoPopupAlertPresenter.of(context).show(title: message, variant: variant);
     context.read<ImageAttachmentActionsCubit>().outcomeHandled();
   }
 

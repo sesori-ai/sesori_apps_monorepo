@@ -75,7 +75,7 @@ class _SessionSplitShellState() extends State<SessionSplitShell> {
         final listWidth = (constraints.maxWidth * maxListPanelRatio).clamp(minListPanelWidth, maxListPanelWidth);
 
         // The shell-level Scaffold is the single root Scaffold registered
-        // with the root ScaffoldMessenger in split mode. Snackbars therefore
+        // with the root presentation overlay in split mode. Popup alerts therefore
         // present once, spanning both panes, instead of attaching to the
         // right pane's transient route Scaffolds (which also breaks when a
         // snackbar is shown mid pane-transition).

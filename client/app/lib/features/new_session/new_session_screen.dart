@@ -91,7 +91,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
   late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
-  late ScaffoldMessengerState _scaffoldMessenger;
+  late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
 
   @override
@@ -110,20 +110,17 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _scaffoldMessenger = ScaffoldMessenger.of(context);
+    _popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     _launchingInBackgroundMessage = context.loc.newSessionLaunchingInBackground;
   }
 
   @override
   void dispose() {
     if (_isSending && !_navigatingToCreatedSession) {
-      final scaffoldMessenger = _scaffoldMessenger;
+      final popupAlertPresenter = _popupAlertPresenter;
       final message = _launchingInBackgroundMessage;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!scaffoldMessenger.mounted) return;
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-        );
+        popupAlertPresenter.show(title: message);
       });
     }
     _composerSurfaceStyle.dispose();

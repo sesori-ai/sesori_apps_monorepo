@@ -4,7 +4,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
@@ -17,18 +16,16 @@ const _actionDispatcher = SessionListActionDispatcher();
 
 /// Pull-to-refresh handler shared by [SessionListScaffold] and
 /// [SessionListPanel]: re-fetches the session list and reports the outcome via
-/// a snackbar. Both hosts own their own scroll view and refresh control, so the
+/// a popup alert. Both hosts own their own scroll view and refresh control, so the
 /// refresh action lives here, next to the content.
 Future<void> refreshSessionList(BuildContext context) async {
   final loc = context.loc;
   final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
   if (!context.mounted) return;
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed),
-      duration: kSnackBarDuration,
-    ),
+  PregoPopupAlertPresenter.of(context).show(
+    title: success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed,
+    variant: success ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
   );
 }
 

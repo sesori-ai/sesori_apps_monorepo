@@ -984,8 +984,9 @@ class const _AuthenticationSheet() extends StatelessWidget {
     try {
       await Clipboard.setData(ClipboardData(text: code));
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.loc.harnessAuthenticationCodeCopied)),
+      PregoPopupAlertPresenter.of(context).show(
+        title: context.loc.harnessAuthenticationCodeCopied,
+        variant: PregoPopupAlertsNotificationsVariant.success,
       );
     } on Object catch (error, stackTrace) {
       logw("Failed to copy authentication code", error, stackTrace);

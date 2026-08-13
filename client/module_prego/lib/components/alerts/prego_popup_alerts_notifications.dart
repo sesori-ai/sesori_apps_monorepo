@@ -1,170 +1,385 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
+import "../buttons/prego_buttons_solid.dart";
 
 /// Visual variant for [PregoPopupAlertsNotifications].
-///
-/// Each variant pairs a leading icon with an accent colour used for the
-/// radial gradient overlay and the icon tint.
 enum PregoPopupAlertsNotificationsVariant() {
-  /// Error / failure — red circle-exclamation icon, error-red gradient.
+  info,
+  success,
+  warning,
   error,
+  loading,
 }
 
-/// A dark, gradient-tinted alert notification matching the Figma
-/// `pregoPopupAlertsNotifications` component.
-///
-/// The component renders with a fixed dark background regardless of the
-/// app's brightness — the gradient overlay and white-alpha text colours
-/// are designed for a dark surface only.
-///
-/// Usage:
-/// ```dart
-/// PregoPopupAlertsNotifications(
-///   title: 'Authentication failed',
-///   message: 'The credentials returned by Google could not be verified. '
-///       'Please try again.',
-///   onClose: () => setState(() => _showError = false),
-/// )
-/// ```
-///
-/// Passing `onClose: null` hides the close button.
+/// Configuration for an alert action.
+class const PregoPopupAlertsNotificationsAction({
+  required final String label,
+  required final VoidCallback onPressed,
+});
+
+/// A floating alert matching Figma's `pregoPopupAlertsNotifications`.
 class const PregoPopupAlertsNotifications({
-    super.key,
-    /// Bold headline text shown on the first line.
+  super.key,
   required final String title,
-    /// Optional supporting description shown below [title]. When `null`,
-  /// only the title is rendered.
   final String? message,
-    /// Called when the user taps the close button. When `null`, the close
-  /// button is not rendered.
   final VoidCallback? onClose,
-    /// Controls the leading icon and accent colour. Currently only
-  /// [PregoPopupAlertsNotificationsVariant.error] is defined.
-  final PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.error,
-  }) extends StatelessWidget {
-  // Solid background fill — `rgb(24, 25, 27)`. Not a semantic token because
-  // the alert is always rendered on a dark surface regardless of theme.
-  static const Color _backgroundColor = Color(0xFF18191B);
+  final PregoPopupAlertsNotificationsAction? primaryAction,
+  final PregoPopupAlertsNotificationsAction? secondaryAction,
+  final PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.info,
+}) extends StatelessWidget {
+  static const Color _surfaceColor = Color(0xFF333333);
+  static const double _iconSize = 22;
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final accentColor = _resolveAccentColor(colors: prego.colors);
-    final iconData = _resolveIcon();
+    final colors = prego.colors;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _backgroundColor,
-        borderRadius: BorderRadius.circular(PregoRadius.x2l),
-        border: Border.all(color: prego.colors.borderTertiary),
-        boxShadow: prego.shadows.xs,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(PregoRadius.x2l),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      // Centre near the top edge — matches Figma's gradient
-                      // transform that places the radial origin at top-centre.
-                      center: Alignment.topCenter,
-                      radius: 1.0,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.1 * 0.3),
-                        accentColor.withValues(alpha: 0.3),
-                      ],
-                    ),
-                  ),
+    return Material(
+      type: MaterialType.transparency,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: _surfaceColor,
+          borderRadius: BorderRadius.circular(PregoRadius.x2l),
+          border: Border.all(color: colors.borderPrimary),
+          boxShadow: const [
+            BoxShadow(color: Color(0x1A000000), blurRadius: 2),
+            BoxShadow(color: Color(0x59000000), spreadRadius: 1),
+            BoxShadow(color: Color(0x1A000000), offset: Offset(0, 2), blurRadius: 4),
+            BoxShadow(color: Color(0x17000000), offset: Offset(0, 8), blurRadius: 8),
+            BoxShadow(color: Color(0x0D000000), offset: Offset(0, 13), blurRadius: 10),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(PregoRadius.x2l),
+          child: Stack(
+            children: [
+              Positioned.fill(child: IgnorePointer(child: _buildAccent(colors))),
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  PregoSpacing.xl,
+                  PregoSpacing.xl,
+                  PregoSpacing.x4l,
+                  PregoSpacing.xl,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLeading(colors),
+                    const SizedBox(width: PregoSpacing.lg),
+                    Expanded(child: _buildContent(prego)),
+                  ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(
-                PregoSpacing.xl,
-                PregoSpacing.xl,
-                PregoSpacing.x2l,
-                PregoSpacing.xl,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(iconData, size: 22, color: accentColor),
-                  const SizedBox(width: PregoSpacing.lg),
-                  Expanded(child: _buildContent()),
-                ],
-              ),
-            ),
-            if (onClose != null)
-              PositionedDirectional(
-                top: 7,
-                end: 7,
-                child: _CloseButton(onPressed: onClose),
-              ),
-          ],
+              if (onClose case final onClose?)
+                PositionedDirectional(
+                  top: PregoSpacing.md,
+                  end: 7,
+                  child: _CloseButton(onPressed: onClose),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildContent() {
-    return Builder(
-      builder: (context) {
-        final textTheme = context.prego.textTheme;
-        final messageText = message;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: textTheme.textSm.bold.copyWith(color: Colors.white),
-            ),
-            if (messageText != null) ...[
-              const SizedBox(height: PregoSpacing.lg),
-              Text(
-                messageText,
-                style: textTheme.textSm.medium.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
+  Widget _buildContent(PregoDesignSystem prego) {
+    final message = this.message;
+    final hasActions = primaryAction != null || secondaryAction != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+        ),
+        if (message != null) ...[
+          const SizedBox(height: PregoSpacing.lg),
+          Text(
+            message,
+            style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
+          ),
+        ],
+        if (hasActions) ...[
+          const SizedBox(height: PregoSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              if (secondaryAction case final action?)
+                PregoButtonsSolid(
+                  label: action.label,
+                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: action.onPressed,
                 ),
-              ),
+              if (primaryAction case final action?) ...[
+                const SizedBox(width: PregoSpacing.lg),
+                PregoButtonsSolid(
+                  label: action.label,
+                  hierarchy: _primaryButtonHierarchy,
+                  size: PregoButtonsSolidSize.sm,
+                  type: _primaryButtonType,
+                  onPressed: action.onPressed,
+                ),
+              ],
             ],
-          ],
-        );
-      },
+          ),
+        ],
+      ],
     );
   }
 
-  Color _resolveAccentColor({required PregoColors colors}) => switch (variant) {
-    PregoPopupAlertsNotificationsVariant.error => colors.fgErrorSecondary,
+  Widget _buildLeading(PregoColors colors) {
+    if (variant == PregoPopupAlertsNotificationsVariant.loading) {
+      return Icon(TablerRegular.sparkles, size: _iconSize, color: colors.textPrimary);
+    }
+    return Icon(_icon, size: _iconSize, color: _iconColor(colors));
+  }
+
+  Widget _buildAccent(PregoColors colors) {
+    final accent = switch (variant) {
+      PregoPopupAlertsNotificationsVariant.success => colors.fgSuccessSecondary,
+      PregoPopupAlertsNotificationsVariant.warning => colors.fgWarningPrimary,
+      PregoPopupAlertsNotificationsVariant.error => colors.fgErrorPrimary,
+      PregoPopupAlertsNotificationsVariant.info || PregoPopupAlertsNotificationsVariant.loading => null,
+    };
+    if (accent == null) return const SizedBox.shrink();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.topCenter,
+          radius: 1.15,
+          colors: [Colors.transparent, accent.withValues(alpha: 0.30)],
+        ),
+      ),
+    );
+  }
+
+  IconData get _icon => switch (variant) {
+    PregoPopupAlertsNotificationsVariant.info => TablerRegular.info_circle,
+    PregoPopupAlertsNotificationsVariant.success => TablerRegular.circle_check,
+    PregoPopupAlertsNotificationsVariant.warning => TablerRegular.alert_triangle,
+    PregoPopupAlertsNotificationsVariant.error => TablerRegular.alert_circle,
+    PregoPopupAlertsNotificationsVariant.loading => TablerRegular.sparkles,
   };
 
-  IconData _resolveIcon() => switch (variant) {
-    PregoPopupAlertsNotificationsVariant.error => TablerRegular.alert_circle,
+  Color _iconColor(PregoColors colors) => switch (variant) {
+    PregoPopupAlertsNotificationsVariant.info || PregoPopupAlertsNotificationsVariant.loading => colors.textPrimary,
+    PregoPopupAlertsNotificationsVariant.success => colors.fgSuccessSecondary,
+    PregoPopupAlertsNotificationsVariant.warning => colors.fgWarningSecondary,
+    PregoPopupAlertsNotificationsVariant.error => colors.fgErrorPrimary,
+  };
+
+  PregoButtonsSolidHierarchy get _primaryButtonHierarchy => switch (variant) {
+    PregoPopupAlertsNotificationsVariant.loading => PregoButtonsSolidHierarchy.primaryAlt,
+    PregoPopupAlertsNotificationsVariant.info ||
+    PregoPopupAlertsNotificationsVariant.success ||
+    PregoPopupAlertsNotificationsVariant.warning ||
+    PregoPopupAlertsNotificationsVariant.error => PregoButtonsSolidHierarchy.primary,
+  };
+
+  PregoButtonsSolidType get _primaryButtonType => switch (variant) {
+    PregoPopupAlertsNotificationsVariant.success => PregoButtonsSolidType.success,
+    PregoPopupAlertsNotificationsVariant.warning => PregoButtonsSolidType.warning,
+    PregoPopupAlertsNotificationsVariant.error => PregoButtonsSolidType.destructive,
+    PregoPopupAlertsNotificationsVariant.info ||
+    PregoPopupAlertsNotificationsVariant.loading => PregoButtonsSolidType.regular,
   };
 }
 
-/// Round, translucent close button rendered in the alert's top-trailing
-/// corner. Tap target is 36×36 (8px padding around a 20px icon).
-class const _CloseButton({required final VoidCallback? onPressed}) extends StatelessWidget {
+/// A stable presentation target that can be captured before asynchronous work.
+final class PregoPopupAlertPresenter._({required final OverlayState _overlay}) {
+  static final Expando<_PregoPopupAlertPresentation> _presentations = Expando<_PregoPopupAlertPresentation>();
+
+  /// Captures the nearest overlay so an alert can still be shown after the
+  /// source widget is removed or a modal route is dismissed.
+  static PregoPopupAlertPresenter of(BuildContext context) {
+    return PregoPopupAlertPresenter._(overlay: Overlay.of(context));
+  }
+
+  /// Shows an alert above the current route and replaces any alert already
+  /// visible on the same overlay.
+  // ignore: prefer_required_named_parameters, optional alert content defaults to absent
+  void show({
+    required String title,
+    PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.info,
+    // ignore: avoid_init_to_null, explicit default satisfies the public API lint
+    String? message = null,
+    // ignore: avoid_init_to_null, explicit default satisfies the public API lint
+    PregoPopupAlertsNotificationsAction? primaryAction = null,
+    // ignore: avoid_init_to_null, explicit default satisfies the public API lint
+    PregoPopupAlertsNotificationsAction? secondaryAction = null,
+    Duration? duration = const Duration(seconds: 3),
+    bool showCloseButton = true,
+  }) {
+    if (!_overlay.mounted) return;
+
+    _presentations[_overlay]?.dismiss(immediately: true);
+    late final _PregoPopupAlertPresentation presentation;
+    final entry = OverlayEntry(
+      builder: (context) => _PregoPopupAlertOverlay(
+        title: title,
+        message: message,
+        variant: variant,
+        primaryAction: primaryAction,
+        secondaryAction: secondaryAction,
+        duration: duration,
+        showCloseButton: showCloseButton,
+        onDismissed: () {
+          if (_presentations[_overlay] == presentation) {
+            _presentations[_overlay] = null;
+          }
+          presentation.remove();
+        },
+        presentation: presentation,
+      ),
+    );
+    presentation = _PregoPopupAlertPresentation(entry: entry);
+    _presentations[_overlay] = presentation;
+    _overlay.insert(entry);
+  }
+
+  void dismiss() {
+    _presentations[_overlay]?.dismiss(immediately: false);
+  }
+}
+
+final class _PregoPopupAlertPresentation({required final OverlayEntry entry}) {
+  VoidCallback? dismissAnimated;
+  bool _removed = false;
+
+  void dismiss({required bool immediately}) {
+    if (_removed) return;
+    final dismiss = dismissAnimated;
+    if (!immediately && dismiss != null) {
+      dismiss();
+      return;
+    }
+    remove();
+  }
+
+  void remove() {
+    if (_removed) return;
+    _removed = true;
+    entry.remove();
+    entry.dispose();
+  }
+}
+
+class const _PregoPopupAlertOverlay({
+  required final String title,
+  required final String? message,
+  required final PregoPopupAlertsNotificationsVariant variant,
+  required final PregoPopupAlertsNotificationsAction? primaryAction,
+  required final PregoPopupAlertsNotificationsAction? secondaryAction,
+  required final Duration? duration,
+  required final bool showCloseButton,
+  required final VoidCallback onDismissed,
+  required final _PregoPopupAlertPresentation presentation,
+}) extends StatefulWidget {
+  @override
+  State<_PregoPopupAlertOverlay> createState() => _PregoPopupAlertOverlayState();
+}
+
+class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  Timer? _timer;
+  bool _dismissing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+      reverseDuration: const Duration(milliseconds: 160),
+    )..forward();
+    widget.presentation.dismissAnimated = _dismiss;
+    if (widget.duration case final duration?) {
+      _timer = Timer(duration, _dismiss);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    widget.presentation.dismissAnimated = null;
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _dismiss() async {
+    if (_dismissing || !mounted) return;
+    _dismissing = true;
+    _timer?.cancel();
+    await _controller.reverse();
+    if (mounted) widget.onDismissed();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return PregoTappable(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(PregoRadius.full),
-      containerBuilder: (child) => Padding(
-        padding: const EdgeInsetsDirectional.all(PregoSpacing.md),
-        child: child,
+    final media = MediaQuery.of(context);
+    final top = media.padding.top + 54 + PregoSpacing.xl;
+    return PositionedDirectional(
+      top: top,
+      start: PregoSpacing.xl,
+      end: PregoSpacing.xl,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 343),
+            child: FadeTransition(
+              opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -0.12),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
+                child: PregoPopupAlertsNotifications(
+                  title: widget.title,
+                  message: widget.message,
+                  variant: widget.variant,
+                  primaryAction: widget.primaryAction,
+                  secondaryAction: widget.secondaryAction,
+                  onClose: widget.showCloseButton ? _dismiss : null,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      child: Icon(
-        TablerRegular.x,
-        size: 20,
-        color: Colors.white.withValues(alpha: 0.5),
+    );
+  }
+}
+
+class const _CloseButton({required final VoidCallback onPressed}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: "Close notification",
+      child: PregoTappable(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(PregoRadius.full),
+        containerBuilder: (child) => Padding(
+          padding: const EdgeInsetsDirectional.all(PregoSpacing.md),
+          child: child,
+        ),
+        child: Icon(
+          TablerRegular.x,
+          size: 20,
+          color: context.prego.colors.textSecondary,
+        ),
       ),
     );
   }

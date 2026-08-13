@@ -382,6 +382,7 @@ class _LoginErrorBannerState() extends State<_LoginErrorBanner> {
                   : PregoPopupAlertsNotifications(
                       title: loc.loginAuthenticationFailedTitle,
                       message: reason.localizedMessage(loc),
+                      variant: PregoPopupAlertsNotificationsVariant.error,
                       onClose: () => context.read<LoginCubit>().onDismissedLoginFailureError(),
                     ),
             ),

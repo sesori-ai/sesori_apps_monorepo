@@ -4,7 +4,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 
 /// Shows the Rename Session modal bottom sheet.
@@ -54,7 +53,7 @@ class _RenameSessionDialogState() extends State<_RenameSessionDialog> {
     final title = _controller.text.trim();
     if (title.isEmpty) return;
 
-    final messenger = ScaffoldMessenger.of(context);
+    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
 
     setState(() => _actionLoading = true);
@@ -69,18 +68,14 @@ class _RenameSessionDialogState() extends State<_RenameSessionDialog> {
 
     if (success) {
       _dismissDialog();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(loc.renameSessionSuccess),
-          duration: kSnackBarDuration,
-        ),
+      popupAlertPresenter.show(
+        title: loc.renameSessionSuccess,
+        variant: PregoPopupAlertsNotificationsVariant.success,
       );
     } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(loc.renameSessionFailed),
-          duration: kSnackBarDuration,
-        ),
+      popupAlertPresenter.show(
+        title: loc.renameSessionFailed,
+        variant: PregoPopupAlertsNotificationsVariant.error,
       );
     }
   }

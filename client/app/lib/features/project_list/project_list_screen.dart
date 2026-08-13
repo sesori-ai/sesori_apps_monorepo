@@ -9,8 +9,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+
 import "../../core/bridge_install.dart";
-import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
@@ -340,11 +340,9 @@ class _ProjectListBodyState() extends State<_ProjectListBody> {
     final loc = context.loc;
     final success = await context.read<ProjectListCubit>().refreshProjects();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed),
-        duration: kSnackBarDuration,
-      ),
+    PregoPopupAlertPresenter.of(context).show(
+      title: success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed,
+      variant: success ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
     );
   }
 }

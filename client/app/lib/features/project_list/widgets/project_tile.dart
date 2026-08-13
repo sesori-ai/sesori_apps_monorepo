@@ -8,7 +8,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/constants.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../l10n/app_localizations.dart";
@@ -121,17 +120,15 @@ class const ProjectTile({
   }
 
   /// A confirmed hide drops the project from the list, which disposes this
-  /// tile — so the messenger and strings are resolved before the cubit call,
+  /// tile — so the presenter and strings are resolved before the cubit call,
   /// not after it.
   Future<void> _hide({required BuildContext context}) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
     final hidden = await context.read<ProjectListCubit>().hideProject(project.id);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(hidden ? loc.projectHidden : loc.projectHideFailed),
-        duration: kSnackBarDuration,
-      ),
+    popupAlertPresenter.show(
+      title: hidden ? loc.projectHidden : loc.projectHideFailed,
+      variant: hidden ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
     );
   }
 
@@ -309,11 +306,9 @@ class const ProjectTile({
 
   void _open({required BuildContext context, required String displayName, required bool missing}) {
     if (missing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.loc.projectFolderMissingMessage),
-          duration: kSnackBarDuration,
-        ),
+      PregoPopupAlertPresenter.of(context).show(
+        title: context.loc.projectFolderMissingMessage,
+        variant: PregoPopupAlertsNotificationsVariant.warning,
       );
       return;
     }

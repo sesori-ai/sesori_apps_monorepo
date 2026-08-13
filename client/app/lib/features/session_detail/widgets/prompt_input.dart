@@ -15,7 +15,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../capabilities/media/composer_image_picker.dart";
 import "../../../capabilities/voice/voice_transcription_service.dart";
-import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
@@ -75,13 +74,12 @@ final class _ComposerPasteAction({
   bool consumesKey(PasteTextIntent intent) => callingAction?.consumesKey(intent) ?? false;
 }
 
-typedef PromptSubmitCallback =
-    void Function({
-      required String text,
-      required String? command,
-      required ComposerInputMode inputMode,
-      required List<ComposerAttachment> attachments,
-    });
+typedef PromptSubmitCallback = void Function({
+  required String text,
+  required String? command,
+  required ComposerInputMode inputMode,
+  required List<ComposerAttachment> attachments,
+});
 
 class const PromptInput({
     super.key,
@@ -755,25 +753,17 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _showComposerNotice(String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: kSnackBarDuration,
-        ),
-      );
+    PregoPopupAlertPresenter.of(context).show(
+      title: message,
+      variant: PregoPopupAlertsNotificationsVariant.warning,
+    );
   }
 
   void _showRecordingLimitReached() {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(context.loc.voiceRecordingLimitReached),
-          duration: kSnackBarDuration,
-        ),
-      );
+    PregoPopupAlertPresenter.of(context).show(
+      title: context.loc.voiceRecordingLimitReached,
+      variant: PregoPopupAlertsNotificationsVariant.warning,
+    );
   }
 
   Future<void> _openCommandPicker() async {

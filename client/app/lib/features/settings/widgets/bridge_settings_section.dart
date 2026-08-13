@@ -201,9 +201,10 @@ Future<void> _editInterval({
   if (result == null) return;
   final acceptance = await cubit.updatePullRequestRefresh(input: result, expectedState: state);
   if (!context.mounted || acceptance == BridgeSettingsUpdateAcceptance.accepted) return;
-  ScaffoldMessenger.of(context)
-    ..clearSnackBars()
-    ..showSnackBar(SnackBar(content: Text(context.loc.settingsPullRequestRefreshStateChanged)));
+  PregoPopupAlertPresenter.of(context).show(
+    title: context.loc.settingsPullRequestRefreshStateChanged,
+    variant: PregoPopupAlertsNotificationsVariant.warning,
+  );
 }
 
 class const _RefreshIntervalSheet({

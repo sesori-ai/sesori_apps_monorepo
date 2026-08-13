@@ -744,13 +744,13 @@ class const _CommandActionRow({
 
 class _CommandActionRowState() extends State<_CommandActionRow> {
   Future<void> _copyCommand() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
     final cubit = context.read<ProjectListCubit>();
     final command = widget.command;
     final reportCopied = widget.reportCopied;
     // Clipboard can throw on restricted platforms/states; fail soft and skip
-    // the success snackbar. Log so a broken copy button leaves a diagnostic
+    // the success alert. Log so a broken copy button leaves a diagnostic
     // trail instead of failing silently.
     try {
       await Clipboard.setData(ClipboardData(text: command));
@@ -759,11 +759,9 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
       return;
     }
     reportCopied(cubit);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(loc.projectsOnboardingCommandCopied),
-        duration: kSnackBarDuration,
-      ),
+    popupAlertPresenter.show(
+      title: loc.projectsOnboardingCommandCopied,
+      variant: PregoPopupAlertsNotificationsVariant.success,
     );
   }
 
