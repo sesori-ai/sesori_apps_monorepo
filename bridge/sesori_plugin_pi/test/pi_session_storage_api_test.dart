@@ -364,7 +364,8 @@ void main() {
       final first = fixture.directory("first");
       final second = fixture.directory("second");
       fixture.writeSession(root: first, id: "duplicate", cwd: project);
-      fixture.writeSession(root: second, id: "duplicate", cwd: project, fileName: "other.jsonl");
+      final firstPath = p.join(first, "duplicate.jsonl");
+      final secondPath = fixture.writeSession(root: second, id: "duplicate", cwd: project, fileName: "other.jsonl");
       File(p.join(fixture.agentDirectory, "settings.json")).writeAsStringSync(jsonEncode({"sessionDir": second}));
 
       expect(
@@ -378,9 +379,37 @@ void main() {
             (error) => error.sessionId,
             "sessionId",
             "duplicate",
+          ).having(
+            (error) => {error.firstPath, error.secondPath},
+            "conflicting paths",
+            {File(firstPath).resolveSymbolicLinksSync(), File(secondPath).resolveSymbolicLinksSync()},
           ),
         ),
       );
+    });
+
+    test("logs malformed metadata path and cause without rendering record content", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("project");
+      final root = fixture.directory("sessions");
+      final path = fixture.writeSession(root: root, id: "malformed-entry", cwd: project);
+      const secret = "private-malformed-title";
+      File(path).writeAsStringSync('{"type":"session_info","name":"$secret" broken}\n', mode: FileMode.append);
+
+      final warnings = await _captureWarnings(() async {
+        final sessions = await fixture
+            .api(
+              environment: {"PI_CODING_AGENT_SESSION_DIR": root},
+            )
+            .listSessionMetadata(knownDirectories: const {});
+        expect(sessions.map((session) => session.id), ["malformed-entry"]);
+      });
+
+      expect(warnings, contains(File(path).resolveSymbolicLinksSync()));
+      expect(warnings, contains("Invalid Pi session metadata"));
+      expect(warnings, isNot(contains(secret)));
+      expect(warnings, isNot(contains(project)));
     });
 
     test("malformed and oversized settings fall back without logging their content", () async {

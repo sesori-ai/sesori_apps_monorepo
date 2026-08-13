@@ -18,9 +18,13 @@ final class const PiSessionMetadata({
   required final DateTime updatedAt,
 });
 
-final class const PiSessionStorageConflictException({required final String sessionId}) implements Exception {
+final class const PiSessionStorageConflictException({
+  required final String sessionId,
+  required final String firstPath,
+  required final String secondPath,
+}) implements Exception {
   @override
-  String toString() => "More than one Pi session file declares session id $sessionId";
+  String toString() => "More than one Pi session file declares session id $sessionId: '$firstPath' and '$secondPath'";
 }
 
 class PiSessionStorageApi({required Map<String, String> environment}) {
@@ -63,8 +67,17 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
   }
 
   void _logDiagnostics(_PiScanDiagnostics diagnostics) {
-    if (diagnostics.malformedMetadataRecords > 0) {
-      Log.w("[pi] skipped ${diagnostics.malformedMetadataRecords} malformed session metadata record(s)");
+    for (final failure in diagnostics.malformedMetadataFailures) {
+      Log.w(
+        "[pi] skipped malformed session metadata at '${failure.path}'",
+        _PiMetadataParseException(cause: failure.error),
+        failure.stackTrace,
+      );
+    }
+    final unreportedMalformedMetadata =
+        diagnostics.malformedMetadataRecords - diagnostics.malformedMetadataFailures.length;
+    if (unreportedMalformedMetadata > 0) {
+      Log.w("[pi] skipped $unreportedMalformedMetadata additional malformed session metadata record(s)");
     }
     for (final path in diagnostics.oversizedMetadataPaths) {
       Log.w("[pi] skipped oversized session metadata record at '$path'");
@@ -167,7 +180,11 @@ _PiScanResult _scanPiSessions({
   for (final session in byPath.values) {
     final previous = pathsById[session.id];
     if (previous != null && previous != session.path) {
-      throw PiSessionStorageConflictException(sessionId: session.id);
+      throw PiSessionStorageConflictException(
+        sessionId: session.id,
+        firstPath: previous,
+        secondPath: session.path,
+      );
     }
     pathsById[session.id] = session.path;
   }
@@ -383,8 +400,14 @@ _PiScannedSession? _readSessionMetadata({
           final PiSessionMetadataDto record;
           try {
             record = PiSessionMetadataDto.fromJson(jsonDecodeMap(utf8.decode(bytes)));
-          } on Object {
-            if (!isFinal) diagnostics.malformedMetadataRecords += 1;
+          } on Object catch (error, stackTrace) {
+            if (!isFinal) {
+              diagnostics.recordMalformedMetadata(
+                path: resolvedPath,
+                error: error,
+                stackTrace: stackTrace,
+              );
+            }
             return;
           }
           switch (record) {
@@ -717,6 +740,7 @@ final class _PiScanDiagnostics() {
   int oversizedExternalParentHeaders = 0;
   bool externalParentLimitReached = false;
   final List<_PiStorageFailure> storageFailures = [];
+  final List<_PiStorageFailure> malformedMetadataFailures = [];
   final List<String> oversizedMetadataPaths = [];
   final List<_PiStorageFailure> malformedSettingsFailures = [];
   final List<String> oversizedSettingsPaths = [];
@@ -756,6 +780,23 @@ final class _PiScanDiagnostics() {
     );
   }
 
+  void recordMalformedMetadata({
+    required String path,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    malformedMetadataRecords += 1;
+    if (malformedMetadataFailures.length >= PiSessionStorageApi.diagnosticFailureLimit) return;
+    malformedMetadataFailures.add(
+      _PiStorageFailure(
+        operation: "parse Pi session metadata",
+        path: path,
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
+  }
+
   void recordOversizedMetadata({required String path}) {
     oversizedMetadataRecords += 1;
     if (oversizedMetadataPaths.length < PiSessionStorageApi.diagnosticFailureLimit) {
@@ -781,6 +822,11 @@ final class const _PiStorageFailure({
 final class const _PiSettingsParseException({required final Object cause}) implements Exception {
   @override
   String toString() => "Invalid Pi session settings";
+}
+
+final class const _PiMetadataParseException({required final Object cause}) implements Exception {
+  @override
+  String toString() => "Invalid Pi session metadata";
 }
 
 final class _PiMetadataLineScanner() {
