@@ -10,6 +10,7 @@ import "package:http/testing.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
+import "package:sesori_mobile/features/session_detail/widgets/attachment_collection_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/image_attachment_viewer.dart";
 import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
@@ -118,7 +119,7 @@ MessagePart _toolPart({required String id, required String toolName}) {
   );
 }
 
-MessagePart _filePart({required String id}) {
+MessagePart _filePart({required String id, String filename = "report.pdf"}) {
   return MessagePart(
     id: id,
     sessionID: "session-1",
@@ -133,7 +134,7 @@ MessagePart _filePart({required String id}) {
     agentName: null,
     attempt: null,
     retryError: null,
-    attachment: const MessageAttachment.metadata(mime: "application/pdf", filename: "report.pdf"),
+    attachment: MessageAttachment.metadata(mime: "application/pdf", filename: filename),
   );
 }
 
@@ -336,5 +337,36 @@ void main() {
 
     expect(find.byType(FilePartWidget), findsOneWidget);
     expect(find.text("report.pdf"), findsOneWidget);
+  });
+
+  testWidgets("groups only contiguous assistant file runs without changing chronology", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [
+            _textPart(id: "before", text: "Before files"),
+            _filePart(id: "file-1", filename: "one.pdf"),
+            _filePart(id: "file-2", filename: "two.pdf"),
+            _toolPart(id: "tool", toolName: "Search files"),
+            _filePart(id: "file-3", filename: "three.pdf"),
+            _textPart(id: "after", text: "After files"),
+          ],
+        ),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.byType(AttachmentCollectionWidget), findsNWidgets(2));
+    final beforeY = tester.getTopLeft(find.text("Before files")).dy;
+    final firstCollectionY = tester.getTopLeft(find.byType(AttachmentCollectionWidget).first).dy;
+    final toolY = tester.getTopLeft(find.byType(ToolPartWidget)).dy;
+    final secondCollectionY = tester.getTopLeft(find.byType(AttachmentCollectionWidget).last).dy;
+    final afterY = tester.getTopLeft(find.text("After files")).dy;
+    expect(beforeY, lessThan(firstCollectionY));
+    expect(firstCollectionY, lessThan(toolY));
+    expect(toolY, lessThan(secondCollectionY));
+    expect(secondCollectionY, lessThan(afterY));
   });
 }

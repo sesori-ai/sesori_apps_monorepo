@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "agent_part_widget.dart";
-import "file_part_widget.dart";
+import "attachment_collection_widget.dart";
 import "reasoning_part_card.dart";
 import "retry_part_widget.dart";
 import "subtask_part_widget.dart";
@@ -27,11 +27,41 @@ class const AssistantMessageCard({
         child: Column(
           crossAxisAlignment: .start,
           children: [
-            for (final part in visibleParts) _buildPart(context: context, part: part),
+            ..._buildParts(context: context, parts: visibleParts),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildParts({required BuildContext context, required List<MessagePart> parts}) {
+    final widgets = <Widget>[];
+    var index = 0;
+    while (index < parts.length) {
+      final part = parts[index];
+      if (part.type != MessagePartType.file) {
+        widgets.add(_buildPart(context: context, part: part));
+        index++;
+        continue;
+      }
+
+      final run = <MessagePart>[];
+      while (index < parts.length && parts[index].type == MessagePartType.file) {
+        run.add(parts[index]);
+        index++;
+      }
+      final attachments = run.map((part) => part.attachment).whereType<MessageAttachment>().toList();
+      if (attachments.isNotEmpty) {
+        widgets.add(
+          AttachmentCollectionWidget(
+            key: ValueKey((run.first.id, run.last.id)),
+            sessionId: run.first.sessionID,
+            attachments: attachments,
+          ),
+        );
+      }
+    }
+    return widgets;
   }
 
   bool _isVisible(MessagePart part) {
@@ -83,14 +113,7 @@ class const AssistantMessageCard({
       ),
       MessagePartType.stepStart => const SizedBox.shrink(),
       MessagePartType.stepFinish => const SizedBox.shrink(),
-      MessagePartType.file => switch (part.attachment) {
-        final attachment? => FilePartWidget(
-          key: ValueKey(part.id),
-          sessionId: part.sessionID,
-          attachment: attachment,
-        ),
-        null => const SizedBox.shrink(),
-      },
+      MessagePartType.file => const SizedBox.shrink(),
       MessagePartType.snapshot => const SizedBox.shrink(),
       MessagePartType.patch => const SizedBox.shrink(),
       MessagePartType.compaction => const SizedBox.shrink(),

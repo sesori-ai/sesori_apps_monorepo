@@ -6,7 +6,7 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
 import "../../../l10n/app_localizations.dart";
-import "file_part_widget.dart";
+import "attachment_collection_widget.dart";
 
 class const ToolPartWidget({super.key, required final MessagePart part}) extends StatelessWidget {
   @override
@@ -80,11 +80,9 @@ class const ToolPartWidget({super.key, required final MessagePart part}) extends
                   prego.spacing.lg,
                   prego.spacing.md,
                 ),
-                child: Column(
-                  children: [
-                    for (final attachment in state.attachments)
-                      FilePartWidget(sessionId: part.sessionID, attachment: attachment),
-                  ],
+                child: AttachmentCollectionWidget(
+                  sessionId: part.sessionID,
+                  attachments: state.attachments,
                 ),
               ),
           ],

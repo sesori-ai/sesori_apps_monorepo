@@ -5,7 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
-import "file_part_widget.dart";
+import "attachment_collection_widget.dart";
 import "text_part_widget.dart" show MarkdownMessageImage;
 
 class const UserMessageCard({super.key, required final MessageWithParts message}) extends StatelessWidget {
@@ -24,7 +24,10 @@ class const UserMessageCard({super.key, required final MessageWithParts message}
     return UserMessageBubble(
       markdown: text.isEmpty ? null : text,
       attachments: [
-        for (final attachment in attachments) FilePartWidget(sessionId: message.info.sessionID, attachment: attachment),
+        AttachmentCollectionWidget(
+          sessionId: message.info.sessionID,
+          attachments: attachments,
+        ),
       ],
       outlined: false,
       transitionDuration: Duration.zero,

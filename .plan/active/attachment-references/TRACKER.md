@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 8 in review; Step 9 local successor next
-- **Current step:** 8/11
-- **Implementation base:** `origin/main` at `57e1d0ea`
+- **Series state:** Step 8 merged; Step 9 implemented locally and verifying
+- **Current step:** 9/11
+- **Implementation base:** merged Step 8 plus synchronized `origin/main`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
-- **Current PR:** [#876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876)
-- **Next action:** Monitor Step 8 CI/review and begin Step 9 locally
+- **Current PR:** Pending for Step 9
+- **Next action:** Complete Step 9 review and verification, then publish its PR
 
 ## Plan Review
 
@@ -38,8 +38,8 @@
 | [x] | 5/11 | `🚧 [attachment-references] feat(bridge): reference images in live events [step 5/11]` | 1,100-1,500 | [PR #851](https://github.com/sesori-ai/sesori_apps_monorepo/pull/851) merged |
 | [x] | 6/11 | `⚙️ [attachment-references] feat(bridge): retain larger transcript images [step 6/11]` | 900-1,450 | [PR #854](https://github.com/sesori-ai/sesori_apps_monorepo/pull/854) merged |
 | [x] | 7/11 | `🚧 [attachment-references] feat(client): load stored image renditions [step 7/11]` | 1,500-2,000 | [PR #864](https://github.com/sesori-ai/sesori_apps_monorepo/pull/864) merged |
-| [ ] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) in review |
-| [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Pending |
+| [x] | 8/11 | `🚧 [attachment-references] feat(client): cache encrypted image previews [step 8/11]` | 1,250-1,600 | [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876) merged |
+| [ ] | 9/11 | `⚙️ [attachment-references] feat(client): render square attachment grids [step 9/11]` | 900-1,450 | Implemented locally; verifying |
 | [ ] | 10/11 | `⚙️ [attachment-references] feat(client): load originals in the image viewer [step 10/11]` | 900-1,450 | Pending |
 | [ ] | 11/11 | `🌱 [attachment-references] docs: retire lazy transcript attachments [step 11/11]` | 50-200 | Pending |
 
@@ -210,8 +210,27 @@
   lines), within the
   review-revised 1,250-1,600 target;
   `git diff --check origin/main...HEAD` passes. Published as
-  [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876); monitoring
-  is active.
+  [PR #876](https://github.com/sesori-ai/sesori_apps_monorepo/pull/876), which
+  merged as `57c2af97`.
+- Step 9 (local): Added one capped, parent-responsive square attachment
+  collection for user and tool attachments and maximal contiguous assistant
+  file runs. One item spans the row, two split evenly, three use a lead tile
+  plus a pair, and larger collections use paired rows. Loaded images center-crop
+  with bounded metadata overlays; loading, metadata, rejection, and retry states
+  retain square geometry, with static reduced-motion loading and an accessible
+  explicit retry. Existing remote URL safety, per-tile `MessageImageCubit`
+  ownership, and image-viewer behavior remain intact; normal history and live
+  requests still use inline delivery. All 29 focused file/assistant widget tests
+  pass, including new grid, width-cap, chronology, long-metadata,
+  reduced-motion, retry, and semantics coverage. All mobile tests, mobile fatal
+  analysis, `dart pub get`, focused formatting, and `git diff --check` pass.
+  Architecture implementation review approved the presentation flow, cubit
+  ownership, backend neutrality, compatibility boundary, and chronology with no
+  findings. The local diff has 568 additions and 117 deletions across nine files
+  (685 changed lines), below the 900-1,450 estimate because the existing
+  `FilePartWidget`, `MessageImageCubit`, and viewer seams were reused without new
+  state infrastructure. No analytics event was added: passive tile rendering or
+  taps have no defined product decision or authoritative outcome to measure.
 
 ## Findings And Plan Deltas
 
