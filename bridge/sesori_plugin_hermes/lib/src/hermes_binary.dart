@@ -6,8 +6,7 @@ import "package:acp_plugin/acp_plugin.dart";
 /// environment, so a Hermes install with a configured provider/model
 /// (via `hermes setup` / `hermes model`) is picked up automatically.
 abstract final class HermesBinary() {
-  /// The Hermes CLI launcher, resolved on PATH by the descriptor's runtime
-  /// probe (and overridable with `--hermes-bin`).
+  /// The Hermes CLI launcher, resolved on PATH.
   static const String defaultBinary = "hermes";
 
   static AcpLaunchSpec launchSpec({
