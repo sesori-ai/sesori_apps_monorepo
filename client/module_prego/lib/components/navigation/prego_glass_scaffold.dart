@@ -127,7 +127,7 @@ class const PregoGlassScaffold({
     /// Whether the bar may infer a back button from the navigator when neither
   /// [leading] nor [onBack] is supplied.
   final bool automaticallyImplyLeading = true,
-    /// Optional floating action button, forwarded to the inner [GlassScaffold].
+    /// Optional floating action button, hosted by the standalone [Scaffold].
   final Widget? floatingActionButton,
     /// Where [floatingActionButton] sits horizontally. Defaults to the trailing
   /// edge.
@@ -195,12 +195,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
     super.dispose();
   }
 
-  /// The floating action handed to [GlassScaffold], positioned per
+  /// The floating action handed to the standalone [Scaffold], positioned per
   /// [PregoGlassScaffold.floatingActionAlignment].
   ///
-  /// [GlassScaffold] gives its inner [Scaffold] no
-  /// [FloatingActionButtonLocation], so the action always lands on
-  /// [FloatingActionButtonLocation.endFloat]. Rather than reimplement that
+  /// The [Scaffold] has no [FloatingActionButtonLocation], so the action always
+  /// lands on [FloatingActionButtonLocation.endFloat]. Rather than reimplement that
   /// slot's vertical placement — which already clears the keyboard, the home
   /// indicator and any snack bar — the centred variant widens the action to
   /// the full content width and centres the caller's widget inside it.
@@ -435,7 +434,6 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       extendBody: extendBehind,
       topEdgeFade: false, // Disable the top edge fade -- we use our own custom gradient
       bottomEdgeFade: false, // Disable the bottom edge fade -- we use our own custom gradient
-      floatingActionButton: _floatingActionButton,
       bodyOverlays: bodyOverlays.isEmpty ? null : bodyOverlays,
       appBar: topBar,
       // The top bar is a Column (not a PreferredSizeWidget), so GlassScaffold
@@ -455,7 +453,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
     // Remove this wrapper once liquid_glass_widgets migrates from the Flutter SDK Material and Cupertino libraries to material_ui and cupertino_ui.
     return Scaffold(
       backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false,
+      floatingActionButton: _floatingActionButton,
       body: _TopBarInsetScope(
         baseInset: topPad + PregoTopNavigation.barHeight,
         bannerHeight: _bannerHeight,
