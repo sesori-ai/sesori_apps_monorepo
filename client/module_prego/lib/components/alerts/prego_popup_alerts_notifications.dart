@@ -7,8 +7,6 @@ import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
 
-// ignore_for_file: prefer_required_named_parameters, optional alert content defaults to absent
-
 /// Visual variant for [PregoPopupAlertsNotifications].
 enum PregoPopupAlertsNotificationsVariant() {
   info,
@@ -22,6 +20,14 @@ enum PregoPopupAlertsNotificationsVariant() {
 class const PregoPopupAlertsNotificationsAction({
   required final String label,
   required final VoidCallback onPressed,
+});
+
+/// Optional supporting content for an alert presented by
+/// [PregoPopupAlertPresenter].
+class const PregoPopupAlertContent({
+  final String? message,
+  final PregoPopupAlertsNotificationsAction? primaryAction,
+  final PregoPopupAlertsNotificationsAction? secondaryAction,
 });
 
 /// A floating alert matching Figma's `pregoPopupAlertsNotifications`.
@@ -212,9 +218,7 @@ final class PregoPopupAlertPresenter._({required final OverlayState _overlay}) {
   void show({
     required String title,
     PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.info,
-    String? message,
-    PregoPopupAlertsNotificationsAction? primaryAction,
-    PregoPopupAlertsNotificationsAction? secondaryAction,
+    PregoPopupAlertContent content = const PregoPopupAlertContent(),
     Duration? duration = const Duration(seconds: 3),
     bool showCloseButton = true,
   }) {
@@ -225,10 +229,10 @@ final class PregoPopupAlertPresenter._({required final OverlayState _overlay}) {
     final entry = OverlayEntry(
       builder: (context) => _PregoPopupAlertOverlay(
         title: title,
-        message: message,
+        message: content.message,
         variant: variant,
-        primaryAction: primaryAction,
-        secondaryAction: secondaryAction,
+        primaryAction: content.primaryAction,
+        secondaryAction: content.secondaryAction,
         duration: duration,
         showCloseButton: showCloseButton,
         onDismissed: () {
