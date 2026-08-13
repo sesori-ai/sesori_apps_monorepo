@@ -123,8 +123,15 @@ void main() {
   test("metadata listing does not delete an active temporary write", () async {
     final bytes = Uint8List(4 * 1024 * 1024);
     final write = storage.write(scope: "account", key: "thumbnail", bytes: bytes);
+    final directory = Directory("${temporaryDirectory.path}/attachment_thumbnails/account");
+    while (!directory.existsSync() ||
+        directory.listSync().whereType<File>().every(
+          (file) => !path.basename(file.path).startsWith(".tmp-"),
+        )) {
+      await Future<void>.delayed(Duration.zero);
+    }
 
-    await storage.listMetadata(scope: "account");
+    expect(await storage.listMetadata(scope: "account"), isEmpty);
     await write;
 
     expect(await storage.read(scope: "account", key: "thumbnail"), bytes);

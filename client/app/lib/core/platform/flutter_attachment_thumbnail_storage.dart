@@ -61,13 +61,15 @@ class FlutterAttachmentThumbnailStorage({
       final metadata = <AttachmentThumbnailMetadata>[];
       await for (final entity in directory.list()) {
         if (entity is! File) continue;
-        if (path.basename(entity.path).startsWith(".tmp-") && !_activeTemporaryPaths.contains(entity.path)) {
-          try {
-            await entity.delete();
-          } on PathNotFoundException {
-            // Another listing or write cleanup already removed it.
-          } on Object catch (cause, stackTrace) {
-            logw("Failed to delete abandoned message thumbnail temporary file", cause, stackTrace);
+        if (path.basename(entity.path).startsWith(".tmp-")) {
+          if (!_activeTemporaryPaths.contains(entity.path)) {
+            try {
+              await entity.delete();
+            } on PathNotFoundException {
+              // Another listing or write cleanup already removed it.
+            } on Object catch (cause, stackTrace) {
+              logw("Failed to delete abandoned message thumbnail temporary file", cause, stackTrace);
+            }
           }
           continue;
         }

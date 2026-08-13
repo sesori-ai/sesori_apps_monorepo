@@ -456,6 +456,7 @@ boundary it captures the authenticated `AuthUser.id` from
 field, and receives the message-owned `sessionId`; these values form the cache
 scope with attachment id and rendition version. No cache operation reads a
 global current-bridge fallback. Only encoded thumbnails are persisted.
+
 Each authenticated account scope is capped at 64 MiB; after a successful write,
 the repository deletes the oldest modified entries (key order breaks timestamp
 ties) until the scope is within budget. Reads do not update modification time,
