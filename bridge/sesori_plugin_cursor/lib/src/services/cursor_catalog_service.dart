@@ -7,35 +7,22 @@ import "../models/cursor_catalog_models.dart";
 import "../repositories/cursor_catalog_repository.dart";
 import "../trackers/cursor_catalog_tracker.dart";
 
-enum _MissingCommandSnapshotPolicy { retain, invalidate }
+enum _MissingCommandSnapshotPolicy() { retain, invalidate }
 
 /// Coordinates bounded, isolated Cursor catalog discovery.
-class CursorCatalogService {
-  CursorCatalogService({
-    required CursorCatalogRepository repository,
-    required CursorCatalogTracker tracker,
-    required AcpCommandTracker commandTracker,
-    required AcpCommandTracker stagedCommandTracker,
-    required Duration totalTimeout,
-    required int maxCandidates,
-  }) : _repository = repository,
-       _tracker = tracker,
-       _commandTracker = commandTracker,
-       _stagedCommandTracker = stagedCommandTracker,
-       _totalTimeout = totalTimeout,
-       _maxCandidates = maxCandidates,
-       _observedCommandRevision = commandTracker.revision;
+class CursorCatalogService({
+    required final CursorCatalogRepository _repository,
+    required final CursorCatalogTracker _tracker,
+    required final AcpCommandTracker _commandTracker,
+    required final AcpCommandTracker _stagedCommandTracker,
+    required final Duration _totalTimeout,
+    required final int _maxCandidates,
+  }) {
 
-  final CursorCatalogRepository _repository;
-  final CursorCatalogTracker _tracker;
-  final AcpCommandTracker _commandTracker;
-  final AcpCommandTracker _stagedCommandTracker;
-  final Duration _totalTimeout;
-  final int _maxCandidates;
   Future<CursorCatalogProbeOutcome>? _inFlight;
   Future<bool>? _forcedInFlight;
   final Set<String> _retriedScopes = {};
-  int _observedCommandRevision;
+  int _observedCommandRevision = _commandTracker.revision;
   int? _probedCommandRevision;
 
   Future<void> ensureCatalog({required String scope}) async {

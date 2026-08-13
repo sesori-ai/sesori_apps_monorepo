@@ -8,19 +8,11 @@ import "runtime_version.dart";
 /// Most runtimes ship a single self-contained executable ([singleBinary]).
 /// Cursor ships a `dist-package/` tree whose entry binary loads sibling files,
 /// so the whole directory must be kept together ([packageDirectory]).
-enum RuntimeArchiveLayout { singleBinary, packageDirectory }
+enum RuntimeArchiveLayout() { singleBinary, packageDirectory }
 
 /// One platform's pinned release artifact for a managed runtime, identified by
 /// its publisher [assetName] and verified against [sha256] before placement.
-sealed class RuntimeAsset {
-  const RuntimeAsset({
-    required this.assetName,
-    required this.sha256,
-  });
-
-  final String assetName;
-  final String sha256;
-}
+sealed class const RuntimeAsset({required final String assetName, required final String sha256});
 
 typedef RuntimeAssetResolver = Future<RuntimeAsset?> Function({required PlatformTarget target});
 
@@ -29,29 +21,20 @@ typedef RuntimeAssetResolver = Future<RuntimeAsset?> Function({required Platform
 /// [archiveBinaryName] is distinct from [RuntimeManifest.binaryFileName] (the
 /// canonical on-disk name): some publishers use a target-triple member name
 /// that the installer normalizes to the canonical name.
-final class ArchiveRuntimeAsset extends RuntimeAsset {
-  const ArchiveRuntimeAsset({
-    required super.assetName,
-    required this.format,
-    required super.sha256,
-    required this.archiveBinaryName,
-    required this.layout,
-  });
-
-  final ArchiveFormat format;
+final class const ArchiveRuntimeAsset({
+  required super.assetName,
+  required final ArchiveFormat format,
+  required super.sha256,
 
   /// The entry executable's name inside the extracted archive. For
   /// [RuntimeArchiveLayout.packageDirectory] it names the binary within the
   /// placed tree; its siblings travel with it.
-  final String archiveBinaryName;
-
-  final RuntimeArchiveLayout layout;
-}
+  required final String archiveBinaryName,
+  required final RuntimeArchiveLayout layout,
+}) extends RuntimeAsset;
 
 /// A runtime published as a bare executable with no archive container.
-final class DirectBinaryRuntimeAsset extends RuntimeAsset {
-  const DirectBinaryRuntimeAsset({required super.assetName, required super.sha256});
-}
+final class const DirectBinaryRuntimeAsset({required super.assetName, required super.sha256}) extends RuntimeAsset;
 
 /// The harness-specific seam of the shared runtime-provisioning system: the
 /// pinned facts a [ManagedRuntimeProvisionService] needs to decide which binary
@@ -67,9 +50,7 @@ final class DirectBinaryRuntimeAsset extends RuntimeAsset {
 ///   the managed runtime (so a too-old install can't break the bridge, and a
 ///   newer one is never downgraded).
 /// - [bundledVersion] is the exact version the managed runtime downloads.
-abstract class RuntimeManifest {
-  const RuntimeManifest();
-
+abstract class const RuntimeManifest() {
   /// Stable runtime identifier. Doubles as the managed-runtime subdirectory name
   /// under `PluginHost.stateDirectory` and the log tag (e.g. `"opencode"`,
   /// `"codex"`).

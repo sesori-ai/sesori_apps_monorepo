@@ -18,25 +18,13 @@ typedef SourcedBridgeEvent = ({
 typedef NormalizedRuntimeEvent = ({int generation, BridgeSseEvent event});
 typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
-class SessionEventService {
-  final SessionRepository _sessionRepository;
-  final PluginRuntime _pluginRuntime;
-  final SessionEventMapper _eventMapper;
-  final SessionEventTracker _eventTracker;
-  final FailureReporter _failureReporter;
-
-  SessionEventService({
-    required SessionRepository sessionRepository,
-    required PluginRuntime pluginRuntime,
-    required SessionEventMapper eventMapper,
-    required SessionEventTracker eventTracker,
-    required FailureReporter failureReporter,
-  }) : _sessionRepository = sessionRepository,
-       _pluginRuntime = pluginRuntime,
-       _eventMapper = eventMapper,
-       _eventTracker = eventTracker,
-       _failureReporter = failureReporter;
-
+class SessionEventService({
+  required final SessionRepository _sessionRepository,
+  required final PluginRuntime _pluginRuntime,
+  required final SessionEventMapper _eventMapper,
+  required final SessionEventTracker _eventTracker,
+  required final FailureReporter _failureReporter,
+}) {
   SourcedBridgeEvent captureSource({
     required String pluginId,
     required int generation,
@@ -54,7 +42,7 @@ class SessionEventService {
     required SourcedBridgeEvent source,
     required bool allowDuringStop,
   }) async {
-    return _normalizeGuarded(
+    return await _normalizeGuarded(
       source: source,
       allowDuringStop: allowDuringStop,
       drainPending: true,
@@ -439,31 +427,32 @@ class SessionEventService {
     if (translated == null) return null;
 
     final translatedSession = _eventMapper.sessionInfo(event: translated);
-    return switch (translated) {
+    return await switch (translated) {
       BridgeSseSessionPromptDefaultsChanged(
         :final sessionID,
         :final agent,
         model: final pluginModel,
-      ) => () async {
-        final model = switch (pluginModel) {
-          PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
-            providerID: providerID,
-            modelID: modelID,
-            variant: variant,
-          ),
-          null => null,
-        };
-        try {
-          await _sessionRepository.updatePromptDefaults(sessionId: sessionID, agent: agent, agentModel: model);
-        } on Object catch (error, stackTrace) {
-          Log.w("Failed to persist backend-originated prompt defaults for session $sessionID", error, stackTrace);
-        }
-        return BridgeSseSessionPromptDefaultsChanged(
-          sessionID: sessionID,
-          agent: agent,
-          model: pluginModel,
-        );
-      }(),
+      ) =>
+        () async {
+          final model = switch (pluginModel) {
+            PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
+              providerID: providerID,
+              modelID: modelID,
+              variant: variant,
+            ),
+            null => null,
+          };
+          try {
+            await _sessionRepository.updatePromptDefaults(sessionId: sessionID, agent: agent, agentModel: model);
+          } on Object catch (error, stackTrace) {
+            Log.w("Failed to persist backend-originated prompt defaults for session $sessionID", error, stackTrace);
+          }
+          return BridgeSseSessionPromptDefaultsChanged(
+            sessionID: sessionID,
+            agent: agent,
+            model: pluginModel,
+          );
+        }(),
       BridgeSseSessionCreated() => switch (translatedSession) {
         final session? => switch (await _catalogSession(session: session)) {
           final catalogSession? => BridgeSseSessionCreated(info: catalogSession.toJson()),

@@ -3,7 +3,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "../models/cursor_catalog_models.dart";
 
 /// Layer-2 owner of Cursor's learned catalog and per-scope probe outcomes.
-class CursorCatalogTracker {
+class CursorCatalogTracker() {
   int _revision = 0;
   String? _modelConfigId;
   List<CursorCatalogOption> _models = const [];

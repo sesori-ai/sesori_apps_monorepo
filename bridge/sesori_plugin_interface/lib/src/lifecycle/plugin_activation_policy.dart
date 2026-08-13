@@ -1,5 +1,5 @@
 /// When an eligible, setup-ready plugin adapter should be activated.
-enum PluginActivationPolicy {
+enum PluginActivationPolicy() {
   /// Start only when a concrete plugin operation needs the adapter.
   onDemand,
 

@@ -2,73 +2,50 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
 
-typedef ClaudeApprovalResponder =
-    bool Function({
-      required String sessionId,
-      required String requestId,
-      required Map<String, Object?> payload,
-    });
+typedef ClaudeApprovalResponder = bool Function({
+  required String sessionId,
+  required String requestId,
+  required Map<String, Object?> payload,
+});
 
-sealed class _PendingApproval {
-  const _PendingApproval({
-    required this.id,
-    required this.requestId,
-    required this.sessionId,
-    required this.toolUseId,
-  });
+sealed class const _PendingApproval({
+  required final String id,
+  required final String requestId,
+  required final String sessionId,
+  required final String? toolUseId,
+});
 
-  final String id;
-  final String requestId;
-  final String sessionId;
-  final String? toolUseId;
-}
+final class const _PendingPermission({
+  required super.id,
+  required super.requestId,
+  required super.sessionId,
+  required super.toolUseId,
+  required final String tool,
+  required final String description,
+  required final Map<String, Object?> input,
+  required final List<_ClaudePermissionSuggestion> suggestions,
+  required final bool allowAlways,
+}) extends _PendingApproval;
 
-final class _PendingPermission extends _PendingApproval {
-  const _PendingPermission({
-    required super.id,
-    required super.requestId,
-    required super.sessionId,
-    required super.toolUseId,
-    required this.tool,
-    required this.description,
-    required this.input,
-    required this.suggestions,
-    required this.allowAlways,
-  });
-
-  final String tool;
-  final String description;
-  final Map<String, Object?> input;
-  final List<_ClaudePermissionSuggestion> suggestions;
-  final bool allowAlways;
-}
-
-sealed class _PendingQuestion extends _PendingApproval {
-  const _PendingQuestion({
-    required super.id,
-    required super.requestId,
-    required super.sessionId,
-    required super.toolUseId,
-    required this.input,
-    required this.questions,
-  });
-
-  final Map<String, Object?> input;
-  final List<PluginQuestionInfo> questions;
-
+sealed class const _PendingQuestion({
+  required super.id,
+  required super.requestId,
+  required super.sessionId,
+  required super.toolUseId,
+  required final Map<String, Object?> input,
+  required final List<PluginQuestionInfo> questions,
+}) extends _PendingApproval {
   Map<String, Object?> updatedInput({required List<List<String>> answers});
 }
 
-final class _AskUserQuestion extends _PendingQuestion {
-  const _AskUserQuestion({
-    required super.id,
-    required super.requestId,
-    required super.sessionId,
-    required super.toolUseId,
-    required super.input,
-    required super.questions,
-  });
-
+final class const _AskUserQuestion({
+  required super.id,
+  required super.requestId,
+  required super.sessionId,
+  required super.toolUseId,
+  required super.input,
+  required super.questions,
+}) extends _PendingQuestion {
   @override
   Map<String, Object?> updatedInput({required List<List<String>> answers}) => {
     ...input,
@@ -79,64 +56,46 @@ final class _AskUserQuestion extends _PendingQuestion {
   };
 }
 
-final class _ExitPlanMode extends _PendingQuestion {
-  const _ExitPlanMode({
-    required super.id,
-    required super.requestId,
-    required super.sessionId,
-    required super.toolUseId,
-    required super.input,
-    required super.questions,
-  });
-
+final class const _ExitPlanMode({
+  required super.id,
+  required super.requestId,
+  required super.sessionId,
+  required super.toolUseId,
+  required super.input,
+  required super.questions,
+}) extends _PendingQuestion {
   @override
   Map<String, Object?> updatedInput({required List<List<String>> answers}) => input;
 }
 
-final class _UnknownInteraction extends _PendingQuestion {
-  const _UnknownInteraction({
-    required super.id,
-    required super.requestId,
-    required super.sessionId,
-    required super.toolUseId,
-    required super.input,
-    required super.questions,
-  });
-
+final class const _UnknownInteraction({
+  required super.id,
+  required super.requestId,
+  required super.sessionId,
+  required super.toolUseId,
+  required super.input,
+  required super.questions,
+}) extends _PendingQuestion {
   @override
   Map<String, Object?> updatedInput({required List<List<String>> answers}) => input;
 }
 
-sealed class _ClaudePermissionSuggestion {
-  const _ClaudePermissionSuggestion();
-
-  factory _ClaudePermissionSuggestion.parse(Map<String, Object?> raw) =>
-      raw["type"] == "addRules" && raw["destination"] == "session"
+sealed class const _ClaudePermissionSuggestion() {
+  factory parse(Map<String, Object?> raw) => raw["type"] == "addRules" && raw["destination"] == "session"
       ? _SessionAddRules(raw: raw)
       : const _IneligiblePermissionSuggestion();
 }
 
-final class _SessionAddRules extends _ClaudePermissionSuggestion {
-  const _SessionAddRules({required this.raw});
+final class const _SessionAddRules({required final Map<String, Object?> raw}) extends _ClaudePermissionSuggestion;
 
-  final Map<String, Object?> raw;
-}
-
-final class _IneligiblePermissionSuggestion extends _ClaudePermissionSuggestion {
-  const _IneligiblePermissionSuggestion();
-}
+final class const _IneligiblePermissionSuggestion() extends _ClaudePermissionSuggestion;
 
 /// Owns pending Claude permission and interaction requests until the phone
 /// answers them or their session is torn down.
-final class ClaudeApprovalRegistry {
-  ClaudeApprovalRegistry({
-    required void Function(BridgeSseEvent event) emit,
-    required ClaudeApprovalResponder respond,
-  }) : _emit = emit,
-       _respond = respond;
-
-  final void Function(BridgeSseEvent event) _emit;
-  final ClaudeApprovalResponder _respond;
+final class ClaudeApprovalRegistry({
+  required final void Function(BridgeSseEvent event) _emit,
+  required final ClaudeApprovalResponder _respond,
+}) {
   final Map<String, _PendingApproval> _pending = {};
   final Map<String, Set<String>> _allowedTools = {};
   final Map<String, Set<String>> _handledDenialToolIds = {};

@@ -7,19 +7,13 @@ import "multi_task/multi_task_transient_isolate.dart";
 import "single_task/single_task_isolate.dart";
 import "single_task/single_task_isolate_pool.dart";
 
-final class IsolateConfigs {
-  const IsolateConfigs._();
-
+final class const IsolateConfigs._() {
   static const int minTasksPerActiveIsolateToSpinTransientIsolate = 10;
   static const Duration transientDefaultTimeout = Duration(seconds: 10);
   static bool debugLogsEnabled = false;
 }
 
-class IsolateTask<IN, OUT> {
-  final FutureOr<OUT> Function(IN arg) staticFunction;
-
-  const IsolateTask(this.staticFunction);
-}
+class const IsolateTask<IN, OUT>(final FutureOr<OUT> Function(IN arg) staticFunction);
 
 abstract interface class MultiTaskIsolate {
   int get activeTaskCount;
@@ -28,7 +22,7 @@ abstract interface class MultiTaskIsolate {
   Future<OUT> run<IN, OUT>(IsolateTask<IN, OUT> task, IN arg);
 
   /// Creates a flexible multi task isolate (pool)
-  factory MultiTaskIsolate({
+  factory({
     int minPoolSize = 1, // default to single isolate
     int maxPoolSize = 1, // default to single isolate
     Duration timeout = IsolateConfigs.transientDefaultTimeout,
@@ -62,7 +56,7 @@ abstract interface class SingleTaskIsolate<IN, OUT> {
   void dispose();
 
   /// Creates a flexible single task isolate (pool)
-  factory SingleTaskIsolate({
+  factory({
     required IsolateTask<IN, OUT> task,
     int minPoolSize = 1, // default to single isolate
     int maxPoolSize = 1, // default to single isolate

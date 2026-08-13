@@ -1,5 +1,5 @@
 /// HTTP methods accepted from routed relay and debug requests.
-enum HttpMethod {
+enum HttpMethod() {
   get,
   post,
   put,

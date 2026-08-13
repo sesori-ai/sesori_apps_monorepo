@@ -203,10 +203,7 @@ void main() {
   });
 }
 
-class _FakeHostProcessService implements HostProcessService {
-  _FakeHostProcessService(this._outcomes);
-
-  final List<Object> _outcomes;
+class _FakeHostProcessService(final List<Object> _outcomes) implements HostProcessService {
   final List<String> executables = <String>[];
   final List<List<String>> arguments = <List<String>>[];
   final List<Map<String, String>?> environments = <Map<String, String>?>[];
@@ -250,19 +247,17 @@ class _FakeHostProcessService implements HostProcessService {
   );
 }
 
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required String stdoutText, int? exitCode, Future<int>? exitCodeFuture})
-    : pid = _nextPid++,
-      _stdoutBytes = utf8.encode(stdoutText),
-      _exitCode = exitCodeFuture ?? Future<int>.value(exitCode!);
+class _ProbeProcess({required String stdoutText, int? exitCode, Future<int>? exitCodeFuture})
+    implements SpawnedProcess {
+  this : pid = _nextPid++;
 
   static int _nextPid = 1;
 
   @override
   final int pid;
 
-  final List<int> _stdoutBytes;
-  final Future<int> _exitCode;
+  final List<int> _stdoutBytes = utf8.encode(stdoutText);
+  final Future<int> _exitCode = exitCodeFuture ?? Future<int>.value(exitCode!);
 
   @override
   Future<int> get exitCode => _exitCode;
@@ -280,7 +275,7 @@ class _ProbeProcess implements SpawnedProcess {
   ProcessIdentity get identity => throw UnimplementedError();
 }
 
-class _AbortOnSecondCheck implements StartAbortSignal {
+class _AbortOnSecondCheck() implements StartAbortSignal {
   int _checks = 0;
 
   @override

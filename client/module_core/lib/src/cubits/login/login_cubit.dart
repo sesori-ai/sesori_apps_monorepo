@@ -13,26 +13,22 @@ import "../../services/installation_analytics_service.dart";
 import "login_failed_reason.dart";
 import "login_state.dart";
 
-enum _LoginAnalyticsOutcome { open, terminal }
+enum _LoginAnalyticsOutcome() { open, terminal }
 
-final class _LoginAttempt {
-  final AuthProvider provider;
+final class _LoginAttempt({required final AuthProvider provider}) {
   _LoginAnalyticsOutcome analyticsOutcome = _LoginAnalyticsOutcome.open;
-  _LoginAttempt({required this.provider});
 }
 
 /// Opaque ownership token for one native Apple sign-in operation.
-final class AppleLoginAttempt {
-  final _LoginAttempt _attempt;
-  AppleLoginAttempt._({required _LoginAttempt attempt}) : _attempt = attempt;
-}
+final class AppleLoginAttempt._({required final _LoginAttempt _attempt});
 
-class LoginCubit extends Cubit<LoginState> {
-  final OAuthFlowProvider _oAuthFlowProvider;
-  final UrlLauncher _urlLauncher;
-  final AuthSession _authSession;
-  final LifecycleSource _lifecycleSource;
-  final InstallationAnalyticsService _installationAnalyticsService;
+class LoginCubit({
+    required final OAuthFlowProvider _oAuthFlowProvider,
+    required final UrlLauncher _urlLauncher,
+    required final AuthSession _authSession,
+    required final LifecycleSource _lifecycleSource,
+    required final InstallationAnalyticsService _installationAnalyticsService,
+  }) extends Cubit<LoginState> {
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
   _LoginAttempt? _loginAttempt;
   bool _isPolling = false;
@@ -49,18 +45,7 @@ class LoginCubit extends Cubit<LoginState> {
   /// app has already returned to the foreground before the Future completes.
   bool _didActivePollEnterBackground = false;
 
-  LoginCubit({
-    required OAuthFlowProvider oAuthFlowProvider,
-    required UrlLauncher urlLauncher,
-    required AuthSession authSession,
-    required LifecycleSource lifecycleSource,
-    required InstallationAnalyticsService installationAnalyticsService,
-  }) : _oAuthFlowProvider = oAuthFlowProvider,
-       _urlLauncher = urlLauncher,
-       _authSession = authSession,
-       _lifecycleSource = lifecycleSource,
-       _installationAnalyticsService = installationAnalyticsService,
-       super(const LoginState.idle()) {
+  this : super(const LoginState.idle()) {
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((state) {
       switch (state) {
         case LifecycleState.paused:
@@ -84,7 +69,7 @@ class LoginCubit extends Cubit<LoginState> {
   Future<void> close() async {
     _loginAttempt = null;
     await _lifecycleSubscription?.cancel();
-    return super.close();
+    return await super.close();
   }
 
   Future<void> _onAppResumed() async {

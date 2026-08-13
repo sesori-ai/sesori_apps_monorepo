@@ -327,7 +327,7 @@ SignalResult _signalResult({required int pid, required ShutdownSignal signal}) {
   );
 }
 
-class _RecordingStarter {
+class _RecordingStarter() {
   _FakeProcess? process;
   String? executable;
   List<String>? arguments;
@@ -355,10 +355,7 @@ class _RecordingStarter {
   }
 }
 
-class _FakeProcess implements Process {
-  _FakeProcess({required int pidValue}) : _pidValue = pidValue;
-
-  final int _pidValue;
+class _FakeProcess({required final int _pidValue}) implements Process {
   final StreamController<List<int>> stdoutController = StreamController<List<int>>();
   final StreamController<List<int>> stderrController = StreamController<List<int>>();
   final Completer<int> exitCodeCompleter = Completer<int>();
@@ -384,7 +381,7 @@ class _FakeProcess implements Process {
   }
 }
 
-class _FakeServerClock implements ServerClock {
+class _FakeServerClock() implements ServerClock {
   @override
   DateTime now() {
     return DateTime.utc(2026, 5, 15, 12, 30);
@@ -394,7 +391,7 @@ class _FakeServerClock implements ServerClock {
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _FakeProcessRepository implements ProcessRepository {
+class _FakeProcessRepository() implements ProcessRepository {
   @override
   Future<int> startDetached({
     required String executable,

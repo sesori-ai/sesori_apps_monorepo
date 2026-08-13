@@ -12,7 +12,7 @@ typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revisi
 /// service-computed default for another. Selections live only for the current
 /// app run and are cleared after successful session creation.
 @lazySingleton
-class NewSessionSelectionTracker {
+class NewSessionSelectionTracker() {
   final Map<({String projectId, String pluginId}), _RevisionedSelection> _selections = {};
   int _nextRevision = 0;
   NewSessionBackendScope _backendScope = const NewSessionBackendScope.unverified(

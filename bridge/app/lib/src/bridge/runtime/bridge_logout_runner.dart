@@ -8,7 +8,7 @@ import '../../server/repositories/bridge_instance_repository.dart';
 import '../../server/repositories/terminal_prompt_repository.dart';
 import '../../server/services/bridge_instance_service.dart';
 
-enum BridgeLogoutStatus {
+enum BridgeLogoutStatus() {
   /// Tokens cleared; no bridge instances left running.
   loggedOut,
 
@@ -23,40 +23,20 @@ enum BridgeLogoutStatus {
   failed,
 }
 
-class BridgeLogoutResult {
-  const BridgeLogoutResult({
-    required this.status,
-    this.runningBridgeCount = 0,
-    this.error,
+class const BridgeLogoutResult({
+    required final BridgeLogoutStatus status,
+    final int runningBridgeCount = 0,
+    final Object? error,
   });
 
-  final BridgeLogoutStatus status;
-  final int runningBridgeCount;
-  final Object? error;
-}
-
-class BridgeLogoutRunner {
-  BridgeLogoutRunner({
-    required BridgeInstanceRepository bridgeInstanceRepository,
-    required BridgeInstanceService bridgeInstanceService,
-    required TerminalPromptRepository terminalPromptRepository,
-    required Future<void> Function() unregisterBridge,
-    required AppOnboardingStateRepository appOnboardingStateRepository,
-    required Future<void> Function() clearTokens,
-  }) : _bridgeInstanceRepository = bridgeInstanceRepository,
-       _bridgeInstanceService = bridgeInstanceService,
-       _terminalPromptRepository = terminalPromptRepository,
-       _unregisterBridge = unregisterBridge,
-       _appOnboardingStateRepository = appOnboardingStateRepository,
-       _clearTokens = clearTokens;
-
-  final BridgeInstanceRepository _bridgeInstanceRepository;
-  final BridgeInstanceService _bridgeInstanceService;
-  final TerminalPromptRepository _terminalPromptRepository;
-  final Future<void> Function() _unregisterBridge;
-  final AppOnboardingStateRepository _appOnboardingStateRepository;
-  final Future<void> Function() _clearTokens;
-
+class BridgeLogoutRunner({
+    required final BridgeInstanceRepository _bridgeInstanceRepository,
+    required final BridgeInstanceService _bridgeInstanceService,
+    required final TerminalPromptRepository _terminalPromptRepository,
+    required final Future<void> Function() _unregisterBridge,
+    required final AppOnboardingStateRepository _appOnboardingStateRepository,
+    required final Future<void> Function() _clearTokens,
+  }) {
   Future<BridgeLogoutResult> logout({
     required int currentPid,
     required bool manageRunningBridges,

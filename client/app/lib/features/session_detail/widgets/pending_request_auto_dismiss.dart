@@ -4,23 +4,17 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 
 /// Dismisses the current modal route when its request is no longer pending.
-class PendingRequestAutoDismiss extends StatefulWidget {
-  final Stream<bool> isPendingStream;
-  final bool Function() isPending;
-  final Widget child;
-
-  const PendingRequestAutoDismiss({
-    super.key,
-    required this.isPendingStream,
-    required this.isPending,
-    required this.child,
-  });
-
+class const PendingRequestAutoDismiss({
+  super.key,
+  required final Stream<bool> isPendingStream,
+  required final bool Function() isPending,
+  required final Widget child,
+}) extends StatefulWidget {
   @override
   State<PendingRequestAutoDismiss> createState() => _PendingRequestAutoDismissState();
 }
 
-class _PendingRequestAutoDismissState extends State<PendingRequestAutoDismiss> {
+class _PendingRequestAutoDismissState() extends State<PendingRequestAutoDismiss> {
   late final StreamSubscription<bool> _subscription;
   bool _resolved = false;
 

@@ -24,9 +24,7 @@ const double _labelGap = PregoSpacing.sm;
 ///
 /// Reads and writes the app-wide [AppearanceCubit] the shell resolves its
 /// [ThemeMode] from, so a tap re-themes the whole app immediately.
-class AppearancePicker extends StatelessWidget {
-  const AppearancePicker({super.key});
-
+class const AppearancePicker({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -60,19 +58,12 @@ class AppearancePicker extends StatelessWidget {
 }
 
 /// One theme choice: a preview tile in a selection ring, with its label below.
-class _AppearanceOption extends StatelessWidget {
-  const _AppearanceOption({
-    required this.mode,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final AppearanceMode mode;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
+class const _AppearanceOption({
+  required final AppearanceMode mode,
+  required final String label,
+  required final bool isSelected,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -134,11 +125,7 @@ class _AppearanceOption extends StatelessWidget {
 ///
 /// Drawn from [palette] rather than the ambient theme — a preview has to show
 /// its own theme regardless of which one the app is currently rendering in.
-class _ThemePreview extends StatelessWidget {
-  const _ThemePreview({required this.palette});
-
-  final PregoColors palette;
-
+class const _ThemePreview({required final PregoColors palette}) extends StatelessWidget {
   /// Fractions of the tile, measured off the Figma tile. Everything is
   /// relative so the mock scales with the available width.
   static const double _bubbleBleed = 0.08;
@@ -158,9 +145,7 @@ class _ThemePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     // The canvas is the app background of the previewed theme: white in light,
     // near-black in dark. Bubbles and the composer sit on it as surfaces.
-    final canvas = palette.brightness == Brightness.light
-        ? palette.bgSurface3
-        : palette.bgSurface1;
+    final canvas = palette.brightness == Brightness.light ? palette.bgSurface3 : palette.bgSurface1;
     final surface = BoxDecoration(
       color: palette.bgSurface3,
       border: Border.all(color: palette.borderSecondary),
@@ -225,9 +210,7 @@ class _ThemePreview extends StatelessWidget {
 
 /// The "system" tile: the dark preview masked to the top-left triangle over
 /// the light one, so the tile shows both themes split along the diagonal.
-class _SystemThemePreview extends StatelessWidget {
-  const _SystemThemePreview();
-
+class const _SystemThemePreview() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Stack(
@@ -244,9 +227,7 @@ class _SystemThemePreview extends StatelessWidget {
 }
 
 /// Clips to the triangle above the top-right/bottom-left diagonal.
-class _TopLeftTriangleClipper extends CustomClipper<Path> {
-  const _TopLeftTriangleClipper();
-
+class const _TopLeftTriangleClipper() extends CustomClipper<Path> {
   @override
   Path getClip(Size size) => Path()
     ..lineTo(size.width, 0)

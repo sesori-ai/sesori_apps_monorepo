@@ -13,19 +13,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// writes go through [PluginStatusController.trySet], so a degrade that races a
 /// monitor-emitted [PluginFailed] or a deliberate shutdown is dropped by the
 /// state machine.
-class CodexRuntimeStatusReporter {
-  CodexRuntimeStatusReporter({
-    required PluginStatusController status,
-    required ServerClock clock,
-    Duration degradedDebounce = const Duration(seconds: 5),
-  }) : _status = status,
-       _clock = clock,
-       _degradedDebounce = degradedDebounce;
-
-  final PluginStatusController _status;
-  final ServerClock _clock;
-  final Duration _degradedDebounce;
-
+class CodexRuntimeStatusReporter({
+  required final PluginStatusController _status,
+  required final ServerClock _clock,
+  final Duration _degradedDebounce = const Duration(seconds: 5),
+}) {
   int _generation = 0;
   DateTime? _degradedSince;
   bool _disposed = false;

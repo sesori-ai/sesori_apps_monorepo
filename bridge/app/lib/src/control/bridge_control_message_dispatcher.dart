@@ -21,23 +21,13 @@ import "../services/control_unregister_service.dart";
 /// only and is never an inbound command (the GUI restarts the helper by
 /// kill+respawn, not by message), and helper→GUI variants echoed back have no
 /// inbound meaning.
-class BridgeControlMessageDispatcher {
-  final ControlChannelClient _client;
-  final ControlChannelTokenService _tokenService;
-  final ControlPromptService _promptService;
-  final ControlUnregisterService _unregisterService;
-
+class BridgeControlMessageDispatcher({
+  required final ControlChannelClient _client,
+  required final ControlChannelTokenService _tokenService,
+  required final ControlPromptService _promptService,
+  required final ControlUnregisterService _unregisterService,
+}) {
   StreamSubscription<String>? _subscription;
-
-  BridgeControlMessageDispatcher({
-    required ControlChannelClient client,
-    required ControlChannelTokenService tokenService,
-    required ControlPromptService promptService,
-    required ControlUnregisterService unregisterService,
-  })  : _client = client,
-        _tokenService = tokenService,
-        _promptService = promptService,
-        _unregisterService = unregisterService;
 
   /// Subscribes to the client's inbound stream. Idempotent — a second call
   /// while already started does nothing.

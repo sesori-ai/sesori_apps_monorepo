@@ -14,9 +14,7 @@ const double _composerWidth = 370.0;
 const double _composerInset = PregoSpacing.md;
 
 /// The two default composer input choices shown on the dedicated settings page.
-class ChatInputModePicker extends StatelessWidget {
-  const ChatInputModePicker({super.key});
-
+class const ChatInputModePicker({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -43,19 +41,12 @@ class ChatInputModePicker extends StatelessWidget {
   }
 }
 
-class _ChatInputModeOption extends StatelessWidget {
-  const _ChatInputModeOption({
-    required this.mode,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final ChatInputMode mode;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
+class const _ChatInputModeOption({
+  required final ChatInputMode mode,
+  required final String label,
+  required final bool isSelected,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -120,12 +111,8 @@ class _ChatInputModeOption extends StatelessWidget {
   }
 }
 
-class _ComposerPreview extends StatelessWidget {
-  const _ComposerPreview({required this.mode, required this.isSelected});
-
-  final ChatInputMode mode;
-  final bool isSelected;
-
+class const _ComposerPreview({required final ChatInputMode mode, required final bool isSelected})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -162,12 +149,7 @@ class _ComposerPreview extends StatelessWidget {
   }
 }
 
-class _ComposerPill extends StatelessWidget {
-  const _ComposerPill({required this.mode, required this.isSelected});
-
-  final ChatInputMode mode;
-  final bool isSelected;
-
+class const _ComposerPill({required final ChatInputMode mode, required final bool isSelected}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -214,11 +196,7 @@ class _ComposerPill extends StatelessWidget {
   }
 }
 
-class _Waveform extends StatelessWidget {
-  const _Waveform({required this.isSelected});
-
-  final bool isSelected;
-
+class const _Waveform({required final bool isSelected}) extends StatelessWidget {
   static const _barHeights = <double>[
     6,
     6,
@@ -269,11 +247,7 @@ class _Waveform extends StatelessWidget {
   }
 }
 
-class _TextPreview extends StatelessWidget {
-  const _TextPreview({required this.isSelected});
-
-  final bool isSelected;
-
+class const _TextPreview({required final bool isSelected}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

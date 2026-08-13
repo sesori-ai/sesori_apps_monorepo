@@ -21,11 +21,10 @@ import 'package:test/test.dart';
 
 /// Fake cache that returns a pre-configured [CachedRelease] from [read] and
 /// records all values passed to [write].
-class _FakeCache extends UpdateCacheApi {
-  final CachedRelease? _readResult;
+class _FakeCache({final CachedRelease? _readResult}) extends UpdateCacheApi {
   final List<CachedRelease> writtenReleases = [];
 
-  _FakeCache({CachedRelease? readResult}) : _readResult = readResult, super(cacheDirectory: '', clock: const Clock());
+  this : super(cacheDirectory: '', clock: const Clock());
 
   @override
   Future<CachedRelease?> read({required Duration ttl}) async => _readResult;
@@ -37,8 +36,8 @@ class _FakeCache extends UpdateCacheApi {
 }
 
 /// Cache whose [write] always fails, simulating a full/unwritable cache dir.
-class _ThrowingCache extends UpdateCacheApi {
-  _ThrowingCache() : super(cacheDirectory: '', clock: const Clock());
+class _ThrowingCache() extends UpdateCacheApi {
+  this : super(cacheDirectory: '', clock: const Clock());
 
   @override
   Future<CachedRelease?> read({required Duration ttl}) async => null;

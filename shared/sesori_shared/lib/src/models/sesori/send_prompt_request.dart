@@ -9,7 +9,7 @@ part "send_prompt_request.g.dart";
 /// Request body for `POST /session/prompt`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SendPromptRequest with _$SendPromptRequest {
-  const factory SendPromptRequest({
+  const factory({
     required String sessionId,
     required List<PromptPart> parts,
     required String? agent,
@@ -18,7 +18,7 @@ sealed class SendPromptRequest with _$SendPromptRequest {
     required SessionVariant? variant,
   }) = _SendPromptRequest;
 
-  factory SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);
 }
 
 /// Prompt part types for the mobile ↔ bridge protocol.
@@ -26,11 +26,11 @@ sealed class SendPromptRequest with _$SendPromptRequest {
 sealed class PromptPart with _$PromptPart {
   /// Plain text content.
   @FreezedUnionValue("text")
-  const factory PromptPart.text({required String text}) = PromptPartText;
+  const factory text({required String text}) = PromptPartText;
 
   /// Local file on the host filesystem, referenced by absolute path.
   @FreezedUnionValue("file_path")
-  const factory PromptPart.filePath({
+  const factory filePath({
     required String mime,
     required String path,
     required String? filename,
@@ -38,7 +38,7 @@ sealed class PromptPart with _$PromptPart {
 
   /// Remote file referenced by URL (`https://`, etc.).
   @FreezedUnionValue("file_url")
-  const factory PromptPart.fileUrl({
+  const factory fileUrl({
     required String mime,
     required String url,
     required String? filename,
@@ -46,21 +46,21 @@ sealed class PromptPart with _$PromptPart {
 
   /// Inline file content as base64-encoded data.
   @FreezedUnionValue("file_data")
-  const factory PromptPart.fileData({
+  const factory fileData({
     required String mime,
     required String base64,
     required String? filename,
   }) = PromptPartFileData;
 
-  factory PromptPart.fromJson(Map<String, dynamic> json) => _$PromptPartFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PromptPartFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PromptModel with _$PromptModel {
-  const factory PromptModel({
+  const factory({
     required String providerID,
     required String modelID,
   }) = _PromptModel;
 
-  factory PromptModel.fromJson(Map<String, dynamic> json) => _$PromptModelFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PromptModelFromJson(json);
 }

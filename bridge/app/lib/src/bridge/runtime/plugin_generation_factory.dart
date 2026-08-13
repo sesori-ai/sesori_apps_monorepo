@@ -17,87 +17,48 @@ import "../../server/services/bridge_instance_service.dart";
 import "../../updater/models/managed_runtime_paths.dart";
 import "bridge_runtime_server_exception.dart";
 
-class PluginRuntimeRegistration {
-  const PluginRuntimeRegistration({
-    required this.descriptor,
-    required this.config,
-    required this.stateDirectory,
-  });
-
-  final BridgePluginDescriptor descriptor;
-  final PluginConfig config;
-  final String stateDirectory;
-}
+class const PluginRuntimeRegistration({
+  required final BridgePluginDescriptor descriptor,
+  required final PluginConfig config,
+  required final String stateDirectory,
+});
 
 /// A failure isolated to one descriptor's runtime resolution or start attempt.
 ///
 /// Shared startup infrastructure failures, such as bridge ownership or mutex
 /// contention, are deliberately not wrapped so the composition root can abort
 /// the whole bridge with their original typed exception.
-class PluginGenerationStartFailedException implements Exception {
-  const PluginGenerationStartFailedException({
-    required this.pluginId,
-    required this.cause,
-  });
-
-  final String pluginId;
-  final Object cause;
-
+class const PluginGenerationStartFailedException({
+  required final String pluginId,
+  required final Object cause,
+}) implements Exception {
   @override
   String toString() => 'PluginGenerationStartFailedException: Plugin "$pluginId" failed to start: $cause';
 }
 
-sealed class PluginGenerationStartEvent {
-  const PluginGenerationStartEvent();
-}
+sealed class const PluginGenerationStartEvent();
 
-final class PluginGenerationProvisionProgress extends PluginGenerationStartEvent {
-  const PluginGenerationProvisionProgress({required this.event});
+final class const PluginGenerationProvisionProgress({required final RuntimeProvisionProgress event})
+    extends PluginGenerationStartEvent;
 
-  final RuntimeProvisionProgress event;
-}
+final class const PluginGenerationStarted({required final BridgePlugin plugin}) extends PluginGenerationStartEvent;
 
-final class PluginGenerationStarted extends PluginGenerationStartEvent {
-  const PluginGenerationStarted({required this.plugin});
-
-  final BridgePlugin plugin;
-}
-
-class PluginGenerationFactory {
-  PluginGenerationFactory({
-    required ManagedRuntimePaths managedRuntimePaths,
-    required ProcessIdentity currentBridgeIdentity,
-    required String ownerSessionId,
-    required StartupMutexRepository startupMutexRepository,
-    required BridgeInstanceService bridgeInstanceService,
-    required ProcessRepository processRepository,
-    required RuntimeFileApi runtimeFileApi,
-    required ServerClock clock,
-    required Map<String, String> environment,
-    required ProcessUser? currentUser,
-  }) : _managedRuntimePaths = managedRuntimePaths,
-       _currentBridgeIdentity = currentBridgeIdentity,
-       _ownerSessionId = ownerSessionId,
-       _startupMutexRepository = startupMutexRepository,
-       _bridgeInstanceService = bridgeInstanceService,
-       _processRepository = processRepository,
-       _clock = clock,
-       _environment = Map<String, String>.unmodifiable(environment),
-       _currentUser = currentUser,
-       _fileApisByStateDirectory = <String, RuntimeFileApi>{
-         runtimeFileApi.runtimeDirectory: runtimeFileApi,
-       };
-
-  final ManagedRuntimePaths _managedRuntimePaths;
-  final ProcessIdentity _currentBridgeIdentity;
-  final String _ownerSessionId;
-  final StartupMutexRepository _startupMutexRepository;
-  final BridgeInstanceService _bridgeInstanceService;
-  final ProcessRepository _processRepository;
-  final ServerClock _clock;
-  final Map<String, String> _environment;
-  final ProcessUser? _currentUser;
-  final Map<String, RuntimeFileApi> _fileApisByStateDirectory;
+class PluginGenerationFactory({
+  required final ManagedRuntimePaths _managedRuntimePaths,
+  required final ProcessIdentity _currentBridgeIdentity,
+  required final String _ownerSessionId,
+  required final StartupMutexRepository _startupMutexRepository,
+  required final BridgeInstanceService _bridgeInstanceService,
+  required final ProcessRepository _processRepository,
+  required RuntimeFileApi runtimeFileApi,
+  required final ServerClock _clock,
+  required Map<String, String> environment,
+  required final ProcessUser? _currentUser,
+}) {
+  final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
+  final Map<String, RuntimeFileApi> _fileApisByStateDirectory = <String, RuntimeFileApi>{
+    runtimeFileApi.runtimeDirectory: runtimeFileApi,
+  };
   final List<_GenerationStartRequest> _pending = <_GenerationStartRequest>[];
   bool _drainScheduled = false;
   bool _draining = false;
@@ -224,7 +185,7 @@ class PluginGenerationFactory {
         );
         switch (status) {
           case BridgeInstanceResolutionStatus.allowed:
-            if (attempt < 2) return _attemptBatch(attempt: attempt + 1, batch: batch);
+            if (attempt < 2) return await _attemptBatch(attempt: attempt + 1, batch: batch);
             throw const BridgeRuntimeServerException(
               "Startup aborted because another Sesori bridge startup is still in progress after attempting replacement.",
             );
@@ -307,14 +268,8 @@ class PluginGenerationFactory {
   }
 }
 
-class _GenerationStartRequest {
-  const _GenerationStartRequest({
-    required this.registration,
-    required this.startAborted,
-    required this.controller,
-  });
-
-  final PluginRuntimeRegistration registration;
-  final StartAbortSignal startAborted;
-  final StreamController<PluginGenerationStartEvent> controller;
-}
+class const _GenerationStartRequest({
+  required final PluginRuntimeRegistration registration,
+  required final StartAbortSignal startAborted,
+  required final StreamController<PluginGenerationStartEvent> controller,
+});

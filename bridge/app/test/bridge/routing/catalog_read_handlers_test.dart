@@ -265,7 +265,7 @@ void main() {
   });
 }
 
-class _NeverCompletingPlugin implements NativeProjectsPluginApi {
+class _NeverCompletingPlugin() implements NativeProjectsPluginApi {
   int calls = 0;
 
   @override

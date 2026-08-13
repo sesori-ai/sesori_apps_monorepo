@@ -6,7 +6,11 @@ import "../models/claude_permission_mode.dart";
 /// A launch is exactly one of these. Modelling them as separate variants keeps
 /// "new and resumed at once" and "neither" unrepresentable, and each carries
 /// only the session id it needs.
-sealed class ClaudeSessionLaunch {
+sealed class ClaudeSessionLaunch({
+  /// The Claude session id. For a new session the bridge pre-generates it so
+  /// the Sesori-to-backend binding is durable from the very first event.
+  required final String sessionId,
+}) {
   /// Rejects an id the CLI would refuse.
   ///
   /// `--session-id` requires a UUID, and every transcript filename observed was
@@ -14,26 +18,18 @@ sealed class ClaudeSessionLaunch {
   /// wrong thing or a corrupted persisted row. Failing here names the problem;
   /// failing at spawn surfaces it as an opaque CLI startup error attached to a
   /// session the user just tried to open.
-  ClaudeSessionLaunch({required this.sessionId}) {
+  this {
     if (!_uuidPattern.hasMatch(sessionId)) {
       throw ArgumentError.value(sessionId, "sessionId", "must be a UUID");
     }
   }
-
-  /// The Claude session id. For a new session the bridge pre-generates it so
-  /// the Sesori-to-backend binding is durable from the very first event.
-  final String sessionId;
 }
 
 /// Starts a new session under a bridge-generated id (`--session-id`).
-final class ClaudeNewSession extends ClaudeSessionLaunch {
-  ClaudeNewSession({required super.sessionId});
-}
+final class ClaudeNewSession({required super.sessionId}) extends ClaudeSessionLaunch;
 
 /// Continues an existing session from its transcript (`--resume`).
-final class ClaudeResumedSession extends ClaudeSessionLaunch {
-  ClaudeResumedSession({required super.sessionId});
-}
+final class ClaudeResumedSession({required super.sessionId}) extends ClaudeSessionLaunch;
 
 final RegExp _uuidPattern = RegExp(
   r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
@@ -47,18 +43,30 @@ final RegExp _uuidPattern = RegExp(
 ///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 1.
-class ClaudeLaunchSpec {
-  ClaudeLaunchSpec({
-    required this.binaryPath,
-    required this.workingDirectory,
-    required this.launch,
-    required this.model,
-    required this.effort,
-    required this.permissionMode,
-    required List<String> allowedTools,
-    Map<String, String> environment = const {},
-  }) : allowedTools = List.unmodifiable(allowedTools),
-       environment = Map.unmodifiable(environment) {
+class ClaudeLaunchSpec({
+  /// The `claude` executable: a `--claude-bin` override or a PATH name.
+  required final String binaryPath,
+
+  /// The session's directory, which becomes the process's working directory and
+  /// therefore the project the session belongs to.
+  required final String workingDirectory,
+
+  /// Whether this launch creates or resumes a session.
+  required final ClaudeSessionLaunch launch,
+
+  /// Model selection token from the catalog (`ClaudeModel.value`), or null to
+  /// let the CLI pick the account default.
+  required final String? model,
+
+  /// Reasoning effort, or null when the selected model does not support it.
+  required final ClaudeEffortLevel? effort,
+
+  /// Starting permission mode, or null to accept the CLI's own default.
+  required final ClaudePermissionMode? permissionMode,
+  required List<String> allowedTools,
+  Map<String, String> environment = const {},
+}) {
+  this {
     if (this.environment.containsKey("HOME")) {
       throw ArgumentError.value(
         this.environment,
@@ -68,35 +76,15 @@ class ClaudeLaunchSpec {
     }
   }
 
-  /// The `claude` executable: a `--claude-bin` override or a PATH name.
-  final String binaryPath;
-
-  /// The session's directory, which becomes the process's working directory and
-  /// therefore the project the session belongs to.
-  final String workingDirectory;
-
   /// Extra environment entries merged over the bridge's own environment.
   ///
   /// `HOME` must never appear here. Overriding it breaks macOS keychain lookup
   /// and makes a logged-in user look logged out. Test isolation uses
   /// `CLAUDE_CONFIG_DIR` instead.
-  final Map<String, String> environment;
-
-  /// Whether this launch creates or resumes a session.
-  final ClaudeSessionLaunch launch;
-
-  /// Model selection token from the catalog (`ClaudeModel.value`), or null to
-  /// let the CLI pick the account default.
-  final String? model;
-
-  /// Reasoning effort, or null when the selected model does not support it.
-  final ClaudeEffortLevel? effort;
-
-  /// Starting permission mode, or null to accept the CLI's own default.
-  final ClaudePermissionMode? permissionMode;
+  final Map<String, String> environment = Map.unmodifiable(environment);
 
   /// Session-scoped rules granted by the user and restored after idle respawn.
-  final List<String> allowedTools;
+  final List<String> allowedTools = List.unmodifiable(allowedTools);
 
   /// Routes tool-permission asks to us over stdio as `can_use_tool` control
   /// requests.

@@ -51,21 +51,13 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({
-    required this.projectCount,
-    required this.sessionCount,
-    required this.eventCount,
-    required this.warmupCount,
-    required this.readSampleCount,
-  });
-
-  final int projectCount;
-  final int sessionCount;
-  final int eventCount;
-  final int warmupCount;
-  final int readSampleCount;
-
+class const _BenchmarkConfiguration({
+  required final int projectCount,
+  required final int sessionCount,
+  required final int eventCount,
+  required final int warmupCount,
+  required final int readSampleCount,
+}) {
   static _BenchmarkConfiguration parse({required List<String> arguments}) {
     final parser = ArgParser()
       ..addOption("projects", defaultsTo: "$_defaultProjectCount")
@@ -104,11 +96,7 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _CatalogImportEventSoak {
-  const _CatalogImportEventSoak({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
-
-  final _BenchmarkConfiguration _configuration;
-
+class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-catalog-import-event-soak-");
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
@@ -750,10 +738,8 @@ class _CatalogImportEventSoak {
   }
 }
 
-class _PeakRssSampler {
-  _PeakRssSampler({required int initialRss}) : _peakRss = initialRss;
-
-  int _peakRss;
+class _PeakRssSampler({required int initialRss}) {
+  int _peakRss = initialRss;
   Timer? _timer;
 
   int get peakRss => _peakRss;
@@ -791,7 +777,7 @@ int _nearestRank({required List<int> sortedSamples, required double percentile})
   return sortedSamples[rank - 1];
 }
 
-class _SchedulingLagProbe {
+class _SchedulingLagProbe() {
   final List<int> samples = <int>[];
   final Completer<void> _firstSample = Completer<void>();
   final Stopwatch _stopwatch = Stopwatch();
@@ -826,17 +812,11 @@ class _SchedulingLagProbe {
   }
 }
 
-class _BenchmarkPlugin implements BridgeDerivedProjectsPluginApi {
-  _BenchmarkPlugin({
-    required this.launchDirectory,
-    required this.sessions,
-    required this.releaseEnumeration,
-  });
-
-  @override
-  final String launchDirectory;
-  final List<PluginSession> sessions;
-  final Completer<void> releaseEnumeration;
+class _BenchmarkPlugin({
+  @override required final String launchDirectory,
+  required final List<PluginSession> sessions,
+  required final Completer<void> releaseEnumeration,
+}) implements BridgeDerivedProjectsPluginApi {
   final Completer<void> enumerationStarted = Completer<void>();
   int? enumerationStartedAt;
   int enumerationCalls = 0;
@@ -876,8 +856,8 @@ class _BenchmarkPlugin implements BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _CountingSSEManager extends SSEManager {
-  _CountingSSEManager({required super.failureReporter})
+class _CountingSSEManager({required super.failureReporter}) extends SSEManager {
+  this
     : super(
         replayWindow: const Duration(minutes: 1),
         onBytesSent: (_) {},
@@ -892,7 +872,7 @@ class _CountingSSEManager extends SSEManager {
   }
 }
 
-class _ExistingFilesystemApi implements FilesystemApi {
+class _ExistingFilesystemApi() implements FilesystemApi {
   @override
   bool directoryExists(String path) => true;
 
@@ -900,7 +880,7 @@ class _ExistingFilesystemApi implements FilesystemApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _BenchmarkFailureReporter implements FailureReporter {
+class _BenchmarkFailureReporter() implements FailureReporter {
   @override
   void log({required String message}) {}
 

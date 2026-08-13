@@ -11,7 +11,7 @@
 /// This single shared type replaces what would otherwise be one identical enum per
 /// feature. Introduce a feature-specific enum only when a feature needs a reason the
 /// others don't (as `LoginFailedReason` does for its domain-specific cases).
-enum RemoteFailureReason {
+enum RemoteFailureReason() {
   /// The request was rejected because the client is not authenticated.
   notAuthenticated,
 

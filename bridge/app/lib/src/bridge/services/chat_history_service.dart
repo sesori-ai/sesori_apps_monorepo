@@ -12,73 +12,44 @@ import "../repositories/chat_history_repository.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 
-sealed class SessionAttachmentResult {
-  const SessionAttachmentResult();
-}
+sealed class const SessionAttachmentResult();
 
-final class SessionAttachmentFound extends SessionAttachmentResult {
-  final Uint8List bytes;
-  final String mime;
+final class const SessionAttachmentFound({required final Uint8List bytes, required final String mime})
+    extends SessionAttachmentResult;
 
-  const SessionAttachmentFound({required this.bytes, required this.mime});
-}
+final class const SessionAttachmentMissing() extends SessionAttachmentResult;
 
-final class SessionAttachmentMissing extends SessionAttachmentResult {
-  const SessionAttachmentMissing();
-}
+final class const SessionAttachmentUnsupported() extends SessionAttachmentResult;
 
-final class SessionAttachmentUnsupported extends SessionAttachmentResult {
-  const SessionAttachmentUnsupported();
-}
-
-final class SessionAttachmentTooLarge extends SessionAttachmentResult {
-  const SessionAttachmentTooLarge();
-}
+final class const SessionAttachmentTooLarge() extends SessionAttachmentResult;
 
 /// The outcome of storing one finalized part whose delivery shape depends on
 /// that write having landed.
-sealed class CapturedPartDelivery {
-  const CapturedPartDelivery();
-}
+sealed class const CapturedPartDelivery();
 
 /// The part as stored, projected once per delivery mode.
-final class CapturedPartShapes extends CapturedPartDelivery {
+final class const CapturedPartShapes({
   /// The released shape: bounded inline images, excess degraded to metadata.
-  final MessagePart inlinePart;
+  required final MessagePart inlinePart,
 
   /// The capable shape: stored images carry an identifier instead of bytes.
-  final MessagePart storedReferencePart;
-
-  const CapturedPartShapes({required this.inlinePart, required this.storedReferencePart});
-}
+  required final MessagePart storedReferencePart,
+}) extends CapturedPartDelivery;
 
 /// The write did not land, so no reference may be advertised for it. The
 /// fallback is bounded to the released inline-wire budget.
-final class CapturedPartUnavailable extends CapturedPartDelivery {
-  final MessagePart inlineFallbackPart;
-
-  const CapturedPartUnavailable({required this.inlineFallbackPart});
-}
+final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
 /// The single writer of the chat history store.
 ///
 /// Every mutation runs through a per-session queue so writes for one session
 /// never interleave, while unrelated sessions stay independent.
-class ChatHistoryService {
-  ChatHistoryService({
-    required ChatHistoryRepository chatHistoryRepository,
-    required SessionRepository sessionRepository,
-    required AttachmentThumbnailBuilder attachmentThumbnailBuilder,
-    required BridgeIdProvider bridgeIdProvider,
-  }) : _chatHistoryRepository = chatHistoryRepository,
-       _sessionRepository = sessionRepository,
-       _attachmentThumbnailBuilder = attachmentThumbnailBuilder,
-       _bridgeIdProvider = bridgeIdProvider;
-
-  final ChatHistoryRepository _chatHistoryRepository;
-  final SessionRepository _sessionRepository;
-  final AttachmentThumbnailBuilder _attachmentThumbnailBuilder;
-  final BridgeIdProvider _bridgeIdProvider;
+class ChatHistoryService({
+  required final ChatHistoryRepository _chatHistoryRepository,
+  required final SessionRepository _sessionRepository,
+  required final AttachmentThumbnailBuilder _attachmentThumbnailBuilder,
+  required final BridgeIdProvider _bridgeIdProvider,
+}) {
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
   Future<void> _thumbnailGenerationLane = Future.value();
@@ -129,7 +100,7 @@ class ChatHistoryService {
         if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
           return null;
         }
-        return _chatHistoryRepository.getSessionMessages(
+        return await _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
           limit: limit,
@@ -144,7 +115,7 @@ class ChatHistoryService {
     final storageScope = await _requireStorageScope(sessionId: sessionId);
     // The backfill is itself queued, so this read lands after it and after
     // any capture that raced its fetch.
-    return _enqueueRead(
+    return await _enqueueRead(
       sessionId: sessionId,
       read: () => _chatHistoryRepository.getSessionMessages(
         sessionId: sessionId,
@@ -185,7 +156,7 @@ class ChatHistoryService {
           if (cached != null) {
             return SessionAttachmentFound(bytes: cached.bytes, mime: cached.format.mime);
           }
-          return _generateThumbnail(
+          return await _generateThumbnail(
             sessionId: sessionId,
             storageScope: storageScope,
             attachmentId: attachmentId,
@@ -613,7 +584,7 @@ class ChatHistoryService {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
     if (session == null) return null;
     final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
-    return _chatHistoryRepository.getArchivedSessionMessages(
+    return await _chatHistoryRepository.getArchivedSessionMessages(
       sessionId: sessionId,
       storageScope: _storageScopeFor(session: session),
       limit: limit,

@@ -8,7 +8,7 @@ import "queued_session_submission.dart";
 /// provides methods to enqueue, dequeue, requeue, and cancel items. The send
 /// logic and condition checks (connection alive) remain in the
 /// cubit that owns this queue.
-class PromptSendQueue {
+class PromptSendQueue() {
   final Queue<QueuedSessionSubmission> _items = Queue<QueuedSessionSubmission>();
   QueuedSessionSubmission? _active;
 

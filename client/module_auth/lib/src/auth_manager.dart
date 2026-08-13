@@ -19,39 +19,26 @@ import "storage/oauth_storage_service.dart";
 import "storage/token_storage_service.dart";
 
 @lazySingleton
-class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
+class AuthManager(
+  final http.Client _client,
+  final TokenStorageService _tokenStorage,
+  final OAuthStorageService _oAuthStorage,
+  final OAuthDeviceDescriptorProvider _deviceDescriptorProvider, {
+  @visibleForTesting final Duration _pollInterval = _defaultPollInterval,
+  @visibleForTesting final Duration _pollTimeout = _defaultPollTimeout,
+  @visibleForTesting Future<void> Function(Duration duration)? delay,
+}) implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   static const _sessionTokenHeader = "X-Sesori-Session-Token";
   static const _defaultPollInterval = Duration(milliseconds: 250);
   static const _defaultPollTimeout = Duration(minutes: 5);
   static const _defaultRequestTimeout = Duration(seconds: 35);
   static const _ackRequestTimeout = Duration(seconds: 5);
 
-  final http.Client _client;
-  final TokenStorageService _tokenStorage;
-  final OAuthStorageService _oAuthStorage;
-  final OAuthDeviceDescriptorProvider _deviceDescriptorProvider;
   final BehaviorSubject<AuthState> _authState;
-  final Duration _pollInterval;
-  final Duration _pollTimeout;
-  final Future<void> Function(Duration duration) _delay;
+  final Future<void> Function(Duration duration) _delay = delay ?? Future<void>.delayed;
   String? _oAuthSessionToken;
 
-  AuthManager(
-    http.Client client,
-    TokenStorageService tokenStorage,
-    OAuthStorageService oAuthStorage,
-    OAuthDeviceDescriptorProvider deviceDescriptorProvider, {
-    @visibleForTesting Duration pollInterval = _defaultPollInterval,
-    @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
-    @visibleForTesting Future<void> Function(Duration duration)? delay,
-  }) : _client = client,
-       _tokenStorage = tokenStorage,
-       _oAuthStorage = oAuthStorage,
-       _deviceDescriptorProvider = deviceDescriptorProvider,
-       _pollInterval = pollInterval,
-       _pollTimeout = pollTimeout,
-       _delay = delay ?? Future<void>.delayed,
-       _authState = BehaviorSubject.seeded(const AuthState.initial());
+  this : _authState = BehaviorSubject.seeded(const AuthState.initial());
 
   /// Builds the singleton with only its production dependencies.
   ///
@@ -61,7 +48,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   /// tries to inject those optional params from get_it — and can't resolve the
   /// inline `delay` function type at all.
   @factoryMethod
-  factory AuthManager.create(
+  factory create(
     http.Client client,
     TokenStorageService tokenStorage,
     OAuthStorageService oAuthStorage,
@@ -80,13 +67,13 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     bool forceRefresh = false,
   }) async {
     if (forceRefresh) {
-      return _refreshAndPersistTokens();
+      return await _refreshAndPersistTokens();
     }
 
     final tokenAndValidityLeft = await _tokenStorage.getAccessToken();
 
     if (tokenAndValidityLeft == null || tokenAndValidityLeft.validityLeft < minTtl) {
-      return _refreshAndPersistTokens();
+      return await _refreshAndPersistTokens();
     }
 
     if (tokenAndValidityLeft.validityLeft < const Duration(seconds: 90)) {
@@ -171,9 +158,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
               await _delay(delay);
             }
           case AuthSessionStatusResponseComplete(
-            : final accessToken,
-            : final refreshToken,
-            : final user,
+            :final accessToken,
+            :final refreshToken,
+            :final user,
           ):
             await _persistOAuthCompletion(
               accessToken: accessToken,
@@ -317,7 +304,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     if (session.sessionToken == null) {
       throw StateError("No OAuth flow is active");
     }
-    return pollForResult();
+    return await pollForResult();
   }
 
   @override

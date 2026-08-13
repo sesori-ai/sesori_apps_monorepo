@@ -16,14 +16,7 @@ import "models/session_operation.dart";
 /// Also maps the wire-format [PermissionReply] (from `sesori_shared`) to the
 /// plugin-contract [plugin_interface.PermissionReply] to keep the two enums
 /// decoupled.
-class PermissionRepository {
-  final PluginRuntime _runtime;
-  final SessionDao _sessionDao;
-
-  PermissionRepository({required PluginRuntime runtime, required SessionDao sessionDao})
-    : _runtime = runtime,
-      _sessionDao = sessionDao;
-
+class PermissionRepository({required final PluginRuntime _runtime, required final SessionDao _sessionDao}) {
   /// Pending permissions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async {
@@ -44,7 +37,7 @@ class PermissionRepository {
           if (tombstoned.contains(binding.backendSessionId)) return const <PendingPermission>[];
         }
         final permissions = await plugin.getPendingPermissions(sessionId: binding.backendSessionId);
-        return _mapPendingPermissions(
+        return await _mapPendingPermissions(
           pluginId: plugin.id,
           permissions: [
             for (final permission in permissions)
@@ -72,7 +65,7 @@ class PermissionRepository {
       sessionId: sessionId,
       operation: SessionOperation.replyToPermission,
     );
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.replyToPermission,
       body: (plugin) async {
@@ -102,7 +95,7 @@ class PermissionRepository {
             break;
           }
         }
-        return plugin.replyToPermission(
+        return await plugin.replyToPermission(
           requestId: requestId,
           sessionId: binding.backendSessionId,
           reply: _toPluginReply(reply),

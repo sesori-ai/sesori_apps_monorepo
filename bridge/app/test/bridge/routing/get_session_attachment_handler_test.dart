@@ -163,7 +163,7 @@ Uint8List _pngBytes() {
   return image.encodePng(source);
 }
 
-class _FileFailingChatHistoryService implements ChatHistoryService {
+class _FileFailingChatHistoryService() implements ChatHistoryService {
   @override
   Future<SessionAttachmentResult> getSessionAttachment({
     required String sessionId,

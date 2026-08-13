@@ -21,7 +21,7 @@ class SessionDetailLoadedView extends StatefulWidget {
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
-  const SessionDetailLoadedView.readOnly({
+  const new readOnly({
     super.key,
     required this.projectId,
     required this.sessionId,
@@ -30,7 +30,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingPermissions,
   }) : readOnly = true;
 
-  const SessionDetailLoadedView.editable({
+  const new editable({
     super.key,
     required this.projectId,
     required this.sessionId,
@@ -43,7 +43,7 @@ class SessionDetailLoadedView extends StatefulWidget {
   State<SessionDetailLoadedView> createState() => _SessionDetailLoadedViewState();
 }
 
-class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
+class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   /// Measured height of the floating bottom controls overlaying the bottom of
   /// the chat — the background-tasks bar, queued messages and the composer. Fed
   /// to the message list so the newest message rests just above them (and the
@@ -289,11 +289,8 @@ bool hasActiveWork({
 /// Used to feed the floating composer's height to the message list so the
 /// newest message and the "jump to latest" pill rest clear of it. [onChange]
 /// is invoked post-frame so listeners may safely call `setState`.
-class _MeasureSize extends SingleChildRenderObjectWidget {
-  const _MeasureSize({required this.onChange, required super.child});
-
-  final ValueChanged<Size> onChange;
-
+class const _MeasureSize({required final ValueChanged<Size> onChange, required super.child})
+    extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) => _MeasureSizeRenderBox(onChange);
 
@@ -303,10 +300,7 @@ class _MeasureSize extends SingleChildRenderObjectWidget {
   }
 }
 
-class _MeasureSizeRenderBox extends RenderProxyBox {
-  _MeasureSizeRenderBox(this.onChange);
-
-  ValueChanged<Size> onChange;
+class _MeasureSizeRenderBox(var ValueChanged<Size> onChange) extends RenderProxyBox {
   Size? _lastReported;
 
   @override

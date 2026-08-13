@@ -19,28 +19,17 @@ import "token_refresher.dart";
 /// The persisted bridge id is read from [BridgeIdStorage]; legacy ids from an
 /// older `token.json` are copied into that storage by `BridgeIdMigrationService`
 /// before authentication, so this service never reads `token.json`.
-class BridgeRegistrationService implements BridgeIdProvider {
-  final BridgeRegistrationRepository _repository;
-  final TokenRefresher _tokenRefresher;
-  final BridgeIdStorage _bridgeIdStorage;
-  final String _hostName;
-  final String _platform;
-
+class BridgeRegistrationService({
+  required final BridgeRegistrationRepository _repository,
+  required final TokenRefresher _tokenRefresher,
+  required final BridgeIdStorage _bridgeIdStorage,
+  required String hostName,
+  required final String _platform,
+}) implements BridgeIdProvider {
+  final String _hostName = sanitizeBridgeName(hostName);
   bool _registered = false;
   String? _bridgeId;
   final StreamController<String> _registrations = StreamController<String>.broadcast();
-
-  BridgeRegistrationService({
-    required BridgeRegistrationRepository repository,
-    required TokenRefresher tokenRefresher,
-    required BridgeIdStorage bridgeIdStorage,
-    required String hostName,
-    required String platform,
-  }) : _repository = repository,
-       _tokenRefresher = tokenRefresher,
-       _bridgeIdStorage = bridgeIdStorage,
-       _hostName = sanitizeBridgeName(hostName),
-       _platform = platform;
 
   /// The bridge platform name reported to the auth server.
   static String currentPlatformName() {
@@ -158,7 +147,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
         rethrow;
       }
       final refreshedToken = await _tokenRefresher.getAccessToken(forceRefresh: true);
-      return action(refreshedToken);
+      return await action(refreshedToken);
     }
   }
 }

@@ -3,7 +3,7 @@ import "dart:typed_data";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-final class _FakeImageSaver implements ImageSaver {
+final class _FakeImageSaver() implements ImageSaver {
   Uint8List? bytes;
   String? mime;
   String? filename;
@@ -22,7 +22,7 @@ final class _FakeImageSaver implements ImageSaver {
   }
 }
 
-final class _FakeImageClipboard implements ImageClipboard {
+final class _FakeImageClipboard() implements ImageClipboard {
   Uint8List? bytes;
   Object? error;
 
@@ -37,7 +37,7 @@ final class _FakeImageClipboard implements ImageClipboard {
   }
 }
 
-final class _FakeImageSharer implements ImageSharer {
+final class _FakeImageSharer() implements ImageSharer {
   Uint8List? bytes;
   String? mime;
   String? filename;

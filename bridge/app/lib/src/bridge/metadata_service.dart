@@ -7,18 +7,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../auth/token_refresher.dart";
 import "models/session_metadata.dart";
 
-class MetadataService {
-  final String _baseUrl;
-  final TokenRefresher _tokenRefresher;
-  final http.Client _client;
-
-  MetadataService({
-    required http.Client client,
-    required String baseUrl,
-    required TokenRefresher tokenRefresher,
-  }) : _client = client,
-       _baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
-       _tokenRefresher = tokenRefresher;
+class MetadataService({
+  required final http.Client _client,
+  required String baseUrl,
+  required final TokenRefresher _tokenRefresher,
+}) {
+  final String _baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
 
   Future<SessionMetadata?> generate({required String firstMessage}) async {
     try {

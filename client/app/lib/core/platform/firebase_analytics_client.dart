@@ -3,16 +3,10 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 @LazySingleton(as: AnalyticsClient)
-class FirebaseAnalyticsClient implements AnalyticsClient {
-  final FirebaseAnalytics _analytics;
-  final AnalyticsRuntimeCapability _capability;
-
-  FirebaseAnalyticsClient({
-    required FirebaseAnalytics analytics,
-    required AnalyticsRuntimeCapability capability,
-  }) : _analytics = analytics,
-       _capability = capability;
-
+class FirebaseAnalyticsClient({
+  required final FirebaseAnalytics _analytics,
+  required final AnalyticsRuntimeCapability _capability,
+}) implements AnalyticsClient {
   @override
   Future<void> logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey}) async {
     if (!_capability.isEnabled) throw StateError("Product analytics runtime is disabled");

@@ -133,7 +133,7 @@ ProcessIdentity _fact({
   );
 }
 
-class _LookupProcessRunner implements ProcessRunner {
+class _LookupProcessRunner() implements ProcessRunner {
   List<int> processIds = <int>[];
   final List<String> executableNames = <String>[];
 
@@ -167,7 +167,7 @@ class _LookupProcessRunner implements ProcessRunner {
   }
 }
 
-class _FakeSystemProcessApi implements SystemProcessApi {
+class _FakeSystemProcessApi() implements SystemProcessApi {
   final Map<int, ProcessIdentity?> inspectionFacts = <int, ProcessIdentity?>{};
   final List<int> inspectedPids = <int>[];
 

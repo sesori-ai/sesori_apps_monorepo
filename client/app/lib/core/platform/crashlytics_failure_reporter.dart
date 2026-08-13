@@ -3,13 +3,10 @@ import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 @LazySingleton(as: FailureReporter)
-class CrashlyticsFailureReporter implements FailureReporter {
+class CrashlyticsFailureReporter(final FirebaseCrashlytics _crashlytics) implements FailureReporter {
   static const int maxNonFatalDedupEntries = 128;
 
-  final FirebaseCrashlytics _crashlytics;
   final Set<String> _reportedNonFatalIds = {}; // LinkedHashSet by default — insertion-ordered
-
-  CrashlyticsFailureReporter(FirebaseCrashlytics crashlytics) : _crashlytics = crashlytics;
 
   @override
   void setGlobalKey({required String key, required Object value}) => _crashlytics.setCustomKey(key, value);

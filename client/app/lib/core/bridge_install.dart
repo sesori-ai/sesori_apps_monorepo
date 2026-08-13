@@ -5,9 +5,7 @@
 /// changes. The branded `sesori.com` URLs front the canonical scripts that
 /// currently live at
 /// `raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/`.
-class BridgeInstall {
-  const BridgeInstall._();
-
+class const BridgeInstall._() {
   /// Branded host that serves the install scripts. Change in one place to
   /// repoint every onboarding command.
   static const String _host = "https://sesori.com";

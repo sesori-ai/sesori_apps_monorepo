@@ -5,21 +5,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../codex_stdio_app_server_client.dart";
 import "../repositories/codex_authentication_repository.dart";
 
-class CodexAuthenticationService {
-  CodexAuthenticationService({
-    required CodexStdioAppServerClient client,
-    required CodexAuthenticationRepository repository,
-    required StartAbortSignal aborted,
-    required Duration requestTimeout,
-  }) : _client = client,
-       _repository = repository,
-       _aborted = aborted,
-       _requestTimeout = requestTimeout;
-
-  final CodexStdioAppServerClient _client;
-  final CodexAuthenticationRepository _repository;
-  final StartAbortSignal _aborted;
-  final Duration _requestTimeout;
+class CodexAuthenticationService({
+  required final CodexStdioAppServerClient _client,
+  required final CodexAuthenticationRepository _repository,
+  required final StartAbortSignal _aborted,
+  required final Duration _requestTimeout,
+}) {
   late final Future<Never> _abort = _abortOperation();
 
   Stream<PluginAuthenticationEvent> authenticate() async* {

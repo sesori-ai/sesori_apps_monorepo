@@ -573,7 +573,7 @@ Future<CleanupResult> _cleanup({
   );
 }
 
-class _FakeSessionRepository implements SessionRepository {
+class _FakeSessionRepository() implements SessionRepository {
   StoredSession? storedSession;
   bool hasSharingResult = false;
   int hasSharingCallCount = 0;
@@ -658,7 +658,7 @@ class _FakeSessionRepository implements SessionRepository {
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
-class _FakeWorktreeService extends WorktreeService {
+class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
@@ -673,7 +673,7 @@ class _FakeWorktreeService extends WorktreeService {
   bool? lastRemoveForce;
   bool? lastDeleteBranchForce;
 
-  _FakeWorktreeService({required AppDatabase database})
+  this
     : super(
         worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
@@ -728,7 +728,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 }
 
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   String? lastArchivedSessionId;
 
   @override
@@ -863,7 +863,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<void> dispose() async {}
 }
 
-class _NoopProcessRunner implements ProcessRunner {
+class _NoopProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,

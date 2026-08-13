@@ -185,35 +185,21 @@ _TestRecord _record({required String ownerSessionId, required int pid, required 
   );
 }
 
-enum _TestStatus { starting, ready, stopping }
+enum _TestStatus() { starting, ready, stopping }
 
-class _TestRecord {
-  const _TestRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.openCodeCommand,
-    required this.openCodeArgs,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.startedAt,
-    required this.status,
-  });
-
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String openCodeCommand;
-  final List<String> openCodeArgs;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final DateTime startedAt;
-  final _TestStatus status;
-
+class const _TestRecord({
+    required final String ownerSessionId,
+    required final int openCodePid,
+    required final String? openCodeStartMarker,
+    required final String openCodeExecutablePath,
+    required final String openCodeCommand,
+    required final List<String> openCodeArgs,
+    required final int port,
+    required final int bridgePid,
+    required final String? bridgeStartMarker,
+    required final DateTime startedAt,
+    required final _TestStatus status,
+  }) {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "ownerSessionId": ownerSessionId,
@@ -231,9 +217,7 @@ class _TestRecord {
   }
 }
 
-class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
-  const _TestRecordMapper();
-
+class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   @override
   Map<String, dynamic> toJson({required _TestRecord record}) => record.toJson();
 
@@ -312,7 +296,7 @@ class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
   }
 }
 
-class _FakeHostJsonStore implements HostJsonStore {
+class _FakeHostJsonStore() implements HostJsonStore {
   final Map<String, String> files = <String, String>{};
   final List<String> calls = <String>[];
   void Function()? onBeforeUpdate;
@@ -358,9 +342,7 @@ class _FakeHostJsonStore implements HostJsonStore {
   }
 }
 
-class _FixedClock extends ServerClock {
-  const _FixedClock();
-
+class const _FixedClock() extends ServerClock {
   @override
   DateTime now() => DateTime.utc(2026, 5, 15, 12, 30, 1, 234);
 }

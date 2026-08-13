@@ -7,15 +7,12 @@ import "../../api/gh_pull_request_batch.dart";
 import "../foundation/process_runner.dart";
 import "gh_authenticated_identity.dart";
 
-class GhCliApi {
+class GhCliApi({required final ProcessRunner _processRunner}) {
   static const int maxPullRequestTargetsPerQuery = 20;
   static const int _pullRequestPageSize = 10;
 
-  final ProcessRunner _processRunner;
   bool _availabilityFailureReported = false;
   _GhAuthenticationFailure? _reportedAuthenticationFailure;
-
-  GhCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
 
   Future<bool> isAvailable() async {
     try {
@@ -370,4 +367,4 @@ class GhCliApi {
   }
 }
 
-enum _GhAuthenticationFailure { unauthenticated, verificationFailed }
+enum _GhAuthenticationFailure() { unauthenticated, verificationFailed }

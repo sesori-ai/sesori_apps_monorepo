@@ -83,13 +83,11 @@ void main() {
   });
 }
 
-class _StubAppServerApi extends CodexAppServerApi {
-  _StubAppServerApi({required this.response})
+class _StubAppServerApi({required final CodexSkillsListResponseDto response}) extends CodexAppServerApi {
+  this
     : super(
         client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
       );
-
-  final CodexSkillsListResponseDto response;
 
   @override
   Future<CodexSkillsListResponseDto> listSkills({required String cwd}) async => response;

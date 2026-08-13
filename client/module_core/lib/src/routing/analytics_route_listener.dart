@@ -27,13 +27,13 @@ class AnalyticsRouteListener {
   final Set<AnalyticsScreen> _reportAgainScreens = {};
   bool _started = false;
 
-  AnalyticsRouteListener({required RouteSource routeSource, required ProductAnalyticsService analyticsService})
+  new({required RouteSource routeSource, required ProductAnalyticsService analyticsService})
     : _routeSource = routeSource,
       _analyticsService = analyticsService,
       _deliveryDeadline = _screenDeliveryDeadline;
 
   @visibleForTesting
-  AnalyticsRouteListener.withDeliveryDeadline({
+  new withDeliveryDeadline({
     required RouteSource routeSource,
     required ProductAnalyticsService analyticsService,
     required Duration deliveryDeadline,

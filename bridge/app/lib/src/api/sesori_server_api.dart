@@ -5,12 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "app_client_status_response.dart";
 
-class SesoriServerApiException implements Exception {
-  SesoriServerApiException({required this.statusCode, required this.uri});
-
-  final int statusCode;
-  final Uri uri;
-
+class SesoriServerApiException({required final int statusCode, required final Uri uri}) implements Exception {
   @override
   String toString() => "SesoriServerApiException: GET $uri returned status $statusCode";
 }
@@ -18,21 +13,14 @@ class SesoriServerApiException implements Exception {
 /// Provider-level HTTP boundary for new Sesori auth-server operations.
 ///
 /// Existing auth APIs remain in their current use-case-specific boundaries.
-class SesoriServerApi {
-  SesoriServerApi({
-    required String authBackendUrl,
-    required http.Client client,
-    required Duration requestDeadline,
-  }) : _authBackendUrl = authBackendUrl.replaceFirst(RegExp(r"/+$"), ""),
-       _client = client,
-       _requestDeadline = requestDeadline;
-
+class SesoriServerApi({
+  required String authBackendUrl,
+  required final http.Client _client,
+  required final Duration _requestDeadline,
+}) {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
 
-  final String _authBackendUrl;
-  final http.Client _client;
-  final Duration _requestDeadline;
-
+  final String _authBackendUrl = authBackendUrl.replaceFirst(RegExp(r"/+$"), "");
   Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) async {
     final uri = Uri.parse("$_authBackendUrl/auth/app-clients/status");
     final abortCompleter = Completer<void>();

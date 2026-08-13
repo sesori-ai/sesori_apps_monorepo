@@ -295,14 +295,11 @@ void main() {
   });
 }
 
-class RecordingNotificationRepository implements NotificationRepository {
+class RecordingNotificationRepository({required final List<String> operations}) implements NotificationRepository {
   final List<RegisteredToken> registeredTokens = <RegisteredToken>[];
   final List<String> unregisteredTokens = <String>[];
-  final List<String> operations;
   bool failNextRegisterToken = false;
   bool failNextUnregisterToken = false;
-
-  RecordingNotificationRepository({required this.operations});
 
   @override
   Future<void> registerToken({required String token, required DevicePlatform platform}) async {
@@ -326,12 +323,7 @@ class RecordingNotificationRepository implements NotificationRepository {
 }
 
 @immutable
-class RegisteredToken {
-  final String token;
-  final DevicePlatform platform;
-
-  const RegisteredToken({required this.token, required this.platform});
-
+class const RegisteredToken({required final String token, required final DevicePlatform platform}) {
   @override
   bool operator ==(Object other) {
     return other is RegisteredToken && other.token == token && other.platform == platform;
@@ -341,10 +333,8 @@ class RegisteredToken {
   int get hashCode => Object.hash(token, platform);
 }
 
-class FakeAuthSession implements AuthSession {
-  final BehaviorSubject<AuthState> _authStates;
-
-  FakeAuthSession({required AuthState initialState}) : _authStates = BehaviorSubject<AuthState>.seeded(initialState);
+class FakeAuthSession({required AuthState initialState}) implements AuthSession {
+  final BehaviorSubject<AuthState> _authStates = BehaviorSubject<AuthState>.seeded(initialState);
 
   @override
   ValueStream<AuthState> get authStateStream => _authStates.stream;
@@ -354,7 +344,9 @@ class FakeAuthSession implements AuthSession {
 
   void emit(AuthState state) => _authStates.add(state);
 
-  Future<void> dispose() async => _authStates.close();
+  Future<void> dispose() async {
+    await _authStates.close();
+  }
 
   @override
   Future<AuthUser?> getCurrentUser() async => null;
@@ -385,27 +377,21 @@ class FakeAuthSession implements AuthSession {
   }
 }
 
-class FakePushMessagingSource implements PushMessagingSource {
+class FakePushMessagingSource({
+  required String? initialToken,
+  @override required final DevicePlatform devicePlatform,
+  required final List<String> operations,
+}) implements PushMessagingSource {
   final StreamController<String> _tokenRefreshController = StreamController<String>.broadcast();
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
       StreamController<NotificationOpenRequest>.broadcast();
 
-  @override
-  final DevicePlatform devicePlatform;
-  final List<String> operations;
-
-  String? currentToken;
+  String? currentToken = initialToken;
   Future<String?>? tokenFuture;
   int deleteTokenCalls = 0;
   bool failNextDeleteToken = false;
-
-  FakePushMessagingSource({
-    required String? initialToken,
-    required this.devicePlatform,
-    required this.operations,
-  }) : currentToken = initialToken;
 
   @override
   Stream<PushNotificationMessage> get foregroundMessageStream => _foregroundMessageController.stream;
@@ -414,7 +400,7 @@ class FakePushMessagingSource implements PushMessagingSource {
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async => null;
 
   @override
-  Future<String?> getToken() async => tokenFuture ?? currentToken;
+  Future<String?> getToken() async => await (tokenFuture ?? currentToken);
 
   @override
   Future<void> deleteToken() async {

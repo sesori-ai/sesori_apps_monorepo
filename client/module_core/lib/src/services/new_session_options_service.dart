@@ -16,7 +16,7 @@ part "new_session_options_service.freezed.dart";
 
 @Freezed()
 sealed class NewSessionOptionsData with _$NewSessionOptionsData {
-  const factory NewSessionOptionsData({
+  const factory({
     required List<AgentInfo> agents,
     required List<ProviderInfo> providers,
     required List<CommandInfo> commands,
@@ -27,60 +27,29 @@ sealed class NewSessionOptionsData with _$NewSessionOptionsData {
   }) = _NewSessionOptionsData;
 }
 
-sealed class NewSessionOptionsLoadResult {
-  const NewSessionOptionsLoadResult();
-}
+sealed class const NewSessionOptionsLoadResult();
 
-enum NewSessionOptionsLoadMode { dynamicLoad, forcedRefresh }
+enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh }
 
-final class NewSessionOptionsLoaded extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsLoaded({required this.options, required this.source});
+final class const NewSessionOptionsLoaded({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
 
-  final NewSessionOptionsData options;
-  final NewSessionOptionsSource source;
-}
+final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
-final class NewSessionOptionsUnsupported extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsUnsupported();
-}
+final class const NewSessionOptionsUnavailable() extends NewSessionOptionsLoadResult;
 
-final class NewSessionOptionsUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsUnavailable();
-}
+final class const NewSessionOptionsLoadFailureUnavailable() extends NewSessionOptionsLoadResult;
 
-final class NewSessionOptionsLoadFailureUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsLoadFailureUnavailable();
-}
+final class const NewSessionOptionsFailureRetained({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
 
-final class NewSessionOptionsFailureRetained extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsFailureRetained({required this.options, required this.source});
+final class const NewSessionOptionsFailureUnavailable({required final ApiError error, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
 
-  final NewSessionOptionsData options;
-  final NewSessionOptionsSource source;
-}
-
-final class NewSessionOptionsFailureUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsFailureUnavailable({required this.error, required this.source});
-
-  final ApiError error;
-  final NewSessionOptionsSource source;
-}
-
-final class NewSessionOptionsRefreshFailureUnavailable extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsRefreshFailureUnavailable();
-}
+final class const NewSessionOptionsRefreshFailureUnavailable() extends NewSessionOptionsLoadResult;
 
 @lazySingleton
-class NewSessionOptionsService {
-  NewSessionOptionsService({
-    required SessionRepository sessionRepository,
-    required DefaultModelSelector defaultModelSelector,
-  }) : _sessionRepository = sessionRepository,
-       _defaultModelSelector = defaultModelSelector;
-
-  final SessionRepository _sessionRepository;
-  final DefaultModelSelector _defaultModelSelector;
-
+class NewSessionOptionsService({
+    required final SessionRepository _sessionRepository,
+    required final DefaultModelSelector _defaultModelSelector,
+  }) {
   Future<NewSessionOptionsLoadResult> load({
     required String projectId,
     required String pluginId,
@@ -95,7 +64,7 @@ class NewSessionOptionsService {
             ? const NewSessionOptionsUnsupported()
             : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
       }
-      return _loadLegacy(
+      return await _loadLegacy(
         projectId: projectId,
         pluginId: pluginId,
         restoredSelection: restoredSelection,

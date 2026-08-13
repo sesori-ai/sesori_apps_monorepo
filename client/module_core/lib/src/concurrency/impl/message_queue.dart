@@ -31,23 +31,20 @@ extension CompleterWithTimeout<T> on Completer<T> {
   }
 }
 
-class MessageQueue<T, OUT> {
-  final FutureOr<OUT> Function(T) sendFunction;
-  final Completer<void> _isReady;
+class MessageQueue<T, OUT>({
+  required final FutureOr<OUT> Function(T) sendFunction,
 
   /// Used to kill the message if it's taking too long to send/process
-  final Duration? inFlightTimeout;
+  final Duration? inFlightTimeout,
+  Completer<void>? isReady,
+}) {
+  final Completer<void> _isReady = isReady ?? (Completer()..complete());
 
   final Queue<({T data, Completer<OUT> completer})> _messages = Queue();
   bool _isSending = false;
 
-  MessageQueue({
-    required this.sendFunction,
-    this.inFlightTimeout,
-    Completer<void>? isReady,
-  }) : _isReady = isReady ?? (Completer()..complete()) {
-    // ignore: discarded_futures, readiness future intentionally fire-and-forget
-    _isReady.future.then((value) => _checkAndSendNext());
+  this {
+    unawaited(_isReady.future.then((value) => _checkAndSendNext()));
   }
 
   Future<OUT> enqueueMessage(T message) {
@@ -72,7 +69,7 @@ class MessageQueue<T, OUT> {
         return;
       }
       _isSending = true;
-      final (data: nextMessage, : completer) = _messages.removeFirst();
+      final (data: nextMessage, :completer) = _messages.removeFirst();
 
       try {
         final inFlightTimeout = this.inFlightTimeout;

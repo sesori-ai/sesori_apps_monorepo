@@ -6,7 +6,7 @@ import 'package:sesori_shared/sesori_shared.dart';
 /// This is a minimal wrapper that logs all failures to stdout/stderr via [Log].
 /// No deduplication, no persistence — just logging. The backend isn't wired yet,
 /// but interface calls will flow automatically when it is.
-class LogFailureReporter implements FailureReporter {
+class LogFailureReporter() implements FailureReporter {
   @override
   void setGlobalKey({required String key, required Object value}) {
     Log.i('[reporter] $key=$value');

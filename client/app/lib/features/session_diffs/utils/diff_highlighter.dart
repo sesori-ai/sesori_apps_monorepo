@@ -12,7 +12,7 @@ import '../../../core/utils/syntax_highlight.dart';
 /// separate class because diffs are highlighted line-by-line and the grammars
 /// must be registered eagerly up front (never lazily inside an `itemBuilder`),
 /// which gives it the strict init-order contract exercised by its tests.
-class DiffHighlighter {
+class DiffHighlighter() {
   static Highlight? _highlight;
   static late Map<String, TextStyle> _theme;
   static bool _initialized = false;

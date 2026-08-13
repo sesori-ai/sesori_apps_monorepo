@@ -41,9 +41,13 @@ import "../repositories/registered_bridges_store.dart";
 /// store clears its own persisted latch on logout; this service resets its
 /// reactive latch on logout so a different account never inherits the answer.
 @lazySingleton
-class RegisteredBridgesService {
-  final BridgeRepository _bridgeRepository;
-  final RegisteredBridgesStore _store;
+class RegisteredBridgesService({
+  required final BridgeRepository _bridgeRepository,
+  required RegisteredBridgesStore registeredBridgesStore,
+  required ConnectionService connectionService,
+  required AuthSession authSession,
+}) {
+  final RegisteredBridgesStore _store = registeredBridgesStore;
 
   /// The reactive latch. `true` once the account is known to have a registered
   /// bridge; `false` means "not yet known" — never a definitive "no bridges".
@@ -71,13 +75,7 @@ class RegisteredBridgesService {
   StreamSubscription<ConnectionStatus>? _statusSubscription;
   StreamSubscription<AuthState>? _authSubscription;
 
-  RegisteredBridgesService({
-    required BridgeRepository bridgeRepository,
-    required RegisteredBridgesStore registeredBridgesStore,
-    required ConnectionService connectionService,
-    required AuthSession authSession,
-  }) : _bridgeRepository = bridgeRepository,
-       _store = registeredBridgesStore {
+  this {
     // Seed the reactive latch from the persisted answer (no network) so
     // consumers see the right value immediately, independent of connection state.
     unawaited(_seedFromStore());
@@ -120,7 +118,7 @@ class RegisteredBridgesService {
       return true;
     }
     // Tier 3: ask the auth server, latching a positive answer for next time.
-    return _lookup();
+    return await _lookup();
   }
 
   Future<bool> _lookup() async => (await getRegisteredBridges()).isNotEmpty;

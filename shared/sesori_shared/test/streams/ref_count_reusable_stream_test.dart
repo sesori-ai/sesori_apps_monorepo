@@ -228,7 +228,7 @@ void main() {
 
 Future<void> _pumpZeroDelay() => Future<void>.delayed(Duration.zero);
 
-class _SourceHarness<T> {
+class _SourceHarness<T>() {
   final List<StreamController<T>> _controllers = <StreamController<T>>[];
   int factoryCallCount = 0;
   int cancelCount = 0;

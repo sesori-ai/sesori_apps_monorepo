@@ -71,13 +71,11 @@ TestChatHistory createTestChatHistory({
 AttachmentStorageScope testAttachmentStorageScope({required String sessionId}) =>
     AttachmentStorageScope(pluginId: "opencode", backendSessionId: sessionId);
 
-class TestChatHistoryRepository extends ChatHistoryRepository {
-  TestChatHistoryRepository({
-    required super.chatHistoryDao,
-    required super.attachmentSpillStorage,
-    required super.archivedSessionStorage,
-  });
-
+class TestChatHistoryRepository({
+  required super.chatHistoryDao,
+  required super.attachmentSpillStorage,
+  required super.archivedSessionStorage,
+}) extends ChatHistoryRepository {
   @override
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,
@@ -94,14 +92,12 @@ class TestChatHistoryRepository extends ChatHistoryRepository {
   );
 }
 
-class TestChatHistoryService extends ChatHistoryService {
-  TestChatHistoryService({
-    required super.chatHistoryRepository,
-    required super.sessionRepository,
-    required super.attachmentThumbnailBuilder,
-    required super.bridgeIdProvider,
-  });
-
+class TestChatHistoryService({
+  required super.chatHistoryRepository,
+  required super.sessionRepository,
+  required super.attachmentThumbnailBuilder,
+  required super.bridgeIdProvider,
+}) extends ChatHistoryService {
   @override
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,
@@ -129,20 +125,11 @@ class TestChatHistoryService extends ChatHistoryService {
   );
 }
 
-class _TestBridgeIdProvider implements BridgeIdProvider {
-  const _TestBridgeIdProvider(this.bridgeId);
-
-  @override
-  final String? bridgeId;
-}
+class const _TestBridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;
 
 /// Fails on any call: a test that reaches the plugin path should have supplied
 /// its own repository instead of silently backfilling from nothing.
-class _UnusedSessionRepository implements SessionRepository {
-  _UnusedSessionRepository({required this.archivedAt});
-
-  final int? archivedAt;
-
+class _UnusedSessionRepository({required final int? archivedAt}) implements SessionRepository {
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
     id: sessionId,

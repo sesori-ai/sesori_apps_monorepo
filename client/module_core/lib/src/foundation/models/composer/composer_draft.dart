@@ -1,21 +1,16 @@
 import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 
-enum ComposerInputMode { typed, voiceAssisted }
+enum ComposerInputMode() { typed, voiceAssisted }
 
 @immutable
-final class VoiceOriginSpan {
-  final int start;
-  final int end;
-
-  factory VoiceOriginSpan({required int start, required int end}) {
+final class const VoiceOriginSpan._({required final int start, required final int end}) {
+  factory({required int start, required int end}) {
     if (start < 0 || end <= start) {
       throw ArgumentError.value((start: start, end: end), "span", "must be a non-empty half-open range");
     }
     return VoiceOriginSpan._(start: start, end: end);
   }
-
-  const VoiceOriginSpan._({required this.start, required this.end});
 
   @override
   bool operator ==(Object other) =>
@@ -27,11 +22,8 @@ final class VoiceOriginSpan {
 
 /// Immutable composer text plus compact half-open ranges contributed by voice.
 @immutable
-final class ComposerDraft {
-  final String text;
-  final List<VoiceOriginSpan> voiceSpans;
-
-  factory ComposerDraft({
+final class const ComposerDraft._({required final String text, required final List<VoiceOriginSpan> voiceSpans}) {
+  factory({
     required String text,
     required List<VoiceOriginSpan> voiceSpans,
   }) {
@@ -52,9 +44,7 @@ final class ComposerDraft {
     return ComposerDraft._(text: text, voiceSpans: List.unmodifiable(voiceSpans));
   }
 
-  factory ComposerDraft.typed({required String text}) => ComposerDraft(text: text, voiceSpans: const []);
-
-  const ComposerDraft._({required this.text, required this.voiceSpans});
+  factory typed({required String text}) => ComposerDraft(text: text, voiceSpans: const []);
 
   ComposerInputMode get inputMode => voiceSpans.isEmpty ? ComposerInputMode.typed : ComposerInputMode.voiceAssisted;
 

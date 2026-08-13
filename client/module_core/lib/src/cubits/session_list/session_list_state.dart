@@ -9,9 +9,9 @@ part "session_list_state.freezed.dart";
 
 @Freezed()
 sealed class SessionListState with _$SessionListState {
-  const factory SessionListState.loading() = SessionListLoading;
+  const factory loading() = SessionListLoading;
 
-  const factory SessionListState.loaded({
+  const factory loaded({
     required List<Session> sessions,
     @Default(false) bool showArchived,
 
@@ -42,10 +42,10 @@ sealed class SessionListState with _$SessionListState {
 
   /// The requested project ID no longer resolves to the expected project on
   /// the server.
-  const factory SessionListState.staleProject({
+  const factory staleProject({
     /// The project ID the server actually resolved.
     required String resolvedProjectId,
   }) = SessionListStaleProject;
 
-  const factory SessionListState.failed({required RemoteFailureReason reason}) = SessionListFailed;
+  const factory failed({required RemoteFailureReason reason}) = SessionListFailed;
 }

@@ -5,9 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" show FileDiffStatus;
 typedef SessionDiffEntry = ({String file, FileDiffStatus? status});
 typedef SessionDiffLineCounts = ({int additions, int deletions});
 
-class GitDiffOutputMapper {
-  const GitDiffOutputMapper();
-
+class const GitDiffOutputMapper() {
   String decodeOutput({required Object? output}) {
     if (output is String) return output;
     if (output is List<int>) {

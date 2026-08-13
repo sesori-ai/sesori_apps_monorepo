@@ -7,7 +7,7 @@ part "bridge_summary.g.dart";
 /// `/auth/bridges` endpoints and the `bridges` field of `/auth/me`.
 @Freezed(fromJson: true, toJson: true)
 sealed class BridgeSummary with _$BridgeSummary {
-  const factory BridgeSummary({
+  const factory({
     required String id,
     required String name,
     required String platform,
@@ -15,5 +15,5 @@ sealed class BridgeSummary with _$BridgeSummary {
     required DateTime? lastSeenAt,
   }) = _BridgeSummary;
 
-  factory BridgeSummary.fromJson(Map<String, dynamic> json) => _$BridgeSummaryFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$BridgeSummaryFromJson(json);
 }

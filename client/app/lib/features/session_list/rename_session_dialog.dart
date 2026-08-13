@@ -24,17 +24,13 @@ Future<void> showRenameSessionDialog({
   );
 }
 
-class _RenameSessionDialog extends StatefulWidget {
-  final Session session;
-  final SessionListCubit cubit;
-
-  const _RenameSessionDialog({required this.session, required this.cubit});
-
+class const _RenameSessionDialog({required final Session session, required final SessionListCubit cubit})
+    extends StatefulWidget {
   @override
   State<_RenameSessionDialog> createState() => _RenameSessionDialogState();
 }
 
-class _RenameSessionDialogState extends State<_RenameSessionDialog> {
+class _RenameSessionDialogState() extends State<_RenameSessionDialog> {
   late final TextEditingController _controller;
   bool _actionLoading = false;
 

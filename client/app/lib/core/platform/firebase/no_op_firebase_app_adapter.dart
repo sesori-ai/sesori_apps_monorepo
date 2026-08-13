@@ -2,9 +2,7 @@ import "package:firebase_core/firebase_core.dart";
 
 /// Firebase app placeholder for builds where the native Firebase SDK is absent.
 // ignore: avoid_implementing_value_types, FirebaseApp has no public constructor for a disabled SDK instance.
-class NoOpFirebaseAppAdapter implements FirebaseApp {
-  const NoOpFirebaseAppAdapter();
-
+class const NoOpFirebaseAppAdapter() implements FirebaseApp {
   static const FirebaseOptions _options = FirebaseOptions(
     apiKey: "firebase-disabled",
     appId: "firebase-disabled",

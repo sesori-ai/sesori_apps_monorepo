@@ -8,13 +8,9 @@ import "../foundation/models/session_options/session_options_request_mode.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
-class SessionRepository {
-  final SessionApi _api;
-
-  SessionRepository({
-    required SessionApi api,
-  }) : _api = api;
-
+class SessionRepository({
+  required final SessionApi _api,
+}) {
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,
     required bool deleteWorktree,

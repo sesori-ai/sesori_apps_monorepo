@@ -839,8 +839,8 @@ void main() {
   });
 }
 
-class _BlockingProjectsDao extends ProjectsDao {
-  _BlockingProjectsDao({required AppDatabase database}) : super(database);
+class _BlockingProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
 
   final Completer<void> readStarted = Completer<void>();
   final Completer<void> _readGate = Completer<void>();
@@ -851,17 +851,16 @@ class _BlockingProjectsDao extends ProjectsDao {
   Future<List<ProjectDto>> getAllProjects() async {
     readStarted.complete();
     await _readGate.future;
-    return super.getAllProjects();
+    return await super.getAllProjects();
   }
 }
 
-class _RecordingSessionDao extends SessionDao {
-  _RecordingSessionDao({
-    required AppDatabase database,
-    required this.failOnWriteCall,
-  }) : super(database);
+class _RecordingSessionDao({
+  required AppDatabase database,
+  required final int? failOnWriteCall,
+}) extends SessionDao {
+  this : super(database);
 
-  final int? failOnWriteCall;
   final List<int> writeBatchSizes = [];
   final List<List<String>> backendIdsByWrite = [];
   final List<bool> projectsExistedAtWrite = [];
@@ -886,11 +885,8 @@ class _RecordingSessionDao extends SessionDao {
   }
 }
 
-class _TrackingProjectCatalogIdentityCalculator extends ProjectCatalogIdentityCalculator {
-  _TrackingProjectCatalogIdentityCalculator({required this.firstProjectId, required this.firstPath});
-
-  final String firstProjectId;
-  final String firstPath;
+class _TrackingProjectCatalogIdentityCalculator({required final String firstProjectId, required final String firstPath})
+    extends ProjectCatalogIdentityCalculator {
   Map<String, ProjectDto>? _firstProjectsById;
   Map<String, ProjectDto>? _firstProjectsByNormalizedPath;
   int callCount = 0;
@@ -1007,20 +1003,13 @@ PluginSession _pluginSession({
   );
 }
 
-class _NativeImportPlugin implements NativeProjectsPluginApi {
-  _NativeImportPlugin({
-    required this.projects,
-    required this.rootsByProject,
-    required this.childrenByParent,
-    this.getProjectsGate,
-    this.onGetSessions,
-  });
-
-  final List<PluginProject> projects;
-  final Map<String, List<PluginSession>> rootsByProject;
-  final Map<String, List<PluginSession>> childrenByParent;
-  final Completer<void>? getProjectsGate;
-  final Future<void> Function(String projectId)? onGetSessions;
+class _NativeImportPlugin({
+  required final List<PluginProject> projects,
+  required final Map<String, List<PluginSession>> rootsByProject,
+  required final Map<String, List<PluginSession>> childrenByParent,
+  final Completer<void>? getProjectsGate,
+  final Future<void> Function(String projectId)? onGetSessions,
+}) implements NativeProjectsPluginApi {
   final Completer<void> getProjectsStarted = Completer<void>();
 
   @override
@@ -1054,12 +1043,10 @@ class _NativeImportPlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _DerivedImportPlugin implements BridgeDerivedProjectsPluginApi {
-  _DerivedImportPlugin({required this.launchDirectory, required this.sessions});
-
-  @override
-  final String launchDirectory;
-  final List<PluginSession> sessions;
+class _DerivedImportPlugin({
+  @override required final String launchDirectory,
+  required final List<PluginSession> sessions,
+}) implements BridgeDerivedProjectsPluginApi {
   Set<String>? knownDirectories;
 
   @override

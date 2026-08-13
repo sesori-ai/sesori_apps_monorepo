@@ -9,9 +9,7 @@ import "../../core/routing/app_router.dart";
 import "../../core/widgets/sesori_background_widget.dart";
 import "../../core/widgets/sesori_logo.dart";
 
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key});
-
+class const SplashScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -21,9 +19,7 @@ class SplashScreen extends StatelessWidget {
   }
 }
 
-class _SplashScreenBody extends StatelessWidget {
-  const _SplashScreenBody();
-
+class const _SplashScreenBody() extends StatelessWidget {
   /// Completes once [animation] settles. Used to hold navigation until the
   /// splash entrance transition finishes (after logout, splash is pushed
   /// with the platform transition and the cubit resolves within a few
@@ -62,9 +58,7 @@ class _SplashScreenBody extends StatelessWidget {
   }
 }
 
-class _SplashView extends StatelessWidget {
-  const _SplashView();
-
+class const _SplashView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Stack(

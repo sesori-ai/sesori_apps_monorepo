@@ -30,11 +30,12 @@ import "../foundation/control_channel_client.dart";
 /// and a frame lost to a channel blip is repaired by the reconnect re-sync.
 /// Consecutive identical status frames are deduped so live state changes are
 /// pushed exactly once (no periodic spam).
-class ControlStatusNotifier {
-  final ControlChannelClient _client;
-  final Stream<List<PluginMetadata>> _pluginMetadata;
-  final Stream<RelayConnectionState> _relayConnectionState;
-  final Stream<String> _registrations;
+class ControlStatusNotifier({
+  required final ControlChannelClient _client,
+  required final Stream<List<PluginMetadata>> _pluginMetadata,
+  required final Stream<RelayConnectionState> _relayConnectionState,
+  required final Stream<String> _registrations,
+}) {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   // The relay is genuinely not connected before the orchestrator's first
@@ -46,16 +47,6 @@ class ControlStatusNotifier {
   ControlStatus? _lastSentStatus;
   String? _bridgeId;
   bool _started = false;
-
-  ControlStatusNotifier({
-    required ControlChannelClient client,
-    required Stream<List<PluginMetadata>> pluginMetadata,
-    required Stream<RelayConnectionState> relayConnectionState,
-    required Stream<String> registrations,
-  }) : _client = client,
-       _pluginMetadata = pluginMetadata,
-       _relayConnectionState = relayConnectionState,
-       _registrations = registrations;
 
   /// Subscribes to the observed streams. Idempotent — a second call while
   /// already started does nothing.

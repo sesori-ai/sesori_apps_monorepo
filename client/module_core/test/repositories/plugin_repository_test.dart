@@ -11,7 +11,7 @@ import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockPluginApi extends Mock implements PluginApi;
+class MockPluginApi() extends Mock implements PluginApi;
 
 void main() {
   late MockPluginApi api;

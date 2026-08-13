@@ -1,7 +1,7 @@
 import "../process/process_identity.dart";
 
 /// Identity facts about the bridge process hosting the plugin.
-abstract class BridgeHostInfo {
+abstract class BridgeHostInfo() {
   /// The identity of the bridge process itself.
   ProcessIdentity get identity;
 

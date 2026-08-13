@@ -22,9 +22,7 @@ import "start_abort_signal.dart";
 /// residency are independent, and every descriptor contributes its [options]
 /// to the CLI parser.
 @immutable
-abstract class BridgePluginDescriptor {
-  const BridgePluginDescriptor();
-
+abstract class const BridgePluginDescriptor() {
   /// Stable plugin identifier (e.g. `"opencode"`). Must match the id of the
   /// `BridgePluginApi` the started plugin exposes.
   String get id;

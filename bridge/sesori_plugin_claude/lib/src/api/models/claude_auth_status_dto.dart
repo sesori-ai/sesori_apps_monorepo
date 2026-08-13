@@ -9,11 +9,11 @@ part "claude_auth_status_dto.g.dart";
 /// excluding them here prevents setup inspection from retaining those values.
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeAuthStatusDto with _$ClaudeAuthStatusDto {
-  const factory ClaudeAuthStatusDto({
+  const factory({
     @JsonKey(fromJson: _boolOrNull) required bool? loggedIn,
   }) = _ClaudeAuthStatusDto;
 
-  factory ClaudeAuthStatusDto.fromJson(Map<String, dynamic> json) => _$ClaudeAuthStatusDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeAuthStatusDtoFromJson(json);
 }
 
 bool? _boolOrNull(Object? value) => value is bool ? value : null;

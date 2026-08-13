@@ -7,10 +7,10 @@ part "project_activity_summary.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ProjectActivitySummary with _$ProjectActivitySummary {
-  const factory ProjectActivitySummary({
+  const factory({
     required String id,
     required List<ActiveSession> activeSessions,
   }) = _ProjectActivitySummary;
 
-  factory ProjectActivitySummary.fromJson(Map<String, dynamic> json) => _$ProjectActivitySummaryFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ProjectActivitySummaryFromJson(json);
 }

@@ -4,12 +4,10 @@ import "package:sesori_shared/sesori_shared.dart";
 ///
 /// Only message parts carrying bridge-owned images differ per subscriber; all
 /// other events are one object for every connection.
-sealed class SseEventDelivery {
-  const SseEventDelivery();
+sealed class const SseEventDelivery() {
+  const factory uniform({required SesoriSseEvent event}) = UniformSseEventDelivery;
 
-  const factory SseEventDelivery.uniform({required SesoriSseEvent event}) = UniformSseEventDelivery;
-
-  const factory SseEventDelivery.attachmentShaped({
+  const factory attachmentShaped({
     required SesoriSseEvent inlineEvent,
     required SesoriSseEvent storedReferenceEvent,
   }) = AttachmentShapedSseEventDelivery;
@@ -21,26 +19,18 @@ sealed class SseEventDelivery {
   SesoriSseEvent eventFor({required MessageAttachmentDelivery delivery});
 }
 
-final class UniformSseEventDelivery extends SseEventDelivery {
+final class const UniformSseEventDelivery({required final SesoriSseEvent event}) extends SseEventDelivery {
   @override
-  final SesoriSseEvent inlineEvent;
-
-  const UniformSseEventDelivery({required SesoriSseEvent event}) : inlineEvent = event;
+  SesoriSseEvent get inlineEvent => event;
 
   @override
   SesoriSseEvent eventFor({required MessageAttachmentDelivery delivery}) => inlineEvent;
 }
 
-final class AttachmentShapedSseEventDelivery extends SseEventDelivery {
-  @override
-  final SesoriSseEvent inlineEvent;
-  final SesoriSseEvent storedReferenceEvent;
-
-  const AttachmentShapedSseEventDelivery({
-    required this.inlineEvent,
-    required this.storedReferenceEvent,
-  });
-
+final class const AttachmentShapedSseEventDelivery({
+  @override required final SesoriSseEvent inlineEvent,
+  required final SesoriSseEvent storedReferenceEvent,
+}) extends SseEventDelivery {
   @override
   SesoriSseEvent eventFor({required MessageAttachmentDelivery delivery}) => switch (delivery) {
     MessageAttachmentDelivery.inline => inlineEvent,

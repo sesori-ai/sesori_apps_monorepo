@@ -18,13 +18,13 @@ import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockUrlLauncher extends Mock implements UrlLauncher;
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
-class _MockSessionApi extends Mock implements SessionApi;
+class _MockSessionApi() extends Mock implements SessionApi;
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
-class _FakeImageSaver implements ImageSaver {
+class _FakeImageSaver() implements ImageSaver {
   Uint8List? savedBytes;
   String? savedFilename;
 
@@ -40,7 +40,7 @@ class _FakeImageSaver implements ImageSaver {
   }
 }
 
-class _FakeImageClipboard implements ImageClipboard {
+class _FakeImageClipboard() implements ImageClipboard {
   Uint8List? copiedBytes;
 
   @override
@@ -52,7 +52,7 @@ class _FakeImageClipboard implements ImageClipboard {
   }
 }
 
-class _FakeImageSharer implements ImageSharer {
+class _FakeImageSharer() implements ImageSharer {
   @override
   Future<void> shareImage({
     required Uint8List bytes,

@@ -3,9 +3,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockNotificationApi extends Mock implements NotificationApi;
+class MockNotificationApi() extends Mock implements NotificationApi;
 
-class MockNotificationPreferencesDeviceIdStorage extends Mock implements NotificationPreferencesDeviceIdStorage;
+class MockNotificationPreferencesDeviceIdStorage() extends Mock implements NotificationPreferencesDeviceIdStorage;
 
 const _deviceId = "de250236-dd17-4fbf-a37e-4fcf5dc8c86b";
 const _token = "fcm-token";

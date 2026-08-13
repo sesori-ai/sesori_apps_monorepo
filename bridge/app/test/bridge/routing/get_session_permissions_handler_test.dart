@@ -387,10 +387,8 @@ void main() {
   });
 }
 
-class _FakeYoloSettingsService implements YoloSettingsService {
-  _FakeYoloSettingsService({required bool enabled}) : _settings = YoloSettingsResponse(enabled: enabled);
-
-  YoloSettingsResponse _settings;
+class _FakeYoloSettingsService({required bool enabled}) implements YoloSettingsService {
+  YoloSettingsResponse _settings = YoloSettingsResponse(enabled: enabled);
 
   @override
   YoloSettingsResponse get currentSettings => _settings;
@@ -404,7 +402,7 @@ class _FakeYoloSettingsService implements YoloSettingsService {
   }
 }
 
-class _DerivedPermissionPlugin implements BridgeDerivedProjectsPluginApi {
+class _DerivedPermissionPlugin() implements BridgeDerivedProjectsPluginApi {
   int pendingPermissionCalls = 0;
   int permissionReplyCalls = 0;
   List<PluginPendingPermission> permissions = const [];

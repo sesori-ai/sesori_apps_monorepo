@@ -2,7 +2,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _MockLegalRepository extends Mock implements LegalRepository;
+class _MockLegalRepository() extends Mock implements LegalRepository;
 
 void main() {
   late _MockLegalRepository repository;

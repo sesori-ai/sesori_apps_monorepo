@@ -14,8 +14,8 @@ import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
-class _NoCache extends UpdateCacheApi {
-  _NoCache() : super(cacheDirectory: '', clock: const Clock());
+class _NoCache() extends UpdateCacheApi {
+  this : super(cacheDirectory: '', clock: const Clock());
 
   @override
   Future<CachedRelease?> read({required Duration ttl}) async => null;

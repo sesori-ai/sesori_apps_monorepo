@@ -6,9 +6,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "../models/omp_linux_libc.dart";
 import "../omp_identity.dart";
 
-class OmpRuntimeManifest extends RuntimeManifest {
-  const OmpRuntimeManifest();
-
+class const OmpRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _version = SemanticRuntimeVersion.parse(value: "17.2.13");
 
   static const Map<PlatformOs, Map<PlatformArch, DirectBinaryRuntimeAsset>> _assets = {

@@ -141,12 +141,8 @@ void main() {
   });
 }
 
-class _RecordingProcessRunner implements ProcessRunner {
-  _RecordingProcessRunner({this.exitCode = 0, this.stdout = "", this.stderr = ""});
-
-  final int exitCode;
-  final String stdout;
-  final String stderr;
+class _RecordingProcessRunner({final int exitCode = 0, final String stdout = "", final String stderr = ""})
+    implements ProcessRunner {
   String? executable;
   List<String>? arguments;
   Map<String, String>? environment;

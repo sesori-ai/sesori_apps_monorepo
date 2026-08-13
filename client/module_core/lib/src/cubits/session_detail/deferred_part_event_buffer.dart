@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 /// Retains the latest part event until its owning message envelope arrives.
-class DeferredPartEventBuffer {
+class DeferredPartEventBuffer() {
   final Map<String, List<_DeferredPartEvent>> _eventsByMessageId = {};
   int _latestSequence = 0;
 
@@ -61,10 +61,8 @@ class DeferredPartEventBuffer {
   }
 }
 
-final class _DeferredPartEvent {
-  final String partId;
-  final SesoriSessionEvent event;
-  final int sequence;
-
-  const _DeferredPartEvent({required this.partId, required this.event, required this.sequence});
-}
+final class const _DeferredPartEvent({
+  required final String partId,
+  required final SesoriSessionEvent event,
+  required final int sequence,
+});

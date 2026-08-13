@@ -8,9 +8,7 @@ import "package:path/path.dart" as p;
 /// return raw results and may throw [FileSystemException] (including OS-level
 /// permission denials). No classification, mapping, or decision-making lives
 /// here — that belongs in [FilesystemRepository].
-class FilesystemApi {
-  const FilesystemApi();
-
+class const FilesystemApi() {
   /// Returns the type of the entity at [path] (or [FileSystemEntityType.notFound]).
   FileSystemEntityType entityType(String path) {
     return FileSystemEntity.typeSync(path, followLinks: false);

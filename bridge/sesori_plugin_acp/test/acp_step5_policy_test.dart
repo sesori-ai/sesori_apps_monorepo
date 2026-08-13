@@ -5,28 +5,25 @@ import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-class _PolicyPlugin extends TestAcpPlugin {
-  _PolicyPlugin({
-    required this.processWide,
-    required this.failClosed,
-    required this.forms,
-    required this.closeTimeout,
-    required super.eventMapper,
-    required super.contentMapper,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    required AcpProcessFactory super.processFactory,
-  }) : super(
-         id: "acp",
-         agentDisplayName: "ACP",
-         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-         launchDirectory: "/repo",
-       );
+class _PolicyPlugin({
+  required final bool processWide,
+  required final bool failClosed,
+  required final bool forms,
+  required final Duration closeTimeout,
+  required super.eventMapper,
+  required super.contentMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required AcpProcessFactory super.processFactory,
+}) extends TestAcpPlugin {
+  this
+    : super(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: "/repo",
+      );
 
-  final bool processWide;
-  final bool failClosed;
-  final bool forms;
-  final Duration closeTimeout;
   int selectionFailures = 0;
 
   @override
@@ -152,7 +149,7 @@ void main() {
       );
       final frame = await waitForFrameCount(AcpMethods.sessionNew, expectedFrame);
       respond(frame, {"sessionId": id});
-      return creating;
+      return await creating;
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(

@@ -10,22 +10,13 @@ import 'package:sesori_bridge/src/updater/repositories/update_artifact_repositor
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
-class _FakeUpdateHttpClient extends http.BaseClient {
-  final Future<http.StreamedResponse> Function(http.BaseRequest request) _handler;
-
-  _FakeUpdateHttpClient({required Future<http.StreamedResponse> Function(http.BaseRequest request) handler})
-    : _handler = handler;
-
+class _FakeUpdateHttpClient({required final Future<http.StreamedResponse> Function(http.BaseRequest request) _handler})
+    extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) => _handler(request);
 }
 
-class _FakeChecksumManifestApi implements ChecksumManifestApi {
-  final ChecksumManifest? manifest;
-  final Object? error;
-
-  _FakeChecksumManifestApi({this.manifest, this.error});
-
+class _FakeChecksumManifestApi({final ChecksumManifest? manifest, final Object? error}) implements ChecksumManifestApi {
   @override
   Future<ChecksumManifest?> fetchManifest({required String url}) async {
     if (error != null) {
@@ -35,12 +26,8 @@ class _FakeChecksumManifestApi implements ChecksumManifestApi {
   }
 }
 
-class _FakeChecksumValidator implements ChecksumValidator {
-  final bool result;
-  final Object? error;
+class _FakeChecksumValidator({required final bool result, final Object? error}) implements ChecksumValidator {
   String? lastExpectedHash;
-
-  _FakeChecksumValidator({required this.result, this.error});
 
   @override
   Future<String> computeSha256({required String filePath}) async => 'unused';
@@ -57,7 +44,7 @@ class _FakeChecksumValidator implements ChecksumValidator {
 
 /// A no-op [CommandExecutor]: these tests exercise only checksum verification,
 /// so the extractor is constructed but never invoked.
-class _UnusedCommandExecutor implements CommandExecutor {
+class _UnusedCommandExecutor() implements CommandExecutor {
   @override
   Future<CommandResult> run(
     String executable,

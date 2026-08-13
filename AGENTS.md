@@ -50,6 +50,9 @@ eagerly "just in case."
   add machinery for hypothetical consumers, rare timing windows, or future work.
 - Use named parameters with `required`, including nullable parameters. The only
   positional exception is the primary text/message argument of logging APIs.
+- The project uses Dart primary constructors shipped in Dart 3.13. This syntax
+  is valid and supported by the pinned toolchain; do not rewrite it as invalid
+  or replace it with legacy constructor syntax.
 - Use enums for simple closed scalar sets and sealed classes for variants that
   carry different data or behavior. Parse external strings at the boundary;
   never use magic strings for domain state or decisions.

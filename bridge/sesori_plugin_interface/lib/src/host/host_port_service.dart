@@ -1,5 +1,5 @@
 /// Loopback-port probing offered by the bridge to plugins.
-abstract class HostPortService {
+abstract class HostPortService() {
   /// Whether [port] on [host] can currently be bound (i.e. is free).
   ///
   /// [port] must be a valid TCP port (1–65535); behavior outside that range

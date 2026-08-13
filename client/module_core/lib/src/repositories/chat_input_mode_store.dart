@@ -5,15 +5,13 @@ import "../logging/logging.dart";
 
 /// Which input the session composer leads with: press-and-hold voice
 /// dictation, or the tap-to-type text field.
-enum ChatInputMode {
-  voiceFirst(storageValue: "voice_first"),
-  textFirst(storageValue: "text_first");
-
-  ChatInputMode({required this.storageValue});
-
+enum ChatInputMode({
   /// The persisted spelling of this mode. Pinned here rather than derived from
   /// the enum name so renaming a case cannot orphan a stored preference.
-  final String storageValue;
+  required final String storageValue,
+}) {
+  voiceFirst(storageValue: "voice_first"),
+  textFirst(storageValue: "text_first");
 
   /// The mode persisted as [value], or `null` when it matches no known case.
   static ChatInputMode? tryParse({required String value}) {
@@ -31,12 +29,10 @@ enum ChatInputMode {
 /// pulling in a second storage plugin. It survives logout by design: how the
 /// composer leads is a device preference, not account state.
 @lazySingleton
-class ChatInputModeStore {
+class ChatInputModeStore({required SecureStorage secureStorage}) {
   static const _storageKey = "chat_input_mode";
 
-  final SecureStorage _storage;
-
-  ChatInputModeStore({required SecureStorage secureStorage}) : _storage = secureStorage;
+  final SecureStorage _storage = secureStorage;
 
   /// The stored chat input preference, or [ChatInputMode.voiceFirst] when
   /// nothing was ever chosen, the stored value is unreadable, or storage

@@ -21,9 +21,7 @@ const double _contentTopPadding = 10.0;
 /// Shows the signed-in account card, basic usage analytics preference, and the
 /// log-out action. The Figma design adds usage stats, model rankings, and
 /// account deletion here — those ship with their features later.
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
+class const ProfileScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -44,9 +42,7 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-class _ProfileBody extends StatelessWidget {
-  const _ProfileBody();
-
+class const _ProfileBody() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -133,11 +129,7 @@ class _ProfileBody extends StatelessWidget {
   }
 }
 
-class _ProductAnalyticsPreferenceRow extends StatelessWidget {
-  const _ProductAnalyticsPreferenceRow({required this.blocked});
-
-  final bool blocked;
-
+class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -219,15 +211,10 @@ class _ProductAnalyticsPreferenceRow extends StatelessWidget {
   }
 }
 
-class _ProductAnalyticsPreferenceSubtitle extends StatelessWidget {
-  const _ProductAnalyticsPreferenceSubtitle({
-    required this.status,
-    required this.statusIsFailure,
-  });
-
-  final String? status;
-  final bool statusIsFailure;
-
+class const _ProductAnalyticsPreferenceSubtitle({
+  required final String? status,
+  required final bool statusIsFailure,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = this.status;

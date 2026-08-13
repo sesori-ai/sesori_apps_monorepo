@@ -9,16 +9,10 @@ import 'update_output_formatter.dart';
 /// Status/success lines are rendered with [_outFormatter] (stdout); failure
 /// guidance with [_errFormatter] (stderr). Pure: the methods return
 /// [RenderedLine]s and perform no IO — the services do the writing.
-class UpdateMessageFormatter {
-  UpdateMessageFormatter({
-    required UpdateOutputFormatter outFormatter,
-    required UpdateOutputFormatter errFormatter,
-  }) : _outFormatter = outFormatter,
-       _errFormatter = errFormatter;
-
-  final UpdateOutputFormatter _outFormatter;
-  final UpdateOutputFormatter _errFormatter;
-
+class UpdateMessageFormatter({
+  required final UpdateOutputFormatter _outFormatter,
+  required final UpdateOutputFormatter _errFormatter,
+}) {
   /// Genuine-failure guidance: always surfaced on stderr. [toVersion] may be a
   /// concrete version or a phrase ("the latest release") when the failure
   /// predates knowing the target, so it is not `v`-prefixed here.
@@ -29,7 +23,10 @@ class UpdateMessageFormatter {
   }) {
     return [
       RenderedLine(isError: true, text: _errFormatter.error('Automatic update to $toVersion failed: $reason.')),
-      RenderedLine(isError: true, text: _errFormatter.note('Re-run the install script to update manually: $updateInstallScriptUrl')),
+      RenderedLine(
+        isError: true,
+        text: _errFormatter.note('Re-run the install script to update manually: $updateInstallScriptUrl'),
+      ),
       RenderedLine(isError: true, text: _errFormatter.dim('  Details in $logPath')),
     ];
   }

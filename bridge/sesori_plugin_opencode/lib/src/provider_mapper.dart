@@ -4,7 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "models/openapi/config_providers_response.g.dart";
 import "models/openapi/model.g.dart";
 
-enum _ProviderModelStatus {
+enum _ProviderModelStatus() {
   active,
   alpha,
   beta,

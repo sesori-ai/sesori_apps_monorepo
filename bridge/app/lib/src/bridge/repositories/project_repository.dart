@@ -19,30 +19,16 @@ import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
 /// Owns the bridge's aggregate project catalog and local project operations.
-class ProjectRepository {
+class ProjectRepository({
+  required final ProjectsDao _projectsDao,
+  required final SessionDao _sessionDao,
+  required final SessionUnseenCalculator _unseenCalculator,
+  required final FilesystemApi _filesystemApi,
+  required final GitCliApi _gitCliApi,
+  required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+}) {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
-
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-  final SessionUnseenCalculator _unseenCalculator;
-  final FilesystemApi _filesystemApi;
-  final GitCliApi _gitCliApi;
-  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
-
-  ProjectRepository({
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required SessionUnseenCalculator unseenCalculator,
-    required FilesystemApi filesystemApi,
-    required GitCliApi gitCliApi,
-    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-  }) : _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _unseenCalculator = unseenCalculator,
-       _filesystemApi = filesystemApi,
-       _gitCliApi = gitCliApi,
-       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
 
   Future<List<Project>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();

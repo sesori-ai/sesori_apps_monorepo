@@ -303,7 +303,7 @@ void _setModified(Directory claudeHome, {required String id, required DateTime t
   File(p.join(claudeHome.path, "projects", project, "$id.jsonl")).setLastModifiedSync(to);
 }
 
-class _ThrowingTranscriptApi implements ClaudeTranscriptApi {
+class _ThrowingTranscriptApi() implements ClaudeTranscriptApi {
   @override
   List<String> listTranscriptPaths() => throw const FileSystemException("cannot enumerate transcripts");
 

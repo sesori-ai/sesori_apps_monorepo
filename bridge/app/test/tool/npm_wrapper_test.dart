@@ -56,7 +56,9 @@ String _currentPlatformAssetName() {
 }
 
 String _managedInstallRoot({required String homePath}) {
-  return Platform.isWindows ? p.join(homePath, 'AppData', 'Local', 'sesori') : p.join(homePath, '.local', 'share', 'sesori');
+  return Platform.isWindows
+      ? p.join(homePath, 'AppData', 'Local', 'sesori')
+      : p.join(homePath, '.local', 'share', 'sesori');
 }
 
 String _managedBinaryPath({required String homePath}) {
@@ -76,7 +78,7 @@ Future<ProcessResult> _runNodeHarness({required String source}) async {
   addTearDown(() => tempDir.delete(recursive: true));
   final harnessPath = p.join(tempDir.path, 'harness.js');
   await File(harnessPath).writeAsString(source);
-  return Process.run('node', [harnessPath], workingDirectory: tempDir.path);
+  return await Process.run('node', [harnessPath], workingDirectory: tempDir.path);
 }
 
 Future<ProcessResult> _runWrapperProcess({
@@ -444,7 +446,10 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       expect(decoded['exitCode'], equals(1));
       final stderr = decoded['stderr'] as String;
       expect(stderr, contains('Unsupported platform: sunos sparc'));
-      expect(stderr, contains('Supported platforms: darwin arm64, darwin x64, linux x64, linux arm64, win32 x64, win32 arm64'));
+      expect(
+        stderr,
+        contains('Supported platforms: darwin arm64, darwin x64, linux x64, linux arm64, win32 x64, win32 arm64'),
+      );
       // The hint points at the bootstrap entry point (npx), not direct installs
       // of the internal per-platform payload packages.
       expect(stderr, contains('npx @sesori/bridge'));
@@ -528,7 +533,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-          contains('Failed to download managed runtime from GitHub release assets for v$wrapperVersion'),
+        contains('Failed to download managed runtime from GitHub release assets for v$wrapperVersion'),
       );
       expect(result.stderr, contains('Checksum mismatch for ${releaseAsset.assetName}'));
     });
@@ -548,7 +553,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-          contains('Failed to download managed runtime from GitHub release assets for v$wrapperVersion'),
+        contains('Failed to download managed runtime from GitHub release assets for v$wrapperVersion'),
       );
       expect(result.stderr, contains('Invalid redirect URL'));
     });
@@ -853,11 +858,9 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('newer-managed'));
       expect(recorded['libMarker'], equals('newer-lib'));
-      final manifest =
-          jsonDecode(
-                await File(p.join(_managedInstallRoot(homePath: homeDir.path), '.managed-runtime.json')).readAsString(),
-              )
-              as Map<String, dynamic>;
+      final manifest = jsonDecode(
+        await File(p.join(_managedInstallRoot(homePath: homeDir.path), '.managed-runtime.json')).readAsString(),
+      ) as Map<String, dynamic>;
       expect(manifest['version'], equals('9.9.9'));
     });
 
@@ -932,11 +935,9 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('payload-runtime'));
       expect(recorded['libMarker'], equals('payload-lib'));
-      final manifest =
-          jsonDecode(
-                await File(p.join(_managedInstallRoot(homePath: homeDir.path), '.managed-runtime.json')).readAsString(),
-              )
-              as Map<String, dynamic>;
+      final manifest = jsonDecode(
+        await File(p.join(_managedInstallRoot(homePath: homeDir.path), '.managed-runtime.json')).readAsString(),
+      ) as Map<String, dynamic>;
       expect(manifest['version'], equals('1.2.3'));
     });
 
@@ -1486,8 +1487,7 @@ process.stdout.write(JSON.stringify({ out: chunks.join("") }));
     });
 
     test('keeps a long runnable command intact (printed below the box, not truncated)', () async {
-      const longCommand =
-          '/var/folders/very/long/managed/path/.local/share/sesori/bin/sesori-bridge status --verbose';
+      const longCommand = '/var/folders/very/long/managed/path/.local/share/sesori/bin/sesori-bridge status --verbose';
       final result = await _runNodeHarness(
         source:
             '''
@@ -1500,8 +1500,7 @@ process.stdout.write(JSON.stringify({ out: chunks.join("") }));
 ''',
       );
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
-      final out =
-          (jsonDecode((result.stdout as String).trim()) as Map<String, dynamic>)['out'] as String;
+      final out = (jsonDecode((result.stdout as String).trim()) as Map<String, dynamic>)['out'] as String;
       // The full command appears verbatim (copy/paste-able) and is never ellipsized.
       expect(out, contains(longCommand));
       expect(out, isNot(contains('\u2026')));

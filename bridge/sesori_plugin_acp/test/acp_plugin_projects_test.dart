@@ -824,7 +824,7 @@ void main() {
           model: null,
         );
         await respond("session/new", {"sessionId": sessionId});
-        return creating;
+        return await creating;
       }
 
       final inLaunch = await create(cwd, "s-launch");
@@ -863,19 +863,17 @@ Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
 /// [AcpPlugin] that captures the approval registry built at connect so tests
 /// can register pending questions directly (the base registry only creates
 /// questions through harness extension handlers).
-class _RegistryCapturingAcpPlugin extends TestAcpPlugin {
-  _RegistryCapturingAcpPlugin({
-    required super.id,
-    required super.agentDisplayName,
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.eventMapper,
-    required super.contentMapper,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    super.processFactory,
-  });
-
+class _RegistryCapturingAcpPlugin({
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.contentMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  super.processFactory,
+}) extends TestAcpPlugin {
   AcpApprovalRegistry? registry;
 
   @override

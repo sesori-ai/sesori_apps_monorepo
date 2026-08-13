@@ -8,9 +8,7 @@
 /// later of "the user's last message" and "the last time the user saw it".
 /// Nulls are treated as 0, so a row with no recorded activity (the baseline
 /// for pre-existing sessions) is "seen".
-class SessionUnseenCalculator {
-  const SessionUnseenCalculator();
-
+class const SessionUnseenCalculator() {
   bool isUnseen({
     required int? activity,
     required int? userMessage,

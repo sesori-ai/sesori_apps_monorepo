@@ -5,22 +5,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../bridge/foundation/process_runner.dart";
 
-class SystemProcessApi {
-  SystemProcessApi({
-    required ProcessRunner processRunner,
-    required ServerClock clock,
-    required bool isWindows,
-    required String platform,
-  }) : _processRunner = processRunner,
-       _clock = clock,
-       _isWindows = isWindows,
-       _platform = platform;
-
-  final ProcessRunner _processRunner;
-  final ServerClock _clock;
-  final bool _isWindows;
-  final String _platform;
-
+class SystemProcessApi({
+  required final ProcessRunner _processRunner,
+  required final ServerClock _clock,
+  required final bool _isWindows,
+  required final String _platform,
+}) {
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
   /// waiting. Used to launch a successor bridge during a restart.
   Future<int> startDetached({
@@ -40,9 +30,9 @@ class SystemProcessApi {
       return null;
     }
     if (_isWindows) {
-      return _inspectWindowsProcess(pid: pid);
+      return await _inspectWindowsProcess(pid: pid);
     }
-    return _inspectPosixProcess(pid: pid);
+    return await _inspectPosixProcess(pid: pid);
   }
 
   Future<SignalResult> sendGracefulSignal({required int pid}) => _sendSignal(

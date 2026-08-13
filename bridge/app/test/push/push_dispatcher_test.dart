@@ -62,7 +62,9 @@ void main() {
       // Only the child's creation is seen (so its project is tracked); the root
       // session is not yet known to the push tracker.
       harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(info: _session(id: "child", projectID: "project-a", parentID: "root")),
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", projectID: "project-a", parentID: "root"),
+        ),
       );
 
       harness.dispatcher.dispatchImmediateIfApplicable(
@@ -564,11 +566,8 @@ _newHarness({
   );
 }
 
-class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
-  final bool throwFindPrunableRoots;
-
-  ThrowingPushSessionStateTracker({required super.now, this.throwFindPrunableRoots = false});
-
+class ThrowingPushSessionStateTracker({required super.now, final bool throwFindPrunableRoots = false})
+    extends PushSessionStateTracker {
   @override
   List<PushPrunableRoot> findPrunableRoots() {
     if (throwFindPrunableRoots) {
@@ -579,11 +578,11 @@ class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
   }
 }
 
-class FakePushNotificationClient extends PushNotificationClient {
+class FakePushNotificationClient() extends PushNotificationClient {
   final List<SendNotificationPayload> sentPayloads = [];
   int disposeCallCount = 0;
 
-  FakePushNotificationClient()
+  this
     : super(
         authBackendURL: "https://example.com",
         tokenRefreshManager: _FakeTokenRefresher(),
@@ -601,11 +600,7 @@ class FakePushNotificationClient extends PushNotificationClient {
   }
 }
 
-class FakePushRateLimiter extends PushRateLimiter {
-  bool shouldAllowSend;
-
-  FakePushRateLimiter({this.shouldAllowSend = true, super.now});
-
+class FakePushRateLimiter({var bool shouldAllowSend = true, super.now}) extends PushRateLimiter {
   @override
   bool shouldSend({
     required NotificationCategory category,
@@ -624,14 +619,14 @@ class FakePushRateLimiter extends PushRateLimiter {
   }
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
     return "token";
   }
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();

@@ -20,25 +20,15 @@ const int controlChannelLostExitCode = 1;
 /// time) cancels it; if the timer elapses while still disconnected, the process
 /// exits. A clean [ControlChannelClient.dispose] closes the state stream (done)
 /// WITHOUT a `disconnected` event, so a normal shutdown never triggers an exit.
-class ControlChannelLossListener {
-  final Stream<ControlChannelConnectionState> _connectionState;
-  final void Function(int code) _exitProcess;
-  final Duration _gracePeriod;
-  final int _exitCode;
-
+class ControlChannelLossListener({
+  required final Stream<ControlChannelConnectionState> _connectionState,
+  required final void Function(int code) _exitProcess,
+  final Duration _gracePeriod = const Duration(seconds: 5),
+  final int _exitCode = controlChannelLostExitCode,
+}) {
   StreamSubscription<ControlChannelConnectionState>? _subscription;
   Timer? _graceTimer;
   bool _disposed = false;
-
-  ControlChannelLossListener({
-    required Stream<ControlChannelConnectionState> connectionState,
-    required void Function(int code) exitProcess,
-    Duration gracePeriod = const Duration(seconds: 5),
-    int exitCode = controlChannelLostExitCode,
-  }) : _connectionState = connectionState,
-       _exitProcess = exitProcess,
-       _gracePeriod = gracePeriod,
-       _exitCode = exitCode;
 
   void start() {
     _subscription ??= _connectionState.listen(_handleState);

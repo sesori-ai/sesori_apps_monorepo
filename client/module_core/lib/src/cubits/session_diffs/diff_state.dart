@@ -5,11 +5,11 @@ part "diff_state.freezed.dart";
 
 @Freezed(fromJson: false, toJson: false)
 sealed class DiffState with _$DiffState {
-  const factory DiffState.loading() = DiffStateLoading;
+  const factory loading() = DiffStateLoading;
 
-  const factory DiffState.loaded({
+  const factory loaded({
     required List<FileDiff> files,
   }) = DiffStateLoaded;
 
-  const factory DiffState.failed({required Object error}) = DiffStateFailed;
+  const factory failed({required Object error}) = DiffStateFailed;
 }

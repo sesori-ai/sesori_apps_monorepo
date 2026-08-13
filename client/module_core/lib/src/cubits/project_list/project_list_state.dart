@@ -7,9 +7,9 @@ part "project_list_state.freezed.dart";
 
 @Freezed()
 sealed class ProjectListState with _$ProjectListState {
-  const factory ProjectListState.loading() = ProjectListLoading;
+  const factory loading() = ProjectListLoading;
 
-  const factory ProjectListState.loaded({
+  const factory loaded({
     required List<Project> projects,
     required Map<String, int> activityById,
 
@@ -20,7 +20,7 @@ sealed class ProjectListState with _$ProjectListState {
     @Default(false) bool isRefreshing,
   }) = ProjectListLoaded;
 
-  const factory ProjectListState.failed({required RemoteFailureReason reason}) = ProjectListFailed;
+  const factory failed({required RemoteFailureReason reason}) = ProjectListFailed;
 
   /// The bridge (the user's computer) is not connected, so there are no
   /// projects to show yet. Emitted when the connection is
@@ -39,7 +39,7 @@ sealed class ProjectListState with _$ProjectListState {
   /// Which machine that bridge is — the name the recovery view and the top
   /// navigation show — is not part of this state: `BridgeIdentityCubit` owns it,
   /// because it resolves per connection rather than per project-list state.
-  const factory ProjectListState.bridgeDisconnected({
+  const factory bridgeDisconnected({
     required bool hasRegisteredBridges,
   }) = ProjectListBridgeDisconnected;
 }

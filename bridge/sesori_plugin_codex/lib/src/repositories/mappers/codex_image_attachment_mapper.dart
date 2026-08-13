@@ -9,41 +9,27 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCandidates,
         maxTranscriptImageCollectionBytes;
 
-sealed class CodexImageAttachmentCandidate {
-  const CodexImageAttachmentCandidate();
-
-  const factory CodexImageAttachmentCandidate.base64({
+sealed class const CodexImageAttachmentCandidate() {
+  const factory base64({
     required String data,
     required String mime,
     required String? filenameHint,
   }) = CodexBase64ImageAttachmentCandidate;
 
-  const factory CodexImageAttachmentCandidate.imageUrl({
+  const factory imageUrl({
     required String imageUrl,
   }) = CodexImageUrlAttachmentCandidate;
 }
 
-final class CodexBase64ImageAttachmentCandidate extends CodexImageAttachmentCandidate {
-  const CodexBase64ImageAttachmentCandidate({
-    required this.data,
-    required this.mime,
-    required this.filenameHint,
-  });
+final class const CodexBase64ImageAttachmentCandidate({
+    required final String data,
+    required final String mime,
+    required final String? filenameHint,
+  }) extends CodexImageAttachmentCandidate;
 
-  final String data;
-  final String mime;
-  final String? filenameHint;
-}
+final class const CodexImageUrlAttachmentCandidate({required final String imageUrl}) extends CodexImageAttachmentCandidate;
 
-final class CodexImageUrlAttachmentCandidate extends CodexImageAttachmentCandidate {
-  const CodexImageUrlAttachmentCandidate({required this.imageUrl});
-
-  final String imageUrl;
-}
-
-final class CodexImageAttachmentMapper {
-  const CodexImageAttachmentMapper();
-
+final class const CodexImageAttachmentMapper() {
   static const int _maxDataUrlHeaderCharacters = 256;
   static const int _maxUrlCharactersForFilename = 4096;
   static const int _maxMimeCharacters = 255;
@@ -358,7 +344,7 @@ final class CodexImageAttachmentMapper {
   }
 }
 
-enum _ImageDegradationReason {
+enum _ImageDegradationReason() {
   invalid,
   unsupported,
   oversized,
@@ -366,26 +352,14 @@ enum _ImageDegradationReason {
   countOverflow,
 }
 
-sealed class _ImageMappingResult {
-  const _ImageMappingResult();
-}
+sealed class const _ImageMappingResult();
 
-final class _InlineImageResult extends _ImageMappingResult {
-  const _InlineImageResult({
-    required this.attachment,
-    required this.decodedBytes,
-  });
+final class const _InlineImageResult({
+    required final PluginMessageAttachment attachment,
+    required final int decodedBytes,
+  }) extends _ImageMappingResult;
 
-  final PluginMessageAttachment attachment;
-  final int decodedBytes;
-}
-
-final class _MetadataImageResult extends _ImageMappingResult {
-  const _MetadataImageResult({
-    required this.attachment,
-    required this.reason,
-  });
-
-  final PluginMessageAttachment attachment;
-  final _ImageDegradationReason reason;
-}
+final class const _MetadataImageResult({
+    required final PluginMessageAttachment attachment,
+    required final _ImageDegradationReason reason,
+  }) extends _ImageMappingResult;

@@ -7,9 +7,7 @@ import "projects_table.dart";
 
 part "session_table.freezed.dart";
 
-class AgentModelConverter extends TypeConverter<AgentModel, String> {
-  const AgentModelConverter();
-
+class const AgentModelConverter() extends TypeConverter<AgentModel, String> {
   @override
   AgentModel fromSql(String fromDb) {
     final parts = fromDb.split("|");
@@ -45,7 +43,7 @@ class AgentModelConverter extends TypeConverter<AgentModel, String> {
   "(updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
 )
 @UseRowClass(SessionDto)
-class SessionTable extends Table {
+class SessionTable() extends Table {
   @override
   String get tableName => "sessions_table";
 
@@ -101,8 +99,8 @@ class SessionTable extends Table {
 }
 
 @freezed
-sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
-  const factory SessionDto({
+sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns {
+  const factory({
     required String sessionId,
     required String backendSessionId,
     required String projectId,
@@ -128,6 +126,4 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required String? title,
     required String? catalogTitle,
   }) = _SessionDto;
-
-  const SessionDto._();
 }

@@ -9,9 +9,7 @@ import "codex_ownership_record.dart";
 /// remaining accessors extract the identity fields the supervisor uses for
 /// process matching and stale-cleanup authorization, and the `mark*` helpers
 /// flip the status field via freezed `copyWith`.
-class CodexRecordMapper implements RuntimeRecordMapper<CodexOwnershipRecord> {
-  const CodexRecordMapper();
-
+class const CodexRecordMapper() implements RuntimeRecordMapper<CodexOwnershipRecord> {
   @override
   Map<String, dynamic> toJson({required CodexOwnershipRecord record}) => record.toJson();
 

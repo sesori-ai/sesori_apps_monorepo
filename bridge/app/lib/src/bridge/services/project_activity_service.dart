@@ -9,18 +9,11 @@ import "../repositories/models/project_activity_evidence.dart";
 import "../repositories/project_activity_repository.dart";
 import "../repositories/project_repository.dart";
 
-class ProjectActivityService {
-  ProjectActivityService({
-    required ProjectRepository projectRepository,
-    required ProjectActivityRepository projectActivityRepository,
-    required int Function() now,
-  }) : _projectRepository = projectRepository,
-       _projectActivityRepository = projectActivityRepository,
-       _now = now;
-
-  final ProjectRepository _projectRepository;
-  final ProjectActivityRepository _projectActivityRepository;
-  final int Function() _now;
+class ProjectActivityService({
+  required final ProjectRepository _projectRepository,
+  required final ProjectActivityRepository _projectActivityRepository,
+  required final int Function() _now,
+}) {
   final StreamController<ProjectActivityChange> _changes = StreamController<ProjectActivityChange>.broadcast();
 
   Future<void> _writeTail = Future<void>.value();
@@ -34,7 +27,7 @@ class ProjectActivityService {
 
   Future<Project> openProject({required String path}) async {
     final target = await _projectRepository.resolveProjectOpenTarget(path: path);
-    return _serialize(() async {
+    return await _serialize(() async {
       final result = await _projectRepository.persistOpenedProject(
         target: target,
         observedAt: _now(),
@@ -45,7 +38,7 @@ class ProjectActivityService {
           updatedAt: result.committedActivity.updatedAt,
         );
       }
-      return _projectRepository.mapOpenedProject(
+      return await _projectRepository.mapOpenedProject(
         project: result.committedProject,
         committedActivity: result.committedActivity,
       );

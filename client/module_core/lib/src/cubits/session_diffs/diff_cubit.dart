@@ -12,29 +12,21 @@ import "../../repositories/session_repository.dart";
 import "../../services/product_analytics_service.dart";
 import "diff_state.dart";
 
-enum _DiffAnalyticsGuard { ready, inFlight, consumed }
+enum _DiffAnalyticsGuard() { ready, inFlight, consumed }
 
-class DiffCubit extends Cubit<DiffState> {
-  final SessionRepository _sessionRepository;
-  final ConnectionService _connectionService;
-  final ProductAnalyticsService _productAnalyticsService;
-  final String sessionId;
-
+class DiffCubit({
+    required final SessionRepository _sessionRepository,
+    required final ConnectionService _connectionService,
+    required final ProductAnalyticsService _productAnalyticsService,
+    required final String sessionId,
+  }) extends Cubit<DiffState> {
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<bool> _analyticsStateSubscription;
   Future<void>? _activeRefresh;
   _DiffAnalyticsGuard _emptyDiffAnalytics = _DiffAnalyticsGuard.ready;
   _DiffAnalyticsGuard _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
 
-  DiffCubit({
-    required SessionRepository sessionRepository,
-    required ConnectionService connectionService,
-    required ProductAnalyticsService productAnalyticsService,
-    required this.sessionId,
-  }) : _sessionRepository = sessionRepository,
-       _connectionService = connectionService,
-       _productAnalyticsService = productAnalyticsService,
-       super(const DiffState.loading()) {
+  this : super(const DiffState.loading()) {
     _eventSubscription = _connectionService.sessionEvents(sessionId).listen(_handleEvent);
     _analyticsStateSubscription = _productAnalyticsService.stateStream
         .map((state) => state.isActive)
@@ -149,6 +141,6 @@ class DiffCubit extends Cubit<DiffState> {
       _eventSubscription.cancel(),
       _analyticsStateSubscription.cancel(),
     ]);
-    return super.close();
+    return await super.close();
   }
 }

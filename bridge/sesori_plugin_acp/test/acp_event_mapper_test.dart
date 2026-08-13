@@ -1081,8 +1081,8 @@ void main() {
 
 /// Test double: classifies any message whose trimmed text starts with "HALT:"
 /// as a halt notice, using the trimmed text as the shown message.
-class _HaltMapper extends AcpEventMapper {
-  _HaltMapper({required super.configurationTracker})
+class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper {
+  this
     : super(
         launchDirectory: "/repo",
         agentId: "cursor",

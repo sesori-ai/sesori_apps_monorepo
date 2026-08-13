@@ -34,64 +34,38 @@ Uint8List? _tryDecodeStrictBase64Image(String base64Data) {
   return _tryDecodeBase64Image(base64Data);
 }
 
-sealed class MessageImageLoadResult {
-  const MessageImageLoadResult();
-}
+sealed class const MessageImageLoadResult();
 
-final class MessageImageLoadSuccess extends MessageImageLoadResult {
-  final Uint8List bytes;
-  final String mime;
-  final String actionFilename;
-  final Uri? originalUri;
+final class const MessageImageLoadSuccess({
+  required final Uint8List bytes,
+  required final String mime,
+  required final String actionFilename,
+  required final Uri? originalUri,
+}) extends MessageImageLoadResult;
 
-  const MessageImageLoadSuccess({
-    required this.bytes,
-    required this.mime,
-    required this.actionFilename,
-    required this.originalUri,
-  });
-}
+final class const MessageImageLoadUnsupported() extends MessageImageLoadResult;
 
-final class MessageImageLoadUnsupported extends MessageImageLoadResult {
-  const MessageImageLoadUnsupported();
-}
+final class const MessageImageLoadRejected() extends MessageImageLoadResult;
 
-final class MessageImageLoadRejected extends MessageImageLoadResult {
-  const MessageImageLoadRejected();
-}
-
-final class MessageImageLoadFailure extends MessageImageLoadResult {
+final class const MessageImageLoadFailure({
   // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
-  final Object cause;
-  final StackTrace stackTrace;
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends MessageImageLoadResult;
 
-  const MessageImageLoadFailure({
-    required this.cause,
-    required this.stackTrace,
-  });
-}
-
-final class MessageImageAuthenticationRequiredException implements Exception {
-  const MessageImageAuthenticationRequiredException();
-
+final class const MessageImageAuthenticationRequiredException() implements Exception {
   @override
   String toString() => "Authenticated account required to load stored message image";
 }
 
-enum MessageImageRequestFailureKind { invalidResponse, network, rejected, unauthenticated, unknown }
+enum MessageImageRequestFailureKind() { invalidResponse, network, rejected, unauthenticated, unknown }
 
-final class MessageImageRequestException implements Exception {
-  final MessageImageRequestFailureKind kind;
-  final int? statusCode;
+final class const MessageImageRequestException({
+    required final MessageImageRequestFailureKind kind,
+    required final int? statusCode,
+    required final Object? innerError,
+  }) implements Exception {
   // ignore: no_slop_linter/prefer_specific_type, preserves transport exception type
-  final Object? innerError;
-
-  const MessageImageRequestException({
-    required this.kind,
-    required this.statusCode,
-    required this.innerError,
-  });
-
   @override
   String toString() =>
       "Stored message image request failed (${kind.toString()}${statusCode == null ? "" : ", HTTP $statusCode"})";
@@ -99,7 +73,11 @@ final class MessageImageRequestException implements Exception {
 
 /// Layer-2 policy and mapping for renderable message image attachments.
 @lazySingleton
-class MessageImageRepository {
+class MessageImageRepository({
+  required final MessageImageApi _api,
+  required final SessionApi _sessionApi,
+  required final AuthSession _authSession,
+}) {
   static const _remoteFetchTimeout = Duration(seconds: 15);
   static const _maxFilenameBytes = 255;
   static const _supportedRasterMimes = {
@@ -110,18 +88,7 @@ class MessageImageRepository {
     "image/webp",
   };
 
-  final MessageImageApi _api;
-  final SessionApi _sessionApi;
-  final AuthSession _authSession;
   final Map<_StoredRequestScope, Future<ApiResponse<SessionAttachmentResponse>>> _activeStoredLoads = {};
-
-  MessageImageRepository({
-    required MessageImageApi api,
-    required SessionApi sessionApi,
-    required AuthSession authSession,
-  }) : _api = api,
-       _sessionApi = sessionApi,
-       _authSession = authSession;
 
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
     MessageAttachmentInlineImage(:final mime) ||
@@ -145,7 +112,7 @@ class MessageImageRepository {
   }) async {
     if (sessionId.trim().isEmpty) return const MessageImageLoadRejected();
     if (!canLoad(attachment: attachment)) return const MessageImageLoadUnsupported();
-    return switch (attachment) {
+    return await (switch (attachment) {
       MessageAttachmentInlineImage(:final mime, :final base64, :final filename)
           when rendition == SessionAttachmentRendition.thumbnail =>
         _loadInline(
@@ -168,7 +135,7 @@ class MessageImageRepository {
       MessageAttachmentRemoteUrl() ||
       MessageAttachmentMetadata() ||
       MessageAttachmentUnknown() => Future<MessageImageLoadResult>.value(const MessageImageLoadUnsupported()),
-    };
+    });
   }
 
   Future<MessageImageLoadResult> _loadInline({

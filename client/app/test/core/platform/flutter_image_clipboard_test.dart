@@ -4,7 +4,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/core/platform/flutter_image_clipboard.dart";
 import "package:sesori_mobile/core/platform/pasteboard_client.dart";
 
-class _FakePasteboardClient implements PasteboardClient {
+class _FakePasteboardClient() implements PasteboardClient {
   Uint8List? bytes;
   Uint8List? imageToRead;
 

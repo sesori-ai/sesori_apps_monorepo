@@ -19,7 +19,7 @@ const _permission = SesoriPermissionAsked(
   allowAlways: true,
 );
 
-class _ReplyCapture {
+class _ReplyCapture() {
   String? requestId;
   String? sessionId;
   PermissionReply? reply;

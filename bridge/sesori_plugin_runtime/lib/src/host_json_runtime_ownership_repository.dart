@@ -5,22 +5,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
 
-class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepository<R> {
-  HostJsonRuntimeOwnershipRepository({
-    required HostJsonStore store,
-    required RuntimeRecordMapper<R> mapper,
-    required String fileName,
-    required ServerClock clock,
-  }) : _store = store,
-       _mapper = mapper,
-       _fileName = fileName,
-       _clock = clock;
-
-  final HostJsonStore _store;
-  final RuntimeRecordMapper<R> _mapper;
-  final String _fileName;
-  final ServerClock _clock;
-
+class HostJsonRuntimeOwnershipRepository<R>({
+  required final HostJsonStore _store,
+  required final RuntimeRecordMapper<R> _mapper,
+  required final String _fileName,
+  required final ServerClock _clock,
+}) implements RuntimeOwnershipRepository<R> {
   @override
   Future<List<R>> readAll() async {
     final records = await _loadRecordsFromRead();

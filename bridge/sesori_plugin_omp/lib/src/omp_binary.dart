@@ -1,6 +1,6 @@
 import "package:acp_plugin/acp_plugin.dart";
 
-abstract final class OmpBinary {
+abstract final class OmpBinary() {
   static const String defaultBinary = "omp";
 
   static AcpLaunchSpec launchSpec({

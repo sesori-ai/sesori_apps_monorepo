@@ -13,81 +13,45 @@ import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_provider_mapper.dart";
 import "models/session_options_cache_key.dart";
 
-enum SessionOptionsCaptureActivation { mayActivate, activeOnly }
+enum SessionOptionsCaptureActivation() { mayActivate, activeOnly }
 
-enum SessionOptionsRuntimeOperation { capture, commit }
+enum SessionOptionsRuntimeOperation() { capture, commit }
 
-class SessionOptionsCacheEntry {
-  const SessionOptionsCacheEntry({
-    required this.key,
-    required this.revision,
-    required this.capturedAt,
-    required this.completeness,
-    required this.response,
+class const SessionOptionsCacheEntry({
+    required final SessionOptionsCacheKey key,
+    required final int revision,
+    required final DateTime capturedAt,
+    required final PluginSessionOptionsCompleteness completeness,
+    required final SessionOptionsResponse response,
   });
 
-  final SessionOptionsCacheKey key;
-  final int revision;
-  final DateTime capturedAt;
-  final PluginSessionOptionsCompleteness completeness;
-  final SessionOptionsResponse response;
-}
+sealed class const SessionOptionsCaptureResult();
 
-sealed class SessionOptionsCaptureResult {
-  const SessionOptionsCaptureResult();
-}
+final class const SessionOptionsCaptureObserved({
+    required final SessionOptionsResponse response,
+    required final PluginSessionOptionsCompleteness completeness,
+    required final int generation,
+  }) extends SessionOptionsCaptureResult;
 
-final class SessionOptionsCaptureObserved extends SessionOptionsCaptureResult {
-  const SessionOptionsCaptureObserved({
-    required this.response,
-    required this.completeness,
-    required this.generation,
-  });
+final class const SessionOptionsCaptureFailed() extends SessionOptionsCaptureResult;
 
-  final SessionOptionsResponse response;
-  final PluginSessionOptionsCompleteness completeness;
-  final int generation;
-}
+final class const SessionOptionsCaptureInactive() extends SessionOptionsCaptureResult;
 
-final class SessionOptionsCaptureFailed extends SessionOptionsCaptureResult {
-  const SessionOptionsCaptureFailed();
-}
-
-final class SessionOptionsCaptureInactive extends SessionOptionsCaptureResult {
-  const SessionOptionsCaptureInactive();
-}
-
-final class SessionOptionsCacheDecodingException implements Exception {
-  const SessionOptionsCacheDecodingException({
-    required this.cause,
-    required this.causeStackTrace,
-    required this.revision,
-  });
-
-  final Object cause;
-  final StackTrace causeStackTrace;
-  final int? revision;
-
+final class const SessionOptionsCacheDecodingException({
+    required final Object cause,
+    required final StackTrace causeStackTrace,
+    required final int? revision,
+  }) implements Exception {
   @override
   String toString() => "SessionOptionsCacheDecodingException: invalid persisted session options cache";
 }
 
-class SessionOptionsRepository {
-  SessionOptionsRepository({
-    required PluginRuntime runtime,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required SessionOptionsCacheDao cacheDao,
-  }) : _runtime = runtime,
-       _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _cacheDao = cacheDao;
-
-  final PluginRuntime _runtime;
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-  final SessionOptionsCacheDao _cacheDao;
-
+class SessionOptionsRepository({
+    required final PluginRuntime _runtime,
+    required final ProjectsDao _projectsDao,
+    required final SessionDao _sessionDao,
+    required final SessionOptionsCacheDao _cacheDao,
+  }) {
   Future<String?> resolveProjectPath({required String projectId}) {
     return _projectsDao.getResolvedPath(projectId: projectId);
   }
@@ -300,17 +264,8 @@ class SessionOptionsRepository {
   }
 }
 
-sealed class _ActiveCapture {
-  const _ActiveCapture();
-}
+sealed class const _ActiveCapture();
 
-final class _ActiveCaptureResult extends _ActiveCapture {
-  const _ActiveCaptureResult({required this.result, required this.generation});
+final class const _ActiveCaptureResult({required final PluginSessionOptionsDiscoveryResult result, required final int generation}) extends _ActiveCapture;
 
-  final PluginSessionOptionsDiscoveryResult result;
-  final int generation;
-}
-
-final class _ActiveCaptureInactive extends _ActiveCapture {
-  const _ActiveCaptureInactive();
-}
+final class const _ActiveCaptureInactive() extends _ActiveCapture;

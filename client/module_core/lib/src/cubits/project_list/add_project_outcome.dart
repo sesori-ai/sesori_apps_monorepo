@@ -4,9 +4,9 @@ import "package:sesori_shared/sesori_shared.dart";
 ///
 /// Distinguishes a permission denial (so the UI can show an actionable macOS
 /// Full Disk Access message) from other failures.
-enum AddProjectOutcome { success, permissionDenied, otherError }
+enum AddProjectOutcome() { success, permissionDenied, otherError }
 
-enum OpenProjectOutcome {
+enum OpenProjectOutcome() {
   success,
   gitChoiceRequired,
   gitSetupIncomplete,
@@ -15,59 +15,35 @@ enum OpenProjectOutcome {
 }
 
 /// Outcome of fetching filesystem suggestions for the directory browser.
-sealed class FilesystemSuggestionsOutcome {
-  const FilesystemSuggestionsOutcome();
-}
+sealed class const FilesystemSuggestionsOutcome();
 
 /// Suggestions were fetched successfully.
-class FilesystemSuggestionsSuccess extends FilesystemSuggestionsOutcome {
-  final FilesystemSuggestions suggestions;
-
-  const FilesystemSuggestionsSuccess({required this.suggestions});
-}
+class const FilesystemSuggestionsSuccess({required final FilesystemSuggestions suggestions}) extends FilesystemSuggestionsOutcome;
 
 /// The bridge denied access to the directory (macOS permission / Full Disk Access).
-class FilesystemSuggestionsPermissionDenied extends FilesystemSuggestionsOutcome {
-  const FilesystemSuggestionsPermissionDenied();
-}
+class const FilesystemSuggestionsPermissionDenied() extends FilesystemSuggestionsOutcome;
 
 /// Any other failure (directory missing, bridge error, network).
-class FilesystemSuggestionsError extends FilesystemSuggestionsOutcome {
-  const FilesystemSuggestionsError();
-}
+class const FilesystemSuggestionsError() extends FilesystemSuggestionsOutcome;
 
 /// Outcome of creating a folder from the directory browser.
-sealed class CreateDirectoryOutcome {
-  const CreateDirectoryOutcome();
-}
+sealed class const CreateDirectoryOutcome();
 
 /// The folder was created; [directory] is the entry the bridge produced, so the
 /// browser can navigate straight into the host's own path for it.
-class CreateDirectorySuccess extends CreateDirectoryOutcome {
-  final FilesystemSuggestion directory;
-
-  const CreateDirectorySuccess({required this.directory});
-}
+class const CreateDirectorySuccess({required final FilesystemSuggestion directory}) extends CreateDirectoryOutcome;
 
 /// A folder of that name is already there.
-class CreateDirectoryAlreadyExists extends CreateDirectoryOutcome {
-  const CreateDirectoryAlreadyExists();
-}
+class const CreateDirectoryAlreadyExists() extends CreateDirectoryOutcome;
 
 /// The bridge denied access to the parent directory (macOS permission / Full
 /// Disk Access).
-class CreateDirectoryPermissionDenied extends CreateDirectoryOutcome {
-  const CreateDirectoryPermissionDenied();
-}
+class const CreateDirectoryPermissionDenied() extends CreateDirectoryOutcome;
 
 /// The connected bridge predates the create-folder endpoint, so it answered
 /// "no such route". Surfaced distinctly: the action is unavailable until that
 /// machine's bridge is updated, which retrying will not change.
-class CreateDirectoryUnsupported extends CreateDirectoryOutcome {
-  const CreateDirectoryUnsupported();
-}
+class const CreateDirectoryUnsupported() extends CreateDirectoryOutcome;
 
 /// Any other failure (invalid name, bridge error, network).
-class CreateDirectoryError extends CreateDirectoryOutcome {
-  const CreateDirectoryError();
-}
+class const CreateDirectoryError() extends CreateDirectoryOutcome;

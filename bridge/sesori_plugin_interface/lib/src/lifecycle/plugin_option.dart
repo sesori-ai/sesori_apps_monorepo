@@ -16,16 +16,14 @@ typedef PluginOptionValueValidator = void Function(String name, String value);
 /// and hands the values back through a `PluginConfig`. Declaring an option
 /// has no side effects — descriptors stay inert until started.
 @immutable
-sealed class PluginOption {
-  const PluginOption({required this.name, required this.help, this.deprecatedAliases = const <String>[]});
-
+sealed class const PluginOption({
   /// The option's local name, without dashes or a plugin prefix
   /// (e.g. `"port"`). The bridge namespaces this to `--<pluginId>-<name>`
   /// when registering it, so plugins never spell their own prefix.
-  final String name;
+  required final String name,
 
   /// One-line help text shown in `--help` output.
-  final String help;
+  required final String help,
 
   /// Legacy, un-prefixed flag names that still resolve to this option for
   /// backwards compatibility (e.g. `["port"]` so `--port` keeps working after
@@ -33,45 +31,49 @@ sealed class PluginOption {
   ///
   /// The bridge registers each alias as a hidden flag and emits a deprecation
   /// warning when one is used. Empty for options with no legacy spelling.
-  final List<String> deprecatedAliases;
-}
+  final List<String> deprecatedAliases = const <String>[],
+});
 
 /// A boolean CLI flag (e.g. `--no-auto-start`).
-final class PluginFlagOption extends PluginOption {
-  const PluginFlagOption({
-    required super.name,
-    required super.help,
-    required this.defaultsTo,
-    required this.negatable,
-    super.deprecatedAliases,
-  });
+final class const PluginFlagOption({
+  required super.name,
+  required super.help,
 
   /// Value when the flag is not passed.
-  final bool defaultsTo;
+  required final bool defaultsTo,
 
   /// Whether the parser also accepts a `--no-<name>` inversion.
-  final bool negatable;
-}
+  required final bool negatable,
+  super.deprecatedAliases,
+}) extends PluginOption;
 
 /// A CLI option that takes a string value (e.g. `--port 4096`).
-final class PluginValueOption extends PluginOption {
-  const PluginValueOption({
-    required super.name,
-    required super.help,
-    required this.defaultsTo,
-    required this.allowedValues,
-    required this.valueHelp,
-    required this.validate,
-    super.deprecatedAliases,
-  });
+final class const PluginValueOption({
+  required super.name,
+  required super.help,
 
+  /// Value when the option is not passed; `null` means "absent".
+  required final String? defaultsTo,
+
+  /// When non-null, the parser rejects values outside this list.
+  required final List<String>? allowedValues,
+
+  /// Placeholder shown in `--help` output (e.g. `"path"`).
+  required final String? valueHelp,
+
+  /// Typed-parse hook the bridge runs at argument-parse time on a present,
+  /// non-empty value — strictly before the startup mutex, so a typed value
+  /// the user got wrong can never terminate a healthy resident bridge.
+  required final PluginOptionValueValidator? validate,
+  super.deprecatedAliases,
+}) extends PluginOption {
   /// An option whose value must parse as an integer (e.g. `--port`).
   ///
   /// The typed-parse hook so plugins don't re-implement the
   /// "`int.parse` + usage error" dance: the bridge rejects a non-numeric
   /// value at argument-parse time, and `PluginConfig.intValue` then never
   /// throws for this option.
-  const PluginValueOption.integer({
+  const new integer({
     required String name,
     required String help,
     required String? defaultsTo,
@@ -86,20 +88,6 @@ final class PluginValueOption extends PluginOption {
          validate: validateInteger,
          deprecatedAliases: deprecatedAliases,
        );
-
-  /// Value when the option is not passed; `null` means "absent".
-  final String? defaultsTo;
-
-  /// When non-null, the parser rejects values outside this list.
-  final List<String>? allowedValues;
-
-  /// Placeholder shown in `--help` output (e.g. `"path"`).
-  final String? valueHelp;
-
-  /// Typed-parse hook the bridge runs at argument-parse time on a present,
-  /// non-empty value — strictly before the startup mutex, so a typed value
-  /// the user got wrong can never terminate a healthy resident bridge.
-  final PluginOptionValueValidator? validate;
 
   /// Built-in [validate] hook requiring an integer value. Delegates to
   /// [PluginConfig.parseIntegerOption] so the parse rule and error message

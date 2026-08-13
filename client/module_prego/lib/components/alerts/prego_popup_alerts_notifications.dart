@@ -8,7 +8,7 @@ import "../../theme/prego_theme.dart";
 ///
 /// Each variant pairs a leading icon with an accent colour used for the
 /// radial gradient overlay and the icon tint.
-enum PregoPopupAlertsNotificationsVariant {
+enum PregoPopupAlertsNotificationsVariant() {
   /// Error / failure — red circle-exclamation icon, error-red gradient.
   error,
 }
@@ -31,30 +31,20 @@ enum PregoPopupAlertsNotificationsVariant {
 /// ```
 ///
 /// Passing `onClose: null` hides the close button.
-class PregoPopupAlertsNotifications extends StatelessWidget {
-  const PregoPopupAlertsNotifications({
+class const PregoPopupAlertsNotifications({
     super.key,
-    required this.title,
-    this.message,
-    this.onClose,
-    this.variant = PregoPopupAlertsNotificationsVariant.error,
-  });
-
-  /// Bold headline text shown on the first line.
-  final String title;
-
-  /// Optional supporting description shown below [title]. When `null`,
+    /// Bold headline text shown on the first line.
+  required final String title,
+    /// Optional supporting description shown below [title]. When `null`,
   /// only the title is rendered.
-  final String? message;
-
-  /// Called when the user taps the close button. When `null`, the close
+  final String? message,
+    /// Called when the user taps the close button. When `null`, the close
   /// button is not rendered.
-  final VoidCallback? onClose;
-
-  /// Controls the leading icon and accent colour. Currently only
+  final VoidCallback? onClose,
+    /// Controls the leading icon and accent colour. Currently only
   /// [PregoPopupAlertsNotificationsVariant.error] is defined.
-  final PregoPopupAlertsNotificationsVariant variant;
-
+  final PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.error,
+  }) extends StatelessWidget {
   // Solid background fill — `rgb(24, 25, 27)`. Not a semantic token because
   // the alert is always rendered on a dark surface regardless of theme.
   static const Color _backgroundColor = Color(0xFF18191B);
@@ -161,11 +151,7 @@ class PregoPopupAlertsNotifications extends StatelessWidget {
 
 /// Round, translucent close button rendered in the alert's top-trailing
 /// corner. Tap target is 36×36 (8px padding around a 20px icon).
-class _CloseButton extends StatelessWidget {
-  const _CloseButton({required this.onPressed});
-
-  final VoidCallback? onPressed;
-
+class const _CloseButton({required final VoidCallback? onPressed}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoTappable(

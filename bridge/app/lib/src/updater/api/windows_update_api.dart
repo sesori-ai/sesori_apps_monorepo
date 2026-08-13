@@ -13,9 +13,7 @@ import 'platform_update_api.dart';
 /// never by renaming a directory, even when `lib/` has subdirectories. The
 /// displaced `.old` artifacts cannot be deleted while this process holds them
 /// open, so they are swept on the next launch.
-class WindowsUpdateApi implements PlatformUpdateApi {
-  const WindowsUpdateApi();
-
+class const WindowsUpdateApi() implements PlatformUpdateApi {
   static const String _binaryName = 'sesori-bridge.exe';
   static const String _binaryBackupName = '.sesori-bridge.old';
   static const String _libBackupName = '.lib.old';
@@ -143,9 +141,4 @@ class WindowsUpdateApi implements PlatformUpdateApi {
 
 /// A single file rename performed during an apply, recorded so it can be
 /// reversed if a later step fails.
-class _Move {
-  const _Move({required this.fromPath, required this.toPath});
-
-  final String fromPath;
-  final String toPath;
-}
+class const _Move({required final String fromPath, required final String toPath});

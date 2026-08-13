@@ -24,19 +24,14 @@ import "composer_options_accordion.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
-enum _VoiceState { idle, recording, transcribing }
+enum _VoiceState() { idle, recording, transcribing }
 
-enum _PasteImageResult { noImage, handled, stale }
+enum _PasteImageResult() { noImage, handled, stale }
 
-final class _ComposerPasteAction extends Action<PasteTextIntent> {
-  final Future<_PasteImageResult> Function() _pasteImage;
-  final TextEditingController _controller;
-
-  _ComposerPasteAction({
-    required Future<_PasteImageResult> Function() pasteImage,
-    required TextEditingController controller,
-  }) : _pasteImage = pasteImage,
-       _controller = controller;
+final class _ComposerPasteAction({
+    required final Future<_PasteImageResult> Function() _pasteImage,
+    required final TextEditingController _controller,
+  }) extends Action<PasteTextIntent> {
 
   @override
   Object? invoke(PasteTextIntent intent) {
@@ -88,63 +83,39 @@ typedef PromptSubmitCallback =
       required List<ComposerAttachment> attachments,
     });
 
-class PromptInput extends StatefulWidget {
-  final bool isBusy;
-
-  /// Whether the session already has (or has queued) messages. Drives the
+class const PromptInput({
+    super.key,
+    required final bool isBusy,
+    /// Whether the session already has (or has queued) messages. Drives the
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
   /// text-first mode, which prompt the compact pill invites.
-  final bool hasMessages;
-  final PromptSubmitCallback onSend;
-  final VoidCallback onVoiceTranscriptionCompleted;
-  final ValueChanged<ComposerDraft> onDraftChanged;
-  final VoidCallback onDraftCleared;
-  final VoidCallback onAbort;
-  final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController;
-  final Widget? composerHeader;
-  final List<CommandInfo> availableCommands;
-  final CommandInfo? stagedCommand;
-  final ValueChanged<CommandInfo> onCommandSelected;
-  final VoidCallback onCommandCleared;
-
-  /// Whether this composer offers image attachments. Null keeps already staged
+  required final bool hasMessages,
+    required final PromptSubmitCallback onSend,
+    required final VoidCallback onVoiceTranscriptionCompleted,
+    required final ValueChanged<ComposerDraft> onDraftChanged,
+    required final VoidCallback onDraftCleared,
+    required final VoidCallback onAbort,
+    required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
+    required final Widget? composerHeader,
+    required final List<CommandInfo> availableCommands,
+    required final CommandInfo? stagedCommand,
+    required final ValueChanged<CommandInfo> onCommandSelected,
+    required final VoidCallback onCommandCleared,
+    /// Whether this composer offers image attachments. Null keeps already staged
   /// images while current bridge capability is being resolved.
-  final bool? attachmentsSupported;
-
-  /// Optional widget rendered inside the composer, above the text-field row.
-  final Widget? header;
-
-  /// Stable identity used only to detect when this widget state is reused for
+  required final bool? attachmentsSupported,
+    /// Stable identity used only to detect when this widget state is reused for
   /// another composer. Persistence remains owned by the parent Cubit.
-  final String draftIdentity;
-  final ComposerDraft initialDraft;
-
-  const PromptInput({
-    super.key,
-    required this.isBusy,
-    required this.hasMessages,
-    required this.onSend,
-    required this.onVoiceTranscriptionCompleted,
-    required this.onDraftChanged,
-    required this.onDraftCleared,
-    required this.onAbort,
-    required this.surfaceStyleController,
-    required this.composerHeader,
-    required this.availableCommands,
-    required this.stagedCommand,
-    required this.onCommandSelected,
-    required this.onCommandCleared,
-    required this.attachmentsSupported,
-    required this.draftIdentity,
-    required this.initialDraft,
-    this.header,
-  });
-
+  required final String draftIdentity,
+    required final ComposerDraft initialDraft,
+    /// Optional widget rendered inside the composer, above the text-field row.
+  final Widget? header,
+  }) extends StatefulWidget {
   @override
   State<PromptInput> createState() => _PromptInputState();
 }
 
-class _PromptInputState extends State<PromptInput> {
+class _PromptInputState() extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
@@ -369,7 +340,7 @@ class _PromptInputState extends State<PromptInput> {
 
   bool get _hasSendableContent {
     final hasContent = _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
-    return hasContent && (_attachments.isEmpty || widget.attachmentsSupported == true);
+    return hasContent && (_attachments.isEmpty || (widget.attachmentsSupported ?? false));
   }
 
   /// Switches to the typing layout and raises the keyboard. Focus is
@@ -1293,7 +1264,7 @@ class _PromptInputState extends State<PromptInput> {
 
   Widget _buildComposerContextMenu({required EditableTextState editableTextState}) {
     final buttonItems = [...editableTextState.contextMenuButtonItems];
-    if (!kIsWeb && widget.attachmentsSupported == true) {
+    if (!kIsWeb && (widget.attachmentsSupported ?? false)) {
       final pasteIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.paste);
       final existingPaste = pasteIndex < 0 ? null : buttonItems[pasteIndex];
       final existingPasteCallback = existingPaste?.onPressed;
@@ -1476,7 +1447,7 @@ class _PromptInputState extends State<PromptInput> {
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
       actionsEnabled: _displayedVoiceState == _VoiceState.idle,
-      showAttachImage: widget.attachmentsSupported == true,
+      showAttachImage: widget.attachmentsSupported ?? false,
       onSlashCommandsTap: _openCommandPicker,
       onAttachImageTap: _handleAttachImage,
     );

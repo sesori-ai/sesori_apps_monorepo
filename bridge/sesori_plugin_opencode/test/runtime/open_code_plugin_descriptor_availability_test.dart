@@ -289,12 +289,8 @@ void main() {
 /// A [HostProcessService] that either throws on [spawn] (to simulate ENOENT) or
 /// returns a single canned [_ProbeProcess]. Records the spawn arguments and any
 /// force-kill it is asked to deliver.
-class _ProbeProcessService implements HostProcessService {
-  _ProbeProcessService({this.spawnError, this.process, List<Object>? spawnOutcomes}) : _spawnOutcomes = spawnOutcomes;
-
-  final Object? spawnError;
-  final _ProbeProcess? process;
-  final List<Object>? _spawnOutcomes;
+class _ProbeProcessService({final Object? spawnError, final _ProbeProcess? process, final List<Object>? _spawnOutcomes})
+    implements HostProcessService {
   int _nextOutcome = 0;
   final List<String> spawnedExecutables = <String>[];
   final List<List<String>> spawnedArguments = <List<String>>[];
@@ -346,17 +342,11 @@ class _ProbeProcessService implements HostProcessService {
 
 /// A canned [SpawnedProcess] with a fixed stdout payload and a caller-supplied
 /// [exitCode] future (which may never complete, to simulate a hang).
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required this.pid, required List<int> stdoutBytes, required Future<int> exitCode})
-    : _stdoutBytes = stdoutBytes,
-      _exitCode = exitCode;
-
-  @override
-  final int pid;
-
-  final List<int> _stdoutBytes;
-  final Future<int> _exitCode;
-
+class _ProbeProcess({
+  @override required final int pid,
+  required final List<int> _stdoutBytes,
+  required final Future<int> _exitCode,
+}) implements SpawnedProcess {
   @override
   Future<int> get exitCode => _exitCode;
 

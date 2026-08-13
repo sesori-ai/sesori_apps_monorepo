@@ -853,7 +853,7 @@ Future<void> _insertSession({
   }
 }
 
-class _FakeWorktreeService extends WorktreeService {
+class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
@@ -871,7 +871,7 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastDeleteBranchName;
   bool? lastDeleteBranchForce;
 
-  _FakeWorktreeService({required AppDatabase database})
+  this
     : super(
         worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
@@ -929,7 +929,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 }
 
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   @override
   String get id => "fake";
 
@@ -1060,7 +1060,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<void> dispose() async {}
 }
 
-class _NoopProcessRunner implements ProcessRunner {
+class _NoopProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,

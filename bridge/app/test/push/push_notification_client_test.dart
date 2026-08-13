@@ -10,12 +10,8 @@ import "package:sesori_bridge/src/push/push_send_exception.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _FakeTokenRefreshManager implements TokenRefresher {
-  final String _token;
-  final String? _forceRefreshToken;
+class _FakeTokenRefreshManager(final String _token, {final String? _forceRefreshToken}) implements TokenRefresher {
   bool forceRefreshCalled = false;
-
-  _FakeTokenRefreshManager(this._token, {String? forceRefreshToken}) : _forceRefreshToken = forceRefreshToken;
 
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
@@ -348,7 +344,7 @@ void main() {
   });
 }
 
-class _FakeHttpClient extends http.BaseClient {
+class _FakeHttpClient() extends http.BaseClient {
   int closeCallCount = 0;
 
   @override

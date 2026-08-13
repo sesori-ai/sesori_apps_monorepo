@@ -12,20 +12,13 @@ import "../../../core/extensions/build_context_x.dart";
 /// Shares the composer's [TextEditingController], so edits flow straight back
 /// into the inline field; dismissing the sheet returns to the composer with
 /// the text (and any in-progress draft persistence) untouched.
-class PromptEditorSheet extends StatelessWidget {
-  final TextEditingController controller;
-  final String placeholder;
-  final Action<PasteTextIntent> pasteAction;
-  final EditableTextContextMenuBuilder contextMenuBuilder;
-
-  const PromptEditorSheet({
-    super.key,
-    required this.controller,
-    required this.placeholder,
-    required this.pasteAction,
-    required this.contextMenuBuilder,
-  });
-
+class const PromptEditorSheet({
+  super.key,
+  required final TextEditingController controller,
+  required final String placeholder,
+  required final Action<PasteTextIntent> pasteAction,
+  required final EditableTextContextMenuBuilder contextMenuBuilder,
+}) extends StatelessWidget {
   static Future<void> show(
     BuildContext context, {
     required TextEditingController controller,

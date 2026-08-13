@@ -6,7 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 /// [AuthInitResponse.authUrl], then wait for [pollForResult] to complete after
 /// the user confirms the sign-in on the auth-server page (which describes this
 /// device).
-abstract interface class OAuthFlowProvider {
+abstract interface class OAuthFlowProvider() {
   /// Starts an auth-server backed OAuth session for [provider].
   Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider});
 

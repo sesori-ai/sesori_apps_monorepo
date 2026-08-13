@@ -5,7 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/gal_client.dart";
 import "package:sesori_mobile/core/platform/mobile_photo_image_saver.dart";
 
-class _FakeGalClient implements GalClient {
+class _FakeGalClient() implements GalClient {
   bool hasAccessResult = false;
   bool requestAccessResult = false;
   int requestAccessCalls = 0;

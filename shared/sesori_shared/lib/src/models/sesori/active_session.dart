@@ -11,7 +11,7 @@ part "active_session.g.dart";
 /// deeper nesting is ignored.
 @Freezed(fromJson: true, toJson: true)
 sealed class ActiveSession with _$ActiveSession {
-  const factory ActiveSession({
+  const factory({
     required String id,
     @Default(false) bool mainAgentRunning,
     @Default(false) bool awaitingInput,
@@ -19,5 +19,5 @@ sealed class ActiveSession with _$ActiveSession {
     @Default(false) bool isRetrying,
   }) = _ActiveSession;
 
-  factory ActiveSession.fromJson(Map<String, dynamic> json) => _$ActiveSessionFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ActiveSessionFromJson(json);
 }

@@ -13,9 +13,7 @@ import "ansi_color.dart";
 /// Routine output goes to stdout; [Console.warning] and [Console.error] go to
 /// stderr and are colorized (yellow and red respectively) when writing to an
 /// interactive terminal.
-class Console {
-  Console._();
-
+class Console._() {
   /// Writes a user-facing message to stdout, followed by a newline.
   static void message(String text) => stdout.writeln(text);
 

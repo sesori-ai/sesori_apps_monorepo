@@ -20,15 +20,11 @@ typedef _DispatchEvent = ({
   Completer<void>? terminalHandoffConsumed,
 });
 
-class SessionEventDispatcher {
-  final SessionEventService _sessionEventService;
+class SessionEventDispatcher({required final SessionEventService _sessionEventService}) {
   final StreamController<NormalizedSourcedBridgeEvent> _eventsController =
       StreamController<NormalizedSourcedBridgeEvent>.broadcast();
   final Map<String, Future<void>> _tails = <String, Future<void>>{};
   bool _disposed = false;
-
-  SessionEventDispatcher({required SessionEventService sessionEventService})
-    : _sessionEventService = sessionEventService;
 
   Stream<NormalizedSourcedBridgeEvent> get events => _eventsController.stream;
 

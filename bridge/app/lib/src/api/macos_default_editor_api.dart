@@ -1,13 +1,9 @@
 import '../bridge/foundation/process_runner.dart';
 import 'default_editor_api.dart';
 
-class MacosDefaultEditorApi implements DefaultEditorApi {
-  final ProcessRunner _processRunner;
-
-  MacosDefaultEditorApi({
-    required ProcessRunner processRunner,
-  }) : _processRunner = processRunner;
-
+class MacosDefaultEditorApi({
+  required final ProcessRunner _processRunner,
+}) implements DefaultEditorApi {
   @override
   Future<void> openFile(String filePath) async {
     await _processRunner.startDetached(

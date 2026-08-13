@@ -11,7 +11,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 /// degraded status — before returning. Keeping this as a small interface,
 /// rather than the concrete `CodexPlugin`, lets the descriptor's API
 /// construction be a test seam without forcing a real socket in unit tests.
-abstract interface class CodexManagedApi implements BridgeDerivedProjectsPluginApi {
+abstract interface class CodexManagedApi() implements BridgeDerivedProjectsPluginApi {
   Stream<PluginWorkState> get workState;
   PluginWorkState get currentWorkState;
 

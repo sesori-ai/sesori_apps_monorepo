@@ -351,9 +351,4 @@ MessagePart _part({
   attachment: attachment,
 );
 
-class _BridgeIdProvider implements BridgeIdProvider {
-  const _BridgeIdProvider(this.bridgeId);
-
-  @override
-  final String? bridgeId;
-}
+class const _BridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;

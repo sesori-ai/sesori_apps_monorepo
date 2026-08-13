@@ -9,9 +9,10 @@ import "push_session_state_tracker.dart";
 /// Tracks when session groups transition from busy to idle and fires
 /// a stream event after a debounce period, provided no pending interactions
 /// (questions/permissions) block it.
-class CompletionNotifier {
-  final PushSessionStateTracker _tracker;
-  final Duration _debounceDuration;
+class CompletionNotifier({
+  required final PushSessionStateTracker _tracker,
+  final Duration _debounceDuration = const Duration(milliseconds: 500),
+}) {
   final StreamController<String> _completionController = StreamController<String>.broadcast();
   final Map<String, Timer> _debounceTimers = {};
   final Set<String> _completionSentForRoots = {};
@@ -27,12 +28,6 @@ class CompletionNotifier {
   int get completionSentRootCount => _completionSentForRoots.length;
 
   int get abortedRootCount => _abortedRoots.length;
-
-  CompletionNotifier({
-    required PushSessionStateTracker tracker,
-    Duration debounceDuration = const Duration(milliseconds: 500),
-  }) : _tracker = tracker,
-       _debounceDuration = debounceDuration;
 
   void markSessionAbortPending(String sessionId) {
     final rootSessionId = _tracker.resolveRootSessionId(sessionId);
@@ -82,8 +77,7 @@ class CompletionNotifier {
             _abortedRoots.remove(rootSessionId);
             _cancelDebounceForRoot(rootSessionId);
           case SessionStatusIdle():
-            if (_tracker.isSessionGroupFullyIdle(rootSessionId) &&
-                _tracker.hasPendingInteraction(rootSessionId)) {
+            if (_tracker.isSessionGroupFullyIdle(rootSessionId) && _tracker.hasPendingInteraction(rootSessionId)) {
               // The agent finished while prompts are still pending. Block
               // completion until the user resolves all of them.
               _completionBlockedByPendingInteraction.add(rootSessionId);
@@ -209,8 +203,8 @@ class CompletionNotifier {
     final blockedKey = _completionBlockedByPendingInteraction.contains(rootSessionId)
         ? rootSessionId
         : _completionBlockedByPendingInteraction.contains(originalSessionId)
-            ? originalSessionId
-            : null;
+        ? originalSessionId
+        : null;
     if (blockedKey == null) {
       return;
     }

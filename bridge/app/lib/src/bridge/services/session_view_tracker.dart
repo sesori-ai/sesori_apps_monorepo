@@ -9,7 +9,7 @@ import "dart:async";
 /// writes to it (setViewing / releaseConnection on RelaySessionView and
 /// disconnect), and [SessionUnseenService] reads it ([isViewed]) and listens to
 /// [viewStarts] to mark sessions seen on open.
-class SessionViewTracker {
+class SessionViewTracker() {
   // connID -> the session that connection is currently viewing.
   final Map<int, String> _viewedByConnection = {};
   // sessionId -> count of connections currently viewing it.

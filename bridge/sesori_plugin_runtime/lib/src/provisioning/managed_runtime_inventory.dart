@@ -17,11 +17,7 @@ import "runtime_manifest.dart";
 ///
 /// Read-only: it never deletes or repairs anything. Sweeping superseded
 /// versions remains [ManagedRuntimeCleaner]'s job during an install.
-class ManagedRuntimeInventory {
-  const ManagedRuntimeInventory({required RuntimeManifest manifest}) : _manifest = manifest;
-
-  final RuntimeManifest _manifest;
-
+class const ManagedRuntimeInventory({required final RuntimeManifest _manifest}) {
   /// Whether a managed version directory other than the pinned
   /// [RuntimeManifest.bundledVersion] exists under [stateDirectory].
   ///

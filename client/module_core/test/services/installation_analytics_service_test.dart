@@ -4,7 +4,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
+class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepository {
   final events = <InstallationAnalyticsEvent>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
 

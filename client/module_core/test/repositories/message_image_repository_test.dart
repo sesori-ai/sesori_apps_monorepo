@@ -9,9 +9,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockSessionApi extends Mock implements SessionApi;
+class _MockSessionApi() extends Mock implements SessionApi;
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
 const _userA = AuthUser(
   id: "account-a",

@@ -49,10 +49,8 @@ ProductAnalyticsPreferenceRecord _recordWithRevision({
   userKey: userKey,
 );
 
-class _FakeAuthSession extends Mock implements AuthSession {
-  final BehaviorSubject<AuthState> states;
-
-  _FakeAuthSession({required AuthState initialState}) : states = BehaviorSubject.seeded(initialState);
+class _FakeAuthSession({required AuthState initialState}) extends Mock implements AuthSession {
+  final BehaviorSubject<AuthState> states = BehaviorSubject.seeded(initialState);
 
   @override
   ValueStream<AuthState> get authStateStream => states.stream;
@@ -65,7 +63,7 @@ class _FakeAuthSession extends Mock implements AuthSession {
   Future<void> dispose() => states.close();
 }
 
-class _FakePreferenceRepository extends Mock implements ProductAnalyticsPreferenceRepository {
+class _FakePreferenceRepository() extends Mock implements ProductAnalyticsPreferenceRepository {
   final localByUser = <String, LocalProductAnalyticsPreference?>{};
   final loadHandlers = <String, Future<LocalProductAnalyticsPreference?> Function()>{};
   final loadCalls = <String>[];
@@ -94,7 +92,7 @@ class _FakePreferenceRepository extends Mock implements ProductAnalyticsPreferen
     loadCalls.add(userId);
     if (throwOnLoad) throw StateError("storage unavailable");
     final handler = loadHandlers[userId];
-    if (handler != null) return handler();
+    if (handler != null) return await handler();
     return localByUser[userId];
   }
 
@@ -118,7 +116,7 @@ class _FakePreferenceRepository extends Mock implements ProductAnalyticsPreferen
   }
 }
 
-class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
+class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepository {
   final calls = <({ProductAnalyticsEnvelope envelope, String userKey})>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
   Queue<AnalyticsDeliveryResult>? results;
@@ -131,9 +129,9 @@ class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository 
     required String userKey,
   }) async {
     calls.add((envelope: envelope, userKey: userKey));
-    if (deliveryFutures.isNotEmpty) return deliveryFutures.removeFirst();
+    if (deliveryFutures.isNotEmpty) return await deliveryFutures.removeFirst();
     final completer = deliveryCompleter;
-    if (completer != null) return completer.future;
+    if (completer != null) return await completer.future;
     final queuedResults = results;
     return queuedResults == null || queuedResults.isEmpty ? result : queuedResults.removeFirst();
   }

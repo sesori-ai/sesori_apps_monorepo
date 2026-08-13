@@ -1,36 +1,20 @@
-sealed class WorktreeSafetyResult;
+sealed class WorktreeSafetyResult();
 
-class WorktreeSafe extends WorktreeSafetyResult;
+class WorktreeSafe() extends WorktreeSafetyResult;
 
-class WorktreeUnsafe extends WorktreeSafetyResult {
-  final List<SafetyIssue> issues;
+class WorktreeUnsafe({required final List<SafetyIssue> issues}) extends WorktreeSafetyResult;
 
-  WorktreeUnsafe({required this.issues});
-}
+sealed class SafetyIssue();
 
-sealed class SafetyIssue;
+class UnstagedChanges() extends SafetyIssue;
 
-class UnstagedChanges extends SafetyIssue;
+sealed class WorktreeResult();
 
-sealed class WorktreeResult;
+class WorktreeSuccess({
+  required final String path,
+  required final String branchName,
+  required final String baseBranch,
+  required final String baseCommit,
+}) extends WorktreeResult;
 
-class WorktreeSuccess extends WorktreeResult {
-  final String path;
-  final String branchName;
-  final String baseBranch;
-  final String baseCommit;
-
-  WorktreeSuccess({
-    required this.path,
-    required this.branchName,
-    required this.baseBranch,
-    required this.baseCommit,
-  });
-}
-
-class WorktreeFallback extends WorktreeResult {
-  final String originalPath;
-  final String reason;
-
-  WorktreeFallback({required this.originalPath, required this.reason});
-}
+class WorktreeFallback({required final String originalPath, required final String reason}) extends WorktreeResult;

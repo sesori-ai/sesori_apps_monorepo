@@ -736,7 +736,7 @@ void main() {
   });
 }
 
-class _ThrowingProjectRepository implements ProjectRepository {
+class _ThrowingProjectRepository() implements ProjectRepository {
   @override
   Future<bool> projectHasUnseenChanges({required String projectId}) async => throw Exception("boom");
 

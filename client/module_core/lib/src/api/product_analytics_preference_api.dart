@@ -15,13 +15,13 @@ const _operationDeadline = Duration(seconds: 10);
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ProductAnalyticsPreferenceApiRecord with _$ProductAnalyticsPreferenceApiRecord {
-  const factory ProductAnalyticsPreferenceApiRecord({
+  const factory({
     required ProductAnalyticsPreference preference,
     required int revision,
     required String userKey,
   }) = _ProductAnalyticsPreferenceApiRecord;
 
-  factory ProductAnalyticsPreferenceApiRecord.fromJson(Map<String, dynamic> json) {
+  factory fromJson(Map<String, dynamic> json) {
     if (json["revision"] is! int) {
       throw const FormatException("Invalid product analytics preference response");
     }
@@ -35,26 +35,22 @@ sealed class ProductAnalyticsPreferenceApiRecord with _$ProductAnalyticsPreferen
 
 @Freezed(fromJson: false, toJson: false)
 sealed class ProductAnalyticsPreferenceApiResult with _$ProductAnalyticsPreferenceApiResult {
-  const factory ProductAnalyticsPreferenceApiResult.success({required ProductAnalyticsPreferenceApiRecord record}) =
-      ProductAnalyticsPreferenceApiSuccess;
-  const factory ProductAnalyticsPreferenceApiResult.conflict({required ProductAnalyticsPreferenceApiRecord record}) =
-      ProductAnalyticsPreferenceApiConflict;
-  const factory ProductAnalyticsPreferenceApiResult.timeout() = ProductAnalyticsPreferenceApiTimeout;
-  const factory ProductAnalyticsPreferenceApiResult.failure() = ProductAnalyticsPreferenceApiFailure;
+  const factory success({required ProductAnalyticsPreferenceApiRecord record}) = ProductAnalyticsPreferenceApiSuccess;
+  const factory conflict({required ProductAnalyticsPreferenceApiRecord record}) = ProductAnalyticsPreferenceApiConflict;
+  const factory timeout() = ProductAnalyticsPreferenceApiTimeout;
+  const factory failure() = ProductAnalyticsPreferenceApiFailure;
 }
 
 @Freezed(fromJson: true, toJson: false)
-sealed class ProductAnalyticsPreferenceConflictResponse with _$ProductAnalyticsPreferenceConflictResponse {
-  const factory ProductAnalyticsPreferenceConflictResponse({
+sealed class const ProductAnalyticsPreferenceConflictResponse._() with _$ProductAnalyticsPreferenceConflictResponse {
+  const factory({
     required ProductAnalyticsPreferenceConflictError error,
     required ProductAnalyticsPreference preference,
     required int revision,
     required String userKey,
   }) = _ProductAnalyticsPreferenceConflictResponse;
 
-  const ProductAnalyticsPreferenceConflictResponse._();
-
-  factory ProductAnalyticsPreferenceConflictResponse.fromJson(Map<String, dynamic> json) {
+  factory fromJson(Map<String, dynamic> json) {
     if (json["revision"] is! int) {
       throw const FormatException("Invalid product analytics preference conflict response");
     }
@@ -73,21 +69,15 @@ sealed class ProductAnalyticsPreferenceConflictResponse with _$ProductAnalyticsP
 }
 
 @JsonEnum(valueField: "wireValue")
-enum ProductAnalyticsPreferenceConflictError {
+enum ProductAnalyticsPreferenceConflictError({required final String wireValue}) {
   conflict(wireValue: "conflict");
-
-  final String wireValue;
-  ProductAnalyticsPreferenceConflictError({required this.wireValue});
 }
 
 @lazySingleton
-class ProductAnalyticsPreferenceApi {
-  final AuthenticatedHttpApiClient _client;
+class ProductAnalyticsPreferenceApi({required final AuthenticatedHttpApiClient _client}) {
   final Uri _url;
 
-  ProductAnalyticsPreferenceApi({required AuthenticatedHttpApiClient client})
-    : _client = client,
-      _url = Uri.parse("$authBaseUrl/product-analytics/preference");
+  this : _url = Uri.parse("$authBaseUrl/product-analytics/preference");
 
   Future<ProductAnalyticsPreferenceApiResult> getPreference({required String userId}) async {
     try {

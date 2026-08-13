@@ -8,7 +8,7 @@ import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
 import "../repositories/claude_session_process_repository.dart";
 
-final class _SessionTurnState {
+final class _SessionTurnState() {
   Future<void> tail = Future<void>.value();
   int pending = 0;
   int generation = 0;
@@ -16,23 +16,16 @@ final class _SessionTurnState {
 }
 
 /// Serializes Claude turns and owns session work/idle lifecycle policy.
-final class ClaudeSessionService {
-  ClaudeSessionService({
-    required ClaudeSessionProcessRepository processes,
-    required ClaudeApprovalRegistry approvals,
-    required ServerClock clock,
-    required Duration idleTimeout,
-  }) : _processes = processes,
-       _approvals = approvals,
-       _clock = clock,
-       _idleTimeout = idleTimeout {
+final class ClaudeSessionService({
+  required final ClaudeSessionProcessRepository _processes,
+  required final ClaudeApprovalRegistry _approvals,
+  required final ServerClock _clock,
+  required final Duration _idleTimeout,
+}) {
+  this {
     _processEvents = _processes.events.listen(_handleProcessEvent);
   }
 
-  final ClaudeSessionProcessRepository _processes;
-  final ClaudeApprovalRegistry _approvals;
-  final ServerClock _clock;
-  final Duration _idleTimeout;
   final Map<String, _SessionTurnState> _turns = {};
   final Map<String, PluginSessionStatus> _retryStatuses = {};
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();

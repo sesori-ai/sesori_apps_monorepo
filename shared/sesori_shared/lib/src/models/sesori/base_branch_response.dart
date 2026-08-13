@@ -5,7 +5,7 @@ part "base_branch_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class BaseBranchResponse with _$BaseBranchResponse {
-  const factory BaseBranchResponse({
+  const factory({
     required String? baseBranch,
     // Forge-style repository slug (`org/repo`) parsed from the project's git
     // remote by the bridge. Null when the project has no usable remote (not a
@@ -21,5 +21,5 @@ sealed class BaseBranchResponse with _$BaseBranchResponse {
     required String? repoHost,
   }) = _BaseBranchResponse;
 
-  factory BaseBranchResponse.fromJson(Map<String, dynamic> json) => _$BaseBranchResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$BaseBranchResponseFromJson(json);
 }

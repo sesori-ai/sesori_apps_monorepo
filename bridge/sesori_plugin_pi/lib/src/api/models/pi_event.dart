@@ -14,11 +14,7 @@ import "pi_frame_fields.dart";
 ///
 /// Only Pi's own scalars are typed here. Message, entry, tool, and result
 /// payloads stay raw maps until the step that consumes them adds their DTOs.
-sealed class PiEvent {
-  const PiEvent({required this.raw});
-
-  final Map<String, Object?> raw;
-
+sealed class const PiEvent({required final Map<String, Object?> raw}) {
   /// Routes one event by its `type` discriminator.
   static PiEvent parse({required String type, required Map<String, Object?> json}) {
     return switch (type) {
@@ -144,229 +140,130 @@ PiEvent _unknownEvent({required String type, required Map<String, Object?> json}
 }
 
 /// A low-level agent run started.
-final class PiAgentStartEvent extends PiEvent {
-  const PiAgentStartEvent({required super.raw});
-}
+final class const PiAgentStartEvent({required super.raw}) extends PiEvent;
 
 /// One low-level run ended. Not completion: a retry, compaction recovery, or
 /// queued continuation may still follow, which is what [willRetry] signals.
-final class PiAgentEndEvent extends PiEvent {
-  const PiAgentEndEvent({required this.willRetry, required super.raw});
-
-  final bool willRetry;
-}
+final class const PiAgentEndEvent({required final bool willRetry, required super.raw}) extends PiEvent;
 
 /// No automatic continuation remains. Pi's only true idle signal.
-final class PiAgentSettledEvent extends PiEvent {
-  const PiAgentSettledEvent({required super.raw});
-}
+final class const PiAgentSettledEvent({required super.raw}) extends PiEvent;
 
-final class PiTurnStartEvent extends PiEvent {
-  const PiTurnStartEvent({required super.raw});
-}
+final class const PiTurnStartEvent({required super.raw}) extends PiEvent;
 
-final class PiTurnEndEvent extends PiEvent {
-  const PiTurnEndEvent({required this.message, required super.raw});
+final class const PiTurnEndEvent({required final Map<String, Object?> message, required super.raw}) extends PiEvent;
 
-  final Map<String, Object?> message;
-}
-
-final class PiMessageStartEvent extends PiEvent {
-  const PiMessageStartEvent({required this.message, required super.raw});
-
-  final Map<String, Object?> message;
-}
+final class const PiMessageStartEvent({required final Map<String, Object?> message, required super.raw})
+    extends PiEvent;
 
 /// A streaming increment. Pi strips the cumulative snapshot from these frames,
 /// so [delta] is the only new information they carry.
-final class PiMessageUpdateEvent extends PiEvent {
-  const PiMessageUpdateEvent({required this.delta, required super.raw});
-
-  final PiAssistantDelta delta;
-}
+final class const PiMessageUpdateEvent({required final PiAssistantDelta delta, required super.raw}) extends PiEvent;
 
 /// The final authority for one message.
-final class PiMessageEndEvent extends PiEvent {
-  const PiMessageEndEvent({required this.message, required super.raw});
+final class const PiMessageEndEvent({required final Map<String, Object?> message, required super.raw})
+    extends PiEvent;
 
-  final Map<String, Object?> message;
-}
-
-final class PiToolExecutionStartEvent extends PiEvent {
-  const PiToolExecutionStartEvent({
-    required this.toolCallId,
-    required this.toolName,
-    required this.args,
-    required super.raw,
-  });
-
-  final String? toolCallId;
-  final String? toolName;
-  final Map<String, Object?> args;
-}
+final class const PiToolExecutionStartEvent({
+  required final String? toolCallId,
+  required final String? toolName,
+  required final Map<String, Object?> args,
+  required super.raw,
+}) extends PiEvent;
 
 /// Cumulative progress for one tool call: each update replaces the last.
-final class PiToolExecutionUpdateEvent extends PiEvent {
-  const PiToolExecutionUpdateEvent({
-    required this.toolCallId,
-    required this.toolName,
-    required this.args,
-    required this.partialResult,
-    required super.raw,
-  });
+final class const PiToolExecutionUpdateEvent({
+  required final String? toolCallId,
+  required final String? toolName,
+  required final Map<String, Object?> args,
+  required final Map<String, Object?> partialResult,
+  required super.raw,
+}) extends PiEvent;
 
-  final String? toolCallId;
-  final String? toolName;
-  final Map<String, Object?> args;
-  final Map<String, Object?> partialResult;
-}
-
-final class PiToolExecutionEndEvent extends PiEvent {
-  const PiToolExecutionEndEvent({
-    required this.toolCallId,
-    required this.toolName,
-    required this.result,
-    required this.isError,
-    required super.raw,
-  });
-
-  final String? toolCallId;
-  final String? toolName;
-  final Map<String, Object?> result;
-  final bool isError;
-}
+final class const PiToolExecutionEndEvent({
+  required final String? toolCallId,
+  required final String? toolName,
+  required final Map<String, Object?> result,
+  required final bool isError,
+  required super.raw,
+}) extends PiEvent;
 
 /// Streaming output of a user-invoked `bash` command.
-final class PiBashExecutionUpdateEvent extends PiEvent {
-  const PiBashExecutionUpdateEvent({required this.bashId, required this.delta, required super.raw});
-
-  final String? bashId;
-  final String? delta;
-}
+final class const PiBashExecutionUpdateEvent({
+  required final String? bashId,
+  required final String? delta,
+  required super.raw,
+}) extends PiEvent;
 
 /// Pi's own steering/follow-up queue depth. Only the counts are modelled: the
 /// queued strings are user prompt text and stay in [PiEvent.raw].
-final class PiQueueUpdateEvent extends PiEvent {
-  const PiQueueUpdateEvent({required this.steeringCount, required this.followUpCount, required super.raw});
+final class const PiQueueUpdateEvent({
+  required final int? steeringCount,
+  required final int? followUpCount,
+  required super.raw,
+}) extends PiEvent;
 
-  final int? steeringCount;
-  final int? followUpCount;
-}
+final class const PiCompactionStartEvent({required final PiCompactionReason? reason, required super.raw})
+    extends PiEvent;
 
-final class PiCompactionStartEvent extends PiEvent {
-  const PiCompactionStartEvent({required this.reason, required super.raw});
-
-  final PiCompactionReason? reason;
-}
-
-final class PiCompactionEndEvent extends PiEvent {
-  const PiCompactionEndEvent({
-    required this.reason,
-    required this.aborted,
-    required this.willRetry,
-    required this.errorMessage,
-    required super.raw,
-  });
-
-  final PiCompactionReason? reason;
-  final bool aborted;
-  final bool willRetry;
-  final String? errorMessage;
-}
+final class const PiCompactionEndEvent({
+  required final PiCompactionReason? reason,
+  required final bool aborted,
+  required final bool willRetry,
+  required final String? errorMessage,
+  required super.raw,
+}) extends PiEvent;
 
 /// A session entry was persisted. The entry stays raw until history mapping.
-final class PiEntryAppendedEvent extends PiEvent {
-  const PiEntryAppendedEvent({required this.entry, required super.raw});
-
-  final Map<String, Object?> entry;
-}
+final class const PiEntryAppendedEvent({required final Map<String, Object?> entry, required super.raw})
+    extends PiEvent;
 
 /// The explicit session name changed. Null means the name was cleared.
-final class PiSessionInfoChangedEvent extends PiEvent {
-  const PiSessionInfoChangedEvent({required this.name, required super.raw});
+final class const PiSessionInfoChangedEvent({required final String? name, required super.raw}) extends PiEvent;
 
-  final String? name;
-}
+final class const PiThinkingLevelChangedEvent({required final PiThinkingLevel? level, required super.raw})
+    extends PiEvent;
 
-final class PiThinkingLevelChangedEvent extends PiEvent {
-  const PiThinkingLevelChangedEvent({required this.level, required super.raw});
-
-  final PiThinkingLevel? level;
-}
-
-final class PiAutoRetryStartEvent extends PiEvent {
-  const PiAutoRetryStartEvent({
-    required this.attempt,
-    required this.maxAttempts,
-    required this.delayMs,
-    required this.errorMessage,
-    required super.raw,
-  });
-
-  final int? attempt;
-  final int? maxAttempts;
-  final int? delayMs;
+final class const PiAutoRetryStartEvent({
+  required final int? attempt,
+  required final int? maxAttempts,
+  required final int? delayMs,
 
   /// Raw provider text. It can carry request details, so it is never logged.
-  final String? errorMessage;
-}
+  required final String? errorMessage,
+  required super.raw,
+}) extends PiEvent;
 
-final class PiAutoRetryEndEvent extends PiEvent {
-  const PiAutoRetryEndEvent({
-    required this.success,
-    required this.attempt,
-    required this.finalError,
-    required super.raw,
-  });
+final class const PiAutoRetryEndEvent({
+  required final bool success,
+  required final int? attempt,
+  required final String? finalError,
+  required super.raw,
+}) extends PiEvent;
 
-  final bool success;
-  final int? attempt;
-  final String? finalError;
-}
-
-final class PiSummarizationRetryScheduledEvent extends PiEvent {
-  const PiSummarizationRetryScheduledEvent({
-    required this.attempt,
-    required this.maxAttempts,
-    required this.delayMs,
-    required this.errorMessage,
-    required super.raw,
-  });
-
-  final int? attempt;
-  final int? maxAttempts;
-  final int? delayMs;
-  final String? errorMessage;
-}
+final class const PiSummarizationRetryScheduledEvent({
+  required final int? attempt,
+  required final int? maxAttempts,
+  required final int? delayMs,
+  required final String? errorMessage,
+  required super.raw,
+}) extends PiEvent;
 
 /// A summarization retry began.
-final class PiSummarizationRetryAttemptStartEvent extends PiEvent {
-  const PiSummarizationRetryAttemptStartEvent({required this.source, required super.raw});
+final class const PiSummarizationRetryAttemptStartEvent({
+  required final PiSummarizationSource source,
+  required super.raw,
+}) extends PiEvent;
 
-  final PiSummarizationSource source;
-}
-
-final class PiSummarizationRetryFinishedEvent extends PiEvent {
-  const PiSummarizationRetryFinishedEvent({required super.raw});
-}
+final class const PiSummarizationRetryFinishedEvent({required super.raw}) extends PiEvent;
 
 /// An extension handler threw. Pi keeps running, so this never ends a turn.
-final class PiExtensionErrorEvent extends PiEvent {
-  const PiExtensionErrorEvent({
-    required this.extensionPath,
-    required this.event,
-    required this.error,
-    required super.raw,
-  });
-
-  final String? extensionPath;
-  final String? event;
-  final String? error;
-}
+final class const PiExtensionErrorEvent({
+  required final String? extensionPath,
+  required final String? event,
+  required final String? error,
+  required super.raw,
+}) extends PiEvent;
 
 /// An event type this build does not model.
-final class PiUnknownEvent extends PiEvent {
-  const PiUnknownEvent({required this.type, required super.raw});
-
-  final String type;
-}
+final class const PiUnknownEvent({required final String type, required super.raw}) extends PiEvent;

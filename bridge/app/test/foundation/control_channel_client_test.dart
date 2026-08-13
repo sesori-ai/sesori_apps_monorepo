@@ -115,21 +115,13 @@ void main() {
   });
 }
 
-class _FakeControlConnection {
-  final WebSocket socket;
-  final String? authorizationHeader;
-
-  const _FakeControlConnection({required this.socket, required this.authorizationHeader});
-}
+class const _FakeControlConnection({required final WebSocket socket, required final String? authorizationHeader});
 
 /// A loopback control server that records the upgrade `Authorization` header
 /// and exposes each accepted connection so a test can drive the GUI side.
-class _FakeControlServer {
-  final HttpServer _server;
+class _FakeControlServer._(final HttpServer _server) {
   final Queue<_FakeControlConnection> _buffered = Queue<_FakeControlConnection>();
   final Queue<Completer<_FakeControlConnection>> _waiters = Queue<Completer<_FakeControlConnection>>();
-
-  _FakeControlServer._(this._server);
 
   static Future<_FakeControlServer> start() async {
     final server = await HttpServer.bind("127.0.0.1", 0);

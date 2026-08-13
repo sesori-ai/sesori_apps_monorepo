@@ -2,7 +2,7 @@ import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:test/test.dart';
 
-class _FakeWakeLockClient implements WakeLockClient {
+class _FakeWakeLockClient() implements WakeLockClient {
   int enableCalls = 0;
   int disableCalls = 0;
 

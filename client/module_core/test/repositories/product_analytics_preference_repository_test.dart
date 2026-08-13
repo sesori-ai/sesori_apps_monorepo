@@ -25,13 +25,10 @@ ProductAnalyticsPreferenceRecord _domainRecord({
   userKey: _userKey,
 );
 
-class _RecordingPreferenceApi implements ProductAnalyticsPreferenceApi {
-  final List<String> operations;
+class _RecordingPreferenceApi({required final List<String> operations}) implements ProductAnalyticsPreferenceApi {
   final getResults = Queue<ProductAnalyticsPreferenceApiResult>();
   final updateResults = Queue<ProductAnalyticsPreferenceApiResult>();
   final updates = <({String userId, ProductAnalyticsPreference preference, int revision, String operationId})>[];
-
-  _RecordingPreferenceApi({required this.operations});
 
   @override
   Future<ProductAnalyticsPreferenceApiResult> getPreference({required String userId}) async {
@@ -57,15 +54,13 @@ class _RecordingPreferenceApi implements ProductAnalyticsPreferenceApi {
   }
 }
 
-class _RecordingPreferenceStorage implements ProductAnalyticsPreferenceStorage {
-  final List<String> operations;
+class _RecordingPreferenceStorage({required final List<String> operations})
+    implements ProductAnalyticsPreferenceStorage {
   final writes = <StoredProductAnalyticsPreference>[];
   StoredProductAnalyticsPreference? stored;
   Object? readError;
   Object? deleteError;
   Set<int> failingWriteNumbers = {};
-
-  _RecordingPreferenceStorage({required this.operations});
 
   @override
   Future<StoredProductAnalyticsPreference?> read({required String userId}) async {

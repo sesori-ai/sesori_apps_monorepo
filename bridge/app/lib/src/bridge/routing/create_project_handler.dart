@@ -7,12 +7,10 @@ import "../services/project_mutation_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/create` — creates a new project directory with git init.
-class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
-  final ProjectMutationService _projectMutationService;
-
-  CreateProjectHandler({required ProjectMutationService projectMutationService})
-    : _projectMutationService = projectMutationService,
-      super(
+class CreateProjectHandler({required final ProjectMutationService _projectMutationService})
+    extends BodyRequestHandler<ProjectPathRequest, Project> {
+  this
+    : super(
         HttpMethod.post,
         "/project/create",
         fromJson: ProjectPathRequest.fromJson,

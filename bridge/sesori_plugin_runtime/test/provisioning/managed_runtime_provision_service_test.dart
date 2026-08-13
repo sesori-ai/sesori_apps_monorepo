@@ -4,9 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _StubManifest implements RuntimeManifest {
-  const _StubManifest();
-
+class const _StubManifest() implements RuntimeManifest {
   static const RuntimeAsset _asset = ArchiveRuntimeAsset(
     assetName: "opencode-test.zip",
     format: ArchiveFormat.zip,
@@ -51,18 +49,12 @@ class _StubManifest implements RuntimeManifest {
   }
 }
 
-class _FakeValidator implements RuntimeVersionValidator {
-  _FakeValidator({
-    required this.pathVersion,
-    required this.managedVersion,
-    this.candidateVersions = const {},
-    this.onDetect,
-  });
-
-  final RuntimeVersion? pathVersion;
-  final RuntimeVersion? managedVersion;
-  final Map<String, RuntimeVersion?> candidateVersions;
-  final void Function(String executable)? onDetect;
+class _FakeValidator({
+  required final RuntimeVersion? pathVersion,
+  required final RuntimeVersion? managedVersion,
+  final Map<String, RuntimeVersion?> candidateVersions = const {},
+  final void Function(String executable)? onDetect,
+}) implements RuntimeVersionValidator {
   final List<String> detectedExecutables = [];
 
   @override
@@ -83,17 +75,10 @@ class _FakeValidator implements RuntimeVersionValidator {
   }
 }
 
-class _FakeHost implements PluginHost {
-  const _FakeHost({
-    required this.stateDirectory,
-    required this.abortSignal,
-  });
-
-  @override
-  final String stateDirectory;
-
-  final StartAbortSignal abortSignal;
-
+class const _FakeHost({
+  @override required final String stateDirectory,
+  required final StartAbortSignal abortSignal,
+}) implements PluginHost {
   @override
   Map<String, String> get environment => const {};
 

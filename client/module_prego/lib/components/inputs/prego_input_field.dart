@@ -42,73 +42,51 @@ const double _trailingSlotSize = 44.0;
 ///   validator: _validateEmail,
 /// )
 /// ```
-class PregoInputField extends StatelessWidget {
-  const PregoInputField({
-    super.key,
-    required this.controller,
-    required this.label,
-    this.isRequired = false,
-    this.hintText,
-    this.enabled = true,
-    this.obscureText = false,
-    this.autocorrect = true,
-    this.autofocus = false,
-    this.keyboardType,
-    this.textInputAction,
-    this.textCapitalization = TextCapitalization.none,
-    this.autofillHints,
-    this.inputFormatters,
-    this.focusNode,
-    this.validator,
-    this.onSubmitted,
-    this.onChanged,
-    this.trailing,
-  });
+class const PregoInputField({
+  super.key,
 
   /// Holds the field's text. The caller owns its lifecycle.
-  final TextEditingController controller;
+  required final TextEditingController controller,
 
   /// Label rendered above the field.
-  final String label;
+  required final String label,
 
   /// Whether to append a brand-coloured `*` to [label]. Purely presentational —
   /// enforce the requirement in [validator].
-  final bool isRequired;
+  final bool isRequired = false,
 
   /// Placeholder shown while the field is empty.
-  final String? hintText;
+  final String? hintText,
 
   /// When false the field rejects input and dims to the disabled palette.
-  final bool enabled;
+  final bool enabled = true,
 
   /// Whether to hide the text (passwords). Pair with a [trailing] toggle.
-  final bool obscureText;
-
-  final bool autocorrect;
-  final bool autofocus;
-  final TextInputType? keyboardType;
-  final TextInputAction? textInputAction;
-  final TextCapitalization textCapitalization;
-  final Iterable<String>? autofillHints;
-  final List<TextInputFormatter>? inputFormatters;
-  final FocusNode? focusNode;
+  final bool obscureText = false,
+  final bool autocorrect = true,
+  final bool autofocus = false,
+  final TextInputType? keyboardType,
+  final TextInputAction? textInputAction,
+  final TextCapitalization textCapitalization = TextCapitalization.none,
+  final Iterable<String>? autofillHints,
+  final List<TextInputFormatter>? inputFormatters,
+  final FocusNode? focusNode,
 
   /// Returns an error message, or null when the value is valid. Runs on
   /// [FormState.validate] and re-runs as the user edits once it has failed.
-  final String? Function(String? value)? validator;
+  final String? Function(String? value)? validator,
 
   /// Invoked when the user submits from the keyboard.
-  final void Function(String value)? onSubmitted;
-
-  final void Function(String value)? onChanged;
+  final void Function(String value)? onSubmitted,
+  final void Function(String value)? onChanged,
 
   /// Widget in the trailing slot inside the pill, e.g. a visibility toggle.
   ///
   /// Interactive content should fill [trailingSlotSize] square and carry its own
   /// gesture handling and semantics, so the whole touch target responds rather
   /// than just the glyph.
-  final Widget? trailing;
-
+  final Widget? trailing,
+}) extends StatelessWidget {
   /// Edge length of the [trailing] slot. Interactive trailing content should
   /// size itself to this so it meets the minimum touch target.
   static const double trailingSlotSize = _trailingSlotSize;

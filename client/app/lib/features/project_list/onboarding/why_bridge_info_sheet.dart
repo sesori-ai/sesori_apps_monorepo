@@ -11,9 +11,7 @@ part of "../project_list_screen.dart";
 /// Content of the onboarding "Why is this needed?" bottom sheet. Pure
 /// presentation with only per-row FAQ expand/collapse state; opened via
 /// [showPregoBottomSheet] from [_WhyBridgeButton].
-class _WhyBridgeInfoSheet extends StatelessWidget {
-  const _WhyBridgeInfoSheet();
-
+class const _WhyBridgeInfoSheet() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -102,17 +100,11 @@ class _WhyBridgeInfoSheet extends StatelessWidget {
 
 /// One reassurance row: a leading icon and a title + subtitle. Merged into a
 /// single semantics node so the icon, title, and subtitle are read as one unit.
-class _WhyFeatureRow extends StatelessWidget {
-  const _WhyFeatureRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
+class const _WhyFeatureRow({
+  required final IconData icon,
+  required final String title,
+  required final String subtitle,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -157,17 +149,12 @@ class _WhyFeatureRow extends StatelessWidget {
 /// as its answer expands. Announces its expanded/collapsed state to screen
 /// readers; wrapped in a [RepaintBoundary] so the expand animation (which sits
 /// behind the sheet's glass header) doesn't repaint the whole column.
-class _WhyFaqItem extends StatefulWidget {
-  const _WhyFaqItem({required this.question, required this.answer});
-
-  final String question;
-  final String answer;
-
+class const _WhyFaqItem({required final String question, required final String answer}) extends StatefulWidget {
   @override
   State<_WhyFaqItem> createState() => _WhyFaqItemState();
 }
 
-class _WhyFaqItemState extends State<_WhyFaqItem> {
+class _WhyFaqItemState() extends State<_WhyFaqItem> {
   bool _expanded = false;
 
   void _toggle() => setState(() => _expanded = !_expanded);

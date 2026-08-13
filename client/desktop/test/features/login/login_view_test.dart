@@ -6,7 +6,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/features/login/login_screen.dart";
 
-class _MockLoginCubit extends MockCubit<LoginState> implements LoginCubit;
+class _MockLoginCubit() extends MockCubit<LoginState> implements LoginCubit;
 
 void main() {
   late _MockLoginCubit cubit;

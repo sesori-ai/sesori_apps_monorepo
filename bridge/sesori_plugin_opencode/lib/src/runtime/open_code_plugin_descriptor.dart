@@ -18,7 +18,7 @@ import "open_code_runtime_policy.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
-abstract final class _OpenCodeConfigKey {
+abstract final class _OpenCodeConfigKey() {
   static const String port = "port";
   static const String host = "host";
   static const String noAutoStart = "no-auto-start";
@@ -68,37 +68,19 @@ OpenCodeManagedApi _defaultBuildApi({
 /// The optional constructor parameters are test seams (and the random/candidate
 /// sources the supervisor needs); the registered descriptor is `const
 /// OpenCodePluginDescriptor()`.
-class OpenCodePluginDescriptor extends BridgePluginDescriptor {
-  const OpenCodePluginDescriptor({
-    OpenCodeManagedApiFactory? buildApi,
-    http.Client Function()? probeClientFactory,
-    Iterable<int>? candidatePorts,
-    Random? random,
-    Duration degradedDebounce = const Duration(seconds: 5),
-    Duration coldStartBudget = openCodeColdStartBudget,
-    Duration versionProbeTimeout = openCodeVersionProbeTimeout,
-    ManagedRuntimeProvisionService? provisionService,
-  }) : _buildApi = buildApi,
-       _probeClientFactory = probeClientFactory,
-       _candidatePorts = candidatePorts,
-       _random = random,
-       _degradedDebounce = degradedDebounce,
-       _coldStartBudget = coldStartBudget,
-       _versionProbeTimeout = versionProbeTimeout,
-       _provisionService = provisionService;
-
-  final OpenCodeManagedApiFactory? _buildApi;
-  final http.Client Function()? _probeClientFactory;
-  final Iterable<int>? _candidatePorts;
-  final Random? _random;
-  final Duration _degradedDebounce;
-  final Duration _coldStartBudget;
-  final Duration _versionProbeTimeout;
+class const OpenCodePluginDescriptor({
+  final OpenCodeManagedApiFactory? _buildApi,
+  final http.Client Function()? _probeClientFactory,
+  final Iterable<int>? _candidatePorts,
+  final Random? _random,
+  final Duration _degradedDebounce = const Duration(seconds: 5),
+  final Duration _coldStartBudget = openCodeColdStartBudget,
+  final Duration _versionProbeTimeout = openCodeVersionProbeTimeout,
 
   /// Test seam for existing-runtime resolution. Production builds a default in
   /// [ensureRuntime] from the host's process service.
-  final ManagedRuntimeProvisionService? _provisionService;
-
+  final ManagedRuntimeProvisionService? _provisionService,
+}) extends BridgePluginDescriptor {
   @override
   bool get supportsPromptAttachments => true;
 

@@ -1,4 +1,4 @@
-enum UpdateResult {
+enum UpdateResult() {
   success,
   checksumFailed,
   downloadFailed,

@@ -5,25 +5,18 @@ import "diff_file_widget.dart";
 
 /// [SliverPersistentHeaderDelegate] that renders a [DiffFileWidget] as a
 /// pinned sticky header inside a [SliverMainAxisGroup].
-class DiffFileHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final DiffFileViewModel viewModel;
-  final bool isExpanded;
-  final VoidCallback onToggle;
+class DiffFileHeaderDelegate({
+  required final DiffFileViewModel viewModel,
+  required final bool isExpanded,
+  required final VoidCallback onToggle,
 
   /// Key attached to the header's [SizedBox] so callers can locate the
   /// header inside the scrollable (e.g. via [Scrollable.ensureVisible] after
   /// the owning file is collapsed). Nullable because callers may not need
   /// the header to be addressable, but the constructor is `required` to
   /// follow the project-wide named-argument convention.
-  final Key? headerKey;
-
-  DiffFileHeaderDelegate({
-    required this.viewModel,
-    required this.isExpanded,
-    required this.onToggle,
-    required this.headerKey,
-  });
-
+  required final Key? headerKey,
+}) extends SliverPersistentHeaderDelegate {
   /// Estimated height: 6px padding top + ~18px content + 6px padding bottom
   /// + 0.5px border ≈ 30.5px. Rounded up with headroom for text scaling.
   static const _kExtent = 36.0;

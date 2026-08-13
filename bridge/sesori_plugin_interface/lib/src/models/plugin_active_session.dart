@@ -9,7 +9,7 @@ part "plugin_active_session.g.dart";
 /// its direct child sessions that are also active (busy or retrying).
 @freezed
 sealed class PluginActiveSession with _$PluginActiveSession {
-  const factory PluginActiveSession({
+  const factory({
     required String id,
     @Default(false) bool mainAgentRunning,
     @Default(false) bool awaitingInput,

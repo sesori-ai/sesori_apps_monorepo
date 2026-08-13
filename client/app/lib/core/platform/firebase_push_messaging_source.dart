@@ -27,7 +27,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   bool _initialNotificationOpenConsumed = false;
   bool _disposed = false;
 
-  FirebasePushMessagingSource({
+  new({
     required FirebaseMessaging messaging,
     required FirebaseMessagingStaticAdapter staticAdapter,
   }) : _messaging = messaging,
@@ -36,7 +36,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
        _delay = Future<void>.delayed;
 
   @visibleForTesting
-  FirebasePushMessagingSource.test({
+  new test({
     required FirebaseMessaging messaging,
     FirebaseMessagingStaticAdapter staticAdapter = const FirebaseMessagingStaticAdapter.disabled(),
     bool Function()? isApplePlatform,
@@ -114,7 +114,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
       }
     }
 
-    return _messaging.getToken();
+    return await _messaging.getToken();
   }
 
   @override

@@ -4,11 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "gal_client.dart";
 
-class MobilePhotoImageSaver implements ImageSaver {
-  final GalClient _galClient;
-
-  MobilePhotoImageSaver({required GalClient galClient}) : _galClient = galClient;
-
+class MobilePhotoImageSaver({required final GalClient _galClient}) implements ImageSaver {
   @override
   Future<ImageSaveResult> saveImage({
     required Uint8List bytes,

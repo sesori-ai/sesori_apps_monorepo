@@ -6,12 +6,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../services/chat_history_service.dart";
 import "request_handler.dart";
 
-class GetSessionAttachmentHandler extends BodyRequestHandler<SessionAttachmentRequest, SessionAttachmentResponse> {
-  final ChatHistoryService _chatHistoryService;
-
-  GetSessionAttachmentHandler({required ChatHistoryService chatHistoryService})
-    : _chatHistoryService = chatHistoryService,
-      super(
+class GetSessionAttachmentHandler({required final ChatHistoryService _chatHistoryService})
+    extends BodyRequestHandler<SessionAttachmentRequest, SessionAttachmentResponse> {
+  this
+    : super(
         HttpMethod.post,
         "/session/attachment",
         fromJson: SessionAttachmentRequest.fromJson,

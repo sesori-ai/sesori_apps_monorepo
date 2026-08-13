@@ -57,28 +57,18 @@ OmpPlugin _buildOmpPlugin({
   processFactory: processFactory,
 );
 
-final class OmpPluginDescriptor extends BridgePluginDescriptor {
-  const OmpPluginDescriptor({
-    required OmpPluginFactory buildPlugin,
-    required OmpRuntimeAssetServiceFactory buildRuntimeAssetService,
-    required Duration connectBudget,
-    required Duration versionProbeTimeout,
-  }) : _buildPlugin = buildPlugin,
-       _buildRuntimeAssetService = buildRuntimeAssetService,
-       _connectBudget = connectBudget,
-       _versionProbeTimeout = versionProbeTimeout;
-
-  factory OmpPluginDescriptor.production() => const OmpPluginDescriptor(
+final class const OmpPluginDescriptor({
+  required final OmpPluginFactory _buildPlugin,
+  required final OmpRuntimeAssetServiceFactory _buildRuntimeAssetService,
+  required final Duration _connectBudget,
+  required final Duration _versionProbeTimeout,
+}) extends BridgePluginDescriptor {
+  factory production() => const OmpPluginDescriptor(
     buildPlugin: _buildOmpPlugin,
     buildRuntimeAssetService: _defaultRuntimeAssetService,
     connectBudget: Duration(seconds: 15),
     versionProbeTimeout: Duration(seconds: 10),
   );
-
-  final OmpPluginFactory _buildPlugin;
-  final OmpRuntimeAssetServiceFactory _buildRuntimeAssetService;
-  final Duration _connectBudget;
-  final Duration _versionProbeTimeout;
 
   static const String binOption = "bin";
   static const List<PluginOption> cliOptions = [
@@ -306,4 +296,4 @@ final class OmpPluginDescriptor extends BridgePluginDescriptor {
   }
 }
 
-enum _OmpRuntimeProbe { ready, missing, outdated, unknown }
+enum _OmpRuntimeProbe() { ready, missing, outdated, unknown }

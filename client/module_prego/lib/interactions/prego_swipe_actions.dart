@@ -51,55 +51,49 @@ typedef PregoSwipeActionBuilder = Widget Function(BuildContext context, VoidCall
 /// an alternative path to the same actions (the project row's long-press
 /// menu). While a side is closed its actions are excluded from semantics and
 /// focus traversal entirely, so the row still reads as one button.
-class PregoSwipeActions extends StatefulWidget {
-  const PregoSwipeActions({
-    super.key,
-    required this.child,
-    required this.actionsBuilder,
-    required this.primaryActionBuilder,
-    required this.onFullSwipe,
-    this.leadingPrimaryActionBuilder,
-    this.onLeadingFullSwipe,
-    this.showBottomHairline = false,
-  }) : assert(
-         (leadingPrimaryActionBuilder == null) == (onLeadingFullSwipe == null),
-         'A leading action takes both its builder and its full-swipe commit.',
-       );
+class const PregoSwipeActions({
+  super.key,
 
   /// The row content. Slides off the swiped-toward edge as the row opens.
-  final Widget child;
+  required final Widget child,
 
   /// The trailing secondary actions, laid out in order before the trailing
   /// primary action.
-  final PregoSwipeActionListBuilder actionsBuilder;
+  required final PregoSwipeActionListBuilder actionsBuilder,
 
   /// The trailing primary action — the one a full swipe toward the start edge
   /// commits. Rests at its own natural width; during an overdrag the component
   /// re-boxes it wider (that width plus the surplus), so it must fill any
   /// extra width it is given — content that centers itself in a stretched box,
   /// the way the design system's buttons lay out.
-  final PregoSwipeActionBuilder primaryActionBuilder;
+  required final PregoSwipeActionBuilder primaryActionBuilder,
 
   /// Committed by a full swipe toward the start edge: called once on release
   /// past the commit threshold, while the row settles shut. The action owns
   /// any row removal; if it fails, the row is simply closed.
-  final VoidCallback onFullSwipe;
+  required final VoidCallback onFullSwipe,
 
   /// The single leading action, revealed by swiping toward the end edge; null
   /// leaves that swipe inert. Same width contract as [primaryActionBuilder],
   /// mirrored: its leading edge pins to the row's start while an overdrag
   /// grows it.
-  final PregoSwipeActionBuilder? leadingPrimaryActionBuilder;
+  final PregoSwipeActionBuilder? leadingPrimaryActionBuilder,
 
   /// The leading counterpart of [onFullSwipe], with the same contract. Set
   /// exactly when [leadingPrimaryActionBuilder] is.
-  final VoidCallback? onLeadingFullSwipe;
+  final VoidCallback? onLeadingFullSwipe,
 
   /// Draws a row divider along the bottom edge, outside the sliding stack, so
   /// the divider holds still while the row's content slides. A zero-width
   /// border side is a single physical pixel and costs the row no height, so
   /// the divider doesn't push the list off its pitch. Off by default.
-  final bool showBottomHairline;
+  final bool showBottomHairline = false,
+}) extends StatefulWidget {
+  this
+    : assert(
+        (leadingPrimaryActionBuilder == null) == (onLeadingFullSwipe == null),
+        'A leading action takes both its builder and its full-swipe commit.',
+      );
 
   @override
   State<PregoSwipeActions> createState() => _PregoSwipeActionsState();
@@ -125,7 +119,7 @@ const double _flingVelocity = 700;
 /// One build's strip children, captured as a unit when a close settle begins.
 typedef _StripChildren = ({List<Widget> actions, Widget primary, Widget? leadingPrimary});
 
-class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTickerProviderStateMixin {
+class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTickerProviderStateMixin {
   /// 0 is closed, and the sign is the open side: positive slides the content
   /// toward the start edge (trailing actions), negative toward the end edge
   /// (the leading action). The magnitude times the row width is the pixel
@@ -227,9 +221,21 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
                   return Stack(
                     children: [
                       Transform.translate(offset: shift, child: widget.child),
-                      _positionedStrip(side: _trailing, actions: actions, primary: primary, extent: extent, shift: shift),
+                      _positionedStrip(
+                        side: _trailing,
+                        actions: actions,
+                        primary: primary,
+                        extent: extent,
+                        shift: shift,
+                      ),
                       if (leadingPrimary != null)
-                        _positionedStrip(side: _leading, actions: const [], primary: leadingPrimary, extent: extent, shift: shift),
+                        _positionedStrip(
+                          side: _leading,
+                          actions: const [],
+                          primary: leadingPrimary,
+                          extent: extent,
+                          shift: shift,
+                        ),
                       if (extent != 0)
                         // Absorbs taps on the revealed row's content so it
                         // closes instead of activating; sized to spare the open
@@ -466,13 +472,11 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
 /// One side of a [PregoSwipeActions] row — the trailing strip or the leading
 /// action — so each per-side mechanic (measurement, overdrag stretch, strip
 /// layout) exists once, instantiated for both sides.
-class _SwipeSide {
-  _SwipeSide({required this.sign});
-
+class _SwipeSide({
   /// The extent sign that opens this side: positive trailing, negative
   /// leading.
-  final double sign;
-
+  required final double sign,
+}) {
   final GlobalKey stripKey = GlobalKey();
 
   final GlobalKey primaryKey = GlobalKey();
@@ -539,7 +543,11 @@ class _SwipeSide {
           spacing: PregoSpacing.sm,
           children: [
             ...actions,
-            SizedBox(key: primaryKey, width: stretchTargetAt(extent: extent), child: primary),
+            SizedBox(
+              key: primaryKey,
+              width: stretchTargetAt(extent: extent),
+              child: primary,
+            ),
           ],
         ),
       ),

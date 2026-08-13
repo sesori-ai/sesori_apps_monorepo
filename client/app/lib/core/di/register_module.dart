@@ -15,7 +15,7 @@ import "../platform/gal_client.dart";
 import "../platform/mobile_photo_image_saver.dart";
 
 @module
-abstract class RegisterModule {
+abstract class RegisterModule() {
   @lazySingleton
   http.Client get httpClient => http.Client();
 

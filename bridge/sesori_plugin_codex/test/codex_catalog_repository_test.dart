@@ -237,38 +237,27 @@ CodexSessionRecord _record({
   model: "gpt-5.4-codex",
 );
 
-class _StubCodexCatalogRepository extends CodexCatalogRepository {
-  _StubCodexCatalogRepository(this.records) : super(rolloutApi: CodexRolloutApi(environment: const {}));
-
-  final List<CodexSessionRecord> records;
+class _StubCodexCatalogRepository(final List<CodexSessionRecord> records) extends CodexCatalogRepository {
+  this : super(rolloutApi: CodexRolloutApi(environment: const {}));
 
   @override
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
 }
 
-class _DiscoveryStubCodexCatalogRepository extends CodexCatalogRepository {
-  _DiscoveryStubCodexCatalogRepository({
-    required super.rolloutApi,
-    required this.records,
-  });
-
-  final List<CodexSessionRecord> records;
-
+class _DiscoveryStubCodexCatalogRepository({
+  required super.rolloutApi,
+  required final List<CodexSessionRecord> records,
+}) extends CodexCatalogRepository {
   @override
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
 }
 
-class _DiscoveryRolloutApi extends CodexRolloutApi {
-  _DiscoveryRolloutApi({
-    required this.documentsCodexDirectory,
-    required this.projectlessThreadIds,
-    required this.desktopStateError,
-  }) : super(environment: const {});
-
-  @override
-  final String? documentsCodexDirectory;
-  final Set<String> projectlessThreadIds;
-  final Object? desktopStateError;
+class _DiscoveryRolloutApi({
+  @override required final String? documentsCodexDirectory,
+  required final Set<String> projectlessThreadIds,
+  required final Object? desktopStateError,
+}) extends CodexRolloutApi {
+  this : super(environment: const {});
 
   @override
   Future<CodexDesktopStateDto> readDesktopState() async {
@@ -282,8 +271,8 @@ class _DiscoveryRolloutApi extends CodexRolloutApi {
   }
 }
 
-class _DeleteFailingRolloutApi extends CodexRolloutApi {
-  _DeleteFailingRolloutApi() : super(environment: const {});
+class _DeleteFailingRolloutApi() extends CodexRolloutApi {
+  this : super(environment: const {});
 
   bool wroteIndex = false;
 
@@ -315,8 +304,8 @@ class _DeleteFailingRolloutApi extends CodexRolloutApi {
   }
 }
 
-class _EnumerationFailingRolloutApi extends CodexRolloutApi {
-  _EnumerationFailingRolloutApi() : super(environment: const {});
+class _EnumerationFailingRolloutApi() extends CodexRolloutApi {
+  this : super(environment: const {});
 
   @override
   List<String> listRolloutPaths() {
@@ -324,8 +313,8 @@ class _EnumerationFailingRolloutApi extends CodexRolloutApi {
   }
 }
 
-class _IndexReadFailingRolloutApi extends CodexRolloutApi {
-  _IndexReadFailingRolloutApi() : super(environment: const {});
+class _IndexReadFailingRolloutApi() extends CodexRolloutApi {
+  this : super(environment: const {});
 
   @override
   List<String> listRolloutPaths() => const [];
@@ -336,8 +325,8 @@ class _IndexReadFailingRolloutApi extends CodexRolloutApi {
   }
 }
 
-class _IndexWriteFailingRolloutApi extends CodexRolloutApi {
-  _IndexWriteFailingRolloutApi() : super(environment: const {});
+class _IndexWriteFailingRolloutApi() extends CodexRolloutApi {
+  this : super(environment: const {});
 
   @override
   List<String> listRolloutPaths() => const [];

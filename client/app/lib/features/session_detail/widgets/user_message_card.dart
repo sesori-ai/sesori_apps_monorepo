@@ -8,11 +8,7 @@ import "../../../core/widgets/markdown_styles.dart";
 import "file_part_widget.dart";
 import "text_part_widget.dart" show MarkdownMessageImage;
 
-class UserMessageCard extends StatelessWidget {
-  final MessageWithParts message;
-
-  const UserMessageCard({super.key, required this.message});
-
+class const UserMessageCard({super.key, required final MessageWithParts message}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = message.parts
@@ -37,20 +33,13 @@ class UserMessageCard extends StatelessWidget {
 }
 
 /// The shared surface and Markdown body for settled and queued user messages.
-class UserMessageBubble extends StatelessWidget {
-  final String? markdown;
-  final List<Widget> attachments;
-  final bool outlined;
-  final Duration transitionDuration;
-
-  const UserMessageBubble({
-    super.key,
-    required this.markdown,
-    required this.attachments,
-    required this.outlined,
-    required this.transitionDuration,
-  });
-
+class const UserMessageBubble({
+  super.key,
+  required final String? markdown,
+  required final List<Widget> attachments,
+  required final bool outlined,
+  required final Duration transitionDuration,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

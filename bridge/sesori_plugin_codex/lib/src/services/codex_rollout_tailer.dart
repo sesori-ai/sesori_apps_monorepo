@@ -6,15 +6,10 @@ import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../repositories/codex_catalog_repository.dart";
 
-class CodexRolloutAppend {
-  const CodexRolloutAppend({
-    required this.sessionId,
-    required this.line,
-  });
-
-  final String sessionId;
-  final CodexRolloutLineDto line;
-}
+class const CodexRolloutAppend({
+  required final String sessionId,
+  required final CodexRolloutLineDto line,
+});
 
 /// Streams complete records appended to rollouts for turns active in this
 /// bridge process.
@@ -24,20 +19,12 @@ class CodexRolloutAppend {
 /// and experimental raw events are disabled when a thread is resumed. Remove
 /// this tailer when a stable app-server stream covers raw calls and outputs for
 /// both newly started and resumed threads.
-class CodexRolloutTailer {
+class CodexRolloutTailer({
+  required final CodexRolloutApi _rolloutApi,
+  required final CodexCatalogRepository _catalogRepository,
+  required final Duration _pollInterval,
+}) {
   static const int _terminalDrainPollAttempts = 10;
-
-  CodexRolloutTailer({
-    required CodexRolloutApi rolloutApi,
-    required CodexCatalogRepository catalogRepository,
-    required Duration pollInterval,
-  }) : _rolloutApi = rolloutApi,
-       _catalogRepository = catalogRepository,
-       _pollInterval = pollInterval;
-
-  final CodexRolloutApi _rolloutApi;
-  final CodexCatalogRepository _catalogRepository;
-  final Duration _pollInterval;
 
   // Synchronous delivery is intentional: a final drain on turn/completed must
   // enqueue tool updates before the plugin emits session.idle. Remove `sync`
@@ -173,20 +160,13 @@ class CodexRolloutTailer {
   }
 }
 
-class _CodexRolloutCursor {
-  _CodexRolloutCursor({
-    required this.path,
-    required this.offset,
-    required this.trailingBytes,
-    required this.hasObservedAppend,
-  });
-
-  String? path;
-  int offset;
-  List<int> trailingBytes;
-
+class _CodexRolloutCursor({
+  required var String? path,
+  required var int offset,
+  required var List<int> trailingBytes,
+  required var bool hasObservedAppend,
+}) {
   // COMPATIBILITY 2026-07-23 (Codex JSONL writer): a non-null path at EOF does
   // not prove the current turn is flushed; Codex may append its first bytes
   // just after turn/completed. Remove with the live rollout tail workaround.
-  bool hasObservedAppend;
 }

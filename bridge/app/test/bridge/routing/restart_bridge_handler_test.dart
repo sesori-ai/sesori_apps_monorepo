@@ -13,7 +13,7 @@ import 'package:test/test.dart';
 
 import 'routing_test_helpers.dart';
 
-class _NoopProcessRunner implements ProcessRunner {
+class _NoopProcessRunner() implements ProcessRunner {
   @override
   Future<ProcessResult> run(
     String executable,

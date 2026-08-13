@@ -282,31 +282,18 @@ PluginMessagePart _pluginPart({
   attachment: attachment,
 );
 
-class _LiveAttachmentHarness {
-  _LiveAttachmentHarness({
-    required this.plugin,
-    required this.lifecycleService,
-    required this.composition,
-    required this.runtime,
-    required this.chatHistory,
-    required this.httpClient,
-    required this.relayServer,
-    required this.stopped,
-    required StreamSubscription<SesoriSseEvent> subscription,
-    required this.deliveredPartIds,
-  }) : _subscription = subscription;
-
-  final FakeBridgePlugin plugin;
-  final PluginLifecycleService lifecycleService;
-  final OrchestratorComposition composition;
-  final BridgeRuntime runtime;
-  final TestChatHistory chatHistory;
-  final http.Client httpClient;
-  final TestRelayServer relayServer;
-  final Future<void> stopped;
-  final StreamSubscription<SesoriSseEvent> _subscription;
-  final List<String> deliveredPartIds;
-
+class _LiveAttachmentHarness({
+  required final FakeBridgePlugin plugin,
+  required final PluginLifecycleService lifecycleService,
+  required final OrchestratorComposition composition,
+  required final BridgeRuntime runtime,
+  required final TestChatHistory chatHistory,
+  required final http.Client httpClient,
+  required final TestRelayServer relayServer,
+  required final Future<void> stopped,
+  required final StreamSubscription<SesoriSseEvent> _subscription,
+  required final List<String> deliveredPartIds,
+}) {
   static Future<_LiveAttachmentHarness> create() async {
     final plugin = _SourcedPlugin(_pluginId);
     final lifecycleService = await createPluginLifecycleService(plugins: [plugin]);
@@ -440,16 +427,12 @@ Future<void> _insertRootSession({required AppDatabase database}) async {
   );
 }
 
-class _SourcedPlugin extends FakeBridgePlugin {
-  _SourcedPlugin(this.pluginId);
-
-  final String pluginId;
-
+class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   @override
   String get id => pluginId;
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

@@ -6,7 +6,7 @@ part 'cached_release.g.dart';
 /// Cached release information with TTL support.
 @Freezed(fromJson: true, toJson: true)
 sealed class CachedRelease with _$CachedRelease {
-  const factory CachedRelease({
+  const factory({
     /// The latest version string found during the check.
     required String latestVersion,
 
@@ -33,5 +33,5 @@ sealed class CachedRelease with _$CachedRelease {
     required DateTime checkedAt,
   }) = _CachedRelease;
 
-  factory CachedRelease.fromJson(Map<String, dynamic> json) => _$CachedReleaseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CachedReleaseFromJson(json);
 }

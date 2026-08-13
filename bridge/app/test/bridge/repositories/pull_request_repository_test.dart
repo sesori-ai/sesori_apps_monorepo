@@ -555,9 +555,7 @@ PullRequestTargetSelected _selectedPullRequest({
   );
 }
 
-final class _FailingPullRequestDao extends PullRequestDao {
-  _FailingPullRequestDao(super.database);
-
+final class _FailingPullRequestDao(super.database) extends PullRequestDao {
   @override
   Future<void> deletePrsOutsideTargets({
     required String projectId,

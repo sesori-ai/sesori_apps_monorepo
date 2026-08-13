@@ -8,9 +8,7 @@ import "models/openapi/session_status.g.dart";
 import "models/sse_event_data.g.dart";
 import "opencode_repository.dart";
 
-class ActiveSessionTracker {
-  final OpenCodeRepository _repository;
-
+class ActiveSessionTracker(final OpenCodeRepository _repository) {
   final Set<String> _projectWorktrees = {};
 
   // Empty virtual folders cannot be rediscovered from OpenCode until their
@@ -44,8 +42,6 @@ class ActiveSessionTracker {
   Map<String, int> _lastEmittedActiveSessions = {};
   Set<String> _lastEmittedRetrySessions = {};
   Set<String> _lastEmittedPendingInputSessions = {};
-
-  ActiveSessionTracker(this._repository);
 
   Future<void> coldStart() async {
     _workStateBaselineTrusted = true;

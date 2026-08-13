@@ -14,8 +14,19 @@ import "services/omp_session_cleanup_service.dart";
 import "services/omp_session_options_service.dart";
 import "trackers/omp_catalog_tracker.dart";
 
-class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
-  factory OmpPlugin({
+class OmpPlugin._({
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.contentMapper,
+  required super.eventMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required final OmpCatalogService _catalogService,
+  required final OmpSessionOptionsService _ompSessionOptionsService,
+  required final OmpSessionCleanupService _cleanupService,
+  super.processFactory,
+}) extends AcpPlugin implements PersistedSessionCleanupApi {
+  factory({
     String binaryPath = OmpBinary.defaultBinary,
     String? launchDirectory,
     String? scratchDirectory,
@@ -91,28 +102,11 @@ class OmpPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     );
   }
 
-  OmpPlugin._({
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.contentMapper,
-    required super.eventMapper,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    required OmpCatalogService catalogService,
-    required OmpSessionOptionsService ompSessionOptionsService,
-    required OmpSessionCleanupService cleanupService,
-    super.processFactory,
-  }) : _catalogService = catalogService,
-       _ompSessionOptionsService = ompSessionOptionsService,
-       _cleanupService = cleanupService,
-       super(
-         id: OmpPluginIdentity.id,
-         agentDisplayName: OmpPluginIdentity.displayName,
-       );
-
-  final OmpCatalogService _catalogService;
-  final OmpSessionOptionsService _ompSessionOptionsService;
-  final OmpSessionCleanupService _cleanupService;
+  this
+    : super(
+        id: OmpPluginIdentity.id,
+        agentDisplayName: OmpPluginIdentity.displayName,
+      );
 
   @override
   String get clientName => "sesori-bridge";

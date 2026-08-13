@@ -11,7 +11,7 @@ import "acp_stdio_client.dart";
 /// notification per session, but the commands are agent-global for every
 /// shipping backend, and `getCommands` is project-scoped — a per-session
 /// cache would invent scoping the plugin API can't express.
-class AcpCommandTracker {
+class AcpCommandTracker() {
   bool _hasSnapshot = false;
   int _revision = 0;
 

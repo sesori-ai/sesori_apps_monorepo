@@ -1,7 +1,5 @@
 /// Thrown when token refresh fails.
-class TokenRefreshException implements Exception {
-  final String reason;
-  const TokenRefreshException(this.reason);
+class const TokenRefreshException(final String reason) implements Exception {
   @override
   String toString() => "TokenRefreshException: $reason";
 }

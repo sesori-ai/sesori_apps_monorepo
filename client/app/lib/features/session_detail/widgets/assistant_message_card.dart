@@ -9,22 +9,14 @@ import "subtask_part_widget.dart";
 import "text_part_widget.dart";
 import "tool_part_widget.dart";
 
-class AssistantMessageCard extends StatelessWidget {
-  final String? projectId;
-  final MessageWithParts message;
-  final Map<String, String> streamingText;
-  final List<Session> children;
-  final Map<String, SessionStatus> childStatuses;
-
-  const AssistantMessageCard({
-    super.key,
-    required this.projectId,
-    required this.message,
-    required this.streamingText,
-    required this.children,
-    required this.childStatuses,
-  });
-
+class const AssistantMessageCard({
+  super.key,
+  required final String? projectId,
+  required final MessageWithParts message,
+  required final Map<String, String> streamingText,
+  required final List<Session> children,
+  required final Map<String, SessionStatus> childStatuses,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visibleParts = message.parts.where(_isVisible).toList();

@@ -30,41 +30,33 @@ import "../../theme/prego_theme.dart";
 ///
 /// Skeletons are decorative: descendants are excluded from semantics, and
 /// [semanticLabel] (when given) is announced in their place.
-class PregoShimmer extends StatefulWidget {
-  const PregoShimmer({
-    super.key,
-    required this.child,
-    this.enabled = true,
-    this.period = const Duration(milliseconds: 1500),
-    this.appearDelay = const Duration(milliseconds: 300),
-    this.highlightColor,
-    this.semanticLabel,
-  });
-
-  final Widget child;
+class const PregoShimmer({
+  super.key,
+  required final Widget child,
 
   /// Whether the sheen sweeps. The skeleton shapes render either way.
-  final bool enabled;
+  final bool enabled = true,
 
   /// Time for one full sweep across the child.
-  final Duration period;
+  final Duration period = const Duration(milliseconds: 1500),
 
   /// How long the skeleton stays invisible before fading in, so loads that
   /// finish quickly never flash it. [Duration.zero] shows it immediately.
-  final Duration appearDelay;
+  final Duration appearDelay = const Duration(milliseconds: 300),
 
   /// Peak colour of the sheen band. Defaults to a translucent white, which
   /// lightens the grey bars in both themes.
-  final Color? highlightColor;
+  final Color? highlightColor,
 
   /// Announced to screen readers in place of the decorative skeleton.
-  final String? semanticLabel;
-
+  final String? semanticLabel,
+}) extends StatefulWidget {
   @override
   State<PregoShimmer> createState() => _PregoShimmerState();
 }
 
-class _PregoShimmerState extends State<PregoShimmer>
+class _PregoShimmerState()
+    extends State<PregoShimmer>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// Sweep position in multiples of the child's width. The band (20% wide,
   /// centred at 0.5 + value) is fully off-screen outside [-0.6, 0.6]; the
@@ -73,8 +65,7 @@ class _PregoShimmerState extends State<PregoShimmer>
   static const double _slideMin = -0.7;
   static const double _slideMax = 1.1;
 
-  late final AnimationController _slide = AnimationController.unbounded(vsync: this)
-    ..value = _slideMin;
+  late final AnimationController _slide = AnimationController.unbounded(vsync: this)..value = _slideMin;
 
   late bool _visible = widget.appearDelay == Duration.zero;
   Timer? _appearTimer;
@@ -183,34 +174,24 @@ class _PregoShimmerState extends State<PregoShimmer>
 
 /// Translates the sweep gradient horizontally by [slidePercent] of the
 /// masked area's width.
-class _SlidingGradientTransform extends GradientTransform {
-  const _SlidingGradientTransform({required this.slidePercent});
-
-  final double slidePercent;
-
+class const _SlidingGradientTransform({required final double slidePercent}) extends GradientTransform {
   @override
   Matrix4? transform(Rect bounds, {TextDirection? textDirection}) =>
       Matrix4.translationValues(bounds.width * slidePercent, 0.0, 0.0);
 }
 
 /// A single pill-shaped skeleton bar that fades toward its trailing edge.
-class PregoSkeletonBar extends StatelessWidget {
-  const PregoSkeletonBar({
-    super.key,
-    required this.height,
-    this.width,
-    this.color,
-  });
-
-  final double height;
+class const PregoSkeletonBar({
+  super.key,
+  required final double height,
 
   /// Fixed width; null fills the available width.
-  final double? width;
+  final double? width,
 
   /// Solid (leading) colour of the fade. Defaults to the quaternary
   /// foreground, which the fade dissolves into the screen background.
-  final Color? color;
-
+  final Color? color,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = this.color ?? context.prego.colors.fgQuaternary;
@@ -231,16 +212,13 @@ class PregoSkeletonBar extends StatelessWidget {
 
 /// A two-line list-row skeleton: a title bar over a shorter indented detail
 /// bar, closed by the hairline bottom border list rows carry.
-class PregoSkeletonListTile extends StatelessWidget {
-  const PregoSkeletonListTile({
-    super.key,
-    this.titleWidthFraction = 1.0,
-  });
+class const PregoSkeletonListTile({
+  super.key,
 
   /// Fraction of the row's content width the title bar spans. Varying this
   /// across rows keeps the placeholder list looking organic.
-  final double titleWidthFraction;
-
+  final double titleWidthFraction = 1.0,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -284,21 +262,14 @@ class PregoSkeletonListTile extends StatelessWidget {
 
 /// The ready-made shimmering list skeleton: [itemCount] two-line rows with a
 /// varied title-width rhythm, wrapped in a [PregoShimmer].
-class PregoSkeletonList extends StatelessWidget {
-  const PregoSkeletonList({
-    super.key,
-    this.itemCount = 6,
-    this.padding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl, vertical: 10),
-    this.semanticLabel,
-  });
-
-  final int itemCount;
-
-  final EdgeInsetsGeometry padding;
+class const PregoSkeletonList({
+  super.key,
+  final int itemCount = 6,
+  final EdgeInsetsGeometry padding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl, vertical: 10),
 
   /// Announced to screen readers in place of the decorative rows.
-  final String? semanticLabel;
-
+  final String? semanticLabel,
+}) extends StatelessWidget {
   /// Title-bar width fractions cycled across rows; the variation keeps the
   /// placeholder from reading as a striped pattern.
   static const List<double> _titleWidths = [0.74, 0.51, 0.51, 0.83, 1.0, 0.51];

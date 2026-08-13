@@ -397,7 +397,7 @@ ControlMessage _decode(String frame) => ControlMessage.fromJson(jsonDecodeMap(fr
 
 String _encode(ControlMessage message) => jsonEncode(message.toJson());
 
-class _FakeControlChannelClient implements ControlChannelClient {
+class _FakeControlChannelClient() implements ControlChannelClient {
   final StreamController<String> _inbound = StreamController<String>.broadcast();
   final List<String> sentFrames = <String>[];
 
@@ -431,7 +431,7 @@ class _FakeControlChannelClient implements ControlChannelClient {
 
 /// The token-service tests wire a real dispatcher but never exercise the logout
 /// command, so its unregister delegate is a no-op stand-in.
-class _NoopUnregisterService implements ControlUnregisterService {
+class _NoopUnregisterService() implements ControlUnregisterService {
   @override
   Future<void> handleUnregisterAndExit() async {}
 

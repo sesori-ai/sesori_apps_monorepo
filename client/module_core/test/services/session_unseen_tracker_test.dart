@@ -7,7 +7,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
 
-class _MockConnectionService extends Mock implements ConnectionService {
+class _MockConnectionService() extends Mock implements ConnectionService {
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
 
   @override

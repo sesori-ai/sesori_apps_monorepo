@@ -131,8 +131,8 @@ _FakeSpawnedProcess _spawned({required int pid, required int port, required bool
   );
 }
 
-class _Harness {
-  _Harness() {
+class _Harness() {
+  this {
     intentStore = RuntimeStartIntentStore(store: store, fileName: _intentFile);
     spawn.onSpawn = () {
       final contents = store.files[_intentFile];
@@ -202,7 +202,7 @@ class _Harness {
   }
 }
 
-class _InMemoryHostJsonStore implements HostJsonStore {
+class _InMemoryHostJsonStore() implements HostJsonStore {
   final Map<String, String> files = <String, String>{};
 
   @override
@@ -241,7 +241,7 @@ class _InMemoryHostJsonStore implements HostJsonStore {
   }
 }
 
-class _SpawnPlan {
+class _SpawnPlan() {
   final List<Object> results = <Object>[];
   final List<int> spawnedPorts = <int>[];
   void Function()? onSpawn;
@@ -257,7 +257,7 @@ class _SpawnPlan {
   }
 }
 
-class _ProbePlan {
+class _ProbePlan() {
   final List<RuntimeHealthProbe> results = <RuntimeHealthProbe>[];
 
   Future<RuntimeHealthProbe> probe({required int port}) async {
@@ -268,29 +268,17 @@ class _ProbePlan {
   }
 }
 
-class _IntentRecord {
-  const _IntentRecord({
-    required this.ownerSessionId,
-    required this.openCodePid,
-    required this.openCodeStartMarker,
-    required this.openCodeExecutablePath,
-    required this.commandLine,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.status,
-  });
-
-  final String ownerSessionId;
-  final int openCodePid;
-  final String? openCodeStartMarker;
-  final String openCodeExecutablePath;
-  final String commandLine;
-  final int port;
-  final int bridgePid;
-  final String? bridgeStartMarker;
-  final String status;
-
+class const _IntentRecord({
+  required final String ownerSessionId,
+  required final int openCodePid,
+  required final String? openCodeStartMarker,
+  required final String openCodeExecutablePath,
+  required final String commandLine,
+  required final int port,
+  required final int bridgePid,
+  required final String? bridgeStartMarker,
+  required final String status,
+}) {
   _IntentRecord withStatus(String status) {
     return _IntentRecord(
       ownerSessionId: ownerSessionId,
@@ -306,9 +294,7 @@ class _IntentRecord {
   }
 }
 
-class _IntentRecordMapper implements RuntimeRecordMapper<_IntentRecord> {
-  const _IntentRecordMapper();
-
+class const _IntentRecordMapper() implements RuntimeRecordMapper<_IntentRecord> {
   @override
   Map<String, dynamic> toJson({required _IntentRecord record}) {
     return <String, dynamic>{
@@ -367,7 +353,7 @@ class _IntentRecordMapper implements RuntimeRecordMapper<_IntentRecord> {
   _IntentRecord markStopping({required _IntentRecord record}) => record.withStatus("stopping");
 }
 
-class _FakeHostProcessService implements HostProcessService {
+class _FakeHostProcessService() implements HostProcessService {
   final Map<int, List<ProcessIdentity?>> inspectResults = <int, List<ProcessIdentity?>>{};
   final List<String> signalRequests = <String>[];
 
@@ -414,7 +400,7 @@ class _FakeHostProcessService implements HostProcessService {
   }
 }
 
-class _FakeBridgeHostInfo implements BridgeHostInfo {
+class _FakeBridgeHostInfo() implements BridgeHostInfo {
   @override
   List<ProcessIdentity> get terminatedBridgeIdentities => const [];
 
@@ -436,7 +422,7 @@ class _FakeBridgeHostInfo implements BridgeHostInfo {
   Future<bool> isLiveBridgeProcess({required int pid, required String? startMarker}) async => false;
 }
 
-class _FakeServerClock implements ServerClock {
+class _FakeServerClock() implements ServerClock {
   @override
   Future<void> delay({required Duration duration}) async {}
 
@@ -444,14 +430,14 @@ class _FakeServerClock implements ServerClock {
   DateTime now() => DateTime.utc(2026, 5, 15, 12, 30);
 }
 
-class _FakeSpawnedProcess implements SpawnedProcess {
-  _FakeSpawnedProcess({required ProcessIdentity identity, required bool exitImmediately}) : _identity = identity {
+class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately})
+    implements SpawnedProcess {
+  this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);
     }
   }
 
-  final ProcessIdentity _identity;
   final Completer<int> _exitCodeCompleter = Completer<int>();
 
   @override

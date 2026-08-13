@@ -3,22 +3,14 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 
-class SessionArchivedReadOnlyException implements Exception {
-  final SessionArchivedRejection rejection;
-
-  SessionArchivedReadOnlyException({required this.rejection});
-
+class SessionArchivedReadOnlyException({required final SessionArchivedRejection rejection}) implements Exception {
   @override
   String toString() => "session ${rejection.sessionId} is archived and read-only";
 }
 
 /// The single archive-permanence rule in the bridge. Archiving is final, so an
 /// archived session can never be unarchived, prompted, or otherwise mutated.
-class ArchivedSessionValidator {
-  final SessionRepository _sessionRepository;
-
-  ArchivedSessionValidator({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
-
+class ArchivedSessionValidator({required final SessionRepository _sessionRepository}) {
   /// Throws [SessionArchivedReadOnlyException] when [sessionId] is archived.
   ///
   /// This is a store-only read, so it answers even when the session's plugin is

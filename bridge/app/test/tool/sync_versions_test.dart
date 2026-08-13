@@ -25,19 +25,14 @@ Future<void> _writeJsonFile({
   await File(path).writeAsString('$formatted\n');
 }
 
-class _FixtureApp {
-  _FixtureApp({required this.rootPath});
-
-  final String rootPath;
-
+class _FixtureApp({required final String rootPath}) {
   String get clientPubspecPath => p.join(rootPath, 'client', 'app', 'pubspec.yaml');
   String get bridgePubspecPath => p.join(rootPath, 'bridge', 'app', 'pubspec.yaml');
   String get bridgeVersionPath => p.join(rootPath, 'bridge', 'app', 'lib', 'src', 'version.dart');
   String get wrapperPackagePath => p.join(rootPath, 'bridge', 'app', 'npm', 'sesori-bridge', 'package.json');
 
-  List<String> get packagePaths => _platformPackages
-      .map((package) => p.join(rootPath, 'bridge', 'app', 'npm', package, 'package.json'))
-      .toList();
+  List<String> get packagePaths =>
+      _platformPackages.map((package) => p.join(rootPath, 'bridge', 'app', 'npm', package, 'package.json')).toList();
 }
 
 Future<_FixtureApp> _createFixtureApp({required String clientVersion, String? bridgeVersion}) async {
@@ -213,10 +208,10 @@ environment:
               '@sesori/bridge-win32-x64': '1.0.6',
               '@sesori/not-bridge': '4.5.6',
             },
-        'sesoriBridge': <String, dynamic>{
-          'releaseTag': 'v1.0.6',
-          'runtimeBundleSource': 'github-release-assets',
-        },
+            'sesoriBridge': <String, dynamic>{
+              'releaseTag': 'v1.0.6',
+              'runtimeBundleSource': 'github-release-assets',
+            },
           },
         );
         for (final packagePath in currentFixture.packagePaths) {
@@ -226,8 +221,8 @@ environment:
               'name': '@sesori/${p.basename(p.dirname(packagePath)).replaceFirst('sesori-bridge-', 'bridge-')}',
               'version': '1.0.6',
               'sesoriBridge': <String, dynamic>{
-              'releaseTag': 'v1.0.6',
-            },
+                'releaseTag': 'v1.0.6',
+              },
             },
           );
         }
@@ -245,7 +240,10 @@ environment:
         expect(bridgeVersion, equals("const String appVersion = '${testCase.bridgeVersion}';\n"));
         expect(clientPubspec, contains('version: ${testCase.clientVersion}'));
         expect(wrapperPackage['version'] as String, equals(testCase.bridgeVersion));
-        expect((wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('v${testCase.bridgeVersion}'));
+        expect(
+          (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
+          equals('v${testCase.bridgeVersion}'),
+        );
 
         final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
         expect(optionalDependencies['@sesori/bridge-darwin-arm64'], equals(testCase.bridgeVersion));

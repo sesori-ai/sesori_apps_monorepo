@@ -17,7 +17,7 @@ import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService;
+class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 void main() {
   late _MockProductAnalyticsService analytics;
@@ -1285,7 +1285,7 @@ Future<void> _waitFor(bool Function() predicate) async {
   throw StateError("condition was not reached");
 }
 
-class _FakePluginRepository implements PluginRepository {
+class _FakePluginRepository() implements PluginRepository {
   final Queue<Future<PluginManagementLoadResult>> _loads = Queue();
   final Queue<Future<PluginManagementMutationResult>> _mutations = Queue();
   final Queue<Future<PluginAuthenticationStartResult>> _authenticationStarts = Queue();
@@ -1349,10 +1349,8 @@ class _FakePluginRepository implements PluginRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeConnectionService implements ConnectionService {
-  _FakeConnectionService({required ConnectionStatus initialStatus}) : _statuses = BehaviorSubject.seeded(initialStatus);
-
-  final BehaviorSubject<ConnectionStatus> _statuses;
+class _FakeConnectionService({required ConnectionStatus initialStatus}) implements ConnectionService {
+  final BehaviorSubject<ConnectionStatus> _statuses = BehaviorSubject.seeded(initialStatus);
   final StreamController<SseEvent> _events = StreamController.broadcast();
   final StreamController<void> _stale = StreamController.broadcast();
 

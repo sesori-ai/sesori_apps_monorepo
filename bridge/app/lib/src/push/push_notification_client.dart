@@ -6,18 +6,11 @@ import "package:sesori_shared/sesori_shared.dart" show SendNotificationPayload;
 import "../auth/token_refresher.dart";
 import "push_send_exception.dart";
 
-class PushNotificationClient {
-  final String authBackendURL;
-  final TokenRefresher _tokenRefreshManager;
-  final http.Client _client;
-
-  PushNotificationClient({
-    required this.authBackendURL,
-    required TokenRefresher tokenRefreshManager,
-    required http.Client client,
-  }) : _tokenRefreshManager = tokenRefreshManager,
-       _client = client;
-
+class PushNotificationClient({
+  required final String authBackendURL,
+  required final TokenRefresher _tokenRefreshManager,
+  required final http.Client _client,
+}) {
   Future<void> sendNotification(SendNotificationPayload payload) async {
     final token = await _tokenRefreshManager.getAccessToken();
     final response = await _sendPost(payload, token);

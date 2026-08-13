@@ -4,18 +4,14 @@ import "../api/models/claude_backend_catalog_dto.dart";
 import "../models/claude_agent_selection.dart";
 import "../models/claude_effort_level.dart";
 
-final class ClaudeBackendCatalog {
-  const ClaudeBackendCatalog({required this.agents, required this.providers, required this.commands});
-
-  final List<PluginAgent> agents;
-  final PluginProvidersResult providers;
-  final List<PluginCommand> commands;
-}
+final class const ClaudeBackendCatalog({
+  required final List<PluginAgent> agents,
+  required final PluginProvidersResult providers,
+  required final List<PluginCommand> commands,
+});
 
 /// Maps Claude's backend catalog into the backend-neutral plugin contract.
-final class ClaudeBackendCatalogRepository {
-  const ClaudeBackendCatalogRepository();
-
+final class const ClaudeBackendCatalogRepository() {
   static const String providerId = "anthropic";
 
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
@@ -63,7 +59,7 @@ final class ClaudeBackendCatalogRepository {
     if (id == null || id.isEmpty) return null;
     final displayName = dto.displayName?.trim();
     final resolvedModel = dto.resolvedModel?.trim();
-    final variants = dto.supportsEffort == true
+    final variants = dto.supportsEffort ?? false
         ? [
             for (final raw in dto.supportedEffortLevels)
               if (ClaudeEffortLevel.tryParse(raw) case final level?) level.wireValue,
@@ -71,9 +67,9 @@ final class ClaudeBackendCatalogRepository {
         : const <String>[];
     return PluginModel(
       id: id,
-      name: displayName?.isNotEmpty == true
+      name: displayName?.isNotEmpty ?? false
           ? displayName!
-          : resolvedModel?.isNotEmpty == true
+          : resolvedModel?.isNotEmpty ?? false
           ? resolvedModel!
           : id,
       variants: variants,
@@ -90,8 +86,8 @@ final class ClaudeBackendCatalogRepository {
     final hint = dto.argumentHint?.trim();
     return PluginCommand(
       name: name,
-      description: description?.isNotEmpty == true ? description : null,
-      hints: [if (hint?.isNotEmpty == true) hint!],
+      description: description?.isNotEmpty ?? false ? description : null,
+      hints: [if (hint?.isNotEmpty ?? false) hint!],
       provider: null,
       source: PluginCommandSource.command,
     );

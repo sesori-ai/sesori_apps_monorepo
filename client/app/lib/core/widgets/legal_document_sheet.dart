@@ -38,9 +38,7 @@ Future<void> showLegalDocumentSheet(
   );
 }
 
-class _LegalDocumentBody extends StatelessWidget {
-  const _LegalDocumentBody();
-
+class const _LegalDocumentBody() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -69,11 +67,7 @@ class _LegalDocumentBody extends StatelessWidget {
   }
 }
 
-class _FailureView extends StatelessWidget {
-  const _FailureView({required this.reason});
-
-  final RemoteFailureReason reason;
-
+class const _FailureView({required final RemoteFailureReason reason}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

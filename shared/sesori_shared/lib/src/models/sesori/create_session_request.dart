@@ -10,7 +10,7 @@ part "create_session_request.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class CreateSessionRequest with _$CreateSessionRequest {
-  const factory CreateSessionRequest({
+  const factory({
     required String projectId,
     // COMPATIBILITY 2026-07-13 (v1.5.0): Old create requests omit pluginId and mean OpenCode. Remove default; require it.
     @Default(legacyMissingPluginId) String pluginId,
@@ -22,5 +22,5 @@ sealed class CreateSessionRequest with _$CreateSessionRequest {
     required bool dedicatedWorktree,
   }) = _CreateSessionRequest;
 
-  factory CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 }

@@ -486,8 +486,8 @@ const Map<String, dynamic> _initOk = {
 ///
 /// Tests can subscribe to [outgoing] to see what the client sent and respond
 /// on [serverSink].
-class _FakeWebSocket {
-  _FakeWebSocket() {
+class _FakeWebSocket() {
+  this {
     _clientToServer = StreamController<Object?>.broadcast();
     _serverToClient = StreamController<Object?>.broadcast();
     channel = _StubChannel(
@@ -504,15 +504,8 @@ class _FakeWebSocket {
   Sink<Object?> get serverSink => _SinkAdapter(_serverToClient);
 }
 
-class _StubChannel implements WebSocketChannel {
-  _StubChannel({required this.stream, required this.sink});
-
-  @override
-  final Stream<dynamic> stream;
-
-  @override
-  final WebSocketSink sink;
-
+class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
+    implements WebSocketChannel {
   @override
   int? get closeCode => null;
 
@@ -532,10 +525,7 @@ class _StubChannel implements WebSocketChannel {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SinkAdapter implements WebSocketSink {
-  _SinkAdapter(this._controller);
-  final StreamController<Object?> _controller;
-
+class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
   @override
   void add(Object? data) => _controller.add(data);
 

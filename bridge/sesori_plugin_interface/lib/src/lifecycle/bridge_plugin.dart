@@ -9,7 +9,7 @@ import "plugin_work_state.dart";
 /// [describe], [shutdown]). For simple plugins (direct CLI, remote server)
 /// mix in `SteadyPluginLifecycle` and the lifecycle surface reduces to a few
 /// lines.
-abstract class BridgePlugin {
+abstract class BridgePlugin() {
   /// The request surface the bridge routes traffic through.
   ///
   /// Must be the *same object* for the plugin's entire lifetime: the bridge

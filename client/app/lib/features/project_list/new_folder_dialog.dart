@@ -20,14 +20,12 @@ Future<String?> showNewFolderDialog({required BuildContext context}) {
 }
 
 @visibleForTesting
-class NewFolderDialog extends StatefulWidget {
-  const NewFolderDialog({super.key});
-
+class const NewFolderDialog({super.key}) extends StatefulWidget {
   @override
   State<NewFolderDialog> createState() => _NewFolderDialogState();
 }
 
-class _NewFolderDialogState extends State<NewFolderDialog> {
+class _NewFolderDialogState() extends State<NewFolderDialog> {
   final TextEditingController _nameController = TextEditingController();
 
   /// The name is one folder, not a route: a separator would put the folder

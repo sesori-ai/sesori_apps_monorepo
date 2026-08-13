@@ -1,23 +1,11 @@
-class CodexSessionRecord {
-  const CodexSessionRecord({
-    required this.id,
-    required this.rolloutPath,
-    required this.cwd,
-    required this.threadName,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.cliVersion,
-    required this.modelProvider,
-    required this.model,
-  });
-
-  final String id;
-  final String rolloutPath;
-  final String? cwd;
-  final String? threadName;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-  final String? cliVersion;
-  final String? modelProvider;
-  final String? model;
-}
+class const CodexSessionRecord({
+  required final String id,
+  required final String rolloutPath,
+  required final String? cwd,
+  required final String? threadName,
+  required final DateTime? createdAt,
+  required final DateTime? updatedAt,
+  required final String? cliVersion,
+  required final String? modelProvider,
+  required final String? model,
+});

@@ -4,18 +4,13 @@ import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_operation_dispatcher.dart";
 
-class SessionAbortService {
-  final SessionRepository _sessionRepository;
-  final SessionOperationDispatcher _dispatcher;
+class SessionAbortService({
+  required final SessionRepository _sessionRepository,
+  required final SessionOperationDispatcher _dispatcher,
+}) {
   final StreamController<String> _abortStartedSessionsController = StreamController<String>.broadcast(sync: true);
   final StreamController<String> _abortedSessionsController = StreamController<String>.broadcast(sync: true);
   final StreamController<String> _abortFailedSessionsController = StreamController<String>.broadcast(sync: true);
-
-  SessionAbortService({
-    required SessionRepository sessionRepository,
-    required SessionOperationDispatcher dispatcher,
-  }) : _sessionRepository = sessionRepository,
-       _dispatcher = dispatcher;
 
   Stream<String> get abortStartedSessions => _abortStartedSessionsController.stream;
   Stream<String> get abortedSessions => _abortedSessionsController.stream;

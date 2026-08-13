@@ -10,16 +10,10 @@ import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 /// exercise the "folder moved/deleted" flag) and [throwingPaths] for
 /// directories whose existence probe raises a [FileSystemException] (a
 /// permission or other IO error), which the repository treats as present.
-class FakeFilesystemApi implements FilesystemApi {
-  FakeFilesystemApi({
-    Set<String> missingPaths = const {},
-    Set<String> throwingPaths = const {},
-  }) : _missingPaths = missingPaths,
-       _throwingPaths = throwingPaths;
-
-  final Set<String> _missingPaths;
-  final Set<String> _throwingPaths;
-
+class FakeFilesystemApi({
+  final Set<String> _missingPaths = const {},
+  final Set<String> _throwingPaths = const {},
+}) implements FilesystemApi {
   @override
   bool directoryExists(String path) {
     if (_throwingPaths.contains(path)) {

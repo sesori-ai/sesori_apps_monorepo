@@ -176,19 +176,12 @@ void main() {
   });
 }
 
-class _Harness {
-  final PushSessionStateTracker tracker;
-  final CompletionNotifier notifier;
-  final CompletionPushListener listener;
-  final _FakePushDispatcher dispatcher;
-
-  _Harness({
-    required this.tracker,
-    required this.notifier,
-    required this.listener,
-    required this.dispatcher,
-  });
-
+class _Harness({
+  required final PushSessionStateTracker tracker,
+  required final CompletionNotifier notifier,
+  required final CompletionPushListener listener,
+  required final _FakePushDispatcher dispatcher,
+}) {
   void emitCompletion({required String rootSessionId}) {
     listener.handleSseEvent(
       SesoriSseEvent.sessionCreated(info: _session(id: rootSessionId)),
@@ -238,7 +231,7 @@ _Harness _newHarness() {
   );
 }
 
-class _FakePushDispatcher implements PushDispatcher {
+class _FakePushDispatcher() implements PushDispatcher {
   final List<String> dispatchedRootSessionIds = [];
   final List<SesoriSseEvent> immediateEvents = [];
   final List<String> completionTitles = [];

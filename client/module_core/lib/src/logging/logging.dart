@@ -8,7 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
 /// **Isolate note**: Dart isolates have separate memory spaces, so changing
 /// [logLevel] in one isolate does not affect others. Call [setLogLevel] at the
 /// entry point of any spawned isolate that needs a non-default level.
-enum LogLevel { trace, debug, info, warning, error, none }
+enum LogLevel() { trace, debug, info, warning, error, none }
 
 /// The active log level for this isolate.
 ///

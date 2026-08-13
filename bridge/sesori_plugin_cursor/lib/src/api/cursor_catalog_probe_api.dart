@@ -5,13 +5,10 @@ import "package:acp_plugin/acp_plugin.dart";
 import "models/cursor_available_models_dto.dart";
 
 /// Layer-1 ACP operations used by Cursor's isolated catalog-probe process.
-class CursorCatalogProbeApi {
-  CursorCatalogProbeApi({required AcpStdioClient client}) : _client = client;
-
+class CursorCatalogProbeApi({required final AcpStdioClient _client}) {
   static const int _maxPages = 50;
   static const String _listAvailableModelsMethod = "cursor/list_available_models";
 
-  final AcpStdioClient _client;
   AcpInitializeResult? _initializeResult;
   bool _disposed = false;
 

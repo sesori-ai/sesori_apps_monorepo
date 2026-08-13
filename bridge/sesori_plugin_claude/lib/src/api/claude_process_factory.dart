@@ -9,7 +9,7 @@ import "claude_launch_spec.dart";
 ///
 /// Kept narrow so tests can supply an in-memory fake without implementing the
 /// full [io.Process] surface.
-abstract class ClaudeProcessHandle {
+abstract class ClaudeProcessHandle() {
   Stream<List<int>> get stdout;
   Stream<List<int>> get stderr;
   io.IOSink get stdin;
@@ -21,29 +21,19 @@ abstract class ClaudeProcessHandle {
 /// [ClaudeStreamClient] so tests can substitute a fake process.
 typedef ClaudeProcessFactory = Future<ClaudeProcessHandle> Function(ClaudeLaunchSpec spec);
 
-sealed class ClaudeProcessSpawnEvent {
-  const ClaudeProcessSpawnEvent();
-}
+sealed class const ClaudeProcessSpawnEvent();
 
-final class ClaudeProcessSpawnSucceeded extends ClaudeProcessSpawnEvent {
-  const ClaudeProcessSpawnSucceeded();
-}
+final class const ClaudeProcessSpawnSucceeded() extends ClaudeProcessSpawnEvent;
 
-final class ClaudeProcessSpawnFailed extends ClaudeProcessSpawnEvent {
-  const ClaudeProcessSpawnFailed();
-}
+final class const ClaudeProcessSpawnFailed() extends ClaudeProcessSpawnEvent;
 
 /// Routes Claude children through the bridge host and reports binary spawn
 /// outcomes separately from per-session process exits.
-final class HostClaudeProcessFactory {
-  HostClaudeProcessFactory({
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) : _processes = processes,
-       _environment = Map.unmodifiable(environment);
-
-  final HostProcessService _processes;
-  final Map<String, String> _environment;
+final class HostClaudeProcessFactory({
+  required final HostProcessService _processes,
+  required Map<String, String> environment,
+}) {
+  final Map<String, String> _environment = Map.unmodifiable(environment);
   final StreamController<ClaudeProcessSpawnEvent> _events = StreamController.broadcast();
 
   Stream<ClaudeProcessSpawnEvent> get events => _events.stream;
@@ -68,16 +58,10 @@ final class HostClaudeProcessFactory {
   Future<void> dispose() => _events.close();
 }
 
-final class _HostClaudeProcessHandle implements ClaudeProcessHandle {
-  _HostClaudeProcessHandle({
-    required SpawnedProcess process,
-    required HostProcessService processes,
-  }) : _process = process,
-       _processes = processes;
-
-  final SpawnedProcess _process;
-  final HostProcessService _processes;
-
+final class _HostClaudeProcessHandle({
+  required final SpawnedProcess _process,
+  required final HostProcessService _processes,
+}) implements ClaudeProcessHandle {
   @override
   Stream<List<int>> get stdout => _process.stdout;
 
@@ -123,11 +107,7 @@ Future<ClaudeProcessHandle> defaultClaudeProcessFactory(ClaudeLaunchSpec spec) a
   return _RealClaudeProcess(process);
 }
 
-class _RealClaudeProcess implements ClaudeProcessHandle {
-  _RealClaudeProcess(this._process);
-
-  final io.Process _process;
-
+class _RealClaudeProcess(final io.Process _process) implements ClaudeProcessHandle {
   @override
   Stream<List<int>> get stdout => _process.stdout;
 

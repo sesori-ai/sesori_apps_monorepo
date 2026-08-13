@@ -4,7 +4,7 @@ part "command_info.freezed.dart";
 
 part "command_info.g.dart";
 
-enum CommandSource {
+enum CommandSource() {
   command,
   mcp,
   skill,
@@ -14,7 +14,7 @@ enum CommandSource {
 /// Represents an available slash command from `GET /command`.
 @Freezed(fromJson: true, toJson: true)
 sealed class CommandInfo with _$CommandInfo {
-  const factory CommandInfo({
+  const factory({
     required String name,
     required String? template,
     required List<String>? hints,
@@ -26,5 +26,5 @@ sealed class CommandInfo with _$CommandInfo {
     required bool? subtask,
   }) = _CommandInfo;
 
-  factory CommandInfo.fromJson(Map<String, dynamic> json) => _$CommandInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CommandInfoFromJson(json);
 }

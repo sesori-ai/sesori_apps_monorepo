@@ -13,10 +13,10 @@ class AnalyticsRepository {
   final AnalyticsApi _api;
   final Duration _deliveryDeadline;
 
-  AnalyticsRepository({required AnalyticsApi api}) : _api = api, _deliveryDeadline = _analyticsDeliveryDeadline;
+  new({required AnalyticsApi api}) : _api = api, _deliveryDeadline = _analyticsDeliveryDeadline;
 
   @visibleForTesting
-  AnalyticsRepository.withDeliveryDeadline({
+  new withDeliveryDeadline({
     required AnalyticsApi api,
     required Duration deliveryDeadline,
   }) : _api = api,

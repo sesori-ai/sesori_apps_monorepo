@@ -11,24 +11,15 @@ import "token.dart";
 import "token_refresh_exception.dart";
 import "token_refresher.dart";
 
-class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
-  final BehaviorSubject<String> _tokenSubject;
-  final String _authBackendUrl;
-  final Future<TokenData?> Function() _loadTokens;
-  final Future<void> Function(TokenData) _saveTokens;
-  final http.Client _client;
-
-  TokenManager({
-    required String initialToken,
-    required String authBackendUrl,
-    required Future<TokenData?> Function() loadTokens,
-    required Future<void> Function(TokenData) saveTokens,
-    http.Client? client,
-  }) : _tokenSubject = BehaviorSubject.seeded(initialToken),
-       _authBackendUrl = authBackendUrl,
-       _loadTokens = loadTokens,
-       _saveTokens = saveTokens,
-       _client = client ?? http.Client();
+class TokenManager({
+  required String initialToken,
+  required final String _authBackendUrl,
+  required final Future<TokenData?> Function() _loadTokens,
+  required final Future<void> Function(TokenData) _saveTokens,
+  http.Client? client,
+}) implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
+  final BehaviorSubject<String> _tokenSubject = BehaviorSubject.seeded(initialToken);
+  final http.Client _client = client ?? http.Client();
 
   @override
   String get accessToken => _tokenSubject.value;
@@ -47,7 +38,7 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
     if (forceRefresh) {
-      return _refreshAndPersist();
+      return await _refreshAndPersist();
     }
 
     final currentToken = _tokenSubject.value;
@@ -73,7 +64,7 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
       return currentToken;
     }
 
-    return _refreshAndPersist();
+    return await _refreshAndPersist();
   }
 
   Future<String>? _activeRefresh;

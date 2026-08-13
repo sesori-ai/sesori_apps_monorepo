@@ -5,9 +5,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _StubManifest extends RuntimeManifest {
-  const _StubManifest();
-
+class const _StubManifest() extends RuntimeManifest {
   @override
   String get runtimeId => "opencode";
 

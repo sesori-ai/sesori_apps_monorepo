@@ -6,7 +6,7 @@ part 'plugin_session.g.dart';
 
 @freezed
 sealed class PluginSession with _$PluginSession {
-  const factory PluginSession({
+  const factory({
     required String id,
     required String projectID,
     required String directory,
@@ -18,7 +18,7 @@ sealed class PluginSession with _$PluginSession {
 
 @freezed
 sealed class PluginSessionTime with _$PluginSessionTime {
-  const factory PluginSessionTime({
+  const factory({
     required int created,
     required int updated,
     required int? archived,

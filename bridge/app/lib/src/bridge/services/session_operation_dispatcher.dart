@@ -9,8 +9,7 @@ import "../repositories/session_repository.dart";
 typedef _FamilyKey = ({String pluginId, String rootSessionId});
 
 /// Admits session work in arrival order, then serializes only shared domains.
-class SessionOperationDispatcher {
-  final SessionRepository _sessionRepository;
+class SessionOperationDispatcher({required final SessionRepository _sessionRepository}) {
   final Map<_FamilyKey, _LaneToken> _familyLanes = {};
   final Map<String, _LaneToken> _pluginAdmissionLanes = {};
   final Map<String, Set<Future<void>>> _pluginSettlements = {};
@@ -21,8 +20,6 @@ class SessionOperationDispatcher {
   var _nextTicket = 0;
   var _accepting = true;
   var _disposed = false;
-
-  SessionOperationDispatcher({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
 
   Future<T> dispatch<T>({
     required String sessionId,
@@ -222,9 +219,6 @@ class SessionOperationDispatcher {
   }
 }
 
-class _LaneToken {
-  final int ticket;
+class _LaneToken({required final int ticket}) {
   final Completer<void> completion = Completer<void>();
-
-  _LaneToken({required this.ticket});
 }

@@ -18,19 +18,11 @@ import "open_code_ownership_record.dart";
 /// writes go through [PluginStatusController.trySet], so a degrade that races a
 /// monitor-emitted [PluginFailed] or a deliberate shutdown is dropped by the
 /// state machine.
-class OpenCodeRuntimeStatusReporter {
-  OpenCodeRuntimeStatusReporter({
-    required PluginStatusController status,
-    required ServerClock clock,
-    Duration degradedDebounce = const Duration(seconds: 5),
-  }) : _status = status,
-       _clock = clock,
-       _degradedDebounce = degradedDebounce;
-
-  final PluginStatusController _status;
-  final ServerClock _clock;
-  final Duration _degradedDebounce;
-
+class OpenCodeRuntimeStatusReporter({
+  required final PluginStatusController _status,
+  required final ServerClock _clock,
+  final Duration _degradedDebounce = const Duration(seconds: 5),
+}) {
   int _generation = 0;
   DateTime? _degradedSince;
   bool _disposed = false;
@@ -102,31 +94,15 @@ class OpenCodeRuntimeStatusReporter {
 /// a [PluginStatusController] fed by both the SSE transport (via
 /// [OpenCodeRuntimeStatusReporter]) and the exit monitor, plus an ordered,
 /// idempotent [shutdown].
-class OpenCodeBridgePlugin implements BridgePlugin {
-  OpenCodeBridgePlugin({
-    required this.api,
-    required OpenCodeRuntimeStatusReporter reporter,
-    required ManagedRuntimeMonitor<OpenCodeOwnershipRecord> monitor,
-    required ManagedProcessService<OpenCodeOwnershipRecord> service,
-    required OpenCodeOwnershipRecord? ownedRecord,
-    required this.port,
-    required this.serverUrl,
-  }) : _reporter = reporter,
-       _monitor = monitor,
-       _service = service,
-       _ownedRecord = ownedRecord;
-
-  @override
-  final OpenCodeManagedApi api;
-
-  final int port;
-  final String serverUrl;
-
-  final OpenCodeRuntimeStatusReporter _reporter;
-  final ManagedRuntimeMonitor<OpenCodeOwnershipRecord> _monitor;
-  final ManagedProcessService<OpenCodeOwnershipRecord> _service;
-  final OpenCodeOwnershipRecord? _ownedRecord;
-
+class OpenCodeBridgePlugin({
+  @override required final OpenCodeManagedApi api,
+  required final OpenCodeRuntimeStatusReporter _reporter,
+  required final ManagedRuntimeMonitor<OpenCodeOwnershipRecord> _monitor,
+  required final ManagedProcessService<OpenCodeOwnershipRecord> _service,
+  required final OpenCodeOwnershipRecord? _ownedRecord,
+  required final int port,
+  required final String serverUrl,
+}) implements BridgePlugin {
   Future<void>? _shutdown;
 
   PluginStatusController get _status => _reporter.status;

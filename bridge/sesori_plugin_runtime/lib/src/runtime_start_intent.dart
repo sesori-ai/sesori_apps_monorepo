@@ -21,7 +21,7 @@ part "runtime_start_intent.g.dart";
 // COMPATIBILITY 2026-06-12 (v1.0.9): Older bridges require the frozen ownership schema. Move intent state into that schema and remove the side-file model/store once those bridges are unsupported.
 @freezed
 sealed class RuntimeStartIntent with _$RuntimeStartIntent {
-  const factory RuntimeStartIntent({
+  const factory({
     /// Stable identifier of the bridge run that is about to spawn the runtime.
     required String ownerSessionId,
 
@@ -38,7 +38,7 @@ sealed class RuntimeStartIntent with _$RuntimeStartIntent {
     required DateTime recordedAt,
   }) = _RuntimeStartIntent;
 
-  factory RuntimeStartIntent.fromJson(Map<String, dynamic> json) => _$RuntimeStartIntentFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$RuntimeStartIntentFromJson(json);
 }
 
 /// Reads and writes the single in-flight [RuntimeStartIntent] to a bridge-private
@@ -52,14 +52,7 @@ sealed class RuntimeStartIntent with _$RuntimeStartIntent {
 /// the intent targets its own file, so there is nothing to serialize against,
 /// and nesting an `update()` inside the ownership store's locked critical
 /// section would deadlock.
-class RuntimeStartIntentStore {
-  RuntimeStartIntentStore({required HostJsonStore store, required String fileName})
-    : _store = store,
-      _fileName = fileName;
-
-  final HostJsonStore _store;
-  final String _fileName;
-
+class RuntimeStartIntentStore({required final HostJsonStore _store, required final String _fileName}) {
   /// Atomically writes [intent], replacing any previous in-flight intent.
   Future<void> write(RuntimeStartIntent intent) async {
     await _store.write(name: _fileName, contents: jsonEncode(intent.toJson()));

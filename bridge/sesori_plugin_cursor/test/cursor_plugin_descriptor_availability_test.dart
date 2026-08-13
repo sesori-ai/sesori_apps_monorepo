@@ -390,12 +390,7 @@ void main() {
   });
 }
 
-class _StartPluginHost implements PluginHost {
-  _StartPluginHost({required this.processes});
-
-  @override
-  final HostProcessService processes;
-
+class _StartPluginHost({@override required final HostProcessService processes}) implements PluginHost {
   @override
   PluginConfig get config => const PluginConfig(
     values: {
@@ -423,22 +418,14 @@ class _StartPluginHost implements PluginHost {
 /// A [HostProcessService] that either throws on [spawn] (to simulate ENOENT) or
 /// returns a single canned [_ProbeProcess]. Records the spawn arguments and any
 /// force-kill it is asked to deliver.
-class _ProbeProcessService implements HostProcessService {
-  _ProbeProcessService({
-    this.spawnError,
-    this.process,
-    List<_ProbeProcess>? processSequence,
-    List<Object>? spawnOutcomes,
-  }) : _processSequence = processSequence,
-       _spawnOutcomes = spawnOutcomes;
-
-  final Object? spawnError;
-  final _ProbeProcess? process;
-  final List<_ProbeProcess>? _processSequence;
-
+class _ProbeProcessService({
+  final Object? spawnError,
+  final _ProbeProcess? process,
+  final List<_ProbeProcess>? _processSequence,
+  final List<Object>? _spawnOutcomes,
+}) implements HostProcessService {
   /// Per-spawn outcomes, each either a [_ProbeProcess] to return or an error
   /// to throw — for probes that fall back from PATH to the managed runtime.
-  final List<Object>? _spawnOutcomes;
   int _nextOutcome = 0;
   int _nextProcess = 0;
   final List<String> spawnedExecutables = <String>[];
@@ -495,17 +482,11 @@ class _ProbeProcessService implements HostProcessService {
 
 /// A canned [SpawnedProcess] with a fixed stdout payload and a caller-supplied
 /// [exitCode] future (which may never complete, to simulate a hang).
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required this.pid, required List<int> stdoutBytes, required Future<int> exitCode})
-    : _stdoutBytes = stdoutBytes,
-      _exitCode = exitCode;
-
-  @override
-  final int pid;
-
-  final List<int> _stdoutBytes;
-  final Future<int> _exitCode;
-
+class _ProbeProcess({
+  @override required final int pid,
+  required final List<int> _stdoutBytes,
+  required final Future<int> _exitCode,
+}) implements SpawnedProcess {
   @override
   Future<int> get exitCode => _exitCode;
 
@@ -522,11 +503,7 @@ class _ProbeProcess implements SpawnedProcess {
   ProcessIdentity get identity => throw UnimplementedError();
 }
 
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.lines);
-
-  final List<String> lines;
-
+class _CapturingStdout(final List<String> lines) implements Stdout {
   @override
   void writeln([Object? object = ""]) {
     lines.add(object.toString());

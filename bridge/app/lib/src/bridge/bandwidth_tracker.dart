@@ -7,12 +7,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 /// Subscribes to [bytesSent] on construction and starts a periodic timer that
 /// logs rolling totals (last 1 m / 10 m / 1 h) every 60 seconds. Call
 /// [dispose] to cancel the timer and the stream subscription.
-class BandwidthTracker {
+class BandwidthTracker({required Stream<int> bytesSent}) {
   final List<_Record> _records = [];
   late final Timer _timer;
   late final StreamSubscription<int> _subscription;
 
-  BandwidthTracker({required Stream<int> bytesSent}) {
+  this {
     _subscription = bytesSent.listen((bytes) {
       _records.add(_Record(DateTime.now(), bytes));
     });
@@ -63,8 +63,4 @@ class BandwidthTracker {
   }
 }
 
-class _Record {
-  final DateTime time;
-  final int bytes;
-  const _Record(this.time, this.bytes);
-}
+class const _Record(final DateTime time, final int bytes);

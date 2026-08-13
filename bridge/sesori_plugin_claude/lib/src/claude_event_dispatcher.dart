@@ -6,15 +6,10 @@ import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
 
 /// Dispatches Claude stream-json frames as bridge-neutral live events.
-final class ClaudeEventDispatcher {
-  ClaudeEventDispatcher({
-    required ClaudeContentMapper content,
-    required ClaudeToolTracker tools,
-  }) : _content = content,
-       _tools = tools;
-
-  final ClaudeContentMapper _content;
-  final ClaudeToolTracker _tools;
+final class ClaudeEventDispatcher({
+  required final ClaudeContentMapper _content,
+  required final ClaudeToolTracker _tools,
+}) {
   final Map<String, String> _messageIds = {};
   final Map<String, String> _announcedMessageIds = {};
   final Map<String, String> _models = {};
@@ -434,7 +429,8 @@ String? _realModel({required String? model}) {
 }
 
 bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
-  (block) => block is ClaudeMappedTextContentBlock &&
+  (block) =>
+      block is ClaudeMappedTextContentBlock &&
       (block.text.contains("<local-command-stdout>") ||
           block.text.contains("<local-command-caveat>") ||
           block.text.contains("<command-name>")),

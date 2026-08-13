@@ -158,7 +158,7 @@ void main() {
         "authMethods": <Object?>[],
       });
       await respond("cursor/list_available_models", const {"models": <Object?>[]});
-      return future;
+      return await future;
     }
 
     test("id is cursor", () {
@@ -1396,7 +1396,7 @@ void main() {
   });
 }
 
-class _FakeCursorSessionCleanupService implements CursorSessionCleanupService {
+class _FakeCursorSessionCleanupService() implements CursorSessionCleanupService {
   final List<String> deletedSessionIds = [];
 
   @override

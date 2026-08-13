@@ -73,14 +73,11 @@ void main() {
   });
 }
 
-class _RecordingSessionEventDispatcher implements SessionEventDispatcher {
-  final Future<void> _firstGate;
+class _RecordingSessionEventDispatcher({required final Future<void> _firstGate}) implements SessionEventDispatcher {
   final List<SourcedBridgeEvent> captured = [];
   final List<Future<void>> dispatched = [];
   final List<bool> allowDuringStopValues = [];
   final List<Completer<void>?> terminalHandoffConsumptions = [];
-
-  _RecordingSessionEventDispatcher({required Future<void> firstGate}) : _firstGate = firstGate;
 
   @override
   SourcedBridgeEvent capturePluginEvent({

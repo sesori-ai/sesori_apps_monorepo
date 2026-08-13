@@ -6,7 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/markdown_styles.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockUrlLauncher extends Mock implements UrlLauncher;
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 void main() {
   final prego = PregoDesignSystem.light;

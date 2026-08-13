@@ -2227,10 +2227,10 @@ void main() {
           agent: null,
           model: null,
         ),
-        () async => repository.getSessionMessages(sessionId: "gone"),
+        () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),
         () => repository.abortSession(sessionId: "gone"),
-        () async => repository.getChildSessions(sessionId: "gone"),
+        () async => await repository.getChildSessions(sessionId: "gone"),
       ];
       for (final operation in guardedOperations) {
         await expectLater(
@@ -2453,9 +2453,8 @@ void main() {
   });
 }
 
-class _GenerationReplacingRuntime extends TestPluginRuntime {
-  _GenerationReplacingRuntime({required BridgePluginApi plugin})
-    : super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
+class _GenerationReplacingRuntime({required BridgePluginApi plugin}) extends TestPluginRuntime {
+  this : super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
 
   final Completer<void> observationCollected = Completer<void>();
   final Completer<void> _replacement = Completer<void>();
@@ -2478,17 +2477,15 @@ class _GenerationReplacingRuntime extends TestPluginRuntime {
   }
 }
 
-class _CapabilityProbeFailingRuntime extends TestPluginRuntime {
-  _CapabilityProbeFailingRuntime({
-    required Iterable<BridgePluginApi> plugins,
-    required String failingPluginId,
-  }) : _failingPluginId = failingPluginId,
-       super(
-         plugins: {for (final plugin in plugins) plugin.id: plugin},
-         eligiblePluginIds: null,
-       );
-
-  final String _failingPluginId;
+class _CapabilityProbeFailingRuntime({
+  required Iterable<BridgePluginApi> plugins,
+  required final String _failingPluginId,
+}) extends TestPluginRuntime {
+  this
+    : super(
+        plugins: {for (final plugin in plugins) plugin.id: plugin},
+        eligiblePluginIds: null,
+      );
 
   @override
   Future<T?> useIfActive<T>({
@@ -2507,7 +2504,7 @@ class _CapabilityProbeFailingRuntime extends TestPluginRuntime {
   }
 }
 
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
@@ -2664,7 +2661,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakePersistedCleanupPlugin extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
+class _FakePersistedCleanupPlugin() extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
   final List<String> persistedDeleteCalls = [];
 
   @override
@@ -2673,13 +2670,10 @@ class _FakePersistedCleanupPlugin extends _FakeBridgePlugin implements Persisted
   }
 }
 
-class _CountingSessionDao implements SessionDao {
-  final Set<String> tombstones;
-  final Completer<void>? readBlock;
+class _CountingSessionDao({required final Set<String> tombstones, required final Completer<void>? readBlock})
+    implements SessionDao {
   int bulkReadCount = 0;
   int failuresRemaining = 0;
-
-  _CountingSessionDao({required this.tombstones, required this.readBlock});
 
   @override
   Future<Set<String>> getTombstonedSessionIds({required String pluginId}) async {
@@ -2728,8 +2722,8 @@ class _CountingSessionDao implements SessionDao {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _BlockingSnapshotProjectsDao extends ProjectsDao {
-  _BlockingSnapshotProjectsDao({required AppDatabase database}) : super(database);
+class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
 
   final Completer<void> snapshotTaken = Completer<void>();
   final Completer<void> releaseSnapshot = Completer<void>();
@@ -2749,13 +2743,10 @@ class _BlockingSnapshotProjectsDao extends ProjectsDao {
 /// [BridgeDerivedProjectsPluginApi.listAllSessions]. `id` is "codex" so the
 /// repository's stored-attribution lookup
 /// (`getSessionProjectPaths(pluginId: ...)`) matches the seeded session rows.
-class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
-  _FakeDerivedPlugin({required this.launchDirectory, required this.allSessions});
-
-  @override
-  final String launchDirectory;
-
-  List<PluginSession> allSessions;
+class _FakeDerivedPlugin({
+  @override required final String launchDirectory,
+  required var List<PluginSession> allSessions,
+}) implements BridgeDerivedProjectsPluginApi {
   String? lastRenameSessionId;
   List<PluginSession> childSessions = const [];
   Object? getChildSessionsError;

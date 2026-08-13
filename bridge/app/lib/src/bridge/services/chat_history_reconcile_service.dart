@@ -7,16 +7,10 @@ import "chat_history_service.dart";
 ///
 /// It reads session identity from the main database but mutates only through
 /// [ChatHistoryService], which stays the single writer of the store.
-class ChatHistoryReconcileService {
-  ChatHistoryReconcileService({
-    required SessionRepository sessionRepository,
-    required ChatHistoryService chatHistoryService,
-  }) : _sessionRepository = sessionRepository,
-       _chatHistoryService = chatHistoryService;
-
-  final SessionRepository _sessionRepository;
-  final ChatHistoryService _chatHistoryService;
-
+class ChatHistoryReconcileService({
+  required final SessionRepository _sessionRepository,
+  required final ChatHistoryService _chatHistoryService,
+}) {
   Future<void> reconcile() async {
     try {
       await _reconcile();

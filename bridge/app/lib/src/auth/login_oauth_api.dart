@@ -10,21 +10,12 @@ Uri _buildUri({required String base, required String path}) {
   return Uri.parse("$b/$path");
 }
 
-class LoginOAuthApi {
-  final String authBackendUrl;
-  final http.Client _client;
-  final AuthClientType _clientType;
-  final DeviceInfo _device;
-
-  LoginOAuthApi({
-    required this.authBackendUrl,
-    required http.Client client,
-    required AuthClientType clientType,
-    required DeviceInfo device,
-  }) : _client = client,
-       _clientType = clientType,
-       _device = device;
-
+class LoginOAuthApi({
+  required final String authBackendUrl,
+  required final http.Client _client,
+  required final AuthClientType _clientType,
+  required final DeviceInfo _device,
+}) {
   Future<AuthInitResponse> initOAuthSession({
     required OAuthProvider provider,
     required String sessionToken,

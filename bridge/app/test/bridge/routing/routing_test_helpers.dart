@@ -94,15 +94,13 @@ RelayRequest makeRequest(
   String path, {
   Map<String, String> headers = const {},
   String? body,
-}) =>
-    RelayMessage.request(
-          id: "test-id",
-          method: method,
-          path: path,
-          headers: headers,
-          body: body,
-        )
-        as RelayRequest;
+}) => RelayMessage.request(
+  id: "test-id",
+  method: method,
+  path: path,
+  headers: headers,
+  body: body,
+) as RelayRequest;
 
 extension RequestHandlerTestMatching on RequestHandlerBase {
   bool canHandle(RelayRequest request) {
@@ -120,7 +118,7 @@ extension RequestHandlerTestMatching on RequestHandlerBase {
 }
 
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
-class FakeBridgePlugin implements NativeProjectsPluginApi {
+class FakeBridgePlugin() implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   // ── Configurable return values ───────────────────────────────────────────
@@ -484,7 +482,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 }
 
 /// Hand-written fake [SessionDao] for testing.
-class FakeSessionDao {
+class FakeSessionDao() {
   final Map<String, SessionDto> _sessions = {};
 
   /// Set up a session in the fake database.
@@ -568,7 +566,7 @@ class FakeSessionDao {
 }
 
 /// Hand-written fake [MetadataService] for testing.
-class FakeMetadataService implements MetadataService {
+class FakeMetadataService() implements MetadataService {
   bridge_metadata.SessionMetadata? generateResult;
   String? lastGenerateMessage;
 
@@ -579,11 +577,9 @@ class FakeMetadataService implements MetadataService {
   }
 }
 
-class FakePullRequestRepository implements PullRequestRepository {
+class FakePullRequestRepository() implements PullRequestRepository {
   final Map<String, List<PullRequestDto>> _prsBySessionId = <String, List<PullRequestDto>>{};
   final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
-
-  FakePullRequestRepository();
 
   void setPr({required String sessionId, required PullRequestDto pullRequest}) {
     _prsBySessionId.putIfAbsent(sessionId, () => <PullRequestDto>[]).add(pullRequest);
@@ -665,33 +661,28 @@ class FakePullRequestRepository implements PullRequestRepository {
   }) async => const <String>{};
 }
 
-class FakePrSyncService extends PrSyncService {
+class FakePrSyncService({
+  final Duration? delay,
+  final Object? refreshError,
+  final PrRefreshOutcome refreshOutcome = PrRefreshOutcome.completed,
+  final List<Duration> identityVerificationDelays = const <Duration>[],
+  final FutureOr<void> Function()? refreshAction,
+  VerifiedGithubLogin? verifiedGithubLogin,
+  PrSourceRepository? prSource,
+  PullRequestRepository? pullRequestRepository,
+  SessionRepository? sessionRepository,
+}) extends PrSyncService {
   final List<({Set<String> projectIds, PrRefreshPolicy refreshPolicy})> calls = [];
-  final Duration? delay;
-  final Object? refreshError;
-  final PrRefreshOutcome refreshOutcome;
-  final List<Duration> identityVerificationDelays;
-  final FutureOr<void> Function()? refreshAction;
-  VerifiedGithubLogin? verifiedGithubLogin;
+  VerifiedGithubLogin? verifiedGithubLogin = verifiedGithubLogin ?? VerifiedGithubLogin.tryParse(rawLogin: "octocat");
   int identityVerificationCallCount = 0;
 
-  FakePrSyncService({
-    this.delay,
-    this.refreshError,
-    this.refreshOutcome = PrRefreshOutcome.completed,
-    this.identityVerificationDelays = const <Duration>[],
-    this.refreshAction,
-    VerifiedGithubLogin? verifiedGithubLogin,
-    PrSourceRepository? prSource,
-    PullRequestRepository? pullRequestRepository,
-    SessionRepository? sessionRepository,
-  }) : verifiedGithubLogin = verifiedGithubLogin ?? VerifiedGithubLogin.tryParse(rawLogin: "octocat"),
-       super(
-         prSource: prSource ?? _AlwaysReadyPrSource(),
-         pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
-         sessionRepository: sessionRepository ?? _NoopSessionRepository(),
-         clock: const Clock(),
-       );
+  this
+    : super(
+        prSource: prSource ?? _AlwaysReadyPrSource(),
+        pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
+        sessionRepository: sessionRepository ?? _NoopSessionRepository(),
+        clock: const Clock(),
+      );
 
   @override
   Future<PrRefreshOutcome> triggerRefresh({
@@ -723,7 +714,7 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
-class _AlwaysReadyPrSource implements PrSourceRepository {
+class _AlwaysReadyPrSource() implements PrSourceRepository {
   @override
   Future<bool> isGithubCliAvailable() async => true;
   @override
@@ -748,7 +739,7 @@ class _AlwaysReadyPrSource implements PrSourceRepository {
   );
 }
 
-class _NoopPullRequestRepository implements PullRequestRepository {
+class _NoopPullRequestRepository() implements PullRequestRepository {
   @override
   Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
@@ -828,10 +819,9 @@ Future<void> recordSessionBinding({
   );
 }
 
-class _NoopSessionRepository implements SessionRepository {
+class _NoopSessionRepository() implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
-
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
@@ -1085,10 +1075,14 @@ class _NoopSessionRepository implements SessionRepository {
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
 /// and [FakeSessionDao], so handler tests can configure plugin/DAO behaviour
 /// without needing real implementations.
-class FakeSessionRepository implements SessionRepository {
+class FakeSessionRepository({
+  required final FakeBridgePlugin _plugin,
+  FakeSessionDao? sessionDao,
+  FakePullRequestRepository? pullRequestRepository,
+  final AppDatabase? _persistenceDatabase,
+}) implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
-
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
@@ -1099,26 +1093,14 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Future<void> dispose() async {}
 
-  final FakeBridgePlugin _plugin;
-  final FakeSessionDao _sessionDao;
-  final FakePullRequestRepository _pullRequestRepository;
-  final AppDatabase? _persistenceDatabase;
+  final FakeSessionDao _sessionDao = sessionDao ?? FakeSessionDao();
+  final FakePullRequestRepository _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository();
   int getSessionsCallCount = 0;
   int enrichSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   VerifiedGithubLogin? lastVerifiedGithubLogin;
   String? projectPathResult;
   Object? publicationError;
-
-  FakeSessionRepository({
-    required FakeBridgePlugin plugin,
-    FakeSessionDao? sessionDao,
-    FakePullRequestRepository? pullRequestRepository,
-    AppDatabase? persistenceDatabase,
-  }) : _plugin = plugin,
-       _sessionDao = sessionDao ?? FakeSessionDao(),
-       _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository(),
-       _persistenceDatabase = persistenceDatabase;
 
   @override
   Future<SessionFamilyScope> resolveSessionFamily({
@@ -1287,7 +1269,7 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async {
-    return enrichSession(
+    return await enrichSession(
       session: pluginSession.toSharedSession(pluginId: pluginId),
       verifiedGithubLogin: null,
     );
@@ -1416,7 +1398,7 @@ class FakeSessionRepository implements SessionRepository {
     required Session observed,
     required bool updateCatalogTitle,
     required int projectionUpdatedAt,
-  }) async => getStoredSessionByBackendId(pluginId: pluginId, backendSessionId: observed.id);
+  }) async => await getStoredSessionByBackendId(pluginId: pluginId, backendSessionId: observed.id);
 
   @override
   Future<StoredSession?> insertObservedChild({

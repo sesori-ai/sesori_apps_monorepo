@@ -4,17 +4,12 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../bridge/services/session_event_dispatcher.dart";
 
-class SessionDeletionListener {
-  final Stream<Session> _source;
-  final SessionEventDispatcher _dispatcher;
+class SessionDeletionListener({
+  required final Stream<Session> _source,
+  required final SessionEventDispatcher _dispatcher,
+}) {
   StreamSubscription<Session>? _subscription;
   bool _disposed = false;
-
-  SessionDeletionListener({
-    required Stream<Session> source,
-    required SessionEventDispatcher dispatcher,
-  }) : _source = source,
-       _dispatcher = dispatcher;
 
   void start() {
     if (_subscription != null || _disposed) return;

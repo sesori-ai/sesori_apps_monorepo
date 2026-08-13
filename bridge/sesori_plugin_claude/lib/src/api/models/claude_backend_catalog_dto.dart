@@ -9,28 +9,28 @@ part "claude_backend_catalog_dto.g.dart";
 /// and Claude's first-party agents are outside this plugin's product contract.
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeBackendCatalogDto with _$ClaudeBackendCatalogDto {
-  const factory ClaudeBackendCatalogDto({
+  const factory({
     @JsonKey(fromJson: _commandsOrEmpty) required List<ClaudeCommandDto> commands,
     @JsonKey(fromJson: _modelsOrEmpty) required List<ClaudeModelDto> models,
   }) = _ClaudeBackendCatalogDto;
 
-  factory ClaudeBackendCatalogDto.fromJson(Map<String, dynamic> json) => _$ClaudeBackendCatalogDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeBackendCatalogDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeCommandDto with _$ClaudeCommandDto {
-  const factory ClaudeCommandDto({
+  const factory({
     @JsonKey(fromJson: _stringOrNull) required String? name,
     @JsonKey(fromJson: _stringOrNull) required String? description,
     @JsonKey(fromJson: _stringOrNull) required String? argumentHint,
   }) = _ClaudeCommandDto;
 
-  factory ClaudeCommandDto.fromJson(Map<String, dynamic> json) => _$ClaudeCommandDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeCommandDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeModelDto with _$ClaudeModelDto {
-  const factory ClaudeModelDto({
+  const factory({
     @JsonKey(fromJson: _stringOrNull) required String? value,
     @JsonKey(fromJson: _stringOrNull) required String? resolvedModel,
     @JsonKey(fromJson: _stringOrNull) required String? displayName,
@@ -38,7 +38,7 @@ sealed class ClaudeModelDto with _$ClaudeModelDto {
     @JsonKey(fromJson: _stringsOrEmpty) required List<String> supportedEffortLevels,
   }) = _ClaudeModelDto;
 
-  factory ClaudeModelDto.fromJson(Map<String, dynamic> json) => _$ClaudeModelDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeModelDtoFromJson(json);
 }
 
 List<ClaudeCommandDto> _commandsOrEmpty(Object? value) => value is List

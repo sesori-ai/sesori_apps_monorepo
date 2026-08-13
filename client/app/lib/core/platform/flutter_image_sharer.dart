@@ -8,11 +8,7 @@ import "package:share_plus/share_plus.dart";
 import "share_plus_client.dart";
 
 @LazySingleton(as: ImageSharer)
-class FlutterImageSharer implements ImageSharer {
-  final SharePlusClient _sharePlusClient;
-
-  FlutterImageSharer({required SharePlusClient sharePlusClient}) : _sharePlusClient = sharePlusClient;
-
+class FlutterImageSharer({required final SharePlusClient _sharePlusClient}) implements ImageSharer {
   @override
   Future<void> shareImage({
     required Uint8List bytes,

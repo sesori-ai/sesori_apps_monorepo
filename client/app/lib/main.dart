@@ -255,15 +255,14 @@ bool get _supportsFirebaseCrashlytics {
   };
 }
 
-class SesoriApp extends StatelessWidget {
-  const SesoriApp({required this.initialAppearance, required this.initialChatInputMode, super.key});
-
+class const SesoriApp({
   /// The persisted appearance, read before the first frame.
-  final AppearanceMode initialAppearance;
+  required final AppearanceMode initialAppearance,
 
   /// The persisted chat input preference, read alongside the appearance.
-  final ChatInputMode initialChatInputMode;
-
+  required final ChatInputMode initialChatInputMode,
+  super.key,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Above the router so the whole app — including full-screen modal routes —
@@ -288,9 +287,7 @@ class SesoriApp extends StatelessWidget {
   }
 }
 
-class _SesoriAppShell extends StatelessWidget {
-  const _SesoriAppShell();
-
+class const _SesoriAppShell() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeMode = context.watch<AppearanceCubit>().state.themeMode;

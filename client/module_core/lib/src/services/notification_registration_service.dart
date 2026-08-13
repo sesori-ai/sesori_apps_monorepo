@@ -8,11 +8,11 @@ import "../platform/push_messaging_source.dart";
 import "../repositories/notification_repository.dart";
 
 @lazySingleton
-class NotificationRegistrationService {
-  final NotificationRepository _repository;
-  final AuthSession _authSession;
-  final PushMessagingSource _pushMessagingSource;
-
+class NotificationRegistrationService({
+  required final NotificationRepository _repository,
+  required final AuthSession _authSession,
+  required final PushMessagingSource _pushMessagingSource,
+}) {
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<String>? _tokenRefreshSubscription;
   String? _currentRegisteredToken;
@@ -23,14 +23,6 @@ class NotificationRegistrationService {
   bool _unauthenticatedObservedWhileSuspended = false;
   bool _started = false;
   bool _disposed = false;
-
-  NotificationRegistrationService({
-    required NotificationRepository repository,
-    required AuthSession authSession,
-    required PushMessagingSource pushMessagingSource,
-  }) : _repository = repository,
-       _authSession = authSession,
-       _pushMessagingSource = pushMessagingSource;
 
   Future<void> start() async {
     if (_disposed) {

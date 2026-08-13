@@ -7,14 +7,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../platform/secure_storage.dart";
 
 @lazySingleton
-class OAuthStorageService {
+class OAuthStorageService(final SecureStorage _storage) {
   static const _pkceVerifierKey = "pkce_verifier";
   static const _oauthProviderKey = "oauth_provider";
   static const _oauthSessionTokenKey = "oauth_session_token";
   static const _oauthSessionExpiryKey = "oauth_session_expiry";
-  final SecureStorage _storage;
-
-  OAuthStorageService(SecureStorage storage) : _storage = storage;
 
   Future<void> saveAuthProviderAndPkceVerifier({required String codeVerifier, required AuthProvider provider}) async {
     try {

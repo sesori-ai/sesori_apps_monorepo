@@ -2317,12 +2317,7 @@ PluginLifecycleService _commandService({
   );
 }
 
-class _FakePluginApi extends BridgeDerivedProjectsPluginApi {
-  _FakePluginApi({required this.id});
-
-  @override
-  final String id;
-
+class _FakePluginApi({@override required final String id}) extends BridgeDerivedProjectsPluginApi {
   @override
   Stream<BridgeSseEvent> get events => const Stream.empty();
 
@@ -2339,12 +2334,12 @@ class _FakePluginApi extends BridgeDerivedProjectsPluginApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _IdleLifecycleRepository implements PluginLifecycleRepository {
-  _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeState.active})
-    : _current = [_snapshot(state: initialState, workState: PluginWorkState.unknown, leaseCount: 0)];
-
+class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeState.active})
+    implements PluginLifecycleRepository {
   final StreamController<List<PluginLifecycleSnapshot>> _snapshots = StreamController.broadcast(sync: true);
-  List<PluginLifecycleSnapshot> _current;
+  List<PluginLifecycleSnapshot> _current = [
+    _snapshot(state: initialState, workState: PluginWorkState.unknown, leaseCount: 0),
+  ];
   int stopCalls = 0;
 
   @override
@@ -2423,7 +2418,7 @@ class _IdleLifecycleRepository implements PluginLifecycleRepository {
   }
 }
 
-class _ConflictingDisableLifecycleRepository extends _IdleLifecycleRepository {
+class _ConflictingDisableLifecycleRepository() extends _IdleLifecycleRepository {
   @override
   Future<PluginRuntimeCommandResult> prepareDisable({
     required String pluginId,
@@ -2447,7 +2442,7 @@ class _ConflictingDisableLifecycleRepository extends _IdleLifecycleRepository {
   }
 }
 
-class _CommitFailingDisableLifecycleRepository extends _IdleLifecycleRepository {
+class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepository {
   int rollbackCalls = 0;
 
   @override
@@ -2492,16 +2487,11 @@ class _CommitFailingDisableLifecycleRepository extends _IdleLifecycleRepository 
   }
 }
 
-class _CommandLifecycleRepository implements PluginLifecycleRepository {
-  _CommandLifecycleRepository({
-    required this.inspectionResult,
-    required this.inspectionGate,
-    required this.startFailureMessage,
-  });
-
-  PluginSetupStatus inspectionResult;
-  final Completer<void>? inspectionGate;
-  String? startFailureMessage;
+class _CommandLifecycleRepository({
+  required var PluginSetupStatus inspectionResult,
+  required final Completer<void>? inspectionGate,
+  required var String? startFailureMessage,
+}) implements PluginLifecycleRepository {
   final StreamController<List<PluginLifecycleSnapshot>> _snapshots = StreamController.broadcast(sync: true);
   PluginLifecycleSnapshot _current = const PluginLifecycleSnapshot(
     pluginId: "one",
@@ -2618,7 +2608,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
     required PluginStopIntent intent,
   }) async {
     restartCalls++;
-    return start(pluginId: pluginId);
+    return await start(pluginId: pluginId);
   }
 
   @override
@@ -2694,10 +2684,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _MutableBridgeSettingsRepository implements BridgeSettingsRepository {
-  _MutableBridgeSettingsRepository({required this.settings});
-
-  BridgeSettings settings;
+class _MutableBridgeSettingsRepository({required var BridgeSettings settings}) implements BridgeSettingsRepository {
   Completer<void>? saveGate;
   Object? saveError;
   int loadCalls = 0;
@@ -2729,7 +2716,7 @@ class _MutableBridgeSettingsRepository implements BridgeSettingsRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ControllablePluginIdleTimerScheduler implements PluginIdleTimerScheduler {
+class _ControllablePluginIdleTimerScheduler() implements PluginIdleTimerScheduler {
   final List<_ControllablePluginIdleTimer> timers = [];
 
   @override
@@ -2740,11 +2727,8 @@ class _ControllablePluginIdleTimerScheduler implements PluginIdleTimerScheduler 
   }
 }
 
-class _ControllablePluginIdleTimer implements Timer {
-  _ControllablePluginIdleTimer({required this.duration, required void Function() onElapsed}) : _onElapsed = onElapsed;
-
-  final Duration duration;
-  final void Function() _onElapsed;
+class _ControllablePluginIdleTimer({required final Duration duration, required final void Function() _onElapsed})
+    implements Timer {
   bool _isActive = true;
 
   void elapse() {

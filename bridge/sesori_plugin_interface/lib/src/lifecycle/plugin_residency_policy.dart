@@ -1,5 +1,5 @@
 /// Whether an activated plugin may be suspended after confirmed idle time.
-enum PluginResidencyPolicy {
+enum PluginResidencyPolicy() {
   /// Apply the bridge's configured idle timeout.
   transient,
 

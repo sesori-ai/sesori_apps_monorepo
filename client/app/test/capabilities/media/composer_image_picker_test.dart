@@ -7,7 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
 
-class MockImagePicker extends Mock implements ImagePicker;
+class MockImagePicker() extends Mock implements ImagePicker;
 
 void main() {
   late MockImagePicker imagePicker;

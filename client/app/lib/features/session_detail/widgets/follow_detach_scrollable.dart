@@ -21,23 +21,17 @@ import "scroll_follow_tracker.dart";
 /// [child] is expected to be a scrollable configured with
 /// `tracker.scrollController`. The widget does not create or own the
 /// scroll controller — it only wires gesture intent.
-class FollowDetachScrollable extends StatefulWidget {
-  final ScrollFollowTracker tracker;
-  final Widget child;
-  final WidgetBuilder? detachedOverlayBuilder;
-
-  const FollowDetachScrollable({
-    super.key,
-    required this.tracker,
-    required this.child,
-    required this.detachedOverlayBuilder,
-  });
-
+class const FollowDetachScrollable({
+  super.key,
+  required final ScrollFollowTracker tracker,
+  required final Widget child,
+  required final WidgetBuilder? detachedOverlayBuilder,
+}) extends StatefulWidget {
   @override
   State<FollowDetachScrollable> createState() => _FollowDetachScrollableState();
 }
 
-class _FollowDetachScrollableState extends State<FollowDetachScrollable> {
+class _FollowDetachScrollableState() extends State<FollowDetachScrollable> {
   @override
   void initState() {
     super.initState();
@@ -73,8 +67,7 @@ class _FollowDetachScrollableState extends State<FollowDetachScrollable> {
           onPointerSignal: (event) => widget.tracker.handlePointerSignal(event: event),
           onPointerPanZoomStart: (_) => widget.tracker.handlePointerPanZoomStart(),
           child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) =>
-                widget.tracker.handleScrollNotification(notification: notification),
+            onNotification: (notification) => widget.tracker.handleScrollNotification(notification: notification),
             child: widget.child,
           ),
         ),

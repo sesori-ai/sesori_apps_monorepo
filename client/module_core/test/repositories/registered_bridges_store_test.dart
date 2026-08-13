@@ -8,7 +8,7 @@ import "package:test/test.dart";
 
 /// In-memory [SecureStorage] that also records how often each operation runs,
 /// so tests can assert the in-memory cache avoids redundant storage reads.
-class _InMemorySecureStorage implements SecureStorage {
+class _InMemorySecureStorage() implements SecureStorage {
   final Map<String, String> _data = {};
   int reads = 0;
   int writes = 0;
@@ -41,7 +41,7 @@ class _InMemorySecureStorage implements SecureStorage {
   }
 }
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
 /// Lets pending microtasks (the store's unawaited clear-on-logout) settle.
 Future<void> _settle() async {

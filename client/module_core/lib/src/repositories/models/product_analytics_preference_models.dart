@@ -1,45 +1,25 @@
 import "../../foundation/models/product_analytics/product_analytics_preference.dart";
 
-final class ProductAnalyticsPreferenceRecord {
-  final String userId;
-  final ProductAnalyticsPreference preference;
-  final int revision;
-  final String userKey;
+final class const ProductAnalyticsPreferenceRecord({
+  required final String userId,
+  required final ProductAnalyticsPreference preference,
+  required final int revision,
+  required final String userKey,
+});
 
-  const ProductAnalyticsPreferenceRecord({
-    required this.userId,
-    required this.preference,
-    required this.revision,
-    required this.userKey,
-  });
-}
-
-sealed class LocalProductAnalyticsPreference {
-  const LocalProductAnalyticsPreference();
-
+sealed class const LocalProductAnalyticsPreference() {
   ProductAnalyticsPreferenceRecord get record;
 }
 
-final class LocalProductAnalyticsSynced extends LocalProductAnalyticsPreference {
-  @override
-  final ProductAnalyticsPreferenceRecord record;
+final class const LocalProductAnalyticsSynced({@override required final ProductAnalyticsPreferenceRecord record})
+    extends LocalProductAnalyticsPreference;
 
-  const LocalProductAnalyticsSynced({required this.record});
-}
-
-sealed class LocalProductAnalyticsPending extends LocalProductAnalyticsPreference {
-  final String userId;
-  final int revision;
-  final String userKey;
-  final String operationId;
-
-  const LocalProductAnalyticsPending({
-    required this.userId,
-    required this.revision,
-    required this.userKey,
-    required this.operationId,
-  });
-
+sealed class const LocalProductAnalyticsPending({
+  required final String userId,
+  required final int revision,
+  required final String userKey,
+  required final String operationId,
+}) extends LocalProductAnalyticsPreference {
   @override
   ProductAnalyticsPreferenceRecord get record => ProductAnalyticsPreferenceRecord(
     userId: userId,
@@ -49,65 +29,44 @@ sealed class LocalProductAnalyticsPending extends LocalProductAnalyticsPreferenc
   );
 }
 
-final class LocalProductAnalyticsPendingDisable extends LocalProductAnalyticsPending {
-  const LocalProductAnalyticsPendingDisable({
-    required super.userId,
-    required super.revision,
-    required super.userKey,
-    required super.operationId,
-  });
-}
+final class const LocalProductAnalyticsPendingDisable({
+  required super.userId,
+  required super.revision,
+  required super.userKey,
+  required super.operationId,
+}) extends LocalProductAnalyticsPending;
 
-final class LocalProductAnalyticsPendingEnable extends LocalProductAnalyticsPending {
-  const LocalProductAnalyticsPendingEnable({
-    required super.userId,
-    required super.revision,
-    required super.userKey,
-    required super.operationId,
-  });
-}
+final class const LocalProductAnalyticsPendingEnable({
+  required super.userId,
+  required super.revision,
+  required super.userKey,
+  required super.operationId,
+}) extends LocalProductAnalyticsPending;
 
-sealed class ProductAnalyticsPreferenceRepositoryResult {
-  const ProductAnalyticsPreferenceRepositoryResult();
-}
+sealed class const ProductAnalyticsPreferenceRepositoryResult();
 
-final class ProductAnalyticsPreferenceSynchronized extends ProductAnalyticsPreferenceRepositoryResult {
-  final ProductAnalyticsPreferenceRecord record;
-  const ProductAnalyticsPreferenceSynchronized({required this.record});
-}
+final class const ProductAnalyticsPreferenceSynchronized({required final ProductAnalyticsPreferenceRecord record})
+    extends ProductAnalyticsPreferenceRepositoryResult;
 
-final class ProductAnalyticsPreferencePendingSync extends ProductAnalyticsPreferenceRepositoryResult {
-  final LocalProductAnalyticsPending pending;
-  const ProductAnalyticsPreferencePendingSync({required this.pending});
-}
+final class const ProductAnalyticsPreferencePendingSync({required final LocalProductAnalyticsPending pending})
+    extends ProductAnalyticsPreferenceRepositoryResult;
 
 /// The current process suppresses product events, but neither the local
 /// write-ahead record nor the server disable could be confirmed. Unlike a
 /// durable pending disable, this state cannot survive a process restart.
-final class ProductAnalyticsPreferenceVolatileDisablePending extends ProductAnalyticsPreferenceRepositoryResult {
-  final LocalProductAnalyticsPendingDisable pending;
+final class const ProductAnalyticsPreferenceVolatileDisablePending({
+  required final LocalProductAnalyticsPendingDisable pending,
+}) extends ProductAnalyticsPreferenceRepositoryResult;
 
-  const ProductAnalyticsPreferenceVolatileDisablePending({required this.pending});
-}
+final class const ProductAnalyticsPreferenceRefreshRequired({required final ProductAnalyticsPreferenceRecord record})
+    extends ProductAnalyticsPreferenceRepositoryResult;
 
-final class ProductAnalyticsPreferenceRefreshRequired extends ProductAnalyticsPreferenceRepositoryResult {
-  final ProductAnalyticsPreferenceRecord record;
-  const ProductAnalyticsPreferenceRefreshRequired({required this.record});
-}
+final class const ProductAnalyticsPreferenceServerConfirmedStorageFailed({
+  required final ProductAnalyticsPreferenceRecord record,
+}) extends ProductAnalyticsPreferenceRepositoryResult;
 
-final class ProductAnalyticsPreferenceServerConfirmedStorageFailed extends ProductAnalyticsPreferenceRepositoryResult {
-  final ProductAnalyticsPreferenceRecord record;
-  const ProductAnalyticsPreferenceServerConfirmedStorageFailed({required this.record});
-}
+final class const ProductAnalyticsPreferenceTimedOut() extends ProductAnalyticsPreferenceRepositoryResult;
 
-final class ProductAnalyticsPreferenceTimedOut extends ProductAnalyticsPreferenceRepositoryResult {
-  const ProductAnalyticsPreferenceTimedOut();
-}
+final class const ProductAnalyticsPreferenceFailed() extends ProductAnalyticsPreferenceRepositoryResult;
 
-final class ProductAnalyticsPreferenceFailed extends ProductAnalyticsPreferenceRepositoryResult {
-  const ProductAnalyticsPreferenceFailed();
-}
-
-final class ProductAnalyticsPreferenceStorageFailed extends ProductAnalyticsPreferenceRepositoryResult {
-  const ProductAnalyticsPreferenceStorageFailed();
-}
+final class const ProductAnalyticsPreferenceStorageFailed() extends ProductAnalyticsPreferenceRepositoryResult;

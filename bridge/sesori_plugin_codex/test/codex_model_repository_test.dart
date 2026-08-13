@@ -189,10 +189,9 @@ void main() {
   });
 }
 
-class _StubClient extends CodexAppServerClient {
-  _StubClient({required this.response}) : super(serverUrl: "ws://127.0.0.1:0");
+class _StubClient({required final Object? response}) extends CodexAppServerClient {
+  this : super(serverUrl: "ws://127.0.0.1:0");
 
-  final Object? response;
   String? method;
   Object? params;
 
@@ -208,13 +207,11 @@ class _StubClient extends CodexAppServerClient {
   }
 }
 
-class _StubAppServerApi extends CodexAppServerApi {
-  _StubAppServerApi({required this.response})
+class _StubAppServerApi({required final CodexModelListResponseDto response}) extends CodexAppServerApi {
+  this
     : super(
         client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
       );
-
-  final CodexModelListResponseDto response;
 
   @override
   Future<CodexModelListResponseDto> listModels() async => response;

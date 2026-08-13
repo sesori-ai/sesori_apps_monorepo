@@ -12,21 +12,21 @@ part "acp_tool_content_dto.g.dart";
   toJson: false,
 )
 sealed class AcpToolContentDto with _$AcpToolContentDto {
-  const factory AcpToolContentDto.content({
+  const factory content({
     required AcpContentBlockDto content,
   }) = AcpStandardToolContentDto;
 
-  const factory AcpToolContentDto.diff({
+  const factory diff({
     required String path,
     required String? oldText,
     required String newText,
   }) = AcpDiffToolContentDto;
 
-  const factory AcpToolContentDto.terminal({
+  const factory terminal({
     required String terminalId,
   }) = AcpTerminalToolContentDto;
 
-  const factory AcpToolContentDto.unknown() = AcpUnknownToolContentDto;
+  const factory unknown() = AcpUnknownToolContentDto;
 
-  factory AcpToolContentDto.fromJson(Map<String, dynamic> json) => _$AcpToolContentDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AcpToolContentDtoFromJson(json);
 }

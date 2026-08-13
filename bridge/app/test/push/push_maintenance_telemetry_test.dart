@@ -83,16 +83,12 @@ void main() {
   });
 }
 
-class FakeCompletionNotifier extends CompletionNotifier {
-  final int permissionRequestCountValue;
-  final int completionSentRootCountValue;
-  final int abortedRootCountValue;
-
-  FakeCompletionNotifier({
-    required this.permissionRequestCountValue,
-    required this.completionSentRootCountValue,
-    required this.abortedRootCountValue,
-  }) : super(tracker: PushSessionStateTracker(now: DateTime.now));
+class FakeCompletionNotifier({
+  required final int permissionRequestCountValue,
+  required final int completionSentRootCountValue,
+  required final int abortedRootCountValue,
+}) extends CompletionNotifier {
+  this : super(tracker: PushSessionStateTracker(now: DateTime.now));
 
   @override
   int get permissionRequestCount => permissionRequestCountValue;
@@ -104,10 +100,8 @@ class FakeCompletionNotifier extends CompletionNotifier {
   int get abortedRootCount => abortedRootCountValue;
 }
 
-class FakePushRateLimiter extends PushRateLimiter {
-  final int retainedKeyCountValue;
-
-  FakePushRateLimiter({required this.retainedKeyCountValue}) : super(now: DateTime.now);
+class FakePushRateLimiter({required final int retainedKeyCountValue}) extends PushRateLimiter {
+  this : super(now: DateTime.now);
 
   @override
   int get retainedKeyCount => retainedKeyCountValue;

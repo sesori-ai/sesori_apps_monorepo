@@ -101,8 +101,11 @@ Iterable<int> codexDynamicCandidates({Iterable<int>? candidates, Random? random}
 /// The argument vector `codex app-server` is spawned with for a chosen [port].
 /// Kept in one place so the spawn and the ownership record agree byte-for-byte
 /// (the supervisor matches a record to a live process by its command line).
-List<String> codexAppServerArgs({required int port}) =>
-    <String>["app-server", "--listen", "ws://$codexLoopbackHost:$port"];
+List<String> codexAppServerArgs({required int port}) => <String>[
+  "app-server",
+  "--listen",
+  "ws://$codexLoopbackHost:$port",
+];
 
 /// The `ws://` URL the [CodexAppServerClient] connects to for a chosen [port].
 String codexServerUrl({required int port}) => "ws://$codexLoopbackHost:$port";
@@ -174,8 +177,7 @@ ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
   required RuntimePortPolicy portPolicy,
 }) {
   return ManagedRuntimeSpec<CodexOwnershipRecord>(
-    spawn: ({required int port}) =>
-        spawnCodexProcess(host: host, executablePath: executablePath, port: port),
+    spawn: ({required int port}) => spawnCodexProcess(host: host, executablePath: executablePath, port: port),
     probeHealth: probeCodexHealth,
     probePortBindable: ({required int port}) => host.ports.isBindable(host: codexLoopbackHost, port: port),
     buildRecord: buildCodexOwnershipRecord,
@@ -193,10 +195,8 @@ ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
 /// spawn, for the child's whole lifetime, so the OS pipe can never fill. The
 /// streams are exposed as broadcast so the exit monitor can still attach once
 /// armed; output produced before that is consumed by the internal drain.
-class _DrainingCodexProcess implements SpawnedProcess {
-  _DrainingCodexProcess(this._inner)
-    : _stdout = _inner.stdout.asBroadcastStream(),
-      _stderr = _inner.stderr.asBroadcastStream() {
+class _DrainingCodexProcess(final SpawnedProcess _inner) implements SpawnedProcess {
+  this {
     _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
     _stderrDrain = _stderr.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
     // Fail-soft: this background drain-release is best-effort, so swallow any
@@ -205,9 +205,8 @@ class _DrainingCodexProcess implements SpawnedProcess {
     unawaited(_releaseDrainsOnExit().catchError((Object _) {}));
   }
 
-  final SpawnedProcess _inner;
-  final Stream<List<int>> _stdout;
-  final Stream<List<int>> _stderr;
+  final Stream<List<int>> _stdout = _inner.stdout.asBroadcastStream();
+  final Stream<List<int>> _stderr = _inner.stderr.asBroadcastStream();
   late final StreamSubscription<List<int>> _stdoutDrain;
   late final StreamSubscription<List<int>> _stderrDrain;
 

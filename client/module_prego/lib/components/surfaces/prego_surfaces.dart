@@ -15,7 +15,7 @@ import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 
 /// The two outline treatments used by the composer and its adjacent surfaces.
-enum PregoComposerSurfaceStyle { subtle, emphasized }
+enum PregoComposerSurfaceStyle() { subtle, emphasized }
 
 /// Builds the shared solid decoration used by the composer, picker pills, and
 /// background-task card.
@@ -39,20 +39,13 @@ BoxDecoration pregoComposerSurfaceDecoration({
 /// A rounded, elevated surface that hosts grouped content.
 ///
 /// Uses the same fill, border, and elevation as the composer on every platform.
-class PregoCard extends StatelessWidget {
-  const PregoCard({
+class const PregoCard({
     super.key,
-    required this.child,
-    required this.surfaceStyle,
-    this.borderRadius = 20,
-  });
-
-  final Widget child;
-  final PregoComposerSurfaceStyle surfaceStyle;
-
-  /// Corner radius of the card.
-  final double borderRadius;
-
+    required final Widget child,
+    required final PregoComposerSurfaceStyle surfaceStyle,
+    /// Corner radius of the card.
+  final double borderRadius = 20,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -80,27 +73,17 @@ class PregoCard extends StatelessWidget {
 /// Apple: a frosted hairline ([GlassDivider]). Android: a flat [Divider] tinted
 /// with the secondary border colour. Decorative on both paths (hidden from
 /// screen readers).
-class PregoDivider extends StatelessWidget {
-  const PregoDivider({
+class const PregoDivider({
     super.key,
-    this.indent = 0,
-    this.endIndent = 0,
-    this.height,
-    this.flat = false,
-  });
-
-  /// Empty space leading the line on the left.
-  final double indent;
-
-  /// Empty space trailing the line on the right.
-  final double endIndent;
-
-  /// Total cross-axis space the divider occupies. Defaults to 1.0.
-  final double? height;
-
-  /// Forces the solid divider used inside [PregoCard] on every platform.
-  final bool flat;
-
+    /// Empty space leading the line on the left.
+  final double indent = 0,
+    /// Empty space trailing the line on the right.
+  final double endIndent = 0,
+    /// Total cross-axis space the divider occupies. Defaults to 1.0.
+  final double? height,
+    /// Forces the solid divider used inside [PregoCard] on every platform.
+  final bool flat = false,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!flat && glassEffectsEnabled()) {
@@ -128,44 +111,25 @@ class PregoDivider extends StatelessWidget {
 /// Uses one [InkWell] row on every platform: 32px leading box, 12px gap,
 /// title/subtitle column, and trailing content. The row composes a flat
 /// [PregoDivider] below itself unless it is the last row.
-class PregoListTile extends StatelessWidget {
-  const PregoListTile({
+class const PregoListTile({
     super.key,
-    this.leading,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
-    this.isLast = false,
-    this.showDivider = true,
-    this.contentPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    this.leadingIconColor,
-    this.titleStyle,
-    this.subtitleStyle,
-    this.dividerIndent,
-  });
-
-  final Widget? leading;
-  final Widget title;
-  final Widget? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  /// Whether this is the last row in its group; suppresses the bottom divider.
-  final bool isLast;
-
-  /// Whether to draw a [PregoDivider] below this row. Ignored when [isLast].
-  final bool showDivider;
-
-  final EdgeInsetsGeometry contentPadding;
-  final Color? leadingIconColor;
-  final TextStyle? titleStyle;
-  final TextStyle? subtitleStyle;
-
-  /// Leading indent of the bottom divider. Defaults to 56 when a [leading]
+    final Widget? leading,
+    required final Widget title,
+    final Widget? subtitle,
+    final Widget? trailing,
+    final VoidCallback? onTap,
+    /// Whether this is the last row in its group; suppresses the bottom divider.
+  final bool isLast = false,
+    /// Whether to draw a [PregoDivider] below this row. Ignored when [isLast].
+  final bool showDivider = true,
+    final EdgeInsetsGeometry contentPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final Color? leadingIconColor,
+    final TextStyle? titleStyle,
+    final TextStyle? subtitleStyle,
+    /// Leading indent of the bottom divider. Defaults to 56 when a [leading]
   /// widget is present (aligning the line under the title), 16 otherwise.
-  final double? dividerIndent;
-
+  final double? dividerIndent,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tile = _buildFlat(context);

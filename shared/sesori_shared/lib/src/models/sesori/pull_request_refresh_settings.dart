@@ -7,10 +7,9 @@ part "pull_request_refresh_settings.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PullRequestRefreshSettingsResponse with _$PullRequestRefreshSettingsResponse {
-  const factory PullRequestRefreshSettingsResponse({
+  const factory({
     @strictIntJsonConverter required int intervalSeconds,
   }) = _PullRequestRefreshSettingsResponse;
 
-  factory PullRequestRefreshSettingsResponse.fromJson(Map<String, dynamic> json) =>
-      _$PullRequestRefreshSettingsResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PullRequestRefreshSettingsResponseFromJson(json);
 }

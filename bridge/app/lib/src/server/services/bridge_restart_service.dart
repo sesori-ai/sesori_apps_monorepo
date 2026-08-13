@@ -28,37 +28,21 @@ import '../repositories/process_repository.dart';
 /// dispatcher emits a shutdown request only after the debug response closes or
 /// the relay response is synchronously enqueued. Relay delivery remains
 /// best-effort through the existing graceful close.
-class BridgeRestartService {
-  BridgeRestartService({
-    required ProcessRepository processRepository,
-    required BridgeRestartCommandBuilder commandBuilder,
-    required String binaryPath,
-    required List<String> cliArgs,
-    required int currentPid,
-    required bool isSupervised,
-    required void Function() onSupervisedRestartRequested,
-  }) : _processRepository = processRepository,
-       _commandBuilder = commandBuilder,
-       _binaryPath = binaryPath,
-       _cliArgs = cliArgs,
-       _currentPid = currentPid,
-       _isSupervised = isSupervised,
-       _onSupervisedRestartRequested = onSupervisedRestartRequested;
-
-  final ProcessRepository _processRepository;
-  final BridgeRestartCommandBuilder _commandBuilder;
-  final String _binaryPath;
-  final List<String> _cliArgs;
-  final int _currentPid;
-  final bool _isSupervised;
+class BridgeRestartService({
+  required final ProcessRepository _processRepository,
+  required final BridgeRestartCommandBuilder _commandBuilder,
+  required final String _binaryPath,
+  required final List<String> _cliArgs,
+  required final int _currentPid,
+  required final bool _isSupervised,
 
   /// Invoked the moment a supervised restart handoff is decided, before the
   /// shutdown it triggers, so the composition root can record the GUI-respawn
   /// sentinel exit code ahead of any teardown (including a hung one whose
   /// backstop force-exits). Only ever invoked in supervised mode; standalone
   /// spawns a successor instead.
-  final void Function() _onSupervisedRestartRequested;
-
+  required final void Function() _onSupervisedRestartRequested,
+}) {
   /// Whether an explicit restart can be delivered right now, so the handler only
   /// promises a restart it can actually carry out.
   ///
@@ -70,7 +54,7 @@ class BridgeRestartService {
     if (_isSupervised) {
       return true;
     }
-    return canSpawnSuccessor();
+    return await canSpawnSuccessor();
   }
 
   /// Whether the managed binary exists and is executable, so the standalone
@@ -110,7 +94,7 @@ class BridgeRestartService {
       return true;
     }
     Log.i('Standalone restart: spawning successor bridge');
-    return spawnSuccessor();
+    return await spawnSuccessor();
   }
 
   /// Spawns the successor bridge detached (inheriting this terminal). Returns

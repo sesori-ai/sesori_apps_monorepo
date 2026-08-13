@@ -92,7 +92,7 @@ void main() {
   });
 }
 
-class FakeNotificationPreferencesService extends Mock implements NotificationPreferencesService {
+class FakeNotificationPreferencesService() extends Mock implements NotificationPreferencesService {
   final Map<NotificationCategory, bool> enabledCategories = <NotificationCategory, bool>{};
 
   @override
@@ -101,7 +101,7 @@ class FakeNotificationPreferencesService extends Mock implements NotificationPre
   }
 }
 
-class RecordingLocalNotificationClient implements LocalNotificationClient {
+class RecordingLocalNotificationClient() implements LocalNotificationClient {
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
       StreamController<NotificationOpenRequest>.broadcast();
   final List<ShownNotification> shownNotifications = <ShownNotification>[];
@@ -109,7 +109,9 @@ class RecordingLocalNotificationClient implements LocalNotificationClient {
   @override
   Future<void> cancelForSession({required String sessionId}) async {}
 
-  Future<void> dispose() async => _notificationOpenedController.close();
+  Future<void> dispose() async {
+    await _notificationOpenedController.close();
+  }
 
   @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async => null;
@@ -142,7 +144,7 @@ class RecordingLocalNotificationClient implements LocalNotificationClient {
   }
 }
 
-class FakePushMessagingSource implements PushMessagingSource {
+class FakePushMessagingSource() implements PushMessagingSource {
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
@@ -181,23 +183,14 @@ class FakePushMessagingSource implements PushMessagingSource {
 }
 
 @immutable
-class ShownNotification {
-  final String title;
-  final String body;
-  final NotificationCategory category;
-  final String? sessionId;
-  final String? projectId;
-  final String? sessionTitle;
-
-  const ShownNotification({
-    required this.title,
-    required this.body,
-    required this.category,
-    required this.sessionId,
-    required this.projectId,
-    required this.sessionTitle,
-  });
-
+class const ShownNotification({
+  required final String title,
+  required final String body,
+  required final NotificationCategory category,
+  required final String? sessionId,
+  required final String? projectId,
+  required final String? sessionTitle,
+}) {
   @override
   bool operator ==(Object other) {
     return other is ShownNotification &&

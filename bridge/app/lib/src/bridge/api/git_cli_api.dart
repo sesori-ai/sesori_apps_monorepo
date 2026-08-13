@@ -7,48 +7,25 @@ import "../foundation/process_runner.dart";
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
-sealed class GitCurrentBranchResult {
-  const GitCurrentBranchResult();
-}
+sealed class const GitCurrentBranchResult();
 
-final class GitCurrentBranchNamed extends GitCurrentBranchResult {
-  final String branchName;
+final class const GitCurrentBranchNamed({required final String branchName}) extends GitCurrentBranchResult;
 
-  const GitCurrentBranchNamed({required this.branchName});
-}
+final class const GitCurrentBranchDetached() extends GitCurrentBranchResult;
 
-final class GitCurrentBranchDetached extends GitCurrentBranchResult {
-  const GitCurrentBranchDetached();
-}
+final class const GitCurrentBranchMissingDirectory() extends GitCurrentBranchResult;
 
-final class GitCurrentBranchMissingDirectory extends GitCurrentBranchResult {
-  const GitCurrentBranchMissingDirectory();
-}
+final class const GitCurrentBranchNotRepository() extends GitCurrentBranchResult;
 
-final class GitCurrentBranchNotRepository extends GitCurrentBranchResult {
-  const GitCurrentBranchNotRepository();
-}
+class GitWorktreeSafetySnapshot({
+  required final bool worktreeExists,
+  required final bool hasUnstagedChanges,
+});
 
-class GitWorktreeSafetySnapshot {
-  final bool worktreeExists;
-  final bool hasUnstagedChanges;
-
-  GitWorktreeSafetySnapshot({
-    required this.worktreeExists,
-    required this.hasUnstagedChanges,
-  });
-}
-
-class GitCliApi {
-  final ProcessRunner _processRunner;
-  final GitPathExistsChecker _gitPathExists;
-
-  GitCliApi({
-    required ProcessRunner processRunner,
-    required GitPathExistsChecker gitPathExists,
-  }) : _processRunner = processRunner,
-       _gitPathExists = gitPathExists;
-
+class GitCliApi({
+  required final ProcessRunner _processRunner,
+  required final GitPathExistsChecker _gitPathExists,
+}) {
   Future<bool> isGitInitialized({required String projectPath}) async {
     return _gitPathExists(gitPath: p.join(projectPath, ".git"));
   }

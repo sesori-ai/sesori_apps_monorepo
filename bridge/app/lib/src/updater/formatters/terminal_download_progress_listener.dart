@@ -17,13 +17,12 @@ import 'update_output_formatter.dart';
 /// and is closed with a newline exactly once — when the download reaches 100%,
 /// or the stream ends/errors after any draw — so later output starts on a
 /// fresh line.
-class TerminalDownloadProgressListener {
-  TerminalDownloadProgressListener({
-    required Stream<DownloadProgress> progress,
-    required UpdateOutputFormatter formatter,
-    required Stdout out,
-  }) : _formatter = formatter,
-       _out = out {
+class TerminalDownloadProgressListener({
+  required Stream<DownloadProgress> progress,
+  required final UpdateOutputFormatter _formatter,
+  required final Stdout _out,
+}) {
+  this {
     _subscription = progress.listen(
       _onProgress,
       onDone: _terminateLine,
@@ -34,8 +33,6 @@ class TerminalDownloadProgressListener {
 
   static const int _barCells = 32;
 
-  final UpdateOutputFormatter _formatter;
-  final Stdout _out;
   late final StreamSubscription<DownloadProgress> _subscription;
 
   bool _drew = false;

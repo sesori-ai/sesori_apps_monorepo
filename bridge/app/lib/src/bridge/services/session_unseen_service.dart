@@ -9,11 +9,7 @@ import "session_view_tracker.dart";
 /// Thrown by [SessionUnseenService.markUnread] when the target session has no
 /// row (deleted / never learned). Rethrown so the requesting client receives a
 /// non-2xx and refreshes its (optimistic) state from the authoritative list.
-class SessionUnseenRowMissingException implements Exception {
-  final String sessionId;
-
-  SessionUnseenRowMissingException({required this.sessionId});
-}
+class SessionUnseenRowMissingException({required final String sessionId}) implements Exception;
 
 /// A single emitted unseen-state change for one session, plus the recomputed
 /// project-level aggregate. The orchestrator maps this to
@@ -33,11 +29,13 @@ typedef UnseenChange = ({
 ///
 /// It also owns unseen-row deletion for live `session.deleted` events via
 /// [recordSessionDeleted].
-class SessionUnseenService {
-  final SessionUnseenRepository _unseenRepository;
-  final ProjectRepository _projectRepository;
-  final SessionViewTracker _viewTracker;
-  final int Function() _wallClock;
+class SessionUnseenService({
+  required final SessionUnseenRepository _unseenRepository,
+  required final ProjectRepository _projectRepository,
+  required final SessionViewTracker _viewTracker,
+  int Function()? now,
+}) {
+  final int Function() _wallClock = now ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   /// Last timestamp this service issued. Used to keep [_nextTimestamp]
   /// strictly monotonic so two events processed within the same millisecond
@@ -57,15 +55,7 @@ class SessionUnseenService {
   /// infrequent DB writes, so the reduced concurrency is irrelevant.
   Future<void> _writeTail = Future<void>.value();
 
-  SessionUnseenService({
-    required SessionUnseenRepository unseenRepository,
-    required ProjectRepository projectRepository,
-    required SessionViewTracker viewTracker,
-    int Function()? now,
-  }) : _unseenRepository = unseenRepository,
-       _projectRepository = projectRepository,
-       _viewTracker = viewTracker,
-       _wallClock = now ?? (() => DateTime.now().millisecondsSinceEpoch) {
+  this {
     _viewStartsSubscription = _viewTracker.viewStarts.listen(_onViewStarted);
   }
 

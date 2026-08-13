@@ -1,12 +1,9 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 @JsonEnum(valueField: "wireValue")
-enum ProductAnalyticsPreference {
+enum ProductAnalyticsPreference({required final String wireValue}) {
   enabled(wireValue: "enabled"),
   disabled(wireValue: "disabled");
-
-  final String wireValue;
-  ProductAnalyticsPreference({required this.wireValue});
 }
 
 final _productAnalyticsUserKeyPattern = RegExp(r"^[a-f0-9]{64}$");

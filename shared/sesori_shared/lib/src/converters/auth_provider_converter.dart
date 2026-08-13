@@ -4,9 +4,7 @@ import "../models/auth/auth_provider.dart";
 
 const authProviderConverter = AuthProviderConverter();
 
-class AuthProviderConverter implements JsonConverter<AuthProvider, String> {
-  const AuthProviderConverter();
-
+class const AuthProviderConverter() implements JsonConverter<AuthProvider, String> {
   @override
   AuthProvider fromJson(String json) {
     final provider = AuthProvider.fromKey(json);

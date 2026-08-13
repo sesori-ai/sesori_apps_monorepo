@@ -125,7 +125,7 @@ void main() {
   });
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
 }

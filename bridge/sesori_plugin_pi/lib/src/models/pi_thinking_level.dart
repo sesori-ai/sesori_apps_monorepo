@@ -1,5 +1,5 @@
 /// A thinking level accepted by Pi v0.84.1.
-enum PiThinkingLevel {
+enum PiThinkingLevel(final String wireValue) {
   off("off"),
   minimal("minimal"),
   low("low"),
@@ -7,10 +7,6 @@ enum PiThinkingLevel {
   high("high"),
   xhigh("xhigh"),
   max("max");
-
-  PiThinkingLevel(this.wireValue);
-
-  final String wireValue;
 
   static PiThinkingLevel? tryParse({required String? value}) {
     if (value == null) return null;

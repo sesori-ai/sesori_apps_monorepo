@@ -7,7 +7,7 @@ import "package:sesori_mobile/core/platform/flutter_image_sharer.dart";
 import "package:sesori_mobile/core/platform/share_plus_client.dart";
 import "package:share_plus/share_plus.dart";
 
-class _FakeSharePlusClient implements SharePlusClient {
+class _FakeSharePlusClient() implements SharePlusClient {
   ShareParams? params;
 
   @override

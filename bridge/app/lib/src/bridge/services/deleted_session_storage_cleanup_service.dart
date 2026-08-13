@@ -3,13 +3,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../repositories/session_repository.dart";
 
 /// Retries physical cleanup for permanently tombstoned backend sessions.
-class DeletedSessionStorageCleanupService {
-  DeletedSessionStorageCleanupService({
-    required SessionRepository sessionRepository,
-  }) : _sessionRepository = sessionRepository;
-
-  final SessionRepository _sessionRepository;
-
+class DeletedSessionStorageCleanupService({
+  required final SessionRepository _sessionRepository,
+}) {
   Future<void> reconcile() async {
     try {
       await _reconcile();

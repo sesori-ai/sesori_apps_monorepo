@@ -6,9 +6,7 @@ import "../models/codex_image_bearing_item_dto.dart";
 ///
 /// This boundary retains typed image/audio fields for later mapping while
 /// exposing only existing text behavior to consumers in this step.
-class CodexImageBearingItemParser {
-  const CodexImageBearingItemParser();
-
+class const CodexImageBearingItemParser() {
   CodexImageBearingItemDto? parse({required Map<String, dynamic> item}) {
     try {
       return CodexImageBearingItemDto.fromJson(item);

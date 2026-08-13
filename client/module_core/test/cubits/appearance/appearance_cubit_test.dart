@@ -2,7 +2,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _MockAppearanceStore extends Mock implements AppearanceStore;
+class _MockAppearanceStore() extends Mock implements AppearanceStore;
 
 void main() {
   late _MockAppearanceStore store;

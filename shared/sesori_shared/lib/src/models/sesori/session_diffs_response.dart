@@ -7,9 +7,9 @@ part "session_diffs_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionDiffsResponse with _$SessionDiffsResponse {
-  const factory SessionDiffsResponse({
+  const factory({
     required List<FileDiff> diffs,
   }) = _SessionDiffsResponse;
 
-  factory SessionDiffsResponse.fromJson(Map<String, dynamic> json) => _$SessionDiffsResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SessionDiffsResponseFromJson(json);
 }

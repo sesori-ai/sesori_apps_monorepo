@@ -56,11 +56,8 @@ void main() {
   });
 }
 
-class _FakeRegistrationService implements BridgeRegistrationService {
-  final Future<void> Function() _onUnregister;
-
-  _FakeRegistrationService({required Future<void> Function() onUnregister}) : _onUnregister = onUnregister;
-
+class _FakeRegistrationService({required final Future<void> Function() _onUnregister})
+    implements BridgeRegistrationService {
   @override
   Future<void> unregister() => _onUnregister();
 

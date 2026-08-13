@@ -11,11 +11,7 @@ import "models/codex_turn_dto.dart";
 import "models/codex_turn_input_dto.dart";
 
 /// Layer-1 typed boundary for migrated Codex app-server operations.
-class CodexAppServerApi {
-  CodexAppServerApi({required CodexAppServerTransport client}) : _client = client;
-
-  final CodexAppServerTransport _client;
-
+class CodexAppServerApi({required final CodexAppServerTransport _client}) {
   Stream<CodexAccountLoginCompletedNotificationDto> get accountLoginCompletions => _client.notifications
       .where((notification) => notification.method == "account/login/completed")
       .map(
@@ -35,7 +31,7 @@ class CodexAppServerApi {
       params: params.toJson(),
       timeout: timeout,
     );
-    return _decodeAccountResponse(
+    return await _decodeAccountResponse(
       result: result,
       operation: "account/login/start",
       decode: CodexDeviceLoginStartResponseDto.fromJson,
@@ -51,7 +47,7 @@ class CodexAppServerApi {
       params: CodexAccountLoginCancelParamsDto(loginId: loginId).toJson(),
       timeout: timeout,
     );
-    return _decodeAccountResponse(
+    return await _decodeAccountResponse(
       result: result,
       operation: "account/login/cancel",
       decode: CodexAccountLoginCancelResponseDto.fromJson,

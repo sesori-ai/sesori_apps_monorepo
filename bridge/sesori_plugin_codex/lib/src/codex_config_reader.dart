@@ -10,9 +10,9 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 /// own rollout records don't carry them. Per-session rollout data always
 /// takes precedence over these defaults.
 class CodexConfigDefaults {
-  const CodexConfigDefaults({required this.model, required this.modelProvider});
+  const new({required this.model, required this.modelProvider});
 
-  const CodexConfigDefaults.empty() : model = null, modelProvider = null;
+  const new empty() : model = null, modelProvider = null;
 
   final String? model;
   final String? modelProvider;
@@ -30,10 +30,8 @@ class CodexConfigDefaults {
 /// — rollouts are the authoritative per-session source, and this is only a
 /// fallback for sessions that predate `turn_context` records.
 // COMPATIBILITY 2026-06-25 (v1.1.2): Old Codex rollouts omit turn_context model metadata. Remove config fallback reads when those rollouts are unsupported.
-class CodexConfigReader {
-  CodexConfigReader({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
-
-  final Map<String, String> _environment;
+class CodexConfigReader({Map<String, String>? environment}) {
+  final Map<String, String> _environment = environment ?? Platform.environment;
 
   String? get _codexHome {
     final explicit = _environment["CODEX_HOME"];

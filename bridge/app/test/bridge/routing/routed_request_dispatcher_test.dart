@@ -95,17 +95,12 @@ void main() {
   });
 }
 
-class _GatedHandler extends RequestHandlerBase {
-  final Completer<void> _started;
-  final Completer<void> _gate;
-
-  _GatedHandler({
-    required String path,
-    required Completer<void> started,
-    required Completer<void> gate,
-  }) : _started = started,
-       _gate = gate,
-       super(HttpMethod.get, path);
+class _GatedHandler({
+  required String path,
+  required final Completer<void> _started,
+  required final Completer<void> _gate,
+}) extends RequestHandlerBase {
+  this : super(HttpMethod.get, path);
 
   @override
   Future<RelayResponse> handleInternal(
@@ -125,8 +120,8 @@ class _GatedHandler extends RequestHandlerBase {
   }
 }
 
-class _FailingHandler extends RequestHandlerBase {
-  _FailingHandler() : super(HttpMethod.get, "/failure");
+class _FailingHandler() extends RequestHandlerBase {
+  this : super(HttpMethod.get, "/failure");
 
   @override
   Future<RelayResponse> handleInternal(
@@ -141,11 +136,10 @@ class _FailingHandler extends RequestHandlerBase {
 
 RelayRequest _request({required String id, required String path}) {
   return RelayMessage.request(
-        id: id,
-        method: "GET",
-        path: path,
-        headers: const {},
-        body: null,
-      )
-      as RelayRequest;
+    id: id,
+    method: "GET",
+    path: path,
+    headers: const {},
+    body: null,
+  ) as RelayRequest;
 }

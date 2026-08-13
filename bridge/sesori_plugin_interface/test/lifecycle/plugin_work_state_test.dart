@@ -37,7 +37,7 @@ void main() {
   });
 }
 
-class _DefaultWorkStatePlugin extends BridgePlugin {
+class _DefaultWorkStatePlugin() extends BridgePlugin {
   @override
   PluginWorkState get currentWorkState => PluginWorkState.unknown;
 

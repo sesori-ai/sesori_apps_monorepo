@@ -15,14 +15,12 @@ import "widgets/diff_file_header_delegate.dart";
 /// Scrollable body of the diff viewer: one pinned sticky header per file
 /// with expandable diff content underneath. Owns the expand/collapse state
 /// and the post-collapse scroll compensation.
-class SessionDiffsBody extends StatefulWidget {
-  const SessionDiffsBody({super.key});
-
+class const SessionDiffsBody({super.key}) extends StatefulWidget {
   @override
   State<SessionDiffsBody> createState() => _SessionDiffsBodyState();
 }
 
-class _SessionDiffsBodyState extends State<SessionDiffsBody> {
+class _SessionDiffsBodyState() extends State<SessionDiffsBody> {
   List<DiffFileViewModel>? _viewModels;
   Set<int> _expandedFileIndices = <int>{};
   bool _isComputing = false;

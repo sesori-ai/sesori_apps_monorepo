@@ -165,7 +165,7 @@ void main() {
   });
 }
 
-class _FakeProcessRunner implements ProcessRunner {
+class _FakeProcessRunner() implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -206,15 +206,13 @@ class _FakeProcessRunner implements ProcessRunner {
   }
 }
 
-class _Invocation {
-  final String command;
-  final List<String> arguments;
-  final String? workingDirectory;
+class _Invocation({
+  required final String command,
+  required final List<String> arguments,
+  required final String? workingDirectory,
+});
 
-  _Invocation({required this.command, required this.arguments, required this.workingDirectory});
-}
-
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   int deleteWorkspaceCallCount = 0;
   String? lastDeleteWorkspaceProjectId;
   String? lastDeleteWorkspaceWorktreePath;

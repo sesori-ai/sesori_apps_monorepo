@@ -1,12 +1,12 @@
 import "dart:async";
 
-class BufferedUntilFirstListener<T> {
+class BufferedUntilFirstListener<T>() {
   final List<_BufferedEvent<T>> _buffer = [];
   late final StreamController<T> _controller;
   bool _hasListener = false;
   bool _isClosed = false;
 
-  BufferedUntilFirstListener() {
+  this {
     _controller = StreamController<T>.broadcast(
       onListen: () {
         if (_hasListener) {
@@ -58,28 +58,21 @@ class BufferedUntilFirstListener<T> {
   }
 }
 
-sealed class _BufferedEvent<T> {
+sealed class _BufferedEvent<T>() {
   void dispatch(StreamController<T> controller);
 }
 
-class _DataEvent<T> implements _BufferedEvent<T> {
-  final T value;
-  _DataEvent(this.value);
-
+class _DataEvent<T>(final T value) implements _BufferedEvent<T> {
   @override
   void dispatch(StreamController<T> controller) => controller.add(value);
 }
 
-class _ErrorEvent<T> implements _BufferedEvent<T> {
-  final Object error;
-  final StackTrace? stackTrace;
-  _ErrorEvent(this.error, this.stackTrace);
-
+class _ErrorEvent<T>(final Object error, final StackTrace? stackTrace) implements _BufferedEvent<T> {
   @override
   void dispatch(StreamController<T> controller) => controller.addError(error, stackTrace);
 }
 
-class _DoneEvent<T> implements _BufferedEvent<T> {
+class _DoneEvent<T>() implements _BufferedEvent<T> {
   @override
   void dispatch(StreamController<T> controller) => controller.close();
 }

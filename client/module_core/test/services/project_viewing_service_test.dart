@@ -7,26 +7,24 @@ import "package:sesori_dart_core/src/repositories/project_view_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockProjectViewRepository extends Mock implements ProjectViewRepository;
+class _MockProjectViewRepository() extends Mock implements ProjectViewRepository;
 
-class _MockConnectionService extends Mock implements ConnectionService;
+class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _FakeLifecycleSource implements LifecycleSource {
   final BehaviorSubject<LifecycleState> states;
 
-  _FakeLifecycleSource() : states = BehaviorSubject.seeded(LifecycleState.resumed);
+  new() : states = BehaviorSubject.seeded(LifecycleState.resumed);
 
-  _FakeLifecycleSource.blocking({required FutureOr<void> Function() onCancel})
+  new blocking({required FutureOr<void> Function() onCancel})
     : states = BehaviorSubject.seeded(LifecycleState.resumed, onCancel: onCancel);
 
   @override
   ValueStream<LifecycleState> get lifecycleStateStream => states.stream;
 }
 
-class _FakeRouteSource implements RouteSource {
-  final BehaviorSubject<AppRouteDef?> routes;
-
-  _FakeRouteSource({required AppRouteDef? initialRoute}) : routes = BehaviorSubject.seeded(initialRoute);
+class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSource {
+  final BehaviorSubject<AppRouteDef?> routes = BehaviorSubject.seeded(initialRoute);
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;

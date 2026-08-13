@@ -40,16 +40,10 @@ AcpProcessFactory hostProcessAcpFactory({
 /// [HostProcessService.signalGraceful]. The host calls are fire-and-forget —
 /// the transport observes the actual termination through [exitCode], exactly as
 /// it does with a real `io.Process`.
-class HostProcessAcpHandle implements AcpProcessHandle {
-  HostProcessAcpHandle({
-    required SpawnedProcess process,
-    required HostProcessService processes,
-  }) : _process = process,
-       _processes = processes;
-
-  final SpawnedProcess _process;
-  final HostProcessService _processes;
-
+class HostProcessAcpHandle({
+  required final SpawnedProcess _process,
+  required final HostProcessService _processes,
+}) implements AcpProcessHandle {
   @override
   Stream<List<int>> get stdout => _process.stdout;
 

@@ -6,10 +6,7 @@ import "package:omp_plugin/src/runtime/omp_runtime_manifest.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
-class _Executor implements CommandExecutor {
-  _Executor({required this.result});
-
-  final CommandResult result;
+class _Executor({required final CommandResult result}) implements CommandExecutor {
   String? executable;
   List<String>? arguments;
 

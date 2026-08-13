@@ -6,7 +6,7 @@ part "register_token_request.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class RegisterTokenRequest with _$RegisterTokenRequest {
-  const factory RegisterTokenRequest({
+  const factory({
     required String token,
     required DevicePlatform platform,
     // Must serialize as an absent key rather than an explicit null: the server
@@ -15,5 +15,5 @@ sealed class RegisterTokenRequest with _$RegisterTokenRequest {
     required String? deviceId,
   }) = _RegisterTokenRequest;
 
-  factory RegisterTokenRequest.fromJson(Map<String, dynamic> json) => _$RegisterTokenRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$RegisterTokenRequestFromJson(json);
 }

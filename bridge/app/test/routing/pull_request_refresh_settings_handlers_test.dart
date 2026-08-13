@@ -171,7 +171,7 @@ void main() {
   });
 }
 
-class _FakePermissionAutoApprovalService implements PermissionAutoApprovalService {
+class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalService {
   @override
   Future<void> approvePending() async {}
 
@@ -179,7 +179,7 @@ class _FakePermissionAutoApprovalService implements PermissionAutoApprovalServic
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _MemoryBridgeSettingsApi implements BridgeSettingsApi {
+class _MemoryBridgeSettingsApi() implements BridgeSettingsApi {
   String? config = '{"pullRequestRefreshIntervalSeconds":30}';
   int writeCount = 0;
 

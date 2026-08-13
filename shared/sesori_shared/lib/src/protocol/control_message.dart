@@ -18,7 +18,7 @@ sealed class ControlMessage with _$ControlMessage {
   /// helper → GUI: request a fresh access token. [id] correlates the
   /// [ControlTokenResponse]; [forceRefresh] asks the GUI to mint a new one.
   @FreezedUnionValue("token_request")
-  const factory ControlMessage.tokenRequest({
+  const factory tokenRequest({
     required String id,
     @Default(false) bool forceRefresh,
   }) = ControlTokenRequest;
@@ -27,20 +27,20 @@ sealed class ControlMessage with _$ControlMessage {
   /// the GUI could not supply one (mid-login / signed out); the helper treats
   /// it as a typed failure.
   @FreezedUnionValue("token_response")
-  const factory ControlMessage.tokenResponse({
+  const factory tokenResponse({
     required String id,
     required String? accessToken,
   }) = ControlTokenResponse;
 
   /// GUI → helper (push): a refreshed access token to adopt without a request.
   @FreezedUnionValue("token_update")
-  const factory ControlMessage.tokenUpdate({
+  const factory tokenUpdate({
     required String accessToken,
   }) = ControlTokenUpdate;
 
   /// helper → GUI (push): current relay/plugin health + active-session summary.
   @FreezedUnionValue("status")
-  const factory ControlMessage.status({
+  const factory status({
     @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown)
     required ControlRelayConnectionState relay,
     @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown)
@@ -51,7 +51,7 @@ sealed class ControlMessage with _$ControlMessage {
   /// helper → GUI: surface a user prompt (e.g. replace-bridge, login-needed).
   /// [id] correlates the [ControlPromptResponse].
   @FreezedUnionValue("prompt_request")
-  const factory ControlMessage.promptRequest({
+  const factory promptRequest({
     required String id,
     @JsonKey(unknownEnumValue: ControlPromptKind.unknown) required ControlPromptKind kind,
     required String? message,
@@ -59,7 +59,7 @@ sealed class ControlMessage with _$ControlMessage {
 
   /// GUI → helper: the user's answer to a [ControlPromptRequest].
   @FreezedUnionValue("prompt_response")
-  const factory ControlMessage.promptResponse({
+  const factory promptResponse({
     required String id,
     required bool accepted,
   }) = ControlPromptResponse;
@@ -67,34 +67,34 @@ sealed class ControlMessage with _$ControlMessage {
   /// helper → GUI: heads-up that this exit is an intentional restart (exit 86),
   /// so the GUI respawns it instead of treating the exit as a crash.
   @FreezedUnionValue("restart")
-  const factory ControlMessage.restart() = ControlRestart;
+  const factory restart() = ControlRestart;
 
   /// GUI → helper: unregister this bridge with the current token, then exit 0
   /// (logout ordering).
   @FreezedUnionValue("unregister_and_exit")
-  const factory ControlMessage.unregisterAndExit() = ControlUnregisterAndExit;
+  const factory unregisterAndExit() = ControlUnregisterAndExit;
 
   /// helper → GUI: registration succeeded; carries [bridgeId] so the GUI can
   /// persist a readable copy for an offline-unregister fallback (logout when the
   /// helper is unreachable).
   @FreezedUnionValue("registered")
-  const factory ControlMessage.registered({
+  const factory registered({
     required String bridgeId,
   }) = ControlRegistered;
 
   /// helper → GUI: a runtime-provisioning progress event (first-run download /
   /// install), teed from the bridge's provisioning stream.
   @FreezedUnionValue("provision_progress")
-  const factory ControlMessage.provisionProgress({
+  const factory provisionProgress({
     required ControlProvisionProgress progress,
   }) = ControlProvisionProgressMessage;
 
-  factory ControlMessage.fromJson(Map<String, dynamic> json) => _$ControlMessageFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ControlMessageFromJson(json);
 }
 
 /// Relay connection state reported in a [ControlStatus]. [unknown] is the
 /// forward-compat fallback for values a newer helper might add.
-enum ControlRelayConnectionState {
+enum ControlRelayConnectionState() {
   @JsonValue("connected")
   connected,
   @JsonValue("connecting")
@@ -113,7 +113,7 @@ enum ControlRelayConnectionState {
 
 /// Plugin (backend) health reported in a [ControlStatus]. [unknown] is the
 /// forward-compat fallback.
-enum ControlPluginHealthState {
+enum ControlPluginHealthState() {
   @JsonValue("healthy")
   healthy,
   @JsonValue("degraded")
@@ -126,7 +126,7 @@ enum ControlPluginHealthState {
 
 /// The kind of prompt a [ControlPromptRequest] surfaces. [unknown] is the
 /// forward-compat fallback.
-enum ControlPromptKind {
+enum ControlPromptKind() {
   @JsonValue("replace_bridge")
   replaceBridge,
   @JsonValue("login_needed")

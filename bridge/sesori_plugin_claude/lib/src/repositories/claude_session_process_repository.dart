@@ -9,102 +9,61 @@ import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
 
-sealed class ClaudeTurnOutcome {
-  const ClaudeTurnOutcome();
-}
+sealed class const ClaudeTurnOutcome();
 
-final class ClaudeTurnCompleted extends ClaudeTurnOutcome {
-  const ClaudeTurnCompleted();
-}
+final class const ClaudeTurnCompleted() extends ClaudeTurnOutcome;
 
-final class ClaudeTurnFailed extends ClaudeTurnOutcome {
-  const ClaudeTurnFailed();
-}
+final class const ClaudeTurnFailed() extends ClaudeTurnOutcome;
 
-final class ClaudeTurnInterrupted extends ClaudeTurnOutcome {
-  const ClaudeTurnInterrupted();
-}
+final class const ClaudeTurnInterrupted() extends ClaudeTurnOutcome;
 
-final class ClaudeTurnDispatch {
-  const ClaudeTurnDispatch({required this.accepted, required this.outcome});
+final class const ClaudeTurnDispatch({
+  required final bool accepted,
+  required final Future<ClaudeTurnOutcome> outcome,
+});
 
-  final bool accepted;
-  final Future<ClaudeTurnOutcome> outcome;
-}
+sealed class const ClaudeSessionProcessEvent({required final String sessionId});
 
-sealed class ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessEvent({required this.sessionId});
-
-  final String sessionId;
-}
-
-final class ClaudeSessionProcessMessage extends ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessMessage({
-    required super.sessionId,
-    required this.message,
-    required this.interrupted,
-  });
-
-  final ClaudeStreamMessage message;
-  final bool interrupted;
-
+final class const ClaudeSessionProcessMessage({
+  required super.sessionId,
+  required final ClaudeStreamMessage message,
+  required final bool interrupted,
+}) extends ClaudeSessionProcessEvent {
   ClaudeControlRequestMessage? get controlRequest => switch (message) {
     final ClaudeControlRequestMessage request => request,
     _ => null,
   };
 }
 
-final class ClaudeSessionProcessExited extends ClaudeSessionProcessEvent {
-  const ClaudeSessionProcessExited({required super.sessionId, required this.interrupted});
+final class const ClaudeSessionProcessExited({required super.sessionId, required final bool interrupted})
+    extends ClaudeSessionProcessEvent;
 
-  final bool interrupted;
-}
+final class const ClaudeAppliedSelection({
+  required final String? model,
+  required final ClaudeEffortLevel? effort,
+  required final ClaudePermissionMode? permissionMode,
+});
 
-final class ClaudeAppliedSelection {
-  const ClaudeAppliedSelection({
-    required this.model,
-    required this.effort,
-    required this.permissionMode,
-  });
-
-  final String? model;
-  final ClaudeEffortLevel? effort;
-  final ClaudePermissionMode? permissionMode;
-}
-
-final class _ResidentProcess {
-  _ResidentProcess({
-    required this.client,
-    required this.resumed,
-    required this.appliedModel,
-    required this.appliedEffort,
-    required this.appliedPermissionMode,
-  });
-
-  final ClaudeStreamClient client;
+final class _ResidentProcess({
+  required final ClaudeStreamClient client,
+  required final bool resumed,
+  required var String? appliedModel,
+  required var ClaudeEffortLevel? appliedEffort,
+  required var ClaudePermissionMode? appliedPermissionMode,
+}) {
   late final StreamSubscription<ClaudeStreamMessage> messages;
-  final bool resumed;
-  String? appliedModel;
-  ClaudeEffortLevel? appliedEffort;
-  ClaudePermissionMode? appliedPermissionMode;
   bool interrupted = false;
 
   Future<void> cancelMessages() => messages.cancel();
 }
 
 /// Owns resident Claude processes and all transport-facing session state.
-final class ClaudeSessionProcessRepository {
-  ClaudeSessionProcessRepository({
-    required ClaudeProcessFactory processFactory,
-    required String binaryPath,
-    required Map<String, String> environment,
-  }) : _processFactory = processFactory,
-       _binaryPath = binaryPath,
-       _environment = Map.unmodifiable(environment);
-
-  final ClaudeProcessFactory _processFactory;
-  final String _binaryPath;
-  final Map<String, String> _environment;
+final class ClaudeSessionProcessRepository({
+  required final ClaudeProcessFactory _processFactory,
+  required final String _binaryPath,
+  required Map<String, String> environment,
+}) {
+  final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentProcess> _resident = {};
   final Map<String, Future<void>> _connecting = {};
   final Map<String, ClaudeStreamClient> _connectingClients = {};
@@ -357,7 +316,7 @@ final class ClaudeSessionProcessRepository {
     );
     process.messages = client.messages.listen((message) {
       final current = _resident[sessionId];
-      if (current?.resumed == true && current?.appliedModel == null && message is ClaudeAssistantMessage) {
+      if ((current?.resumed ?? false) && current?.appliedModel == null && message is ClaudeAssistantMessage) {
         current?.appliedModel = message.model;
       }
       if (!_events.isClosed) {

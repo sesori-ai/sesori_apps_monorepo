@@ -939,7 +939,7 @@ Future<void> _sendEncryptedRelayMessage({
   socket.add(<int>[0, connId, ...payload]);
 }
 
-class _BlockingRestartDispatcher implements BridgeRestartDispatcher {
+class _BlockingRestartDispatcher() implements BridgeRestartDispatcher {
   final Completer<void> _started = Completer<void>();
   final Completer<void> _release = Completer<void>();
 
@@ -962,7 +962,7 @@ class _BlockingRestartDispatcher implements BridgeRestartDispatcher {
   Future<void> dispose() async {}
 }
 
-class _AlwaysRestartableService implements BridgeRestartService {
+class _AlwaysRestartableService() implements BridgeRestartService {
   @override
   Future<bool> canRestart() async => true;
 
@@ -1001,7 +1001,7 @@ BridgeRestartService _spawnableRestartService({
 
 /// Records `startDetached` calls so the restart handoff can be asserted; `run`
 /// is never expected during these tests.
-class _RecordingProcessRunner implements ProcessRunner {
+class _RecordingProcessRunner() implements ProcessRunner {
   int startDetachedCount = 0;
   String? lastExecutable;
   List<String>? lastArguments;
@@ -1032,25 +1032,15 @@ class _RecordingProcessRunner implements ProcessRunner {
   }
 }
 
-class _DebugServerHarness {
-  final BridgeRuntime runtime;
-  final DebugServer debugServer;
-  final http.Client httpClient;
-  final PluginLifecycleService lifecycleService;
-  final TestRelayServer relayServer;
-  final WebSocket bridgeSocket;
-  final Future<void> runFuture;
-
-  const _DebugServerHarness({
-    required this.runtime,
-    required this.debugServer,
-    required this.httpClient,
-    required this.lifecycleService,
-    required this.relayServer,
-    required this.bridgeSocket,
-    required this.runFuture,
-  });
-
+class const _DebugServerHarness({
+  required final BridgeRuntime runtime,
+  required final DebugServer debugServer,
+  required final http.Client httpClient,
+  required final PluginLifecycleService lifecycleService,
+  required final TestRelayServer relayServer,
+  required final WebSocket bridgeSocket,
+  required final Future<void> runFuture,
+}) {
   Future<void> close() async {
     await debugServer.stop();
     await runtime.session.cancel();
@@ -1062,7 +1052,7 @@ class _DebugServerHarness {
   }
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
 }
@@ -1071,11 +1061,11 @@ class _FakeTokenRefresher implements TokenRefresher {
 // Fake plugin implementations
 // ---------------------------------------------------------------------------
 
-abstract interface class _SubscriptionAwarePlugin {
+abstract interface class _SubscriptionAwarePlugin() {
   Future<void> get eventsSubscribed;
 }
 
-class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
+class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
   final Completer<void> _eventsSubscribed = Completer<void>();
 
@@ -1253,10 +1243,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePl
   Future<void> close() => _controller.close();
 }
 
-class _BlockingMutationPlugin extends _FakeBridgePlugin {
-  _BlockingMutationPlugin({required this.onDispose});
-
-  final Future<void> Function() onDispose;
+class _BlockingMutationPlugin({required final Future<void> Function() onDispose}) extends _FakeBridgePlugin {
   final Completer<void> _mutationStarted = Completer<void>();
   final Completer<void> _mutationRelease = Completer<void>();
   int disposeCalls = 0;
@@ -1288,7 +1275,7 @@ class _BlockingMutationPlugin extends _FakeBridgePlugin {
   }
 }
 
-class _BlockingRoutesPlugin extends _FakeBridgePlugin {
+class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
   final Completer<void> _messagesStarted = Completer<void>();
   final Completer<void> _messagesRelease = Completer<void>();
   final Completer<void> _abortStarted = Completer<void>();
@@ -1320,7 +1307,7 @@ class _BlockingRoutesPlugin extends _FakeBridgePlugin {
 }
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
-class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
+class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   final Completer<void> _eventsSubscribed = Completer<void>();
   int subscribeCount = 0;
@@ -1498,12 +1485,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwa
 // SSE test client
 // ---------------------------------------------------------------------------
 
-class _SseTestClient {
-  final Socket _socket;
-  final StreamIterator<String> _lines;
-
-  _SseTestClient._(this._socket, this._lines);
-
+class _SseTestClient._(final Socket _socket, final StreamIterator<String> _lines) {
   static Future<_SseTestClient> connect(int port) async {
     final socket = await Socket.connect("127.0.0.1", port);
     socket.write(
@@ -1520,41 +1502,43 @@ class _SseTestClient {
     var headersParsed = false;
     var lineBuffer = "";
 
-    utf8.decoder.bind(socket).listen(
-      (chunk) {
-        buffer += chunk;
+    utf8.decoder
+        .bind(socket)
+        .listen(
+          (chunk) {
+            buffer += chunk;
 
-        if (!headersParsed) {
-          final headerEnd = buffer.indexOf("\r\n\r\n");
-          if (headerEnd == -1) {
-            return;
-          }
-          headersParsed = true;
-          buffer = buffer.substring(headerEnd + 4);
-        }
+            if (!headersParsed) {
+              final headerEnd = buffer.indexOf("\r\n\r\n");
+              if (headerEnd == -1) {
+                return;
+              }
+              headersParsed = true;
+              buffer = buffer.substring(headerEnd + 4);
+            }
 
-        lineBuffer += buffer;
-        buffer = "";
+            lineBuffer += buffer;
+            buffer = "";
 
-        final parts = lineBuffer.split("\n");
-        lineBuffer = parts.removeLast();
-        for (final part in parts) {
-          final line = part.endsWith("\r") ? part.substring(0, part.length - 1) : part;
-          lineController.add(line);
-        }
-      },
-      onDone: () {
-        if (!lineController.isClosed) {
-          lineController.close();
-        }
-      },
-      onError: (_) {
-        if (!lineController.isClosed) {
-          lineController.close();
-        }
-      },
-      cancelOnError: true,
-    );
+            final parts = lineBuffer.split("\n");
+            lineBuffer = parts.removeLast();
+            for (final part in parts) {
+              final line = part.endsWith("\r") ? part.substring(0, part.length - 1) : part;
+              lineController.add(line);
+            }
+          },
+          onDone: () {
+            if (!lineController.isClosed) {
+              lineController.close();
+            }
+          },
+          onError: (_) {
+            if (!lineController.isClosed) {
+              lineController.close();
+            }
+          },
+          cancelOnError: true,
+        );
 
     final instance = _SseTestClient._(socket, lines);
     await instance._waitForReady();

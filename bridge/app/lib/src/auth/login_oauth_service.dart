@@ -47,7 +47,7 @@ Future<void> openOAuthBrowser(String url) async {
 }
 
 /// Confidence that a URL can be opened in a graphical browser on this host.
-enum BrowserOpenability {
+enum BrowserOpenability() {
   /// A graphical browser is almost certainly reachable — open it confidently.
   yes,
 
@@ -132,30 +132,16 @@ bool _isWindowsSubsystemForLinux(Map<String, String> env) {
   }
 }
 
-class LoginOAuthService {
-  final LoginOAuthApi _api;
-  final Future<void> Function(String url) _browserLauncher;
-  final BrowserOpenability Function() _browserOpenability;
-  final Duration _pollInterval;
-  final Duration _pollTimeout;
-  final Duration _perRequestTimeout;
-  final Future<void> Function(Duration duration) _delay;
-
-  LoginOAuthService({
-    required LoginOAuthApi api,
-    required Future<void> Function(String url) browserLauncher,
-    required BrowserOpenability Function() browserOpenability,
-    @visibleForTesting Duration pollInterval = _defaultPollInterval,
-    @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
-    @visibleForTesting Duration perRequestTimeout = _defaultPerRequestTimeout,
+class LoginOAuthService({
+    required final LoginOAuthApi _api,
+    required final Future<void> Function(String url) _browserLauncher,
+    required final BrowserOpenability Function() _browserOpenability,
+    @visibleForTesting final Duration _pollInterval = _defaultPollInterval,
+    @visibleForTesting final Duration _pollTimeout = _defaultPollTimeout,
+    @visibleForTesting final Duration _perRequestTimeout = _defaultPerRequestTimeout,
     @visibleForTesting Future<void> Function(Duration duration)? delay,
-  }) : _api = api,
-       _browserLauncher = browserLauncher,
-       _browserOpenability = browserOpenability,
-       _pollInterval = pollInterval,
-       _pollTimeout = pollTimeout,
-       _perRequestTimeout = perRequestTimeout,
-       _delay = delay ?? Future<void>.delayed;
+  }) {
+  final Future<void> Function(Duration duration) _delay = delay ?? Future<void>.delayed;
 
   /// Starts the OAuth login flow through the auth backend's pending-session API.
   ///

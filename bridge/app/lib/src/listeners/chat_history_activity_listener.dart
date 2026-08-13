@@ -8,19 +8,14 @@ import "../repositories/catalog_import_repository.dart";
 /// Feeds backend activity observed by a catalog import into the history
 /// store's staleness marks, so a session advanced through the backend's own
 /// CLI is re-read from the backend on next open.
-class ChatHistoryActivityListener {
-  final Stream<List<SessionBackendActivity>> _source;
-  final ChatHistoryService _chatHistoryService;
+class ChatHistoryActivityListener({
+  required final Stream<List<SessionBackendActivity>> _source,
+  required final ChatHistoryService _chatHistoryService,
+}) {
   StreamSubscription<List<SessionBackendActivity>>? _subscription;
   final Set<Future<void>> _pendingWrites = {};
   Future<void>? _disposeFuture;
   bool _disposed = false;
-
-  ChatHistoryActivityListener({
-    required Stream<List<SessionBackendActivity>> source,
-    required ChatHistoryService chatHistoryService,
-  }) : _source = source,
-       _chatHistoryService = chatHistoryService;
 
   void start() {
     if (_subscription != null || _disposed) return;

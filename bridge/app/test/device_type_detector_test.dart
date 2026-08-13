@@ -164,19 +164,13 @@ void main() {
   });
 }
 
-class _FakeResult {
-  final int exitCode;
-  final String stdout;
-  final String stderr;
+class _FakeResult({
+  required final int exitCode,
+  final String stdout = "",
+  final String stderr = "",
+});
 
-  _FakeResult({
-    required this.exitCode,
-    this.stdout = "",
-    this.stderr = "",
-  });
-}
-
-class _FakeProcessRunner implements ProcessRunner {
+class _FakeProcessRunner({required final Map<String, _FakeResult> results}) implements ProcessRunner {
   @override
   Future<int> startDetached({
     required String executable,
@@ -186,10 +180,7 @@ class _FakeProcessRunner implements ProcessRunner {
     throw UnimplementedError();
   }
 
-  final Map<String, _FakeResult> results;
   final Map<String, int> _callCounts = <String, int>{};
-
-  _FakeProcessRunner({required this.results});
 
   @override
   Future<ProcessResult> run(
@@ -215,19 +206,11 @@ class _FakeProcessRunner implements ProcessRunner {
   int callCount(String executable) => _callCounts[executable] ?? 0;
 }
 
-class _FakePlatformChecker implements PlatformChecker {
-  final bool _isMacOS;
-  final bool _isWindows;
-  final bool _isLinux;
-
-  _FakePlatformChecker({
-    bool isMacOS = false,
-    bool isWindows = false,
-    bool isLinux = false,
-  }) : _isMacOS = isMacOS,
-       _isWindows = isWindows,
-       _isLinux = isLinux;
-
+class _FakePlatformChecker({
+  final bool _isMacOS = false,
+  final bool _isWindows = false,
+  final bool _isLinux = false,
+}) implements PlatformChecker {
   @override
   bool get isMacOS => _isMacOS;
 

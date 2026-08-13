@@ -8,53 +8,53 @@ part "plugin_management_state.freezed.dart";
 
 @Freezed()
 sealed class PluginManagementActionError with _$PluginManagementActionError {
-  const factory PluginManagementActionError.invalidIdleTimeout() = PluginManagementInvalidIdleTimeout;
+  const factory invalidIdleTimeout() = PluginManagementInvalidIdleTimeout;
 
-  const factory PluginManagementActionError.notFound() = PluginManagementActionNotFound;
+  const factory notFound() = PluginManagementActionNotFound;
 
-  const factory PluginManagementActionError.conflict({
+  const factory conflict({
     required PluginLifecycleConflict conflict,
   }) = PluginManagementActionConflict;
 
-  const factory PluginManagementActionError.uncertain() = PluginManagementActionUncertain;
+  const factory uncertain() = PluginManagementActionUncertain;
 
-  const factory PluginManagementActionError.request({
+  const factory request({
     required ApiError error,
   }) = PluginManagementActionRequestError;
 }
 
 @Freezed()
 sealed class PluginManagementRefreshState with _$PluginManagementRefreshState {
-  const factory PluginManagementRefreshState.idle() = PluginManagementRefreshIdle;
+  const factory idle() = PluginManagementRefreshIdle;
 
-  const factory PluginManagementRefreshState.failed({
+  const factory failed({
     required ApiError error,
   }) = PluginManagementRefreshFailed;
 }
 
 @Freezed()
 sealed class PluginManagementActionTarget with _$PluginManagementActionTarget {
-  const factory PluginManagementActionTarget.allHarnesses() = PluginManagementActionTargetAllHarnesses;
+  const factory allHarnesses() = PluginManagementActionTargetAllHarnesses;
 
-  const factory PluginManagementActionTarget.harness({
+  const factory harness({
     required String pluginId,
   }) = PluginManagementActionTargetHarness;
 }
 
 @Freezed()
 sealed class PluginManagementActionState with _$PluginManagementActionState {
-  const factory PluginManagementActionState.idle() = PluginManagementActionIdle;
+  const factory idle() = PluginManagementActionIdle;
 
-  const factory PluginManagementActionState.inProgress({
+  const factory inProgress({
     required PluginManagementActionTarget target,
   }) = PluginManagementActionInProgress;
 
-  const factory PluginManagementActionState.failed({
+  const factory failed({
     required PluginManagementActionTarget target,
     required PluginManagementActionError error,
   }) = PluginManagementActionFailed;
 
-  const factory PluginManagementActionState.forceConfirmationRequired({
+  const factory forceConfirmationRequired({
     required String pluginId,
     required PluginManagementForceAction action,
     required PluginLifecycleConflict conflict,
@@ -64,46 +64,42 @@ sealed class PluginManagementActionState with _$PluginManagementActionState {
 
 @Freezed()
 sealed class PluginAuthenticationPresentationError with _$PluginAuthenticationPresentationError {
-  const factory PluginAuthenticationPresentationError.notFound() = PluginAuthenticationPresentationNotFound;
-  const factory PluginAuthenticationPresentationError.unsupported() = PluginAuthenticationPresentationUnsupported;
-  const factory PluginAuthenticationPresentationError.conflict({
+  const factory notFound() = PluginAuthenticationPresentationNotFound;
+  const factory unsupported() = PluginAuthenticationPresentationUnsupported;
+  const factory conflict({
     required PluginAuthenticationConflict conflict,
   }) = PluginAuthenticationPresentationConflict;
-  const factory PluginAuthenticationPresentationError.uncertain() = PluginAuthenticationPresentationUncertain;
-  const factory PluginAuthenticationPresentationError.invalidChallenge() =
-      PluginAuthenticationPresentationInvalidChallenge;
-  const factory PluginAuthenticationPresentationError.remote({required String message}) =
-      PluginAuthenticationPresentationRemoteError;
-  const factory PluginAuthenticationPresentationError.request({required ApiError error}) =
-      PluginAuthenticationPresentationRequestError;
+  const factory uncertain() = PluginAuthenticationPresentationUncertain;
+  const factory invalidChallenge() = PluginAuthenticationPresentationInvalidChallenge;
+  const factory remote({required String message}) = PluginAuthenticationPresentationRemoteError;
+  const factory request({required ApiError error}) = PluginAuthenticationPresentationRequestError;
 }
 
 @Freezed()
 sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPresentationState {
-  const factory PluginAuthenticationPresentationState.idle() = PluginAuthenticationPresentationIdle;
-  const factory PluginAuthenticationPresentationState.starting({required String pluginId}) =
-      PluginAuthenticationPresentationStarting;
-  const factory PluginAuthenticationPresentationState.challenge({
+  const factory idle() = PluginAuthenticationPresentationIdle;
+  const factory starting({required String pluginId}) = PluginAuthenticationPresentationStarting;
+  const factory challenge({
     required String pluginId,
     required Uri verificationUri,
     required String userCode,
   }) = PluginAuthenticationPresentationChallenge;
-  const factory PluginAuthenticationPresentationState.browserLaunchFailed({
+  const factory browserLaunchFailed({
     required String pluginId,
     required Uri verificationUri,
     required String userCode,
   }) = PluginAuthenticationPresentationBrowserLaunchFailedState;
-  const factory PluginAuthenticationPresentationState.cancelling({
+  const factory cancelling({
     required String pluginId,
     required Uri verificationUri,
     required String userCode,
   }) = PluginAuthenticationPresentationCancelling;
-  const factory PluginAuthenticationPresentationState.cancellingUncertain({
+  const factory cancellingUncertain({
     required String pluginId,
     required Uri verificationUri,
     required String userCode,
   }) = PluginAuthenticationPresentationCancellingUncertain;
-  const factory PluginAuthenticationPresentationState.failed({
+  const factory failed({
     required String? pluginId,
     required PluginAuthenticationPresentationError error,
   }) = PluginAuthenticationPresentationFailed;
@@ -111,13 +107,13 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
 
 @Freezed()
 sealed class PluginManagementState with _$PluginManagementState {
-  const factory PluginManagementState.loading() = PluginManagementLoading;
+  const factory loading() = PluginManagementLoading;
 
-  const factory PluginManagementState.unsupported() = PluginManagementUnsupported;
+  const factory unsupported() = PluginManagementUnsupported;
 
-  const factory PluginManagementState.failure({required ApiError error}) = PluginManagementFailure;
+  const factory failure({required ApiError error}) = PluginManagementFailure;
 
-  const factory PluginManagementState.ready({
+  const factory ready({
     required PluginManagementResponse response,
     required PluginManagementRefreshState refresh,
     required PluginManagementActionState action,

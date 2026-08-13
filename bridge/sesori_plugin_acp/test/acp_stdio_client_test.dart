@@ -251,7 +251,7 @@ void main() {
   });
 }
 
-class _LateExitAcpProcess implements AcpProcessHandle {
+class _LateExitAcpProcess() implements AcpProcessHandle {
   final FakeAcpProcess _delegate = FakeAcpProcess();
 
   @override

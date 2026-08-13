@@ -7,20 +7,14 @@ import "package:sesori_shared/sesori_shared.dart";
 ///
 /// Deliberately not a TokenData: validation never knows the bridge id, so
 /// this type cannot be persisted raw — callers merge it with persisted state.
-class TokenValidationResult {
-  final String accessToken;
-  final String refreshToken;
+class TokenValidationResult({
+  required final String accessToken,
+  required final String refreshToken,
 
   /// True if the credentials are valid (either original or refreshed);
   /// false if both access and refresh failed (credentials may be revoked).
-  final bool isValid;
-
-  TokenValidationResult({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.isValid,
-  });
-}
+  required final bool isValid,
+});
 
 /// Validates an access token and attempts refresh if expired.
 ///

@@ -18,7 +18,7 @@ String? normalizePluginMessageAttachmentFilename({required String? filename}) {
 }
 
 @JsonEnum()
-enum PluginMessagePartType {
+enum PluginMessagePartType() {
   @JsonValue("text")
   text,
   @JsonValue("reasoning")
@@ -52,7 +52,7 @@ enum PluginMessagePartType {
 
 @freezed
 sealed class PluginMessageWithParts with _$PluginMessageWithParts {
-  const factory PluginMessageWithParts({
+  const factory({
     required PluginMessage info,
     required List<PluginMessagePart> parts,
   }) = _PluginMessageWithParts;
@@ -60,7 +60,7 @@ sealed class PluginMessageWithParts with _$PluginMessageWithParts {
 
 @freezed
 sealed class PluginMessagePart with _$PluginMessagePart {
-  const factory PluginMessagePart({
+  const factory({
     required String id,
     required String sessionID,
     required String messageID,
@@ -88,20 +88,20 @@ sealed class PluginMessagePart with _$PluginMessagePart {
 @Freezed(unionKey: "source", toStringOverride: false)
 sealed class PluginMessageAttachment with _$PluginMessageAttachment {
   @FreezedUnionValue("inline_image")
-  const factory PluginMessageAttachment.inlineImage({
+  const factory inlineImage({
     required String mime,
     required String base64,
     required String? filename,
   }) = PluginMessageAttachmentInlineImage;
 
   @FreezedUnionValue("remote_url")
-  const factory PluginMessageAttachment.remoteUrl({
+  const factory remoteUrl({
     required String mime,
     required Uri url,
     required String? filename,
   }) = PluginMessageAttachmentRemoteUrl;
 
-  const factory PluginMessageAttachment.metadata({
+  const factory metadata({
     required String mime,
     required String? filename,
   }) = PluginMessageAttachmentMetadata;
@@ -112,7 +112,7 @@ sealed class PluginMessageAttachment with _$PluginMessageAttachment {
 /// matching magic strings. The `@JsonValue`s keep the wire form
 /// (`"pending"`, `"running"`, …) unchanged.
 @JsonEnum()
-enum PluginToolStatus {
+enum PluginToolStatus() {
   @JsonValue("pending")
   pending,
   @JsonValue("running")
@@ -127,7 +127,7 @@ enum PluginToolStatus {
 
 @freezed
 sealed class PluginToolState with _$PluginToolState {
-  const factory PluginToolState({
+  const factory({
     required PluginToolStatus status,
     required String? title,
     required String? output,
@@ -146,14 +146,14 @@ sealed class PluginToolState with _$PluginToolState {
 /// The JSON serialization uses `"role"` as the union key.
 @Freezed(unionKey: "role")
 sealed class PluginMessage with _$PluginMessage {
-  const factory PluginMessage.user({
+  const factory user({
     required String id,
     required String sessionID,
     required String? agent,
     required PluginMessageTime? time,
   }) = PluginMessageUser;
 
-  const factory PluginMessage.assistant({
+  const factory assistant({
     required String id,
     required String sessionID,
     required String? agent,
@@ -162,7 +162,7 @@ sealed class PluginMessage with _$PluginMessage {
     required PluginMessageTime? time,
   }) = PluginMessageAssistant;
 
-  const factory PluginMessage.error({
+  const factory error({
     required String id,
     required String sessionID,
     required String? agent,
@@ -178,7 +178,7 @@ sealed class PluginMessage with _$PluginMessage {
 /// Unix epoch. Mirrors [PluginSessionTime].
 @freezed
 sealed class PluginMessageTime with _$PluginMessageTime {
-  const factory PluginMessageTime({
+  const factory({
     required int created,
     required int? completed,
   }) = _PluginMessageTime;

@@ -13,83 +13,47 @@ import "../../api/models/acp_tool_content_dto.dart";
 
 const int acpToolImageCandidateLimit = maxTranscriptImageCandidates;
 
-sealed class AcpMappedContentBlock {
-  const AcpMappedContentBlock();
-}
+sealed class const AcpMappedContentBlock();
 
-final class AcpMappedTextContentBlock extends AcpMappedContentBlock {
-  const AcpMappedTextContentBlock({required this.text});
+final class const AcpMappedTextContentBlock({required final String text}) extends AcpMappedContentBlock;
 
-  final String text;
-}
+sealed class const AcpMappedImageContentBlock() extends AcpMappedContentBlock;
 
-sealed class AcpMappedImageContentBlock extends AcpMappedContentBlock {
-  const AcpMappedImageContentBlock();
-}
+final class const AcpMappedInlineImageContentBlock({
+    required final PluginMessageAttachmentInlineImage attachment,
+    required final int decodedBytes,
+  }) extends AcpMappedImageContentBlock;
 
-final class AcpMappedInlineImageContentBlock extends AcpMappedImageContentBlock {
-  const AcpMappedInlineImageContentBlock({
-    required this.attachment,
-    required this.decodedBytes,
-  });
+final class const AcpMappedMetadataImageContentBlock({
+    required final PluginMessageAttachmentMetadata attachment,
+    required final AcpImageDegradationReason reason,
+  }) extends AcpMappedImageContentBlock;
 
-  final PluginMessageAttachmentInlineImage attachment;
-  final int decodedBytes;
-}
+final class const AcpMappedUnsupportedContentBlock() extends AcpMappedContentBlock;
 
-final class AcpMappedMetadataImageContentBlock extends AcpMappedImageContentBlock {
-  const AcpMappedMetadataImageContentBlock({
-    required this.attachment,
-    required this.reason,
-  });
+final class const AcpMappedUnknownContentBlock() extends AcpMappedContentBlock;
 
-  final PluginMessageAttachmentMetadata attachment;
-  final AcpImageDegradationReason reason;
-}
-
-final class AcpMappedUnsupportedContentBlock extends AcpMappedContentBlock {
-  const AcpMappedUnsupportedContentBlock();
-}
-
-final class AcpMappedUnknownContentBlock extends AcpMappedContentBlock {
-  const AcpMappedUnknownContentBlock();
-}
-
-enum AcpImageDegradationReason {
+enum AcpImageDegradationReason() {
   invalid,
   unsupported,
   oversized,
 }
 
-sealed class AcpToolContentMutation {
-  const AcpToolContentMutation();
-}
+sealed class const AcpToolContentMutation();
 
-final class AcpReplaceToolContentMutation extends AcpToolContentMutation {
-  const AcpReplaceToolContentMutation({
-    required this.output,
-    required this.imageCandidates,
-    required this.hasDiff,
-  });
+final class const AcpReplaceToolContentMutation({
+    required final String? output,
+    required final List<AcpMappedImageContentBlock> imageCandidates,
+    required final bool hasDiff,
+  }) extends AcpToolContentMutation;
 
-  final String? output;
-  final List<AcpMappedImageContentBlock> imageCandidates;
-  final bool hasDiff;
-}
+final class const AcpUpdateToolOutputMutation({required final String? output}) extends AcpToolContentMutation;
 
-final class AcpUpdateToolOutputMutation extends AcpToolContentMutation {
-  const AcpUpdateToolOutputMutation({required this.output});
-
-  final String? output;
-}
-
-final class AcpUnchangedToolContentMutation extends AcpToolContentMutation {
-  const AcpUnchangedToolContentMutation();
-}
+final class const AcpUnchangedToolContentMutation() extends AcpToolContentMutation;
 
 /// Deduplicates privacy-safe mapping warnings across chunks of one logical
 /// message while retaining no payload values.
-final class AcpContentMappingScope {
+final class AcpContentMappingScope() {
   final Set<_AcpContentWarning> _warned = {};
 }
 
@@ -99,9 +63,7 @@ final class AcpContentMappingScope {
 /// Message/tool ordering, count, and aggregate-byte state belong to their
 /// respective trackers. This mapper owns only one candidate's typed decoding,
 /// transport-safe normalization, and tool mutation selection.
-final class AcpContentMapper {
-  const AcpContentMapper();
-
+final class const AcpContentMapper() {
   static const int _maxUriCharactersForFilename = 4096;
   static const int _maxMimeCharacters = 255;
   static const String _fallbackMime = "application/octet-stream";
@@ -567,12 +529,12 @@ final class AcpContentMapper {
   }
 }
 
-enum _AcpContentWarning {
+enum _AcpContentWarning() {
   malformed,
   toolImageCountOverflow,
 }
 
-final class _AcpToolImagePrefix {
+final class _AcpToolImagePrefix() {
   int _candidateCount = 0;
 
   bool take() {
@@ -582,16 +544,8 @@ final class _AcpToolImagePrefix {
   }
 }
 
-sealed class _AcpMappedToolItem {
-  const _AcpMappedToolItem();
-}
+sealed class const _AcpMappedToolItem();
 
-final class _AcpMappedToolBlock extends _AcpMappedToolItem {
-  const _AcpMappedToolBlock({required this.block});
+final class const _AcpMappedToolBlock({required final AcpMappedContentBlock block}) extends _AcpMappedToolItem;
 
-  final AcpMappedContentBlock block;
-}
-
-final class _AcpMappedToolDiff extends _AcpMappedToolItem {
-  const _AcpMappedToolDiff();
-}
+final class const _AcpMappedToolDiff() extends _AcpMappedToolItem;

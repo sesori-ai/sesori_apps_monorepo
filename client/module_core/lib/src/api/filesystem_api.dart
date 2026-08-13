@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
-class FilesystemApi {
+class FilesystemApi({required final RelayHttpApiClient _client}) {
   /// How many child directories one browse request asks the bridge for.
   ///
   /// The bridge sorts by name and truncates to this many, so the value is a
@@ -15,10 +15,6 @@ class FilesystemApi {
   /// for pathological directories (`node_modules` and the like), at roughly
   /// 150 bytes per entry.
   static const _browseResultLimit = 1000;
-
-  final RelayHttpApiClient _client;
-
-  FilesystemApi({required RelayHttpApiClient client}) : _client = client;
 
   Future<ApiResponse<FilesystemSuggestions>> getSuggestions({
     required String? prefix,

@@ -13,7 +13,7 @@ part "acp_protocol.g.dart";
 const int acpProtocolVersion = 1;
 
 /// Standard ACP JSON-RPC method names.
-abstract final class AcpMethods {
+abstract final class AcpMethods() {
   static const String initialize = "initialize";
   static const String authenticate = "authenticate";
   static const String sessionNew = "session/new";
@@ -30,14 +30,8 @@ abstract final class AcpMethods {
 }
 
 /// An auth method advertised by the agent in the `initialize` result.
-class AcpAuthMethod {
-  const AcpAuthMethod({required this.id, this.name, this.description});
-
-  final String id;
-  final String? name;
-  final String? description;
-
-  factory AcpAuthMethod.fromJson(Map<String, dynamic> json) => AcpAuthMethod(
+class const AcpAuthMethod({required final String id, final String? name, final String? description}) {
+  factory fromJson(Map<String, dynamic> json) => AcpAuthMethod(
     id: (json["id"] ?? "") as String,
     name: json["name"] as String?,
     description: json["description"] as String?,
@@ -45,33 +39,25 @@ class AcpAuthMethod {
 }
 
 /// Capabilities the agent reports at `initialize`.
-class AcpAgentCapabilities {
-  const AcpAgentCapabilities({
-    required this.loadSession,
-    required this.listSessions,
-    required this.resumeSession,
-    required this.closeSession,
-    required this.raw,
-  });
-
+class const AcpAgentCapabilities({
   /// Whether `session/load` (history replay) is supported.
-  final bool loadSession;
+  required final bool loadSession,
 
   /// Whether the standard `session/list` is supported.
-  final bool listSessions;
+  required final bool listSessions,
 
   /// Whether `session/resume` (re-activate a prior session with no history
   /// replay) is supported. Used only when [loadSession] is absent — load is
   /// strictly richer.
-  final bool resumeSession;
+  required final bool resumeSession,
 
   /// Whether `session/close` is supported.
-  final bool closeSession;
+  required final bool closeSession,
 
   /// Full raw capabilities object for harness-specific probing.
-  final Map<String, dynamic> raw;
-
-  factory AcpAgentCapabilities.fromJson(Map<String, dynamic> json) {
+  required final Map<String, dynamic> raw,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
     final rawSession = json["sessionCapabilities"];
     final session = rawSession is Map ? rawSession.cast<String, dynamic>() : null;
     // ACP advertises an optional capability as either a bool or a nested
@@ -91,23 +77,16 @@ class AcpAgentCapabilities {
 }
 
 /// Parsed result of the `initialize` handshake.
-class AcpInitializeResult {
-  const AcpInitializeResult({
-    required this.protocolVersion,
-    required this.agentCapabilities,
-    required this.authMethods,
-    required this.raw,
-  });
-
-  final int protocolVersion;
-  final AcpAgentCapabilities agentCapabilities;
-  final List<AcpAuthMethod> authMethods;
-  final Map<String, dynamic> raw;
-
+class const AcpInitializeResult({
+  required final int protocolVersion,
+  required final AcpAgentCapabilities agentCapabilities,
+  required final List<AcpAuthMethod> authMethods,
+  required final Map<String, dynamic> raw,
+}) {
   /// True when the agent requires authentication before sessions can start.
   bool get requiresAuth => authMethods.isNotEmpty;
 
-  factory AcpInitializeResult.fromJson(Map<String, dynamic> json) {
+  factory fromJson(Map<String, dynamic> json) {
     final rawCaps = json["agentCapabilities"];
     final caps = rawCaps is Map ? rawCaps.cast<String, dynamic>() : const <String, dynamic>{};
     final rawMethods = json["authMethods"];
@@ -127,9 +106,7 @@ class AcpInitializeResult {
 /// Converts an ACP `updatedAt` value to epoch milliseconds: the spec sends an
 /// ISO 8601 string, while live cursor-agent builds have shipped epoch
 /// numbers — both are accepted, anything else is null.
-class AcpTimestampMsConverter implements JsonConverter<int?, Object?> {
-  const AcpTimestampMsConverter();
-
+class const AcpTimestampMsConverter() implements JsonConverter<int?, Object?> {
   @override
   int? fromJson(Object? json) {
     if (json is num) return json.round();
@@ -144,7 +121,7 @@ class AcpTimestampMsConverter implements JsonConverter<int?, Object?> {
 /// One entry of a `session/list` result.
 @freezed
 sealed class AcpSessionInfo with _$AcpSessionInfo {
-  const factory AcpSessionInfo({
+  const factory({
     @Default("") String sessionId,
 
     /// The session's working directory. Required by the spec, but kept
@@ -157,7 +134,7 @@ sealed class AcpSessionInfo with _$AcpSessionInfo {
     @AcpTimestampMsConverter() @JsonKey(name: "updatedAt") required int? updatedAtMs,
   }) = _AcpSessionInfo;
 
-  factory AcpSessionInfo.fromJson(Map<String, dynamic> json) => _$AcpSessionInfoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AcpSessionInfoFromJson(json);
 }
 
 /// Defensive parser for a `session/list` page's `sessions` array: a malformed
@@ -183,36 +160,28 @@ List<AcpSessionInfo> _sessionInfosFromJson(Object? raw) {
 /// Parsed result of one `session/list` page.
 @freezed
 sealed class AcpSessionListResult with _$AcpSessionListResult {
-  const factory AcpSessionListResult({
+  const factory({
     @JsonKey(fromJson: _sessionInfosFromJson) @Default(<AcpSessionInfo>[]) List<AcpSessionInfo> sessions,
 
     /// Opaque continuation token — a non-empty value means more pages exist.
     required String? nextCursor,
   }) = _AcpSessionListResult;
 
-  factory AcpSessionListResult.fromJson(Map<String, dynamic> json) => _$AcpSessionListResultFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$AcpSessionListResultFromJson(json);
 }
 
 /// Result of `session/new`.
-class AcpNewSessionResult {
-  const AcpNewSessionResult({
-    required this.sessionId,
-    required this.modes,
-    required this.configOptions,
-    required this.raw,
-  });
-
-  final String sessionId;
+class const AcpNewSessionResult({
+  required final String sessionId,
 
   /// Optional session modes (plan/ask/agent) — raw, harness-specific.
-  final List<Map<String, dynamic>> modes;
+  required final List<Map<String, dynamic>> modes,
 
   /// Optional config options (e.g. Cursor's model selector) — raw.
-  final List<Map<String, dynamic>> configOptions;
-
-  final Map<String, dynamic> raw;
-
-  factory AcpNewSessionResult.fromJson(Map<String, dynamic> json) {
+  required final List<Map<String, dynamic>> configOptions,
+  required final Map<String, dynamic> raw,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
     return AcpNewSessionResult(
       sessionId: (json["sessionId"] ?? "") as String,
       modes: _mapList(json["modes"]),
@@ -223,7 +192,7 @@ class AcpNewSessionResult {
 }
 
 /// Why a `session/prompt` turn ended.
-enum AcpStopReason {
+enum AcpStopReason() {
   endTurn,
   maxTokens,
   maxTurnRequests,
@@ -244,13 +213,8 @@ enum AcpStopReason {
 }
 
 /// Result of `session/prompt`.
-class AcpPromptResult {
-  const AcpPromptResult({required this.stopReason});
-
-  final AcpStopReason stopReason;
-
-  factory AcpPromptResult.fromJson(Map<String, dynamic> json) =>
-      AcpPromptResult(stopReason: AcpStopReason.parse(json["stopReason"]));
+class const AcpPromptResult({required final AcpStopReason stopReason}) {
+  factory fromJson(Map<String, dynamic> json) => AcpPromptResult(stopReason: AcpStopReason.parse(json["stopReason"]));
 }
 
 /// Builds the `clientCapabilities` object sent at `initialize`.

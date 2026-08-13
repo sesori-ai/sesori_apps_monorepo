@@ -35,19 +35,12 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-class _BenchmarkConfiguration {
-  const _BenchmarkConfiguration({
-    required this.projectCount,
-    required this.sessionCount,
-    required this.warmupCount,
-    required this.sampleCount,
-  });
-
-  final int projectCount;
-  final int sessionCount;
-  final int warmupCount;
-  final int sampleCount;
-
+class const _BenchmarkConfiguration({
+  required final int projectCount,
+  required final int sessionCount,
+  required final int warmupCount,
+  required final int sampleCount,
+}) {
   static _BenchmarkConfiguration parse({required List<String> arguments}) {
     final parser = ArgParser()
       ..addOption("projects", defaultsTo: "$_defaultProjectCount")
@@ -80,11 +73,7 @@ class _BenchmarkConfiguration {
   }
 }
 
-class _ImportConcurrencyBenchmark {
-  const _ImportConcurrencyBenchmark({required _BenchmarkConfiguration configuration}) : _configuration = configuration;
-
-  final _BenchmarkConfiguration _configuration;
-
+class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-import-concurrency-");
@@ -339,7 +328,7 @@ class _ImportConcurrencyBenchmark {
   }
 }
 
-class _SchedulingLagProbe {
+class _SchedulingLagProbe() {
   final List<int> samples = <int>[];
   Timer? _timer;
   final Stopwatch _stopwatch = Stopwatch();
@@ -368,16 +357,11 @@ class _SchedulingLagProbe {
   }
 }
 
-class _BenchmarkProjectsDao extends ProjectsDao {
-  _BenchmarkProjectsDao(
-    super.attachedDatabase, {
-    required this.publicationStarted,
-    required this.releasePublication,
-  });
-
-  final Completer<void> publicationStarted;
-  final Completer<void> releasePublication;
-
+class _BenchmarkProjectsDao(
+  super.attachedDatabase, {
+  required final Completer<void> publicationStarted,
+  required final Completer<void> releasePublication,
+}) extends ProjectsDao {
   @override
   Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
     await super.upsertProjectRows(rows: rows);
@@ -386,17 +370,11 @@ class _BenchmarkProjectsDao extends ProjectsDao {
   }
 }
 
-class _BenchmarkPlugin implements BridgeDerivedProjectsPluginApi {
-  _BenchmarkPlugin({
-    required this.launchDirectory,
-    required this.sessions,
-    required this.releaseEnumeration,
-  });
-
-  @override
-  final String launchDirectory;
-  final List<PluginSession> sessions;
-  final Completer<void> releaseEnumeration;
+class _BenchmarkPlugin({
+  @override required final String launchDirectory,
+  required final List<PluginSession> sessions,
+  required final Completer<void> releaseEnumeration,
+}) implements BridgeDerivedProjectsPluginApi {
   final Completer<void> enumerationStarted = Completer<void>();
 
   @override

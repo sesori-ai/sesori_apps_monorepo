@@ -6,8 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// carries these URLs inline, because they are part of that markdown copy.
 /// Tapping one opens the document in-app rather than in a browser, so
 /// [documentFor] maps a tapped URL back to the document to show.
-class LegalLinks {
-  const LegalLinks._();
+class const LegalLinks._() {
   static const String terms = "https://sesori.com/terms";
   static const String privacy = "https://sesori.com/privacy";
 

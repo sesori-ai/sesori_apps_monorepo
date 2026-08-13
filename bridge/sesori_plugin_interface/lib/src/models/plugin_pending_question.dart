@@ -6,7 +6,7 @@ part "plugin_pending_question.g.dart";
 
 @freezed
 sealed class PluginQuestionOption with _$PluginQuestionOption {
-  const factory PluginQuestionOption({
+  const factory({
     required String label,
     required String description,
   }) = _PluginQuestionOption;
@@ -14,7 +14,7 @@ sealed class PluginQuestionOption with _$PluginQuestionOption {
 
 @freezed
 sealed class PluginQuestionInfo with _$PluginQuestionInfo {
-  const factory PluginQuestionInfo({
+  const factory({
     required String question,
     required String header,
     required List<PluginQuestionOption> options,
@@ -25,9 +25,10 @@ sealed class PluginQuestionInfo with _$PluginQuestionInfo {
 
 @freezed
 sealed class PluginPendingQuestion with _$PluginPendingQuestion {
-  const factory PluginPendingQuestion({
+  const factory({
     required String id,
     required String sessionID,
+
     /// Top-most root session this request should be surfaced under (for a
     /// child/sub-agent session's request). Null when unknown.
     required String? displaySessionId,

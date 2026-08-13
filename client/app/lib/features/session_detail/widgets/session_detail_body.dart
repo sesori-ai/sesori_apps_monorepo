@@ -18,27 +18,19 @@ import "question_modal.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 
-class SessionDetailBody extends StatefulWidget {
-  final String projectId;
-  final String? projectName;
-  final String sessionId;
-  final String? sessionTitle;
-  final bool readOnly;
-
-  const SessionDetailBody({
-    super.key,
-    required this.projectId,
-    required this.projectName,
-    required this.sessionId,
-    required this.sessionTitle,
-    required this.readOnly,
-  });
-
+class const SessionDetailBody({
+  super.key,
+  required final String projectId,
+  required final String? projectName,
+  required final String sessionId,
+  required final String? sessionTitle,
+  required final bool readOnly,
+}) extends StatefulWidget {
   @override
   State<SessionDetailBody> createState() => _SessionDetailBodyState();
 }
 
-class _SessionDetailBodyState extends State<SessionDetailBody> {
+class _SessionDetailBodyState() extends State<SessionDetailBody> {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
   StreamSubscription<SesoriPermissionAsked>? _permissionSub;
 
@@ -86,7 +78,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       ].join(" · "),
       SessionDetailLoading() || SessionDetailFailed() => "",
     };
-    final canShowDiffs = state is SessionDetailLoaded && state.isRootSession == true && !state.isArchived;
+    final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
 
     final actions = <Widget>[
       if (canShowDiffs)
@@ -304,7 +296,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void _scheduleModal(VoidCallback action) =>
       Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
 
-  bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent == true;
+  bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent ?? false;
 
   void _showFailureSnackBar(String message) {
     ScaffoldMessenger.of(context)

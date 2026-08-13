@@ -20,39 +20,31 @@ import "../../theme/prego_theme.dart";
 /// enclosing `CueModalTransition` pushed — wire it to any dismiss affordance
 /// inside the bubble (a tapped menu row, a "Done" button). The transparent
 /// tap-outside barrier belongs to that `CueModalTransition`, not to this panel.
-class AnchoredFlatPanel extends StatelessWidget {
-  const AnchoredFlatPanel({
-    super.key,
-    required this.triggerRect,
-    required this.width,
-    required this.maxHeight,
-    required this.borderRadius,
-    required this.screenPadding,
-    required this.childBuilder,
-  });
+class const AnchoredFlatPanel({
+  super.key,
 
   /// Screen-space rectangle of the trigger the bubble anchors to.
-  final Rect triggerRect;
+  required final Rect triggerRect,
 
   /// Fixed width of the bubble (clamped down to fit a narrow viewport).
-  final double width;
+  required final double width,
 
   /// Caps how tall the bubble may grow; past it the content scrolls. Null lets
   /// it grow with its content. Either way it is bounded by the room beside the
   /// trigger — a cap only ever tightens that bound.
-  final double? maxHeight;
+  required final double? maxHeight,
 
   /// Corner radius of the bubble.
-  final double borderRadius;
+  required final double borderRadius,
 
   /// Minimum gap kept between the bubble and the screen edges.
-  final EdgeInsets screenPadding;
+  required final EdgeInsets screenPadding,
 
   /// Builds the bubble body. The `close` callback dismisses the popup. The panel
   /// scrolls this content when it exceeds the available height, so it need not
   /// provide its own scroll view.
-  final Widget Function(BuildContext context, VoidCallback close) childBuilder;
-
+  required final Widget Function(BuildContext context, VoidCallback close) childBuilder,
+}) extends StatelessWidget {
   /// Gap between the trigger and the bubble it spawns.
   static const double _gap = 8;
 
@@ -68,8 +60,7 @@ class AnchoredFlatPanel extends StatelessWidget {
     // Expand toward whichever side of the trigger has more room. For a trigger
     // near the bottom (e.g. the session composer) this resolves to "expand up".
     final spaceAbove = triggerRect.top - safe.top - screenPadding.top - _gap;
-    final spaceBelow =
-        screen.height - keyboard - safe.bottom - screenPadding.bottom - triggerRect.bottom - _gap;
+    final spaceBelow = screen.height - keyboard - safe.bottom - screenPadding.bottom - triggerRect.bottom - _gap;
     final expandUp = spaceAbove >= spaceBelow;
     final cap = maxHeight;
     final available = math.max(0.0, expandUp ? spaceAbove : spaceBelow);
@@ -127,35 +118,23 @@ class AnchoredFlatPanel extends StatelessWidget {
 /// [maxHeight], anchored above or below [triggerRect] per [expandUp], and
 /// clamped so it never crosses the screen-edge padding (incl. notches and the
 /// keyboard).
-class _AnchoredPopupLayoutDelegate extends SingleChildLayoutDelegate {
-  _AnchoredPopupLayoutDelegate({
-    required this.triggerRect,
-    required this.width,
-    required this.maxHeight,
-    required this.expandUp,
-    required this.screenPadding,
-    required this.safe,
-    required this.keyboard,
-    required this.gap,
-  });
-
-  final Rect triggerRect;
-  final double width;
-  final double maxHeight;
-  final bool expandUp;
-  final EdgeInsets screenPadding;
-  final EdgeInsets safe;
-  final double keyboard;
-  final double gap;
-
+class _AnchoredPopupLayoutDelegate({
+  required final Rect triggerRect,
+  required final double width,
+  required final double maxHeight,
+  required final bool expandUp,
+  required final EdgeInsets screenPadding,
+  required final EdgeInsets safe,
+  required final double keyboard,
+  required final double gap,
+}) extends SingleChildLayoutDelegate {
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     // Cap to the padded safe area, not the full route width: getPositionForChild
     // can only reposition the child, not shrink it, so a width wider than the
     // viewport (e.g. a 320px bubble on a 320dp screen) would otherwise overflow
     // the edge/safe-area despite the dx clamp.
-    final availableWidth =
-        constraints.maxWidth - screenPadding.left - screenPadding.right - safe.left - safe.right;
+    final availableWidth = constraints.maxWidth - screenPadding.left - screenPadding.right - safe.left - safe.right;
     final width = math.min(this.width, math.max(0.0, availableWidth));
     return BoxConstraints(
       minWidth: width,
@@ -173,10 +152,8 @@ class _AnchoredPopupLayoutDelegate extends SingleChildLayoutDelegate {
         .toDouble();
 
     final topBound = screenPadding.top + safe.top;
-    final bottomBound =
-        size.height - keyboard - screenPadding.bottom - safe.bottom - childSize.height;
-    final preferredDy =
-        expandUp ? triggerRect.top - gap - childSize.height : triggerRect.bottom + gap;
+    final bottomBound = size.height - keyboard - screenPadding.bottom - safe.bottom - childSize.height;
+    final preferredDy = expandUp ? triggerRect.top - gap - childSize.height : triggerRect.bottom + gap;
     final dy = preferredDy.clamp(topBound, math.max(topBound, bottomBound)).toDouble();
 
     return Offset(dx, dy);

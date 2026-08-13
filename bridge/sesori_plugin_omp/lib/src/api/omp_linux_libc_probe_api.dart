@@ -2,33 +2,17 @@ import "dart:io" show File;
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
-sealed class OmpLinuxLibcEvidence {
-  const OmpLinuxLibcEvidence();
-}
+sealed class const OmpLinuxLibcEvidence();
 
-final class OmpAlpineMarkerEvidence extends OmpLinuxLibcEvidence {
-  const OmpAlpineMarkerEvidence();
-}
+final class const OmpAlpineMarkerEvidence() extends OmpLinuxLibcEvidence;
 
-final class OmpLddEvidence extends OmpLinuxLibcEvidence {
-  const OmpLddEvidence({required this.result});
+final class const OmpLddEvidence({required final CommandResult result}) extends OmpLinuxLibcEvidence;
 
-  final CommandResult result;
-}
-
-class OmpLinuxLibcProbeApi {
-  const OmpLinuxLibcProbeApi({
-    required CommandExecutor commandExecutor,
-    required String alpineMarkerPath,
-    required Duration timeout,
-  }) : _commandExecutor = commandExecutor,
-       _alpineMarkerPath = alpineMarkerPath,
-       _timeout = timeout;
-
-  final CommandExecutor _commandExecutor;
-  final String _alpineMarkerPath;
-  final Duration _timeout;
-
+class const OmpLinuxLibcProbeApi({
+  required final CommandExecutor _commandExecutor,
+  required final String _alpineMarkerPath,
+  required final Duration _timeout,
+}) {
   Future<OmpLinuxLibcEvidence> probe() async {
     if (File(_alpineMarkerPath).existsSync()) {
       return const OmpAlpineMarkerEvidence();

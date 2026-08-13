@@ -4,9 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/managed_runtime_paths.dart';
 
-class ManagedRuntimePathService {
-  const ManagedRuntimePathService();
-
+class const ManagedRuntimePathService() {
   ManagedRuntimePaths currentPaths({required Map<String, String> environment}) {
     if (Platform.isWindows) {
       final localAppData = _requireEnv(

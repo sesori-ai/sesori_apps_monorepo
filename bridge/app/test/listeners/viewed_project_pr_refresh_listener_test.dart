@@ -301,7 +301,7 @@ void main() {
   });
 }
 
-class _Harness {
+class _Harness() {
   final ProjectViewTracker tracker = ProjectViewTracker();
   final _FakePrSyncService service = _FakePrSyncService();
   final _FakePullRequestRefreshSettingsService settingsService = _FakePullRequestRefreshSettingsService();
@@ -318,7 +318,7 @@ class _Harness {
   }
 }
 
-class _FakePullRequestRefreshSettingsService implements PullRequestRefreshSettingsService {
+class _FakePullRequestRefreshSettingsService() implements PullRequestRefreshSettingsService {
   final StreamController<PullRequestRefreshSettingsResponse> _changes =
       StreamController<PullRequestRefreshSettingsResponse>.broadcast(sync: true);
   PullRequestRefreshSettingsResponse _current = const PullRequestRefreshSettingsResponse(intervalSeconds: 30);
@@ -344,7 +344,7 @@ class _FakePullRequestRefreshSettingsService implements PullRequestRefreshSettin
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakePrSyncService implements PrSyncService {
+class _FakePrSyncService() implements PrSyncService {
   final List<({Set<String> projectIds, PrRefreshPolicy refreshPolicy})> calls = [];
   final List<Completer<PrRefreshOutcome>> completions = [];
   bool completeImmediately = true;
@@ -396,7 +396,7 @@ String _captureLogOutput({required void Function() action}) {
   return output.text;
 }
 
-class _BufferingStdout implements Stdout {
+class _BufferingStdout() implements Stdout {
   final StringBuffer _buffer = StringBuffer();
 
   String get text => _buffer.toString();

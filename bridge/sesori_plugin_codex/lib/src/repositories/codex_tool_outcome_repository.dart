@@ -6,13 +6,9 @@ import "../api/models/codex_correlatable_item_event_dto.dart";
 import "../api/models/codex_tool_outcome_dto.dart";
 
 /// Layer-2 decisions over persisted structured tool failures.
-class CodexToolOutcomeRepository {
-  CodexToolOutcomeRepository({
-    required CodexToolOutcomeStorage storage,
-  }) : _storage = storage;
-
-  final CodexToolOutcomeStorage _storage;
-
+class CodexToolOutcomeRepository({
+  required final CodexToolOutcomeStorage _storage,
+}) {
   Future<Map<String, PluginToolStatus>> readStatuses({
     required String sessionId,
   }) async {

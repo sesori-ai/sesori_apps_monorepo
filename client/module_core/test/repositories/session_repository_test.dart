@@ -10,7 +10,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
 
-enum _LegacyOptionsFailureSource { agents, providers, commands }
+enum _LegacyOptionsFailureSource() { agents, providers, commands }
 
 void main() {
   setUpAll(registerAllFallbackValues);

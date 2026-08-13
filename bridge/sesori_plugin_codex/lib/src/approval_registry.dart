@@ -46,41 +46,27 @@ const String _userInputMethod = "item/tool/requestUserInput";
 
 const String _elicitationApprovalKindKey = "codex_approval_kind";
 
-enum _ElicitationApprovalKind { mcpToolCall, toolSuggestion }
+enum _ElicitationApprovalKind() { mcpToolCall, toolSuggestion }
 
 /// A pending codex approval, kept until the user answers or codex
 /// rescinds it.
-class _PendingApproval {
-  _PendingApproval({
-    required this.bridgeRequestId,
-    required this.codexId,
-    required this.sessionId,
-    required this.method,
-    required this.params,
-    required this.kind,
+class _PendingApproval({
+    /// Stable id the bridge surfaces to mobile.
+  required final String bridgeRequestId,
+    /// Original JSON-RPC `id` from codex — required to send the response
+  /// frame back on the same request.
+  required final Object codexId,
+    /// Thread id this approval belongs to. May be the empty string when
+  /// codex didn't include one (rare).
+  required final String sessionId,
+    /// JSON-RPC method this approval came in on.
+  required final String method,
+    /// Raw params, kept so the reply can echo whatever codex needs.
+  required final Map<String, dynamic> params,
+    required final _PendingKind kind,
   });
 
-  /// Stable id the bridge surfaces to mobile.
-  final String bridgeRequestId;
-
-  /// Original JSON-RPC `id` from codex — required to send the response
-  /// frame back on the same request.
-  final Object codexId;
-
-  /// Thread id this approval belongs to. May be the empty string when
-  /// codex didn't include one (rare).
-  final String sessionId;
-
-  /// JSON-RPC method this approval came in on.
-  final String method;
-
-  /// Raw params, kept so the reply can echo whatever codex needs.
-  final Map<String, dynamic> params;
-
-  final _PendingKind kind;
-}
-
-enum _PendingKind { permission, question }
+enum _PendingKind() { permission, question }
 
 /// Per-request reply functions injected at construction time so the
 /// registry stays decoupled from [CodexAppServerClient].
@@ -91,21 +77,13 @@ typedef ApprovalErrorResponder = void Function(Object id, int code, String messa
 /// stream and answers them when the bridge consumer replies.
 ///
 /// Subscribe with [attach]. Detach + free pending state with [dispose].
-class ApprovalRegistry {
-  ApprovalRegistry({
-    required void Function(BridgeSseEvent event) emit,
-    required ApprovalResponder respond,
-    required ApprovalErrorResponder respondError,
+class ApprovalRegistry({
+    required final void Function(BridgeSseEvent event) _emit,
+    required final ApprovalResponder _respond,
+    required final ApprovalErrorResponder _respondError,
     String Function()? idGenerator,
-  }) : _emit = emit,
-       _respond = respond,
-       _respondError = respondError,
-       _injectedIdGenerator = idGenerator;
-
-  final void Function(BridgeSseEvent event) _emit;
-  final ApprovalResponder _respond;
-  final ApprovalErrorResponder _respondError;
-  final String Function()? _injectedIdGenerator;
+  }) {
+  final String Function()? _injectedIdGenerator = idGenerator;
 
   StreamSubscription<CodexServerRequest>? _subscription;
   int _seq = 0;

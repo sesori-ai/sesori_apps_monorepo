@@ -6,15 +6,11 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 /// The picked image cannot be sent inline: even after the picker's downscale
 /// pass it exceeds [maxComposerPromptAttachmentBytes].
-final class AttachmentTooLargeError implements Exception {
-  const AttachmentTooLargeError();
-}
+final class const AttachmentTooLargeError() implements Exception;
 
 /// The picked file's content is not a recognized image format, so it cannot
 /// be labeled with an honest mime type for the backend.
-final class UnsupportedAttachmentImageError implements Exception {
-  const UnsupportedAttachmentImageError();
-}
+final class const UnsupportedAttachmentImageError() implements Exception;
 
 /// Stages gallery images as inline composer attachments.
 ///
@@ -23,11 +19,7 @@ final class UnsupportedAttachmentImageError implements Exception {
 /// is still enforced afterwards because animated/exotic formats can skip the
 /// downscale pass.
 @lazySingleton
-class ComposerImagePicker {
-  final ImagePicker _picker;
-
-  ComposerImagePicker({required ImagePicker picker}) : _picker = picker;
-
+class ComposerImagePicker({required final ImagePicker _picker}) {
   /// Longest-edge cap for picked images. Plenty for a model reading a
   /// screenshot or photo, and it keeps the base64 payload a relay frame
   /// carries per image in the low hundreds of kilobytes.

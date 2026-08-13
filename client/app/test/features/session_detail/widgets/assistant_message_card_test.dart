@@ -18,25 +18,20 @@ import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockSessionApi extends Mock implements SessionApi;
+class _MockSessionApi() extends Mock implements SessionApi;
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
-class _AssistantMessageCardHarness extends StatefulWidget {
-  final MessageWithParts message;
-  final Map<String, String> streamingText;
-
-  const _AssistantMessageCardHarness({
-    super.key,
-    required this.message,
-    required this.streamingText,
-  });
-
+class const _AssistantMessageCardHarness({
+  super.key,
+  required final MessageWithParts message,
+  required final Map<String, String> streamingText,
+}) extends StatefulWidget {
   @override
   State<_AssistantMessageCardHarness> createState() => _AssistantMessageCardHarnessState();
 }
 
-class _AssistantMessageCardHarnessState extends State<_AssistantMessageCardHarness> {
+class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHarness> {
   late Map<String, String> _streamingText;
 
   @override

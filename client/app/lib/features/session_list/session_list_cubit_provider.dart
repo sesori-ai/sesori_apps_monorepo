@@ -5,18 +5,12 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 
-class SessionListCubitProvider extends StatelessWidget {
-  final String projectId;
-  final bool? initialSupportsDedicatedWorktrees;
-  final Widget child;
-
-  const SessionListCubitProvider({
-    super.key,
-    required this.projectId,
-    required this.initialSupportsDedicatedWorktrees,
-    required this.child,
-  });
-
+class const SessionListCubitProvider({
+  super.key,
+  required final String projectId,
+  required final bool? initialSupportsDedicatedWorktrees,
+  required final Widget child,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(

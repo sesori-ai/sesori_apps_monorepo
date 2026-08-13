@@ -1,5 +1,5 @@
 /// A terminal reason emitted by Pi's assistant stream.
-enum PiAssistantStopReason {
+enum PiAssistantStopReason(final String wireValue) {
   pending("pending"),
   stop("stop"),
   length("length"),
@@ -7,10 +7,6 @@ enum PiAssistantStopReason {
   error("error"),
   aborted("aborted"),
   deferred("deferred");
-
-  PiAssistantStopReason(this.wireValue);
-
-  final String wireValue;
 
   static PiAssistantStopReason? tryParse({required String? value}) {
     for (final reason in values) {

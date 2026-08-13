@@ -3,7 +3,7 @@ import "package:flutter/material.dart";
 import "../../module_prego.dart";
 
 /// The connection state the [PregoNavSubtitle] status dot reports.
-enum PregoNavStatus {
+enum PregoNavStatus() {
   /// Connected — a green dot.
   online,
 
@@ -26,36 +26,24 @@ enum PregoNavStatus {
 /// hand the finished widget to [PregoGlassScaffold.subtitle] /
 /// [PregoTopNavigation.subtitle] instead of threading row parts through the
 /// bar's API.
-class PregoNavSubtitle extends StatelessWidget {
-  const PregoNavSubtitle({
+class const PregoNavSubtitle({
     super.key,
-    required this.text,
-    this.icon,
-    this.status,
-    this.infoMessage,
-    this.infoSemanticLabel,
-  });
-
-  /// The row's text, in `text-xs / medium / text-secondary`, clipped to a
+    /// The row's text, in `text-xs / medium / text-secondary`, clipped to a
   /// single ellipsised line.
-  final String text;
-
-  /// Optional icon rendered before the [text], sized to the row's `text-xs`
+  required final String text,
+    /// Optional icon rendered before the [text], sized to the row's `text-xs`
   /// glyphs.
-  final IconData? icon;
-
-  /// Status dot before the row; absent when `null`.
-  final PregoNavStatus? status;
-
-  /// When set, the row becomes tappable: a trailing chevron-down is shown and
+  final IconData? icon,
+    /// Status dot before the row; absent when `null`.
+  final PregoNavStatus? status,
+    /// When set, the row becomes tappable: a trailing chevron-down is shown and
   /// tapping opens a [PregoInfoPopover] with this message (e.g. the
   /// untruncated form of an ellipsised [text]).
-  final String? infoMessage;
-
-  /// Screen-reader label for the tappable row; only used when [infoMessage]
+  final String? infoMessage,
+    /// Screen-reader label for the tappable row; only used when [infoMessage]
   /// is set.
-  final String? infoSemanticLabel;
-
+  final String? infoSemanticLabel,
+  }) extends StatelessWidget {
   /// Status dot diameter — the Figma online-indicator size.
   static const double _dotSize = 6;
 
@@ -134,9 +122,7 @@ class PregoNavSubtitle extends StatelessWidget {
 /// join a body skeleton's sweep region — and inherits the shimmer's anti-flash
 /// appear delay, keeping fast loads from blinking a placeholder. Like all
 /// skeletons it is decorative: [PregoShimmer] excludes it from semantics.
-class PregoNavSubtitleSkeleton extends StatelessWidget {
-  const PregoNavSubtitleSkeleton({super.key});
-
+class const PregoNavSubtitleSkeleton({super.key}) extends StatelessWidget {
   /// The real row's height: the `text-xs` line box (12px glyphs, 18px line).
   static const double _rowHeight = 18;
 

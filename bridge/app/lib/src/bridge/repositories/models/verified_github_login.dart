@@ -1,8 +1,4 @@
-final class VerifiedGithubLogin {
-  final String login;
-
-  const VerifiedGithubLogin._({required this.login});
-
+final class const VerifiedGithubLogin._({required final String login}) {
   static VerifiedGithubLogin? tryParse({required String rawLogin}) {
     final login = rawLogin.trim().toLowerCase();
     if (login.isEmpty) {

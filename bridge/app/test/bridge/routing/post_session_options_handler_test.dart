@@ -207,7 +207,7 @@ void _expectError(
   );
 }
 
-enum _SessionOptionsOperation { loadDynamic, loadCacheOnly, refreshExplicit }
+enum _SessionOptionsOperation() { loadDynamic, loadCacheOnly, refreshExplicit }
 
 typedef _SessionOptionsCall = ({
   _SessionOptionsOperation operation,
@@ -215,7 +215,7 @@ typedef _SessionOptionsCall = ({
   String projectId,
 });
 
-class _FakeSessionOptionsService implements SessionOptionsService {
+class _FakeSessionOptionsService() implements SessionOptionsService {
   SessionOptionsOutcome outcome = const SessionOptionsAvailable(response: _optionsResponse);
   Object? error;
   final List<_SessionOptionsCall> calls = [];

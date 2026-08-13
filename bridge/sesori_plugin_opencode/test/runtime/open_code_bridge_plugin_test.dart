@@ -102,9 +102,7 @@ OpenCodeOwnershipRecord _record() {
   );
 }
 
-class _ImmediateClock implements ServerClock {
-  const _ImmediateClock();
-
+class const _ImmediateClock() implements ServerClock {
   @override
   DateTime now() => DateTime.utc(2026, 6, 1, 12);
 
@@ -112,7 +110,7 @@ class _ImmediateClock implements ServerClock {
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _FakeApi implements OpenCodeManagedApi {
+class _FakeApi() implements OpenCodeManagedApi {
   int disposeCount = 0;
   int interruptCount = 0;
   Object? disposeError;
@@ -151,7 +149,7 @@ class _FakeApi implements OpenCodeManagedApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeMonitor implements ManagedRuntimeMonitor<OpenCodeOwnershipRecord> {
+class _FakeMonitor() implements ManagedRuntimeMonitor<OpenCodeOwnershipRecord> {
   Object? disarmError;
   int disarmCount = 0;
 
@@ -171,7 +169,7 @@ class _FakeMonitor implements ManagedRuntimeMonitor<OpenCodeOwnershipRecord> {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeService implements ManagedProcessService<OpenCodeOwnershipRecord> {
+class _FakeService() implements ManagedProcessService<OpenCodeOwnershipRecord> {
   final List<OpenCodeOwnershipRecord> stoppedRecords = <OpenCodeOwnershipRecord>[];
 
   @override

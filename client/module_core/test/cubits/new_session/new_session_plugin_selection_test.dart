@@ -51,8 +51,8 @@ PluginDiscoverySnapshot _pluginSnapshot({
   plugins: plugins,
 );
 
-final class _AggregateTestOptionsService extends NewSessionOptionsService {
-  _AggregateTestOptionsService({required MockSessionRepository sessionRepository})
+final class _AggregateTestOptionsService({required MockSessionRepository sessionRepository}) extends NewSessionOptionsService {
+  this
     : super(
         sessionRepository: sessionRepository,
         defaultModelSelector: const DefaultModelSelector(),
@@ -479,7 +479,7 @@ void main() {
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
         ..add(connectedStatus);
-      await _waitUntil(() => cubit.state.agentModelData?.isLoading == true);
+      await _waitUntil(() => cubit.state.agentModelData?.isLoading ?? false);
 
       expect(cubit.state.agentModelData?.stagedCommand, command);
 

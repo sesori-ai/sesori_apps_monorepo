@@ -6,34 +6,27 @@ import "dart:io" as io;
 /// JSON-RPC over their own stdin/stdout. The bridge resolves the binary and
 /// hands this spec to the plugin, which spawns the process and owns its
 /// lifecycle.
-class AcpLaunchSpec {
-  const AcpLaunchSpec({
-    required this.command,
-    required this.args,
-    this.cwd,
-    this.environment = const {},
-  });
-
+class const AcpLaunchSpec({
   /// Executable to run (absolute path or a name resolved on PATH).
-  final String command;
+  required final String command,
 
   /// Arguments — typically ends with the ACP subcommand, e.g. `["acp"]`.
-  final List<String> args;
+  required final List<String> args,
 
   /// Working directory for the agent process. `null` inherits the bridge's.
-  final String? cwd;
+  final String? cwd,
 
   /// Extra environment entries merged over the inherited environment
   /// (e.g. `CURSOR_API_KEY`).
-  final Map<String, String> environment;
-}
+  final Map<String, String> environment = const {},
+});
 
 /// The slice of `dart:io`'s [io.Process] the ACP transport actually uses.
 ///
 /// Kept narrow so tests can supply an in-memory fake without implementing the
 /// full [io.Process] surface (analogous to codex's injected
 /// `CodexWebSocketChannelFactory`).
-abstract class AcpProcessHandle {
+abstract class AcpProcessHandle() {
   Stream<List<int>> get stdout;
   Stream<List<int>> get stderr;
   io.IOSink get stdin;
@@ -59,11 +52,7 @@ Future<AcpProcessHandle> defaultAcpProcessFactory(AcpLaunchSpec spec) async {
   return _RealAcpProcess(process);
 }
 
-class _RealAcpProcess implements AcpProcessHandle {
-  _RealAcpProcess(this._process);
-
-  final io.Process _process;
-
+class _RealAcpProcess(final io.Process _process) implements AcpProcessHandle {
   @override
   Stream<List<int>> get stdout => _process.stdout;
 
@@ -77,6 +66,5 @@ class _RealAcpProcess implements AcpProcessHandle {
   Future<int> get exitCode => _process.exitCode;
 
   @override
-  bool kill([io.ProcessSignal signal = io.ProcessSignal.sigterm]) =>
-      _process.kill(signal);
+  bool kill([io.ProcessSignal signal = io.ProcessSignal.sigterm]) => _process.kill(signal);
 }

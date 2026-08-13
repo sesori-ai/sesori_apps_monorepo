@@ -6,7 +6,7 @@ part "health_response.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class HealthResponse with _$HealthResponse {
-  const factory HealthResponse({
+  const factory({
     required bool healthy,
     required String version,
     // Whether the bridge detected degraded host filesystem access at startup
@@ -17,5 +17,5 @@ sealed class HealthResponse with _$HealthResponse {
     required bool? filesystemAccessDegraded,
   }) = _HealthResponse;
 
-  factory HealthResponse.fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);
 }

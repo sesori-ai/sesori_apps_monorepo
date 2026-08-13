@@ -6,7 +6,7 @@ part "update_session_archive_request.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
 sealed class UpdateSessionArchiveRequest with _$UpdateSessionArchiveRequest {
-  const factory UpdateSessionArchiveRequest({
+  const factory({
     required String sessionId,
     required bool archived,
     required bool deleteWorktree,
@@ -14,6 +14,5 @@ sealed class UpdateSessionArchiveRequest with _$UpdateSessionArchiveRequest {
     required bool force,
   }) = _UpdateSessionArchiveRequest;
 
-  factory UpdateSessionArchiveRequest.fromJson(Map<String, dynamic> json) =>
-      _$UpdateSessionArchiveRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$UpdateSessionArchiveRequestFromJson(json);
 }

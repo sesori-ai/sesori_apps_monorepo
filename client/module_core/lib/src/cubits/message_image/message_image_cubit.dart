@@ -7,30 +7,25 @@ import "../../logging/logging.dart";
 import "../../repositories/message_image_repository.dart";
 import "message_image_state.dart";
 
-class MessageImageCubit extends Cubit<MessageImageState> {
-  final MessageImageRepository _repository;
-  final String _sessionId;
-  final MessageAttachment _attachment;
+class MessageImageCubit({
+  required final MessageImageRepository _repository,
+  required final String _sessionId,
+  required final MessageAttachment _attachment,
+}) extends Cubit<MessageImageState> {
   int _previewGeneration = 0;
   int _originalGeneration = 0;
 
-  MessageImageCubit({
-    required MessageImageRepository repository,
-    required String sessionId,
-    required MessageAttachment attachment,
-  }) : _repository = repository,
-       _sessionId = sessionId,
-       _attachment = attachment,
-       super(
-         MessageImageState(
-           preview: repository.canLoad(attachment: attachment)
-               ? const MessageImagePreviewLoading()
-               : const MessageImagePreviewUnsupported(),
-           original: repository.canLoadOriginal(attachment: attachment)
-               ? const MessageImageOriginalAvailable()
-               : const MessageImageOriginalUnavailable(),
-         ),
-       ) {
+  this
+    : super(
+        MessageImageState(
+          preview: _repository.canLoad(attachment: _attachment)
+              ? const MessageImagePreviewLoading()
+              : const MessageImagePreviewUnsupported(),
+          original: _repository.canLoadOriginal(attachment: _attachment)
+              ? const MessageImageOriginalAvailable()
+              : const MessageImageOriginalUnavailable(),
+        ),
+      ) {
     if (state.preview is MessageImagePreviewLoading) unawaited(_loadPreview());
   }
 

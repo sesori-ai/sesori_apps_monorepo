@@ -3,7 +3,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService;
+class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 void main() {
   late _MockProductAnalyticsService service;

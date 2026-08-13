@@ -1,21 +1,14 @@
 import "dart:typed_data";
 
-final class ImageShareOrigin {
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-
-  const ImageShareOrigin({
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-  });
-}
+final class const ImageShareOrigin({
+  required final double left,
+  required final double top,
+  required final double width,
+  required final double height,
+});
 
 /// Shares image bytes through the platform share surface.
-abstract interface class ImageSharer {
+abstract interface class ImageSharer() {
   Future<void> shareImage({
     required Uint8List bytes,
     required String mime,

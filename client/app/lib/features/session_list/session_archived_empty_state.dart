@@ -10,9 +10,7 @@ import "../../core/extensions/build_context_x.dart";
 /// Rendered inside a `SliverFillRemaining(hasScrollBody: false)`, so the
 /// illustration is a fixed size — an unbounded one would inflate the scroll
 /// extent.
-class SessionArchivedEmptyState extends StatelessWidget {
-  const SessionArchivedEmptyState({super.key});
-
+class const SessionArchivedEmptyState({super.key}) extends StatelessWidget {
   /// Gap between the illustration's box and the label, as drawn.
   static const double _labelGap = 33;
 
@@ -51,9 +49,7 @@ class SessionArchivedEmptyState extends StatelessWidget {
 /// artwork, which over the artwork's own box leaves the two stops below. The
 /// illustration is meant to read as a faint suggestion, not a picture, so the
 /// fade is not decoration that can be dropped.
-class _ArchiveStackGlyph extends StatelessWidget {
-  const _ArchiveStackGlyph({super.key});
-
+class const _ArchiveStackGlyph({super.key}) extends StatelessWidget {
   /// The Figma frame the artwork is drawn at, pinned explicitly rather than
   /// taken from the decoded asset — an unsized [Image] reports a *max
   /// intrinsic* height, which the hosting `SliverFillRemaining` would take for

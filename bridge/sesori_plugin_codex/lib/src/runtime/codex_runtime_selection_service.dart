@@ -8,9 +8,9 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "codex_desktop_app_locator.dart";
 import "codex_runtime_manifest.dart";
 
-enum CodexRuntimeSource { explicit, path, desktopApp, managed }
+enum CodexRuntimeSource() { explicit, path, desktopApp, managed }
 
-enum CodexRuntimeSelectionFailure {
+enum CodexRuntimeSelectionFailure() {
   executableMissing,
   probeTimedOut,
   probeFailed,
@@ -19,79 +19,49 @@ enum CodexRuntimeSelectionFailure {
   unsupportedVersion,
 }
 
-sealed class CodexRuntimeSelection {
-  const CodexRuntimeSelection();
-}
+sealed class const CodexRuntimeSelection();
 
-final class CodexRuntimeSelected extends CodexRuntimeSelection {
-  const CodexRuntimeSelected({
-    required this.binaryPath,
-    required this.source,
-    required this.version,
-    required this.rejectedPathVersion,
-  });
+final class const CodexRuntimeSelected({
+    required final String binaryPath,
+    required final CodexRuntimeSource source,
+    required final RuntimeVersion version,
+    required final RuntimeVersion? rejectedPathVersion,
+  }) extends CodexRuntimeSelection;
 
-  final String binaryPath;
-  final CodexRuntimeSource source;
-  final RuntimeVersion version;
-  final RuntimeVersion? rejectedPathVersion;
-}
+final class const CodexRuntimeNotSelected({
+    required final CodexRuntimeSelectionFailure failure,
+    required final bool hasExplicitBinary,
+  }) extends CodexRuntimeSelection;
 
-final class CodexRuntimeNotSelected extends CodexRuntimeSelection {
-  const CodexRuntimeNotSelected({
-    required this.failure,
-    required this.hasExplicitBinary,
-  });
+sealed class const _VersionProbe();
 
-  final CodexRuntimeSelectionFailure failure;
-  final bool hasExplicitBinary;
-}
+final class const _VersionProbeSucceeded({required final RuntimeVersion version}) extends _VersionProbe;
 
-sealed class _VersionProbe {
-  const _VersionProbe();
-}
-
-final class _VersionProbeSucceeded extends _VersionProbe {
-  const _VersionProbeSucceeded({required this.version});
-
-  final RuntimeVersion version;
-}
-
-final class _VersionProbeFailed extends _VersionProbe {
-  const _VersionProbeFailed({required this.failure});
-
-  final CodexRuntimeSelectionFailure failure;
-}
+final class const _VersionProbeFailed({required final CodexRuntimeSelectionFailure failure}) extends _VersionProbe;
 
 /// Selects the Codex executable shared by setup inspection, startup, and
 /// interactive authentication without installing or mutating runtime files.
-class CodexRuntimeSelectionService {
-  CodexRuntimeSelectionService({
+class CodexRuntimeSelectionService({
     required HostProcessService processes,
-    required Duration versionProbeTimeout,
+    required final Duration _versionProbeTimeout,
     required int? maxCapturedOutputCharactersPerStream,
-    required List<String>? desktopAppCliCandidates,
-  }) : _versionProbeTimeout = versionProbeTimeout,
-       _desktopAppCliCandidates = desktopAppCliCandidates,
-       _commandExecutor = HostProcessCommandExecutor(
+    required final List<String>? _desktopAppCliCandidates,
+  }) {
+
+  final CommandExecutor _commandExecutor = HostProcessCommandExecutor(
          processes: processes,
          runInShell: io.Platform.isWindows,
          maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
-       ),
-       _versionValidator = RuntimeVersionValidator(
+       );
+  final RuntimeVersionValidator _versionValidator = RuntimeVersionValidator(
          commandExecutor: HostProcessCommandExecutor(
            processes: processes,
            runInShell: io.Platform.isWindows,
            maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
          ),
          manifest: const CodexRuntimeManifest(),
-         probeTimeout: versionProbeTimeout,
+         probeTimeout: _versionProbeTimeout,
        );
-
-  final Duration _versionProbeTimeout;
-  final List<String>? _desktopAppCliCandidates;
-  final CommandExecutor _commandExecutor;
-  final RuntimeVersionValidator _versionValidator;
 
   static String? explicitBinary({required PluginConfig config}) {
     final value = config.value("bin")?.trim();

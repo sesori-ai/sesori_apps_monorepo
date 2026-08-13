@@ -29,25 +29,13 @@ import "runtime_version_validator.dart";
 /// Terminal events are [ProvisionReady] (the installed binary path) or
 /// [ProvisionFailed] with a sanitized user-facing message. An abort surfaces
 /// as [PluginStartAbortedException].
-class ManagedRuntimeInstallService {
-  final RuntimeManifest _manifest;
-  final RuntimeVersionValidator _versionValidator;
-  final RuntimeInstallService _installService;
-  final ManagedRuntimeCleaner _cleaner;
-  final RuntimeAssetResolver _assetResolver;
-
-  ManagedRuntimeInstallService({
-    required RuntimeManifest manifest,
-    required RuntimeVersionValidator versionValidator,
-    required RuntimeInstallService installService,
-    required ManagedRuntimeCleaner cleaner,
-    required RuntimeAssetResolver assetResolver,
-  }) : _manifest = manifest,
-       _versionValidator = versionValidator,
-       _installService = installService,
-       _cleaner = cleaner,
-       _assetResolver = assetResolver;
-
+class ManagedRuntimeInstallService({
+  required final RuntimeManifest _manifest,
+  required final RuntimeVersionValidator _versionValidator,
+  required final RuntimeInstallService _installService,
+  required final ManagedRuntimeCleaner _cleaner,
+  required final RuntimeAssetResolver _assetResolver,
+}) {
   Stream<RuntimeProvisionProgress> install({
     required Map<String, String> environment,
     required String stateDirectory,

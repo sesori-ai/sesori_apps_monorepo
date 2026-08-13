@@ -4,7 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 part "codex_image_bearing_item_dto.freezed.dart";
 part "codex_image_bearing_item_dto.g.dart";
 
-enum CodexImageGenerationStatus {
+enum CodexImageGenerationStatus() {
   @JsonValue("in_progress")
   inProgress,
   completed,
@@ -12,7 +12,7 @@ enum CodexImageGenerationStatus {
   unknown,
 }
 
-enum CodexToolCallStatus {
+enum CodexToolCallStatus() {
   inProgress,
   completed,
   failed,
@@ -28,7 +28,7 @@ enum CodexToolCallStatus {
 )
 sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
   @FreezedUnionValue("imageGeneration")
-  const factory CodexImageBearingItemDto.imageGeneration({
+  const factory imageGeneration({
     required String id,
     @JsonKey(
       unknownEnumValue: CodexImageGenerationStatus.unknown,
@@ -41,7 +41,7 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
   }) = CodexImageGenerationItemDto;
 
   @FreezedUnionValue("mcpToolCall")
-  const factory CodexImageBearingItemDto.mcpToolCall({
+  const factory mcpToolCall({
     required String id,
     required String? server,
     required String? tool,
@@ -55,7 +55,7 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
   }) = CodexMcpToolCallItemDto;
 
   @FreezedUnionValue("dynamicToolCall")
-  const factory CodexImageBearingItemDto.dynamicToolCall({
+  const factory dynamicToolCall({
     required String id,
     @CodexToolNameConverter() required String tool,
     required Object? arguments,
@@ -69,9 +69,9 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
     required List<CodexImageBearingContentDto> content,
   }) = CodexDynamicToolCallItemDto;
 
-  const factory CodexImageBearingItemDto.unknown() = CodexUnknownImageBearingItemDto;
+  const factory unknown() = CodexUnknownImageBearingItemDto;
 
-  factory CodexImageBearingItemDto.fromJson(Map<String, dynamic> json) => _$CodexImageBearingItemDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexImageBearingItemDtoFromJson(json);
 }
 
 @Freezed(
@@ -82,40 +82,38 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
 )
 sealed class CodexImageBearingContentDto with _$CodexImageBearingContentDto {
   @FreezedUnionValue("text")
-  const factory CodexImageBearingContentDto.mcpText({
+  const factory mcpText({
     required String text,
   }) = CodexMcpTextContentDto;
 
   @FreezedUnionValue("image")
-  const factory CodexImageBearingContentDto.mcpImage({
+  const factory mcpImage({
     required String data,
     required String mimeType,
   }) = CodexMcpImageContentDto;
 
   @FreezedUnionValue("inputText")
-  const factory CodexImageBearingContentDto.dynamicText({
+  const factory dynamicText({
     required String text,
   }) = CodexDynamicTextContentDto;
 
   @FreezedUnionValue("inputImage")
-  const factory CodexImageBearingContentDto.dynamicImage({
+  const factory dynamicImage({
     required String imageUrl,
   }) = CodexDynamicImageContentDto;
 
   @FreezedUnionValue("inputAudio")
-  const factory CodexImageBearingContentDto.dynamicAudio({
+  const factory dynamicAudio({
     required String audioUrl,
   }) = CodexDynamicAudioContentDto;
 
-  const factory CodexImageBearingContentDto.unknown() = CodexUnknownImageBearingContentDto;
+  const factory unknown() = CodexUnknownImageBearingContentDto;
 
-  factory CodexImageBearingContentDto.fromJson(Map<String, dynamic> json) =>
+  factory fromJson(Map<String, dynamic> json) =>
       _$CodexImageBearingContentDtoFromJson(json);
 }
 
-class CodexImageBearingContentListConverter implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
-  const CodexImageBearingContentListConverter();
-
+class const CodexImageBearingContentListConverter() implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
   @override
   List<CodexImageBearingContentDto> fromJson(Object? json) {
     if (json == null) return const [];
@@ -142,9 +140,7 @@ class CodexImageBearingContentListConverter implements JsonConverter<List<CodexI
   Object toJson(List<CodexImageBearingContentDto> object) => throw UnsupportedError("decode only");
 }
 
-class CodexMcpResultContentConverter extends CodexImageBearingContentListConverter {
-  const CodexMcpResultContentConverter();
-
+class const CodexMcpResultContentConverter() extends CodexImageBearingContentListConverter {
   @override
   List<CodexImageBearingContentDto> fromJson(Object? json) {
     if (json == null) return const [];
@@ -156,9 +152,7 @@ class CodexMcpResultContentConverter extends CodexImageBearingContentListConvert
   }
 }
 
-class CodexToolErrorConverter implements JsonConverter<String?, Object?> {
-  const CodexToolErrorConverter();
-
+class const CodexToolErrorConverter() implements JsonConverter<String?, Object?> {
   @override
   String? fromJson(Object? json) {
     if (json == null) return null;
@@ -173,9 +167,7 @@ class CodexToolErrorConverter implements JsonConverter<String?, Object?> {
   Object? toJson(String? object) => throw UnsupportedError("decode only");
 }
 
-class CodexToolNameConverter implements JsonConverter<String, Object?> {
-  const CodexToolNameConverter();
-
+class const CodexToolNameConverter() implements JsonConverter<String, Object?> {
   @override
   String fromJson(Object? json) {
     if (json is String && json.isNotEmpty) return json;

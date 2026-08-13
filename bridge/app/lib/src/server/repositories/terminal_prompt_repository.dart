@@ -2,27 +2,23 @@ import '../api/terminal_prompt_api.dart';
 import '../foundation/bridge_replace_prompt.dart';
 import '../foundation/terminal_prompt_decision.dart';
 
-class TerminalPromptRepository implements BridgeReplacePrompt {
-  TerminalPromptRepository({required TerminalPromptApi api}) : _api = api;
-
-  final TerminalPromptApi _api;
-
+class TerminalPromptRepository({required final TerminalPromptApi _api}) implements BridgeReplacePrompt {
   @override
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount}) async {
-    return _askYesNo(
+    return await _askYesNo(
       message: '${BridgeReplacePrompt.replaceExistingBridgeMessage} [y/N]',
     );
   }
 
   @override
   Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid}) async {
-    return _askYesNo(
+    return await _askYesNo(
       message: '${BridgeReplacePrompt.replaceStartingBridgeMessage(holderPid: holderPid)} [y/N]',
     );
   }
 
   Future<TerminalPromptDecision> askStopBridgesBeforeLogout({required int bridgeCount}) async {
-    return _askYesNo(
+    return await _askYesNo(
       message: '$bridgeCount bridge instance(s) are currently running. Stop them before logging out? [y/N]',
     );
   }

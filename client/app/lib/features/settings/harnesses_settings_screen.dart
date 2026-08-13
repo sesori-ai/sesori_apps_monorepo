@@ -17,13 +17,12 @@ import "widgets/settings_section.dart";
 
 const double _contentTopPadding = 10.0;
 
-class HarnessesSettingsScreen extends StatelessWidget {
-  const HarnessesSettingsScreen({super.key, required this.presentation});
-
+class const HarnessesSettingsScreen({
+  super.key,
   /// How the page was raised, which decides how the user leaves it: a pushed
   /// page goes back, a modal one closes.
-  final HarnessSettingsPresentation presentation;
-
+  required final HarnessSettingsPresentation presentation,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -36,11 +35,7 @@ class HarnessesSettingsScreen extends StatelessWidget {
   }
 }
 
-class _HarnessesSettingsBody extends StatelessWidget {
-  const _HarnessesSettingsBody({required this.presentation});
-
-  final HarnessSettingsPresentation presentation;
-
+class const _HarnessesSettingsBody({required final HarnessSettingsPresentation presentation}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -189,9 +184,7 @@ PluginManagementActionForceConfirmationRequired? _forceConfirmation(PluginManage
   PluginManagementFailure() => null,
 };
 
-class _LoadingView extends StatelessWidget {
-  const _LoadingView();
-
+class const _LoadingView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
@@ -204,9 +197,7 @@ class _LoadingView extends StatelessWidget {
   }
 }
 
-class _UnsupportedView extends StatelessWidget {
-  const _UnsupportedView();
-
+class const _UnsupportedView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRows(
@@ -222,9 +213,7 @@ class _UnsupportedView extends StatelessWidget {
   }
 }
 
-class _FailureView extends StatelessWidget {
-  const _FailureView();
-
+class const _FailureView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRows(
@@ -250,11 +239,7 @@ class _FailureView extends StatelessWidget {
   }
 }
 
-class _ReadyView extends StatelessWidget {
-  const _ReadyView({required this.state});
-
-  final PluginManagementReady state;
-
+class const _ReadyView({required final PluginManagementReady state}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -369,20 +354,13 @@ class _ReadyView extends StatelessWidget {
   }
 }
 
-class _MessageRow extends StatelessWidget {
-  const _MessageRow({
+class const _MessageRow({
     super.key,
-    required this.title,
-    required this.description,
-    required this.dismissLabel,
-    required this.onDismiss,
-  });
-
-  final String title;
-  final String description;
-  final String dismissLabel;
-  final VoidCallback onDismiss;
-
+    required final String title,
+    required final String description,
+    required final String dismissLabel,
+    required final VoidCallback onDismiss,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRows(
@@ -403,23 +381,14 @@ class _MessageRow extends StatelessWidget {
   }
 }
 
-class _HarnessControlCard extends StatelessWidget {
-  const _HarnessControlCard({
-    required this.plugin,
-    required this.isDefault,
-    required this.action,
-    required this.authentication,
-    required this.install,
-  });
-
-  final PluginManagementMetadata plugin;
-  final bool isDefault;
-  final PluginManagementActionState action;
-  final PluginAuthenticationPresentationState authentication;
-
-  /// This harness' in-flight managed runtime install, when one is running.
-  final PluginInstallProgress? install;
-
+class const _HarnessControlCard({
+    required final PluginManagementMetadata plugin,
+    required final bool isDefault,
+    required final PluginManagementActionState action,
+    required final PluginAuthenticationPresentationState authentication,
+    /// This harness' in-flight managed runtime install, when one is running.
+  required final PluginInstallProgress? install,
+  }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -676,13 +645,7 @@ class _HarnessControlCard extends StatelessWidget {
   }
 }
 
-class _FactRow extends StatelessWidget {
-  const _FactRow({required this.title, required this.value, required this.isLast});
-
-  final String title;
-  final String value;
-  final bool isLast;
-
+class const _FactRow({required final String title, required final String value, required final bool isLast}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRow(
@@ -768,38 +731,24 @@ Future<_TimeoutResult?> _showTimeoutSheet({
   );
 }
 
-enum _TimeoutChoice { useDefault, noTimeout, custom }
+enum _TimeoutChoice() { useDefault, noTimeout, custom }
 
-sealed class _TimeoutResult {
-  const _TimeoutResult();
-}
+sealed class const _TimeoutResult();
 
-final class _UseDefaultTimeoutResult extends _TimeoutResult {
-  const _UseDefaultTimeoutResult();
-}
+final class const _UseDefaultTimeoutResult() extends _TimeoutResult;
 
-final class _ApplyTimeoutResult extends _TimeoutResult {
-  const _ApplyTimeoutResult({required this.input});
+final class const _ApplyTimeoutResult({required final PluginManagementIdleTimeoutInput input}) extends _TimeoutResult;
 
-  final PluginManagementIdleTimeoutInput input;
-}
-
-class _TimeoutSheet extends StatefulWidget {
-  const _TimeoutSheet({
-    required this.allowUseDefault,
-    required this.initialChoice,
-    required this.initialMinutes,
-  });
-
-  final bool allowUseDefault;
-  final _TimeoutChoice initialChoice;
-  final int initialMinutes;
-
+class const _TimeoutSheet({
+    required final bool allowUseDefault,
+    required final _TimeoutChoice initialChoice,
+    required final int initialMinutes,
+  }) extends StatefulWidget {
   @override
   State<_TimeoutSheet> createState() => _TimeoutSheetState();
 }
 
-class _TimeoutSheetState extends State<_TimeoutSheet> {
+class _TimeoutSheetState() extends State<_TimeoutSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _controller = TextEditingController(
     text: widget.initialMinutes > 0 ? widget.initialMinutes.toString() : "",
@@ -1030,9 +979,7 @@ Future<void> _showAuthenticationSheet({
   }
 }
 
-class _AuthenticationSheet extends StatelessWidget {
-  const _AuthenticationSheet();
-
+class const _AuthenticationSheet() extends StatelessWidget {
   Future<void> _copyCode({required BuildContext context, required String code}) async {
     try {
       await Clipboard.setData(ClipboardData(text: code));

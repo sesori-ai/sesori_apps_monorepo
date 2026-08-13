@@ -6,16 +6,10 @@ import "mappers/plugin_provider_mapper.dart";
 import "models/project_not_found_exception.dart";
 
 /// Wraps plugin provider reads and maps plugin models to shared types.
-class ProviderRepository {
-  final PluginRuntime _runtime;
-  final ProjectsDao _projectsDao;
-
-  ProviderRepository({required PluginRuntime runtime, required ProjectsDao projectsDao})
-    : _runtime = runtime,
-      _projectsDao = projectsDao;
+class ProviderRepository({required final PluginRuntime _runtime, required final ProjectsDao _projectsDao}) {
 
   Future<ProviderListResponse> getProviders({required String projectId, required String pluginId}) async {
-    return _runtime.use(
+    return await _runtime.use(
       pluginId: pluginId,
       operation: _ProviderOperation.getProviders,
       body: (plugin) async {
@@ -32,4 +26,4 @@ class ProviderRepository {
   }
 }
 
-enum _ProviderOperation { getProviders }
+enum _ProviderOperation() { getProviders }

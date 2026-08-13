@@ -1,7 +1,11 @@
 import "claude_permission_mode.dart";
 
 /// Permission-mode choices surfaced through Sesori's agent picker.
-enum ClaudeAgentSelection {
+enum ClaudeAgentSelection({
+  required final String displayName,
+  required final String description,
+  required final ClaudePermissionMode permissionMode,
+}) {
   standard(
     displayName: "Default",
     description: "Executes tasks and asks before sensitive operations",
@@ -12,16 +16,6 @@ enum ClaudeAgentSelection {
     description: "Researches without making changes and creates an implementation plan",
     permissionMode: ClaudePermissionMode.plan,
   );
-
-  ClaudeAgentSelection({
-    required this.displayName,
-    required this.description,
-    required this.permissionMode,
-  });
-
-  final String displayName;
-  final String description;
-  final ClaudePermissionMode permissionMode;
 
   static ClaudeAgentSelection? tryParse(String value) {
     final normalized = value.trim().toLowerCase();

@@ -13,25 +13,21 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockRelayCryptoService extends Mock implements RelayCryptoService;
+class _MockRelayCryptoService() extends Mock implements RelayCryptoService;
 
-class _MockRoomKeyStorage extends Mock implements RoomKeyStorage;
+class _MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
 
-class _MockAuthTokenProvider extends Mock implements AuthTokenProvider;
+class _MockAuthTokenProvider() extends Mock implements AuthTokenProvider;
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
-class _MockLifecycleSource extends Mock implements LifecycleSource;
+class _MockLifecycleSource() extends Mock implements LifecycleSource;
 
-class _MockFailureReporter extends Mock implements FailureReporter;
+class _MockFailureReporter() extends Mock implements FailureReporter;
 
-class _MockRelayClient extends Mock implements RelayClient;
+class _MockRelayClient() extends Mock implements RelayClient;
 
-class _TestRelayClientFactory extends RelayClientFactory {
-  final RelayClient _client;
-
-  _TestRelayClientFactory({required RelayClient client}) : _client = client;
-
+class _TestRelayClientFactory({required final RelayClient _client}) extends RelayClientFactory {
   @override
   RelayClient call({
     required String relayHost,

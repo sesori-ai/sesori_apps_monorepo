@@ -13,22 +13,13 @@ import "models/openapi/session_status.g.dart";
 import "models/openapi/user_message.g.dart";
 import "question_info_mapper.dart";
 
-class PluginModelMapper {
-  const PluginModelMapper({
-    required MessagePartMapper messagePartMapper,
-    required int maxTranscriptAttachmentBytes,
-    QuestionInfoMapper questionInfoMapper = const QuestionInfoMapper(),
-    AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper(),
-  }) : _messagePartMapper = messagePartMapper,
-       _maxTranscriptAttachmentBytes = maxTranscriptAttachmentBytes,
-       _questionInfoMapper = questionInfoMapper,
-       _assistantMessageMapper = assistantMessageMapper,
-       assert(maxTranscriptAttachmentBytes >= 0);
-
-  final MessagePartMapper _messagePartMapper;
-  final int _maxTranscriptAttachmentBytes;
-  final QuestionInfoMapper _questionInfoMapper;
-  final AssistantMessageMapper _assistantMessageMapper;
+class const PluginModelMapper({
+  required final MessagePartMapper _messagePartMapper,
+  required final int _maxTranscriptAttachmentBytes,
+  final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper(),
+  final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper(),
+}) {
+  this : assert(_maxTranscriptAttachmentBytes >= 0);
 
   PluginSession mapSession(Session session, {required String projectID}) {
     final time = session.time;

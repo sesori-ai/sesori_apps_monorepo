@@ -1,12 +1,10 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-sealed class AuthProvider {
+sealed class const AuthProvider._() {
   static const github = GitHubAuthProvider._();
   static const google = GoogleAuthProvider._();
   static const apple = AppleAuthProvider._();
   static const email = EmailAuthProvider._();
-
-  const AuthProvider._();
 
   static AuthProvider? fromKey(String? key) => switch (true) {
     _ when github.key == key => github,
@@ -38,14 +36,14 @@ sealed class AuthProvider {
   };
 }
 
-sealed class OAuthProvider extends AuthProvider {
-  const OAuthProvider._() : super._();
+sealed class const OAuthProvider._() extends AuthProvider {
+  this : super._();
   String get apiCallbackPath => "$apiAuthPath/callback";
 }
 
 @immutable
-final class GitHubAuthProvider extends OAuthProvider {
-  const GitHubAuthProvider._() : super._();
+final class const GitHubAuthProvider._() extends OAuthProvider {
+  this : super._();
 
   @override
   bool operator ==(Object other) {
@@ -57,8 +55,8 @@ final class GitHubAuthProvider extends OAuthProvider {
 }
 
 @immutable
-final class GoogleAuthProvider extends OAuthProvider {
-  const GoogleAuthProvider._() : super._();
+final class const GoogleAuthProvider._() extends OAuthProvider {
+  this : super._();
 
   @override
   bool operator ==(Object other) {
@@ -70,8 +68,8 @@ final class GoogleAuthProvider extends OAuthProvider {
 }
 
 @immutable
-final class AppleAuthProvider extends OAuthProvider {
-  const AppleAuthProvider._() : super._();
+final class const AppleAuthProvider._() extends OAuthProvider {
+  this : super._();
 
   @override
   bool operator ==(Object other) {
@@ -83,8 +81,8 @@ final class AppleAuthProvider extends OAuthProvider {
 }
 
 @immutable
-final class EmailAuthProvider extends AuthProvider {
-  const EmailAuthProvider._() : super._();
+final class const EmailAuthProvider._() extends AuthProvider {
+  this : super._();
 
   @override
   bool operator ==(Object other) {

@@ -9,7 +9,7 @@ import 'terminal_prompt_decision.dart';
 /// (`ControlPromptService`). [TerminalPromptDecision.nonInteractive] means the
 /// question could not be asked at all (no terminal / GUI unreachable), not that
 /// the user declined.
-abstract class BridgeReplacePrompt {
+abstract class BridgeReplacePrompt() {
   /// Shared question copy for both implementations, so the terminal and GUI
   /// paths never drift apart (the terminal appends its own `[y/N]` hint).
   static const String replaceExistingBridgeMessage = 'Another Sesori bridge is already running. Kill it and start fresh?';

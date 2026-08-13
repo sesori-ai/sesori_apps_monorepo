@@ -5,7 +5,7 @@ part "plugin_provider.freezed.dart";
 part "plugin_provider.g.dart";
 
 /// The authentication mechanism required by a provider to connect.
-enum PluginProviderAuthType {
+enum PluginProviderAuthType() {
   apiKey,
   oauth,
   unknown,
@@ -14,7 +14,7 @@ enum PluginProviderAuthType {
 /// A model available from a provider.
 @freezed
 sealed class PluginModel with _$PluginModel {
-  const factory PluginModel({
+  const factory({
     required String id,
     required String name,
     required List<String> variants,
@@ -33,7 +33,7 @@ sealed class PluginModel with _$PluginModel {
 /// Each variant carries the provider's [id], [name], [authType], and [models].
 @freezed
 sealed class PluginProvider with _$PluginProvider {
-  const factory PluginProvider.anthropic({
+  const factory anthropic({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -41,7 +41,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderAnthropic;
 
-  const factory PluginProvider.openAI({
+  const factory openAI({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -49,7 +49,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderOpenAI;
 
-  const factory PluginProvider.google({
+  const factory google({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -57,7 +57,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderGoogle;
 
-  const factory PluginProvider.mistral({
+  const factory mistral({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -65,7 +65,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderMistral;
 
-  const factory PluginProvider.groq({
+  const factory groq({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -73,7 +73,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderGroq;
 
-  const factory PluginProvider.xAI({
+  const factory xAI({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -81,7 +81,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderXAI;
 
-  const factory PluginProvider.deepseek({
+  const factory deepseek({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -89,7 +89,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderDeepseek;
 
-  const factory PluginProvider.amazonBedrock({
+  const factory amazonBedrock({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -97,7 +97,7 @@ sealed class PluginProvider with _$PluginProvider {
     required String? defaultModelID,
   }) = PluginProviderAmazonBedrock;
 
-  const factory PluginProvider.azure({
+  const factory azure({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -109,7 +109,7 @@ sealed class PluginProvider with _$PluginProvider {
   ///
   /// Plugin authors should use this to expose providers whose IDs are not
   /// part of the predefined set.
-  const factory PluginProvider.custom({
+  const factory custom({
     required String id,
     required String name,
     required PluginProviderAuthType authType,
@@ -121,7 +121,7 @@ sealed class PluginProvider with _$PluginProvider {
 /// The result of [BridgePlugin.getProviders].
 @freezed
 sealed class PluginProvidersResult with _$PluginProvidersResult {
-  const factory PluginProvidersResult({
+  const factory({
     required List<PluginProvider> providers,
   }) = _PluginProvidersResult;
 }

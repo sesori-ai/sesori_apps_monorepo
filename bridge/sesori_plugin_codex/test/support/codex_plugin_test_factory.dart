@@ -84,7 +84,7 @@ CodexToolOutcomeRepository createMemoryCodexToolOutcomeRepository() {
   );
 }
 
-class _MemoryHostJsonStore implements HostJsonStore {
+class _MemoryHostJsonStore() implements HostJsonStore {
   final Map<String, String> _files = {};
 
   @override

@@ -8,22 +8,12 @@ import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
 import "worktree_service.dart";
 
-class SessionCreationService {
-  final MetadataService _metadataService;
-  final WorktreeService _worktreeService;
-  final SessionRepository _sessionRepository;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
-
-  SessionCreationService({
-    required MetadataService metadataService,
-    required WorktreeService worktreeService,
-    required SessionRepository sessionRepository,
-    required SessionMutationDispatcher sessionMutationDispatcher,
-  }) : _metadataService = metadataService,
-       _worktreeService = worktreeService,
-       _sessionRepository = sessionRepository,
-       _sessionMutationDispatcher = sessionMutationDispatcher;
-
+class SessionCreationService({
+  required final MetadataService _metadataService,
+  required final WorktreeService _worktreeService,
+  required final SessionRepository _sessionRepository,
+  required final SessionMutationDispatcher _sessionMutationDispatcher,
+}) {
   Future<Session> createSession({required CreateSessionRequest request}) async {
     // Validate the opaque project handle before metadata generation or any
     // plugin/git side effect. The stored path is authoritative; unknown ids
@@ -90,7 +80,7 @@ class SessionCreationService {
     // a moved project it echoes the live path (or its own internal id) as the
     // session's projectID. Re-key the response to the stable identifier the
     // phone and the bridge key on — mirroring project-scoped session fetches.
-    return _sessionRepository.enrichSession(
+    return await _sessionRepository.enrichSession(
       session: finalSession.copyWith(projectID: request.projectId),
       verifiedGithubLogin: null,
     );
@@ -108,7 +98,7 @@ class SessionCreationService {
     if (firstText == null) {
       return null;
     }
-    return _metadataService.generate(firstMessage: firstText);
+    return await _metadataService.generate(firstMessage: firstText);
   }
 
   Future<WorktreeResult?> _prepareWorktree({
@@ -118,7 +108,7 @@ class SessionCreationService {
     if (!request.dedicatedWorktree) {
       return null;
     }
-    return _worktreeService.prepareWorktreeForSession(
+    return await _worktreeService.prepareWorktreeForSession(
       projectId: request.projectId,
       parentSessionId: null,
       preferredBranchAndWorktreeName: metadata != null

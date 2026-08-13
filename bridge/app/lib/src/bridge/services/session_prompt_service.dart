@@ -8,30 +8,18 @@ import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
 import "session_operation_dispatcher.dart";
 
-class SessionPromptDefaultsChange {
-  final String sessionId;
-  final SessionPromptDefaults promptDefaults;
+class const SessionPromptDefaultsChange({
+  required final String sessionId,
+  required final SessionPromptDefaults promptDefaults,
+});
 
-  const SessionPromptDefaultsChange({
-    required this.sessionId,
-    required this.promptDefaults,
-  });
-}
-
-class SessionPromptService {
-  final SessionRepository _sessionRepository;
-  final SessionOperationDispatcher _dispatcher;
-  final ArchivedSessionValidator _archivedSessionValidator;
+class SessionPromptService({
+  required final SessionRepository _sessionRepository,
+  required final SessionOperationDispatcher _dispatcher,
+  required final ArchivedSessionValidator _archivedSessionValidator,
+}) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
-
-  SessionPromptService({
-    required SessionRepository sessionRepository,
-    required SessionOperationDispatcher dispatcher,
-    required ArchivedSessionValidator archivedSessionValidator,
-  }) : _sessionRepository = sessionRepository,
-       _dispatcher = dispatcher,
-       _archivedSessionValidator = archivedSessionValidator;
 
   Stream<SessionPromptDefaultsChange> get promptDefaultsChanges => _promptDefaultsChangesController.stream;
 

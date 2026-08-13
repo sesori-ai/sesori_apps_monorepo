@@ -844,21 +844,13 @@ Future<List<int>> _nextRelayPayload({
   throw StateError("Relay socket closed before the expected bridge payload");
 }
 
-class _OrchestratorHarness {
-  final List<_SourcedPlugin> plugins;
-  final PluginLifecycleService lifecycleService;
-  final OrchestratorComposition composition;
-  final BridgeRuntime runtime;
-  final http.Client httpClient;
-
-  const _OrchestratorHarness({
-    required this.plugins,
-    required this.lifecycleService,
-    required this.composition,
-    required this.runtime,
-    required this.httpClient,
-  });
-
+class const _OrchestratorHarness({
+  required final List<_SourcedPlugin> plugins,
+  required final PluginLifecycleService lifecycleService,
+  required final OrchestratorComposition composition,
+  required final BridgeRuntime runtime,
+  required final http.Client httpClient,
+}) {
   static Future<_OrchestratorHarness> create({
     required List<String> pluginIds,
     String relayUrl = "ws://127.0.0.1:1",
@@ -950,10 +942,7 @@ class _OrchestratorHarness {
   }
 }
 
-class _SourcedPlugin extends FakeBridgePlugin {
-  _SourcedPlugin(this.pluginId);
-
-  final String pluginId;
+class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   Completer<void>? getProjectStarted;
   Completer<void>? getProjectGate;
   Completer<void>? activeSummaryReadStarted;
@@ -971,7 +960,7 @@ class _SourcedPlugin extends FakeBridgePlugin {
       started.complete();
       if (gate != null) await gate.future;
     }
-    return super.getProject(projectId);
+    return await super.getProject(projectId);
   }
 
   @override
@@ -982,7 +971,7 @@ class _SourcedPlugin extends FakeBridgePlugin {
   }
 }
 
-class _FakeTokenRefresher implements TokenRefresher {
+class _FakeTokenRefresher() implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

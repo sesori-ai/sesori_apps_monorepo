@@ -4,12 +4,13 @@ import "dart:isolate";
 import "../../isolate.dart";
 
 /// This is the VM implementation of the reusable isolate
-class MultiTaskIsolateImpl implements MultiTaskIsolate {
+class MultiTaskIsolateImpl({
+  required final void Function(int)? onActiveTaskCountChanged,
+  required String debugName,
+}) implements MultiTaskIsolate {
   final _receivePort = ReceivePort();
   late final Future<SendPort> _sendPort;
   late final Future<Isolate> _isolate;
-
-  final void Function(int)? onActiveTaskCountChanged;
 
   int _activeTaskCount = 0;
 
@@ -21,10 +22,7 @@ class MultiTaskIsolateImpl implements MultiTaskIsolate {
   @override
   bool get disposed => _disposed;
 
-  MultiTaskIsolateImpl({
-    required this.onActiveTaskCountChanged,
-    required String debugName,
-  }) {
+  this {
     _isolate = Isolate.spawn(
       // ignore: inference_failure_on_function_invocation, Isolate.spawn generic inference is intentional here
       _isolateEntry,
@@ -112,24 +110,15 @@ void _isolateEntry<IN, OUT>(SendPort sendPort) {
   });
 }
 
-final class _IsolateErrorWrapper {
+final class _IsolateErrorWrapper(final Object error) {
   // ignore: no_slop_linter/prefer_specific_type
-  final Object error;
-
-  _IsolateErrorWrapper(this.error);
 }
 
-final class _IsolateTaskWithArgAndSendPort<IN, OUT> {
-  final IsolateTask<IN, OUT> task;
-  final IN arg;
-  final SendPort sendPort;
-
-  const _IsolateTaskWithArgAndSendPort({
-    required this.task,
-    required this.arg,
-    required this.sendPort,
-  });
-
+final class const _IsolateTaskWithArgAndSendPort<IN, OUT>({
+  required final IsolateTask<IN, OUT> task,
+  required final IN arg,
+  required final SendPort sendPort,
+}) {
   @pragma("vm:prefer-inline")
   FutureOr<OUT> run() => task.staticFunction(arg);
 }

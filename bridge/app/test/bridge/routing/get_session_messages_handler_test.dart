@@ -217,9 +217,7 @@ void main() {
   });
 }
 
-class _MessageSessionRepository extends FakeSessionRepository {
-  _MessageSessionRepository({required super.plugin});
-
+class _MessageSessionRepository({required super.plugin}) extends FakeSessionRepository {
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
     id: sessionId,

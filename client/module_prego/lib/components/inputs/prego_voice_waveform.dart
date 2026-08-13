@@ -32,45 +32,38 @@ import "../../utils/lerp_utils.dart";
 ///
 /// The waveform is decorative — the composer carries the recording semantics —
 /// so it is excluded from semantics.
-class PregoVoiceWaveform extends StatefulWidget {
-  const PregoVoiceWaveform({
-    super.key,
-    required this.amplitudeStream,
-    required this.barColor,
-    required this.dotColor,
-    this.flattenProgress,
-    this.height = 24,
-    this.sampleInterval = const Duration(milliseconds: 100),
-  });
+class const PregoVoiceWaveform({
+  super.key,
 
   /// Normalized microphone amplitude samples in [0, 1], one per
   /// [sampleInterval] while the recorder listens.
-  final Stream<double> amplitudeStream;
+  required final Stream<double> amplitudeStream,
 
   /// Colour of the recorded amplitude bars.
-  final Color barColor;
+  required final Color barColor,
 
   /// Colour of the not-yet-recorded resting dots, and of every bar once
   /// [flattenProgress] reaches 1.
-  final Color dotColor;
+  required final Color dotColor,
 
   /// 0 → live waveform, 1 → fully flattened to resting dots. Null renders
   /// live. Listened to directly by the painter, so scrubbing it (e.g. from a
   /// drag gesture) repaints without rebuilding the widget.
-  final ValueListenable<double>? flattenProgress;
+  final ValueListenable<double>? flattenProgress,
 
   /// Height of the paint band; a full-amplitude bar spans it exactly.
-  final double height;
+  final double height = 24,
 
   /// Expected spacing between [amplitudeStream] events, used to ease the
   /// slide between consecutive samples.
-  final Duration sampleInterval;
-
+  final Duration sampleInterval = const Duration(milliseconds: 100),
+}) extends StatefulWidget {
   @override
   State<PregoVoiceWaveform> createState() => _PregoVoiceWaveformState();
 }
 
-class _PregoVoiceWaveformState extends State<PregoVoiceWaveform>
+class _PregoVoiceWaveformState()
+    extends State<PregoVoiceWaveform>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// Only the trailing ~2× a composer width of history can ever be visible;
   /// older samples have scrolled off and are dropped.
@@ -176,31 +169,22 @@ class _PregoVoiceWaveformState extends State<PregoVoiceWaveform>
 
 /// Paints the waveform grid: right-aligned recorded bars, resting dots for the
 /// unrecorded remainder.
-class _VoiceWaveformPainter extends CustomPainter {
-  _VoiceWaveformPainter({
-    required super.repaint,
-    required this.samples,
-    required this.slidePhase,
-    required this.slideEnabled,
-    required this.flattenProgress,
-    required this.barColor,
-    required this.dotColor,
-  });
+class _VoiceWaveformPainter({
+  required super.repaint,
 
   /// Live view of the recorded history — newest last. Owned and mutated by the
   /// state; the repaint listenable ticks after every change.
-  final List<double> samples;
+  required final List<double> samples,
 
   /// Progress [0, 1] through the current inter-sample slide.
-  final double Function() slidePhase;
+  required final double Function() slidePhase,
 
   /// Whether to ease between samples (false snaps, for reduced motion).
-  final bool Function() slideEnabled;
-
-  final ValueListenable<double>? flattenProgress;
-  final Color barColor;
-  final Color dotColor;
-
+  required final bool Function() slideEnabled,
+  required final ValueListenable<double>? flattenProgress,
+  required final Color barColor,
+  required final Color dotColor,
+}) extends CustomPainter {
   /// Bar/dot geometry from the Figma waveform: 3px-wide pills on a 6.5px
   /// grid, resting at 6px tall.
   static const double _barWidth = 3;

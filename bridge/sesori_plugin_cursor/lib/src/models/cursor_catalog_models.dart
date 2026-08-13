@@ -1,109 +1,73 @@
 /// One selectable Cursor config option.
-class CursorCatalogOption {
-  const CursorCatalogOption({
-    required this.value,
-    required this.name,
-    required this.description,
+class const CursorCatalogOption({
+    required final String value,
+    required final String name,
+    required final String? description,
   });
 
-  final String value;
-  final String name;
-  final String? description;
-}
-
 /// The thought-level selector exposed for one loaded model.
-class CursorThoughtLevelSnapshot {
-  CursorThoughtLevelSnapshot({
-    required this.configId,
+class CursorThoughtLevelSnapshot({
+    required final String configId,
     required List<String> variants,
-    required this.defaultValue,
-  }) : variants = List.unmodifiable(variants);
+    required final String? defaultValue,
+  }) {
 
-  final String configId;
-  final List<String> variants;
-  final String? defaultValue;
+  final List<String> variants = List.unmodifiable(variants);
 }
 
 /// Cursor's stable execution modes, available before the first session exists.
-enum CursorMode {
+enum CursorMode({required final String id, required final String displayName}) {
   agent(id: "agent", displayName: "Agent"),
   plan(id: "plan", displayName: "Plan"),
   ask(id: "ask", displayName: "Ask");
 
-  CursorMode({required this.id, required this.displayName});
-
-  final String id;
-  final String displayName;
 }
 
 /// Account catalog returned without creating or loading a Cursor session.
-class CursorCatalogBootstrapSnapshot {
-  CursorCatalogBootstrapSnapshot({
+class CursorCatalogBootstrapSnapshot({
     required List<CursorCatalogOption> models,
     required List<CursorCatalogOption> modes,
-    required this.defaultModeId,
+    required final String defaultModeId,
     required Map<String, CursorThoughtLevelSnapshot> thoughtLevelsByModel,
-  }) : models = List.unmodifiable(models),
-       modes = List.unmodifiable(modes),
-       thoughtLevelsByModel = Map.unmodifiable(thoughtLevelsByModel);
+  }) {
 
-  final List<CursorCatalogOption> models;
-  final List<CursorCatalogOption> modes;
-  final String defaultModeId;
-  final Map<String, CursorThoughtLevelSnapshot> thoughtLevelsByModel;
+  final List<CursorCatalogOption> models = List.unmodifiable(models);
+  final List<CursorCatalogOption> modes = List.unmodifiable(modes);
+  final Map<String, CursorThoughtLevelSnapshot> thoughtLevelsByModel = Map.unmodifiable(thoughtLevelsByModel);
 }
 
 /// Typed Cursor catalog data parsed from an ACP session result.
-class CursorCatalogSnapshot {
-  CursorCatalogSnapshot({
-    required this.modelConfigId,
+class CursorCatalogSnapshot({
+    required final String? modelConfigId,
     required List<CursorCatalogOption> models,
-    required this.loadedModelId,
-    required this.modeConfigId,
+    required final String? loadedModelId,
+    required final String? modeConfigId,
     required List<CursorCatalogOption> modes,
-    required this.loadedModeId,
-    required this.thoughtLevel,
-  }) : models = List.unmodifiable(models),
-       modes = List.unmodifiable(modes);
+    required final String? loadedModeId,
+    required final CursorThoughtLevelSnapshot? thoughtLevel,
+  }) {
 
-  final String? modelConfigId;
-  final List<CursorCatalogOption> models;
-  final String? loadedModelId;
-  final String? modeConfigId;
-  final List<CursorCatalogOption> modes;
-  final String? loadedModeId;
-  final CursorThoughtLevelSnapshot? thoughtLevel;
+  final List<CursorCatalogOption> models = List.unmodifiable(models);
+  final List<CursorCatalogOption> modes = List.unmodifiable(modes);
 }
 
 /// Existing session that can be loaded to discover Cursor's catalog.
-class CursorCatalogCandidate {
-  const CursorCatalogCandidate({
-    required this.sessionId,
-    required this.cwd,
-    required this.updatedAtMs,
+class const CursorCatalogCandidate({
+    required final String sessionId,
+    required final String cwd,
+    required final int? updatedAtMs,
   });
 
-  final String sessionId;
-  final String cwd;
-  final int? updatedAtMs;
-}
-
 /// Deduplicated candidates plus whether all requested enumerations succeeded.
-class CursorCatalogCandidateListResult {
-  CursorCatalogCandidateListResult({
+class CursorCatalogCandidateListResult({
     required List<CursorCatalogCandidate> candidates,
-    required this.exhaustive,
-  }) : candidates = List.unmodifiable(candidates);
+    required final bool exhaustive,
+  }) {
 
-  final List<CursorCatalogCandidate> candidates;
-  final bool exhaustive;
+  final List<CursorCatalogCandidate> candidates = List.unmodifiable(candidates);
 }
 
 /// Catalog values needed by the plugin after a session capture is applied.
-class CursorCatalogCaptureResult {
-  const CursorCatalogCaptureResult({required this.loadedModelId});
+class const CursorCatalogCaptureResult({required final String? loadedModelId});
 
-  final String? loadedModelId;
-}
-
-enum CursorCatalogProbeOutcome { complete, exhausted, retryableFailure }
+enum CursorCatalogProbeOutcome() { complete, exhausted, retryableFailure }

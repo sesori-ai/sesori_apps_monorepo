@@ -8,7 +8,7 @@ import "../routing/app_routes.dart";
 ///
 /// The Flutter app provides a concrete implementation backed by GoRouter.
 /// See also: [LifecycleSource] for app-level lifecycle.
-abstract interface class RouteSource {
+abstract interface class RouteSource() {
   ValueStream<AppRouteDef?> get currentRouteStream;
 
   /// Resolved location of the topmost route — path parameters substituted and

@@ -1,5 +1,5 @@
 /// Semantic WebSocket close codes for the relay protocol.
-abstract final class RelayCloseCodes {
+abstract final class RelayCloseCodes() {
   /// Authentication failure — do NOT reconnect.
   static const authFailure = 4001;
 

@@ -5,16 +5,10 @@ import "../api/omp_linux_libc_probe_api.dart";
 import "../models/omp_linux_libc.dart";
 import "../runtime/omp_runtime_manifest.dart";
 
-class OmpRuntimeAssetRepository {
-  const OmpRuntimeAssetRepository({
-    required OmpLinuxLibcProbeApi api,
-    required OmpRuntimeManifest manifest,
-  }) : _api = api,
-       _manifest = manifest;
-
-  final OmpLinuxLibcProbeApi _api;
-  final OmpRuntimeManifest _manifest;
-
+class const OmpRuntimeAssetRepository({
+  required final OmpLinuxLibcProbeApi _api,
+  required final OmpRuntimeManifest _manifest,
+}) {
   Future<RuntimeAsset?> resolveLinux({required PlatformArch arch}) async {
     final evidence = await _api.probe();
     final libc = switch (evidence) {

@@ -196,7 +196,7 @@ String _token({required String? userId}) {
   return "header.$payload.signature";
 }
 
-class _FakeAppClientStatusRepository implements AppClientStatusRepository {
+class _FakeAppClientStatusRepository() implements AppClientStatusRepository {
   final List<AppClientStatusResult> results = [];
   final List<String> accessTokens = [];
   Object? error;
@@ -209,7 +209,7 @@ class _FakeAppClientStatusRepository implements AppClientStatusRepository {
   }
 }
 
-class _FakeAppOnboardingStateRepository implements AppOnboardingStateRepository {
+class _FakeAppOnboardingStateRepository() implements AppOnboardingStateRepository {
   AppOnboardingStateLookup lookupResult = const AppOnboardingStateAbsent();
   int lookupCalls = 0;
   int markCalls = 0;
@@ -237,7 +237,7 @@ class _FakeAppOnboardingStateRepository implements AppOnboardingStateRepository 
   }
 }
 
-class _CapturingStdout implements Stdout {
+class _CapturingStdout() implements Stdout {
   final List<String> lines = [];
 
   @override

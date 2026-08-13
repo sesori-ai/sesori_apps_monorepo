@@ -24,7 +24,7 @@ void main() {
   });
 }
 
-class _RecordingUpdateService implements UpdateService {
+class _RecordingUpdateService() implements UpdateService {
   int startCount = 0;
   int disposeCount = 0;
 
@@ -38,7 +38,7 @@ class _RecordingUpdateService implements UpdateService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _RecordingReconciliationService implements UpdateReconciliationService {
+class _RecordingReconciliationService() implements UpdateReconciliationService {
   int reconcileCount = 0;
 
   @override

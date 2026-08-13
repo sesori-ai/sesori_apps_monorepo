@@ -17,24 +17,21 @@ import "product_analytics_preference_state_mapper.dart";
 
 const _logoutPreparationDeadline = Duration(seconds: 10);
 
-final class ProductAnalyticsDeliveryContext {
-  final int generation;
-  final String userId;
-  final String userKey;
-
-  const ProductAnalyticsDeliveryContext({
-    required this.generation,
-    required this.userId,
-    required this.userKey,
-  });
-}
+final class const ProductAnalyticsDeliveryContext({
+  required final int generation,
+  required final String userId,
+  required final String userKey,
+});
 
 @lazySingleton
-class ProductAnalyticsPreferenceService {
-  final AnalyticsRuntimeCapability _capability;
-  final AuthSession _authSession;
-  final ProductAnalyticsPreferenceRepository _preferenceRepository;
-  final ProductAnalyticsPreferenceStateMapper _stateMapper;
+class ProductAnalyticsPreferenceService({
+  required final AnalyticsRuntimeCapability _capability,
+  required final AuthSession _authSession,
+  required final ProductAnalyticsPreferenceRepository _preferenceRepository,
+}) {
+  final ProductAnalyticsPreferenceStateMapper _stateMapper = ProductAnalyticsPreferenceStateMapper(
+    capability: _capability,
+  );
   final BehaviorSubject<ProductAnalyticsState> _state = BehaviorSubject.seeded(ProductAnalyticsState.initial);
   final ProductAnalyticsAccountOperationDispatcher _operations = ProductAnalyticsAccountOperationDispatcher();
 
@@ -48,15 +45,6 @@ class ProductAnalyticsPreferenceService {
   Future<void>? _startFuture;
   Future<void>? _disposeFuture;
   bool _disposed = false;
-
-  ProductAnalyticsPreferenceService({
-    required AnalyticsRuntimeCapability capability,
-    required AuthSession authSession,
-    required ProductAnalyticsPreferenceRepository preferenceRepository,
-  }) : _capability = capability,
-       _authSession = authSession,
-       _preferenceRepository = preferenceRepository,
-       _stateMapper = ProductAnalyticsPreferenceStateMapper(capability: capability);
 
   ValueStream<ProductAnalyticsState> get stateStream => _state.stream;
   ProductAnalyticsState get state => _state.value;

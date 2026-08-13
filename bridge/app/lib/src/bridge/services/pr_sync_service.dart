@@ -11,18 +11,19 @@ import "../repositories/pr_source_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 
-enum PrRefreshOutcome { completed, failed }
+enum PrRefreshOutcome() { completed, failed }
 
-enum PrRefreshPolicy { background, explicit, viewedProject }
+enum PrRefreshPolicy() { background, explicit, viewedProject }
 
 typedef PullRequestRenderedChange = ({String projectId});
 
-class PrSyncService {
-  final PrSourceRepository _prSource;
-  final PullRequestRepository _pullRequestRepository;
-  final SessionRepository _sessionRepository;
-  final Clock _clock;
-  final Duration _debounceWindow;
+class PrSyncService({
+    required final PrSourceRepository _prSource,
+    required final PullRequestRepository _pullRequestRepository,
+    required final SessionRepository _sessionRepository,
+    required final Clock _clock,
+    final Duration _debounceWindow = const Duration(seconds: 30),
+  }) {
   final StreamController<PullRequestRenderedChange> _renderedChangesController =
       StreamController<PullRequestRenderedChange>.broadcast();
 
@@ -38,18 +39,6 @@ class PrSyncService {
   bool _disposed = false;
 
   static const _githubCliCapabilityCacheTtl = Duration(seconds: 30);
-
-  PrSyncService({
-    required PrSourceRepository prSource,
-    required PullRequestRepository pullRequestRepository,
-    required SessionRepository sessionRepository,
-    required Clock clock,
-    Duration debounceWindow = const Duration(seconds: 30),
-  }) : _prSource = prSource,
-       _pullRequestRepository = pullRequestRepository,
-       _sessionRepository = sessionRepository,
-       _clock = clock,
-       _debounceWindow = debounceWindow;
 
   Stream<PullRequestRenderedChange> get renderedChanges => _renderedChangesController.stream;
 
@@ -169,7 +158,7 @@ class PrSyncService {
 
   Future<bool> _hasGithubCliCapability() async {
     final inFlight = _githubCliCapabilityCheck;
-    if (inFlight != null) return inFlight;
+    if (inFlight != null) return await inFlight;
 
     final cached = _githubCliCapabilityCache;
     if (cached != null && _clock.now().difference(cached.checkedAt) < _githubCliCapabilityCacheTtl) {
@@ -373,13 +362,11 @@ class PrSyncService {
   }
 }
 
-final class _PrRefreshWaiter {
-  final Map<String, int> _remainingGenerations;
+final class _PrRefreshWaiter({required Map<String, int> requiredGenerations}) {
+  final Map<String, int> _remainingGenerations = Map<String, int>.from(requiredGenerations);
   final Completer<PrRefreshOutcome> _completer = Completer<PrRefreshOutcome>();
   bool _failed = false;
 
-  _PrRefreshWaiter({required Map<String, int> requiredGenerations})
-    : _remainingGenerations = Map<String, int>.from(requiredGenerations);
 
   Future<PrRefreshOutcome> get future => _completer.future;
   bool get isSettled => _completer.isCompleted;

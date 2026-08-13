@@ -12,45 +12,32 @@ import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
 import "models/codex_thread_record.dart";
 
-sealed class CodexThreadOperationException implements Exception {
-  const CodexThreadOperationException({
-    required this.operation,
-    required this.message,
-  });
-
-  final String operation;
-  final String message;
-
+sealed class const CodexThreadOperationException({
+  required final String operation,
+  required final String message,
+}) implements Exception {
   @override
   String toString() => "CodexThreadOperationException($operation: $message)";
 }
 
-final class CodexThreadNotFoundException extends CodexThreadOperationException {
-  const CodexThreadNotFoundException({
-    required super.operation,
-    required super.message,
-  });
-}
+final class const CodexThreadNotFoundException({
+  required super.operation,
+  required super.message,
+}) extends CodexThreadOperationException;
 
-final class CodexThreadRequestException extends CodexThreadOperationException {
-  const CodexThreadRequestException({
-    required super.operation,
-    required super.message,
-  });
-}
+final class const CodexThreadRequestException({
+  required super.operation,
+  required super.message,
+}) extends CodexThreadOperationException;
 
-final class _CodexPromptAttachmentException implements Exception {
-  const _CodexPromptAttachmentException({required this.message, required this.innerError});
-
-  final String message;
-  final Object? innerError;
-
+final class const _CodexPromptAttachmentException({required final String message, required final Object? innerError})
+    implements Exception {
   @override
   String toString() => "CodexPromptAttachmentException($message)";
 }
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
-class CodexThreadRepository {
+class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   static const _supportedImageMimes = {
     "image/bmp",
     "image/gif",
@@ -58,10 +45,6 @@ class CodexThreadRepository {
     "image/png",
     "image/webp",
   };
-
-  CodexThreadRepository({required CodexAppServerApi appServerApi}) : _appServerApi = appServerApi;
-
-  final CodexAppServerApi _appServerApi;
 
   Future<CodexThreadRecord> startThread({
     required String cwd,

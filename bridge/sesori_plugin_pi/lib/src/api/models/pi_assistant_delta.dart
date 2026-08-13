@@ -12,13 +12,11 @@ import "pi_frame_fields.dart";
 ///
 /// Wire scalars are nullable throughout: stdout is foreign input, and a frame
 /// that omits or mistypes one field must not take down the surrounding turn.
-sealed class PiAssistantDelta {
-  const PiAssistantDelta({required this.raw});
-
+sealed class const PiAssistantDelta({
   /// The undecoded delta, so later mappers can reach fields this build does not
   /// model.
-  final Map<String, Object?> raw;
-
+  required final Map<String, Object?> raw,
+}) {
   /// Routes one delta. Unrecognized shapes become [PiUnknownDelta] rather than
   /// being dropped, because a new upstream delta type must not break a turn.
   static PiAssistantDelta parse({required Map<String, Object?> json}) {
@@ -65,90 +63,57 @@ PiAssistantDelta _unknownDelta(Map<String, Object?> json) {
 }
 
 /// The stream opened. Carries nothing once `partial` is stripped.
-final class PiMessageStartDelta extends PiAssistantDelta {
-  const PiMessageStartDelta({required super.raw});
-}
+final class const PiMessageStartDelta({required super.raw}) extends PiAssistantDelta;
 
 /// A content block at [contentIndex] started, streamed, or finished.
-sealed class PiIndexedDelta extends PiAssistantDelta {
-  const PiIndexedDelta({required this.contentIndex, required super.raw});
+sealed class const PiIndexedDelta({required final int? contentIndex, required super.raw}) extends PiAssistantDelta;
 
-  final int? contentIndex;
-}
+final class const PiTextStartDelta({required super.contentIndex, required super.raw}) extends PiIndexedDelta;
 
-final class PiTextStartDelta extends PiIndexedDelta {
-  const PiTextStartDelta({required super.contentIndex, required super.raw});
-}
+final class const PiTextDelta({required super.contentIndex, required final String? delta, required super.raw})
+    extends PiIndexedDelta;
 
-final class PiTextDelta extends PiIndexedDelta {
-  const PiTextDelta({required super.contentIndex, required this.delta, required super.raw});
+final class const PiTextEndDelta({required super.contentIndex, required final String? content, required super.raw})
+    extends PiIndexedDelta;
 
-  final String? delta;
-}
+final class const PiThinkingStartDelta({required super.contentIndex, required super.raw}) extends PiIndexedDelta;
 
-final class PiTextEndDelta extends PiIndexedDelta {
-  const PiTextEndDelta({required super.contentIndex, required this.content, required super.raw});
+final class const PiThinkingDelta({required super.contentIndex, required final String? delta, required super.raw})
+    extends PiIndexedDelta;
 
-  final String? content;
-}
+final class const PiThinkingEndDelta({required super.contentIndex, required final String? content, required super.raw})
+    extends PiIndexedDelta;
 
-final class PiThinkingStartDelta extends PiIndexedDelta {
-  const PiThinkingStartDelta({required super.contentIndex, required super.raw});
-}
-
-final class PiThinkingDelta extends PiIndexedDelta {
-  const PiThinkingDelta({required super.contentIndex, required this.delta, required super.raw});
-
-  final String? delta;
-}
-
-final class PiThinkingEndDelta extends PiIndexedDelta {
-  const PiThinkingEndDelta({required super.contentIndex, required this.content, required super.raw});
-
-  final String? content;
-}
-
-final class PiToolCallStartDelta extends PiIndexedDelta {
-  const PiToolCallStartDelta({required super.contentIndex, required super.raw});
-}
+final class const PiToolCallStartDelta({required super.contentIndex, required super.raw}) extends PiIndexedDelta;
 
 /// A fragment of tool-call arguments. The complete call is only guaranteed at
 /// [PiToolCallEndDelta].
-final class PiToolCallDelta extends PiIndexedDelta {
-  const PiToolCallDelta({required super.contentIndex, required this.delta, required super.raw});
+final class const PiToolCallDelta({required super.contentIndex, required final String? delta, required super.raw})
+    extends PiIndexedDelta;
 
-  final String? delta;
-}
-
-final class PiToolCallEndDelta extends PiIndexedDelta {
-  const PiToolCallEndDelta({required super.contentIndex, required this.toolCall, required super.raw});
+final class const PiToolCallEndDelta({
+  required super.contentIndex,
 
   /// The complete tool call: id, name, and arguments.
-  final Map<String, Object?> toolCall;
-}
+  required final Map<String, Object?> toolCall,
+  required super.raw,
+}) extends PiIndexedDelta;
 
 /// The assistant message finished successfully.
-final class PiAssistantDoneDelta extends PiAssistantDelta {
-  const PiAssistantDoneDelta({required this.reason, required this.message, required super.raw});
-
-  final PiAssistantStopReason? reason;
-
-  final Map<String, Object?> message;
-}
+final class const PiAssistantDoneDelta({
+  required final PiAssistantStopReason? reason,
+  required final Map<String, Object?> message,
+  required super.raw,
+}) extends PiAssistantDelta;
 
 /// The assistant message ended in an error or an abort.
-final class PiAssistantErrorDelta extends PiAssistantDelta {
-  const PiAssistantErrorDelta({required this.reason, required this.error, required super.raw});
-
-  final PiAssistantStopReason? reason;
+final class const PiAssistantErrorDelta({
+  required final PiAssistantStopReason? reason,
 
   /// The final assistant message carrying the failure.
-  final Map<String, Object?> error;
-}
+  required final Map<String, Object?> error,
+  required super.raw,
+}) extends PiAssistantDelta;
 
 /// A delta type this build does not model.
-final class PiUnknownDelta extends PiAssistantDelta {
-  const PiUnknownDelta({required this.type, required super.raw});
-
-  final String? type;
-}
+final class const PiUnknownDelta({required final String? type, required super.raw}) extends PiAssistantDelta;

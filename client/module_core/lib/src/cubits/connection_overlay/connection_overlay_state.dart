@@ -20,15 +20,15 @@ sealed class ConnectionOverlayState with _$ConnectionOverlayState {
   /// availability signal (the sessions bar's status dot): `true` only while the
   /// relay↔bridge chain is fully up (`ConnectionConnected`), `false` for the
   /// bannerless offline states.
-  const factory ConnectionOverlayState.hidden({required bool connected}) = ConnectionOverlayHidden;
+  const factory hidden({required bool connected}) = ConnectionOverlayHidden;
 
   /// A subtle reconnecting indicator: the relay dropped and is auto-reconnecting.
-  const factory ConnectionOverlayState.reconnecting() = ConnectionOverlayReconnecting;
+  const factory reconnecting() = ConnectionOverlayReconnecting;
 
   /// The blocking "connection lost" card with Reconnect / Disconnect actions.
-  const factory ConnectionOverlayState.connectionLost() = ConnectionOverlayConnectionLost;
+  const factory connectionLost() = ConnectionOverlayConnectionLost;
 
   /// The non-blocking bridge-offline banner — shown only when the account has a
   /// registered bridge, so an offline bridge is worth flagging.
-  const factory ConnectionOverlayState.bridgeOffline() = ConnectionOverlayBridgeOffline;
+  const factory bridgeOffline() = ConnectionOverlayBridgeOffline;
 }

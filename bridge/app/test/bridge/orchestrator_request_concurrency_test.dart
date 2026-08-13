@@ -252,37 +252,20 @@ void main() {
   });
 }
 
-class _ConcurrencyHarness {
-  final _BlockingMessagesPlugin plugin;
-  final OrchestratorComposition composition;
-  final Future<void> runFuture;
-  final TestRelayServer relayServer;
-  final AppDatabase database;
-  final PluginLifecycleService lifecycleService;
-  final http.Client httpClient;
-  final BridgeRuntime runtime;
-  final _RecordingRelayClient relayClient;
-  final _RecordingRestartService restartService;
-
-  WebSocket _socket;
-  StreamIterator<dynamic> _messages;
-
-  _ConcurrencyHarness._({
-    required this.plugin,
-    required this.composition,
-    required this.runFuture,
-    required this.relayServer,
-    required this.database,
-    required this.lifecycleService,
-    required this.httpClient,
-    required this.runtime,
-    required this.relayClient,
-    required this.restartService,
-    required WebSocket socket,
-    required StreamIterator<dynamic> messages,
-  }) : _socket = socket,
-       _messages = messages;
-
+class _ConcurrencyHarness._({
+  required final _BlockingMessagesPlugin plugin,
+  required final OrchestratorComposition composition,
+  required final Future<void> runFuture,
+  required final TestRelayServer relayServer,
+  required final AppDatabase database,
+  required final PluginLifecycleService lifecycleService,
+  required final http.Client httpClient,
+  required final BridgeRuntime runtime,
+  required final _RecordingRelayClient relayClient,
+  required final _RecordingRestartService restartService,
+  required var WebSocket _socket,
+  required var StreamIterator<dynamic> _messages,
+}) {
   static Future<_ConcurrencyHarness> start() async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
@@ -476,7 +459,7 @@ class _ConcurrencyHarness {
   }
 }
 
-class _BlockingMessagesPlugin extends FakeBridgePlugin {
+class _BlockingMessagesPlugin() extends FakeBridgePlugin {
   Completer<void>? messagesStarted;
   Future<void>? messagesDelay;
 
@@ -486,17 +469,15 @@ class _BlockingMessagesPlugin extends FakeBridgePlugin {
     if (started != null && !started.isCompleted) started.complete();
     final delay = messagesDelay;
     if (delay != null) await delay;
-    return super.getSessionMessages(sessionId);
+    return await super.getSessionMessages(sessionId);
   }
 }
 
-class _RecordingRelayClient extends RelayClient {
-  _RecordingRelayClient({
-    required super.relayURL,
-    required super.accessTokenProvider,
-    required super.bridgeIdProvider,
-  });
-
+class _RecordingRelayClient({
+  required super.relayURL,
+  required super.accessTokenProvider,
+  required super.bridgeIdProvider,
+}) extends RelayClient {
   final List<({RelayConnection connection, int connId})> sendAttempts = [];
   final List<RelayConnection> closeAttempts = [];
   final Completer<void> closeStarted = Completer<void>();
@@ -531,14 +512,11 @@ class _RecordingRelayClient extends RelayClient {
     if (!closeStarted.isCompleted) closeStarted.complete();
     final delay = closeDelay;
     if (delay != null) await delay;
-    return closeFuture;
+    return await closeFuture;
   }
 }
 
-class _RecordingRestartService implements BridgeRestartService {
-  _RecordingRestartService({required this.relayClient});
-
-  final _RecordingRelayClient relayClient;
+class _RecordingRestartService({required final _RecordingRelayClient relayClient}) implements BridgeRestartService {
   final Completer<void> handoffPerformed = Completer<void>();
   bool restartable = false;
   Completer<void>? canRestartStarted;

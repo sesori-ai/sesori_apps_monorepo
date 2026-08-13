@@ -1,7 +1,7 @@
 // Phase 4 write-path integration tests: createSession, sendPrompt,
 // abortSession round-trip against an in-memory fake WS, plus the
 // notification → BridgeSseEvent pipeline.
-// ignore_for_file: unawaited_futures, cast_nullable_to_non_nullable, prefer_foreach, avoid_dynamic_calls
+// ignore_for_file: cast_nullable_to_non_nullable, prefer_foreach, avoid_dynamic_calls
 
 import "dart:async";
 import "dart:convert";
@@ -2018,13 +2018,7 @@ const Map<String, dynamic> _initOk = {
   "platformFamily": "unix",
 };
 
-class _Response {
-  // ignore: unused_element_parameter
-  const _Response({this.result, this.error, this.respond = true});
-  final Object? result;
-  final Map<String, dynamic>? error;
-  final bool respond;
-}
+class const _Response({final Object? result, final Map<String, dynamic>? error, final bool respond = true});
 
 Map<String, Object?> _toolCall({
   required String id,
@@ -2129,8 +2123,8 @@ String _processOutput({
 /// Fake app-server that records every method/params it received and
 /// replies in the order [respondInOrder] queued. Lets us push
 /// server-originated notifications via [pushNotification].
-class _FakeAppServer {
-  _FakeAppServer() {
+class _FakeAppServer() {
+  this {
     _clientToServer = StreamController<Object?>.broadcast();
     _serverToClient = StreamController<Object?>.broadcast();
     channel = _StubChannel(
@@ -2244,21 +2238,10 @@ class _FakeAppServer {
   }
 }
 
-class _SentFrame {
-  _SentFrame({required this.method, required this.params});
-  final String method;
-  final Map<String, dynamic>? params;
-}
+class _SentFrame({required final String method, required final Map<String, dynamic>? params});
 
-class _StubChannel implements WebSocketChannel {
-  _StubChannel({required this.stream, required this.sink});
-
-  @override
-  final Stream<dynamic> stream;
-
-  @override
-  final WebSocketSink sink;
-
+class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
+    implements WebSocketChannel {
   @override
   int? get closeCode => null;
   @override
@@ -2272,10 +2255,7 @@ class _StubChannel implements WebSocketChannel {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SinkAdapter implements WebSocketSink {
-  _SinkAdapter(this._controller);
-  final StreamController<Object?> _controller;
-
+class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
   @override
   void add(Object? data) => _controller.add(data);
 

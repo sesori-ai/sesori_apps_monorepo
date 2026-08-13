@@ -9,11 +9,11 @@ import "package:sesori_dart_core/src/services/notification_registration_service.
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:test/test.dart";
 
-class _MockAuthSession extends Mock implements AuthSession;
+class _MockAuthSession() extends Mock implements AuthSession;
 
-class _MockNotificationRegistrationService extends Mock implements NotificationRegistrationService;
+class _MockNotificationRegistrationService() extends Mock implements NotificationRegistrationService;
 
-class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService;
+class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 void main() {
   group("SettingsCubit", () {

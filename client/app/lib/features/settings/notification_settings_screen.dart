@@ -18,9 +18,7 @@ const double _contentTopPadding = 10.0;
 ///
 /// Two sections from the Figma redesign: "AI Notifications" (per-session
 /// categories with descriptions) and "System" (app/bridge updates).
-class NotificationSettingsScreen extends StatelessWidget {
-  const NotificationSettingsScreen({super.key});
-
+class const NotificationSettingsScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -32,9 +30,7 @@ class NotificationSettingsScreen extends StatelessWidget {
   }
 }
 
-class _NotificationSettingsBody extends StatelessWidget {
-  const _NotificationSettingsBody();
-
+class const _NotificationSettingsBody() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -127,9 +123,7 @@ class _NotificationSettingsBody extends StatelessWidget {
   }
 }
 
-class _NotificationPreferencesUnavailable extends StatelessWidget {
-  const _NotificationPreferencesUnavailable();
-
+class const _NotificationPreferencesUnavailable() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRows(
@@ -145,9 +139,7 @@ class _NotificationPreferencesUnavailable extends StatelessWidget {
   }
 }
 
-class _NotificationPreferencesFailure extends StatelessWidget {
-  const _NotificationPreferencesFailure();
-
+class const _NotificationPreferencesFailure() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRows(
@@ -170,23 +162,14 @@ class _NotificationPreferencesFailure extends StatelessWidget {
   }
 }
 
-class _NotificationToggleRow extends StatelessWidget {
-  const _NotificationToggleRow({
-    required this.category,
-    required this.title,
-    required this.subtitle,
-    required this.preferences,
-    required this.updatingCategories,
-    this.isLast = false,
-  });
-
-  final NotificationCategory category;
-  final String title;
-  final String? subtitle;
-  final Map<NotificationCategory, bool> preferences;
-  final Set<NotificationCategory> updatingCategories;
-  final bool isLast;
-
+class const _NotificationToggleRow({
+  required final NotificationCategory category,
+  required final String title,
+  required final String? subtitle,
+  required final Map<NotificationCategory, bool> preferences,
+  required final Set<NotificationCategory> updatingCategories,
+  final bool isLast = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = this.subtitle;

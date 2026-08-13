@@ -285,18 +285,13 @@ Future<Map<String, dynamic>> _waitForFrame({
   throw StateError("OMP never wrote '$method'");
 }
 
-class _Host implements PluginHost {
-  _Host({
-    required this.processes,
-    StartAbortSignal? startAborted,
-    this.clock = const ServerClock(),
-  }) : startAborted = startAborted ?? StartAbortSignal.never;
-
+class _Host({
+  @override required final HostProcessService processes,
+  StartAbortSignal? startAborted,
+  @override final ServerClock clock = const ServerClock(),
+}) implements PluginHost {
   @override
-  final HostProcessService processes;
-
-  @override
-  final StartAbortSignal startAborted;
+  final StartAbortSignal startAborted = startAborted ?? StartAbortSignal.never;
 
   @override
   PluginConfig get config => const PluginConfig(values: {OmpPluginDescriptor.binOption: "omp"});
@@ -311,41 +306,25 @@ class _Host implements PluginHost {
   String? get provisionedRuntimePath => null;
 
   @override
-  final ServerClock clock;
-
-  @override
   String get stateDirectory => "/state";
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ImmediateClock extends ServerClock {
-  const _ImmediateClock();
-
+class const _ImmediateClock() extends ServerClock {
   @override
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _Output {
-  const _Output({required this.stdout, required this.exitCode});
+class const _Output({required final String stdout, required final int exitCode});
 
-  final String stdout;
-  final int exitCode;
-}
-
-class _Processes implements HostProcessService {
-  _Processes({
-    this.outputs = const [],
-    this.spawnError,
-    this.acp = false,
-    this.onInitialize,
-  });
-
-  final List<_Output> outputs;
-  final Object? spawnError;
-  final bool acp;
-  final void Function()? onInitialize;
+class _Processes({
+  final List<_Output> outputs = const [],
+  final Object? spawnError,
+  final bool acp = false,
+  final void Function()? onInitialize,
+}) implements HostProcessService {
   final List<String> executables = [];
   final List<List<String>> arguments = [];
   final List<Map<String, String>?> environments = [];
@@ -403,16 +382,12 @@ class _Processes implements HostProcessService {
   );
 }
 
-class _ProbeProcess implements SpawnedProcess {
-  _ProbeProcess({required _Output output})
-    : stdout = Stream.value(utf8.encode(output.stdout)),
-      exitCode = Future.value(output.exitCode);
+class _ProbeProcess({required _Output output}) implements SpawnedProcess {
+  @override
+  final Stream<List<int>> stdout = Stream.value(utf8.encode(output.stdout));
 
   @override
-  final Stream<List<int>> stdout;
-
-  @override
-  final Future<int> exitCode;
+  final Future<int> exitCode = Future.value(output.exitCode);
 
   @override
   Stream<List<int>> get stderr => const Stream.empty();
@@ -427,12 +402,11 @@ class _ProbeProcess implements SpawnedProcess {
   IOSink get stdin => IOSink(StreamController<List<int>>().sink);
 }
 
-class _AcpProcess implements SpawnedProcess {
-  _AcpProcess({required this.onInitialize}) {
+class _AcpProcess({required final void Function()? onInitialize}) implements SpawnedProcess {
+  this {
     stdin = IOSink(_InputSink(onLine: _handleLine));
   }
 
-  final void Function()? onInitialize;
   final StreamController<List<int>> _stdout = StreamController<List<int>>();
   final Completer<int> _exit = Completer<int>();
 
@@ -483,10 +457,7 @@ class _AcpProcess implements SpawnedProcess {
   Stream<List<int>> get stdout => _stdout.stream;
 }
 
-class _InputSink implements StreamConsumer<List<int>> {
-  _InputSink({required this.onLine});
-
-  final void Function(String line) onLine;
+class _InputSink({required final void Function(String line) onLine}) implements StreamConsumer<List<int>> {
   final StringBuffer _buffer = StringBuffer();
 
   @override
