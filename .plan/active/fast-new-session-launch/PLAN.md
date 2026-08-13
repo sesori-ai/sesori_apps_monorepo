@@ -176,12 +176,13 @@ creation warning. This makes impossible states explicit instead of coordinating
 nullable text, command, attachment, and warning fields.
 
 Discovery, option, capability, and reconnect refreshes update the configuration
-inside `NewSessionCreationError`; they must not replace it with idle or a
-discovery error and erase the uncertain-outcome warning. The warning is cleared
-only by the next explicit submission (which enters `NewSessionSending`) or by
-leaving the new-session route. This requires replacing the current direct idle
-emit in `_discoverPlugins` with the same variant-preserving state update used by
-the other refresh paths.
+inside both `NewSessionRestoringSubmission` and `NewSessionCreationError`; they
+must not replace either with idle or a discovery error, drop the attachment
+snapshot before its consumed acknowledgement, or erase the uncertain-outcome
+warning. The warning is cleared only by the next explicit submission (which
+enters `NewSessionSending`) or by leaving the new-session route. This requires
+replacing the current direct idle emit in `_discoverPlugins` with the same
+variant-preserving state update used by the other refresh paths.
 
 `PromptInput` extends its submit callback with the exact trimmed
 `ComposerDraft` it already computes before clearing the controller. This is the
@@ -190,7 +191,8 @@ draft from text plus `ComposerInputMode` would falsely mark all text as typed or
 all text as voice. `SessionDetailCubit` continues to derive its existing queue
 and analytics values from that draft without persisting the submission.
 
-`NewSessionCubit` builds the snapshot before the first async gap. On failure it:
+`NewSessionCubit` builds the snapshot before the first async gap. If it is still
+open when creation fails, it:
 
 1. restores the draft repository from the snapshot;
 2. restores the staged command when present;
@@ -199,6 +201,11 @@ and analytics values from that draft without persisting the submission.
 4. retains current outcome analytics semantics, with explicit documentation that
    unconfirmed outcomes remain counted by the released failure event until
    idempotent creation exists.
+
+If the Cubit was closed because the user left while creation continued, failure
+does not restore the shared draft repository, staged command, or attachments;
+the snapshot is released when that background request settles. This prevents an
+abandoned submission from reappearing on a later visit to the new-session route.
 
 The sending branch removes `PromptInput` from the tree. On failure the composer
 therefore runs a fresh `initState`, copies `initialAttachments` exactly once,
@@ -222,13 +229,14 @@ attachment ownership or persist bytes. Existing-session callers pass `const []`
 and a no-op callback.
 
 `NewSessionCubit` emits `NewSessionSending` synchronously and keeps its creation
-intent surface-neutral. For attachment submissions, `SessionApi` uses
-`module_core`'s existing isolate infrastructure to build prompt parts and encode
-the complete request JSON off the UI isolate, then gives the resulting JSON
-string to `RelayHttpApiClient`; text-only requests retain the direct path. The
-first await therefore yields naturally so Flutter can paint the launch view,
-without adding frame lifecycle to shared business logic. The request and all
-existing acceptance semantics remain otherwise synchronous.
+intent surface-neutral. For attachment submissions, a `SessionApi` serializer
+first yields one event-loop turn, then incrementally base64-encodes attachment
+bytes and assembles request JSON in bounded chunks, yielding between chunks.
+This lets Flutter render the scheduled launch frame without passing frame
+lifecycle into shared business logic and without copying retained attachment
+buffers through an isolate port. Text-only requests retain the direct path. The
+serializer returns the complete JSON string to `RelayHttpApiClient`; the request
+and all existing acceptance semantics remain otherwise synchronous.
 
 ### 2. Reusable detail-shaped launch presentation
 
@@ -364,16 +372,20 @@ registers the complete metadata-to-title workflow in the tracked set before it
 can return the canonical session:
 
 - one set tracks accepted title-completion futures;
-- one abort signal cancels in-flight metadata HTTP during bridge shutdown;
-- `beginShutdown` stops accepting new late work and triggers metadata abort;
+- one shutdown signal bounds the complete token-acquisition, metadata-request,
+  and title-application workflow, while the API deadline bounds normal runtime;
+- `beginShutdown` stops accepting new late work and triggers that workflow abort;
 - `drain` waits for tracked title work before session operations/listeners and
   the shared HTTP client are disposed.
 
-`SesoriServerApi` uses an abortable metadata HTTP request raced by its configured
-deadline and the service-owned shutdown signal. A typed request abort
-is treated as expected only when that shutdown signal is set; deadline, token,
-status, and parse failures retain their original context, are logged by the
-creation service, and fail soft.
+`SessionCreationService` races each complete tracked workflow against its
+service-owned shutdown signal and the metadata deadline, so a stalled token
+refresh cannot hold `drain` open. The losing operation remains observed to avoid
+an unhandled late error. `SesoriServerApi` additionally aborts an in-flight
+metadata HTTP request when shutdown wins. A typed request abort is treated as
+expected only when that shutdown signal is set; deadline, token, status, and
+parse failures retain their original context, are logged by the creation
+service, and fail soft.
 
 The composition root wires lifecycle ownership explicitly:
 
@@ -612,10 +624,12 @@ bridge and client production steps into one large PR.
   hijack another route, success replaces with real ID while retaining nullable
   title fallback, every failure restores text/voice/command/attachments, and
   every creation-originated error warns before manual resend. Cover failure
-  followed by reconnect/discovery refresh.
-- With a maximum-sized attachment fixture, prove base64 plus request JSON
-  serialization executes through the isolate boundary and does not block launch
-  rendering; do not use a wall-clock-only test.
+  followed by reconnect/discovery refresh during both restoration variants, and
+  prove background failure after route exit does not repopulate the shared draft.
+- With a maximum-sized attachment fixture, prove bounded serialization yields
+  before and between chunks, preserves the exact wire payload, does not copy
+  attachment buffers, and does not block launch rendering; do not use a
+  wall-clock-only test.
 - Prove mixed typed/voice spans survive submission failure exactly, and the
   existing-session queue plus analytics retain their released input-mode
   behavior after the richer callback input.
