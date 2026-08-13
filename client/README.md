@@ -97,7 +97,7 @@ dart pub get
 (cd desktop && flutter run -d macos)
 ```
 
-The exact stable Flutter version is pinned in the repository root `.tool-versions`.
+The exact Flutter version is pinned in the repository root `.tool-versions`.
 
 ## Analyze And Test
 

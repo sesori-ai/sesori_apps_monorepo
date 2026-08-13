@@ -4,12 +4,12 @@ Thanks for your interest in Sesori. This repo contains the Bridge, the mobile cl
 
 ## Prerequisites
 
-- **asdf** — recommended for version management. The repo's [`.tool-versions`](../.tool-versions) pins the stable Flutter SDK and its bundled Dart SDK automatically.
+- **asdf** — recommended for version management. The repo's [`.tool-versions`](../.tool-versions) pins the Flutter SDK and its bundled Dart SDK automatically.
 - **Flutter** — used by the `client/` workspace.
 - **Dart SDK** — used by the `bridge/` workspace. It ships with the pinned Flutter version, so no separate install is needed.
 - **Make** — each workspace uses a Makefile for common tasks.
 
-Install the pinned stable Flutter version with asdf, then make sure `dart` is available from the Flutter install.
+Install the pinned Flutter version with asdf, then make sure `dart` is available from the Flutter install.
 
 ## Clone the repo
 
