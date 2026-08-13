@@ -177,6 +177,8 @@ class SseEventTracker(
             awaitingInput: session.awaitingInput,
             backgroundTaskCount: session.childSessionIds.length,
             isRetrying: session.isRetrying,
+            lastUserActivityAt: session.lastUserActivityAt,
+            updatedAt: session.updatedAt,
           );
         }
         sessionMap[summary.id] = infoMap;

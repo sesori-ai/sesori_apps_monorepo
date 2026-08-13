@@ -35,17 +35,22 @@ child sessions with titles, activity, statuses, and unseen state.
   preserves resolvable parent-session lineage, and never decodes transcript
   messages to derive titles.
 - Running root sessions remain ahead of inactive roots and order by the latest
-  durable user-side activity marker, descending, then session ID. Running means
-  main-agent work, retry, or a background task; awaiting-input alone does not
-  promote a session. A missing marker falls back to the session's updated time.
-  Inactive roots retain updated-time order, then session ID; archived filtering
-  and project and child-session ordering are unchanged.
+  durable user-side activity marker, descending, then session ID. Projects with
+  running roots likewise remain ahead of inactive projects and order by the
+  latest effective activity among their running roots, then project ID. Running
+  means main-agent work, retry, or a background task; awaiting-input alone does
+  not promote a session or project. A missing root marker falls back to that
+  root's updated time; an older bridge omitting active-root ordering facts falls
+  back to the project's updated time. Inactive roots retain updated-time order,
+  then session ID; inactive projects retain updated-time, effective-name, then
+  ID order. Archived filtering and child-session ordering are unchanged.
 - REST seeds the marker and live list-state patches reorder an already-running
-  session without another status event. A current client accepts an older bridge
-  omitting the marker and uses the updated-time fallback; null markers remain
-  omitted on the wire. Activity markers merge monotonically across live session
-  updates and REST refreshes without preventing authoritative unseen or project
-  aggregate replacement.
+  session and its running project without another status event or project
+  summary. A current client accepts an older bridge omitting the marker and
+  active-root ordering facts and uses the documented updated-time fallbacks;
+  null facts remain omitted on the wire. Activity markers merge monotonically
+  across live session updates and REST refreshes without preventing authoritative
+  unseen or project aggregate replacement.
 - Statuses report per-session idle/busy/retry plus unavailable plugins. A
   payload without plugin attribution means the historical OpenCode identity,
   never "the first enabled plugin".
@@ -56,7 +61,7 @@ child sessions with titles, activity, statuses, and unseen state.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
 | L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed; unseen advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. |
-| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots reorder after committed user-side activity while awaiting-only is not promoted, inactive order is unchanged, a live patch reorders without another status event, and an omitted marker uses updated-time fallback. Lists and unseen badges render. |
+| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
@@ -81,9 +86,9 @@ after a marker has been established.
 - Pi import exposes prompt/transcript text, treats it as a title, follows an
   unbounded symlink/parent tree, or loses sessions stored under a configured or
   bridge-known directory.
-- A running root stays alphabetically ordered, a stale marker masks newer
-  committed activity, a null marker fails to use updated time, awaiting-only is
-  promoted, or inactive/project/child order changes.
+- A running root or project stays alphabetically ordered, a stale marker masks
+  newer committed activity, a null marker fails to use updated time,
+  awaiting-only is promoted, or inactive session/project or child order changes.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 
@@ -100,6 +105,8 @@ after a marker has been established.
 - Markers use source event clocks. Skew between backends can misorder running
   sessions across clock domains; no second bridge-observation timestamp exists.
 - A missed live patch self-heals on a later relevant event or list refresh.
+- An old bridge cannot provide per-running-root ordering facts in
+  `projects.summary`, so the current app falls back to project updated time.
 
 ## Sources
 

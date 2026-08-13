@@ -735,6 +735,29 @@ void main() {
       ]);
     });
 
+    test('active root ordering facts are additive and nullable', () {
+      final legacy = ActiveSession.fromJson({
+        'id': 'legacy',
+        'mainAgentRunning': true,
+        'awaitingInput': false,
+        'isRetrying': false,
+        'childSessionIds': <String>[],
+      });
+      expect(legacy.lastUserActivityAt, isNull);
+      expect(legacy.updatedAt, isNull);
+      expect(legacy.toJson(), isNot(contains('lastUserActivityAt')));
+      expect(legacy.toJson(), isNot(contains('updatedAt')));
+
+      const current = ActiveSession(
+        id: 'current',
+        mainAgentRunning: true,
+        lastUserActivityAt: 20,
+        updatedAt: 10,
+      );
+      expect(current.toJson()['lastUserActivityAt'], 20);
+      expect(current.toJson()['updatedAt'], 10);
+    });
+
     test('deserializes from JSON correctly', () {
       final json = <String, dynamic>{
         'id': '/from/json',

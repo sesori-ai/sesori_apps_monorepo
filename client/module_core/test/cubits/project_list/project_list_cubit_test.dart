@@ -1463,7 +1463,7 @@ void main() {
     );
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "running activity received after REST creates an alphabetical prefix",
+      "running activity received after REST creates an activity-ordered prefix",
       build: () {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
@@ -1473,8 +1473,8 @@ void main() {
       act: (_) async {
         await Future<void>.delayed(Duration.zero);
         mockSseEventTracker.emitSessionActivity({
-          "A": {"a": const SessionActivityInfo(mainAgentRunning: true)},
-          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1)},
+          "A": {"a": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 20, updatedAt: null)},
+          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: 10, updatedAt: null)},
         });
         await Future<void>.delayed(Duration.zero);
       },
@@ -1492,8 +1492,8 @@ void main() {
       "running activity received before REST is applied when projects arrive",
       build: () {
         mockSseEventTracker.emitSessionActivity({
-          "A": {"a": const SessionActivityInfo(mainAgentRunning: true)},
-          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1)},
+          "A": {"a": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 20, updatedAt: null)},
+          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: 10, updatedAt: null)},
         });
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
@@ -1508,6 +1508,29 @@ void main() {
         ),
       ],
     );
+
+    test("live session marker reorders projects whose roots are already running", () async {
+      when(() => mockProjectRepository.listProjects()).thenAnswer(
+        (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
+      );
+      mockSseEventTracker.emitSessionActivity({
+        "A": {"a": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 20, updatedAt: null)},
+        "B": {"b": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 10, updatedAt: null)},
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await cubit.stream.firstWhere((state) => state is ProjectListLoaded);
+      expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["A", "B"]);
+
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        "A": {"a": (unseen: false, lastUserActivityAt: 20)},
+        "B": {"b": (unseen: true, lastUserActivityAt: 30)},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["B", "A"]);
+    });
 
     // -------------------------------------------------------------------------
     // Test 11: activity update ignored when not loaded

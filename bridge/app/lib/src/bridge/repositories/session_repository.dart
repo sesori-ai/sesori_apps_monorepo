@@ -680,6 +680,8 @@ class SessionRepository({
           for (final backendChildId in active.childSessionIds)
             if (bindings[backendChildId] case final child?) child.sessionId,
         ],
+        lastUserActivityAt: binding.lastUserMessageAt,
+        updatedAt: binding.updatedAt,
       );
     }
 

@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/project_repository.dart";
 import "models/session_activity_info.dart";
+import "models/session_list_item_state.dart";
 import "session_activity_calculator.dart";
 
 @lazySingleton
@@ -45,18 +46,40 @@ class ProjectListService({
   List<Project> orderProjects({
     required Iterable<Project> projects,
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
+    required Map<String, Map<String, SessionListItemState>> listStateByProjectId,
   }) {
     final running = <Project>[];
     final remaining = <Project>[];
+    final runningActivityAtByProjectId = <String, int>{};
     for (final project in projects) {
       final activity = activityByProjectId[project.id];
-      if (activity != null && activity.values.any((session) => _activityCalculator.isRunning(activity: session))) {
+      final runningSessions = activity?.entries
+          .where((entry) => _activityCalculator.isRunning(activity: entry.value))
+          .toList(growable: false);
+      if (runningSessions != null && runningSessions.isNotEmpty) {
         running.add(project);
+        runningActivityAtByProjectId[project.id] = runningSessions
+            .map(
+              (entry) =>
+                  latestUserActivityAt(
+                    first: listStateByProjectId[project.id]?[entry.key]?.lastUserActivityAt,
+                    second: entry.value.lastUserActivityAt,
+                  ) ??
+                  entry.value.updatedAt ??
+                  project.time?.updated ??
+                  0,
+            )
+            .reduce((latest, candidate) => candidate > latest ? candidate : latest);
       } else {
         remaining.add(project);
       }
     }
-    running.sort((a, b) => _compareProjectsByNameAndId(a: a, b: b));
+    running.sort((a, b) {
+      final aActivityAt = runningActivityAtByProjectId[a.id] ?? 0;
+      final bActivityAt = runningActivityAtByProjectId[b.id] ?? 0;
+      final activityCompare = bActivityAt.compareTo(aActivityAt);
+      return activityCompare != 0 ? activityCompare : a.id.compareTo(b.id);
+    });
     return [...running, ..._sortProjects(remaining)];
   }
 
@@ -80,22 +103,6 @@ class ProjectListService({
     if (nameCompare != 0) return nameCompare;
 
     return a.id.compareTo(b.id);
-  }
-
-  int _compareProjectsByNameAndId({required Project a, required Project b}) {
-    final nameCompare = _displayName(a).toLowerCase().compareTo(_displayName(b).toLowerCase());
-    if (nameCompare != 0) return nameCompare;
-
-    return a.id.compareTo(b.id);
-  }
-
-  String _displayName(Project project) {
-    final name = project.name;
-    if (name != null) return name;
-
-    final path = project.path.isEmpty ? project.id : project.path;
-    final segments = path.replaceAll(r"\", "/").split("/").where((segment) => segment.isNotEmpty);
-    return segments.isEmpty ? path : segments.last;
   }
 
   String _effectiveName(Project project) => project.name ?? project.path;
