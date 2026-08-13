@@ -3,12 +3,12 @@
 ## Status
 
 - **Plan slug:** `hermes-agent-plugin`
-- **Status:** Step 1/8 plan PR open
+- **Status:** Step 1/9 plan PR open
 - **Plan date:** 2026-08-13
-- **Plan delivery:** this document and `TRACKER.md` are Step 1/8
-- **Implementation base:** `origin/main` (shallow clone, depth 1 — unshallow before pushing)
+- **Plan delivery:** this document and `TRACKER.md` are Step 1/9
+- **Implementation base:** `origin/main`
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Delivery:** one planning PR, four bridge PRs, one activation PR, one regression-doc PR, one verification PR — eight in total
+- **Delivery:** one planning PR, four bridge PRs, one client branding PR, one regression-doc PR, one verification PR, one retirement PR — nine in total
 
 ## Goal
 
