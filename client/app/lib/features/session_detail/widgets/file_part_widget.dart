@@ -278,51 +278,56 @@ class const _AttachmentMetadataOverlay({
   Widget build(BuildContext context) {
     if (filename == null && mime == null && byteLength == null) return const SizedBox.shrink();
     final prego = context.prego;
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [prego.colors.alphaBlack10.withValues(alpha: 0), prego.colors.alphaBlack80],
+    final showDetails = MediaQuery.textScalerOf(context).scale(1) <= 2;
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [prego.colors.bgPrimarySolid.withValues(alpha: 0), prego.colors.bgPrimarySolid],
+            ),
           ),
-        ),
-        child: Padding(
-          padding: EdgeInsetsDirectional.fromSTEB(
-            prego.spacing.md,
-            prego.spacing.x4l,
-            prego.spacing.md,
-            prego.spacing.md,
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (filename case final filename?)
-                  Text(
-                    filename,
-                    style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textWhite),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (mime case final mime?)
-                  Text(
-                    mime,
-                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (byteLength case final byteLength?)
-                  Text(
-                    context.loc.sessionDetailAttachmentSizeBytes(byteLength),
-                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
+          child: Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              prego.spacing.md,
+              prego.spacing.lg,
+              prego.spacing.md,
+              prego.spacing.md,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (filename case final filename?)
+                    Text(
+                      filename,
+                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textWhite),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  if (showDetails)
+                    if (mime case final mime?)
+                      Text(
+                        mime,
+                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  if (showDetails)
+                    if (byteLength case final byteLength?)
+                      Text(
+                        context.loc.sessionDetailAttachmentSizeBytes(byteLength),
+                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.alphaWhite70),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                ],
+              ),
             ),
           ),
         ),

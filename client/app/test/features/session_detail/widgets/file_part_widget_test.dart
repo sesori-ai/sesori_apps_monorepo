@@ -299,6 +299,31 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets("extreme text scaling keeps the filename without overflowing", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        child: const MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(3)),
+          child: SizedBox(
+            width: 140,
+            child: FilePartWidget(
+              sessionId: "session-1",
+              attachment: MessageAttachment.metadata(
+                mime: "image/png",
+                filename: "scaled.png",
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text("scaled.png"), findsOneWidget);
+    expect(find.text("image/png"), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("uses a static loading indicator when reduced motion is enabled", (tester) async {
     const attachment = MessageAttachment.storedImage(
       attachmentId: "loading",
