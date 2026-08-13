@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `attachment-references`
-- **Series state:** Step 8 merged; Step 9 implemented locally and verifying
+- **Series state:** Step 8 merged; Step 9 implemented and verified locally
 - **Current step:** 9/11
-- **Implementation base:** merged Step 8 plus synchronized `origin/main`
+- **Implementation base:** synchronized `origin/main` at `6ee94bfe`
 - **Plan PR:** [#807](https://github.com/sesori-ai/sesori_apps_monorepo/pull/807)
 - **Current PR:** Pending for Step 9
-- **Next action:** Complete Step 9 review and verification, then publish its PR
+- **Next action:** Publish and monitor the Step 9 PR
 
 ## Plan Review
 
@@ -222,8 +222,9 @@
   ownership, and image-viewer behavior remain intact; normal history and live
   requests still use inline delivery. All 29 focused file/assistant widget tests
   pass, including new grid, width-cap, chronology, long-metadata,
-  reduced-motion, retry, and semantics coverage. All mobile tests, mobile fatal
-  analysis, `dart pub get`, focused formatting, and `git diff --check` pass.
+  reduced-motion, retry, and semantics coverage. After synchronizing with
+  `origin/main` at `6ee94bfe`, all mobile tests, mobile fatal analysis,
+  `dart pub get`, focused formatting, and `git diff --check` pass.
   Architecture implementation review approved the presentation flow, cubit
   ownership, backend neutrality, compatibility boundary, and chronology with no
   findings. The local diff has 568 additions and 117 deletions across nine files
