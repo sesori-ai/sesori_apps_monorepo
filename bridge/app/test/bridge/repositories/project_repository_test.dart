@@ -478,6 +478,44 @@ void main() {
       expect(gitCliApi.maximumActiveInspections, 8);
     });
 
+    test("a single-project probe gets the next slot during a large listing", () async {
+      final paths = [
+        for (var index = 0; index < 17; index++) "/project-${index.toString().padLeft(2, "0")}",
+      ];
+      for (final (index, path) in paths.indexed) {
+        await db.projectsDao.setActivity(
+          projectId: path,
+          createdAt: 1,
+          updatedAt: paths.length - index,
+        );
+      }
+      final gitCliApi = _BlockingGitCliApi();
+      final projectsDao = _SignalingProjectsDao(database: db);
+      final boundedRepo = singlePluginProjectRepository(
+        gitCliApi: gitCliApi,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final listing = boundedRepo.getProjects();
+      await gitCliApi.inspectionLimitReached.future.timeout(const Duration(seconds: 1));
+      final detail = boundedRepo.resolveProjectOpenTarget(path: "/priority-project");
+      await projectsDao.allProjectsRead.future.timeout(const Duration(seconds: 1));
+      await Future<void>.delayed(Duration.zero);
+      gitCliApi.completeFirst(result: true);
+      await gitCliApi.nextInspectionStarted.future.timeout(const Duration(seconds: 1));
+
+      expect(gitCliApi.inspectedPaths[8], "/priority-project");
+      expect(gitCliApi.maximumActiveInspections, 8);
+      gitCliApi.releaseAll(result: true);
+
+      expect((await detail).supportsDedicatedWorktrees, isTrue);
+      expect(await listing, hasLength(paths.length));
+      expect(gitCliApi.maximumActiveInspections, 8);
+    });
+
     test("getProjects breaks equal timestamps by project id descending", () async {
       plugin.projectsResult = const [
         PluginProject(id: "z", directory: "z", name: "Beta"),
@@ -1503,6 +1541,19 @@ class _CountingProjectsDao({required AppDatabase database}) extends ProjectsDao 
   Future<ProjectDto?> getProject({required String projectId}) {
     getProjectCallCount++;
     return super.getProject(projectId: projectId);
+  }
+}
+
+class _SignalingProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
+
+  final Completer<void> allProjectsRead = Completer<void>();
+
+  @override
+  Future<List<ProjectDto>> getAllProjects() async {
+    final projects = await super.getAllProjects();
+    allProjectsRead.complete();
+    return projects;
   }
 }
 

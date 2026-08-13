@@ -40,9 +40,7 @@ class ProjectRepository({
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
-    final worktreeCapabilities = await Future.wait([
-      for (final row in rows) _supportsDedicatedWorktrees(path: row.path),
-    ]);
+    final worktreeCapabilities = await _inspectWorktreeCapabilities(rows: rows);
     return [
       for (final (index, row) in rows.indexed)
         _projectCatalogMapper.map(
@@ -276,6 +274,23 @@ class ProjectRepository({
     } finally {
       _releaseWorktreeInspectionSlot();
     }
+  }
+
+  Future<List<bool>> _inspectWorktreeCapabilities({required List<ProjectDto> rows}) async {
+    final capabilities = List<bool>.filled(rows.length, false);
+    var nextIndex = 0;
+
+    Future<void> inspectNext() async {
+      while (nextIndex < rows.length) {
+        final index = nextIndex++;
+        capabilities[index] = await _supportsDedicatedWorktrees(path: rows[index].path);
+      }
+    }
+
+    await Future.wait([
+      for (var worker = 0; worker < _maxConcurrentWorktreeInspections && worker < rows.length; worker++) inspectNext(),
+    ]);
+    return capabilities;
   }
 
   Future<void> _acquireWorktreeInspectionSlot() async {
