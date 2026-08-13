@@ -1,790 +1,298 @@
-# Running Session Interaction Order
+# Running Session User-Activity Order
 
 ## Status
 
 - **Plan slug:** `session-user-interaction-order`
-- **Status:** Reviewed plan - architecture findings applied and current main revalidated
+- **Status:** Simplified after product and history review
 - **Plan date:** 2026-08-13
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `88059e200`
-- **Implementation branch:** `session-order-ux-review`
-- **Delivery:** one plan PR, four implementation PRs, one regression-documentation
-  PR, and one verification/retirement PR
+- **Implementation branch/worktree:** `session-order-ux-review`
+- **Delivery:** four PRs: plan, implementation, regression contract,
+  verification/retirement
 
-This document and `TRACKER.md` are the implementation authority for the series.
-The fixed split keeps the backend-specific provenance, durable bridge state,
-released wire compatibility, and client behavior independently reviewable.
+This revision supersedes the earlier seven-step plugin-classifier design and the
+intermediate proposal for a second persisted interaction timestamp. The existing
+`last_user_message_at` marker is adequate for this session-list heuristic once
+its current semantics are stated honestly.
 
 ## Goal
 
-Keep running root sessions promoted at the top of the project session list, but
-order that running prefix by the most recent genuine user interaction rather
-than alphabetically.
+Keep running root sessions promoted at the top of a project's session list, but
+order that running prefix by the bridge's latest recorded user-side activity
+instead of alphabetically.
 
-Interactions that advance recency are:
-
-- an accepted user prompt, including a prompt created directly in an observable
-  backend surface;
-- an accepted slash command;
-- a manual question answer, question rejection, or permission decision; and
-- manual context compaction.
-
-Automatic compaction, generated continuation/replay prompts, automatic
-permission approval, cancellation cleanup, assistant activity, tool activity,
-and title/catalog updates must not advance the marker.
-
-The visible policy remains otherwise unchanged:
+The visible policy otherwise remains unchanged:
 
 - running means `mainAgentRunning || isRetrying || backgroundTaskCount > 0`;
-- awaiting-input alone does not promote a session into the running prefix;
-- non-running sessions remain ordered by `Session.time.updated` descending;
+- awaiting-input alone does not promote a session;
+- inactive sessions remain ordered by `Session.time.updated` descending;
 - archived filtering remains unchanged; and
-- project ordering and the background-task child list do not change.
+- project and child-task ordering remain unchanged.
 
-## Success Criteria
+"User-side activity" deliberately means the bridge's existing unseen-state
+marker, not perfect human-origin provenance. It advances for normalized user
+messages and manual question/permission replies, and it excludes permission
+replies consumed by bridge auto-approval before normal event routing. A backend
+that represents automatic compaction or other generated input as a user message
+can advance it. This is accepted for a low-impact running-list heuristic rather
+than adding per-plugin inference and correlation state.
 
-1. Running root sessions with known interaction markers appear in descending
-   user-interaction recency, regardless of title.
-2. A prompt, command, manual answer/rejection/permission decision, or manual
-   compaction advances the displayed root session promptly without a list
-   refetch.
-3. Automatic OpenCode compaction, including its synthetic continuation and
-   overflow replay messages, does not advance recency.
-4. Sesori permission auto-approval and plugin cancellation/teardown replies do
-   not advance recency.
-5. Observable backend/laptop-originated user interactions advance recency when
-   the owning plugin can prove human provenance; unsupported external-process
-   cases remain unknown rather than guessed.
-6. Existing databases add a nullable `last_user_interaction_at` column without
-   backfilling polluted `last_user_message_at` or backend `updated_at` values.
-7. The marker is monotonic across duplicate events, reconnects, bridge restart,
-   and clock rollback, using existing ordered pipelines rather than a new lock
-   or registry. An accepted bridge-owned OpenCode write still records one fact
-   if its raw SSE envelope/part pair is lost during reconnect.
-8. REST session payloads and the existing `session.unseen_changed` live patch
-   carry the nullable marker additively. Old app/new bridge and new app/old
-   bridge combinations retain their current behavior.
-9. A stale REST or `session.updated` payload cannot replace a fresher live
-   marker, including when the patch arrives during the initial REST load.
-10. Sessions whose marker is absent use `time.updated` as the compatibility
-    fallback. Equal keys have a deterministic ID tie-breaker.
-11. No backend identifier, interaction kind, prompt text, command name,
-    transcript content, path, or entity identifier is added to analytics or a
-    new public event.
+## Complexity Budget
 
-## Current Behavior And Evidence
+The implementation must stay within all of these constraints:
 
-### Client ordering ownership
+- no database column, schema migration, or backfill;
+- no new bridge or client long-lived mutable state;
+- no plugin API or production plugin change;
+- no dispatcher flag, operation hook, backend classifier, message correlation,
+  dedupe collection, timer, lock, registry, or lifecycle owner;
+- one existing persisted scalar projected additively onto existing REST and SSE
+  shapes; and
+- one client running-prefix comparator, using existing activity and list-state
+  delivery.
 
-- `SessionListService.visibleSessions` partitions running sessions using
+If implementation exceeds this budget, stop and ask before adding machinery.
+
+## Current Behavior And History
+
+- `SessionListService.visibleSessions` partitions running roots using
   `SessionActivityCalculator.isRunning`, alphabetizes the running prefix, then
-  appends the remaining sessions sorted by `time.updated` descending
-  (`client/module_core/lib/src/services/session_list_service.dart`).
-- `SessionActivityCalculator` deliberately excludes `awaitingInput` alone from
-  running (`client/module_core/lib/src/services/session_activity_calculator.dart`).
-- `SessionListCubit` owns the complete unbounded project list, applies REST and
-  live session updates, and re-runs `visibleSessions` whenever activity changes
-  (`client/module_core/lib/src/cubits/session_list/session_list_cubit.dart`).
-- The in-repository client sends `start: null, limit: null` to `POST /sessions`
-  (`client/module_core/lib/src/api/project_api.dart`). Server pagination remains
-  an API capability but does not define this screen's visible order.
-- The background-task child list is separately sorted by `time.updated`
-  (`SessionDetailCubit._sortChildrenByUpdatedDesc`) and is not part of this
-  root-list change.
+  appends inactive sessions by `time.updated` descending.
+- Session rows already persist nullable `last_user_message_at`. The bridge's
+  ordered `SessionUnseenService` writes it from normalized user messages and
+  manual question/permission replies.
+- User-message events with known creation times are idempotent: re-emissions at
+  or before the stored marker are skipped. Replies without a payload time use
+  the service's strictly monotonic local timestamp.
+- Permission auto-approval replies are consumed in `Orchestrator` before mapping
+  and therefore do not advance the marker.
+- Root REST projections already read the stored row but currently expose only
+  the derived `unseen` boolean. The existing `session.unseen_changed` event is
+  emitted after each relevant marker write but also omits the timestamp.
+- `SessionUnseenTracker` already caches that list-state patch, including events
+  received while a session-list REST request is in flight, and owns the existing
+  per-project tick that prevents an older REST seed from replacing live state.
+- PR #474 (`578970ae3`) previously reused `last_user_message_at`, but coupled it
+  to a bridge-authored project/session ordering service, retry timer, summary
+  snapshots, and cross-layer order flags. PR #480 (`c302c5df3`) reverted that
+  entire pipeline to restore prior ordering. PR #482 (`ddfd6d1a6`) then
+  established the current simpler client-owned running prefix. The historical
+  problem was the oversized ordering pipeline, not the persisted scalar.
 
-### Existing bridge timestamps are not an interaction source
+## Design
 
-- `sessions_table.last_user_message_at` feeds released unseen-state behavior
-  (`SessionUnseenCalculator`) and is currently advanced by generic
-  user-shaped messages and question/permission reply events.
-- OpenCode represents both manual and automatic compaction as a user message.
-  `MessagePartMapper` intentionally renders both forms as `/compact`, so the
-  shared message shape no longer contains provenance.
-- OpenCode publishes `message.updated` before `message.part.updated`; only the
-  raw `CompactionPart.auto` on the later part distinguishes manual from
-  automatic compaction.
-- The generated OpenCode API models remain sourced from v1.17.7, while the
-  managed runtime is now pinned to v1.18.11. Revalidation against v1.18.11
-  confirms the same envelope-before-part order, `auto` provenance, synthetic
-  continuation, and overflow replay behavior used by this classifier.
-- OpenCode also creates synthetic user messages for compaction continuation,
-  plan-mode transitions, task-result injection, and shell bookkeeping. Overflow
-  compaction can replay an earlier user message with copied non-synthetic parts.
-- Existing released rows can therefore contain values unsuitable for ordering.
-  No valid historical backfill exists.
+### Reuse the existing marker
 
-### Existing seams can carry the new fact
+Expose the stored row's `lastUserMessageAt` as required nullable
+`lastUserActivityAt` on shared `Session` and the existing
+`SesoriSseEvent.sessionUnseenChanged` variant.
 
-- `BridgePluginApi.events` is the backend-neutral plugin boundary for live
-  backend facts (`bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`).
-- `SessionEventDispatcher` and `OrchestratorSession._processPluginEventInOrder`
-  already preserve per-plugin event order and generation fencing.
-- `SessionEventMapper` translates backend session IDs to stable bridge IDs and
-  already supports a distinct display/root session for child questions and
-  permissions.
-- `SessionUnseenService` already serializes low-volume session-list timestamp
-  writes, owns a monotonic clock, persists `last_user_message_at`, and emits the
-  existing cross-cutting `session.unseen_changed` list-state patch after a
-  commit.
-- Shared JSON generation omits nullable values and accepts missing nullable
-  keys, which provides additive old/new peer compatibility.
+The product-facing name describes how the value is used without renaming the
+released database column or changing unseen semantics. Do not add the misleading
+`lastUserInteractionAt` name, which would imply stronger human provenance than
+the source provides.
 
-### History decisions
+- `SessionCatalogMapper` and stored enrichment map `lastUserMessageAt` into the
+  shared field for root/detail projections.
+- `SessionUnseenService` includes the row's committed marker in `UnseenChange`;
+  the orchestrator adds it to the existing patch.
+- Delete patches carry null because the row no longer exists.
+- Shared null omission keeps new-bridge/old-app payloads additive, and missing
+  fields from old bridges decode as null.
+- Plugin-originated session DTOs remain unaware of the field; bridge enrichment
+  adds the durable value after the normalized plugin boundary.
 
-- PR #474 introduced a broad bridge-authored project/session activity summary.
-- PR #480 reverted that pipeline.
-- PR #482 established the current client-owned running prefix and alphabetical
-  running order.
-- This plan transmits one timestamp fact and keeps ordering in the client. It
-  does not restore `ActiveWorkSummaryService` or bridge-authored list snapshots.
+No write path changes. Existing timestamp ordering, idempotence, auto-approval
+filtering, and persistence preservation remain authoritative.
 
-## Architecture
+### Extend the existing list-state cache
 
-### 1. Backend-neutral interaction fact
+Extend `SessionUnseenTracker`'s per-session value from a bare unseen boolean to a
+small typed list-state value carrying:
 
-Add one internal plugin event in
-`bridge/sesori_plugin_interface/lib/src/bridge_sse_event.dart`:
+- `unseen`; and
+- nullable `lastUserActivityAt`.
 
-```text
-BridgeSseSessionUserInteraction
-  sessionID: String
-  displaySessionId: String?
-  occurredAt: int?
-```
+This is not another cache or state machine. It replaces the value already stored
+under the same project/session maps and reuses the same stream, subscription,
+tick, seeding, optimistic unseen update, and disposal lifecycle.
 
-Contract:
+Live patches replace `unseen` and max-merge a non-null activity timestamp with
+the cached timestamp. REST seeding replaces project membership only when the
+existing tick guard permits it and seeds each session's timestamp from the
+fetched `Session`. A local mark-read/unread changes only `unseen`, retaining the
+cached activity timestamp.
 
-- The event means the plugin has authoritative evidence that a human
-  interaction was accepted or observed.
-- `sessionID` is the backend session that owns the interaction.
-- `displaySessionId` is the backend root session whose row should move when a
-  child request is surfaced under that root. Flat plugins use the same session
-  ID; null means the plugin cannot resolve a distinct display root.
-- `occurredAt` is milliseconds since epoch when the backend supplies a reliable
-  interaction timestamp; null asks bridge core to stamp acceptance/observation
-  time.
-- The event deliberately carries no interaction kind or content. Every accepted
-  kind has identical ordering semantics, and exposing more detail would add no
-  client decision value.
-- `BridgeEventMapper` maps it to no direct public SSE event. It is consumed by
-  bridge core after backend-to-stable ID translation.
+The two test fake implementations update in lockstep; no product shell owns
+business logic.
 
-Add a closed `PluginInteractionOrigin.manual/automatic` enum to the internal
-plugin interface and require it on `BridgePluginApi.replyToPermission`. The
-manual reply handler passes `manual`; `PermissionAutoApprovalService` passes
-`automatic`. Internal plugin contracts and all in-repository implementors update
-in lockstep; no compatibility shim or optional parameter is added.
+### Client ordering
 
-Question reply/rejection methods need no origin parameter because the only
-bridge-app callers are explicit user routes. Plugin cancellation and teardown
-paths remain separate and do not emit the interaction fact.
+`SessionListCubit` continues orchestrating only. It reads the current tracker
+map and passes it with the current activity map to `SessionListService`.
 
-`SessionEventMapper` translates both session identities. If either explicitly
-named backend ID has no durable binding, the existing pending-binding behavior
-holds or drops the event exactly like other session events. Persistence targets
-`displaySessionId ?? sessionID`; it does not walk ancestors, stamp both rows, or
-infer a family beyond the plugin's display attribution.
+`SessionListService.visibleSessions` keeps its existing partition. For running
+roots, compare:
 
-### 2. Plugin provenance rules
+1. `lastUserActivityAt ?? session.time?.updated ?? 0`, descending; and
+2. session ID ascending for deterministic ties.
 
-Every registered production plugin emits the same neutral event, but each owns
-its backend-specific evidence.
+For inactive roots, retain `time.updated` descending and add the same ID
+tie-breaker. A running session with no marker therefore has useful old-bridge
+and pre-activity behavior without requiring a backfill. Once it has a marker,
+assistant/tool/title updates do not move it because the comparator prefers the
+marker over `time.updated`.
 
-#### OpenCode
-
-Add `OpenCodeUserInteractionTracker` beside the existing OpenCode trackers. It
-owns the bounded message-envelope/part classifier, automatic-overflow
-suppression, bridge-write correlation, and all classifier lifecycle state.
-`OpenCodeService` composes it with the existing `ActiveSessionTracker`, which
-remains the sole parent/display graph owner; the interaction tracker receives
-resolved root attribution rather than depending on its tracker peer directly.
-
-`OpenCodePlugin._handleRawSseEvent` parses once, delegates the raw event to
-`OpenCodeService`, forwards any returned neutral interaction fact, then
-continues existing presentation mapping. The service updates its trackers and
-classifies before `SseEventMapper` erases raw part provenance. Prompt, command,
-create-session, reconnect, and disposal paths likewise delegate interaction
-coordination to the service rather than sequencing tracker peers in the plugin.
-
-The same tracker coordinates bridge-owned prompt/command acceptance by message
-identity. Generate an OpenCode-compatible message ID before dispatch and pass it
-through the existing optional `messageID` field on prompt and command payloads.
-The matching raw classification may satisfy that pending write first; successful
-API completion emits a null-timestamp fallback only when that exact message ID
-was not observed. Failed acceptance emits no fallback. A laptop-originated
-message cannot consume a Sesori write. This produces one fact in the ordinary
-path while covering the real disconnect window where OpenCode accepted the
-write but its envelope or part was lost before the fresh non-replaying SSE
-connection. Initial create-session turns use the same correlation after the
-backend session ID is known.
-
-- Keep at most one pending user envelope and one most-recently classified
-  message ID per session. The latter rejects an immediate duplicate complete
-  envelope/part delivery after the pending envelope was consumed. State remains
-  bounded by known sessions, not transcript length.
-- A later part classifies only the matching pending envelope.
-- A root-session non-synthetic text/file/subtask prompt records one interaction.
-  A child user prompt is not counted because OpenCode creates those for agent
-  task sessions and Sesori exposes child detail as read-only.
-- `CompactionPart(auto: false)` records one manual interaction.
-- `CompactionPart(auto: true)` records none.
-- Synthetic text parts record none. This excludes auto-compaction continuation,
-  plan-mode transitions, background-result injection, and shell bookkeeping.
-- For automatic overflow compaction, suppress the next replay/continuation user
-  envelope. Clear suppression when consumed or when compaction/status terminal
-  evidence proves no replay remains, so a failed compaction cannot suppress a
-  later genuine prompt.
-- A bridge-owned manual compact is one action. Its optional instruction prompt
-  receives the correlated message ID and is marked as compact guidance so its
-  raw text part cannot emit independently. Summarize has no upstream caller-ID,
-  so no raw compaction can authoritatively satisfy its bridge fallback. Emit the
-  fallback for every accepted bridge compact; raw manual compactions remain
-  independent observable facts. This may produce duplicate same-session
-  evidence for one bridge compact, but cannot lose the accepted bridge action or
-  misattribute a concurrent laptop compact. Exact coalescing waits for upstream
-  summarize identity rather than guessing by timing.
-- Remove pending/suppression state when the tracker observes session deletion;
-  call its `reset` from the existing OpenCode reconnect/reset path and its
-  `dispose` during plugin disposal. Do not add a transcript-sized dedupe set;
-  one envelope is consumed once, the last classified ID rejects immediate
-  duplicate delivery, and correlated bridge-write coordination emits at most
-  one fact for its accepted action.
-- Raw `question.replied` and `question.rejected` events are authoritative and
-  cover laptop replies. Bridge calls coordinate by request ID and emit a
-  successful-call fallback only when the exact raw event was not observed. A
-  reconciled 404 returns not-accepted and emits no fallback.
-- Raw `permission.replied` is not authoritative: OpenCode emits the same event
-  for `always` cascades. Emit one fact only from a successful manual
-  `replyToPermission` 2xx outcome; a reconciled 404 returns not-accepted and
-  emits none. Direct laptop permission decisions remain unknown.
-
-This design relies on OpenCode's observed and generated API ordering:
-`message.updated` precedes its parts. It does not add a timer, delayed flush,
-history read, or content comparison for a theoretical reversed sequence.
-OpenCode facts use null `occurredAt`: interaction order is acceptance/observation
-order, and bridge stamping remains monotonic even when the backend clock rolls
-back. Other plugins may provide a known timestamp only where replay identity and
-clock semantics make it authoritative.
-
-#### Codex
-
-- Add `CodexUserInteractionTracker` as the plugin-local owner of app-server user
-  item provenance. `CodexPlugin` delegates notifications and terminal lifecycle
-  signals to it and forwards returned neutral facts; `CodexEventMapper` remains
-  a presentation mapper.
-- The tracker emits once from the first app-server `userMessage` item lifecycle
-  observation; that typed item is the authoritative prompt/command boundary and
-  also covers another observable Codex surface. It keeps only in-flight
-  `(threadId, itemId)` keys plus one latest completed item ID per thread:
-  `item/started` emits and records, `item/completed` removes and emits only if no
-  start or matching completion was observed. Turn terminal, thread delete,
-  reconnect/reset, and disposal clear remaining keys. Do not emit again from
-  `sendPrompt` or an ordinary `sendCommand` response.
-- Extract the existing private generated repository/context test into one pure
-  `CodexGeneratedContextValidator`. Inject that required dependency into both
-  `CodexUserInteractionTracker` and `CodexMessageRepository`; do not duplicate
-  wrapper strings or expose them outside the Codex plugin.
-- A successful `thread/compact/start` call emits one manual-compaction fact.
-  Generic `contextCompaction` notifications carry no manual/automatic origin and
-  emit no fact.
-- Successful registry question/permission methods emit facts only for explicit
-  manual calls. `cancelForSession` remains a no-fact cleanup path.
-- The tracker accepts notification, manual-compact, and manual-registry triggers;
-  `CodexPlugin` only delegates and forwards returned facts.
-- App-server user items have no reliable message timestamp, so these events use
-  null `occurredAt` and bridge observation time.
-
-#### Cursor / ACP
-
-- Emit after the existing prompt/command acceptance gate and for a non-empty
-  initial create-session turn.
-- Cursor's public `compact` command is counted once after acceptance even though
-  the adapter rewrites it to the backend `summarize` command.
-- Emit after successful manual registry answers/decisions; abort/dispose
-  cancellation emits no fact.
-- ACP drops backend `user_message_chunk` echoes and the bridge owns a separate
-  process, so interactions made in another laptop process are not observable and
-  remain unknown.
-
-#### Claude
-
-- Emit after `_enqueue` accepts a prompt/command and for a non-empty initial
-  create-session turn. A manually sent `/compact` is therefore counted as a
-  command.
-- Emit after successful manual registry answers/decisions; cancellation and
-  disposal emit no fact.
-- Do not infer interaction from generic Claude user frames, which can represent
-  internal tool-result/context traffic.
-- Separate laptop Claude CLI transcripts are not live-tailed by this plugin, so
-  those interactions remain unknown.
-
-OMP inherits the ACP implementation but is not registered in the production
-bridge at the plan date. Pi has protocol primitives but no `BridgePluginApi`
-implementation and is also excluded until registration. If registration changes
-before execution, re-evaluate the production matrix rather than hard-coding this
-historical list.
-
-### 3. Durable marker and monotonic write
-
-Add nullable `lastUserInteractionAt` to `SessionTable`/`SessionDto` and bump the
-Drift schema from v13 to v14.
-
-- The v13-to-v14 migration only adds the nullable column.
-- Existing rows remain null. Neither `last_user_message_at` nor `updated_at` is
-  an honest baseline.
-- Preserve the v13 snapshot and generate a new v14 schema snapshot, migration
-  steps, generated database source, and migration helper. Never hand-edit
-  generated files.
-- Catalog import/upsert preserves an existing marker and leaves new imported
-  rows null until an authoritative live fact arrives.
-- Existing session projection updates and placeholder/create UPSERTs omit the
-  column so they cannot erase it.
-
-Extend `SessionUnseenRepository`/`SessionUnseenService` rather than adding a
-parallel timestamp repository, service, stream, or lock. They already own the
-persisted user marker, monotonic timestamp source, ordered write tail, and
-session-list state patch.
-
-`recordUserInteraction` behavior:
-
-1. read the named stable session row;
-2. no-op if it does not exist;
-3. for a known `occurredAt`, no-op when it is not newer than the stored marker;
-4. for a null timestamp, stamp `max(local monotonic now, stored + 1)` so a new
-   accepted action still advances after clock rollback/restart;
-5. update only `last_user_interaction_at` with a conditional/monotonic DAO
-   write; and
-6. emit the committed session-list patch.
-
-This does not alter `last_activity_at`, `last_seen_at`, `last_user_message_at`,
-or the unseen formula. Generic message/reply unseen routing stays in place for
-released behavior, even where historical user-shaped backend events are broader
-than the new marker. Update the `lastUserMessageAt` comment to state that it is
-an unseen-specific legacy marker and must not be reused as authoritative
-interaction recency.
-
-The ordinary reachable duplicate/replay flow justifies monotonic persistence.
-No new cross-plugin queue, per-session mutex, event journal, or reconciliation
-job is needed because existing per-plugin processing and the global low-volume
-timestamp write tail already serialize the relevant operations.
-
-### 4. Additive REST and live transport
-
-Add `required int? lastUserInteractionAt` to the shared `Session` model and map
-the persisted field through every bridge catalog/detail/child/live session
-projection:
-
-- `SessionCatalogMapper` for database-only roots and children;
-- `PluginSessionMapper.enrichSharedSession` for plugin-enriched payloads; and
-- all direct `Session` construction call sites required by generated analysis.
-
-Add the same required nullable property to the existing
-`SesoriSseEvent.sessionUnseenChanged` variant. Update its documentation and the
-bridge `UnseenChange` typedef to describe a session-list state patch carrying
-unseen state plus interaction recency.
-
-- Every post-row patch carries the committed marker.
-- Delete patches carry null.
-- Old apps ignore the extra REST/SSE key.
-- New apps decode omission from old bridges as null.
-- Null values remain omitted by shared JSON generation.
-- Use dated compatibility comments with the actual release target at
-  implementation time.
-
-Do not create a dedicated public interaction event. Reusing the existing
-post-commit list-state patch avoids a second ordering relationship and unknown
-event behavior in older clients while keeping the internal provenance fact out
-of the released protocol.
-
-Do not change `Session.time.updated`, DAO root ordering, or session-list indexes.
-The client owns the activity-aware visible order and fetches the complete list.
-Changing server pagination would not be sufficient because the server query
-does not own live running state, and no current in-repository list consumer uses
-paged roots.
-
-### 5. Client merge and comparator
-
-`SessionListService` remains the sole visible-order policy owner.
-
-For running sessions, compare:
-
-1. effective interaction recency descending, where
-   `lastUserInteractionAt ?? time.updated ?? 0`;
-2. a known interaction marker before an unknown marker when effective keys are
-   equal;
-3. session ID ascending as a deterministic final tie-breaker.
-
-The `time.updated` fallback preserves useful behavior with old bridges and
-pre-migration sessions. Once a verified marker exists, later automatic backend
-updates cannot move that session because the comparator uses the marker instead.
-
-For non-running sessions, keep `time.updated` descending and add only the same
-deterministic ID tie-breaker. Do not change `SessionActivityCalculator`, project
-ordering, or child-task ordering.
-
-`SessionListService` owns every marker transformation:
-
-- `applyInteractionPatch` locates an already-held session and max-merges the
-  nullable live marker without manufacturing a missing session;
-- `applySessionUpdatedEvent` keeps the greater existing/new interaction marker
-  alongside its current PR metadata merge; and
-- `mergeRestSnapshot` treats fetched membership and ordinary fields as
-  authoritative while max-merging markers from matching sessions already held
-  and from the cached marker map supplied by the Cubit, so an in-flight or
-  initial fetch cannot roll back a live patch.
-
-`SessionListCubit` only validates the SSE project/state, delegates
-`SesoriSessionUnseenChanged` to `applyInteractionPatch`, delegates successful
-REST replacement to `mergeRestSnapshot`, and re-runs `visibleSessions`.
-`SessionUnseenTracker` remains the live list-state cache: extend its existing
-per-project tick and session map to retain the nullable marker from
-`SesoriSessionUnseenChanged` alongside unseen state. It performs no ordering or
-merge decision; `SessionListService` consumes its cached marker map. This reuses
-the tracker that already receives patches before a list Cubit is loaded rather
-than adding another long-lived owner. The Cubit reads that map and passes it to
-the service; peer Layer-3 collaborators do not depend on each other.
-
-No new long-lived tracker, Cubit generation, tick map, or optimistic interaction
-state is required. Bridge markers are monotonic, so a per-session max at the two
-existing merge seams is sufficient.
+Do not add optimistic interaction timestamps on send acceptance. The normalized
+event and existing patch are the authority; the list reorders when that event is
+committed, and reconnect/refresh self-heals a missed patch.
 
 ## Compatibility
 
-### Wire
+- **New bridge, old app:** extra nullable keys on known REST/SSE shapes are
+  ignored; that app retains its current alphabetical running order.
+- **Old bridge, new app:** omitted fields decode to null and running order falls
+  back to `time.updated`.
+- **Existing databases:** no migration; every current marker remains intact.
+- **Internal packages:** shared, bridge, and clients update together; no plugin
+  contract changes.
 
-- **New bridge, old app:** extra nullable properties on known REST/SSE shapes are
-  ignored; current updated-time/alphabetical behavior remains in that app.
-- **Old bridge, new app:** missing properties decode to null and running order
-  falls back to `time.updated`.
-- **New plugin fact, old app:** the internal fact never reaches the wire.
-- No request field, route, capability negotiation, or new public SSE variant is
-  added.
+No new route, event variant, capability, or compatibility shim is added.
 
-### Database
+## Accepted Limitations
 
-- Stable released databases migrate v13 to v14 by adding a nullable column.
-- No historical interaction is manufactured.
-- Existing unseen columns and values remain intact.
-- If another schema version lands on `main` before implementation, preserve it
-  and move this migration/snapshot to the next available version rather than
-  rewriting merged history.
+- Automatic compaction or generated backend input normalized as a user message
+  can move a running session. The marker is explicitly user-side activity, not a
+  proof of human intent.
+- Direct laptop/backend activity counts only when the backend exposes it through
+  the existing normalized user-message/reply events. No effort is made to infer
+  activity a bridge-owned process cannot observe.
+- A new app connected to an old bridge, and a session whose marker is still
+  null, falls back to `time.updated`.
+- A patch missed across disconnect reorders on the next relevant event or list
+  refresh; no replay repair or optimistic timestamp is added.
+- Server-paged third-party root requests retain server order. The current app
+  fetches the complete project list and owns activity-aware visible order.
 
-### Internal APIs
-
-- `BridgePluginApi` and plugin packages have no out-of-repository consumers and
-  update together. The new required permission origin has no fallback or shim.
-
-## Scope And Non-Goals
-
-- Do not restore `ActiveWorkSummaryService`, bridge-authored session ordering,
-  or project ordering by session activity.
-- Do not infer genuine interaction from `Session.time.updated`, generic shared
-  `MessageUser`, command completion, assistant output, tool output, session
-  status, or title changes when an authoritative marker is available.
-- Do not backfill the new column from existing timestamps or transcript history.
-- Do not redesign unseen state or clean polluted historical
-  `last_user_message_at` values.
-- Do not add live tailing to Claude/ACP processes or make unobservable laptop
-  interactions appear supported.
-- Do not add locks, timers, ancestry walks, content hashes, event journals,
-  background repair, server-side active sorting, or pagination/index changes.
-- Do not change child-session presentation or make child detail writable.
-- Do not add analytics. There is no product decision, reporting model, or
-  privacy-safe aggregate that requires tracking this ordering behavior; the
-  authoritative event would also risk turning session activity into telemetry.
-
-## Evidence And Accepted Risk
-
-| Concern | Evidence class | Planned safeguard / accepted behavior |
-|---|---|---|
-| Automatic compaction looks user-authored | Observed backend behavior | Classify raw OpenCode parts before mapping; test auto, continuation, and overflow replay |
-| Auto-approved/cancelled replies look manual | Ordinary reachable flow | Required permission origin plus manual-only plugin fact emission; cancellation methods emit no fact |
-| Duplicate OpenCode envelope/part delivery | Ordinary transport duplicate | Retain one most-recent classified message ID per session and consume each pending envelope once |
-| Accepted OpenCode write loses SSE pair | Ordinary disconnect window | Correlate with caller-supplied message ID and emit one successful null-time fallback only when that exact raw message did not satisfy it |
-| Concurrent laptop and Sesori writes | First-class multi-surface flow | Correlate pending bridge action by message ID; unrelated raw facts emit independently and cannot satisfy it |
-| Manual compact with instructions | Ordinary compact command flow | Mark guidance non-emitting; accepted bridge compact always emits fallback; raw compact remains independent until upstream exposes identity |
-| OpenCode reply disconnect/reconciliation | Ordinary race flow | Request-ID fallback for accepted questions; reconciled question/permission 404 emits no fact |
-| Backend clock rollback | Ordinary clock-adjustment flow | OpenCode uses null occurred-at and bridge monotonic stamping; known times remain only for authoritative plugin sources |
-| REST/SSE replacement race | Ordinary initial/in-flight refresh flow | Existing unseen tracker retains the patch; service maxes it at client replacement seams |
-| Reversed OpenCode message/part order | Theoretical against current upstream order | Accepted; no timer or history lookup. Missing one reorder self-heals on the next genuine interaction |
-| Direct laptop interaction in a separate ACP/Claude process | Unobservable by current architecture | Accepted limitation; keep marker unchanged rather than guess |
-| Direct OpenCode permission decision | Event cannot distinguish one choice from `always` cascade | Accepted limitation; only Sesori manual decisions count until upstream adds provenance |
-| Bridge OpenCode compact also arrives raw | Summarize exposes no caller identity | Accept duplicate same-session evidence rather than lose or misattribute either concurrent surface; remove when upstream identity exists |
-| Existing null markers after migration | Required honest migration state | Fall back to `time.updated` until the first authoritative interaction |
-| Paged third-party root requests | No current in-repository consumer and server lacks running state | Keep existing server order; visible app fetch remains complete and client-owned |
+These are bounded list-order effects with natural refresh recovery. They do not
+justify new persistence, classifier state, or cross-plugin coordination.
 
 ## Cleanup Assessment
 
-Directly caused cleanup:
+- Remove `_compareSessionsByTitleAndId` and replace alphabetical-running tests.
+- Update `session.unseen_changed` and tracker documentation to describe their
+  complete session-list state payload.
+- Keep `last_user_message_at`, its existing write logic, unseen calculations,
+  and persistence tests unchanged; they remain required production behavior.
+- Do not restore `ActiveWorkSummaryService`, `userInteractionOrdered`, project
+  reordering, or any prototype plugin event/origin changes.
 
-- remove `_compareSessionsByTitleAndId` and the alphabetical-running-order tests
-  replaced by the recency comparator;
-- correct the `lastUserMessageAt` documentation so future work does not treat it
-  as authoritative interaction provenance; and
-- update `session.unseen_changed` naming documentation from unseen-only to the
-  cross-cutting session-list patch it becomes.
-
-Retained intentionally:
-
-- `last_user_message_at`, generic user-message unseen routing, and current
-  unseen tests remain required by released persisted unseen behavior;
-- `time.updated` remains the inactive order and compatibility fallback;
-- existing activity-summary and child-task calculations remain required; and
-- no larger obsolete service, cache, setting, job, or transport field is created
-  by this change.
+No other service, cache, field, setting, job, or transport variant becomes
+obsolete.
 
 ## Delivery Plan
 
-All steps use the existing `session-order-ux-review` branch/worktree. Before each
-implementation PR, synchronize with current `main` and preserve any schema
-versions already merged. Do not create another branch or worktree for this
-series.
+All steps use the existing `session-order-ux-review` branch/worktree. No extra
+branch or worktree is created.
 
-### Step 1/7 - Plan
+### Step 1/4 - Plan
 
 **Exact PR title:**
-`🌱 [session-user-interaction-order] docs: plan running session interaction order [step 1/7]`
+`🌱 [session-user-interaction-order] docs: simplify running session activity order [step 1/4]`
 
-- Add this plan and tracker.
-- Record architecture review findings and direct corrections.
-- Validate exact titles, fixed denominator, scope, and `git diff --check`.
-- No production, generated, database, wire, or user-visible change.
-
-**Changed-line target:** 550-1,050 documentation lines.
-
-### Step 2/7 - Authoritative plugin facts
-
-**Exact PR title:**
-`🚧 [session-user-interaction-order] feat(plugins): report genuine user interactions [step 2/7]`
-
-- Add the internal interaction event and required permission origin enum.
-- Update every registered plugin and all app/plugin call sites in lockstep.
-- Add `OpenCodeUserInteractionTracker` and implement pending-envelope
-  classification, message-ID-correlated bridge-write fallback, manual-compaction
-  coalescing, lifecycle cleanup, and automatic-compaction exclusions. Compose
-  it under `OpenCodeService` with resolved display attribution.
-- Add `CodexGeneratedContextValidator` plus
-  `CodexUserInteractionTracker`, then implement Codex, ACP/Cursor, and Claude
-  authoritative emission rules.
-- Add bridge event ID translation and explicit no-public-wire mapping.
-- Test prompt, command, initial turn, manual compaction, manual answer/decision,
-  auto approval, cancellation, synthetic continuation, overflow replay, and
-  duplicate handling, concurrent laptop/Sesori writes, instructed compaction,
-  backend clock rollback, and disconnect-between-acceptance-and-SSE behavior at
-  the owning boundaries.
-- No database, released wire, client, or user-visible behavior yet.
-
-**Changed-line target:** 1,050-1,500 lines. If complete production-plugin tests
-would exceed the soft cap, split test-only follow-up is not acceptable because
-the contract must land verified; update the target with measured generated-free
-scope before opening the PR.
-
-### Step 3/7 - Persist interaction recency
-
-**Exact PR title:**
-`🚧 [session-user-interaction-order] feat(bridge): persist session interaction recency [step 3/7]`
-
-- Add the nullable Drift column and next schema migration with no backfill.
-- Generate schema snapshot, steps, database source, and migration helpers.
-- Preserve markers through catalog import and all session projection UPSERTs.
-- Extend the existing unseen repository/service with the monotonic
-  post-translation write and consume internal facts in the orchestrator.
-- Keep existing unseen timestamps/formula unchanged.
-- Test migration structure/null baseline, preservation, root/display
-  attribution, missing rows, known-time duplicate/no-regression, null-time clock
-  rollback, and auto-generated no-fact paths.
-- No released wire or client behavior yet.
-
-**Changed-line target:** 4,500-6,500 lines, explicitly above the 1,500-line soft
-cap because the required new Drift v14 JSON snapshot and generated Dart schema
-helper are additive files of several thousand lines. Hand-editing, omitting, or
-separating those generated migration artifacts would leave the persisted change
-unreviewable or invalid; non-generated production/test scope should remain
-localized.
-
-### Step 4/7 - Transport the marker
-
-**Exact PR title:**
-`⚙️ [session-user-interaction-order] feat(protocol): publish session interaction recency [step 4/7]`
-
-- Add the nullable shared `Session` and `session.unseen_changed` properties with
-  dated compatibility comments.
-- Regenerate shared Freezed/JSON source.
-- Map REST/detail/child/live session projections and post-commit list patches.
-- Verify null omission, missing-field decode, old/new peer behavior, delete null,
-  and committed-value delivery.
-- No ordering change in the client yet; old clients remain unaffected.
-
-**Changed-line target:** 700-1,300 lines including generated source and tests.
-
-### Step 5/7 - Apply client ordering
-
-**Exact PR title:**
-`⚙️ [session-user-interaction-order] feat(client): order running sessions by interaction [step 5/7]`
-
-- Replace alphabetical running order with the effective-recency comparator.
-- Add `SessionListService.applyInteractionPatch` and `mergeRestSnapshot`; preserve
-  max values across live patches, session updates, and in-flight REST
-  replacement. Extend `SessionUnseenTracker`'s existing list-state cache so an
-  initial-load patch is retained while keeping the Cubit orchestration-only.
-- Keep awaiting-only, inactive, archived, project, and child ordering behavior
-  unchanged.
-- Add service/Cubit tests for marker order, null fallback, deterministic ties,
-  auto-update stability, live reordering, initial/in-flight stale REST, old
-  bridge payloads, and project mismatch.
-- Verify both mobile and desktop downstream analysis because both consume
-  `module_core`, while noting the desktop shell has no catalog UI.
-
-**Changed-line target:** 350-750 lines.
-
-### Step 6/7 - Regression contract
-
-**Exact PR title:**
-`🌱 [session-user-interaction-order] docs: define session interaction order coverage [step 6/7]`
-
-- Reconcile `docs/regression/projects-and-sessions.md` with the root running
-  order, live marker, null fallback, and compatibility behavior.
-- Reconcile `docs/regression/session-turns.md` with genuine interaction
-  provenance, manual compaction, and automatic/cancellation exclusions.
-- Record the final registered-plugin and platform matrix discovered from the
-  implemented code.
+- Publish this revised plan and tracker.
+- Update the plan-maker skill to require existing-state/history inspection and
+  explicit mutable-part budgeting.
+- Record why the seven-step classifier design and second-scalar proposal were
+  superseded.
 - No production, database, wire, generated, or user-visible change.
 
-**Changed-line target:** 50-180 lines.
+**Changed-line target:** 350-650 documentation lines.
 
-### Step 7/7 - Verify and retire
+### Step 2/4 - Coherent implementation
 
 **Exact PR title:**
-`🌱 [session-user-interaction-order] docs: verify and retire interaction ordering [step 7/7]`
+`⚙️ [session-user-interaction-order] feat: order running sessions by user activity [step 2/4]`
 
-- Run the recorded L3 cumulative regression level through the matrix below.
-- Record automated and live/client evidence, limitations, versions, and cleanup
-  in the tracker without prompts, transcripts, paths, raw IDs, or logs.
-- Run final relevant analysis/tests only where the evidence changed since each
-  implementation PR; do not rerun an unchanged passing matrix for confidence.
-- Move the plan directory from `.plan/active/` to `.plan/completed/` only when
-  every required boundary passes. Partial, blocked, failed, or reduced coverage
-  keeps the plan active unless the user explicitly accepts and records a matrix
-  reduction.
+- Add nullable `lastUserActivityAt` to shared `Session` and
+  `session.unseen_changed`, then regenerate shared source.
+- Project `last_user_message_at` through bridge REST and post-write patch seams.
+- Replace the existing unseen tracker value with typed session-list state while
+  retaining its one cache/tick/subscription lifecycle.
+- Replace alphabetical running order with activity recency and stable ties.
+- Test additive JSON, bridge projections/patches, tracker retention, initial and
+  in-flight REST behavior, comparator fallback, and unchanged inactive/activity
+  policy.
+- Verify there is no database schema or production plugin diff.
+
+This is one coherent PR because transport without a consumer or a comparator
+without the bridge fact would be dead intermediate behavior. Generated shared
+source is expected; no Drift generation occurs.
+
+### Step 3/4 - Regression contract
+
+**Exact PR title:**
+`🌱 [session-user-interaction-order] docs: define running session activity coverage [step 3/4]`
+
+- Update `docs/regression/projects-and-sessions.md` with running-root activity
+  ordering, null fallback, live patching, and accepted generated-input semantics.
+- Update `docs/regression/session-turns.md` and
+  `docs/regression/questions-and-permissions.md` only where needed to identify
+  the existing normalized actions feeding the marker and auto-approval exclusion.
 - No production, database, wire, generated, or new user-visible change.
 
-**Changed-line target:** 60-220 documentation lines.
+### Step 4/4 - Verify and retire
 
-## Verification Plan
+**Exact PR title:**
+`🌱 [session-user-interaction-order] docs: verify and retire session activity ordering [step 4/4]`
 
-### Focused automated verification
+- Run cumulative L3 coverage below.
+- Record privacy-safe evidence and accepted limitations.
+- Move the plan to `.plan/completed/` only after required coverage passes.
 
-Step 2:
+## Verification
 
-- `sesori_plugin_interface`: strict analysis and exhaustive event switches.
-- `OpenCodeUserInteractionTracker` tests: ordinary root prompt/file prompt,
-  child-generated prompt exclusion, slash/subtask command, manual compaction,
-  auto compaction, synthetic continuation, overflow replay, question
-  reply/reject, manual versus automatic permission, message-ID-correlated
-  write/raw one-fact coordination, unrelated concurrent
-  laptop writes, immediate duplicate delivery, instructed-compaction
-  fallback, request-ID reply fallback, reconciled permission 404, clock rollback,
-  and bounded pending-state cleanup.
-- `CodexGeneratedContextValidator` and `CodexUserInteractionTracker` tests: one
-  first-lifecycle user-item fact, generated-context exclusion, duplicate
-  completion rejection, bounded terminal cleanup, ordinary command, explicit
-  manual compact, generic context compaction exclusion, manual registry replies,
-  and cancellation exclusion.
-- ACP/Cursor and Claude tests: accepted/failed prompt and command, initial turn,
-  compact mapping, manual reply, cancellation/disposal exclusion.
-- Bridge app mapper tests: backend/stable IDs and display-root translation; no
-  public mapping.
+**Highest required level:** L3 Release, cumulative through L1/L2.
 
-Step 3:
+Automated proof:
 
-- Drift v13-to-v14 migration tests and schema validation.
-- DAO/repository/service tests for null baseline, preservation, monotonic writes,
-  missing rows, display-root targeting, and post-commit patch emission.
-- Orchestrator event processing test proving the internal fact persists but is
-  not directly enqueued as a wire event.
+- shared `Session` and known SSE event omit null on encode and accept omission on
+  decode;
+- bridge catalog/detail projections and committed unseen patches carry the
+  existing marker without changing any write or unseen formula;
+- permission auto-approval remains filtered before marker routing;
+- tracker live max-merge, REST replacement, optimistic unseen update, initial
+  load, and in-flight fetch behavior retain the latest marker;
+- running comparator, null fallback, deterministic ties, and unchanged inactive,
+  awaiting-only, archived, project, and child ordering; and
+- Git diff proves no schema/migration or production plugin change.
 
-Step 4:
+End-to-end proof:
 
-- Shared model round-trip and omitted-field compatibility tests.
-- Bridge catalog/detail/child/session-update mapper and route tests.
-- Existing unseen-change tests extended to assert the committed nullable marker.
+- one release-target phone and bridge host;
+- one representative registered plugin, because ordering starts after the
+  existing normalized event boundary and no plugin changes;
+- two running roots reorder after user-side activity while an awaiting-only root
+  is not promoted and inactive rows retain updated-time order; and
+- a current app decoding an omitted marker fixture uses the documented fallback.
 
-Step 5:
+No every-plugin live matrix is required. Existing plugin event normalization is
+not changed or newly claimed by this work.
 
-- `client/module_core/test/services/session_list_service_test.dart`.
-- `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`.
-- Focused connection/SSE parsing tests for the additive known-event property.
-- `dart analyze` in shared, changed bridge packages, `module_core`, mobile app,
-  and desktop shell as applicable.
+## Architecture Review History
 
-### Regression level and proof boundaries
+The initial seven-step plan received architecture review and then accumulated
+plugin-specific classifiers, correlation state, dedupe, reconnect handling, and
+an every-plugin matrix. The user rejected that direction on 2026-08-13 because
+the coordination machinery outweighed the list-ordering behavior.
 
-**Highest required level:** L3 Release, cumulative through L1 and L2.
-
-The behavior has independent proof boundaries:
-
-- **Automated:** plugin provenance classification, migration/persistence,
-  additive JSON compatibility, monotonic merge, and deterministic comparator.
-- **Live plugin:** real backend prompt/command/manual-compaction behavior and
-  automatic-compaction exclusion where supported.
-- **Client end to end:** a phone observes multiple running root sessions reorder
-  after genuine interactions while inactive/awaiting-only rows retain policy.
-
-### Required matrix
-
-- **Plugins:** every supporting registered production plugin at execution time.
-  At plan time: OpenCode, Codex, Cursor, and Claude.
-- **Interaction capabilities:** prompt and command for each plugin; manual
-  compaction and question/permission response where supported; automatic
-  compaction/auto-approval/cancellation exclusions where the plugin exposes
-  those flows.
-- **Backend-originated coverage:** OpenCode and Codex where the attached backend
-  stream can authoritatively observe another surface; ACP/Cursor and Claude are
-  explicitly limited to the bridge-owned process.
-- **Client platform:** one release-target phone platform for L3. The desktop
-  shell has no catalog surface, but downstream compile/analyze remains required.
-- **Bridge host:** one release-target host; no host-specific ordering claim.
-- **Peer compatibility:** current app with a pre-marker bridge fixture and
-  current bridge payload with a pre-marker app decoder/fixture where available.
-
-Any reduction to this matrix requires explicit user acceptance recorded here
-before retirement.
-
-## Expected PR Review Summaries
-
-Every implementation PR body must include the repository-required sections.
-Use these review focuses rather than duplicating the whole plan:
-
-- **Step 2 complexity:** complex - backend-specific provenance across the shared
-  plugin boundary, especially OpenCode compaction ordering.
-- **Step 2 risk/test focus:** false recency from generated messages, duplicate
-  facts, permission auto paths, and plugin lifecycle cleanup. No database or
-  released-wire impact; no user-visible change yet.
-- **Step 3 complexity:** complex - persisted nullable state, migration/codegen,
-  ordered event consumption, and monotonicity.
-- **Step 3 risk/test focus:** schema preservation, no dishonest backfill,
-  display-root attribution, and not changing unseen behavior. Database impact:
-  one nullable column; no user-visible change yet.
-- **Step 4 complexity:** moderate - additive shared REST/SSE contract and bridge
-  projections.
-- **Step 4 risk/test focus:** mixed-version decode/encode, null omission, and
-  committed-value delivery. No visible ordering change until Step 5.
-- **Step 5 complexity:** moderate - client ordering plus live/REST race-safe
-  merge.
-- **Step 5 risk/test focus:** running-prefix policy, fallback behavior, no churn,
-  and no project/child/inactive regression. User-visible impact: running sessions
-  reorder by genuine interaction.
-
-## Architecture Review
-
-- **Reviewer:** `architecture-plan-review`
-- **Reviewed scope:** complete `.plan/active/session-user-interaction-order/`
-  against current plugin, bridge, shared, database, and client architecture
-- **Initial verdict:** rejected with three actionable ownership findings
-- **Findings applied:** moved OpenCode classifier state from the top-level plugin
-  into `OpenCodeUserInteractionTracker`; named `CodexUserInteractionTracker` and
-  one shared `CodexGeneratedContextValidator` with bounded lifecycle; moved live
-  patch and REST max-merge policy from `SessionListCubit` into
-  `SessionListService`
-- **Re-review:** not run; repository policy applies valid concrete findings
-  directly without a second review merely to approve the corrections
+The first simplification removed plugin logic but introduced a second persisted
+scalar and bridge operation hooks. A subsequent history/data-flow audit found
+that PR #474 had already demonstrated reuse of `last_user_message_at`, and that
+current code still owns and maintains that field independently of the reverted
+ordering pipeline. This revision therefore removes the second scalar and all
+operation hooks. A fresh `architecture-plan-review` approved this revision on
+2026-08-13 with no findings. It confirmed bridge repository/service ownership,
+orchestrator SSE projection, existing tracker lifecycle ownership, client
+comparator ownership, and additive shared-wire compatibility.

@@ -1,4 +1,4 @@
-# Running Session Interaction Order: Tracker
+# Running Session User-Activity Order: Tracker
 
 ## Current State
 
@@ -6,241 +6,125 @@
 - **Implementation base:** `main` at `88059e200`
 - **Branch/worktree:** `session-order-ux-review`
 - **Plan PR:** [#865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865)
-- **Series state:** Step 1/7 in review; no implementation published
-- **Current step:** 1/7 open; Step 2/7 beginning locally
-- **Next action:** monitor Step 1 and implement authoritative plugin facts locally
-- **Source changes:** none
-- **Tests run:** none
+- **Series state:** Step 1/4 rewritten around existing persisted state
+- **Current step:** 1/4 in review; no production source published
+- **Next action:** publish revised plan/skill and update PR #865
+- **Production source changes published:** none
 
-## Locked Product Behavior
+## Simplicity Contract
+
+- [x] Zero new database columns or migrations.
+- [x] Zero plugin API or production plugin changes.
+- [x] Zero dispatcher flags or bridge operation hooks.
+- [x] Zero classifiers, correlation maps, dedupe collections, timers, locks,
+  registries, or new lifecycle owners.
+- [x] Reuse `last_user_message_at`, the existing unseen patch/cache/tick, and the
+  existing client activity partition.
+- [x] Name the transported fact `lastUserActivityAt`, not the stronger and
+  misleading `lastUserInteractionAt`.
+- [x] Accept generated user-side backend input as a bounded ordering heuristic.
+- [x] Any implementation breach of this contract requires user approval.
+
+## Locked Behavior
 
 - [x] Running roots remain promoted.
-- [x] Running means main-agent busy, retry, or at least one background task;
-  awaiting-input alone remains non-running.
-- [x] Running roots order by genuine interaction recency, not title.
-- [x] Prompt, slash command, manual answer/decision, and manual compaction count.
-- [x] Automatic compaction, generated continuation/replay, auto approval,
-  cancellation, assistant/tool/title activity do not count.
-- [x] Null markers fall back to `time.updated` for old bridges and migrated rows.
-- [x] Non-running, project, and child-task ordering remain unchanged.
-- [x] The client owns visible ordering; the bridge transmits timestamp facts.
-- [x] No analytics event is added.
-
-## Architecture Decisions
-
-- [x] One internal `BridgeSseSessionUserInteraction` fact carries backend
-  session, optional display root, and optional occurred-at timestamp.
-- [x] One required manual/automatic permission origin updates all internal
-  plugin implementors in lockstep.
-- [x] `OpenCodeUserInteractionTracker` owns raw message/part classifier state
-  before compaction provenance is erased, coordinates message-ID-correlated
-  bridge-write fallback under `OpenCodeService`, coalesces manual compact
-  guidance, and uses bridge monotonic observation time; the top-level plugin
-  delegates once.
-- [x] `CodexUserInteractionTracker` owns bounded first-user-item observation and
-  shares one `CodexGeneratedContextValidator` with history mapping; ACP/Cursor
-  and Claude use their accepted bridge-owned write paths.
-- [x] New nullable `last_user_interaction_at`; no backfill.
-- [x] Existing ordered plugin-event processing and unseen timestamp write tail
-  are reused; no new lock, tracker service, or bridge ordering snapshot.
-- [x] Existing `session.unseen_changed` becomes the additive post-commit
-  session-list patch; no new public SSE variant.
-- [x] `SessionListService` owns live/session-update/REST marker max merges;
-  `SessionUnseenTracker` retains initial-load patches and the Cubit only
-  validates, delegates, and emits.
-- [x] Existing unseen semantics and `last_user_message_at` are retained.
-
-## Accepted Limitations
-
-- [x] Direct laptop OpenCode permission replies are unknown because upstream
-  does not distinguish one manual decision from an `always` cascade.
-- [x] OpenCode summarize exposes no caller identity; an accepted bridge compact
-  always emits its fallback while raw manual compacts remain independent, so
-  duplicate same-session evidence is accepted rather than misattributing a
-  concurrent surface.
-- [x] Separate ACP/Cursor and Claude laptop processes are not observable by the
-  bridge-owned process.
-- [x] A theoretical OpenCode part-before-envelope sequence can miss one marker;
-  no timer/history lookup is added against current upstream ordering.
-- [x] Existing migrated rows remain null until a new authoritative interaction
-  and use updated-time fallback meanwhile.
-- [x] Server-paged root responses retain updated-time order; the current app
-  fetches the complete list and owns activity-aware visible order.
+- [x] Running means main-agent busy, retry, or background task; awaiting-only is
+  not running.
+- [x] Running roots order by existing user-side activity recency, then ID.
+- [x] Null marker falls back to `time.updated`.
+- [x] Inactive roots remain ordered by `time.updated`, then ID.
+- [x] Archived filtering and project/child ordering remain unchanged.
+- [x] Auto-approved permission replies remain excluded by current orchestrator
+  filtering.
+- [x] Automatic compaction/generated input can count when normalized as a user
+  message; no plugin inference is added.
+- [x] No analytics event.
 
 ## Delivery Steps
 
-| Done | Step | Exact PR title | Changed-line target | State |
-|---|---|---|---:|---|
-| [ ] | 1/7 | `🌱 [session-user-interaction-order] docs: plan running session interaction order [step 1/7]` | 550-1,050 | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) open |
-| [ ] | 2/7 | `🚧 [session-user-interaction-order] feat(plugins): report genuine user interactions [step 2/7]` | 1,050-1,500 | Pending |
-| [ ] | 3/7 | `🚧 [session-user-interaction-order] feat(bridge): persist session interaction recency [step 3/7]` | 4,500-6,500; generated migration cap exception | Pending |
-| [ ] | 4/7 | `⚙️ [session-user-interaction-order] feat(protocol): publish session interaction recency [step 4/7]` | 700-1,300 | Pending |
-| [ ] | 5/7 | `⚙️ [session-user-interaction-order] feat(client): order running sessions by interaction [step 5/7]` | 350-750 | Pending |
-| [ ] | 6/7 | `🌱 [session-user-interaction-order] docs: define session interaction order coverage [step 6/7]` | 50-180 | Pending |
-| [ ] | 7/7 | `🌱 [session-user-interaction-order] docs: verify and retire interaction ordering [step 7/7]` | 60-220 | Pending |
+| Done | Step | Exact PR title | State |
+|---|---|---|---|
+| [ ] | 1/4 | `🌱 [session-user-interaction-order] docs: simplify running session activity order [step 1/4]` | [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865) open; rewritten |
+| [ ] | 2/4 | `⚙️ [session-user-interaction-order] feat: order running sessions by user activity [step 2/4]` | Pending |
+| [ ] | 3/4 | `🌱 [session-user-interaction-order] docs: define running session activity coverage [step 3/4]` | Pending |
+| [ ] | 4/4 | `🌱 [session-user-interaction-order] docs: verify and retire session activity ordering [step 4/4]` | Pending |
 
 ## Step 1 Checklist
 
-- [x] Trace current client list ownership and running definition.
-- [x] Trace persisted unseen/user-message timestamps and prove they are unsafe
-  for ordering.
-- [x] Inspect OpenCode message/part and compaction ordering, including synthetic
-  continuation and overflow replay.
-- [x] Inspect all registered production plugin write/reply paths.
-- [x] Define additive REST/live compatibility and honest null migration.
-- [x] Define deterministic client fallback and merge behavior.
-- [x] Record cleanup, accepted limitations, L3 proof boundaries, and matrix.
-- [x] Fix exact seven-step titles and line targets.
-- [x] Run architecture plan review and apply valid findings.
-- [x] Run `git diff --check` and plan/tracker consistency validation.
-- [x] Commit, push, and open the Step 1 PR for the confirmed reviewed series.
+- [x] Trace current running-prefix ownership and live list update seams.
+- [x] Audit every write and projection of `last_user_message_at`.
+- [x] Inspect PRs #474, #480, and #482 and identify the reverted complexity.
+- [x] Confirm auto-approved permission replies are filtered before unseen routing.
+- [x] Supersede the seven-step plugin-classifier design.
+- [x] Supersede the second-scalar/dispatcher-hook proposal.
+- [x] Define a four-step, zero-new-state implementation and accepted semantics.
+- [x] Update plan-maker guidance with existing-state/history inspection.
+- [x] Run fresh architecture plan review and apply valid findings.
+- [x] Validate plan/tracker consistency and whitespace.
+- [ ] Commit, push, update PR #865 title/body, and resolve superseded discussion.
 
 ## Step 2 Checklist
 
-- [ ] Add typed internal interaction event and permission origin.
-- [ ] Update OpenCode, Codex, ACP/Cursor, Claude, bridge call sites, and test
-  fakes in lockstep.
-- [ ] Add `OpenCodeUserInteractionTracker` with bounded envelope/part classifier
-  message-ID-correlated bridge-write fallback coordination, compact coalescing,
-  and lifecycle cleanup under `OpenCodeService`.
-- [ ] Add `CodexGeneratedContextValidator` and bounded
-  `CodexUserInteractionTracker`; inject the validator into history mapping.
-- [ ] Route all Codex triggers through the tracker and reject duplicate completed
-  item notifications.
-- [ ] Prove automatic compaction continuation/overflow replay exclusions.
-- [ ] Prove one fact across ordinary raw delivery, lost-SSE fallback, and backend
-  clock rollback.
-- [ ] Prove concurrent laptop/Sesori writes cannot cross-satisfy, instructed
-  compact fallback always records acceptance, and immediate complete-message
-  duplicates are rejected.
-- [ ] Prove request-ID question fallback and reconciled question/permission 404
-  exclusion.
-- [ ] Prove manual versus automatic/cancelled reply behavior.
-- [ ] Prove internal event ID/display-root translation and no public wire event.
-- [ ] Run focused plugin/interface/app tests and strict analysis.
-- [ ] Run architecture implementation review.
+- [ ] Discard the stashed plugin event/origin prototype; do not restore it.
+- [ ] Add nullable `lastUserActivityAt` to shared `Session` and the existing
+  list-state patch; regenerate source.
+- [ ] Map existing persisted markers through bridge REST/detail and patch seams.
+- [ ] Replace tracker boolean values with typed unseen/activity list state while
+  retaining its existing cache, tick, subscription, and lifecycle.
+- [ ] Preserve marker values across live max-merge, REST seeding, and optimistic
+  unseen updates.
+- [ ] Replace alphabetical running order with activity/fallback recency and IDs.
+- [ ] Prove unchanged inactive, awaiting-only, archived, project, child, and
+  auto-approval behavior.
+- [ ] Prove no schema/migration or production plugin diff.
+- [ ] Run focused analysis/tests and architecture implementation review.
 
 ## Step 3 Checklist
 
-- [ ] Rebase schema version on current `main` without rewriting merged versions.
-- [ ] Add nullable column and no-backfill migration.
-- [ ] Generate all Drift snapshots/steps/source/helpers.
-- [ ] Preserve marker in import/projection/create paths.
-- [ ] Add monotonic repository/service write through existing ordered tail.
-- [ ] Consume translated facts without changing unseen formula or markers.
-- [ ] Test migration, null baseline, preservation, attribution, duplicates, and
-  clock rollback.
-- [ ] Run strict bridge app analysis/tests and architecture implementation review.
+- [ ] Update projects/sessions regression behavior and L3 exercise.
+- [ ] Reconcile turns and questions/permissions with existing marker inputs and
+  auto-approval exclusion without claiming perfect human provenance.
+- [ ] Record representative-plugin scope and generated-input limitation.
+- [ ] Validate documentation consistency and whitespace.
 
 ## Step 4 Checklist
 
-- [ ] Add required nullable shared REST and known-SSE properties with dated
-  compatibility comments.
-- [ ] Regenerate shared source.
-- [ ] Map root/detail/child/live projections and post-commit patches.
-- [ ] Test omitted null, missing old field, old/new peers, and delete null.
-- [ ] Run shared/bridge tests, strict analysis, and architecture implementation
-  review.
+- [ ] Run cumulative L3 automated and phone/bridge coverage.
+- [ ] Record omitted-marker fallback and live reorder evidence.
+- [ ] Keep plan active for partial/blocked/failed coverage unless explicitly
+  accepted by the user.
+- [ ] Move plan to `.plan/completed/` only after required coverage passes.
 
-## Step 5 Checklist
+## Decision Log
 
-- [ ] Replace alphabetical running comparator with effective interaction
-  recency and deterministic ties.
-- [ ] Preserve inactive, awaiting-only, archived, project, and child policies.
-- [ ] Add `SessionListService.applyInteractionPatch` and consume live marker
-  patches through it.
-- [ ] Extend `SessionUnseenTracker` to retain marker patches across initial load.
-- [ ] Add `SessionListService.mergeRestSnapshot` and max-merge session updates
-  at the service boundary.
-- [ ] Test new/old bridge, live reorder, stale fetch, auto-update stability, and
-  project mismatch.
-- [ ] Run module_core tests/analyze and affected mobile/desktop downstream
-  validation.
-- [ ] Run architecture implementation review.
-
-## Step 6 Checklist
-
-- [ ] Update `projects-and-sessions.md`.
-- [ ] Update `session-turns.md`.
-- [ ] Reconfirm registered plugin/platform matrix from production code.
-- [ ] Validate documentation consistency and `git diff --check`.
-
-## Step 7 Checklist
-
-- [ ] Run cumulative L3 coverage at automated, live-plugin, and phone boundaries.
-- [ ] Cover every supporting registered plugin and capability in the recorded
-  matrix.
-- [ ] Record privacy-safe evidence, versions, limitations, and cleanup.
-- [ ] Keep plan active for partial/blocked/failed coverage unless the user
-  explicitly accepts a reduction.
-- [ ] Move `.plan/active/session-user-interaction-order/` to `.plan/completed/`
-  only after required coverage passes.
-
-## Architecture Review
-
-- **Reviewer:** `architecture-plan-review`
-- **Reviewed scope:** complete `.plan/active/session-user-interaction-order/`
-  against current plugin, bridge, shared, database, and client architecture
-- **Initial verdict:** rejected with three actionable ownership findings
-- **Findings applied:** `OpenCodeUserInteractionTracker` now owns OpenCode
-  classifier state; `CodexUserInteractionTracker` plus one
-  `CodexGeneratedContextValidator` own Codex provenance; `SessionListService`
-  now owns all marker merge transformations
-- **Re-review:** not run; valid concrete findings were applied directly per
-  repository policy
+- **2026-08-13 initial plan:** seven steps with plugin facts, OpenCode/Codex
+  classifiers, permission-origin contract, per-plugin mutable state, a new
+  database marker, transport, client, regression, and retirement.
+- **2026-08-13 user complexity review:** user rejected plugin-specific code and
+  many mutable failure points for list ordering.
+- **2026-08-13 first simplification:** narrowed the promise to Sesori-owned
+  successful actions but still proposed a second scalar and dispatcher/create
+  hooks.
+- **2026-08-13 history audit:** PR #474 had already used
+  `last_user_message_at`; PR #480 reverted its bridge ordering service and
+  project-wide pipeline, not the underlying scalar. PR #482 established the
+  client-owned running prefix used today.
+- **2026-08-13 final simplification:** reuse the existing marker and current
+  list-state delivery. Accept its broader user-side-activity semantics rather
+  than recreating perfect origin provenance.
 
 ## Verification Log
 
-- **2026-08-13 discovery:** worktree clean on `session-order-ux-review`; no source
-  edits or tests before plan creation.
-- **2026-08-13 planning:** repository instructions, current client/bridge/shared
-  flow, registered plugins, generated OpenCode v1.17.7 models, upstream OpenCode
-  compaction implementation, relevant PR history, and regression contracts
-  inspected.
-- **2026-08-13 architecture review:** initial draft rejected on three concrete
-  ownership gaps. All were applied directly; no product scope, compatibility,
-  migration, PR lifecycle, or regression-matrix finding remained.
-- **2026-08-13 plan validation:** exact slug, seven-step denominator, titles,
-  ordering, line targets, architecture record, regression matrix, and cleanup
-  agree between plan and tracker. Both new files passed no-index whitespace
-  validation before publication. No Dart/Flutter suite was run for this
-  documentation-only work.
-- **2026-08-13 main refresh:** fast-forwarded the required branch/worktree from
-  `ec479cef5` to `88059e200`. Schema v13, the four-plugin registry, client running
-  comparator, and plan ownership seams remain unchanged. The bundled OpenCode
-  runtime advanced to v1.18.11; its source retains envelope-before-part
-  compaction events, manual/automatic provenance, synthetic continuation, and
-  overflow replay. Main's attachment-mapping and regression-copy changes do not
-  alter this plan. No architecture re-review was needed because no architecture
-  or product decision changed.
-- **2026-08-13 Step 1 publication:** committed the 929-line plan as `4be4705ce`,
-  pushed `session-order-ux-review`, and opened [PR #865](https://github.com/sesori-ai/sesori_apps_monorepo/pull/865).
-  The PR is mergeable and CI started successfully. Qodo reported only that its
-  review is pending; Cursor Bugbot reported its own usage limit, with no code or
-  plan finding.
-- **2026-08-13 Step 1 review:** accepted three concrete race/clock findings.
-  OpenCode now coordinates bridge-write fallback with raw observation and uses
-  bridge monotonic time; the existing unseen tracker retains marker patches
-  through initial REST load. The stale tracker-state finding was already fixed
-  in `c8aed9ee5`. Against merge base `88059e200`,
-  `git diff --numstat $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`
-  reports PLAN `+790/-0` and TRACKER `+246/-0`, totaling `+1,036/-0` within the
-  revised 550-1,050 target. The same range passes
-  `git diff --check $(git merge-base origin/main HEAD) -- .plan/active/session-user-interaction-order/PLAN.md .plan/active/session-user-interaction-order/TRACKER.md`.
-- **2026-08-13 Step 1 second review:** consolidated four OpenCode comments at
-  their shared correlation seam. Upstream prompt and command payloads accept a
-  caller-supplied `messageID`; the service-owned tracker now uses it for exact
-  bridge-write/raw correlation, instructed-compaction coalescing, and bounded
-  immediate-duplicate rejection. Declined a broad unseen-owner rename because
-  those existing classes still own unseen behavior and only reuse their ordered
-  timestamp persistence seam; they do not become owners of the complete session
-  list-state invariant.
-- **2026-08-13 Step 1 third review:** clarified summarize's no-caller-ID
-  boundary, question fallback, permission 404 exclusion, Codex completion
-  idempotency/coordinator ownership, and stable equal-known-marker ties. The
-  repeated unseen-owner rename remains declined.
-- **2026-08-13 final bot follow-up:** recorded the honest summarize limitation:
-  accepted bridge compact fallback is unconditional and raw compacts remain
-  independent until upstream provides identity. Also excluded reconciled
-  question 404s and kept Layer-3 peers independent by having the Cubit pass the
-  tracker's cached marker map into `SessionListService`.
+- Original PR #865 was CI-green and bot-approved before redesign; the
+  `ready-for-human-review` label was withdrawn after the user's complexity
+  objection.
+- Current audit confirmed the worktree has only plan/tracker/skill edits; the
+  obsolete Step 2 plugin prototype remains isolated in stash
+  `wip step 2 before simplification redesign` and must not be restored.
+- No Dart/Flutter suite is required for this documentation/skill-only Step 1.
+- Repository skill changes require an OpenCode restart before this running
+  session consumes the updated instructions.
+- Fresh `architecture-plan-review` approved the zero-new-state revision with no
+  findings. It confirmed bridge repository/service ownership, orchestrator SSE
+  projection, existing tracker lifecycle ownership, client comparator
+  ownership, and additive shared-wire compatibility.
