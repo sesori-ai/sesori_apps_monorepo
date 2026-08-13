@@ -11,7 +11,7 @@ import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
 import "worktree_service.dart";
 
-enum SessionCleanupOperation() { removeWorktree, deleteBranch }
+enum SessionCleanupOperation() { removeWorktree }
 
 class SessionCleanupFailedException({
     required final String sessionId,
@@ -47,7 +47,6 @@ class SessionLifecycleService({
   Future<CleanupResult> cleanupAlreadyReserved({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     final storedSession = await _sessionRepository.requireRoutableStoredSession(
@@ -55,21 +54,20 @@ class SessionLifecycleService({
       operation: SessionOperation.cleanupSession,
     );
     final worktreePath = storedSession.worktreePath;
-    final branchName = storedSession.branchName;
-    if (!(deleteWorktree || deleteBranch) || worktreePath == null || branchName == null) {
+    if (!deleteWorktree || worktreePath == null) {
       return CleanupSuccess();
     }
 
     final projectId = storedSession.projectId;
 
     // Shared-worktree cleanup is forceable so the user can resolve a stalemate
-    // when multiple sessions point at the same worktree or branch.
+    // when multiple sessions point at the same worktree.
     if (!force) {
       final hasSharing = await _sessionRepository.hasOtherActiveSessionsSharing(
         sessionId: sessionId,
         projectId: projectId,
-        worktreePath: deleteWorktree ? worktreePath : null,
-        branchName: deleteBranch ? branchName : null,
+        worktreePath: worktreePath,
+        branchName: null,
       );
       if (hasSharing) {
         return CleanupRejected(
@@ -80,7 +78,7 @@ class SessionLifecycleService({
       }
     }
 
-    if (deleteWorktree && !force) {
+    if (!force) {
       final safety = await _worktreeService.checkWorktreeSafety(
         worktreePath: worktreePath,
       );
@@ -93,37 +91,17 @@ class SessionLifecycleService({
       }
     }
 
-    if (deleteWorktree) {
-      final removed = await _worktreeService.removeWorktree(
-        pluginId: storedSession.pluginId,
-        projectId: projectId,
-        worktreePath: worktreePath,
-        force: force,
+    final removed = await _worktreeService.removeWorktree(
+      pluginId: storedSession.pluginId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+      force: force,
+    );
+    if (!removed && _filesystemRepository.classifyPath(path: worktreePath) != FilesystemEntityKind.notFound) {
+      throw SessionCleanupFailedException(
+        sessionId: sessionId,
+        operation: SessionCleanupOperation.removeWorktree,
       );
-      if (!removed && _filesystemRepository.classifyPath(path: worktreePath) != FilesystemEntityKind.notFound) {
-        throw SessionCleanupFailedException(
-          sessionId: sessionId,
-          operation: SessionCleanupOperation.removeWorktree,
-        );
-      }
-    }
-
-    if (deleteBranch) {
-      final deleted = await _worktreeService.deleteBranch(
-        projectId: projectId,
-        branchName: branchName,
-        force: deleteWorktree || force,
-      );
-      if (!deleted &&
-          await _worktreeService.branchExists(
-            projectId: projectId,
-            branchName: branchName,
-          )) {
-        throw SessionCleanupFailedException(
-          sessionId: sessionId,
-          operation: SessionCleanupOperation.deleteBranch,
-        );
-      }
     }
 
     return CleanupSuccess();
@@ -133,7 +111,6 @@ class SessionLifecycleService({
     required String sessionId,
     required bool archived,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) {
     return _sessionOperationDispatcher.dispatch(
@@ -143,7 +120,6 @@ class SessionLifecycleService({
         sessionId: sessionId,
         archived: archived,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
         force: force,
       ),
     );
@@ -153,7 +129,6 @@ class SessionLifecycleService({
     required String sessionId,
     required bool archived,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     // COMPATIBILITY 2026-08-07 (v1.7.0): published apps render Unarchive from
@@ -168,7 +143,6 @@ class SessionLifecycleService({
       session: await _doArchive(
         storedSession: storedSession,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
         force: force,
       ),
       changed: storedSession.archivedAt == null,
@@ -205,7 +179,6 @@ class SessionLifecycleService({
   Future<Session> _doArchive({
     required StoredSession storedSession,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     final archivedAt = DateTime.now().millisecondsSinceEpoch;
@@ -218,7 +191,6 @@ class SessionLifecycleService({
     await _cleanupIfNeeded(
       storedSession: storedSession,
       deleteWorktree: deleteWorktree,
-      deleteBranch: deleteBranch,
       force: force,
     );
     await _sessionRepository.archiveStoredSession(
@@ -272,16 +244,14 @@ class SessionLifecycleService({
   Future<void> _cleanupIfNeeded({
     required StoredSession storedSession,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
-    if (!(deleteWorktree || deleteBranch)) {
+    if (!deleteWorktree) {
       return;
     }
     final cleanupResult = await cleanupAlreadyReserved(
       sessionId: storedSession.id,
       deleteWorktree: deleteWorktree,
-      deleteBranch: deleteBranch,
       force: force,
     );
     if (cleanupResult case CleanupRejected(:final rejection)) {

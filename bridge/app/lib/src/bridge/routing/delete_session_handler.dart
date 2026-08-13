@@ -29,10 +29,12 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
+    // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients still send
+    // deleteBranch. It is intentionally ignored; remove the field from the
+    // request model when v1.7.1 clients are unsupported.
     final cleanupResult = await _sessionDeletionService.deleteSession(
       sessionId: sessionId,
       deleteWorktree: body.deleteWorktree,
-      deleteBranch: body.deleteBranch,
       force: body.force,
     );
     if (cleanupResult case CleanupRejected(:final rejection)) {

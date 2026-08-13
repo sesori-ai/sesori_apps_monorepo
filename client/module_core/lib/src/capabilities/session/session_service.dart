@@ -10,13 +10,11 @@ class SessionService({required final SessionRepository _repository}) {
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) {
     return _repository.archiveSession(
       sessionId: sessionId,
       deleteWorktree: deleteWorktree,
-      deleteBranch: deleteBranch,
       force: force,
     );
   }
@@ -28,13 +26,11 @@ class SessionService({required final SessionRepository _repository}) {
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) {
     return _repository.deleteSession(
       sessionId: sessionId,
       deleteWorktree: deleteWorktree,
-      deleteBranch: deleteBranch,
       force: force,
     );
   }

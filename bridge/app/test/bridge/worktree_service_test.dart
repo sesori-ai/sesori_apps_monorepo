@@ -860,7 +860,7 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // pruneWorktrees / removeWorktree / deleteBranch
+  // pruneWorktrees / removeWorktree
   // -------------------------------------------------------------------------
 
   group("WorktreeService lifecycle methods", () {
@@ -989,41 +989,6 @@ void main() {
       );
 
       expect(result, isFalse);
-    });
-
-    // deleteBranch (force: false)
-
-    test("deleteBranch(force: false): calls git branch -d <branch>", () async {
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.deleteBranch(
-        projectId: _projectId,
-        branchName: "session-001",
-        force: false,
-      );
-
-      expect(result, isTrue);
-      expect(processRunner.invocations, hasLength(1));
-      final inv = processRunner.invocations.first;
-      expect(inv.arguments, equals(["branch", "-d", "--", "session-001"]));
-      expect(inv.workingDirectory, equals(_projectId));
-    });
-
-    // deleteBranch (force: true)
-
-    test("deleteBranch(force: true): calls git branch -D <branch>", () async {
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.deleteBranch(
-        projectId: _projectId,
-        branchName: "session-001",
-        force: true,
-      );
-
-      expect(result, isTrue);
-      expect(processRunner.invocations, hasLength(1));
-      final inv = processRunner.invocations.first;
-      expect(inv.arguments, equals(["branch", "-D", "--", "session-001"]));
     });
   });
 }

@@ -17,13 +17,12 @@ void _showArchiveSheet({
     title: context.loc.sessionListArchiveConfirmTitle,
     builder: (_) => _ArchiveSessionSheet(
       session: session,
-      onConfirm: ({required bool deleteWorktree, required bool deleteBranch}) {
+      onConfirm: ({required bool deleteWorktree}) {
         _archiveSession(
           context: context,
           cubit: cubit,
           sessionId: session.id,
           deleteWorktree: deleteWorktree,
-          deleteBranch: deleteBranch,
         );
       },
     ),
@@ -35,14 +34,12 @@ Future<void> _archiveSession({
   required SessionListCubit cubit,
   required String sessionId,
   bool deleteWorktree = true,
-  bool deleteBranch = true,
   bool force = false,
 }) async {
   final loc = context.loc;
   final success = await cubit.archiveSession(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
-    deleteBranch: deleteBranch,
     force: force,
   );
   if (!context.mounted) return;
@@ -64,7 +61,6 @@ Future<void> _archiveSession({
       rejection: rejection,
       isDelete: false,
       deleteWorktree: deleteWorktree,
-      deleteBranch: deleteBranch,
     );
   } else {
     ScaffoldMessenger.of(context)
@@ -91,13 +87,12 @@ void _showDeleteSheet({
     title: context.loc.sessionListDeleteConfirmTitle,
     builder: (_) => _DeleteSessionSheet(
       session: session,
-      onConfirm: ({required bool deleteWorktree, required bool deleteBranch}) {
+      onConfirm: ({required bool deleteWorktree}) {
         _deleteSession(
           context: context,
           cubit: cubit,
           sessionId: session.id,
           deleteWorktree: deleteWorktree,
-          deleteBranch: deleteBranch,
         );
       },
     ),
@@ -109,14 +104,12 @@ Future<void> _deleteSession({
   required SessionListCubit cubit,
   required String sessionId,
   bool deleteWorktree = true,
-  bool deleteBranch = true,
   bool force = false,
 }) async {
   final loc = context.loc;
   final success = await cubit.deleteSession(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
-    deleteBranch: deleteBranch,
     force: force,
   );
   if (!context.mounted) return;
@@ -139,7 +132,6 @@ Future<void> _deleteSession({
       rejection: rejection,
       isDelete: true,
       deleteWorktree: deleteWorktree,
-      deleteBranch: deleteBranch,
     );
   } else {
     ScaffoldMessenger.of(context)

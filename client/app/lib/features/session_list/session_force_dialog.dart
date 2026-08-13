@@ -11,7 +11,6 @@ void _showForceDialog({
   required SessionCleanupRejection rejection,
   required bool isDelete,
   required bool deleteWorktree,
-  required bool deleteBranch,
 }) {
   final loc = context.loc;
 
@@ -60,7 +59,6 @@ void _showForceDialog({
                   cubit: cubit,
                   sessionId: sessionId,
                   deleteWorktree: deleteWorktree,
-                  deleteBranch: deleteBranch,
                   force: true,
                 );
               } else {
@@ -69,7 +67,6 @@ void _showForceDialog({
                   cubit: cubit,
                   sessionId: sessionId,
                   deleteWorktree: deleteWorktree,
-                  deleteBranch: deleteBranch,
                   force: true,
                 );
               }

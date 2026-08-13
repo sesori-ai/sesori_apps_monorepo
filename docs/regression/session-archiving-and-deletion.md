@@ -3,7 +3,7 @@
 ## Capability
 
 A session can be retired permanently as a read-only audit record, or removed
-entirely along with its transcript and, optionally, its worktree and branch.
+entirely along with its transcript and, optionally, its worktree.
 
 ## Required Behavior
 
@@ -19,9 +19,9 @@ entirely along with its transcript and, optionally, its worktree and branch.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
-  reconciliation. Worktree and branch cleanup happens only when requested;
-  unsafe cleanup (unstaged changes, branch mismatch, shared worktree) is refused
-  with its issues and proceeds only on a forced retry.
+  reconciliation. Worktree cleanup happens only when requested; unsafe cleanup
+  (unstaged changes or a shared worktree) is refused with its issues and proceeds
+  only on a forced retry. Session retirement never deletes a Git branch.
 - For a backend that advertises session close, deleting an active session first
   cancels its turn and pending input, waits within a bounded deadline for that
   session to settle, then closes it before local plugin state is removed. A
@@ -31,14 +31,13 @@ entirely along with its transcript and, optionally, its worktree and branch.
   A bounded but truncated scan uses OMP's global-ID resume fallback; only an
   exhausted scan is treated as idempotent not-found.
 - Cleanup safety rejection happens before mutation. Once cleanup starts, a later
-  visible failure can leave an earlier requested step complete, such as a removed
-  worktree with its branch still present; retry can finish the residue. The session
-  is deleted only after cleanup succeeds, and both flows serialize against
+  visible failure can leave the worktree already removed; an identical retry
+  accepts that missing worktree and completes session retirement. The session is
+  deleted only after cleanup succeeds, and both flows serialize against
   concurrent mutations of the same session family.
-- Selecting both worktree and branch cleanup authorizes removal of the
-  session-owned branch after worktree safety checks pass, including when that
-  branch has unmerged commits. Branch-only cleanup remains non-forcing unless the
-  user explicitly confirms a forced retry.
+- Published requests retain the retired `deleteBranch` field for mixed-version
+  compatibility. New clients always send `false`, and new bridges ignore either
+  value so old clients cannot cause branch deletion.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions.
 
@@ -48,7 +47,7 @@ entirely along with its transcript and, optionally, its worktree and branch.
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
 | L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree/branch cleanup, refusals presented to the user. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree cleanup, refusals presented to the user, branch retained. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
 
@@ -57,9 +56,9 @@ entirely along with its transcript and, optionally, its worktree and branch.
 Vary session shape: plain, with a dedicated worktree and branch, sharing a
 worktree with another active session, and a family with children. Vary state at
 retirement: idle, mid-turn, awaiting a request, or with its plugin stopped. Vary
-the entry surface and cleanup choices, and alternate archive-then-delete with
-direct deletion. Delete disposable sessions and remove any test worktrees and
-branches that remain after the asserted cleanup behavior.
+the entry surface and worktree-cleanup choice, and alternate archive-then-delete
+with direct deletion. Delete disposable sessions and remove any test worktrees
+and branches that remain after the asserted cleanup behavior.
 
 ## Failure Signals
 
@@ -72,8 +71,9 @@ branches that remain after the asserted cleanup behavior.
 - A close-capable backend is closed while its prompt is still settling, emits
   late events after local removal, or reports timeout/close failure as success.
 - Unsafe cleanup proceeds without a forced retry, a refusal omits the blocking
-  issues, partial cleanup is reported as success or deletes the session, a
-  concurrent mutation interleaves, or a client presents archiving as reversible.
+  issues, session retirement deletes a branch, partial cleanup is reported as
+  success or deletes the session, a concurrent mutation interleaves, or a client
+  presents archiving as reversible.
 
 ## Known Limitations
 

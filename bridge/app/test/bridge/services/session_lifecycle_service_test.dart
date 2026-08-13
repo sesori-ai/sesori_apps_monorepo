@@ -62,14 +62,12 @@ void main() {
         worktreePath: "/repo/.worktrees/session-001",
         branchName: "session-001",
         deleteWorktree: false,
-        deleteBranch: false,
         force: false,
       );
 
       expect(result, isA<CleanupSuccess>());
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
     });
 
     test("missing root binding is an explicit not-found failure", () async {
@@ -77,7 +75,6 @@ void main() {
         service.cleanupAlreadyReserved(
           sessionId: "missing",
           deleteWorktree: true,
-          deleteBranch: true,
           force: false,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
@@ -85,7 +82,6 @@ void main() {
 
       expect(worktreeService.checkCallCount, isZero);
       expect(worktreeService.removeCallCount, isZero);
-      expect(worktreeService.deleteBranchCallCount, isZero);
     });
 
     test("plugin mismatch is rejected before archive cleanup or plugin I/O", () async {
@@ -109,7 +105,6 @@ void main() {
           sessionId: "s-mismatch",
           archived: true,
           deleteWorktree: true,
-          deleteBranch: true,
           force: true,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
@@ -117,7 +112,6 @@ void main() {
 
       expect(worktreeService.checkCallCount, isZero);
       expect(worktreeService.removeCallCount, isZero);
-      expect(worktreeService.deleteBranchCallCount, isZero);
     });
 
     test("clean worktree removes worktree and returns success", () async {
@@ -130,7 +124,6 @@ void main() {
         worktreePath: "/repo/.worktrees/session-002",
         branchName: "session-002",
         deleteWorktree: true,
-        deleteBranch: false,
         force: false,
       );
 
@@ -138,7 +131,6 @@ void main() {
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-002"));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
     });
 
     test("failed worktree removal throws instead of reporting success", () async {
@@ -157,7 +149,6 @@ void main() {
           worktreePath: worktree.path,
           branchName: "session-002-failed",
           deleteWorktree: true,
-          deleteBranch: false,
           force: false,
         ),
         throwsA(
@@ -168,48 +159,6 @@ void main() {
           ),
         ),
       );
-    });
-
-    test("identical retry continues branch cleanup after worktree was removed", () async {
-      worktreeService.safetyResult = WorktreeSafe();
-      worktreeService.deleteBranchResult = false;
-      final worktree = Directory.systemTemp.createTempSync("cleanup_retry_");
-      addTearDown(() {
-        if (worktree.existsSync()) worktree.deleteSync(recursive: true);
-      });
-
-      await expectLater(
-        () => _cleanup(
-          service: service,
-          sessionRepository: sessionRepository,
-          sessionId: "s2-retry",
-          worktreePath: worktree.path,
-          branchName: "session-002-retry",
-          deleteWorktree: true,
-          deleteBranch: true,
-          force: false,
-        ),
-        throwsA(isA<SessionCleanupFailedException>()),
-      );
-      worktree.deleteSync(recursive: true);
-      worktreeService.removeResult = false;
-      worktreeService.deleteBranchResult = true;
-
-      final retryResult = await _cleanup(
-        service: service,
-        sessionRepository: sessionRepository,
-        sessionId: "s2-retry",
-        worktreePath: worktree.path,
-        branchName: "session-002-retry",
-        deleteWorktree: true,
-        deleteBranch: true,
-        force: false,
-      );
-
-      expect(retryResult, isA<CleanupSuccess>());
-      expect(worktreeService.removeCallCount, equals(2));
-      expect(worktreeService.deleteBranchCallCount, equals(2));
-      expect(worktreeService.lastDeleteBranchForce, isTrue);
     });
 
     test("dirty worktree without force rejects with mapped issues", () async {
@@ -226,7 +175,6 @@ void main() {
         worktreePath: "/repo/.worktrees/session-003",
         branchName: "session-003",
         deleteWorktree: true,
-        deleteBranch: false,
         force: false,
       );
 
@@ -241,7 +189,6 @@ void main() {
         ),
       );
       expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
     });
 
     test("dirty worktree with force skips safety check and succeeds", () async {
@@ -256,7 +203,6 @@ void main() {
         worktreePath: "/repo/.worktrees/session-004",
         branchName: "session-004",
         deleteWorktree: true,
-        deleteBranch: false,
         force: true,
       );
 
@@ -264,82 +210,6 @@ void main() {
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
-    });
-
-    test("delete worktree and branch runs both operations", () async {
-      worktreeService.safetyResult = WorktreeSafe();
-
-      final result = await _cleanup(
-        service: service,
-        sessionRepository: sessionRepository,
-        sessionId: "s5",
-        worktreePath: "/repo/.worktrees/session-005",
-        branchName: "session-005",
-        deleteWorktree: true,
-        deleteBranch: true,
-        force: false,
-      );
-
-      expect(result, isA<CleanupSuccess>());
-      expect(worktreeService.checkCallCount, equals(1));
-      expect(worktreeService.removeCallCount, equals(1));
-      expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchForce, isTrue);
-    });
-
-    test("failed branch deletion throws instead of reporting success", () async {
-      worktreeService.deleteBranchResult = false;
-
-      await expectLater(
-        () => _cleanup(
-          service: service,
-          sessionRepository: sessionRepository,
-          sessionId: "s5-failed",
-          worktreePath: "/repo/.worktrees/session-005-failed",
-          branchName: "session-005-failed",
-          deleteWorktree: false,
-          deleteBranch: true,
-          force: false,
-        ),
-        throwsA(
-          isA<SessionCleanupFailedException>().having(
-            (error) => error.operation,
-            "operation",
-            SessionCleanupOperation.deleteBranch,
-          ),
-        ),
-      );
-    });
-
-    test("identical retry accepts a branch that was already deleted", () async {
-      final firstResult = await _cleanup(
-        service: service,
-        sessionRepository: sessionRepository,
-        sessionId: "s5-retry",
-        worktreePath: "/repo/.worktrees/session-005-retry",
-        branchName: "session-005-retry",
-        deleteWorktree: false,
-        deleteBranch: true,
-        force: false,
-      );
-      expect(firstResult, isA<CleanupSuccess>());
-
-      worktreeService.deleteBranchResult = false;
-      worktreeService.branchExistsResult = false;
-      final retryResult = await _cleanup(
-        service: service,
-        sessionRepository: sessionRepository,
-        sessionId: "s5-retry",
-        worktreePath: "/repo/.worktrees/session-005-retry",
-        branchName: "session-005-retry",
-        deleteWorktree: false,
-        deleteBranch: true,
-        force: false,
-      );
-
-      expect(retryResult, isA<CleanupSuccess>());
-      expect(worktreeService.deleteBranchCallCount, equals(2));
-      expect(worktreeService.branchExistsCallCount, equals(1));
     });
 
     test("shared worktree rejected when force=false", () async {
@@ -352,7 +222,6 @@ void main() {
         worktreePath: "/repo/.worktrees/session-006",
         branchName: "session-006",
         deleteWorktree: true,
-        deleteBranch: true,
         force: false,
       );
 
@@ -362,7 +231,6 @@ void main() {
       expect(sessionRepository.hasSharingCallCount, equals(1));
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
     });
 
     test("force=true bypasses shared-worktree check and proceeds with cleanup", () async {
@@ -375,7 +243,6 @@ void main() {
         worktreePath: "/repo/.worktrees/session-006b",
         branchName: "session-006b",
         deleteWorktree: true,
-        deleteBranch: true,
         force: true,
       );
 
@@ -384,7 +251,6 @@ void main() {
       expect(result, isA<CleanupSuccess>());
       expect(sessionRepository.hasSharingCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
-      expect(worktreeService.deleteBranchCallCount, equals(1));
     });
 
     test("no rejection when no other sessions share worktree", () async {
@@ -398,7 +264,6 @@ void main() {
         worktreePath: "/repo/.worktrees/session-007",
         branchName: "session-007",
         deleteWorktree: true,
-        deleteBranch: false,
         force: false,
       );
 
@@ -419,14 +284,12 @@ void main() {
         worktreePath: "/repo/.worktrees/session-008",
         branchName: "session-008",
         deleteWorktree: true,
-        deleteBranch: true,
         force: false,
       );
 
       expect(result, isA<CleanupSuccess>());
       expect(sessionRepository.hasSharingCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
-      expect(worktreeService.deleteBranchCallCount, equals(1));
     });
   });
 
@@ -485,7 +348,6 @@ void main() {
         sessionId: "root-session",
         archived: true,
         deleteWorktree: false,
-        deleteBranch: false,
         force: false,
       );
       await Future<void>.delayed(Duration.zero);
@@ -509,7 +371,6 @@ void main() {
           sessionId: "root-session",
           archived: false,
           deleteWorktree: false,
-          deleteBranch: false,
           force: false,
         ),
         throwsA(
@@ -531,7 +392,6 @@ void main() {
         sessionId: "root-session",
         archived: false,
         deleteWorktree: false,
-        deleteBranch: false,
         force: false,
       );
 
@@ -549,7 +409,6 @@ Future<CleanupResult> _cleanup({
   required String worktreePath,
   required String branchName,
   required bool deleteWorktree,
-  required bool deleteBranch,
   required bool force,
 }) {
   sessionRepository.storedSession = StoredSession(
@@ -569,7 +428,6 @@ Future<CleanupResult> _cleanup({
   return service.cleanupAlreadyReserved(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
-    deleteBranch: deleteBranch,
     force: force,
   );
 }
@@ -662,17 +520,12 @@ class _FakeSessionRepository() implements SessionRepository {
 class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
-  bool deleteBranchResult = true;
-  bool branchExistsResult = true;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
-  int deleteBranchCallCount = 0;
-  int branchExistsCallCount = 0;
 
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
-  bool? lastDeleteBranchForce;
 
   this
     : super(
@@ -706,26 +559,6 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
     lastRemoveWorktreePath = worktreePath;
     lastRemoveForce = force;
     return removeResult;
-  }
-
-  @override
-  Future<bool> deleteBranch({
-    required String projectId,
-    required String branchName,
-    required bool force,
-  }) async {
-    deleteBranchCallCount++;
-    lastDeleteBranchForce = force;
-    return deleteBranchResult;
-  }
-
-  @override
-  Future<bool> branchExists({
-    required String projectId,
-    required String branchName,
-  }) async {
-    branchExistsCallCount++;
-    return branchExistsResult;
   }
 }
 

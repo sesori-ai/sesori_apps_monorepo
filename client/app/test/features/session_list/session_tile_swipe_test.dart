@@ -112,7 +112,6 @@ void main() {
       () => cubit.archiveSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     );
@@ -120,7 +119,6 @@ void main() {
       () => cubit.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     );
@@ -134,7 +132,6 @@ void main() {
       () => cubit.archiveSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async => true);
@@ -151,7 +148,6 @@ void main() {
       () => cubit.archiveSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     );
@@ -163,7 +159,6 @@ void main() {
       () => cubit.archiveSession(
         sessionId: session.id,
         deleteWorktree: false,
-        deleteBranch: false,
         force: false,
       ),
     ).called(1);
@@ -178,7 +173,6 @@ void main() {
       () => cubit.archiveSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async => true);
@@ -195,7 +189,6 @@ void main() {
       () => cubit.archiveSession(
         sessionId: session.id,
         deleteWorktree: false,
-        deleteBranch: false,
         force: false,
       ),
     ).called(1);
@@ -231,7 +224,6 @@ void main() {
       () => cubit.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     );
@@ -253,7 +245,6 @@ void main() {
       () => cubit.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
-        deleteBranch: any(named: "deleteBranch"),
         force: any(named: "force"),
       ),
     );

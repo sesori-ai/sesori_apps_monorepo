@@ -194,7 +194,6 @@ class const _TestDeleteSheet({required final Session session, required final Ses
 
 class _TestDeleteSheetState() extends State<_TestDeleteSheet> {
   bool _deleteWorktree = true;
-  bool _deleteBranch = true;
 
   @override
   Widget build(BuildContext context) {
@@ -212,12 +211,6 @@ class _TestDeleteSheetState() extends State<_TestDeleteSheet> {
             onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
             title: Text(loc.sessionListDeleteWorktreeCheckbox),
           ),
-          CheckboxListTile(
-            key: const Key("delete-branch-checkbox"),
-            value: _deleteBranch,
-            onChanged: (v) => setState(() => _deleteBranch = v ?? false),
-            title: Text(loc.sessionListDeleteBranchCheckbox),
-          ),
           FilledButton(
             key: const Key("confirm-delete-button"),
             onPressed: () {
@@ -225,7 +218,6 @@ class _TestDeleteSheetState() extends State<_TestDeleteSheet> {
               widget.cubit.deleteSession(
                 sessionId: widget.session.id,
                 deleteWorktree: _deleteWorktree,
-                deleteBranch: _deleteBranch,
                 force: false,
               );
             },
@@ -245,7 +237,6 @@ class const _TestArchiveSheet({required final Session session, required final Se
 
 class _TestArchiveSheetState() extends State<_TestArchiveSheet> {
   bool _deleteWorktree = true;
-  bool _deleteBranch = true;
 
   @override
   Widget build(BuildContext context) {
@@ -263,12 +254,6 @@ class _TestArchiveSheetState() extends State<_TestArchiveSheet> {
             onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
             title: Text(loc.sessionListDeleteWorktreeCheckbox),
           ),
-          CheckboxListTile(
-            key: const Key("archive-branch-checkbox"),
-            value: _deleteBranch,
-            onChanged: (v) => setState(() => _deleteBranch = v ?? false),
-            title: Text(loc.sessionListDeleteBranchCheckbox),
-          ),
           FilledButton(
             key: const Key("confirm-archive-button"),
             onPressed: () {
@@ -276,7 +261,6 @@ class _TestArchiveSheetState() extends State<_TestArchiveSheet> {
               widget.cubit.archiveSession(
                 sessionId: widget.session.id,
                 deleteWorktree: _deleteWorktree,
-                deleteBranch: _deleteBranch,
                 force: false,
               );
             },
@@ -371,7 +355,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group("Delete bottom sheet", () {
-    testWidgets("shows checkboxes for delete worktree and branch", (tester) async {
+    testWidgets("shows delete worktree checkbox", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
         SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
@@ -387,9 +371,7 @@ void main() {
       await tester.tap(find.text("Delete"));
       await tester.pumpAndSettle();
 
-      // Verify checkboxes appear
       expect(find.text("Delete worktree"), findsOneWidget);
-      expect(find.text("Delete branch"), findsOneWidget);
       expect(find.text("Delete session?"), findsOneWidget);
     });
 
@@ -407,15 +389,10 @@ void main() {
       await tester.tap(find.text("Delete"));
       await tester.pumpAndSettle();
 
-      // Both checkboxes should be checked by default
       final worktreeCheckbox = tester.widget<CheckboxListTile>(
         find.byKey(const Key("delete-worktree-checkbox")),
       );
-      final branchCheckbox = tester.widget<CheckboxListTile>(
-        find.byKey(const Key("delete-branch-checkbox")),
-      );
       expect(worktreeCheckbox.value, isTrue);
-      expect(branchCheckbox.value, isTrue);
     });
 
     testWidgets("unchecking worktree checkbox and confirming passes false", (tester) async {
@@ -427,7 +404,6 @@ void main() {
         () => mockCubit.deleteSession(
           sessionId: any(named: "sessionId"),
           deleteWorktree: any(named: "deleteWorktree"),
-          deleteBranch: any(named: "deleteBranch"),
           force: any(named: "force"),
         ),
       ).thenAnswer((_) async => true);
@@ -452,7 +428,6 @@ void main() {
         () => mockCubit.deleteSession(
           sessionId: session.id,
           deleteWorktree: false,
-          deleteBranch: true,
           force: false,
         ),
       ).called(1);
@@ -480,7 +455,6 @@ void main() {
 
       expect(find.text("Archive session?"), findsOneWidget);
       expect(find.text("Delete worktree"), findsOneWidget);
-      expect(find.text("Delete branch"), findsOneWidget);
     });
 
     testWidgets("archive confirm calls cubit with checkbox values", (tester) async {
@@ -492,7 +466,6 @@ void main() {
         () => mockCubit.archiveSession(
           sessionId: any(named: "sessionId"),
           deleteWorktree: any(named: "deleteWorktree"),
-          deleteBranch: any(named: "deleteBranch"),
           force: any(named: "force"),
         ),
       ).thenAnswer((_) async => true);
@@ -505,8 +478,7 @@ void main() {
       await tester.tap(find.text("Archive"));
       await tester.pumpAndSettle();
 
-      // Uncheck branch
-      await tester.tap(find.byKey(const Key("archive-branch-checkbox")));
+      await tester.tap(find.byKey(const Key("archive-worktree-checkbox")));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key("confirm-archive-button")));
@@ -515,8 +487,7 @@ void main() {
       verify(
         () => mockCubit.archiveSession(
           sessionId: session.id,
-          deleteWorktree: true,
-          deleteBranch: false,
+          deleteWorktree: false,
           force: false,
         ),
       ).called(1);

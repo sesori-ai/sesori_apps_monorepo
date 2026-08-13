@@ -32,11 +32,13 @@ class UpdateSessionArchiveStatusHandler({
       throw buildErrorResponse(request, 400, "empty session id");
     }
     try {
+      // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients still send
+      // deleteBranch. It is intentionally ignored; remove the field from the
+      // request model when v1.7.1 clients are unsupported.
       final update = await _sessionLifecycleService.updateArchiveStatus(
         sessionId: sessionId,
         archived: body.archived,
         deleteWorktree: body.deleteWorktree,
-        deleteBranch: body.deleteBranch,
         force: body.force,
       );
       final session = update.session;

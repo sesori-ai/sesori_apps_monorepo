@@ -346,7 +346,6 @@ class SessionListCubit({
   Future<bool> archiveSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     if (state is! SessionListLoaded) return false;
@@ -376,7 +375,6 @@ class SessionListCubit({
       response = await _sessionService.archiveSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
         force: force,
       );
     } on SessionCleanupRejectedException catch (error) {
@@ -417,7 +415,6 @@ class SessionListCubit({
   Future<bool> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
-    required bool deleteBranch,
     required bool force,
   }) async {
     if (state is! SessionListLoaded) return false;
@@ -441,7 +438,6 @@ class SessionListCubit({
       response = await _sessionService.deleteSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
         force: force,
       );
     } on SessionCleanupRejectedException catch (error) {
