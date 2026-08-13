@@ -354,7 +354,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Privacy-safe remote failures omit paths, transcript payloads, summaries, raw
   assistant errors, and process details while local logs retain causes, stacks,
   and actionable resolved paths.
-- `dart pub get`, `dart run build_runner build`, `dart test` (128 tests),
+- `dart pub get`, `dart run build_runner build`, `dart test` (131 tests),
   `dart analyze --fatal-infos`, and `git diff --check`: pass.
 - No client/bridge wire-contract, database, persisted-data mutation, analytics,
   or client-UI change; Pi remains app-invisible until Step 18.
