@@ -180,7 +180,9 @@ class _PromptInputState() extends State<PromptInput> {
   bool _isCancelInFlight = false;
 
   StreamSubscription<VoiceTranscriptionPreview>? _voicePreviewSub;
-  VoiceTranscriptionPreview _voicePreview = _emptyVoicePreview;
+  final ValueNotifier<VoiceTranscriptionPreview> _voicePreview = ValueNotifier<VoiceTranscriptionPreview>(
+    _emptyVoicePreview,
+  );
   int? _voicePreviewInteractionId;
 
   /// Monotonic id of the current voice interaction, bumped on every start and
@@ -247,6 +249,7 @@ class _PromptInputState() extends State<PromptInput> {
       _voiceService.cancelRecording();
     }
     _cancelDragProgress.dispose();
+    _voicePreview.dispose();
     _controller.dispose();
     _textScrollController.dispose();
     _focusNode.dispose();
@@ -687,15 +690,12 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _setVoicePreview(VoiceTranscriptionPreview preview) {
-    if (_voicePreview.confirmedText == preview.confirmedText &&
-        _voicePreview.provisionalText == preview.provisionalText) {
+    final currentPreview = _voicePreview.value;
+    if (currentPreview.confirmedText == preview.confirmedText &&
+        currentPreview.provisionalText == preview.provisionalText) {
       return;
     }
-    if (mounted) {
-      _updateComposerState(update: () => _voicePreview = preview);
-    } else {
-      _voicePreview = preview;
-    }
+    _voicePreview.value = preview;
   }
 
   void _stopVoicePreview({required bool clearPreview}) {
@@ -703,12 +703,12 @@ class _PromptInputState() extends State<PromptInput> {
     _voicePreviewSub = null;
     _voicePreviewInteractionId = null;
     if (clearPreview) {
-      _voicePreview = _emptyVoicePreview;
+      _setVoicePreview(_emptyVoicePreview);
     }
   }
 
-  bool get _hasVoicePreview =>
-      _voicePreview.confirmedText.isNotEmpty || _voicePreview.provisionalText.isNotEmpty;
+  bool _hasVoicePreview(VoiceTranscriptionPreview preview) =>
+      preview.confirmedText.isNotEmpty || preview.provisionalText.isNotEmpty;
 
   Future<void> _stopAndTranscribe() async {
     // The upload can outlive this interaction (a cancel settles the state
@@ -878,7 +878,7 @@ class _PromptInputState() extends State<PromptInput> {
       update: () {
         _voiceState = _VoiceState.idle;
         _pinnedVoiceLayout = null;
-        _voicePreview = _emptyVoicePreview;
+        _setVoicePreview(_emptyVoicePreview);
         _cancelDragProgress.value = 0;
       },
     );
@@ -1814,13 +1814,19 @@ class _PromptInputState() extends State<PromptInput> {
       _VoiceState.recording => KeyedSubtree(
         key: const ValueKey("voice-slot-recording"),
         child: Center(
-          child: _hasVoicePreview ? _buildVoicePreview(context) : _buildWaveform(context),
+          child: _buildVoiceRealtimeSlot(
+            context,
+            fallbackBuilder: _buildWaveform,
+          ),
         ),
       ),
       _VoiceState.transcribing => KeyedSubtree(
         key: const ValueKey("voice-slot-transcribing"),
         child: Center(
-          child: _hasVoicePreview ? _buildVoicePreview(context) : _buildTranscribingShimmer(context),
+          child: _buildVoiceRealtimeSlot(
+            context,
+            fallbackBuilder: _buildTranscribingShimmer,
+          ),
         ),
       ),
     };
@@ -1828,6 +1834,25 @@ class _PromptInputState() extends State<PromptInput> {
     return SizedBox(
       height: height,
       child: AnimatedSwitcher(duration: _morphDuration, child: child),
+    );
+  }
+
+  Widget _buildVoiceRealtimeSlot(
+    BuildContext context, {
+    required Widget Function(BuildContext context) fallbackBuilder,
+  }) {
+    return ValueListenableBuilder<VoiceTranscriptionPreview>(
+      valueListenable: _voicePreview,
+      builder: (context, preview, _) {
+        final hasPreview = _hasVoicePreview(preview);
+        return AnimatedSwitcher(
+          duration: _morphDuration,
+          child: KeyedSubtree(
+            key: ValueKey(hasPreview ? "voice-preview" : "voice-fallback"),
+            child: hasPreview ? _buildVoicePreview(context, preview: preview) : fallbackBuilder(context),
+          ),
+        );
+      },
     );
   }
 
@@ -1844,9 +1869,9 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  Widget _buildVoicePreview(BuildContext context) {
+  Widget _buildVoicePreview(BuildContext context, {required VoiceTranscriptionPreview preview}) {
     final prego = context.prego;
-    final stablePreviewText = _voicePreview.confirmedText.trim();
+    final stablePreviewText = preview.confirmedText.trim();
 
     return Semantics(
       liveRegion: stablePreviewText.isNotEmpty,
@@ -1859,13 +1884,13 @@ class _PromptInputState() extends State<PromptInput> {
           text: TextSpan(
             children: [
               TextSpan(
-                text: _voicePreview.confirmedText,
+                text: preview.confirmedText,
                 style: prego.textTheme.textMd.regular.copyWith(
                   color: prego.colors.textPrimary,
                 ),
               ),
               TextSpan(
-                text: _voicePreview.provisionalText,
+                text: preview.provisionalText,
                 style: prego.textTheme.textMd.regular.copyWith(
                   color: prego.colors.textSecondary,
                 ),

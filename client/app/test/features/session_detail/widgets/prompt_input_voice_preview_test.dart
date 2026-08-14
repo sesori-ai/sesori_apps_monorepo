@@ -22,6 +22,14 @@ class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
 
+class const _BuildCounter({required final VoidCallback onBuild}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    onBuild();
+    return const SizedBox.shrink();
+  }
+}
+
 const _emptyPreview = VoiceTranscriptionPreview(confirmedText: "", provisionalText: "");
 
 void main() {
@@ -72,7 +80,7 @@ void main() {
     await GetIt.instance.reset();
   });
 
-  Widget buildHarness({String draftIdentity = "draft-1"}) {
+  Widget buildHarness({String draftIdentity = "draft-1", Widget? header}) {
     return BlocProvider<ChatInputModeCubit>(
       create: (_) => StubChatInputModeCubit(),
       child: MaterialApp(
@@ -96,7 +104,7 @@ void main() {
               onDraftCleared: () {},
               onAbort: () {},
               surfaceStyleController: surfaceStyleController,
-              header: null,
+              header: header,
               composerHeader: null,
               availableCommands: const [],
               stagedCommand: null,
@@ -174,6 +182,39 @@ void main() {
       ),
       findsNothing,
     );
+
+    await gesture.up();
+    await tester.pump();
+    stopCompleter.complete("stable draft");
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("preview updates leave stable composer siblings unrebuilt", (tester) async {
+    final stopCompleter = Completer<String>();
+    var headerBuilds = 0;
+    when(
+      () => voiceTranscriptionService.startRecording(projectId: "project-1"),
+    ).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(
+      buildHarness(
+        header: _BuildCounter(onBuild: () => headerBuilds++),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final gesture = await startVoiceHold(tester);
+    final buildsAfterRecordingStart = headerBuilds;
+    previewController.add(const VoiceTranscriptionPreview(confirmedText: "stable ", provisionalText: "dra"));
+    await tester.pump();
+    previewController.add(const VoiceTranscriptionPreview(confirmedText: "stable ", provisionalText: "draft"));
+    await tester.pump();
+
+    expect(headerBuilds, buildsAfterRecordingStart);
+    expect(find.textContaining("stable", findRichText: true), findsOneWidget);
+    expect(find.textContaining("draft", findRichText: true), findsOneWidget);
+    expect(draftChanges, isEmpty);
 
     await gesture.up();
     await tester.pump();
