@@ -21,6 +21,8 @@ explicit restart, and the connection states the app presents.
   once and can never later authenticate.
 - One live bridge per account holds the slot; a second start resolves ownership
   explicitly, and an explicit restart hands off to its successor cleanly.
+- Bridge registration uses a stable machine name. On macOS, transient
+  network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
   disconnected, and returns to connected when the bridge is back.
 - The configured sleep policy applies at standalone startup and releases its wake lock on

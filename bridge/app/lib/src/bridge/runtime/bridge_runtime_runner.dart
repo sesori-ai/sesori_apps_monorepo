@@ -323,6 +323,11 @@ class const BridgeRuntimeRunner._() {
     );
     shutdownCoordinator.add(disposable: httpClient.close);
 
+    final machineName = await resolveLocalMachineName(
+      isMacOS: io.Platform.isMacOS,
+      processRunner: processRunner,
+      localHostname: _localHostname(),
+    );
     final bridgeClientType = _bridgeClientType();
     final runtimeAuthService = BridgeRuntimeAuthService(
       loginEmailRepository: LoginEmailRepository(
@@ -334,7 +339,10 @@ class const BridgeRuntimeRunner._() {
           authBackendUrl: options.authBackendUrl,
           client: httpClient,
           clientType: bridgeClientType,
-          device: _bridgeDeviceInfo(clientType: bridgeClientType),
+          device: _bridgeDeviceInfo(
+            clientType: bridgeClientType,
+            machineName: machineName,
+          ),
         ),
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
@@ -414,6 +422,7 @@ class const BridgeRuntimeRunner._() {
           authBackendUrl: options.authBackendUrl,
           tokenRefresher: controlChannelTokenService,
           bridgeIdStorage: bridgeIdStorage,
+          machineName: machineName,
         );
         shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
         // Handles the GUI's `unregister_and_exit` logout command: unregister the
@@ -590,6 +599,7 @@ class const BridgeRuntimeRunner._() {
           authBackendUrl: options.authBackendUrl,
           tokenRefresher: tokenRefresher,
           bridgeIdStorage: bridgeIdStorage,
+          machineName: machineName,
         );
         shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
       }
@@ -1122,6 +1132,7 @@ class const BridgeRuntimeRunner._() {
     required String authBackendUrl,
     required TokenRefresher tokenRefresher,
     required BridgeIdStorage bridgeIdStorage,
+    required String machineName,
   }) {
     return BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
@@ -1132,11 +1143,7 @@ class const BridgeRuntimeRunner._() {
       ),
       tokenRefresher: tokenRefresher,
       bridgeIdStorage: bridgeIdStorage,
-      // Safe helper (not io.Platform.localHostname directly): hostname
-      // resolution can throw a SocketException in restricted/containerized
-      // environments; degrade to "" (which BridgeRegistrationService clamps to
-      // "sesori-bridge") instead of crashing startup.
-      hostName: _localHostname(),
+      hostName: machineName,
       platform: BridgeRegistrationService.currentPlatformName(),
     );
   }
@@ -1359,10 +1366,13 @@ class const BridgeRuntimeRunner._() {
         PlatformOs.linux => AuthClientType.bridgeLinux,
       };
 
-  static DeviceInfo _bridgeDeviceInfo({required AuthClientType clientType}) {
+  static DeviceInfo _bridgeDeviceInfo({
+    required AuthClientType clientType,
+    required String machineName,
+  }) {
     return const AuthDeviceInfoBuilder().build(
       clientType: clientType,
-      detectedName: _localHostname(),
+      detectedName: machineName,
       osVersion: const OsVersionFormatter().format(
         operatingSystem: io.Platform.operatingSystem,
         operatingSystemVersion: io.Platform.operatingSystemVersion,
@@ -1373,8 +1383,9 @@ class const BridgeRuntimeRunner._() {
   }
 
   /// `Platform.localHostname` can throw (e.g. `SocketException` when hostname
-  /// resolution fails in restricted/containerized environments). The descriptor
-  /// is best-effort, so degrade to an empty name and let the caller fall back.
+  /// resolution fails in restricted/containerized environments). Machine
+  /// identity is best-effort, so degrade to an empty name and let callers fall
+  /// back.
   static String _localHostname() {
     try {
       return io.Platform.localHostname;
@@ -1382,6 +1393,45 @@ class const BridgeRuntimeRunner._() {
       Log.w("Failed to read localHostname for the device descriptor", error);
       return "";
     }
+  }
+
+  /// Resolves the stable machine name used for OAuth and bridge registration.
+  ///
+  /// macOS can temporarily make `gethostname()` equal a DHCP-assigned IP when
+  /// its explicit `HostName` is unset. `LocalHostName` is the stable Bonjour
+  /// machine identity and does not change with the active network. Other
+  /// platforms retain Dart's `gethostname()` value.
+  @visibleForTesting
+  static Future<String> resolveLocalMachineName({
+    required bool isMacOS,
+    required ProcessRunner processRunner,
+    required String localHostname,
+  }) async {
+    if (!isMacOS) return localHostname;
+
+    try {
+      final result = await processRunner.run(
+        "/usr/sbin/scutil",
+        const ["--get", "LocalHostName"],
+        timeout: const Duration(seconds: 2),
+      );
+      final stableName = result.stdout.toString().trim();
+      if (result.exitCode == 0 && stableName.isNotEmpty) return stableName;
+      Log.w(
+        "Failed to read macOS LocalHostName (exit code ${result.exitCode}); using fallback hostname",
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Failed to read macOS LocalHostName; using fallback hostname",
+        error,
+        stackTrace,
+      );
+    }
+
+    final fallback = localHostname.trim();
+    if (io.InternetAddress.tryParse(fallback) == null) return fallback;
+    Log.w("Ignoring numeric macOS fallback hostname");
+    return "";
   }
 
   /// Reads `/etc/os-release` (Linux only) so [OsVersionFormatter] can derive the
