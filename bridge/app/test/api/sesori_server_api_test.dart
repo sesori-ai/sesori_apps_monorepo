@@ -103,7 +103,7 @@ void main() {
 
       final response = await api.generateSessionMetadata(
         request: const GenerateSessionMetadataRequest(firstMessage: "Create login flow"),
-        shutdownSignal: Completer<void>().future,
+        abortSignal: SesoriServerRequestAbortSignal(),
       );
 
       expect(response.title, equals("Generated title"));
@@ -132,7 +132,7 @@ void main() {
 
       final response = await api.generateSessionMetadata(
         request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-        shutdownSignal: Completer<void>().future,
+        abortSignal: SesoriServerRequestAbortSignal(),
       );
 
       expect(response.title, equals("Retried"));
@@ -158,7 +158,7 @@ void main() {
         await expectLater(
           api.generateSessionMetadata(
             request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-            shutdownSignal: Completer<void>().future,
+            abortSignal: SesoriServerRequestAbortSignal(),
           ),
           throwsA(
             isA<SesoriServerApiException>()
@@ -182,7 +182,7 @@ void main() {
       await expectLater(
         api.generateSessionMetadata(
           request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-          shutdownSignal: Completer<void>().future,
+          abortSignal: SesoriServerRequestAbortSignal(),
         ),
         throwsA(
           isA<SesoriServerApiResponseException>()
@@ -205,7 +205,7 @@ void main() {
       await expectLater(
         api.generateSessionMetadata(
           request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-          shutdownSignal: Completer<void>().future,
+          abortSignal: SesoriServerRequestAbortSignal(),
         ),
         throwsA(isA<http.RequestAbortedException>()),
       );
@@ -214,7 +214,7 @@ void main() {
 
     test("actively aborts metadata request on shutdown", () async {
       final client = _AbortAwareClient();
-      final shutdown = Completer<void>();
+      final abortSignal = SesoriServerRequestAbortSignal();
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
         client: client,
@@ -224,12 +224,33 @@ void main() {
 
       final response = api.generateSessionMetadata(
         request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-        shutdownSignal: shutdown.future,
+        abortSignal: abortSignal,
       );
-      shutdown.complete();
+      await client.sendStarted.future;
+      abortSignal.abort();
 
       await expectLater(response, throwsA(isA<http.RequestAbortedException>()));
       expect(client.abortObserved, isTrue);
+    });
+
+    test("releases shutdown listener after completed response", () async {
+      final client = _ImmediateClient(responseBody: '{"title":"Generated title"}');
+      final abortSignal = SesoriServerRequestAbortSignal();
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: client,
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: _FakeTokenRefresher(token: "token"),
+      );
+
+      await api.generateSessionMetadata(
+        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        abortSignal: abortSignal,
+      );
+      abortSignal.abort();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.abortObserved, isFalse);
     });
   });
 }
@@ -248,10 +269,12 @@ class _FakeTokenRefresher({required final String token, final String? refreshedT
 
 class _AbortAwareClient() extends http.BaseClient {
   bool abortObserved = false;
+  final Completer<void> sendStarted = Completer<void>();
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final abortable = request as http.Abortable;
+    sendStarted.complete();
     await abortable.abortTrigger!;
     abortObserved = true;
     throw http.RequestAbortedException(request.url);

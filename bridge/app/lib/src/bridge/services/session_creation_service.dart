@@ -16,7 +16,6 @@ class SessionCreationService({
   required final SessionMutationDispatcher _sessionMutationDispatcher,
 }) {
   final Set<Future<void>> _lateTitleWork = <Future<void>>{};
-  final Completer<void> _shutdownSignal = Completer<void>();
   bool _acceptingLateTitles = true;
   Future<void>? _drainFuture;
 
@@ -86,7 +85,7 @@ class SessionCreationService({
   void beginShutdown() {
     if (!_acceptingLateTitles) return;
     _acceptingLateTitles = false;
-    _shutdownSignal.complete();
+    _sessionMetadataRepository.beginShutdown();
   }
 
   Future<void> drain() => _drainFuture ??= _drain();
@@ -265,11 +264,10 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
     try {
       final title = await _sessionMetadataRepository.generateTitle(
         firstMessage: firstText,
-        shutdownSignal: _shutdownSignal.future,
       );
       await _sessionMutationDispatcher.applyGeneratedTitle(sessionId: session.id, title: title);
     } on SessionMetadataRequestAbortedException catch (error) {
-      if (_shutdownSignal.isCompleted) return;
+      if (!_acceptingLateTitles) return;
       Log.w(
         "Generated-title request was aborted for session ${session.id}",
         error.innerError,

@@ -572,7 +572,10 @@ class FakeSessionMetadataRepository() implements SessionMetadataRepository {
   String? lastGenerateMessage;
 
   @override
-  Future<String> generateTitle({required String firstMessage, required Future<void> shutdownSignal}) async {
+  void beginShutdown() {}
+
+  @override
+  Future<String> generateTitle({required String firstMessage}) async {
     lastGenerateMessage = firstMessage;
     return generateResult ?? (throw StateError("metadata unavailable"));
   }

@@ -399,13 +399,19 @@ class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
   Future<void>? generateGate;
   bool abortOnShutdown = false;
   Completer<void>? shutdownObserved;
+  final Completer<void> _shutdown = Completer<void>();
 
   @override
-  Future<String> generateTitle({required String firstMessage, required Future<void> shutdownSignal}) async {
+  void beginShutdown() {
+    if (!_shutdown.isCompleted) _shutdown.complete();
+  }
+
+  @override
+  Future<String> generateTitle({required String firstMessage}) async {
     generateCalls++;
     if (generateStarted case final started? when !started.isCompleted) started.complete();
     if (abortOnShutdown) {
-      await shutdownSignal;
+      await _shutdown.future;
       shutdownObserved?.complete();
       throw SessionMetadataRequestAbortedException(
         innerError: StateError("metadata request aborted"),

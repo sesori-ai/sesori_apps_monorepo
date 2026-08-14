@@ -64,6 +64,6 @@ class _FakeSesoriServerApi() implements SesoriServerApi {
   @override
   Future<GenerateSessionMetadataResponse> generateSessionMetadata({
     required GenerateSessionMetadataRequest request,
-    required Future<void> shutdownSignal,
+    required SesoriServerRequestAbortSignal abortSignal,
   }) => throw UnimplementedError();
 }

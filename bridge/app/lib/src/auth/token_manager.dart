@@ -11,7 +11,7 @@ import "token.dart";
 import "token_refresh_exception.dart";
 import "token_refresher.dart";
 
-/// Takes ownership of [ownedClient] and closes it in [dispose].
+/// Takes ownership of the injected HTTP client and closes it in [dispose].
 class TokenManager({
   required String initialToken,
   required final String _authBackendUrl,

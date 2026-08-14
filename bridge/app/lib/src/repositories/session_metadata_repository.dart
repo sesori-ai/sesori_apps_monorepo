@@ -12,13 +12,16 @@ class SessionMetadataRequestAbortedException({
 
 class SessionMetadataRepository({required final SesoriServerApi _api}) {
   static const int maximumFirstMessageLength = 500;
+  final SesoriServerRequestAbortSignal _abortSignal = SesoriServerRequestAbortSignal();
 
-  Future<String> generateTitle({required String firstMessage, required Future<void> shutdownSignal}) async {
+  void beginShutdown() => _abortSignal.abort();
+
+  Future<String> generateTitle({required String firstMessage}) async {
     final normalizedFirstMessage = _clipFirstMessage(firstMessage);
     try {
       final response = await _api.generateSessionMetadata(
         request: GenerateSessionMetadataRequest(firstMessage: normalizedFirstMessage),
-        shutdownSignal: shutdownSignal,
+        abortSignal: _abortSignal,
       );
       return response.title;
     } on http.RequestAbortedException catch (error, stackTrace) {

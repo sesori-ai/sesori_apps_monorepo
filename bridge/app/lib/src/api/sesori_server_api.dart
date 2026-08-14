@@ -27,6 +27,21 @@ class SesoriServerApiResponseException({
   String toString() => "SesoriServerApiResponseException: $method $uri returned an invalid response";
 }
 
+class SesoriServerRequestAbortSignal() {
+  final StreamController<void> _controller = StreamController<void>.broadcast(sync: true);
+  bool _aborted = false;
+
+  bool get isAborted => _aborted;
+  Stream<void> get aborts => _controller.stream;
+
+  void abort() {
+    if (_aborted) return;
+    _aborted = true;
+    _controller.add(null);
+    unawaited(_controller.close());
+  }
+}
+
 class SesoriServerApi({
   required String authBackendUrl,
   required final http.Client _client,
@@ -57,24 +72,28 @@ class SesoriServerApi({
 
   Future<GenerateSessionMetadataResponse> generateSessionMetadata({
     required GenerateSessionMetadataRequest request,
-    required Future<void> shutdownSignal,
+    required SesoriServerRequestAbortSignal abortSignal,
   }) async {
     final uri = Uri.parse("$_authBackendUrl/sessions/generate-metadata");
+    _throwIfAborted(uri: uri, abortSignal: abortSignal);
     final token = await _tokenRefresher.getAccessToken();
+    _throwIfAborted(uri: uri, abortSignal: abortSignal);
     final response = await _postSessionMetadata(
       uri: uri,
       request: request,
       accessToken: token,
-      shutdownSignal: shutdownSignal,
+      abortSignal: abortSignal,
     );
     if (response.statusCode != 401) return _parseSessionMetadata(uri: uri, response: response);
 
+    _throwIfAborted(uri: uri, abortSignal: abortSignal);
     final refreshedToken = await _tokenRefresher.getAccessToken(forceRefresh: true);
+    _throwIfAborted(uri: uri, abortSignal: abortSignal);
     final retryResponse = await _postSessionMetadata(
       uri: uri,
       request: request,
       accessToken: refreshedToken,
-      shutdownSignal: shutdownSignal,
+      abortSignal: abortSignal,
     );
     return _parseSessionMetadata(uri: uri, response: retryResponse);
   }
@@ -83,17 +102,16 @@ class SesoriServerApi({
     required Uri uri,
     required GenerateSessionMetadataRequest request,
     required String accessToken,
-    required Future<void> shutdownSignal,
+    required SesoriServerRequestAbortSignal abortSignal,
   }) async {
     final abortCompleter = Completer<void>();
     final deadlineTimer = Timer(_requestDeadline, () {
       if (!abortCompleter.isCompleted) abortCompleter.complete();
     });
-    unawaited(
-      shutdownSignal.then((_) {
-        if (!abortCompleter.isCompleted) abortCompleter.complete();
-      }),
-    );
+    final abortSubscription = abortSignal.aborts.listen((_) {
+      if (!abortCompleter.isCompleted) abortCompleter.complete();
+    });
+    if (abortSignal.isAborted && !abortCompleter.isCompleted) abortCompleter.complete();
     final httpRequest = http.AbortableRequest("POST", uri, abortTrigger: abortCompleter.future)
       ..headers.addAll({
         "Authorization": "Bearer $accessToken",
@@ -105,7 +123,12 @@ class SesoriServerApi({
       return await http.Response.fromStream(await _client.send(httpRequest));
     } finally {
       deadlineTimer.cancel();
+      await abortSubscription.cancel();
     }
+  }
+
+  void _throwIfAborted({required Uri uri, required SesoriServerRequestAbortSignal abortSignal}) {
+    if (abortSignal.isAborted) throw http.RequestAbortedException(uri);
   }
 
   GenerateSessionMetadataResponse _parseSessionMetadata({required Uri uri, required http.Response response}) {

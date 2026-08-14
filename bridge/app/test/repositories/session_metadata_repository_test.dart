@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/app_client_status_response.dart";
 import "package:sesori_bridge/src/api/generate_session_metadata_response.dart";
@@ -13,24 +11,20 @@ void main() {
     test("passes messages through unchanged up to 500 characters", () async {
       final api = _FakeSesoriServerApi();
       final repository = SessionMetadataRepository(api: api);
-      final shutdownSignal = Completer<void>().future;
       final message = "x" * 500;
 
-      final title = await repository.generateTitle(firstMessage: message, shutdownSignal: shutdownSignal);
+      final title = await repository.generateTitle(firstMessage: message);
 
       expect(title, equals("Generated title"));
       expect(api.requests.single, equals(GenerateSessionMetadataRequest(firstMessage: message)));
-      expect(api.shutdownSignals.single, same(shutdownSignal));
+      expect(api.abortSignals.single.isAborted, isFalse);
     });
 
     test("truncates messages longer than 500 characters", () async {
       final api = _FakeSesoriServerApi();
       final repository = SessionMetadataRepository(api: api);
 
-      await repository.generateTitle(
-        firstMessage: "x" * 501,
-        shutdownSignal: Completer<void>().future,
-      );
+      await repository.generateTitle(firstMessage: "x" * 501);
 
       expect(api.requests.single.firstMessage, equals("x" * 500));
     });
@@ -39,10 +33,7 @@ void main() {
       final api = _FakeSesoriServerApi();
       final repository = SessionMetadataRepository(api: api);
 
-      await repository.generateTitle(
-        firstMessage: "${"x" * 499}😀tail",
-        shutdownSignal: Completer<void>().future,
-      );
+      await repository.generateTitle(firstMessage: "${"x" * 499}😀tail");
 
       expect(api.requests.single.firstMessage, equals("x" * 499));
     });
@@ -52,7 +43,7 @@ void main() {
       final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: abort));
 
       await expectLater(
-        repository.generateTitle(firstMessage: "message", shutdownSignal: Completer<void>().future),
+        repository.generateTitle(firstMessage: "message"),
         throwsA(
           isA<SessionMetadataRequestAbortedException>().having(
             (error) => error.innerError,
@@ -68,9 +59,19 @@ void main() {
       final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: error));
 
       await expectLater(
-        repository.generateTitle(firstMessage: "message", shutdownSignal: Completer<void>().future),
+        repository.generateTitle(firstMessage: "message"),
         throwsA(same(error)),
       );
+    });
+
+    test("aborts pending API requests when shutdown begins", () async {
+      final api = _FakeSesoriServerApi();
+      final repository = SessionMetadataRepository(api: api);
+
+      await repository.generateTitle(firstMessage: "message");
+      repository.beginShutdown();
+
+      expect(api.abortSignals.single.isAborted, isTrue);
     });
   });
 }
@@ -79,15 +80,15 @@ class _FakeSesoriServerApi({final Object? failure}) implements SesoriServerApi {
   final Object? error = failure;
 
   final List<GenerateSessionMetadataRequest> requests = [];
-  final List<Future<void>> shutdownSignals = [];
+  final List<SesoriServerRequestAbortSignal> abortSignals = [];
 
   @override
   Future<GenerateSessionMetadataResponse> generateSessionMetadata({
     required GenerateSessionMetadataRequest request,
-    required Future<void> shutdownSignal,
+    required SesoriServerRequestAbortSignal abortSignal,
   }) async {
     requests.add(request);
-    shutdownSignals.add(shutdownSignal);
+    abortSignals.add(abortSignal);
     if (error case final error?) throw error;
     return const GenerateSessionMetadataResponse(title: "Generated title");
   }
