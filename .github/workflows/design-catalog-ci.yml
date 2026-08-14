@@ -57,6 +57,22 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: ${{ env.FLUTTER_CHANNEL }}
 
-      - name: Validate catalog
-        run: make catalog-check
+      - name: Get workspace dependencies
+        run: dart pub get
         working-directory: client
+
+      - name: Check catalog manifest
+        run: dart run tool/generate_manifest.dart --check
+        working-directory: client/design_catalog
+
+      - name: Analyze catalog
+        run: dart analyze --fatal-infos
+        working-directory: client/design_catalog
+
+      - name: Test catalog
+        run: flutter test
+        working-directory: client/design_catalog
+
+      - name: Build catalog web release
+        run: flutter build web --release
+        working-directory: client/design_catalog
