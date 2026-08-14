@@ -449,7 +449,10 @@ class _PromptInputState() extends State<PromptInput> {
     if (widget.attachmentsSupported == false && _attachments.isNotEmpty) {
       setState(_attachments.clear);
     }
-    if (oldWidget.surfaceStyleController != widget.surfaceStyleController || draftChanged || stagedCommandChanged) {
+    if (oldWidget.surfaceStyleController != widget.surfaceStyleController ||
+        draftChanged ||
+        restorationRequested ||
+        stagedCommandChanged) {
       _syncSurfaceStyle();
     }
     if (stagedCommandChanged && widget.stagedCommand != null) {

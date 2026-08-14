@@ -248,7 +248,7 @@ void main() {
     await GetIt.instance.reset();
   });
 
-  testWidgets("PromptInput consumes exact initial attachments once per draft identity", (tester) async {
+  testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
     final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");
     final second = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "second.png");
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
@@ -259,6 +259,7 @@ void main() {
 
     Widget buildPrompt({
       required String draftIdentity,
+      required Key? restorationKey,
       required ComposerDraft draft,
       required List<ComposerAttachment> attachments,
     }) {
@@ -290,7 +291,7 @@ void main() {
               onCommandCleared: () {},
               attachmentsSupported: true,
               draftIdentity: draftIdentity,
-              restorationKey: null,
+              restorationKey: restorationKey,
               initialDraft: draft,
               initialAttachments: attachments,
               onInitialAttachmentsConsumed: () => consumed++,
@@ -303,6 +304,7 @@ void main() {
     await tester.pumpWidget(
       buildPrompt(
         draftIdentity: "first",
+        restorationKey: null,
         draft: ComposerDraft.typed(text: ""),
         attachments: [first],
       ),
@@ -313,6 +315,7 @@ void main() {
     await tester.pumpWidget(
       buildPrompt(
         draftIdentity: "first",
+        restorationKey: null,
         draft: ComposerDraft.typed(text: ""),
         attachments: [first],
       ),
@@ -324,9 +327,40 @@ void main() {
       text: " voice typed ",
       voiceSpans: [VoiceOriginSpan(start: 1, end: 6)],
     );
-    await tester.pumpWidget(buildPrompt(draftIdentity: "second", draft: mixedDraft, attachments: [second]));
+    surfaceStyle.value = PregoComposerSurfaceStyle.subtle;
+    await tester.pumpWidget(
+      buildPrompt(
+        draftIdentity: "first",
+        restorationKey: const ValueKey("failed-submission"),
+        draft: mixedDraft,
+        attachments: [second],
+      ),
+    );
     await tester.pump();
     expect(consumed, 2);
+    expect(surfaceStyle.value, PregoComposerSurfaceStyle.emphasized);
+
+    await tester.pumpWidget(
+      buildPrompt(
+        draftIdentity: "first",
+        restorationKey: null,
+        draft: mixedDraft,
+        attachments: [second],
+      ),
+    );
+    await tester.pump();
+    expect(consumed, 2);
+
+    await tester.pumpWidget(
+      buildPrompt(
+        draftIdentity: "second",
+        restorationKey: null,
+        draft: mixedDraft,
+        attachments: [second],
+      ),
+    );
+    await tester.pump();
+    expect(consumed, 3);
 
     await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pump();
