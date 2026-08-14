@@ -18,6 +18,7 @@
 - **Step 9 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/866
 - **Step 10 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/884
 - **Step 11 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/892
+- **Step 12 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/905
 - **Next action:** open and monitor the Step 12 PR, then start Step 13 locally
 
 ## Locked Decisions
