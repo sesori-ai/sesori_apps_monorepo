@@ -217,6 +217,28 @@ void main() {
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, "pi:session:assistant:102:1");
   });
 
+  test("malformed assistant final removes its provisional message", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 103)}),
+    );
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "partial"},
+      }),
+    );
+
+    final events = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {"role": "assistant", "content": 123, "timestamp": 103},
+      }),
+    );
+
+    expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, "pi:session:assistant:103:1");
+  });
+
   test("tool updates replace cumulative output and duplicate terminal is ignored", () {
     final message = _assistant(
       content: [

@@ -199,7 +199,11 @@ final class PiEventDispatcher({
 
   List<BridgeSseEvent> _messageEnd({required String sessionId, required Map<String, Object?> raw}) {
     final message = _historyMapper.decodeAssistantMessage(raw: raw);
-    if (message == null) return _nonAssistantEnd(sessionId: sessionId, raw: raw);
+    if (message == null) {
+      return raw["role"] == "assistant"
+          ? _dropMalformedAssistantEnd(sessionId: sessionId)
+          : _nonAssistantEnd(sessionId: sessionId, raw: raw);
+    }
     final state = _session(sessionId);
     final messageId =
         state.messageId ?? state.identities.next(role: PiMessageIdentityRole.assistant, timestamp: message.timestamp);
@@ -258,6 +262,16 @@ final class PiEventDispatcher({
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
       if (sessionDiffRequired) BridgeSseSessionDiff(sessionID: sessionId),
     ];
+  }
+
+  List<BridgeSseEvent> _dropMalformedAssistantEnd({required String sessionId}) {
+    final state = _sessions[sessionId];
+    final messageId = state?.messageId;
+    final announced = state?.announced ?? false;
+    state?.clearMessage();
+    return announced && messageId != null
+        ? [BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId)]
+        : const [];
   }
 
   List<BridgeSseEvent> _bashEnd({required String sessionId, required Map<String, Object?> raw}) {
