@@ -261,13 +261,8 @@ class ProjectRepository({
 
   Future<bool> _supportsDedicatedWorktrees({required String path}) => _worktreeInspectionLock.use(
     operation: () async {
-      try {
-        if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
-        return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
-      } on Object catch (error, stackTrace) {
-        Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
-        return false;
-      }
+      if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
+      return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
     },
   );
 

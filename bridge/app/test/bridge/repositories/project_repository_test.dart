@@ -782,6 +782,22 @@ void main() {
       expect(plugin.lastGetProjectId, isNull);
     });
 
+    test("getProject propagates Git capability inspection failures", () async {
+      await db.projectsDao.setActivity(projectId: "/broken", createdAt: 1, updatedAt: 2);
+      final inspectionError = StateError("Git inspection failed");
+      final repoWithFailure = singlePluginProjectRepository(
+        gitCliApi: _ThrowingGitCliApi(error: inspectionError),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      expect(
+        () => repoWithFailure.getProject(projectId: "/broken"),
+        throwsA(same(inspectionError)),
+      );
+    });
   });
 
   group("ProjectRepository (bridge-owned projects with derived activity)", () {
@@ -1406,4 +1422,9 @@ class _RecordingGitCliApi() extends FakeGitCliApi {
     hasAtLeastOneCommitCallCount++;
     return true;
   }
+}
+
+class _ThrowingGitCliApi({required final Object error}) extends FakeGitCliApi {
+  @override
+  Future<bool> isGitInitialized({required String projectPath}) async => throw error;
 }
