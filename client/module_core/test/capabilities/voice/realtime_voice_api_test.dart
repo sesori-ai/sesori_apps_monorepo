@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:typed_data";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
@@ -31,8 +32,13 @@ class _NullTokenProvider() extends Mock implements AuthTokenProvider {
   }
 }
 
-class _Connector({bool syncInbound = false}) implements RealtimeWebSocketConnector {
-  final channel = _FakeChannel(syncInbound: syncInbound);
+class _Connector({bool syncInbound = false, bool hangSubscriptionCancel = false, bool hangSinkClose = false})
+    implements RealtimeWebSocketConnector {
+  final channel = _FakeChannel(
+    syncInbound: syncInbound,
+    hangSubscriptionCancel: hangSubscriptionCancel,
+    hangSinkClose: hangSinkClose,
+  );
   final Completer<WebSocketChannel> connectCompleter = Completer<WebSocketChannel>();
   Uri? uri;
   Map<String, String>? headers;
@@ -62,11 +68,17 @@ class _Connector({bool syncInbound = false}) implements RealtimeWebSocketConnect
   }
 }
 
-class _FakeChannel({required bool syncInbound}) extends Mock implements WebSocketChannel {
-  final inbound = StreamController<Object?>(sync: syncInbound);
+class _FakeChannel({required bool syncInbound, required bool hangSubscriptionCancel, required bool hangSinkClose})
+    extends Mock
+    implements WebSocketChannel {
+  final inbound = StreamController<Object?>(
+    sync: syncInbound,
+    onCancel: hangSubscriptionCancel ? () => Completer<void>().future : null,
+  );
   final List<Object?> outbound = [];
   final Completer<void> readyCompleter = Completer<void>();
   final _sinkDone = Completer<void>();
+  final bool _hangSinkClose = hangSinkClose;
   void Function(Object? event)? onSinkAdd;
   int? _closeCode;
 
@@ -86,7 +98,13 @@ class _FakeChannel({required bool syncInbound}) extends Mock implements WebSocke
   Stream<dynamic> get stream => inbound.stream;
 
   @override
-  WebSocketSink get sink => _Sink(outbound, _sinkDone, (code) => _closeCode = code, (event) => onSinkAdd?.call(event));
+  WebSocketSink get sink => _Sink(
+    outbound,
+    _sinkDone,
+    (code) => _closeCode = code,
+    (event) => onSinkAdd?.call(event),
+    _hangSinkClose,
+  );
 
   void completeReady() {
     if (!readyCompleter.isCompleted) readyCompleter.complete();
@@ -102,6 +120,7 @@ class _Sink(
   final Completer<void> sinkDone,
   final void Function(int? code) closeCodeSetter,
   final void Function(Object? event) onAdd,
+  final bool hangClose,
 ) implements WebSocketSink {
   final List<Object?> outbound = outboundItems;
   final Completer<void> doneCompleter = sinkDone;
@@ -125,6 +144,7 @@ class _Sink(
   @override
   Future<void> close([int? closeCode, String? closeReason]) async {
     setCloseCode(closeCode);
+    if (hangClose) return await Completer<void>().future;
     if (!doneCompleter.isCompleted) doneCompleter.complete();
   }
 }
@@ -374,5 +394,47 @@ void main() {
 
     expect(jsonDecode(connector.channel.outbound[1]! as String), {"type": "cancel"});
     expect(connector.channel.closeCode, 1000);
+  });
+
+  test("Given teardown futures hang When closing Then close is bounded and event stream closes", () {
+    fakeAsync((async) {
+      connector = _Connector(hangSubscriptionCancel: true, hangSinkClose: true);
+      connector.channel.completeReady();
+      api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
+      RealtimeVoiceSession? session;
+      api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null).then((value) {
+        session = value;
+      });
+      async.flushMicrotasks();
+      final startedSession = session!;
+      var eventsClosed = false;
+      var closeCompleted = false;
+      startedSession.events.listen(
+        null,
+        onDone: () {
+          eventsClosed = true;
+        },
+      );
+
+      startedSession.close().then((_) {
+        closeCompleted = true;
+      });
+
+      expect(
+        () => startedSession.sendAudio(Uint8List.fromList([1, 2])),
+        throwsA(isA<RealtimeVoiceTransportClosedException>()),
+      );
+      expect(connector.channel.closeCode, 1000);
+      async.elapse(const Duration(seconds: 2, milliseconds: 999));
+      async.flushMicrotasks();
+      expect(closeCompleted, isFalse);
+      expect(eventsClosed, isFalse);
+
+      async.elapse(const Duration(milliseconds: 1));
+      async.flushMicrotasks();
+
+      expect(closeCompleted, isTrue);
+      expect(eventsClosed, isTrue);
+    });
   });
 }

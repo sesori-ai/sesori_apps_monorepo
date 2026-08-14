@@ -6,12 +6,16 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
+import "../../logging/logging.dart";
 import "realtime_voice_protocol.dart";
 import "realtime_websocket_connector.dart";
 
 final class const RealtimeVoiceTransportClosedException() implements Exception;
 
 const realtimeVoiceConnectTimeout = Duration(seconds: 10);
+
+/// Maximum time close/cancel waits for stream cancellation and socket close.
+const realtimeVoiceCloseTimeout = Duration(seconds: 3);
 
 @lazySingleton
 class RealtimeVoiceApi({
@@ -29,7 +33,6 @@ class RealtimeVoiceApi({
       connectTimeout: realtimeVoiceConnectTimeout,
     );
     final session = RealtimeVoiceSession(channel);
-    session._initialize();
     session._sendJson(RealtimeStartMessage(audio: audio, projectKey: projectKey).toJson());
     return session;
   }
@@ -39,20 +42,20 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
   final StreamController<RealtimeVoiceEvent> _events = StreamController<RealtimeVoiceEvent>();
   final Completer<RealtimeVoiceEvent> _terminal = Completer<RealtimeVoiceEvent>();
   // ignore: no_slop_linter/prefer_specific_type, web_socket_channel exposes a dynamic stream
-  StreamSubscription<dynamic>? _subscription;
+  late final StreamSubscription<dynamic> _subscription;
   bool _closed = false;
   bool _terminalControlSent = false;
   bool _finishRequested = false;
 
-  Stream<RealtimeVoiceEvent> get events => _events.stream;
-
-  void _initialize() {
-    _subscription ??= _channel.stream.listen(
+  this {
+    _subscription = _channel.stream.listen(
       _handleInbound,
       onError: _handleInboundError,
       onDone: _handleInboundDone,
     );
   }
+
+  Stream<RealtimeVoiceEvent> get events => _events.stream;
 
   void sendAudio(Uint8List frame) {
     _ensureOpen();
@@ -91,9 +94,34 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
-    await _subscription?.cancel();
-    await _channel.sink.close(realtimeNormalCloseCode);
-    unawaited(_events.close());
+    var teardownTimedOut = false;
+    final teardown = Future.wait<void>([
+      () async {
+        await _subscription.cancel();
+      }(),
+      () async {
+        await _channel.sink.close(realtimeNormalCloseCode);
+      }(),
+    ], eagerError: true).then<void>((_) {});
+
+    try {
+      await teardown.timeout(
+        realtimeVoiceCloseTimeout,
+        onTimeout: () {
+          teardownTimedOut = true;
+          logw("Realtime voice session teardown timed out");
+        },
+      );
+    } finally {
+      if (teardownTimedOut) {
+        unawaited(
+          teardown.catchError((Object error, StackTrace stackTrace) {
+            loge("Realtime voice session teardown failed after close timeout", error, stackTrace);
+          }),
+        );
+      }
+      _closeEvents();
+    }
   }
 
   // ignore: no_slop_linter/prefer_specific_type, JSON encoding requires Object-valued maps
@@ -103,6 +131,8 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
 
   // ignore: no_slop_linter/prefer_specific_type, web_socket_channel exposes arbitrary inbound frames
   void _handleInbound(Object? event) {
+    if (_closed) return;
+
     final RealtimeVoiceEvent parsed;
     try {
       if (event is! String) {
@@ -124,6 +154,8 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
   // ignore: no_slop_linter/prefer_specific_type, stream error callback receives arbitrary errors
   // ignore: no_slop_linter/prefer_required_named_parameters, stream callback signature is positional
   void _handleInboundError(Object error, StackTrace stackTrace) {
+    if (_closed) return;
+
     _events.addError(error, stackTrace);
     if (!_terminal.isCompleted) _terminal.completeError(error, stackTrace);
     scheduleMicrotask(close);
@@ -134,7 +166,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
     if (!_terminal.isCompleted && _finishRequested) {
       _terminal.completeError(const RealtimeVoiceTransportClosedException(), StackTrace.current);
     }
-    unawaited(_events.close());
+    _closeEvents();
   }
 
   // ignore: no_slop_linter/prefer_specific_type, JSON/protocol parsing may throw arbitrary errors
@@ -148,5 +180,10 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
     if (_closed) {
       throw const RealtimeVoiceTransportClosedException();
     }
+  }
+
+  void _closeEvents() {
+    if (_events.isClosed) return;
+    unawaited(_events.close());
   }
 }
