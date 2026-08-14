@@ -1,0 +1,26 @@
+name: sesori_design_catalog
+description: Interactive catalog for Sesori Flutter design-system components.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0-0
+  flutter: ">=3.47.0 <3.48.0"
+
+dependencies:
+  cupertino_icons: ^1.0.9
+  flutter:
+    sdk: flutter
+  material_ui: ^1.0.0
+  theme_prego:
+    path: ../module_prego
+  widgetbook: 3.25.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  no_slop_linter:
+    path: ../../shared/no_slop_linter
+
+flutter:
+  uses-material-design: true

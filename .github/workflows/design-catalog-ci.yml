@@ -1,0 +1,62 @@
+name: Design Catalog CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/design_catalog/**'
+      - 'client/module_prego/**'
+      - 'client/pubspec.yaml'
+      - 'client/pubspec.lock'
+      - 'client/analysis_options.yaml'
+      - 'client/Makefile'
+      - 'shared/no_slop_linter/**'
+      - '.tool-versions'
+      - '.github/workflows/design-catalog-ci.yml'
+  pull_request:
+    paths:
+      - 'client/design_catalog/**'
+      - 'client/module_prego/**'
+      - 'client/pubspec.yaml'
+      - 'client/pubspec.lock'
+      - 'client/analysis_options.yaml'
+      - 'client/Makefile'
+      - 'shared/no_slop_linter/**'
+      - '.tool-versions'
+      - '.github/workflows/design-catalog-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read Flutter version from .tool-versions
+        shell: bash
+        run: |
+          TOOL_SPEC=$(awk '$1 == "flutter" { print $2 }' .tool-versions)
+          if [ -z "$TOOL_SPEC" ]; then
+            echo "Unable to find a Flutter version in .tool-versions" >&2
+            exit 1
+          fi
+          if [[ "$TOOL_SPEC" == *-* ]]; then
+            FLUTTER_VERSION="${TOOL_SPEC%-*}"
+            FLUTTER_CHANNEL="${TOOL_SPEC##*-}"
+          else
+            FLUTTER_VERSION="$TOOL_SPEC"
+            FLUTTER_CHANNEL="stable"
+          fi
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
+          echo "FLUTTER_CHANNEL=$FLUTTER_CHANNEL" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Validate catalog
+        run: make catalog-check
+        working-directory: client
