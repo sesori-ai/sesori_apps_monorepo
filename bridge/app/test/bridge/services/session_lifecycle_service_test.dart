@@ -438,12 +438,6 @@ class _FakeSessionRepository() implements SessionRepository {
   int hasSharingCallCount = 0;
 
   @override
-  Future<Session> enrichSession({
-    required Session session,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => session;
-
-  @override
   Future<List<Session>> enrichSessions({
     required List<Session> sessions,
     required VerifiedGithubLogin? verifiedGithubLogin,

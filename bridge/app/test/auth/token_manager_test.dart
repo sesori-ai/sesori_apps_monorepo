@@ -16,7 +16,7 @@ void main() {
       addTearDown(server.close);
 
       final currentToken = _makeJwtFromNow(120);
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "a", refreshToken: "r", lastProvider: AuthProvider.github),
@@ -48,7 +48,7 @@ void main() {
       // await on it would time the test out instead of racing a fixed delay.
       final loadInvoked = Completer<void>();
       final loadGate = Completer<void>();
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -86,7 +86,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -107,7 +107,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -128,7 +128,7 @@ void main() {
       final server = await _RefreshTestServer.start(responseDelay: const Duration(milliseconds: 80));
       addTearDown(server.close);
 
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -154,7 +154,7 @@ void main() {
       addTearDown(server.close);
 
       TokenData? savedTokens;
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -181,7 +181,7 @@ void main() {
 
       var loadCalls = 0;
       TokenData? savedTokens;
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -216,7 +216,7 @@ void main() {
       var loadCalls = 0;
       TokenData? savedTokens;
       final initialToken = _makeJwtFromNow(10);
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: initialToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -249,7 +249,7 @@ void main() {
       var loadCalls = 0;
       TokenData? savedTokens;
       final initialToken = _makeJwtFromNow(10);
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: initialToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -277,7 +277,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -297,7 +297,7 @@ void main() {
       final server = await _RefreshTestServer.start(statusCode: 401);
       addTearDown(server.close);
 
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -312,7 +312,7 @@ void main() {
     });
 
     test("network error during refresh throws", () async {
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: "http://127.0.0.1:1",
         loadTokens: () async => TokenData(
@@ -327,11 +327,80 @@ void main() {
       expect(manager.getAccessToken(), throwsA(isA<Exception>()));
     });
 
+    test("request deadline settles a stalled refresh", () async {
+      final client = _AbortAwareClient();
+      final manager = _tokenManager(
+        initialToken: _makeJwtFromNow(10),
+        authBackendUrl: "https://auth.example.test",
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          lastProvider: AuthProvider.github,
+        ),
+        saveTokens: (_) async {},
+        client: client,
+        requestDeadline: const Duration(milliseconds: 10),
+      );
+
+      await expectLater(
+        manager.getAccessToken().timeout(const Duration(seconds: 1)),
+        throwsA(isA<http.RequestAbortedException>()),
+      );
+    });
+
+    test("request deadline actively aborts the refresh request", () async {
+      final client = _AbortAwareClient();
+      final manager = _tokenManager(
+        initialToken: _makeJwtFromNow(10),
+        authBackendUrl: "https://auth.example.test",
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          lastProvider: AuthProvider.github,
+        ),
+        saveTokens: (_) async {},
+        client: client,
+        requestDeadline: Duration.zero,
+      );
+
+      await expectLater(manager.getAccessToken(), throwsA(isA<http.RequestAbortedException>()));
+      expect(client.abortObserved, isTrue);
+    });
+
+    test("background refresh deadline has no unhandled losing future", () async {
+      final unhandledErrors = <Object>[];
+      await runZonedGuarded(
+        () async {
+          final client = _AbortAwareClient();
+          final currentToken = _makeJwtFromNow(60);
+          final manager = _tokenManager(
+            initialToken: currentToken,
+            authBackendUrl: "https://auth.example.test",
+            loadTokens: () async => TokenData(
+              accessToken: "old-access",
+              refreshToken: "refresh-token",
+              lastProvider: AuthProvider.github,
+            ),
+            saveTokens: (_) async {},
+            client: client,
+            requestDeadline: Duration.zero,
+          );
+
+          expect(await manager.getAccessToken(), currentToken);
+          await client.abortObservedFuture.timeout(const Duration(seconds: 1));
+          await Future<void>.delayed(Duration.zero);
+        },
+        (error, _) => unhandledErrors.add(error),
+      );
+
+      expect(unhandledErrors, isEmpty);
+    });
+
     test("missing tokens from loader throws", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => null,
@@ -345,7 +414,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async =>
@@ -361,7 +430,7 @@ void main() {
       addTearDown(server.close);
 
       const malformedJwt = "not-a-jwt";
-      final manager = TokenManager(
+      final manager = _tokenManager(
         initialToken: malformedJwt,
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -386,6 +455,41 @@ class _ThrowingClient() extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     throw Exception("network error");
   }
+}
+
+class _AbortAwareClient() extends http.BaseClient {
+  final Completer<void> _abortObserved = Completer<void>();
+
+  bool get abortObserved => _abortObserved.isCompleted;
+  Future<void> get abortObservedFuture => _abortObserved.future;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final abortable = request as http.Abortable;
+    await abortable.abortTrigger!;
+    _abortObserved.complete();
+    throw http.RequestAbortedException(request.url);
+  }
+}
+
+TokenManager _tokenManager({
+  required String initialToken,
+  required String authBackendUrl,
+  required Future<TokenData?> Function() loadTokens,
+  required Future<void> Function(TokenData) saveTokens,
+  http.Client? client,
+  Duration requestDeadline = const Duration(seconds: 1),
+}) {
+  final manager = TokenManager(
+    initialToken: initialToken,
+    authBackendUrl: authBackendUrl,
+    loadTokens: loadTokens,
+    saveTokens: saveTokens,
+    client: client ?? http.Client(),
+    requestDeadline: requestDeadline,
+  );
+  addTearDown(manager.dispose);
+  return manager;
 }
 
 class _RefreshTestServer._(

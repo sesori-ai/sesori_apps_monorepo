@@ -1,6 +1,7 @@
 enum SessionOperation() {
   createSession,
   renameSession,
+  applyGeneratedTitle,
   getCommands,
   sendCommand,
   sendPrompt,

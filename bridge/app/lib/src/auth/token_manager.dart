@@ -16,10 +16,12 @@ class TokenManager({
   required final String _authBackendUrl,
   required final Future<TokenData?> Function() _loadTokens,
   required final Future<void> Function(TokenData) _saveTokens,
-  http.Client? client,
+  required final http.Client _client,
+  required final Duration _requestDeadline,
 }) implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
+  static const Duration defaultRequestDeadline = Duration(seconds: 35);
+
   final BehaviorSubject<String> _tokenSubject = BehaviorSubject.seeded(initialToken);
-  final http.Client _client = client ?? http.Client();
 
   @override
   String get accessToken => _tokenSubject.value;
@@ -56,8 +58,8 @@ class TokenManager({
 
     if (ttl > const Duration(seconds: 30)) {
       unawaited(
-        _refreshAndPersist().catchError((Object e) {
-          Log.w("[token] background refresh failed: $e");
+        _refreshAndPersist().catchError((Object error, StackTrace stackTrace) {
+          Log.w("[token] background refresh failed", error, stackTrace);
           return currentToken;
         }),
       );
@@ -91,11 +93,17 @@ class TokenManager({
         : _authBackendUrl;
     final uri = Uri.parse("$base/auth/refresh");
 
-    final response = await _client.post(
-      uri,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"refreshToken": refreshToken}),
-    );
+    final abortCompleter = Completer<void>();
+    final deadlineTimer = Timer(_requestDeadline, abortCompleter.complete);
+    final request = http.AbortableRequest("POST", uri, abortTrigger: abortCompleter.future)
+      ..headers["Content-Type"] = "application/json"
+      ..body = jsonEncode({"refreshToken": refreshToken});
+    final http.Response response;
+    try {
+      response = await http.Response.fromStream(await _client.send(request));
+    } finally {
+      deadlineTimer.cancel();
+    }
 
     if (response.statusCode != 200) {
       throw TokenRefreshException("Token refresh failed with status ${response.statusCode}");

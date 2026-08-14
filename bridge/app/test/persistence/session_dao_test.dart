@@ -191,6 +191,63 @@ void main() {
       expect(result.lastAgentModel?.variant, isNull);
     });
 
+    test("setTitleIfNull ignores catalog title and does not replace a bridge title", () async {
+      await dao.insertSession(
+        pluginId: "opencode",
+        sessionId: "ses-generated-title",
+        backendSessionId: "ses-generated-title",
+        projectId: "proj-1",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await dao.updateObservedSessionProjection(
+        sessionId: "ses-generated-title",
+        directory: "proj-1",
+        catalogTitle: "Catalog title",
+        updateCatalogTitle: true,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+
+      expect(
+        await dao.setTitleIfNull(
+          sessionId: "ses-generated-title",
+          title: "Generated title",
+          updatedAt: 3,
+          projectionUpdatedAt: 3,
+        ),
+        isTrue,
+      );
+      expect(
+        await dao.setTitleIfNull(
+          sessionId: "ses-generated-title",
+          title: "Later generated title",
+          updatedAt: 4,
+          projectionUpdatedAt: 4,
+        ),
+        isFalse,
+      );
+      expect((await dao.getSession(sessionId: "ses-generated-title"))?.title, "Generated title");
+    });
+
+    test("setTitleIfNull reports a missing row", () async {
+      expect(
+        await dao.setTitleIfNull(
+          sessionId: "does-not-exist",
+          title: "Generated title",
+          updatedAt: 1,
+          projectionUpdatedAt: 1,
+        ),
+        isFalse,
+      );
+    });
+
     test("get non-existent sessionId returns null", () async {
       final result = await dao.getSession(sessionId: "does-not-exist");
 

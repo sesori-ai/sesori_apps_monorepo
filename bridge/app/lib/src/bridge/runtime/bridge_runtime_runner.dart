@@ -566,6 +566,8 @@ class const BridgeRuntimeRunner._() {
             data: data,
             dataDirectory: options.dataDirectory,
           ),
+          client: http.Client(),
+          requestDeadline: TokenManager.defaultRequestDeadline,
         );
         shutdownCoordinator.add(disposable: tokenManager.dispose);
         accessTokenProvider = tokenManager;
@@ -913,6 +915,7 @@ class const BridgeRuntimeRunner._() {
               authBackendUrl: options.authBackendUrl,
               client: httpClient,
               requestDeadline: SesoriServerApi.defaultRequestDeadline,
+              tokenRefresher: tokenRefresher,
             ),
           ),
           stateRepository: AppOnboardingStateRepository(

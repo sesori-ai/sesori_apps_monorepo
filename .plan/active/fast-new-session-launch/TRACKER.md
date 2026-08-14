@@ -3,11 +3,12 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** `origin/main` at `c7364468`
-- **Current branch:** `fast-new-session-launch-step-2`
-- **Series state:** Step 1/6 merged; Step 2/6 ready for delivery
-- **Current step:** finalize the local workspace naming PR
-- **Next action:** commit, push, open Step 2, and start its monitor
+- **Implementation base:** `origin/main` at `f3c11b379` after Step 2 merge
+- **Current branch:** `fast-new-session-launch-step-3`
+- **Series state:** Steps 1-2/6 merged; Step 3/6 synced, implemented, and
+  verified locally
+- **Current step:** finalize and deliver the canonical-response/late-title PR
+- **Next action:** commit, push, open Step 3, and start its monitor
 
 ## Locked Decisions
 
@@ -34,12 +35,12 @@
 
 ## Complexity Guardrails
 
-- [ ] No database migration or pending-session persistence.
-- [ ] No new client-to-bridge wire route/event/model; the existing auth metadata
+- [x] No database migration or pending-session persistence.
+- [x] No new client-to-bridge wire route/event/model; the existing auth metadata
   POST gains only a typed request source.
-- [ ] No idempotency key, retry registry, polling, or newest-session heuristic.
-- [ ] No plugin-name branch or per-plugin production implementation.
-- [ ] No optimistic transcript/prompt row or partial detail snapshot.
+- [x] No idempotency key, retry registry, polling, or newest-session heuristic.
+- [x] No plugin-name branch or per-plugin production implementation.
+- [x] No optimistic transcript/prompt row or partial detail snapshot.
 - [ ] One client submission snapshot only; no hidden attachment cache.
 - [ ] One transient sealed restore state consumes that snapshot once; ordinary
   rebuilds never reapply attachments.
@@ -58,15 +59,15 @@
 - [ ] In-route failure restores both the Cubit's cached draft and repository
   before `PromptInput` remounts.
 - [ ] Preserve nullable title handoff; never convert missing title to `""`.
-- [ ] Extend authenticated `SesoriServerApi` for metadata, including token
+- [x] Extend authenticated `SesoriServerApi` for metadata, including token
   acquisition and one 401 refresh/retry; do not split one provider by use case.
-- [ ] One late-title future set; drain actual workflows, abort metadata HTTP on
+- [x] One late-title future set; drain actual workflows, abort metadata HTTP on
   shutdown, and deadline-bound standalone token refresh.
-- [ ] Keep the normalized event consumer alive through late-title drain, then
+- [x] Keep the normalized event consumer alive through late-title drain, then
   fence mutation producers before draining its listener and event tails.
 - [ ] Shared encryption returns preallocated typed bytes without boxed integer
   framing; analyze/test shared crypto and bridge relay callers explicitly.
-- [ ] Generalize the existing deletion stream/listener; do not add a second
+- [x] Generalize the existing deletion stream/listener; do not add a second
   local mutation stream; Orchestrator owns event dispatch decisions.
 - [ ] Delete obsolete overlay, metadata naming, preferred-name, enrichment, and
   tests in the same owning steps.
@@ -76,8 +77,8 @@
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
 | [x] | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | Merged in #894 |
-| [ ] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Ready for PR |
-| [ ] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Blocked on Step 2 merge |
+| [x] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Merged in #908 |
+| [ ] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Synced, implemented, and verified locally |
 | [ ] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Blocked on Step 3 merge |
 | [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Blocked on Step 4 merge |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
@@ -106,16 +107,33 @@
 - [x] Pass focused tests, strict analysis, cleanup audit, and architecture review.
 - [x] Retain metadata response fields for Step 3's typed API replacement.
 
+## Step 3 Checklist
+
+- [x] Return the committed, queryable canonical `Session` after synchronous
+  backend creation and first-input/slash-command acceptance.
+- [x] Move generated metadata/title work off the response path and track the
+  complete workflow through shutdown.
+- [x] Add authenticated metadata API/repository layers, typed request/response,
+  one 401 refresh/retry, HTTP abort/deadline, and bounded standalone refresh.
+- [x] Apply generated title conditionally under the session-family lane so user
+  rename/deletion wins and plugin rename failure retains the local title.
+- [x] Generalize local mutations and listener ownership; Orchestrator maps title
+  and deletion outcomes to existing backend-neutral events.
+- [x] Delete the old metadata service/model/test, synchronous title tail,
+  single-session enrichment, and unused plugin-session mappers.
+- [x] Run codegen, focused tests, strict analysis, cleanup audit, analytics
+  assessment, and architecture implementation review.
+
 ## Cleanup Ledger
 
 | Artifact | Decision | Owning step |
 |---|---|---|
-| Layer-skipping `MetadataService` and AI branch/worktree response fields | Replace with shared typed request plus title-only API/repository and regenerate | 3 |
+| Layer-skipping `MetadataService` and AI branch/worktree response fields | Replaced with shared typed request plus title-only API/repository and regenerated | 3 |
 | Preferred-name API/validator and tests | Delete | 2 |
 | Current `session-*` random fallback | Replace with color-animal plus bounded suffix fallback | 2 |
-| Synchronous generated-title await | Delete from response path | 3 |
-| Single-session enrichment and unused plugin mapper helpers | Delete | 3 |
-| Deletion-only local mutation stream/listener | Generalize/rename in place | 3 |
+| Synchronous generated-title await | Deleted from response path | 3 |
+| Single-session enrichment and unused plugin mapper helpers | Deleted | 3 |
+| Deletion-only local mutation stream/listener | Generalized/renamed in place | 3 |
 | Dimming `NewSessionLoadingOverlay` and overlay tests | Delete | 4 |
 | Direct mobile `cue` dependency | Delete if no consumer remains | 4 |
 | Friendly rotating-copy timer | Keep one instance in exported `module_prego` launch status | 4 |
@@ -138,6 +156,25 @@
 - Step 2 architecture reviews: initial approved; follow-up API-placement finding applied.
 - Informational Step 2 diff size against `origin/main`, including this record:
   `+272 / -226` (498 changed lines), within the 200-500 target.
+- Step 2 review follow-up: expanded the local vocabulary to 52 colors and 79
+  animals, updated regression documentation, passed 64 focused tests and strict
+  analysis, and returned to 12/12 passing CI.
+- Step 3 codegen completed for `bridge/app` and `shared/sesori_shared`.
+- Step 3 focused bridge verification passed, 194 tests; shared request-model
+  verification passed, 1 test.
+- Step 3 strict analysis: `dart analyze --fatal-infos` passed in both
+  `bridge/app` and `shared/sesori_shared` with no issues.
+- Step 3 architecture implementation review found listener trigger ownership,
+  then peer composition; both findings were applied. No third review was run
+  because repository policy caps implementation review at two passes.
+- Step 3 analytics assessment: no event added because the authoritative session
+  creation outcome is unchanged and a UI proxy would not measure response-path
+  latency.
+- Informational final Step 3 diff size after prerequisite sync/documentation:
+  `+1942 / -1105` (3,047 changed lines), above the 950-1,450 target. The diff
+  includes 496 generated-model lines, deletion of 370 obsolete metadata
+  implementation/model/test lines, and broad lifecycle/race coverage; no
+  unrelated production feature was added.
 
 ### Manual matrix
 

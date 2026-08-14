@@ -1,44 +1,7 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../api/database/tables/session_table.dart";
 import "../session_unseen_calculator.dart";
-
-/// Maps a [PluginSession] to the shared [Session] type used in relay responses.
-extension PluginSessionMapper on PluginSession {
-  Session toSharedSession({required String pluginId}) {
-    return toSharedSessionWithId(sessionId: id, pluginId: pluginId);
-  }
-
-  Session toSharedSessionWithId({required String sessionId, required String pluginId}) {
-    return Session(
-      branchName: null,
-      id: sessionId,
-      pluginId: pluginId,
-      projectID: projectID,
-      directory: directory,
-      parentID: parentID,
-      title: title,
-      time: switch (time) {
-        PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
-          created: created,
-          updated: updated,
-          archived: archived,
-        ),
-        null => null,
-      },
-      pullRequest: null,
-      promptDefaults: null,
-      lastUserActivityAt: null,
-    );
-  }
-}
-
-extension PluginSessionsMapper on Iterable<PluginSession> {
-  List<Session> toSharedSessions({required String pluginId}) {
-    return map((session) => session.toSharedSession(pluginId: pluginId)).toList(growable: false);
-  }
-}
 
 Session enrichSharedSession({
   required Session session,
