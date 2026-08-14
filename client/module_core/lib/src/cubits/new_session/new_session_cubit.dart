@@ -641,7 +641,7 @@ class NewSessionCubit({
         : AnalyticsSubmission.text(inputMode: _analyticsInputMode(inputMode));
     final usesDedicatedWorktree =
         dedicatedWorktree && config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported;
-    final workspaceKind = usesDedicatedWorktree
+    final requestedWorkspaceKind = usesDedicatedWorktree
         ? AnalyticsWorkspaceKind.dedicatedWorktree
         : AnalyticsWorkspaceKind.project;
 
@@ -684,7 +684,7 @@ class NewSessionCubit({
     );
 
     switch (response) {
-      case SuccessResponse():
+      case SuccessResponse(:final data):
         _selectionTracker.clearIfRevision(
           projectId: _projectId,
           pluginId: pluginId,
@@ -693,14 +693,14 @@ class NewSessionCubit({
         _reportProductEvent(
           event: ProductAnalyticsEvent.sessionCreatedWithMessage(
             submission: analyticsSubmission,
-            workspaceKind: workspaceKind,
+            workspaceKind: data.hasWorktree ? AnalyticsWorkspaceKind.dedicatedWorktree : AnalyticsWorkspaceKind.project,
           ),
         );
       case ErrorResponse(:final error):
         _reportProductEvent(
           event: ProductAnalyticsEvent.sessionCreationFailed(
             failureReason: _analyticsFailureReason(error.remoteFailureReason),
-            workspaceKind: workspaceKind,
+            workspaceKind: requestedWorkspaceKind,
           ),
         );
     }

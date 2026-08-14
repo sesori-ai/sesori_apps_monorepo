@@ -571,6 +571,48 @@ void main() {
       },
     );
 
+    test("successful creation reports the workspace returned by the bridge", () async {
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          attachments: const [],
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          testSession(id: "s-fallback").copyWith(hasWorktree: false),
+        ),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      await cubit.createSession(
+        attachments: const [],
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+            workspaceKind: AnalyticsWorkspaceKind.project,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+    });
+
     test("failed creation reports only a bounded failure outcome", () async {
       when(
         () => mockSessionService.createSessionWithMessage(

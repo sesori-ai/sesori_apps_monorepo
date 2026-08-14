@@ -240,7 +240,7 @@ void main() {
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
     });
 
-    test("reconnect reloads project capability and failure degrades to unsupported", () async {
+    test("reconnect reloads project capability and failure blocks creation as unavailable", () async {
       final refresh = Completer<ApiResponse<Project>>();
       var projectCalls = 0;
       when(
@@ -288,8 +288,9 @@ void main() {
 
       expect(
         cubit.state.agentModelData?.projectWorktreeCapability,
-        NewSessionProjectWorktreeCapability.unsupported,
+        NewSessionProjectWorktreeCapability.unavailable,
       );
+      expect(cubit.canCreateSession, isFalse);
     });
 
     test("reconnect refreshes metadata, preserving a routable selection before falling back to default", () async {
