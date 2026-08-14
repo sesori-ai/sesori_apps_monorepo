@@ -33,6 +33,7 @@ final class _PiTurn({
   required final PiPromptPayload payload,
   required final ({String providerID, String modelID})? model,
   required final PluginSessionVariant? variant,
+  required final String? userVisibleText,
   required final Completer<void>? commandAcceptance,
 }) {
   PiSessionConnection? connection;
@@ -62,6 +63,7 @@ final class PiSessionService({
   final Duration _idleTimeout = idleTimeout;
   final Map<String, _PiSessionTurnState> _sessions = {};
   final Map<String, String> _pendingNewDirectories = {};
+  final Set<Future<void>> _activeIdleReaps = {};
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
   late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
@@ -105,6 +107,7 @@ final class PiSessionService({
         payload: payload,
         model: model,
         variant: variant,
+        userVisibleText: userVisibleText,
         commandAcceptance: null,
       ),
     );
@@ -126,11 +129,10 @@ final class PiSessionService({
       return Future.error(PiSessionBusyException(sessionId: sessionId));
     }
     final execution = arguments.isEmpty ? "/$command" : "/$command $arguments";
+    final visibleArguments = userVisibleArguments;
+    final visible = visibleArguments == null || visibleArguments.isEmpty ? "/$command" : "/$command $visibleArguments";
     final acceptance = Completer<void>();
-    final payload = _processes.mapPrompt(
-      parts: [PluginPromptPart.text(text: execution)],
-      userVisibleText: userVisibleArguments,
-    );
+    final payload = PiPromptPayload(message: execution, images: const []);
     _admit(
       sessionId: sessionId,
       directory: directory,
@@ -138,6 +140,7 @@ final class PiSessionService({
         payload: payload,
         model: model,
         variant: variant,
+        userVisibleText: visible,
         commandAcceptance: acceptance,
       ),
     );
@@ -194,7 +197,11 @@ final class PiSessionService({
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
         throw PiTurnCancelledException(sessionId: sessionId);
       }
-      _dispatcher.beginTurn(sessionId: sessionId);
+      _dispatcher.beginTurn(
+        sessionId: sessionId,
+        executionText: turn.payload.message,
+        userVisibleText: turn.userVisibleText,
+      );
       turn.promptDispatched = true;
       final response = _processes.dispatchPrompt(connection: connection, payload: turn.payload);
       await response;
@@ -221,6 +228,17 @@ final class PiSessionService({
       if (error is PiRpcProcessExitException) {
         await Future<void>.delayed(Duration.zero);
         if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+      }
+      if (error is TimeoutException && turn.promptDispatched) {
+        final connection = turn.connection;
+        if (connection != null) {
+          _extensionUi.cancelForOwner(
+            sessionId: sessionId,
+            processGeneration: connection.generation,
+          );
+          await _processes.teardownConnection(connection: connection);
+          if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+        }
       }
       final acceptance = turn.commandAcceptance;
       if (acceptance != null && !acceptance.isCompleted) acceptance.completeError(error, stack);
@@ -280,11 +298,17 @@ final class PiSessionService({
           acceptance.complete();
         }
         unawaited(
-          _extensionUi.handleRequest(ownerSessionId: processFrame.sessionId, request: request).catchError(
-            (Object error, StackTrace stack) {
-              Log.w("[pi] extension UI routing failed for session id=${processFrame.sessionId}", error, stack);
-            },
-          ),
+          _extensionUi
+              .handleRequest(
+                ownerSessionId: processFrame.sessionId,
+                processGeneration: processFrame.generation,
+                request: request,
+              )
+              .catchError(
+                (Object error, StackTrace stack) {
+                  Log.w("[pi] extension UI routing failed for session id=${processFrame.sessionId}", error, stack);
+                },
+              ),
         );
       case PiResponseFrame() || PiUnknownFrame():
         break;
@@ -292,7 +316,7 @@ final class PiSessionService({
   }
 
   void _handleExit(PiSessionProcessExit exit) {
-    _extensionUi.cancelForOwner(sessionId: exit.sessionId);
+    _extensionUi.cancelForOwner(sessionId: exit.sessionId, processGeneration: exit.generation);
     final state = _sessions[exit.sessionId];
     final turn = state?.active;
     if (state == null || turn == null || turn.connection?.generation != exit.generation) return;
@@ -330,7 +354,6 @@ final class PiSessionService({
     if (!identical(_sessions[sessionId], state) || !identical(state.active, turn)) return;
     state.active = null;
     if (failed) _emit(BridgeSseSessionError(sessionID: sessionId));
-    unawaited(_clearPendingWhenPersisted(sessionId: sessionId, directory: state.directory));
     if (state.queue.isNotEmpty) {
       _startNext(sessionId: sessionId, state: state);
       return;
@@ -345,19 +368,6 @@ final class PiSessionService({
     _emit(const BridgeSseProjectUpdated());
     _syncWorkState();
     _scheduleIdleReap(sessionId: sessionId, state: state);
-  }
-
-  Future<void> _clearPendingWhenPersisted({required String sessionId, required String directory}) async {
-    try {
-      if (await _processes.clearPendingWhenPersisted(
-        sessionId: sessionId,
-        knownDirectories: {directory},
-      )) {
-        _pendingNewDirectories.remove(sessionId);
-      }
-    } on Object catch (error, stack) {
-      Log.w("[pi] failed to clear persisted pending marker for session id=$sessionId", error, stack);
-    }
   }
 
   Future<void> abort({required String sessionId}) async {
@@ -377,7 +387,7 @@ final class PiSessionService({
         acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);
       }
     }
-    _extensionUi.cancelForOwner(sessionId: sessionId);
+    _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final connection = cancelled.firstOrNull?.connection;
     try {
       if (connection != null) await _processes.abort(connection: connection);
@@ -404,7 +414,7 @@ final class PiSessionService({
       state.generation++;
       state.idleGeneration++;
     }
-    _extensionUi.cancelForOwner(sessionId: sessionId);
+    _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final pendingDirectory = _pendingNewDirectories.remove(sessionId);
     await _processes.forgetSession(
       sessionId: sessionId,
@@ -425,8 +435,14 @@ final class PiSessionService({
           state.idleGeneration != generation) {
         return;
       }
-      _extensionUi.cancelForOwner(sessionId: sessionId);
-      await _processes.teardown(sessionId: sessionId);
+      _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
+      final teardown = _processes.teardown(sessionId: sessionId);
+      _activeIdleReaps.add(teardown);
+      try {
+        await teardown;
+      } finally {
+        _activeIdleReaps.remove(teardown);
+      }
       if (identical(_sessions[sessionId], state) && state.idleGeneration == generation) {
         _sessions.remove(sessionId);
       }
@@ -471,6 +487,7 @@ final class PiSessionService({
     await _frameSubscription.cancel();
     await _exitSubscription.cancel();
     await _extensionUi.dispose();
+    await Future.wait(_activeIdleReaps.toList());
     await _processes.dispose();
     _sessions.clear();
     _pendingNewDirectories.clear();

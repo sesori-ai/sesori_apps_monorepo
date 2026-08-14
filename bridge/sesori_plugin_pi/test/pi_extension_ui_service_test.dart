@@ -46,6 +46,7 @@ void main() {
   test("maps dialogs, indexes imported scope, and sends exact reply variants", () async {
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiSelectDialogRequest(
         id: "select-wire",
         title: "Choose",
@@ -73,6 +74,7 @@ void main() {
 
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiConfirmDialogRequest(
         id: "confirm-wire",
         title: null,
@@ -93,6 +95,7 @@ void main() {
 
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiInputDialogRequest(
         id: "input-wire",
         title: null,
@@ -115,6 +118,7 @@ void main() {
   test("editor exposes bounded prefill and sends complete replacement", () async {
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: PiEditorDialogRequest(
         id: "editor-wire",
         title: "Edit",
@@ -142,6 +146,7 @@ void main() {
   test("invalid and late replies do not consume pending state", () async {
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiSelectDialogRequest(
         id: "select-wire",
         title: null,
@@ -185,6 +190,7 @@ void main() {
   test("mirrors upstream timeout, owns editor expiry, and bounds notifications", () async {
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiInputDialogRequest(
         id: "upstream-timeout",
         title: null,
@@ -195,10 +201,12 @@ void main() {
     );
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiEditorDialogRequest(id: "editor-timeout", title: null, prefill: null, raw: {}),
     );
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: PiNotifyRequest(
         id: "notify",
         message: _repeat("n", 600),
@@ -208,6 +216,7 @@ void main() {
     );
     await service.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiSetStatusRequest(id: "status", statusKey: "key", statusText: "secret", raw: {}),
     );
 
@@ -225,6 +234,7 @@ void main() {
   test("unknown owners are cancelled and owner cleanup rejects every card", () async {
     await service.handleRequest(
       ownerSessionId: "missing",
+      processGeneration: processes.generation,
       request: const PiInputDialogRequest(id: "missing", title: null, placeholder: null, timeoutMs: null, raw: {}),
     );
     expect(processes.replies, isEmpty);
@@ -233,10 +243,11 @@ void main() {
     for (final id in ["one", "two"]) {
       await service.handleRequest(
         ownerSessionId: "child",
+        processGeneration: processes.generation,
         request: PiInputDialogRequest(id: id, title: null, placeholder: null, timeoutMs: null, raw: const {}),
       );
     }
-    service.cancelForOwner(sessionId: "child");
+    service.cancelForOwner(sessionId: "child", processGeneration: null);
 
     expect(service.getPendingQuestions(sessionId: "root"), isEmpty);
     expect(processes.replies.map((reply) => reply.requestId), ["one", "two"]);
@@ -258,17 +269,50 @@ void main() {
     );
     final handling = delayed.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiInputDialogRequest(id: "late", title: null, placeholder: null, timeoutMs: null, raw: {}),
     );
     await Future<void>.delayed(Duration.zero);
 
-    delayed.cancelForOwner(sessionId: "child");
+    delayed.cancelForOwner(sessionId: "child", processGeneration: null);
     gate.complete();
     await handling;
 
     expect(delayed.getPendingQuestions(sessionId: "child"), isEmpty);
     expect(processes.replies.single.requestId, "late");
     expect(processes.replies.single.reply, isA<PiExtensionUiCancelledReply>());
+    await delayed.dispose();
+  });
+
+  test("delayed old lookup cannot cancel through replacement process generation", () async {
+    final gate = Completer<void>();
+    final delayed = PiExtensionUiService(
+      catalogRepository: PiSessionCatalogRepository(
+        storageApi: _FakeStorageApi(
+          sessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
+          gate: gate,
+        ),
+      ),
+      processRepository: processes.repository,
+      tracker: PiExtensionUiTracker(),
+      editorTimeout: const Duration(minutes: 30),
+    );
+    final oldGeneration = processes.generation;
+    final handling = delayed.handleRequest(
+      ownerSessionId: "child",
+      processGeneration: oldGeneration,
+      request: const PiInputDialogRequest(id: "old-dialog", title: null, placeholder: null, timeoutMs: null, raw: {}),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    await processes.reconnect();
+    delayed.cancelForOwner(sessionId: "child", processGeneration: oldGeneration);
+    gate.complete();
+    await handling;
+
+    expect(processes.processes.first.written.where((frame) => frame["type"] == "extension_ui_response"), isEmpty);
+    expect(processes.processes.last.written.where((frame) => frame["type"] == "extension_ui_response"), isEmpty);
+    expect(delayed.getPendingQuestions(sessionId: "child"), isEmpty);
     await delayed.dispose();
   });
 
@@ -285,6 +329,7 @@ void main() {
     await expectLater(
       failing.handleRequest(
         ownerSessionId: "child",
+        processGeneration: processes.generation,
         request: const PiInputDialogRequest(
           id: "catalog-failure",
           title: null,
@@ -316,6 +361,7 @@ void main() {
     );
     final handling = delayed.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiInputDialogRequest(
         id: "elapsed-timeout",
         title: null,
@@ -349,6 +395,7 @@ void main() {
     unavailable.events.listen(unavailableEvents.add);
     await unavailable.handleRequest(
       ownerSessionId: "child",
+      processGeneration: processes.generation,
       request: const PiInputDialogRequest(
         id: "unavailable",
         title: null,
@@ -382,13 +429,14 @@ final class const _SentReply({
 });
 
 final class _ProcessFixture({required final _FakeStorageApi storage}) {
-  final FakePiProcess process = FakePiProcess();
+  final List<FakePiProcess> processes = [FakePiProcess()];
+  late int generation;
   late final PiSessionProcessRepository repository = PiSessionProcessRepository(
     storageApi: storage,
     historyStorageApi: _FakeHistoryStorage(storageApi: storage),
     binaryPath: "/runtime/pi",
     environment: const {},
-    processFactory: ({required spec}) async => process,
+    processFactory: ({required spec}) async => processes.last,
     historyMapper: PiHistoryMapper(pluginId: "pi"),
     identityTracker: PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: const Duration(milliseconds: 50),
@@ -396,31 +444,42 @@ final class _ProcessFixture({required final _FakeStorageApi storage}) {
   );
 
   List<_SentReply> get replies => [
-    for (final frame in process.written)
-      if (frame["type"] == "extension_ui_response")
-        _SentReply(
-          ownerSessionId: "child",
-          requestId: frame["id"]! as String,
-          reply: switch (frame) {
-            {"value": final String value} => PiExtensionUiValueReply(value: value),
-            {"confirmed": final bool confirmed} => PiExtensionUiConfirmationReply(confirmed: confirmed),
-            _ => const PiExtensionUiCancelledReply(),
-          },
-        ),
+    for (final process in processes)
+      for (final frame in process.written)
+        if (frame["type"] == "extension_ui_response")
+          _SentReply(
+            ownerSessionId: "child",
+            requestId: frame["id"]! as String,
+            reply: switch (frame) {
+              {"value": final String value} => PiExtensionUiValueReply(value: value),
+              {"confirmed": final bool confirmed} => PiExtensionUiConfirmationReply(confirmed: confirmed),
+              _ => const PiExtensionUiCancelledReply(),
+            },
+          ),
   ];
 
   Future<void> start({required String sessionId, required String directory}) async {
+    final process = processes.last;
     final connecting = repository.ensureResident(sessionId: sessionId, knownDirectories: {directory});
-    final command = await _waitForCommand(type: "get_entries");
+    final command = await _waitForCommand(process: process, type: "get_entries");
     process.emitResponse(
       id: command["id"]! as String,
       command: "get_entries",
       data: const {"entries": <Object?>[], "leafId": null},
     );
-    await connecting;
+    generation = (await connecting).generation;
   }
 
-  Future<Map<String, Object?>> _waitForCommand({required String type}) async {
+  Future<void> reconnect() async {
+    await repository.teardown(sessionId: "child");
+    processes.add(FakePiProcess());
+    await start(sessionId: "child", directory: "/repo/worktree");
+  }
+
+  Future<Map<String, Object?>> _waitForCommand({
+    required FakePiProcess process,
+    required String type,
+  }) async {
     for (var attempt = 0; attempt < 50; attempt++) {
       for (final frame in process.written) {
         if (frame["type"] == type) return frame;

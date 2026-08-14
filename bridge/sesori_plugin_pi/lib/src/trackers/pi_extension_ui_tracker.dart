@@ -4,6 +4,7 @@ sealed class const PiTrackedExtensionDialog({
   required final String questionId,
   required final String requestId,
   required final String ownerSessionId,
+  required final int processGeneration,
   required final String displaySessionId,
   required final String projectId,
   required final PluginQuestionInfo question,
@@ -13,6 +14,7 @@ final class const PiTrackedSelectDialog({
   required super.questionId,
   required super.requestId,
   required super.ownerSessionId,
+  required super.processGeneration,
   required super.displaySessionId,
   required super.projectId,
   required super.question,
@@ -23,6 +25,7 @@ final class const PiTrackedConfirmDialog({
   required super.questionId,
   required super.requestId,
   required super.ownerSessionId,
+  required super.processGeneration,
   required super.displaySessionId,
   required super.projectId,
   required super.question,
@@ -32,6 +35,7 @@ final class const PiTrackedInputDialog({
   required super.questionId,
   required super.requestId,
   required super.ownerSessionId,
+  required super.processGeneration,
   required super.displaySessionId,
   required super.projectId,
   required super.question,
@@ -41,6 +45,7 @@ final class const PiTrackedEditorDialog({
   required super.questionId,
   required super.requestId,
   required super.ownerSessionId,
+  required super.processGeneration,
   required super.displaySessionId,
   required super.projectId,
   required super.question,
@@ -83,7 +88,17 @@ final class PiExtensionUiTracker() {
   List<PluginPendingQuestion> pendingForProject({required String projectId}) =>
       _forQuestionId(_byProject[projectId] ?? const {}).map(_pending).toList(growable: false);
 
-  List<PiTrackedExtensionDialog> takeForOwner({required String sessionId}) => _takeMany(_byOwner[sessionId]);
+  List<PiTrackedExtensionDialog> takeForOwner({
+    required String sessionId,
+    required int? processGeneration,
+  }) => _takeMany(
+    processGeneration == null
+        ? _byOwner[sessionId]
+        : {
+            for (final id in _byOwner[sessionId] ?? const <String>{})
+              if (_byQuestionId[id]?.processGeneration == processGeneration) id,
+          },
+  );
 
   List<PiTrackedExtensionDialog> takeAll() => _takeMany(_byQuestionId.keys.toSet());
 

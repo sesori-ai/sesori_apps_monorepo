@@ -94,10 +94,12 @@ final class PiHistoryMapper({
     required String sessionId,
     required String messageId,
     required PiUserMessageDto message,
+    required String? exactText,
   }) => _mapUserMessage(
     sessionId: sessionId,
     messageId: messageId,
     message: message,
+    exactText: exactText,
     warnings: <_PiHistoryWarning>{},
   );
 
@@ -105,10 +107,12 @@ final class PiHistoryMapper({
     required String sessionId,
     required String messageId,
     required PiUserMessageDto message,
+    required String? exactText,
     required Set<_PiHistoryWarning> warnings,
   }) {
     final parts = _mapUserContent(
       content: message.content,
+      exactText: exactText,
       sessionId: sessionId,
       messageId: messageId,
       warnings: warnings,
@@ -320,6 +324,7 @@ final class PiHistoryMapper({
                 sessionId: sessionId,
                 messageId: messageId,
                 message: message,
+                exactText: null,
                 warnings: warnings,
               );
               if (mapped != null) messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
@@ -471,6 +476,7 @@ final class PiHistoryMapper({
 
   List<PluginMessagePart> _mapUserContent({
     required List<PiContentDto> content,
+    required String? exactText,
     required String sessionId,
     required String messageId,
     required Set<_PiHistoryWarning> warnings,
@@ -481,7 +487,7 @@ final class PiHistoryMapper({
       final block = content[index];
       switch (block) {
         case PiTextContentDto(:final text):
-          final visibleText = _persistedUserTextCodec.decodeVisibleText(persistedText: text);
+          final visibleText = exactText ?? _persistedUserTextCodec.decodeVisibleText(persistedText: text);
           if (visibleText.isEmpty) continue;
           parts.add(
             _part(

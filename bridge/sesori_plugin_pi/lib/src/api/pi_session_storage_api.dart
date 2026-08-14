@@ -101,6 +101,9 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     if (!isValidPiSessionId(sessionId: sessionId)) {
       throw ArgumentError.value(sessionId, "sessionId", "must be a valid Pi session ID");
     }
+    if (cwd.contains("\n") || cwd.contains("\r")) {
+      throw ArgumentError.value(cwd, "cwd", "must not contain CR or LF");
+    }
     final normalizedCwd = _absolute(cwd);
     final markerPath = _pendingMarkerPath(environment: _environment, sessionId: sessionId, cwd: normalizedCwd);
     await Isolate.run(() => _writePendingMarker(path: markerPath, cwd: normalizedCwd));

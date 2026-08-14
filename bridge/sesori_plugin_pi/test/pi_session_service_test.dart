@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/pi_testing.dart";
@@ -68,6 +69,45 @@ void main() {
     expect(fixture.spawned, hasLength(1));
   });
 
+  test("resolved session clears stale marker before startup and cleanup failure remains best-effort", () async {
+    final process = FakePiProcess();
+    final storage = _Storage(
+      initialResolved: _resolved(),
+      initialPending: const PiPendingNewSession(id: "session", cwd: "/pending"),
+    );
+    final fixture = _Fixture(processes: [process], storageOverride: storage);
+    addTearDown(fixture.dispose);
+
+    final resident = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    await waitForCommand(process: process, type: "get_entries");
+    expect(storage.pending, isNull);
+    expect(storage.clearedDirectories, containsAll({"/project"}));
+    await _answerEntries(process);
+    await resident;
+
+    final failedCleanupProcess = FakePiProcess();
+    final failedCleanupStorage = _Storage(
+      initialResolved: _resolved(id: "other"),
+      clearError: StateError("marker cleanup failed"),
+    );
+    final failedCleanupFixture = _Fixture(
+      processes: [failedCleanupProcess],
+      storageOverride: failedCleanupStorage,
+    );
+    addTearDown(failedCleanupFixture.dispose);
+    final warnings = await _captureWarnings(() async {
+      final connection = failedCleanupFixture.repository.ensureResident(
+        sessionId: "other",
+        knownDirectories: const {"/project"},
+      );
+      await _answerEntries(failedCleanupProcess);
+      await connection;
+    });
+    expect(warnings, contains("failed to clear stale pending marker"));
+    expect(warnings, contains("marker cleanup failed"));
+    expect(warnings, contains("pi_session_service_test.dart"));
+  });
+
   test("persisted file wins over pending marker and marker resumes new when file is absent", () async {
     final resumed = FakePiProcess();
     final created = FakePiProcess();
@@ -91,6 +131,23 @@ void main() {
     await _answerEntries(created);
     await pending;
     expect(fixture.spawned.last.launch, isA<PiNewSession>());
+  });
+
+  test("teardown promptly disposes a connecting process waiting on history", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+
+    final connecting = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+    );
+    await waitForCommand(process: process, type: "get_entries");
+
+    await fixture.repository.teardown(sessionId: "session");
+
+    expect(process.killed, isTrue);
+    await expectLater(connecting, throwsA(isA<PiRpcDisposedException>()));
   });
 
   test("teardown fences and reaps a process whose spawn completes late", () async {
@@ -119,6 +176,28 @@ void main() {
     await expectLater(connecting, throwsStateError);
     expect(process.killed, isTrue);
     expect(repository.residentSessionIds, isEmpty);
+  });
+
+  test("forget removes per-session state without reusing a connection generation", () async {
+    final first = FakePiProcess();
+    final second = FakePiProcess();
+    final fixture = _Fixture(processes: [first, second]);
+    addTearDown(fixture.dispose);
+
+    final firstConnection = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+    );
+    await _answerEntries(first);
+    final firstGeneration = (await firstConnection).generation;
+    await fixture.repository.forgetSession(sessionId: "session", knownDirectories: const {"/project"});
+
+    final secondConnection = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+    );
+    await _answerEntries(second);
+    expect((await secondConnection).generation, greaterThan(firstGeneration));
   });
 
   test("resident history and rename reuse process while transient rename disposes its lease", () async {
@@ -371,6 +450,104 @@ void main() {
     expect(secondPrompt["message"], "second");
   });
 
+  test("slash command keeps exact backend text and privacy-safe live presentation", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    final accepted = service.sendCommand(
+      sessionId: "session",
+      directory: "/project",
+      command: "deploy",
+      arguments: "--token hidden public",
+      userVisibleArguments: "public",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    expect(prompt["message"], "/deploy --token hidden public");
+    expect(prompt["message"], isNot(startsWith(PiPersistedUserTextCodec.marker)));
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "/deploy --token hidden public"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    final state = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: state["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
+    await accepted;
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(
+      events.whereType<BridgeSseMessagePartUpdated>().single.part.text,
+      "/deploy public",
+    );
+
+    final noArguments = service.sendCommand(
+      sessionId: "session",
+      directory: "/project",
+      command: "status",
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      model: null,
+    );
+    final noArgumentsPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(noArgumentsPrompt["message"], "/status");
+    process.emitFailure(id: noArgumentsPrompt["id"]! as String, command: "prompt", error: "done");
+    await expectLater(noArguments, throwsA(isA<PiRpcCommandFailureException>()));
+  });
+
+  test("manually typed slash prompt keeps exact live presentation", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "/review src")],
+      userVisibleText: "/review src",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "/review src"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
+    process.emitFailure(id: prompt["id"]! as String, command: "prompt", error: "done");
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.text, "/review src");
+  });
+
   test("command rejects busy, accepts dialog-first, and uses no-run state barrier", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -534,6 +711,59 @@ void main() {
     expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
   });
 
+  test("ambiguous prompt timeout tears down generation before queued work reconnects", () async {
+    final timedOut = FakePiProcess();
+    final replacement = FakePiProcess();
+    final fixture = _Fixture(
+      processes: [timedOut, replacement],
+      historyRpcTimeout: const Duration(milliseconds: 20),
+    );
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "queued")],
+      userVisibleText: "queued",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(timedOut);
+    final oldPrompt = await waitForCommand(process: timedOut, type: "prompt");
+    timedOut.emit(
+      frame: {
+        "type": "extension_ui_request",
+        "id": "old-dialog",
+        "method": "input",
+        "title": "Input",
+      },
+    );
+    await pump();
+    expect(fixture.extensions.single.getPendingQuestions(sessionId: "session"), hasLength(1));
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    await _answerEntries(replacement);
+    final queued = await waitForCommand(process: replacement, type: "prompt");
+
+    expect(timedOut.killed, isTrue);
+    expect(fixture.extensions.single.getPendingQuestions(sessionId: "session"), isEmpty);
+    expect(queued["message"], "queued");
+    timedOut.emitResponse(id: oldPrompt["id"]! as String, command: "prompt");
+    timedOut.emit(frame: {"type": "agent_settled"});
+    await pump();
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    replacement.emitFailure(id: queued["id"]! as String, command: "prompt", error: "terminal");
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   test("failed prompt response and process exit settle queued work", () async {
     final failed = FakePiProcess();
     final replacement = FakePiProcess();
@@ -656,6 +886,38 @@ void main() {
     expect(second.killed, isTrue);
   });
 
+  test("dispose awaits an active idle-reap teardown", () async {
+    final process = FakePiProcess(stdinCloseCompletes: false);
+    final fixture = _Fixture(processes: [process]);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    clock.elapse();
+    await pump();
+
+    var disposed = false;
+    final disposal = service.dispose().then((_) => disposed = true);
+    await pump();
+    expect(disposed, isFalse);
+    process.completeStdinClose();
+    await disposal;
+    expect(process.killed, isTrue);
+    await fixture.dispose();
+  });
+
   test("idle reap preserves pending marker location for later deletion", () async {
     final process = FakePiProcess();
     final storage = _Storage(initialResolved: null);
@@ -724,6 +986,30 @@ void main() {
   });
 }
 
+Future<String> _captureWarnings(Future<void> Function() action) async {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.warning;
+    await IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+final class _BufferingStdout() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
 Future<void> _answerEntries(FakePiProcess process) => _answerNthEntries(process, count: 1);
 
 Future<void> _answerNthEntries(FakePiProcess process, {required int count}) async {
@@ -784,13 +1070,18 @@ PiResolvedSession _resolved({String id = "session"}) => PiResolvedSession(
   path: "/sessions/$id.jsonl",
 );
 
-final class _Fixture({required List<FakePiProcess> processes, final _Storage? storageOverride}) {
+final class _Fixture({
+  required List<FakePiProcess> processes,
+  final _Storage? storageOverride,
+  final Duration historyRpcTimeout = const Duration(seconds: 2),
+}) {
   final List<FakePiProcess> _processes = List.of(processes);
   late final _Storage storage = storageOverride ?? _Storage(initialResolved: _resolved());
   final List<PiLaunchSpec> spawned = [];
   late final PiMessageIdentityTracker identities = PiMessageIdentityTracker(pluginId: "pi");
   late final PiHistoryMapper historyMapper = PiHistoryMapper(pluginId: "pi");
   final List<PiSessionService> _services = [];
+  final List<PiExtensionUiService> extensions = [];
   late final PiSessionProcessRepository repository = PiSessionProcessRepository(
     storageApi: storage,
     historyStorageApi: _HistoryStorage(storageApi: storage),
@@ -803,7 +1094,7 @@ final class _Fixture({required List<FakePiProcess> processes, final _Storage? st
     historyMapper: historyMapper,
     identityTracker: identities,
     startupExitTimeout: const Duration(milliseconds: 50),
-    historyRpcTimeout: const Duration(seconds: 2),
+    historyRpcTimeout: historyRpcTimeout,
   );
 
   PiSessionService service({ServerClock clock = const ServerClock()}) {
@@ -825,6 +1116,7 @@ final class _Fixture({required List<FakePiProcess> processes, final _Storage? st
       clock: clock,
       idleTimeout: const Duration(minutes: 5),
     );
+    extensions.add(extension);
     _services.add(service);
     return service;
   }
@@ -844,6 +1136,7 @@ final class _Storage({
   required final PiResolvedSession? initialResolved,
   final PiPendingNewSession? initialPending,
   final Completer<void>? resolveGate,
+  final Object? clearError,
 }) implements PiSessionStorageApi {
   PiResolvedSession? resolved = initialResolved;
   PiPendingNewSession? pending = initialPending;
@@ -862,6 +1155,7 @@ final class _Storage({
 
   @override
   Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {
+    if (clearError case final error?) throw error;
     clearedDirectories = Set.of(knownDirectories);
     pending = null;
   }

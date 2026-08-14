@@ -339,6 +339,23 @@ void main() {
       expect(messages.single.parts.single.text, "hook content");
     });
 
+    test("cold replay keeps slash command visible without exposing persisted arguments", () async {
+      final process = FakePiProcess();
+      final repository = _repository(processFactory: ({required spec}) async => process);
+
+      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      final command = await waitForCommand(process: process, type: "get_entries");
+      process.emitResponse(
+        id: command["id"]! as String,
+        command: "get_entries",
+        data: _historyJson(text: "/deploy --token private"),
+      );
+
+      final messages = await pending;
+      expect(messages.single.parts.single.text, "/deploy");
+      expect(messages.single.parts.single.text, isNot(contains("private")));
+    });
+
     test("decodes exact persisted user-visible text marker", () async {
       final process = FakePiProcess();
       final repository = _repository(processFactory: ({required spec}) async => process);

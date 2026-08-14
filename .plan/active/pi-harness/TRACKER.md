@@ -439,17 +439,30 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Added strict bounded inline image validation and visible privacy-safe rejection
   of paths, URLs, non-image data, malformed base64, and oversized collections.
 - Architecture implementation review approved direct resident-repository
-  response ownership. Full package tests pass (194 tests); fatal analysis and
-  diff checks pass. The pinned formatter still crashes on the pre-existing Dart
-  3.13 primary-constructor enum in `pi_session_storage_api.dart`.
+  response ownership. Validated PR review fixes then added CR/LF-safe pending
+  markers, pre-start best-effort stale-marker cleanup, connecting-client and
+  globally monotonic generation fencing, generation-safe extension dialogs,
+  exact slash-command dispatch with privacy-safe presentation, ambiguous-timeout
+  teardown with old-dialog retirement, and disposal waiting for active idle-reap
+  teardown.
+- Full package tests pass (203 tests); fatal analysis and diff checks pass. The
+  pinned formatter still crashes on the pre-existing Dart 3.13
+  primary-constructor enum in `pi_session_storage_api.dart`; every other changed
+  Dart file formats cleanly.
 - No generated files, database schema, client/bridge wire contract, analytics,
   or registered plugin change. Pi composition/catalog exposure remain Steps
-  15-16; Pi remains app-invisible until Step 18.
-- Diff: +2,285/-81 = 2,366 changed lines; generated lines: 0; tests run: 194.
-  Recorded overage: persistence, residency, replay hydration, turn settlement,
-  attachment validation, and focused concurrency/lifecycle tests form one
-  required Step 14 seam; splitting would leave resident processes without their
-  owning lane or required fencing evidence.
+  15-16; Pi remains app-invisible until Step 18. Cold replay cannot recover
+  `userVisibleArguments` from Pi's persisted raw command without new persistence,
+  so cold replay conservatively displays only the slash-command token for both
+  API commands and manually typed slash prompts, never hidden raw arguments;
+  live API-command presentation retains exact `userVisibleArguments`.
+- Diff: +2,855/-101 = 2,956 changed lines; generated lines: 0; tests run: 203.
+  Review-fix working-tree delta excluding this tracker evidence: +586/-85 =
+  671 changed lines. Recorded overage:
+  persistence, residency, replay hydration, turn settlement, attachment
+  validation, and focused concurrency/lifecycle tests form one required Step 14
+  seam; splitting would leave resident processes without their owning lane or
+  required fencing evidence.
 
 ## Findings And Plan Deltas
 

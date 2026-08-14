@@ -19,8 +19,12 @@ final class PiEventDispatcher({
   final PiToolTracker _tools = toolTracker;
   final Map<String, _SessionState> _sessions = {};
 
-  void beginTurn({required String sessionId}) {
-    _session(sessionId).clearMessage();
+  void beginTurn({required String sessionId, required String? executionText, required String? userVisibleText}) {
+    final state = _session(sessionId);
+    state
+      ..clearMessage()
+      ..executionText = executionText
+      ..userVisibleText = userVisibleText;
     _tools.beginTurn(sessionId: sessionId);
   }
 
@@ -301,8 +305,16 @@ final class PiEventDispatcher({
     final message = _historyMapper.decodeUserMessage(raw: raw);
     if (message == null) return const [];
     final state = _session(sessionId);
+    final content = message.content.singleOrNull;
+    final visibleText = state.userVisibleText;
+    final exactText = content is PiTextContentDto && content.text == state.executionText ? visibleText : null;
     final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
-    final mapped = _historyMapper.mapUserMessage(sessionId: sessionId, messageId: messageId, message: message);
+    final mapped = _historyMapper.mapUserMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      message: message,
+      exactText: exactText,
+    );
     if (mapped == null) return const [];
     return [
       BridgeSseMessageUpdated(info: mapped.info.toJson()),
@@ -591,6 +603,8 @@ final class PiEventDispatcher({
 final class _SessionState({required final PiMessageIdentityBuilder identities}) {
   String? messageId;
   PiAssistantMessageDto? message;
+  String? executionText;
+  String? userVisibleText;
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};

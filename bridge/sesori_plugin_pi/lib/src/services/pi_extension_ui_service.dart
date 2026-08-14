@@ -48,11 +48,16 @@ final class PiExtensionUiService({
   final StreamController<PiExtensionUiEvent> _events = StreamController.broadcast(sync: true);
   final Map<String, Timer> _timers = {};
   final Map<String, int> _ownerGenerations = {};
+  final Map<String, int> _cancelledProcessGenerations = {};
   var _disposed = false;
 
   Stream<PiExtensionUiEvent> get events => _events.stream;
 
-  Future<void> handleRequest({required String ownerSessionId, required PiExtensionUiRequest request}) async {
+  Future<void> handleRequest({
+    required String ownerSessionId,
+    required int processGeneration,
+    required PiExtensionUiRequest request,
+  }) async {
     if (_disposed) return;
     switch (request) {
       case PiNotifyRequest(:final message, :final notifyType):
@@ -74,30 +79,56 @@ final class PiExtensionUiService({
         try {
           scope = await _catalogRepository.resolveDisplayScope(sessionId: ownerSessionId);
         } on Object {
-          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+          _cancel(
+            ownerSessionId: ownerSessionId,
+            processGeneration: processGeneration,
+            requestId: dialog.id,
+          );
           rethrow;
         }
         if (_disposed) {
-          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+          _cancel(
+            ownerSessionId: ownerSessionId,
+            processGeneration: processGeneration,
+            requestId: dialog.id,
+          );
           return;
         }
-        if ((_ownerGenerations[ownerSessionId] ?? 0) != generation) {
-          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+        if ((_ownerGenerations[ownerSessionId] ?? 0) != generation ||
+            processGeneration <= (_cancelledProcessGenerations[ownerSessionId] ?? -1)) {
+          _cancel(
+            ownerSessionId: ownerSessionId,
+            processGeneration: processGeneration,
+            requestId: dialog.id,
+          );
           return;
         }
         if (scope == null) {
-          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+          _cancel(
+            ownerSessionId: ownerSessionId,
+            processGeneration: processGeneration,
+            requestId: dialog.id,
+          );
           return;
         }
         final timeout = _timeoutFor(dialog);
         final remaining = timeout == null ? null : timeout - elapsed.elapsed;
         if (remaining != null && remaining <= Duration.zero) {
           if (dialog is PiEditorDialogRequest) {
-            _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+            _cancel(
+              ownerSessionId: ownerSessionId,
+              processGeneration: processGeneration,
+              requestId: dialog.id,
+            );
           }
           return;
         }
-        final tracked = _tracked(dialog: dialog, ownerSessionId: ownerSessionId, scope: scope);
+        final tracked = _tracked(
+          dialog: dialog,
+          ownerSessionId: ownerSessionId,
+          processGeneration: processGeneration,
+          scope: scope,
+        );
         _tracker.add(dialog: tracked);
         _scheduleTimeout(tracked: tracked, timeout: remaining);
         _events.add(PiExtensionUiQuestionAsked(question: _tracker.pending(dialog: tracked)));
@@ -126,6 +157,7 @@ final class PiExtensionUiService({
     }
     if (!_processRepository.sendExtensionUiResponse(
       ownerSessionId: dialog.ownerSessionId,
+      generation: dialog.processGeneration,
       requestId: dialog.requestId,
       reply: reply,
     )) {
@@ -145,6 +177,7 @@ final class PiExtensionUiService({
     final dialog = _required(questionId: questionId, sessionId: sessionId);
     if (!_processRepository.sendExtensionUiResponse(
       ownerSessionId: dialog.ownerSessionId,
+      generation: dialog.processGeneration,
       requestId: dialog.requestId,
       reply: const PiExtensionUiCancelledReply(),
     )) {
@@ -154,12 +187,20 @@ final class PiExtensionUiService({
     _rejected(dialog);
   }
 
-  void cancelForOwner({required String sessionId}) {
-    _ownerGenerations[sessionId] = (_ownerGenerations[sessionId] ?? 0) + 1;
-    for (final dialog in _tracker.takeForOwner(sessionId: sessionId)) {
+  void cancelForOwner({required String sessionId, required int? processGeneration}) {
+    if (processGeneration == null) {
+      _ownerGenerations[sessionId] = (_ownerGenerations[sessionId] ?? 0) + 1;
+    } else {
+      _cancelledProcessGenerations[sessionId] = processGeneration;
+    }
+    for (final dialog in _tracker.takeForOwner(
+      sessionId: sessionId,
+      processGeneration: processGeneration,
+    )) {
       _cancelTimer(questionId: dialog.questionId);
       _processRepository.sendExtensionUiResponse(
         ownerSessionId: dialog.ownerSessionId,
+        generation: dialog.processGeneration,
         requestId: dialog.requestId,
         reply: const PiExtensionUiCancelledReply(),
       );
@@ -174,18 +215,21 @@ final class PiExtensionUiService({
       _cancelTimer(questionId: dialog.questionId);
       _processRepository.sendExtensionUiResponse(
         ownerSessionId: dialog.ownerSessionId,
+        generation: dialog.processGeneration,
         requestId: dialog.requestId,
         reply: const PiExtensionUiCancelledReply(),
       );
       _rejected(dialog);
     }
     _ownerGenerations.clear();
+    _cancelledProcessGenerations.clear();
     await _events.close();
   }
 
   PiTrackedExtensionDialog _tracked({
     required PiExtensionDialogRequest dialog,
     required String ownerSessionId,
+    required int processGeneration,
     required ({String displaySessionId, String projectId}) scope,
   }) {
     final questionId = _tracker.nextQuestionId();
@@ -193,6 +237,7 @@ final class PiExtensionUiService({
       questionId: questionId,
       requestId: dialog.id,
       ownerSessionId: ownerSessionId,
+      processGeneration: processGeneration,
       displaySessionId: scope.displaySessionId,
       projectId: scope.projectId,
     );
@@ -201,6 +246,7 @@ final class PiExtensionUiService({
         questionId: shared.questionId,
         requestId: shared.requestId,
         ownerSessionId: shared.ownerSessionId,
+        processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
         projectId: shared.projectId,
         question: PluginQuestionInfo(
@@ -216,6 +262,7 @@ final class PiExtensionUiService({
         questionId: shared.questionId,
         requestId: shared.requestId,
         ownerSessionId: shared.ownerSessionId,
+        processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
         projectId: shared.projectId,
         question: PluginQuestionInfo(
@@ -233,6 +280,7 @@ final class PiExtensionUiService({
         questionId: shared.questionId,
         requestId: shared.requestId,
         ownerSessionId: shared.ownerSessionId,
+        processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
         projectId: shared.projectId,
         question: PluginQuestionInfo(
@@ -247,6 +295,7 @@ final class PiExtensionUiService({
         questionId: shared.questionId,
         requestId: shared.requestId,
         ownerSessionId: shared.ownerSessionId,
+        processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
         projectId: shared.projectId,
         question: PluginQuestionInfo(
@@ -279,6 +328,7 @@ final class PiExtensionUiService({
       if (tracked is PiTrackedEditorDialog) {
         _processRepository.sendExtensionUiResponse(
           ownerSessionId: tracked.ownerSessionId,
+          generation: tracked.processGeneration,
           requestId: tracked.requestId,
           reply: const PiExtensionUiCancelledReply(),
         );
@@ -306,9 +356,14 @@ final class PiExtensionUiService({
 
   void _cancelTimer({required String questionId}) => _timers.remove(questionId)?.cancel();
 
-  void _cancel({required String ownerSessionId, required String requestId}) {
+  void _cancel({
+    required String ownerSessionId,
+    required int processGeneration,
+    required String requestId,
+  }) {
     _processRepository.sendExtensionUiResponse(
       ownerSessionId: ownerSessionId,
+      generation: processGeneration,
       requestId: requestId,
       reply: const PiExtensionUiCancelledReply(),
     );
