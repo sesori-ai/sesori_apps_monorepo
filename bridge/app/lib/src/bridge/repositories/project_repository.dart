@@ -2,7 +2,7 @@ import "dart:io" show FileSystemException;
 import "dart:math" show max;
 
 import "package:path/path.dart" as p;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectSummary, ProjectTime;
 
@@ -29,6 +29,10 @@ class ProjectRepository({
 }) {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
+  static const int _maxConcurrentWorktreeInspections = 8;
+  final ParallelLock _worktreeInspectionLock = ParallelLock(
+    maxParallelOperations: _maxConcurrentWorktreeInspections,
+  );
 
   Future<List<ProjectSummary>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
@@ -255,15 +259,17 @@ class ProjectRepository({
     }
   }
 
-  Future<bool> _supportsDedicatedWorktrees({required String path}) async {
-    try {
-      if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
-      return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
-    } on Object catch (error, stackTrace) {
-      Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
-      return false;
-    }
-  }
+  Future<bool> _supportsDedicatedWorktrees({required String path}) => _worktreeInspectionLock.use(
+    operation: () async {
+      try {
+        if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
+        return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
+      } on Object catch (error, stackTrace) {
+        Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
+        return false;
+      }
+    },
+  );
 
   static ProjectTime _activityToTime(ProjectActivity activity) {
     return ProjectTime(created: activity.createdAt, updated: activity.updatedAt);

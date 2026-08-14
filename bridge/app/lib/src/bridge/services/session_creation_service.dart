@@ -30,8 +30,10 @@ class SessionCreationService({
     );
     final metadataGeneration = _generateMetadata(firstText: firstText);
     await pluginRoutability;
-    final metadata = await metadataGeneration;
-    final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
+    final (metadata, worktreeResult) = await (
+      metadataGeneration,
+      _prepareWorktree(request: request),
+    ).wait;
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
       projectDirectory: projectDirectory,
@@ -105,7 +107,6 @@ class SessionCreationService({
 
   Future<WorktreeResult?> _prepareWorktree({
     required CreateSessionRequest request,
-    required bridge_metadata.SessionMetadata? metadata,
   }) async {
     if (!request.dedicatedWorktree) {
       return null;
@@ -113,9 +114,6 @@ class SessionCreationService({
     return await _worktreeService.prepareWorktreeForSession(
       projectId: request.projectId,
       parentSessionId: null,
-      preferredBranchAndWorktreeName: metadata != null
-          ? (branchName: metadata.branchName, worktreeName: metadata.worktreeName)
-          : null,
     );
   }
 

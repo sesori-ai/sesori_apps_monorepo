@@ -11,9 +11,10 @@ child sessions with titles, activity, statuses, and unseen state.
 - Catalog list summaries contain only durable fields from the bridge database:
   no backend start, no blocking on an in-progress import, no filesystem or Git
   inspection, always the last committed snapshot. A selected project receives
-  real capability checks. A failed check blocks creation with an explicit retry
-  instead of being treated as unsupported, and dedicated-worktree support is
-  revalidated when a dedicated session is created.
+  real capability checks, bounded across concurrent requests. A failed check
+  blocks creation with an explicit retry instead of being treated as
+  unsupported, and dedicated-worktree support is revalidated when a dedicated
+  session is created.
 - Backends that own projects supply the list; the bridge derives it for backends
   without a project concept. Both appear as ordinary projects.
 - A backend-native project identifier is stable and independent of its directory,

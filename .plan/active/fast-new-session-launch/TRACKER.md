@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** `origin/main` at `14a4e405`
-- **Current branch:** `speed-up-new-session-load`
-- **Series state:** Step 1/6 plan ready for delivery
-- **Current step:** commit, push, and open plan PR
-- **Next action:** deliver Step 1 and monitor its checks/review
+- **Implementation base:** `origin/main` at `c7364468`
+- **Current branch:** `fast-new-session-launch-step-2`
+- **Series state:** Step 1/6 merged; Step 2/6 ready for delivery
+- **Current step:** finalize the local workspace naming PR
+- **Next action:** commit, push, open Step 2, and start its monitor
 
 ## Locked Decisions
 
@@ -75,8 +75,8 @@
 
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
-| [ ] | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | Drafting |
-| [ ] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Blocked on Step 1 merge |
+| [x] | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | Merged in #894 |
+| [ ] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Ready for PR |
 | [ ] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Blocked on Step 2 merge |
 | [ ] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Blocked on Step 3 merge |
 | [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Blocked on Step 4 merge |
@@ -95,7 +95,16 @@
 - [x] Record complexity budget, compatibility, L3 boundary, and required matrix.
 - [x] Run architecture plan review and apply valid findings.
 - [x] Run plan consistency checks and `git diff --check`.
-- [ ] Commit, push, open Step 1 PR, and record its URL/review result.
+- [x] Commit, push, open Step 1 PR, and record its URL/review result.
+
+## Step 2 Checklist
+
+- [x] Generate one local lowercase ASCII `color-animal` branch/worktree slug.
+- [x] Retry distinct pairs, occupied paths, and bounded secure suffix candidates.
+- [x] Remove preferred metadata names/validation and overlap metadata/worktree work.
+- [x] Preserve existing parent reuse and Git/non-Git fallback behavior.
+- [x] Pass focused tests, strict analysis, cleanup audit, and architecture review.
+- [x] Retain metadata response fields for Step 3's typed API replacement.
 
 ## Cleanup Ledger
 
@@ -122,6 +131,13 @@
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational result including this record, within the 750-900 target:
   `PLAN.md +751`, `TRACKER.md +144`, total `+895 / -0`.
+- Step 2 package resolution: `dart pub get` from `bridge/app` passed.
+- Step 2 focused worktree/creation tests passed, 64 tests.
+- Step 2 strict analysis: `dart analyze --fatal-infos` from `bridge/app` passed
+  with no issues.
+- Step 2 architecture reviews: initial approved; follow-up API-placement finding applied.
+- Informational Step 2 diff size against `origin/main`, including this record:
+  `+272 / -226` (498 changed lines), within the 200-500 target.
 
 ### Manual matrix
 

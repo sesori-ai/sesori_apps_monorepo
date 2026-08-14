@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/session_table.dart";
+import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
 import "../runtime/plugin_runtime.dart";
 import "../worktree_types.dart";
@@ -16,6 +17,7 @@ const _worktreeDir = ".worktrees";
 class WorktreeRepository({
     required final ProjectsDao _projectsDao,
     required final SessionDao _sessionDao,
+    required final FilesystemApi _filesystemApi,
     required final GitCliApi _gitApi,
     required final PluginRuntime _runtime,
   }) {
@@ -84,6 +86,9 @@ class WorktreeRepository({
       startPoint: startPoint,
     );
   }
+
+  bool worktreePathExists({required String worktreePath}) =>
+      _filesystemApi.entityType(worktreePath) != FileSystemEntityType.notFound;
 
   /// The live directory for [projectId] — where git operations for the
   /// project must run. Unknown ids are rejected: an id is not a directory.
