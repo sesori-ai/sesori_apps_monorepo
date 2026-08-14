@@ -4,7 +4,7 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 13 merged
-- **Series state:** Step 13/21 merged; Step 14/21 ready for PR
+- **Series state:** Step 13/21 merged; Step 14/21 in PR
 - **Current step:** 14/21, Pi session residency and turns
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
@@ -20,7 +20,8 @@
 - **Step 11 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/892
 - **Step 12 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/905
 - **Step 13 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/910
-- **Next action:** open and monitor the Step 14 PR, then start Step 15 locally
+- **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
+- **Next action:** monitor the Step 14 PR while starting Step 15 locally
 
 ## Locked Decisions
 
@@ -60,7 +61,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Merged as PR #892 |
 | [x] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 (recorded overage) | Merged as PR #905 |
 | [x] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Merged as PR #910 |
-| [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Ready for PR |
+| [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | PR #914 open |
 | [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Not started |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 | Not started |
 | [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
@@ -444,7 +445,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - No generated files, database schema, client/bridge wire contract, analytics,
   or registered plugin change. Pi composition/catalog exposure remain Steps
   15-16; Pi remains app-invisible until Step 18.
-- Diff: +2,284/-81 = 2,365 changed lines; generated lines: 0; tests run: 194.
+- Diff: +2,285/-81 = 2,366 changed lines; generated lines: 0; tests run: 194.
   Recorded overage: persistence, residency, replay hydration, turn settlement,
   attachment validation, and focused concurrency/lifecycle tests form one
   required Step 14 seam; splitting would leave resident processes without their
