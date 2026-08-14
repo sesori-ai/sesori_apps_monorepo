@@ -83,7 +83,7 @@ void main() {
       expect(name, "dev-laptop.local");
     });
 
-    test("rejects a numeric macOS fallback hostname", () async {
+    test("replaces a numeric macOS fallback hostname with one canonical name", () async {
       final name = await BridgeRuntimeRunner.resolveLocalMachineName(
         isMacOS: true,
         processRunner: _RecordingProcessRunner(
@@ -92,7 +92,7 @@ void main() {
         localHostname: "192.168.1.170",
       );
 
-      expect(name, isEmpty);
+      expect(name, "sesori-bridge");
     });
 
     test("keeps the platform hostname without invoking scutil elsewhere", () async {

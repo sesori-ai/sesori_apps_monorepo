@@ -1430,8 +1430,8 @@ class const BridgeRuntimeRunner._() {
 
     final fallback = localHostname.trim();
     if (io.InternetAddress.tryParse(fallback) == null) return fallback;
-    Log.w("Ignoring numeric macOS fallback hostname");
-    return "";
+    Log.w("Replacing numeric macOS fallback hostname with the generic bridge name");
+    return "sesori-bridge";
   }
 
   /// Reads `/etc/os-release` (Linux only) so [OsVersionFormatter] can derive the
