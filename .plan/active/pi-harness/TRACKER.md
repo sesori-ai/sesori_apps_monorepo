@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** current `origin/main` with Step 10 merged
-- **Series state:** Step 10/21 merged; Step 11/21 ready for PR
-- **Current step:** 11/21, Pi session history replay
+- **Implementation base:** current `origin/main` with Step 11 merged
+- **Series state:** Step 11/21 merged; Step 12/21 ready for PR
+- **Current step:** 12/21, Pi live message and tool mapping
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -17,7 +17,9 @@
 - **Step 8 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/862
 - **Step 9 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/866
 - **Step 10 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/884
-- **Next action:** open and monitor the Step 11 PR, then start Step 12 locally
+- **Step 11 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/892
+- **Step 12 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/905
+- **Next action:** open and monitor the Step 12 PR, then start Step 13 locally
 
 ## Locked Decisions
 
@@ -54,8 +56,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Merged as PR #862; dependency merged as PR #857 |
 | [x] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Merged as PR #866 |
 | [x] | 10/21 | `🚧 [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 (recorded overage) | Merged as PR #884 |
-| [ ] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Ready for PR |
-| [ ] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 | Not started |
+| [x] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Merged as PR #892 |
+| [ ] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 | Ready for PR |
 | [ ] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Not started |
 | [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 | Not started |
 | [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Not started |
@@ -365,6 +367,37 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Recorded overage: generated closed history unions, RPC/file normalization,
   privacy-safe mapping, and focused regression tests are one replay seam;
   splitting would publish incomplete history or live-parity contracts.
+
+### Step 12/21
+
+- Added `PiEventDispatcher` and `PiToolTracker` for content-index text/reasoning
+  streaming, authoritative assistant finals, pending/running/terminal tools,
+  cumulative output replacement, retry/status/compaction events, edit/write
+  diff invalidation, and `agent_settled` completion.
+- Shared repository-owned identity hydration keeps resumed live IDs aligned with
+  replay, including equal-timestamp assistants and prior compactions. Final
+  reconciliation removes provisional parts absent from the authoritative final.
+- Reused canonical replay mapping for assistant envelopes, bounded tool results,
+  unfinished failed tools, and visible compaction cards; raw Pi payload decoding
+  remains below the Layer-3 dispatcher.
+- `dart test` (160 tests), `dart analyze --fatal-infos`, and
+  `git diff --check`: pass.
+- Architecture implementation review ran twice. The user approved applying the
+  remaining second-pass findings without a third review; identity hydration,
+  stale-part reconciliation, tracker placement, and decoding ownership were
+  corrected.
+- No user-visible, database, persisted-data mutation, analytics, or client-UI
+  change; Pi remains app-invisible until Step 18.
+- Diff after review feedback: +2,035/-146 = 2,181 changed lines;
+  generated lines: 0; tests run: 160.
+- Recorded overage: review fixes for transactional identity hydration,
+  concurrent live allocations, overlapping-read ordering, and active-branch
+  rebasing, authoritative part ordering/omission, direct bash/custom and
+  top-level custom-entry and user-final parity, diagnostic context,
+  malformed-final/tool cleanup, retry-aware compaction/status recovery,
+  tracker package alignment, and the pre-residency hydration invariant complete
+  the same live-mapping seam; splitting them would preserve known replay
+  divergence or diagnostic gaps.
 
 ## Findings And Plan Deltas
 

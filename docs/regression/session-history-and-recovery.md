@@ -28,13 +28,18 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   File fallback is allowed only for Pi's exact no-model startup failure, applies
   v1-v3 migration in memory, and never exposes persisted paths or execution-only
   prompt context to remote clients.
+- Pi live assistant finals use the same message identities, parts, bounded tool
+  results, terminal failures, and visible compaction card as cold replay.
+  Streaming text and reasoning follow their content indices, tool progress
+  replaces cumulative output, edit/write completion invalidates the diff once,
+  and only `agent_settled` marks the session idle.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, and bounded tool/image mapping. |
+| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -57,6 +62,9 @@ image parts converge by their own rules.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
   summary payload, or exposes a private path, raw backend error, or hidden prompt
   prefix in mapped history.
+- A Pi streamed part changes identity when finalized, cumulative tool output is
+  appended, a duplicate terminal tool event repeats a diff invalidation, or
+  `agent_end` marks the session idle before `agent_settled`.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
 

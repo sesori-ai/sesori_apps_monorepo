@@ -7,13 +7,17 @@ import "package:pi_plugin/src/models/pi_assistant_stop_reason.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
+import "package:pi_plugin/src/trackers/pi_message_identity_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCandidates, maxTranscriptImageCollectionBytes;
 import "package:test/test.dart";
 
 void main() {
   const sessionId = "session";
-  final mapper = PiHistoryMapper(pluginId: "pi");
+  final mapper = _HydratedHistoryMapper(
+    mapper: PiHistoryMapper(pluginId: "pi"),
+    identities: PiMessageIdentityTracker(pluginId: "pi"),
+  );
 
   group("PiPersistedUserTextCodec", () {
     test("cold-decodes only exact UTF-8 length-framed authored suffixes", () {
@@ -586,6 +590,34 @@ void main() {
       expect(warnings, isNot(contains(secret)));
     });
 
+    test("bounds unknown assistant content warnings across the replay", () async {
+      final warnings = await _captureWarnings(() async {
+        mapper.map(
+          sessionId: sessionId,
+          entries: [
+            for (var index = 0; index < 3; index++)
+              _message(
+                id: "assistant-$index",
+                parentId: index == 0 ? null : "assistant-${index - 1}",
+                message: PiAgentMessageDto.assistant(
+                  content: [
+                    PiContentDto.fromJson({"type": "future"}),
+                  ],
+                  provider: null,
+                  model: null,
+                  stopReason: PiAssistantStopReason.stop,
+                  errorMessage: null,
+                  timestamp: index,
+                ),
+              ),
+          ],
+          leafId: "assistant-2",
+        );
+      });
+
+      expect(RegExp("unknown content blocks").allMatches(warnings), hasLength(1));
+    });
+
     test("returns empty for no visible mapped content", () {
       final messages = mapper.map(
         sessionId: sessionId,
@@ -608,6 +640,25 @@ void main() {
       expect(mapper.map(sessionId: sessionId, entries: const [], leafId: "missing"), isEmpty);
     });
   });
+}
+
+final class _HydratedHistoryMapper({
+  required final PiHistoryMapper mapper,
+  required final PiMessageIdentityTracker identities,
+}) {
+  List<PluginMessageWithParts> map({
+    required String sessionId,
+    required List<PiSessionEntryDto> entries,
+    required String? leafId,
+  }) => identities.hydrate(
+    sessionId: sessionId,
+    map: (identityBuilder) => mapper.map(
+      sessionId: sessionId,
+      entries: entries,
+      leafId: leafId,
+      identities: identityBuilder,
+    ),
+  );
 }
 
 final String _aggregateImageData = base64Encode(

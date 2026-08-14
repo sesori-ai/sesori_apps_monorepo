@@ -9,6 +9,7 @@ import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
 import "../api/pi_session_storage_api.dart";
 import "../models/pi_rpc_command.dart";
+import "../trackers/pi_message_identity_tracker.dart";
 import "mappers/pi_history_mapper.dart";
 
 final class const PiSessionHistoryNotFoundException({required final String sessionId}) implements Exception {
@@ -43,6 +44,7 @@ final class PiSessionProcessRepository({
   required Map<String, String> environment,
   required final PiProcessFactory _processFactory,
   required final PiHistoryMapper _historyMapper,
+  required final PiMessageIdentityTracker _identityTracker,
   required final Duration _startupExitTimeout,
   required final Duration _historyRpcTimeout,
 }) {
@@ -70,13 +72,18 @@ final class PiSessionProcessRepository({
       );
     }
 
+    final identityHydration = _identityTracker.beginHydration(sessionId: sessionId);
     try {
       final history = await _readHistory(resolved: resolved);
-      return _historyMapper.map(
-        sessionId: sessionId,
-        entries: history.entries,
-        leafId: history.leafId,
+      final mapped = identityHydration.complete(
+        map: (identities) => _historyMapper.map(
+          sessionId: sessionId,
+          entries: history.entries,
+          leafId: history.leafId,
+          identities: identities,
+        ),
       );
+      return mapped;
     } on Object catch (error, stack) {
       _throwLoadFailure(path: resolved.path, error: error, stack: stack);
     }
