@@ -13,7 +13,7 @@ void main() {
     };
     final encoder = BoundedJsonEncoder(chunkSize: 5, yieldTurn: () async {});
 
-    final actual = await encoder.convert(value);
+    final actual = await encoder.convert(value: value);
 
     expect(actual, utf8.encode(jsonEncode(value)));
   });
@@ -31,7 +31,7 @@ void main() {
     );
     final expected = jsonEncode(<String, Object?>{"base64": base64Encode(source)});
 
-    final actual = await encoder.convertToString(value);
+    final actual = await encoder.convertToString(value: value);
 
     expect(actual, expected);
     expect(yields, (utf8.encode(expected).length - 1) ~/ 7);
@@ -49,7 +49,7 @@ void main() {
     );
     final expected = utf8.encode(jsonEncode(<String, Object?>{"body": "abcdefghij"}));
 
-    final actual = await encoder.convert(<String, Object?>{"body": "abcdefghij"});
+    final actual = await encoder.convert(value: <String, Object?>{"body": "abcdefghij"});
 
     expect(actual, expected);
     expect(yields, expected.length ~/ 4);
@@ -67,7 +67,7 @@ void main() {
     final body = "x" * maxFixtureBytes;
     final expected = utf8.encode(jsonEncode(<String, Object?>{"body": body}));
 
-    final actual = await encoder.convert(<String, Object?>{"body": body});
+    final actual = await encoder.convert(value: <String, Object?>{"body": body});
 
     expect(actual, expected);
     expect(actual.length, greaterThan(maxFixtureBytes));

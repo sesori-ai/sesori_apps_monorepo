@@ -478,6 +478,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                                     draftIdentity: ComposerDraftRepository.newSessionIdentity(
                                       projectId: widget.projectId,
                                     ),
+                                    restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
                                     initialDraft: context.read<NewSessionCubit>().composerDraft,
                                     initialAttachments: restoredAttachments,
                                     onInitialAttachmentsConsumed: () {

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:material_ui/material_ui.dart";
 
 import "../../motion/prego_reduced_motion.dart";
@@ -44,7 +45,7 @@ class _PregoLaunchStatusState()
   @override
   void didUpdateWidget(PregoLaunchStatus oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.messages != widget.messages) {
+    if (!listEquals(oldWidget.messages, widget.messages)) {
       _messageIndex = 0;
       syncMotion();
     }
@@ -63,6 +64,7 @@ class _PregoLaunchStatusState()
 
     return Semantics(
       container: true,
+      liveRegion: true,
       label: widget.semanticsLabel,
       child: ExcludeSemantics(
         child: Center(

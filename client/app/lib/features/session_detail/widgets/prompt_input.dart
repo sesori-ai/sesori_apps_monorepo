@@ -104,6 +104,9 @@ class const PromptInput({
     /// Stable identity used only to detect when this widget state is reused for
   /// another composer. Persistence remains owned by the parent Cubit.
     required final String draftIdentity,
+    /// One-shot identity for restoring a failed submission when sending and
+  /// failure are coalesced before this composer can unmount.
+    required final Key? restorationKey,
     required final ComposerDraft initialDraft,
     required final List<ComposerAttachment> initialAttachments,
     required final VoidCallback onInitialAttachmentsConsumed,
@@ -426,15 +429,16 @@ class _PromptInputState() extends State<PromptInput> {
   void didUpdateWidget(covariant PromptInput oldWidget) {
     super.didUpdateWidget(oldWidget);
     final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
+    final restorationRequested =
+        widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
     if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
       _pasteGeneration++;
     }
-    if (draftChanged) {
-      // The state was reused for another session without initState/dispose.
-      // The owning Cubit already persisted each edit, so only restore the new
-      // immutable snapshot here. Staged attachments belong to the previous
-      // session and never carry across.
+    if (draftChanged || restorationRequested) {
+      // A draft identity change means this state moved to another composer. A
+      // restoration key change means a fast failed send reused this composer.
+      // Both replace authored content exactly once.
       _pasteGeneration++;
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);

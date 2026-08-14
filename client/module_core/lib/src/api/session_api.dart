@@ -129,7 +129,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       "/session/create",
       fromJson: Session.fromJson,
       body: await _attachmentEncoder.convertToString(
-        _BoundedCreateSessionBody(request: request, attachments: attachments).toJson(),
+        value: _BoundedCreateSessionBody(request: request, attachments: attachments).toJson(),
       ),
     );
   }
@@ -376,13 +376,13 @@ final class _BoundedCreateSessionBody({
     return request.toJson()
       ..["parts"] = [
         for (final part in request.parts) part.toJson(),
-      for (final attachment in attachments)
-        {
-          "mime": attachment.mime,
-          "base64": BoundedBase64Value(bytes: attachment.bytes),
-          "filename": attachment.filename,
-          "type": "file_data",
-        },
+        for (final attachment in attachments)
+          {
+            "mime": attachment.mime,
+            "base64": BoundedBase64Value(bytes: attachment.bytes),
+            "filename": ?attachment.filename,
+            "type": "file_data",
+          },
       ];
   }
 }

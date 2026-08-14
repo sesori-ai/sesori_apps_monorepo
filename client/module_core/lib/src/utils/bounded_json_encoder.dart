@@ -4,20 +4,15 @@ import "dart:typed_data";
 
 final class BoundedBase64Value({required final Uint8List bytes});
 
-abstract interface class _BoundedJsonConverter() {
-  Future<Uint8List> convert<T extends Object?>(T value);
-}
-
 final class BoundedJsonEncoder({
   required final int chunkSize,
   required final Future<void> Function() yieldTurn,
-}) implements _BoundedJsonConverter {
+}) {
   static const int defaultChunkSize = 64 * 1024;
 
   static Future<void> eventLoopTurn() => Future<void>.delayed(Duration.zero);
 
-  @override
-  Future<Uint8List> convert<T extends Object?>(T value) async {
+  Future<Uint8List> convert<T extends Object?>({required T value}) async {
     if (chunkSize <= 0) {
       throw ArgumentError.value(chunkSize, "chunkSize", "must be positive");
     }
@@ -52,7 +47,10 @@ final class BoundedJsonEncoder({
       await output.addByte(0x22);
     }
 
+    // JSON is intentionally heterogeneous at this serialization boundary.
+    // ignore: no_slop_linter/prefer_specific_type
     late final Future<void> Function(Object? current) writeValue;
+    // ignore: no_slop_linter/prefer_specific_type
     writeValue = (Object? current) async {
       if (current == null || current is bool || current is num) {
         await output.add(_utf8Bytes(jsonEncode(current)));
@@ -66,6 +64,7 @@ final class BoundedJsonEncoder({
         await writeBase64(current.bytes);
         return;
       }
+      // ignore: no_slop_linter/prefer_specific_type
       if (current is List<Object?>) {
         await output.addByte(0x5B);
         for (var index = 0; index < current.length; index++) {
@@ -75,6 +74,7 @@ final class BoundedJsonEncoder({
         await output.addByte(0x5D);
         return;
       }
+      // ignore: no_slop_linter/prefer_specific_type
       if (current is Map<String, Object?>) {
         await output.addByte(0x7B);
         var first = true;
@@ -95,8 +95,8 @@ final class BoundedJsonEncoder({
     return output.takeBytes();
   }
 
-  Future<String> convertToString<T>(T value) async {
-    return utf8.decode(await convert(value));
+  Future<String> convertToString<T>({required T value}) async {
+    return utf8.decode(await convert(value: value));
   }
 
   bool _isHighSurrogate(int codeUnit) => codeUnit >= 0xD800 && codeUnit <= 0xDBFF;

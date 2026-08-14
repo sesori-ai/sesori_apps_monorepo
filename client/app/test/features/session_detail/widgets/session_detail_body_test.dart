@@ -290,6 +290,7 @@ void main() {
               onCommandCleared: () {},
               attachmentsSupported: true,
               draftIdentity: draftIdentity,
+              restorationKey: null,
               initialDraft: draft,
               initialAttachments: attachments,
               onInitialAttachmentsConsumed: () => consumed++,

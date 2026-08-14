@@ -208,6 +208,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: PromptInput(
                       draftIdentity: editableSessionId,
+                      restorationKey: null,
                       initialDraft: context.read<SessionDetailCubit>().composerDraft,
                       initialAttachments: const [],
                       onInitialAttachmentsConsumed: () {},

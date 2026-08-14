@@ -421,15 +421,24 @@ class RelayClient._({
 
     final previousController = _sseController;
     if (previousController != null && !previousController.isClosed) {
-      unawaited(_sendEncryptedMessage(const RelayMessage.sseUnsubscribe()));
+      unawaited(
+        _sendSseControlMessage(
+          message: const RelayMessage.sseUnsubscribe(),
+          context: "replacing subscription",
+        ),
+      );
       unawaited(previousController.close());
     }
 
     final controller = StreamController<RelaySseEvent>.broadcast();
     _sseController = controller;
     unawaited(
-      _sendEncryptedMessage(
-        RelayMessage.sseSubscribe(path: path, attachmentDelivery: MessageAttachmentDelivery.storedReference),
+      _sendSseControlMessage(
+        message: RelayMessage.sseSubscribe(
+          path: path,
+          attachmentDelivery: MessageAttachmentDelivery.storedReference,
+        ),
+        context: "subscribing to $path",
       ),
     );
     return controller.stream;
@@ -473,13 +482,12 @@ class RelayClient._({
     _disposed = true;
     _connectionState = RelayClientConnectionState.disconnecting;
 
-    try {
-      final sseController = _sseController;
-      if (_sessionEncryptor != null && sseController != null && !sseController.isClosed) {
-        await _sendEncryptedMessage(const RelayMessage.sseUnsubscribe());
-      }
-    } catch (error, stackTrace) {
-      loge("Failed to send relay SSE unsubscribe", error, stackTrace);
+    final sseController = _sseController;
+    if (_sessionEncryptor != null && sseController != null && !sseController.isClosed) {
+      await _sendSseControlMessage(
+        message: const RelayMessage.sseUnsubscribe(),
+        context: "disconnecting",
+      );
     }
 
     await _teardownChannelOnly();
@@ -582,7 +590,17 @@ class RelayClient._({
     _sendPreparedMessage(await _prepareEncryptedMessage(message));
   }
 
-  Future<({WebSocketChannel channel, Uint8List payload})> _prepareEncryptedMessage(RelayMessage message) async {
+  Future<void> _sendSseControlMessage({required RelayMessage message, required String context}) async {
+    try {
+      await _sendEncryptedMessage(message);
+    } catch (error, stackTrace) {
+      logw("Failed to send relay SSE control message while $context", error, stackTrace);
+    }
+  }
+
+  Future<({WebSocketChannel channel, SessionEncryptor encryptor, Uint8List payload})> _prepareEncryptedMessage(
+    RelayMessage message,
+  ) async {
     final channel = _channel;
     final encryptor = _sessionEncryptor;
     if (_disposed || channel == null || encryptor == null) {
@@ -590,7 +608,7 @@ class RelayClient._({
     }
 
     final jsonBytes = message is RelayRequest
-        ? await _boundedJsonEncoder.convert(message.toJson())
+        ? await _boundedJsonEncoder.convert(value: message.toJson())
         : Uint8List.fromList(utf8.encode(jsonEncode(message.toJson())));
     if (_disposed || !identical(_channel, channel) || !identical(_sessionEncryptor, encryptor)) {
       throw StateError("RelayClient disconnected during message serialization");
@@ -611,11 +629,16 @@ class RelayClient._({
     final payload = Uint8List(encryptedBytes.length + 1);
     payload[0] = _messageVersion;
     payload.setRange(1, payload.length, encryptedBytes);
-    return (channel: channel, payload: payload);
+    return (channel: channel, encryptor: encryptor, payload: payload);
   }
 
-  void _sendPreparedMessage(({WebSocketChannel channel, Uint8List payload}) prepared) {
-    if (_disposed || !identical(_channel, prepared.channel)) {
+  void _sendPreparedMessage(
+    ({WebSocketChannel channel, SessionEncryptor encryptor, Uint8List payload}) prepared,
+  ) {
+    if (!isConnected ||
+        _disposed ||
+        !identical(_channel, prepared.channel) ||
+        !identical(_sessionEncryptor, prepared.encryptor)) {
       throw StateError("RelayClient disconnected before message dispatch");
     }
     prepared.channel.sink.add(prepared.payload);

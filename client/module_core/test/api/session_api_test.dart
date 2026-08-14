@@ -235,6 +235,73 @@ void main() {
       expect(verification.captured.single, jsonEncode(expected.toJson()));
     });
 
+    test("attachment create omits a null filename and matches generated request JSON exactly", () async {
+      const session = Session(
+        branchName: null,
+        id: "session-1",
+        pluginId: "plugin-1",
+        projectID: "project-1",
+        directory: "/tmp/project-1",
+        parentID: null,
+        title: "Session",
+        time: SessionTime(created: 1, updated: 1, archived: null),
+        pullRequest: null,
+        promptDefaults: null,
+        lastUserActivityAt: null,
+      );
+      when(
+        () => client.post<Session>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(session));
+      final attachment = ComposerAttachment(
+        mime: "image/png",
+        bytes: Uint8List.fromList(const [1, 2, 3]),
+        filename: null,
+      );
+      final expected = CreateSessionRequest(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        parts: [
+          PromptPart.fileData(
+            mime: attachment.mime,
+            base64: base64Encode(attachment.bytes),
+            filename: null,
+          ),
+        ],
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+        dedicatedWorktree: false,
+      );
+
+      await api.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        text: "",
+        attachments: [attachment],
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+        dedicatedWorktree: false,
+      );
+
+      final verification = verify(
+        () => client.post<Session>(
+          "/session/create",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      final body = verification.captured.single as String;
+      expect(body, jsonEncode(expected.toJson()));
+      expect(body, isNot(contains('"filename"')));
+    });
+
     test("sendMessage builds a request body with null variant when omitted", () async {
       when(
         () => client.post<void>(

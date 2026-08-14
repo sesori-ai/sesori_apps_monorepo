@@ -2,6 +2,24 @@ import "dart:async";
 
 import "package:test/test.dart";
 
+class _PreparedMessageHarness({required Object channel, required Object encryptor}) {
+  final Object _channel = channel;
+  Object? _sessionEncryptor = encryptor;
+  bool isConnected = true;
+  bool dispatched = false;
+
+  void sendPrepared({required Object channel, required Object encryptor}) {
+    if (!isConnected || !identical(_channel, channel) || !identical(_sessionEncryptor, encryptor)) {
+      throw StateError("RelayClient disconnected before message dispatch");
+    }
+    dispatched = true;
+  }
+
+  void replaceEncryptor(Object encryptor) {
+    _sessionEncryptor = encryptor;
+  }
+}
+
 class _SocketMessageHarness({required Object encryptor}) {
   Object? _sessionEncryptor = encryptor;
   bool _disposed = false;
@@ -36,6 +54,19 @@ class _SocketMessageHarness({required Object encryptor}) {
 }
 
 void main() {
+  test("rejects prepared payload when session encryptor changes on same channel", () {
+    final channel = Object();
+    final preparedEncryptor = Object();
+    final harness = _PreparedMessageHarness(channel: channel, encryptor: preparedEncryptor);
+    harness.replaceEncryptor(Object());
+
+    expect(
+      () => harness.sendPrepared(channel: channel, encryptor: preparedEncryptor),
+      throwsStateError,
+    );
+    expect(harness.dispatched, isFalse);
+  });
+
   test("uses encryptor snapshot and exits when disposed after async gap", () async {
     final initialEncryptor = Object();
     final harness = _SocketMessageHarness(encryptor: initialEncryptor);
