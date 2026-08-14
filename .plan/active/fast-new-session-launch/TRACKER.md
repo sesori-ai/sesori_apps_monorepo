@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** `origin/main` at `f3c11b379` after Step 2 merge
-- **Current branch:** `fast-new-session-launch-step-3`
-- **Series state:** Steps 1-2/6 merged; Step 3/6 synced, implemented, and
-  verified locally
-- **Current step:** finalize and deliver the canonical-response/late-title PR
-- **Next action:** commit, push, open Step 3, and start its monitor
+- **Implementation base:** Step 3 head `0f3efcdd2`
+- **Current branch:** `fast-new-session-launch-step-4`
+- **Series state:** Steps 1-2/6 merged; Step 3/6 is passing and mergeable in
+  #909; Step 4/6 is implemented and verified locally
+- **Current step:** finalize and deliver immediate client launch presentation
+- **Next action:** complete implementation review, commit, push, and open Step 4
 
 ## Locked Decisions
 
@@ -41,35 +41,35 @@
 - [x] No idempotency key, retry registry, polling, or newest-session heuristic.
 - [x] No plugin-name branch or per-plugin production implementation.
 - [x] No optimistic transcript/prompt row or partial detail snapshot.
-- [ ] One client submission snapshot only; no hidden attachment cache.
-- [ ] One transient sealed restore state consumes that snapshot once; ordinary
+- [x] One client submission snapshot only; no hidden attachment cache.
+- [x] One transient sealed restore state consumes that snapshot once; ordinary
   rebuilds never reapply attachments.
-- [ ] Background leave retains submission bytes only until the in-flight request
+- [x] Background leave retains submission bytes only until the in-flight request
   settles; no additional cache or persistence extends that lifetime.
-- [ ] `PromptInput` passes the exact trimmed `ComposerDraft`; do not reconstruct
+- [x] `PromptInput` passes the exact trimmed `ComposerDraft`; do not reconstruct
   voice provenance from an input-mode enum.
-- [ ] Preserve restoration snapshots and creation warnings across reconnect/
+- [x] Preserve restoration snapshots and creation warnings across reconnect/
   discovery/options refreshes; clear only on consumption, explicit submission,
   or route exit as appropriate.
-- [ ] Incrementally encode attachment-bearing create requests with bounded
+- [x] Incrementally encode attachment-bearing create requests with bounded
   event-loop yields through base64, inner JSON, and outer relay-envelope
   JSON/UTF-8; do not copy bytes through isolates or couple the Cubit to frame
   lifecycle.
-- [ ] A background failure after route exit must not restore shared draft state.
-- [ ] In-route failure restores both the Cubit's cached draft and repository
+- [x] A background failure after route exit must not restore shared draft state.
+- [x] In-route failure restores both the Cubit's cached draft and repository
   before `PromptInput` remounts.
-- [ ] Preserve nullable title handoff; never convert missing title to `""`.
+- [x] Preserve nullable title handoff; never convert missing title to `""`.
 - [x] Extend authenticated `SesoriServerApi` for metadata, including token
   acquisition and one 401 refresh/retry; do not split one provider by use case.
 - [x] One late-title future set; drain actual workflows, abort metadata HTTP on
   shutdown, and deadline-bound standalone token refresh.
 - [x] Keep the normalized event consumer alive through late-title drain, then
   fence mutation producers before draining its listener and event tails.
-- [ ] Shared encryption returns preallocated typed bytes without boxed integer
+- [x] Shared encryption returns preallocated typed bytes without boxed integer
   framing; analyze/test shared crypto and bridge relay callers explicitly.
 - [x] Generalize the existing deletion stream/listener; do not add a second
   local mutation stream; Orchestrator owns event dispatch decisions.
-- [ ] Delete obsolete overlay, metadata naming, preferred-name, enrichment, and
+- [x] Delete obsolete overlay, metadata naming, preferred-name, enrichment, and
   tests in the same owning steps.
 
 ## Delivery Steps
@@ -78,8 +78,8 @@
 |---|---|---|---|
 | [x] | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | Merged in #894 |
 | [x] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Merged in #908 |
-| [ ] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Synced, implemented, and verified locally |
-| [ ] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Blocked on Step 3 merge |
+| [ ] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | #909 passing and mergeable |
+| [ ] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Implemented and verified locally; delivery waits for Step 3 merge |
 | [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Blocked on Step 4 merge |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
 
@@ -123,6 +123,21 @@
   single-session enrichment, and unused plugin-session mappers.
 - [x] Run codegen, focused tests, strict analysis, cleanup audit, analytics
   assessment, and architecture implementation review.
+
+## Step 4 Checklist
+
+- [x] Render detail-shaped launch status immediately while retaining the
+  unresolved new-session route and guarded durable-ID replacement.
+- [x] Preserve exact drafts, voice spans, commands, and attachment identities
+  through one-shot in-route failure restoration with duplicate-risk copy.
+- [x] Keep background creation independent and prevent late failure from
+  restoring abandoned shared draft state.
+- [x] Bound attachment/base64/request/envelope serialization and preallocate
+  typed crypto/framing buffers without changing wire bytes.
+- [x] Replace both launch/loading presentations with exported
+  `PregoLaunchStatus`; delete the old overlay and direct `cue` dependency.
+- [x] Regenerate Freezed/localization output and pass focused tests plus strict
+  analysis across all touched owning modules and the downstream mobile app.
 
 ## Cleanup Ledger
 
@@ -178,6 +193,34 @@
   includes 496 generated-model lines, deletion of 370 obsolete metadata
   implementation/model/test lines, and broad lifecycle/race coverage; no
   unrelated production feature was added.
+- Step 4 codegen completed for `client/module_core`; app localization generation
+  completed with `flutter gen-l10n`.
+- Step 4 integrated tests passed before prerequisite sync: 398 shared tests,
+  65 focused bridge relay tests, 102 focused module_core
+  creation/serialization/relay tests, 198 module_prego tests, and 136 focused app
+  launch/detail/split tests.
+- Final post-sync verification passed: 13 focused shared crypto/framing tests,
+  65 focused bridge relay tests, all 103 focused module_core tests collectively
+  after serializer/lifecycle reruns, 3 focused module_prego tests, and 137 focused
+  app launch/detail/split tests.
+- Step 4 strict analysis: `dart analyze --fatal-infos` passed in
+  `shared/sesori_shared`, `bridge/app`, `client/module_core`,
+  `client/module_prego`, and `client/app` with no issues.
+- Step 4 analytics assessment: no event added because existing Cubit events
+  already report authoritative creation success/failure; launch rendering and
+  restored-composer consumption are presentation proxies.
+- Step 4 architecture implementation review found premature pending-response
+  ownership, attachment-sentinel ownership, and Step 5 documentation-boundary
+  issues. All three were applied; the permitted second review approved the
+  merged implementation with no remaining architecture findings.
+- Informational final Step 4 diff measured against Step 3 head `0f3efcdd2`,
+  self-inclusive of this tracker record: `+2289 / -605` (2,894 changed lines),
+  above the 800-1,400 target and 1,500-line soft cap. The diff includes 511
+  generated Freezed lines, causal state/restoration/serialization regression
+  coverage, typed shared/bridge caller updates, and deletion of the obsolete
+  153-line overlay; no unrelated production feature was added. Splitting would
+  fragment one submission/serialization lifecycle across the fixed six-step
+  series, so the cohesive implementation remains one PR.
 
 ### Manual matrix
 

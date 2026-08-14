@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 import "../../logging/logging.dart";
+import "../../utils/bounded_json_encoder.dart";
 import "room_key_storage.dart";
 
 /// Transport state of the relay WebSocket. This is deliberately about the
@@ -32,6 +33,8 @@ class RelayClient._({
     required final RoomKeyStorage _roomKeyStorage,
     required final String? authToken,
     required final WebSocketChannel Function(Uri uri) _channelConnector,
+    required final BoundedJsonEncoder _boundedJsonEncoder,
+    required final int _maxPlaintextMessageBytes,
   }) {
   WebSocketChannel? _channel;
   StreamSubscription<void>? _channelSubscription;
@@ -67,6 +70,11 @@ class RelayClient._({
          roomKeyStorage: roomKeyStorage,
          authToken: authToken,
          channelConnector: WebSocketChannel.connect,
+         boundedJsonEncoder: BoundedJsonEncoder(
+           chunkSize: BoundedJsonEncoder.defaultChunkSize,
+           yieldTurn: BoundedJsonEncoder.eventLoopTurn,
+         ),
+         maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
        );
 
   @visibleForTesting
@@ -76,13 +84,22 @@ class RelayClient._({
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
     required WebSocketChannel Function(Uri uri) channelConnector,
+    required BoundedJsonEncoder? boundedJsonEncoder,
+    required int maxPlaintextMessageBytes,
   }) : this._(
-         relayHost: relayHost,
-         cryptoService: cryptoService,
-         roomKeyStorage: roomKeyStorage,
-         authToken: authToken,
-         channelConnector: channelConnector,
-       );
+          relayHost: relayHost,
+          cryptoService: cryptoService,
+          roomKeyStorage: roomKeyStorage,
+          authToken: authToken,
+          channelConnector: channelConnector,
+          boundedJsonEncoder:
+              boundedJsonEncoder ??
+              BoundedJsonEncoder(
+                chunkSize: BoundedJsonEncoder.defaultChunkSize,
+                yieldTurn: BoundedJsonEncoder.eventLoopTurn,
+              ),
+          maxPlaintextMessageBytes: maxPlaintextMessageBytes,
+        );
 
   RelayClientConnectionState get connectionState => _connectionState;
 
@@ -92,6 +109,8 @@ class RelayClient._({
   /// (e.g. RelayHttpApiClient) must not route requests through it.
   bool get isConnected => _connectionState == RelayClientConnectionState.connected && _sessionEncryptor != null;
   bool get didResume => _didResume;
+  @visibleForTesting
+  int get pendingRequestCount => _pendingRequests.length;
 
   /// Stream of bridge online/offline events sent as text control frames by the relay.
   Stream<BridgeStatus> get bridgeStatus => _bridgeStatusController.stream;
@@ -367,11 +386,11 @@ class RelayClient._({
       throw StateError("RelayClient is not connected");
     }
 
-    final completer = Completer<RelayResponse>();
-    _pendingRequests[request.id] = completer;
-
     try {
-      await _sendEncryptedMessage(request);
+      final prepared = await _prepareEncryptedMessage(request);
+      final completer = Completer<RelayResponse>();
+      _pendingRequests[request.id] = completer;
+      _sendPreparedMessage(prepared);
 
       return await completer.future.timeout(
         timeout,
@@ -560,27 +579,46 @@ class RelayClient._({
   }
 
   Future<void> _sendEncryptedMessage(RelayMessage message) async {
+    _sendPreparedMessage(await _prepareEncryptedMessage(message));
+  }
+
+  Future<({WebSocketChannel channel, Uint8List payload})> _prepareEncryptedMessage(RelayMessage message) async {
     final channel = _channel;
     final encryptor = _sessionEncryptor;
     if (_disposed || channel == null || encryptor == null) {
       throw StateError("RelayClient is not ready for encrypted messages");
     }
 
-    final jsonBytes = utf8.encode(jsonEncode(message.toJson()));
-    if (!RelayProtocol.canEncryptMessage(plaintextBytes: jsonBytes.length)) {
+    final jsonBytes = message is RelayRequest
+        ? await _boundedJsonEncoder.convert(message.toJson())
+        : Uint8List.fromList(utf8.encode(jsonEncode(message.toJson())));
+    if (_disposed || !identical(_channel, channel) || !identical(_sessionEncryptor, encryptor)) {
+      throw StateError("RelayClient disconnected during message serialization");
+    }
+    if (jsonBytes.length > _maxPlaintextMessageBytes) {
       throw RelayMessageTooLargeException(
         plaintextBytes: jsonBytes.length,
-        maxPlaintextBytes: RelayProtocol.maxPlaintextMessageBytes,
+        maxPlaintextBytes: _maxPlaintextMessageBytes,
       );
     }
     final encryptedBytes = await encryptor.encrypt(jsonBytes);
+    if (_disposed || !identical(_channel, channel) || !identical(_sessionEncryptor, encryptor)) {
+      throw StateError("RelayClient disconnected during message encryption");
+    }
     // Preallocate instead of spreading the ciphertext into a boxed List<int>:
     // a max-size attachment would otherwise materialize tens of millions of
     // boxed integers and exhaust mobile memory before the frame is sent.
     final payload = Uint8List(encryptedBytes.length + 1);
     payload[0] = _messageVersion;
     payload.setRange(1, payload.length, encryptedBytes);
-    channel.sink.add(payload);
+    return (channel: channel, payload: payload);
+  }
+
+  void _sendPreparedMessage(({WebSocketChannel channel, Uint8List payload}) prepared) {
+    if (_disposed || !identical(_channel, prepared.channel)) {
+      throw StateError("RelayClient disconnected before message dispatch");
+    }
+    prepared.channel.sink.add(prepared.payload);
   }
 
   void _replayPendingHandshakeFrame() {

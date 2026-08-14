@@ -75,9 +75,8 @@ final class _ComposerPasteAction({
 }
 
 typedef PromptSubmitCallback = void Function({
-  required String text,
+  required ComposerDraft draft,
   required String? command,
-  required ComposerInputMode inputMode,
   required List<ComposerAttachment> attachments,
 });
 
@@ -104,8 +103,10 @@ class const PromptInput({
   required final bool? attachmentsSupported,
     /// Stable identity used only to detect when this widget state is reused for
   /// another composer. Persistence remains owned by the parent Cubit.
-  required final String draftIdentity,
+    required final String draftIdentity,
     required final ComposerDraft initialDraft,
+    required final List<ComposerAttachment> initialAttachments,
+    required final VoidCallback onInitialAttachmentsConsumed,
     /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header,
   }) extends StatefulWidget {
@@ -214,6 +215,7 @@ class _PromptInputState() extends State<PromptInput> {
       _updateComposerState(update: () => _chatInputMode = inputMode);
     });
     _restoreDraft(draft: widget.initialDraft);
+    _restoreInitialAttachments();
     _syncSurfaceStyle();
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
@@ -254,6 +256,14 @@ class _PromptInputState() extends State<PromptInput> {
     _previousEditingValue = value;
     _isApplyingDraft = false;
     _hasText = draft.text.trim().isNotEmpty;
+  }
+
+  void _restoreInitialAttachments() {
+    _attachments.addAll(widget.initialAttachments);
+    final onConsumed = widget.onInitialAttachmentsConsumed;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) onConsumed();
+    });
   }
 
   void _handleTextChanged() {
@@ -382,9 +392,8 @@ class _PromptInputState() extends State<PromptInput> {
         return;
       }
       widget.onSend(
-        text: _controller.text,
+        draft: _draftCalculator.trim(draft: _draft),
         command: stagedCommand.name,
-        inputMode: ComposerInputMode.typed,
         attachments: attachments,
       );
       widget.onCommandCleared();
@@ -392,9 +401,8 @@ class _PromptInputState() extends State<PromptInput> {
       final submission = _draftCalculator.trim(draft: _draft);
       if (submission.text.isEmpty && attachments.isEmpty) return;
       widget.onSend(
-        text: submission.text,
+        draft: submission,
         command: null,
-        inputMode: submission.inputMode,
         attachments: attachments,
       );
     }
@@ -430,6 +438,7 @@ class _PromptInputState() extends State<PromptInput> {
       _pasteGeneration++;
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);
+      _restoreInitialAttachments();
     }
     // Switching the new-session harness to one that drops image parts strands
     // whatever was staged for the previous pick, so drop it with the action.

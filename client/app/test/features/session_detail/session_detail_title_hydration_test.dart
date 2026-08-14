@@ -247,8 +247,10 @@ void main() {
     await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pump();
 
+    final loc = AppLocalizations.of(tester.element(find.byType(SessionDetailScreen)))!;
     expect(find.text("Carried title"), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.bySemanticsLabel(loc.sessionDetailLoadingSemantics), findsOneWidget);
 
     loadCompleter.complete(_loadedResult());
     await tester.pumpAndSettle();

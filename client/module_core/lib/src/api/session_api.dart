@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
+import "../utils/bounded_json_encoder.dart";
 import "client/relay_http_client.dart";
 
 class const SessionCleanupRejectedException({required final SessionCleanupRejection rejection}) implements Exception;
@@ -14,6 +15,11 @@ class const SessionCleanupRejectedException({required final SessionCleanupReject
 @lazySingleton
 class SessionApi({required final RelayHttpApiClient _client}) {
   static const Duration _attachmentRequestTimeout = Duration(minutes: 2);
+
+  final BoundedJsonEncoder _attachmentEncoder = BoundedJsonEncoder(
+    chunkSize: BoundedJsonEncoder.defaultChunkSize,
+    yieldTurn: BoundedJsonEncoder.eventLoopTurn,
+  );
 
   Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
     return _client.post(
@@ -67,18 +73,63 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required String? command,
     required bool dedicatedWorktree,
   }) {
-    return _client.post(
+    if (attachments.isEmpty) {
+      return _client.post(
+        "/session/create",
+        fromJson: Session.fromJson,
+        body: CreateSessionRequest(
+          projectId: projectId,
+          pluginId: pluginId,
+          parts: _buildParts(text: text, attachments: attachments),
+          agent: agent,
+          model: model,
+          variant: variant,
+          command: command,
+          dedicatedWorktree: dedicatedWorktree,
+        ),
+      );
+    }
+
+    return _createSessionWithAttachments(
+      projectId: projectId,
+      pluginId: pluginId,
+      text: text,
+      attachments: attachments,
+      agent: agent,
+      model: model,
+      variant: variant,
+      command: command,
+      dedicatedWorktree: dedicatedWorktree,
+    );
+  }
+
+  Future<ApiResponse<Session>> _createSessionWithAttachments({
+    required String projectId,
+    required String pluginId,
+    required String text,
+    required List<ComposerAttachment> attachments,
+    required String? agent,
+    required PromptModel? model,
+    required SessionVariant? variant,
+    required String? command,
+    required bool dedicatedWorktree,
+  }) async {
+    await BoundedJsonEncoder.eventLoopTurn();
+    final request = CreateSessionRequest(
+      projectId: projectId,
+      pluginId: pluginId,
+      parts: [if (text.isNotEmpty) PromptPart.text(text: text)],
+      agent: agent,
+      model: model,
+      variant: variant,
+      command: command,
+      dedicatedWorktree: dedicatedWorktree,
+    );
+    return await _client.post(
       "/session/create",
       fromJson: Session.fromJson,
-      body: CreateSessionRequest(
-        projectId: projectId,
-        pluginId: pluginId,
-        parts: _buildParts(text: text, attachments: attachments),
-        agent: agent,
-        model: model,
-        variant: variant,
-        command: command,
-        dedicatedWorktree: dedicatedWorktree,
+      body: await _attachmentEncoder.convertToString(
+        _BoundedCreateSessionBody(request: request, attachments: attachments).toJson(),
       ),
     );
   }
@@ -314,5 +365,24 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       fromJson: SuccessEmptyResponse.fromJson,
       body: RejectQuestionRequest(requestId: requestId, sessionId: sessionId),
     );
+  }
+}
+
+final class _BoundedCreateSessionBody({
+  required final CreateSessionRequest request,
+  required final List<ComposerAttachment> attachments,
+}) {
+  Map<String, dynamic> toJson() {
+    return request.toJson()
+      ..["parts"] = [
+        for (final part in request.parts) part.toJson(),
+      for (final attachment in attachments)
+        {
+          "mime": attachment.mime,
+          "base64": BoundedBase64Value(bytes: attachment.bytes),
+          "filename": attachment.filename,
+          "type": "file_data",
+        },
+      ];
   }
 }

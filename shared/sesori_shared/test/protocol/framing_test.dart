@@ -1,3 +1,5 @@
+import "dart:typed_data";
+
 import "package:cryptography/cryptography.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -13,12 +15,24 @@ void main() {
       encryptor = cryptoService.createSessionEncryptor(secretKey);
     });
 
-    test("frame() prepends version byte 0x01", () async {
-      final plaintext = [1, 2, 3, 4, 5];
-      final framed = await frame(plaintext, encryptor: encryptor);
+    test("frame() preserves exact version and encrypted layout in typed bytes", () async {
+      final framed = await frame([1, 2, 3], encryptor: _FakeSessionEncryptor());
 
-      expect(framed[0], equals(0x01));
-      expect(framed.length, greaterThan(1));
+      expect(framed, isA<Uint8List>());
+      expect(framed, equals([protocolVersion, 1, 2, 3]));
+    });
+
+    test("frame() keeps a maximum-sized attachment payload typed", () async {
+      final plaintext = Uint8List(maxInlineMessageAttachmentBytes);
+      plaintext[0] = 1;
+      plaintext[plaintext.length - 1] = 2;
+
+      final framed = await frame(plaintext, encryptor: _FakeSessionEncryptor());
+
+      expect(framed, isA<Uint8List>());
+      expect(framed, hasLength(1 + plaintext.length));
+      expect(framed[1], 1);
+      expect(framed[framed.length - 1], 2);
     });
 
     test("unframe(frame(plaintext)) round-trips correctly", () async {
@@ -44,4 +58,13 @@ void main() {
       );
     });
   });
+}
+
+class _FakeSessionEncryptor() implements SessionEncryptor {
+  @override
+  Future<Uint8List> encrypt(List<int> plaintext) async =>
+      plaintext is Uint8List ? plaintext : Uint8List.fromList(plaintext);
+
+  @override
+  Future<List<int>> decrypt(List<int> ciphertext) async => ciphertext;
 }

@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
 import "package:sesori_bridge/src/bridge/key_exchange.dart";
@@ -45,6 +46,7 @@ void main() {
 
       final encrypted = await manager.handleKeyExchange(message: kxMsg);
 
+      expect(encrypted, isA<Uint8List>());
       const x25519PubKeyLen = 32;
       const protocolVersionLen = 1;
       const nonceLen = 24;
@@ -95,7 +97,7 @@ void main() {
     test("supports repeated exchanges", () async {
       final manager = KeyExchangeManager(makeRoomKey());
 
-      Future<List<int>> exchange() async {
+      Future<Uint8List> exchange() async {
         final crypto = RelayCryptoService();
         final phoneKp = await crypto.generateKeyPair();
         final phonePub = await phoneKp.extractPublicKey();

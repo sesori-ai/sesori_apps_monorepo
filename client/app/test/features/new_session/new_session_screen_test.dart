@@ -81,14 +81,14 @@ Widget _buildApp({
   ),
 }) {
   final router = GoRouter(
-    initialLocation: "/new",
+    initialLocation: "/projects/project-1/sessions/new",
     routes: [
       GoRoute(
         path: "/",
         builder: (context, state) => const Scaffold(body: SizedBox.shrink()),
         routes: [
           GoRoute(
-            path: "new",
+            path: "projects/:projectId/sessions/new",
             builder: (context, state) => const NewSessionScreen(
               projectId: "project-1",
               projectName: "Project One",
@@ -1190,6 +1190,7 @@ void main() {
     final context = tester.element(find.byType(NewSessionScreen));
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    expect(find.text(loc.newSessionCreationDuplicateWarning), findsNothing);
     expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
     expect(_harnessRow("plugin-1"), findsNothing);
     expect(
@@ -1462,7 +1463,7 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
-  testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
+  testWidgets("shows detail-shaped launch status during sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -1488,13 +1489,18 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
-    expect(find.byKey(const Key("new_session_loading_progress")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
     expect(find.bySemanticsLabel(loc.newSessionLoadingSemantics), findsOneWidget);
     expect(find.text(loc.newSessionLoadingMessage1), findsOneWidget);
+    expect(find.text(loc.sessionListNewSession), findsOneWidget);
+    expect(
+      GoRouter.of(tester.element(find.byType(PregoLaunchStatus))).routeInformationProvider.value.uri.path,
+      "/projects/project-1/sessions/new",
+    );
   });
 
-  testWidgets("blocks submit UI while a session is sending", (tester) async {
+  testWidgets("removes composer while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -1518,14 +1524,8 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    final absorbingFinder = find.byWidgetPredicate(
-      (widget) => widget is AbsorbPointer && widget.absorbing,
-    );
-    expect(absorbingFinder, findsOneWidget);
-    // With the message sent (field cleared) and creation in flight, the dark
-    // action button turns into the stop control — there is no send affordance
-    // left to double-submit through.
-    expect(find.byIcon(TablerSolid.player_stop), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.byIcon(TablerSolid.player_stop), findsNothing);
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
 
     verify(
@@ -1570,7 +1570,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     // Simulate system back navigation (which should be allowed while sending).
     // PregoTopNavigation renders a glass back button (not a stock BackButton),
@@ -1614,7 +1614,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     // User leaves while the creation request is still in flight.
     // PregoTopNavigation renders a glass back button (not a stock BackButton),
@@ -1661,14 +1661,14 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
-    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: null)));
     await tester.pumpAndSettle();
 
     expect(find.text("session-detail:session-1"), findsOneWidget);
     expect(
-      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One&title=Created+session"),
+      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One"),
       findsOneWidget,
     );
     expect(find.byType(NewSessionScreen), findsNothing);
@@ -1701,7 +1701,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
     await tester.pumpAndSettle();
@@ -1735,18 +1735,18 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     createCompleter.complete(ApiResponse.error(ApiError.generic()));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsNothing);
+    expect(find.byType(PregoLaunchStatus), findsNothing);
     // Error text now comes from the shared, localized ApiError mapping.
     expect(find.text("An unknown error occurred"), findsOneWidget);
 
-    // Sending excluded focus from the composer, so it collapsed back to its
-    // resting pill; it must be usable again for the retry.
-    await enterTypingMode(tester);
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text("test message"), findsOneWidget);
+    expect(find.text(loc.newSessionCreationDuplicateWarning), findsOneWidget);
     expect(find.byType(EditableText), findsOneWidget);
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
 

@@ -248,6 +248,98 @@ void main() {
     await GetIt.instance.reset();
   });
 
+  testWidgets("PromptInput consumes exact initial attachments once per draft identity", (tester) async {
+    final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");
+    final second = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "second.png");
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    var consumed = 0;
+    ComposerDraft? submittedDraft;
+    List<ComposerAttachment>? submitted;
+
+    Widget buildPrompt({
+      required String draftIdentity,
+      required ComposerDraft draft,
+      required List<ComposerAttachment> attachments,
+    }) {
+      return MultiBlocProvider(
+        providers: [
+          BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: PromptInput(
+              isBusy: false,
+              hasMessages: false,
+              onSend: ({required draft, required command, required attachments}) {
+                submittedDraft = draft;
+                submitted = attachments;
+              },
+              onVoiceTranscriptionCompleted: () {},
+              onDraftChanged: (_) {},
+              onDraftCleared: () {},
+              onAbort: () {},
+              surfaceStyleController: surfaceStyle,
+              composerHeader: null,
+              availableCommands: const [],
+              stagedCommand: null,
+              onCommandSelected: (_) {},
+              onCommandCleared: () {},
+              attachmentsSupported: true,
+              draftIdentity: draftIdentity,
+              initialDraft: draft,
+              initialAttachments: attachments,
+              onInitialAttachmentsConsumed: () => consumed++,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(
+      buildPrompt(
+        draftIdentity: "first",
+        draft: ComposerDraft.typed(text: ""),
+        attachments: [first],
+      ),
+    );
+    await tester.pump();
+    expect(consumed, 1);
+
+    await tester.pumpWidget(
+      buildPrompt(
+        draftIdentity: "first",
+        draft: ComposerDraft.typed(text: ""),
+        attachments: [first],
+      ),
+    );
+    await tester.pump();
+    expect(consumed, 1);
+
+    final mixedDraft = ComposerDraft(
+      text: " voice typed ",
+      voiceSpans: [VoiceOriginSpan(start: 1, end: 6)],
+    );
+    await tester.pumpWidget(buildPrompt(draftIdentity: "second", draft: mixedDraft, attachments: [second]));
+    await tester.pump();
+    expect(consumed, 2);
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    expect(
+      submittedDraft,
+      ComposerDraft(
+        text: "voice typed",
+        voiceSpans: [VoiceOriginSpan(start: 0, end: 5)],
+      ),
+    );
+    expect(submitted, hasLength(1));
+    expect(identical(submitted!.single, second), isTrue);
+  });
+
   testWidgets("an empty user envelope keeps the empty transcript state visible", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       messages: const [
@@ -280,15 +372,17 @@ void main() {
     await tester.pumpAndSettle();
 
     final decoratedBox = tester.widget<DecoratedBox>(
-      find.descendant(
-        of: find.byType(PromptInput),
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is DecoratedBox &&
-              widget.decoration is BoxDecoration &&
-              (widget.decoration as BoxDecoration).gradient is LinearGradient,
-        ),
-      ).first,
+      find
+          .descendant(
+            of: find.byType(PromptInput),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is DecoratedBox &&
+                  widget.decoration is BoxDecoration &&
+                  (widget.decoration as BoxDecoration).gradient is LinearGradient,
+            ),
+          )
+          .first,
     );
     final gradient = (decoratedBox.decoration as BoxDecoration).gradient! as LinearGradient;
     final surface = PregoDesignSystem.light.colors.bgSurface1;

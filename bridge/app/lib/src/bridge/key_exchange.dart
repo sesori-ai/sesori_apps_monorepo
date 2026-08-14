@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -8,7 +9,7 @@ class KeyExchangeManager(List<int> roomKey, {RelayCryptoService? cryptoService})
 
   /// The key-exchange frame is the initiation signal. The relay does not send
   /// `phone_connected` snapshots when a bridge joins phones already online.
-  Future<List<int>> handleKeyExchange({required RelayKeyExchange message}) async {
+  Future<Uint8List> handleKeyExchange({required RelayKeyExchange message}) async {
     final bridgeKeyPair = await _cryptoService.generateKeyPair();
     final bridgePublicKey = await bridgeKeyPair.extractPublicKey();
     final bridgePublicKeyBytes = bridgePublicKey.bytes;
@@ -34,7 +35,9 @@ class KeyExchangeManager(List<int> roomKey, {RelayCryptoService? cryptoService})
 
     final encryptor = _cryptoService.createSessionEncryptor(ephemeralKey);
     final encryptedFrame = await frame(readyJSON, encryptor: encryptor);
-
-    return [...bridgePublicKeyBytes, ...encryptedFrame];
+    final response = Uint8List(bridgePublicKeyBytes.length + encryptedFrame.length);
+    response.setRange(0, bridgePublicKeyBytes.length, bridgePublicKeyBytes);
+    response.setRange(bridgePublicKeyBytes.length, response.length, encryptedFrame);
+    return response;
   }
 }

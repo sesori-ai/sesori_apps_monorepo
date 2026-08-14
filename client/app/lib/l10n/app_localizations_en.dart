@@ -773,6 +773,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailTitle => 'Session';
 
   @override
+  String get sessionDetailLoadingSemantics => 'Loading session';
+
+  @override
   String get sessionDetailEmpty => 'No messages yet';
 
   @override
@@ -1635,13 +1638,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionLoadingSemantics => 'Creating session';
 
   @override
-  String get newSessionLoadingMessage1 => 'Warming up the engines…';
+  String get newSessionLoadingMessage1 => 'Getting everything ready…';
 
   @override
-  String get newSessionLoadingMessage2 => 'Generating session telemetry…';
+  String get newSessionLoadingMessage2 => 'Connecting the pieces…';
 
   @override
-  String get newSessionLoadingMessage3 => 'Preparing for takeoff…';
+  String get newSessionLoadingMessage3 => 'Almost ready…';
+
+  @override
+  String get newSessionCreationDuplicateWarning =>
+      'Sesori couldn\'t confirm whether a session was created. It may still appear in the session list, and sending again may create a duplicate.';
 
   @override
   String get newSessionLaunchingInBackground => 'Your new session will appear in the list once it\'s launched';
