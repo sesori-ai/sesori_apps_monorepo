@@ -72,7 +72,11 @@ final class PiEventDispatcher({
       delayMs: delayMs,
       now: now ?? DateTime.now(),
     ),
-    PiAutoRetryEndEvent(:final success) when !success => [BridgeSseSessionError(sessionID: sessionId)],
+    PiAutoRetryEndEvent(:final success, :final attempt, :final finalError) when !success => _retryEnd(
+      sessionId: sessionId,
+      attempt: attempt,
+      finalError: finalError,
+    ),
     PiCompactionStartEvent() => [
       BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy().toJson()),
     ],
@@ -176,7 +180,7 @@ final class PiEventDispatcher({
 
   List<BridgeSseEvent> _messageEnd({required String sessionId, required Map<String, Object?> raw}) {
     final message = _historyMapper.decodeAssistantMessage(raw: raw);
-    if (message == null) return _bashEnd(sessionId: sessionId, raw: raw);
+    if (message == null) return _nonAssistantEnd(sessionId: sessionId, raw: raw);
     final state = _session(sessionId);
     final messageId =
         state.messageId ?? state.identities.next(role: PiMessageIdentityRole.assistant, timestamp: message.timestamp);
@@ -246,6 +250,31 @@ final class PiEventDispatcher({
       timestamp: message.timestamp,
     );
     final mapped = _historyMapper.mapBashExecution(sessionId: sessionId, messageId: messageId, message: message);
+    return [
+      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
+    ];
+  }
+
+  List<BridgeSseEvent> _nonAssistantEnd({required String sessionId, required Map<String, Object?> raw}) {
+    final bash = _bashEnd(sessionId: sessionId, raw: raw);
+    return bash.isNotEmpty ? bash : _customEnd(sessionId: sessionId, raw: raw);
+  }
+
+  List<BridgeSseEvent> _customEnd({required String sessionId, required Map<String, Object?> raw}) {
+    final message = _historyMapper.decodeCustomMessage(raw: raw);
+    if (message == null) return const [];
+    final state = _session(sessionId);
+    final messageId = state.identities.next(
+      role: PiMessageIdentityRole.custom,
+      timestamp: message.timestamp,
+    );
+    final mapped = _historyMapper.mapCustomMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      message: message,
+    );
+    if (mapped == null) return const [];
     return [
       BridgeSseMessageUpdated(info: mapped.info.toJson()),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
@@ -435,6 +464,20 @@ final class PiEventDispatcher({
     ];
   }
 
+  List<BridgeSseEvent> _retryEnd({
+    required String sessionId,
+    required int? attempt,
+    required String? finalError,
+  }) {
+    if (finalError != null) {
+      Log.w(
+        "[pi] provider retry failed",
+        _PiRetryFailureDiagnostic(attempt: attempt, detail: finalError),
+      );
+    }
+    return [BridgeSseSessionError(sessionID: sessionId)];
+  }
+
   List<BridgeSseEvent> _compactionEnd({
     required String sessionId,
     required Object? reason,
@@ -560,6 +603,14 @@ final class const _PiCompactionFailureDiagnostic({
 }) implements Exception {
   @override
   String toString() => "Pi compaction failed (reason: $reason): $detail";
+}
+
+final class const _PiRetryFailureDiagnostic({
+  required final int? attempt,
+  required final String detail,
+}) implements Exception {
+  @override
+  String toString() => "Pi provider retry failed (attempt: $attempt): $detail";
 }
 
 final class const _PiExtensionFailureDiagnostic({

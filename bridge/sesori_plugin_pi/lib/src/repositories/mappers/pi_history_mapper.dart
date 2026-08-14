@@ -39,11 +39,16 @@ final class PiHistoryMapper({
     return _decodeMessage(raw: raw) as PiBashExecutionMessageDto?;
   }
 
+  PiCustomMessageDto? decodeCustomMessage({required Map<String, Object?> raw}) {
+    if (raw["role"] != "custom") return null;
+    return _decodeMessage(raw: raw) as PiCustomMessageDto?;
+  }
+
   PiAgentMessageDto? _decodeMessage({required Map<String, Object?> raw}) {
     try {
       return PiAgentMessageDto.fromJson(Map<String, dynamic>.from(raw));
-    } on Object {
-      Log.w("[pi] event message could not be decoded; omitting it");
+    } on Object catch (error, stack) {
+      Log.w("[pi] event message could not be decoded; omitting it", error, stack);
       return null;
     }
   }
@@ -52,8 +57,8 @@ final class PiHistoryMapper({
     try {
       final content = PiContentDto.fromJson({...raw, "type": "toolCall"});
       return content is PiToolCallContentDto ? content : null;
-    } on Object {
-      Log.w("[pi] tool-call event could not be decoded; omitting it");
+    } on Object catch (error, stack) {
+      Log.w("[pi] tool-call event could not be decoded; omitting it", error, stack);
       return null;
     }
   }
@@ -170,8 +175,8 @@ final class PiHistoryMapper({
         "timestamp": null,
       }) as PiToolResultMessageDto;
       return mapToolResult(message: message, status: status, title: title);
-    } on Object {
-      Log.w("[pi] tool-result event could not be decoded; omitting the update");
+    } on Object catch (error, stack) {
+      Log.w("[pi] tool-result event could not be decoded; omitting the update", error, stack);
       return null;
     }
   }
@@ -207,6 +212,23 @@ final class PiHistoryMapper({
       output: failed ? null : visibleOutput,
       error: failed ? visibleOutput : null,
       status: failed ? PluginToolStatus.error : PluginToolStatus.completed,
+    );
+    return PluginMessageWithParts(info: draft.info, parts: draft.parts);
+  }
+
+  PluginMessageWithParts? mapCustomMessage({
+    required String sessionId,
+    required String messageId,
+    required PiCustomMessageDto message,
+  }) {
+    if (!message.display) return null;
+    final text = _visibleCustomText(content: message.content, warnings: <_PiHistoryWarning>{});
+    if (text == null) return null;
+    final draft = _textMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      timestamp: message.timestamp,
+      text: text,
     );
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
   }
@@ -301,18 +323,13 @@ final class PiHistoryMapper({
               );
               final mapped = mapBashExecution(sessionId: sessionId, messageId: messageId, message: message);
               messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
-            case PiCustomMessageDto(:final content, :final display, :final timestamp):
-              final messageId = identities.next(role: PiMessageIdentityRole.custom, timestamp: timestamp);
-              if (!display) continue;
-              final text = _visibleCustomText(content: content, warnings: warnings);
+            case final PiCustomMessageDto message:
+              final messageId = identities.next(role: PiMessageIdentityRole.custom, timestamp: message.timestamp);
+              if (!message.display) continue;
+              final text = _visibleCustomText(content: message.content, warnings: warnings);
               if (text == null) continue;
               messages.add(
-                _textMessage(
-                  sessionId: sessionId,
-                  messageId: messageId,
-                  timestamp: timestamp,
-                  text: text,
-                ),
+                _textMessage(sessionId: sessionId, messageId: messageId, timestamp: message.timestamp, text: text),
               );
             case PiBranchSummaryMessageDto() || PiCompactionSummaryMessageDto():
               continue;

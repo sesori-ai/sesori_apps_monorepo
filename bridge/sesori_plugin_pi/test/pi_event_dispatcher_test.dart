@@ -368,6 +368,41 @@ void main() {
     expect(part.state?.output, "/project\n");
   });
 
+  test("visible custom final maps to the replay-equivalent text message", () {
+    expect(
+      dispatcher.map(
+        sessionId: sessionId,
+        event: _event("message_end", {
+          "message": {
+            "role": "custom",
+            "content": [
+              {"type": "text", "text": "hidden"},
+            ],
+            "display": false,
+            "timestamp": 6,
+          },
+        }),
+      ),
+      isEmpty,
+    );
+    final events = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {
+          "role": "custom",
+          "content": [
+            {"type": "text", "text": "Extension result"},
+          ],
+          "display": true,
+          "timestamp": 6,
+        },
+      }),
+    );
+
+    expect(events.whereType<BridgeSseMessageUpdated>().single.info["id"], "pi:session:custom:6:2");
+    expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.text, "Extension result");
+  });
+
   test("retry, compaction, and only agent_settled produce status lifecycle", () {
     final retry = dispatcher.map(
       sessionId: sessionId,
@@ -507,6 +542,20 @@ void main() {
       throwsStateError,
     );
     expect(builder.next(role: PiMessageIdentityRole.assistant, timestamp: 7), "pi:session:assistant:7:2");
+  });
+
+  test("identity hydration merges allocations made after the read begins", () {
+    final builder = identities.forSession(sessionId: sessionId);
+    expect(builder.next(role: PiMessageIdentityRole.assistant, timestamp: 8), "pi:session:assistant:8:1");
+    identities.hydrate<void>(
+      sessionId: sessionId,
+      map: (candidate) {
+        expect(builder.next(role: PiMessageIdentityRole.assistant, timestamp: 8), "pi:session:assistant:8:2");
+        expect(candidate.next(role: PiMessageIdentityRole.assistant, timestamp: 8), "pi:session:assistant:8:1");
+      },
+    );
+
+    expect(builder.next(role: PiMessageIdentityRole.assistant, timestamp: 8), "pi:session:assistant:8:3");
   });
 }
 

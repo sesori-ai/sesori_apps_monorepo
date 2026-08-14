@@ -10,7 +10,7 @@ final class PiMessageIdentityTracker({required final String pluginId}) {
   }) {
     final candidate = PiMessageIdentityBuilder(pluginId: _pluginId, sessionId: sessionId);
     final result = map(candidate);
-    forSession(sessionId: sessionId).replaceWith(other: candidate);
+    forSession(sessionId: sessionId).mergeHydrated(other: candidate);
     return result;
   }
 

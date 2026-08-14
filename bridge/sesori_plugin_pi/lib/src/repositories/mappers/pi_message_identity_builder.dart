@@ -16,10 +16,10 @@ final class PiMessageIdentityBuilder({
 
   final Map<String, int> _ordinals = {};
 
-  void replaceWith({required PiMessageIdentityBuilder other}) {
-    _ordinals
-      ..clear()
-      ..addAll(other._ordinals);
+  void mergeHydrated({required PiMessageIdentityBuilder other}) {
+    for (final MapEntry(:key, :value) in other._ordinals.entries) {
+      if (value > (_ordinals[key] ?? 0)) _ordinals[key] = value;
+    }
   }
 
   String next({required PiMessageIdentityRole role, required int? timestamp}) {
