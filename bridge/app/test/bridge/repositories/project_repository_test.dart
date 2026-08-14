@@ -793,10 +793,33 @@ void main() {
         filesystemApi: FakeFilesystemApi(),
       );
 
-      expect(
-        () => repoWithFailure.getProject(projectId: "/broken"),
+      await expectLater(
+        repoWithFailure.getProject(projectId: "/broken"),
         throwsA(same(inspectionError)),
       );
+    });
+
+    test("renameProject does not persist when Git capability inspection fails", () async {
+      await db.projectsDao.setActivity(projectId: "/broken", createdAt: 1, updatedAt: 2);
+      await db.projectsDao.setDisplayName(
+        projectId: "/broken",
+        displayName: "Original",
+        updatedAt: 2,
+      );
+      final inspectionError = StateError("Git inspection failed");
+      final repoWithFailure = singlePluginProjectRepository(
+        gitCliApi: _ThrowingGitCliApi(error: inspectionError),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      await expectLater(
+        repoWithFailure.renameProject(projectId: "/broken", name: "Renamed"),
+        throwsA(same(inspectionError)),
+      );
+      expect((await db.projectsDao.getProject(projectId: "/broken"))?.displayName, "Original");
     });
   });
 

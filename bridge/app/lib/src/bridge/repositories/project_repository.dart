@@ -180,6 +180,7 @@ class ProjectRepository({
     if (existing == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
+    final supportsDedicatedWorktrees = await _supportsDedicatedWorktrees(path: existing.path);
     await _projectsDao.setDisplayName(
       projectId: projectId,
       displayName: name,
@@ -190,7 +191,7 @@ class ProjectRepository({
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
       directoryMissing: _directoryMissing(row.path),
-      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: row.path),
+      supportsDedicatedWorktrees: supportsDedicatedWorktrees,
     );
   }
 
