@@ -73,29 +73,40 @@ final class PiExtensionUiService({
         Log.d("[pi] ignored unsupported extension UI decoration");
         return;
       case final PiExtensionDialogRequest dialog:
+        final elapsed = Stopwatch()..start();
         final generation = _ownerGenerations[ownerSessionId] ?? 0;
-        final scope = await _catalogRepository.resolveDisplayScope(sessionId: ownerSessionId);
-        if (_disposed) return;
+        final ({String displaySessionId, String projectId})? scope;
+        try {
+          scope = await _catalogRepository.resolveDisplayScope(sessionId: ownerSessionId);
+        } on Object catch (error, stack) {
+          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+          Log.w("[pi] failed to resolve extension dialog scope for session id=$ownerSessionId", error, stack);
+          rethrow;
+        }
+        if (_disposed) {
+          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+          return;
+        }
         if ((_ownerGenerations[ownerSessionId] ?? 0) != generation) {
-          _responseSender(
-            ownerSessionId: ownerSessionId,
-            requestId: dialog.id,
-            reply: const PiExtensionUiCancelledReply(),
-          );
+          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
           return;
         }
         if (scope == null) {
-          _responseSender(
-            ownerSessionId: ownerSessionId,
-            requestId: dialog.id,
-            reply: const PiExtensionUiCancelledReply(),
-          );
+          _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+          return;
+        }
+        final timeout = _timeoutFor(dialog);
+        final remaining = timeout == null ? null : timeout - elapsed.elapsed;
+        if (remaining != null && remaining <= Duration.zero) {
+          if (dialog is PiEditorDialogRequest) {
+            _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
+          }
           return;
         }
         final tracked = _tracked(dialog: dialog, ownerSessionId: ownerSessionId, scope: scope);
         _tracker.add(dialog: tracked);
-        _scheduleTimeout(dialog: dialog, tracked: tracked);
-        _events.add(PiExtensionUiQuestionAsked(question: _pending(tracked)));
+        _scheduleTimeout(tracked: tracked, timeout: remaining);
+        _events.add(PiExtensionUiQuestionAsked(question: _tracker.pending(dialog: tracked)));
     }
   }
 
@@ -120,10 +131,7 @@ final class PiExtensionUiService({
       );
     }
     if (!_responseSender(ownerSessionId: dialog.ownerSessionId, requestId: dialog.requestId, reply: reply)) {
-      throw const PluginOperationException.notFound(
-        "reply to Pi extension question",
-        message: "The Pi dialog is no longer available.",
-      );
+      _retireUnavailable(dialog: dialog, operation: "reply to Pi extension question");
     }
     _take(questionId: questionId);
     _events.add(
@@ -142,10 +150,7 @@ final class PiExtensionUiService({
       requestId: dialog.requestId,
       reply: const PiExtensionUiCancelledReply(),
     )) {
-      throw const PluginOperationException.notFound(
-        "reject Pi extension question",
-        message: "The Pi dialog is no longer available.",
-      );
+      _retireUnavailable(dialog: dialog, operation: "reject Pi extension question");
     }
     _take(questionId: questionId);
     _rejected(dialog);
@@ -257,15 +262,16 @@ final class PiExtensionUiService({
     };
   }
 
-  void _scheduleTimeout({required PiExtensionDialogRequest dialog, required PiTrackedExtensionDialog tracked}) {
-    final Duration? timeout = switch (dialog) {
-      PiSelectDialogRequest(:final timeoutMs) ||
-      PiConfirmDialogRequest(:final timeoutMs) ||
-      PiInputDialogRequest(
-        :final timeoutMs,
-      ) => timeoutMs != null && timeoutMs > 0 ? Duration(milliseconds: timeoutMs) : null,
-      PiEditorDialogRequest() => _editorTimeout,
-    };
+  Duration? _timeoutFor(PiExtensionDialogRequest dialog) => switch (dialog) {
+    PiSelectDialogRequest(:final timeoutMs) ||
+    PiConfirmDialogRequest(:final timeoutMs) ||
+    PiInputDialogRequest(
+      :final timeoutMs,
+    ) => timeoutMs != null && timeoutMs > 0 ? Duration(milliseconds: timeoutMs) : null,
+    PiEditorDialogRequest() => _editorTimeout,
+  };
+
+  void _scheduleTimeout({required PiTrackedExtensionDialog tracked, required Duration? timeout}) {
     if (timeout == null) return;
     _timers[tracked.questionId] = Timer(timeout, () {
       final current = _tracker.find(questionId: tracked.questionId);
@@ -285,7 +291,8 @@ final class PiExtensionUiService({
 
   PiTrackedExtensionDialog _required({required String questionId, required String? sessionId}) {
     final dialog = _tracker.find(questionId: questionId);
-    if (dialog == null || (sessionId != null && dialog.ownerSessionId != sessionId)) {
+    if (dialog == null ||
+        (sessionId != null && dialog.ownerSessionId != sessionId && dialog.displaySessionId != sessionId)) {
       throw const PluginOperationException.notFound(
         "Pi extension question",
         message: "Question not found.",
@@ -300,6 +307,23 @@ final class PiExtensionUiService({
   }
 
   void _cancelTimer({required String questionId}) => _timers.remove(questionId)?.cancel();
+
+  void _cancel({required String ownerSessionId, required String requestId}) {
+    _responseSender(
+      ownerSessionId: ownerSessionId,
+      requestId: requestId,
+      reply: const PiExtensionUiCancelledReply(),
+    );
+  }
+
+  Never _retireUnavailable({required PiTrackedExtensionDialog dialog, required String operation}) {
+    _take(questionId: dialog.questionId);
+    _rejected(dialog);
+    throw PluginOperationException.notFound(
+      operation,
+      message: "The Pi dialog is no longer available.",
+    );
+  }
 
   void _rejected(PiTrackedExtensionDialog dialog) {
     _events.add(
@@ -327,28 +351,33 @@ PiExtensionUiReply? _replyFor({
   };
 }
 
-PluginPendingQuestion _pending(PiTrackedExtensionDialog dialog) => PluginPendingQuestion(
-  id: dialog.questionId,
-  sessionID: dialog.ownerSessionId,
-  displaySessionId: dialog.displaySessionId,
-  questions: [dialog.question],
-);
-
 String _header(String? value, {required String fallback}) => _boundedNullable(value) ?? fallback;
 
 String? _boundedNullable(String? value) => value == null || value.isEmpty ? null : _bounded(value);
 
 String _bounded(String value) {
-  final runes = value.runes.toList(growable: false);
-  if (runes.length <= PiExtensionUiService.maxTextLength) return value;
-  return "${String.fromCharCodes(runes.take(PiExtensionUiService.maxTextLength - 3))}...";
+  final bounded = _runePrefix(value, maxRunes: PiExtensionUiService.maxTextLength);
+  if (!bounded.truncated) return value;
+  final visible = _runePrefix(
+    bounded.text,
+    maxRunes: PiExtensionUiService.maxTextLength - 3,
+  );
+  return "${visible.text}...";
 }
 
 String _editorPrompt(String? prefill) {
   const instruction = "Reply with the complete replacement text.";
   if (prefill == null || prefill.isEmpty) return instruction;
-  final runes = prefill.runes.toList(growable: false);
-  final excerpt = String.fromCharCodes(runes.take(PiExtensionUiService.maxTextLength));
-  final truncated = runes.length > PiExtensionUiService.maxTextLength;
-  return "$instruction\n\nCurrent text excerpt:\n$excerpt${truncated ? "\n\nPrefill was truncated. Omitted text will not be retained." : ""}";
+  final excerpt = _runePrefix(prefill, maxRunes: PiExtensionUiService.maxTextLength);
+  return "$instruction\n\nCurrent text excerpt:\n${excerpt.text}${excerpt.truncated ? "\n\nPrefill was truncated. Omitted text will not be retained." : ""}";
+}
+
+({String text, bool truncated}) _runePrefix(String value, {required int maxRunes}) {
+  final iterator = value.runes.iterator;
+  final prefix = <int>[];
+  while (prefix.length < maxRunes && iterator.moveNext()) {
+    prefix.add(iterator.current);
+  }
+  final truncated = iterator.moveNext();
+  return (text: truncated ? String.fromCharCodes(prefix) : value, truncated: truncated);
 }

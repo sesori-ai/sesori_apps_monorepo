@@ -64,6 +64,8 @@ final class PiExtensionUiTracker() {
 
   PiTrackedExtensionDialog? find({required String questionId}) => _byQuestionId[questionId];
 
+  PluginPendingQuestion pending({required PiTrackedExtensionDialog dialog}) => _pending(dialog);
+
   PiTrackedExtensionDialog? take({required String questionId}) {
     final dialog = _byQuestionId.remove(questionId);
     if (dialog == null) return null;

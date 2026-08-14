@@ -57,7 +57,7 @@ void main() {
 
     service.replyToQuestion(
       questionId: select.id,
-      sessionId: "child",
+      sessionId: "root",
       answers: const [
         ["two"],
       ],
@@ -150,7 +150,7 @@ void main() {
     expect(
       () => service.replyToQuestion(
         questionId: question.id,
-        sessionId: "root",
+        sessionId: "other",
         answers: const [
           ["one"],
         ],
@@ -269,6 +269,113 @@ void main() {
     expect(replies.single.reply, isA<PiExtensionUiCancelledReply>());
     await delayed.dispose();
   });
+
+  test("catalog failures cancel the unresolved Pi dialog", () async {
+    final failing = PiExtensionUiService(
+      catalogRepository: PiSessionCatalogRepository(
+        storageApi: _FakeStorageApi(sessions: const [], error: StateError("catalog unavailable")),
+      ),
+      tracker: PiExtensionUiTracker(),
+      responseSender: ({required ownerSessionId, required requestId, required reply}) {
+        replies.add(_SentReply(ownerSessionId: ownerSessionId, requestId: requestId, reply: reply));
+        return true;
+      },
+      editorTimeout: const Duration(minutes: 30),
+    );
+
+    await expectLater(
+      failing.handleRequest(
+        ownerSessionId: "child",
+        request: const PiInputDialogRequest(
+          id: "catalog-failure",
+          title: null,
+          placeholder: null,
+          timeoutMs: null,
+          raw: {},
+        ),
+      ),
+      throwsStateError,
+    );
+
+    expect(replies.single.requestId, "catalog-failure");
+    expect(replies.single.reply, isA<PiExtensionUiCancelledReply>());
+    await failing.dispose();
+  });
+
+  test("catalog lookup time counts against the upstream dialog timeout", () async {
+    final gate = Completer<void>();
+    final delayed = PiExtensionUiService(
+      catalogRepository: PiSessionCatalogRepository(
+        storageApi: _FakeStorageApi(
+          sessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
+          gate: gate,
+        ),
+      ),
+      tracker: PiExtensionUiTracker(),
+      responseSender: ({required ownerSessionId, required requestId, required reply}) {
+        replies.add(_SentReply(ownerSessionId: ownerSessionId, requestId: requestId, reply: reply));
+        return true;
+      },
+      editorTimeout: const Duration(minutes: 30),
+    );
+    final handling = delayed.handleRequest(
+      ownerSessionId: "child",
+      request: const PiInputDialogRequest(
+        id: "elapsed-timeout",
+        title: null,
+        placeholder: null,
+        timeoutMs: 5,
+        raw: {},
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    gate.complete();
+    await handling;
+
+    expect(delayed.getPendingQuestions(sessionId: "child"), isEmpty);
+    expect(replies, isEmpty);
+    await delayed.dispose();
+  });
+
+  test("failed response writes retire pending questions", () async {
+    final unavailable = PiExtensionUiService(
+      catalogRepository: PiSessionCatalogRepository(
+        storageApi: _FakeStorageApi(
+          sessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
+        ),
+      ),
+      tracker: PiExtensionUiTracker(),
+      responseSender: ({required ownerSessionId, required requestId, required reply}) => false,
+      editorTimeout: const Duration(minutes: 30),
+    );
+    final unavailableEvents = <PiExtensionUiEvent>[];
+    unavailable.events.listen(unavailableEvents.add);
+    await unavailable.handleRequest(
+      ownerSessionId: "child",
+      request: const PiInputDialogRequest(
+        id: "unavailable",
+        title: null,
+        placeholder: null,
+        timeoutMs: null,
+        raw: {},
+      ),
+    );
+    final question = unavailable.getPendingQuestions(sessionId: "child").single;
+
+    expect(
+      () => unavailable.replyToQuestion(
+        questionId: question.id,
+        sessionId: "child",
+        answers: const [
+          ["answer"],
+        ],
+      ),
+      throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 404)),
+    );
+    expect(unavailable.getPendingQuestions(sessionId: "child"), isEmpty);
+    expect(unavailableEvents.whereType<PiExtensionUiQuestionRejected>(), hasLength(1));
+    await unavailable.dispose();
+  });
 }
 
 final class const _SentReply({
@@ -287,11 +394,15 @@ PiSessionMetadata _metadata({required String id, required String cwd, required i
       updatedAt: DateTime.fromMillisecondsSinceEpoch(updated, isUtc: true),
     );
 
-final class _FakeStorageApi({required final List<PiSessionMetadata> sessions, final Completer<void>? gate})
-    implements PiSessionStorageApi {
+final class _FakeStorageApi({
+  required final List<PiSessionMetadata> sessions,
+  final Completer<void>? gate,
+  final Object? error,
+}) implements PiSessionStorageApi {
   @override
   Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async {
     await gate?.future;
+    if (error case final error?) throw error;
     return sessions;
   }
 
