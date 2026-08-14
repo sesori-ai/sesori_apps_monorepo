@@ -43,6 +43,7 @@ class const PregoPopupAlertsNotifications({
 }) extends StatelessWidget {
   static const Color _surfaceColor = Color(0xFF333333);
   static const double _iconSize = 22;
+  static const double _closeIconSize = 20;
 
   @override
   Widget build(BuildContext context) {
@@ -78,10 +79,10 @@ class const PregoPopupAlertsNotifications({
             children: [
               Positioned.fill(child: IgnorePointer(child: _buildAccent(colors))),
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(
+                padding: EdgeInsetsDirectional.fromSTEB(
                   PregoSpacing.xl,
                   PregoSpacing.xl,
-                  PregoSpacing.x4l,
+                  onClose == null ? PregoSpacing.xl : PregoSpacing.xl * 2 + _closeIconSize,
                   PregoSpacing.xl,
                 ),
                 child: Row(
@@ -431,7 +432,7 @@ class const _CloseButton({required final VoidCallback onPressed}) extends Statel
         ),
         child: Icon(
           TablerRegular.x,
-          size: 20,
+          size: PregoPopupAlertsNotifications._closeIconSize,
           color: context.prego.colors.textSecondary,
         ),
       ),

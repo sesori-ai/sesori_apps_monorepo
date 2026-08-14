@@ -46,14 +46,27 @@ void main() {
     );
   });
 
-  testWidgets("keeps the close icon 16 pixels from the trailing edge", (tester) async {
+  testWidgets("keeps the close icon 16 pixels from the text and trailing edge", (tester) async {
+    late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(
-      _harness(PregoPopupAlertsNotifications(title: "Accepted", onClose: () {})),
+      _harness(
+        Builder(
+          builder: (context) {
+            presenter = PregoPopupAlertPresenter.of(context);
+            return const SizedBox.expand();
+          },
+        ),
+      ),
     );
+    presenter.show(title: "Sessions updated", duration: null);
+    await tester.pumpAndSettle();
 
     final cardRight = tester.getTopRight(find.byType(PregoPopupAlertsNotifications)).dx;
+    final textRight = tester.getTopRight(find.text("Sessions updated")).dx;
+    final iconLeft = tester.getTopLeft(find.byIcon(TablerRegular.x)).dx;
     final iconRight = tester.getTopRight(find.byIcon(TablerRegular.x)).dx;
 
+    expect(iconLeft - textRight, PregoSpacing.xl);
     expect(cardRight - iconRight, PregoSpacing.xl);
   });
 
