@@ -10,7 +10,7 @@ export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 # Dependency order: module_auth -> module_core -> module_prego -> module_desktop_core -> app -> desktop
 MODULES := module_auth module_core module_prego module_desktop_core app desktop
 
-.PHONY: codegen pub-get test analyze generate-assets generate-tokens
+.PHONY: codegen pub-get test analyze generate-assets generate-tokens catalog-manifest catalog-manifest-check catalog-analyze catalog-test catalog-build catalog-check
 
 codegen:
 	@for mod in $(MODULES); do \
@@ -45,3 +45,20 @@ generate-assets:
 
 generate-tokens:
 	(cd module_prego && $(DART) run scripts/figma_tokens/sync_figma_tokens.dart generate)
+
+catalog-manifest:
+	(cd design_catalog && $(DART) run tool/generate_manifest.dart)
+
+catalog-manifest-check:
+	(cd design_catalog && $(DART) run tool/generate_manifest.dart --check)
+
+catalog-analyze:
+	(cd design_catalog && $(DART) analyze --fatal-infos)
+
+catalog-test:
+	(cd design_catalog && $(FLUTTER) test)
+
+catalog-build:
+	(cd design_catalog && $(FLUTTER) build web --release)
+
+catalog-check: pub-get catalog-manifest-check catalog-analyze catalog-test catalog-build

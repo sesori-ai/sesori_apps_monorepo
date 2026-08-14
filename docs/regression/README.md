@@ -144,6 +144,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Attachments and images](attachments-and-images.md)
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)
+- [Design catalog](design-catalog.md)
 - [Diffs and source control](diffs-and-source-control.md)
 - [Notifications](notifications.md)
 - [Permission auto-approval](permission-auto-approval.md)

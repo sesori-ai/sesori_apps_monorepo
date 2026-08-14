@@ -1,7 +1,7 @@
 # Sesori Client Workspace
 
 Flutter workspace containing the mobile product, the in-development desktop
-product, and the shared client modules they consume.
+product, the design catalog, and the shared client modules they consume.
 
 ## Modules
 
@@ -9,6 +9,7 @@ product, and the shared client modules they consume.
 |--------|---------|
 | `app/` | Mobile Flutter shell: screens, routing, DI, and platform adapters. |
 | `desktop/` | Desktop Flutter shell: presentation, DI, and concrete desktop platform adapters. |
+| `design_catalog/` | Web-only interactive catalog for auditing production Prego components and states. |
 | `module_core/` | Pure Dart shared business logic: transport, APIs, repositories, services, cubits, and routing models. |
 | `module_desktop_core/` | Pure Dart desktop business logic: bridge supervision, control orchestration, trackers, services, and cubits. |
 | `module_auth/` | Authentication, OAuth, token lifecycle, secure storage seams, and authenticated HTTP. |
@@ -29,6 +30,8 @@ graph TD
   desktop --> desktop_core[client/module_desktop_core]
   desktop --> prego
   desktop -. "Phase 4" .-> app_ui
+
+  catalog[client/design_catalog] --> prego
 
   app_ui -. "Phase 4" .-> core
   desktop_core --> core
@@ -117,6 +120,12 @@ Target individual members when needed:
 (cd module_desktop_core && dart test)
 (cd module_auth && dart test)
 (cd module_prego && flutter test)
+```
+
+Run every catalog-specific gate without broadening the product-shell test loop:
+
+```bash
+make catalog-check
 ```
 
 ## Code Generation

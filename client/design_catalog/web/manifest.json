@@ -1,0 +1,11 @@
+{
+  "name": "Sesori design catalog",
+  "short_name": "Sesori catalog",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "description": "Interactive catalog for Sesori Flutter components.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}
