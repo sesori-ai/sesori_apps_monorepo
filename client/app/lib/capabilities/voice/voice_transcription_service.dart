@@ -449,6 +449,7 @@ class VoiceTranscriptionService({
       },
       onDone: () {
         if (_realtimeTerminalEvent != null || _realtimeTerminalFailure != null) return;
+        if (_pendingPreAudioFallback != null) return;
         if (_canFallbackBeforeAudio) {
           _completePreAudioFallback(const RealtimeVoiceTransportClosedException());
           return;
@@ -732,6 +733,7 @@ class VoiceTranscriptionService({
     _forwardRealtimeAudio = false;
     final terminalFailure = _realtimeTerminalFailure;
     if (terminalFailure != null) {
+      await _stopCaptureAfterRealtimeTerminal();
       throw VoiceRealtimePartialTranscriptionError(
         confirmedText: _confirmedRealtimeTranscript,
         failure: terminalFailure,
@@ -739,6 +741,7 @@ class VoiceTranscriptionService({
     }
     final terminalEvent = _realtimeTerminalEvent;
     if (terminalEvent != null) {
+      await _stopCaptureAfterRealtimeTerminal();
       return _confirmedRealtimeTranscript;
     }
     if (!_realtimeRecorderStoppedByTerminal) {
@@ -1035,14 +1038,13 @@ class VoiceTranscriptionService({
       return;
     }
     if (!_realtimeNativeRecording || _realtimeRecorderStoppedByTerminal) return;
+    _realtimeNativeRecording = false;
+    _realtimeRecorderStoppedByTerminal = true;
+    _isRecording = false;
     try {
       await _recorder.cancel();
     } catch (error, stackTrace) {
       logw("Failed to cancel realtime recorder", error, stackTrace);
-    } finally {
-      _realtimeNativeRecording = false;
-      _realtimeRecorderStoppedByTerminal = true;
-      _isRecording = false;
     }
   }
 

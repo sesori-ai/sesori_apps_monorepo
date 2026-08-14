@@ -684,19 +684,33 @@ void main() {
         when(mockRecorder.stop).thenAnswer((_) async => null);
       });
 
-      test("starts paused, discards pre-ready audio, then forwards PCM after ready", () async {
+      test("starts paused, waits for pause before realtime start, then forwards PCM after ready", () async {
+        final pauseStarted = Completer<void>();
+        final pauseCompleter = Completer<void>();
+        connector.connectStarted = Completer<void>();
+        when(() => mockRecorder.startStream(any())).thenAnswer((_) async {
+          configChanged?.call(const RecordConfig(encoder: AudioEncoder.pcm16bits, sampleRate: 48000, numChannels: 1));
+          return audioFrames.stream;
+        });
+        when(mockRecorder.pause).thenAnswer((_) {
+          if (!pauseStarted.isCompleted) pauseStarted.complete();
+          return pauseCompleter.future;
+        });
+
         final startFuture = service.startRecording(projectId: "project-123");
-        await Future<void>.delayed(Duration.zero);
+        await pauseStarted.future;
         audioFrames.add(Uint8List.fromList([1, 2]));
         await Future<void>.delayed(Duration.zero);
-        connector.channel.inbound.add(
-          jsonEncode({"type": "ready", "protocolVersion": 1, "maxSessionSeconds": 900, "dailySecondsRemaining": 100}),
-        );
-        await startFuture;
-        audioFrames.add(Uint8List.fromList([3, 4]));
+
+        expect(connector.connectStarted?.isCompleted, isFalse);
+        expect(connector.headers, isNull);
+        expect(connector.channel.outbound, isEmpty);
+
+        pauseCompleter.complete();
+        await connector.connectStarted?.future;
         await Future<void>.delayed(Duration.zero);
 
-        final startPayload = connector.channel.outbound.first;
+        final startPayload = connector.channel.outbound.single;
         if (startPayload is! String) {
           fail("expected realtime start payload");
         }
@@ -706,11 +720,24 @@ void main() {
         }
         final start = decodedStart;
         expect(start["projectKey"], deriveProjectGlossaryKey("project-123"));
+        expect(start["audio"], {"encoding": "pcm_s16le", "sampleRate": 48000, "channels": 1});
         expect(start.toString(), isNot(contains("project-123")));
         expect(connector.headers, {"Authorization": "Bearer fresh-token"});
+
+        connector.channel.inbound.add(
+          jsonEncode({"type": "ready", "protocolVersion": 1, "maxSessionSeconds": 900, "dailySecondsRemaining": 100}),
+        );
+        await startFuture;
+        audioFrames.add(Uint8List.fromList([3, 4]));
+        await Future<void>.delayed(Duration.zero);
+
         expect(connector.channel.outbound.whereType<Uint8List>().single, [3, 4]);
-        verify(mockRecorder.pause).called(1);
-        verify(mockRecorder.resume).called(1);
+        verifyInOrder([
+          () => mockRecorder.setOnConfigChanged(any()),
+          () => mockRecorder.startStream(any()),
+          mockRecorder.pause,
+          mockRecorder.resume,
+        ]);
       });
 
       test("appends confirmed preview, replaces provisional, and completes with confirmed text only", () async {
@@ -1261,7 +1288,9 @@ void main() {
         verify(mockRecorder.stop).called(1);
       });
 
-      test("complete immediately before release resolves through session terminal future", () async {
+      test("complete immediately before release waits for terminal recorder cleanup", () async {
+        final terminalStop = Completer<String?>();
+        when(mockRecorder.stop).thenAnswer((_) => terminalStop.future);
         final startFuture = service.startRecording(projectId: "project-123");
         await Future<void>.delayed(Duration.zero);
         connector.channel.inbound.add(
@@ -1272,8 +1301,23 @@ void main() {
         connector.channel.inbound.add(
           jsonEncode({"type": "complete", "reason": "finished", "dailySecondsRemaining": 99}),
         );
+        await Future<void>.delayed(Duration.zero);
 
-        expect(await service.stopAndTranscribe(), "done");
+        verify(mockRecorder.stop).called(1);
+        var settled = false;
+        final stopFuture = service.stopAndTranscribe().then((transcript) {
+          settled = true;
+          return transcript;
+        });
+        await Future<void>.delayed(Duration.zero);
+
+        expect(settled, isFalse);
+        expect(service.isBusy, isTrue);
+
+        terminalStop.complete(null);
+
+        expect(await stopFuture, "done");
+        expect(settled, isTrue);
       });
 
       test("error immediately before release returns typed partial", () async {
@@ -1296,7 +1340,14 @@ void main() {
         );
       });
 
-      test("terminal failure cleanup resets state before async restart", () async {
+      test("terminal failure cleanup gates async restart until stale stop cannot mutate it", () async {
+        var stopCalls = 0;
+        final terminalStop = Completer<String?>();
+        when(mockRecorder.stop).thenAnswer((_) {
+          stopCalls++;
+          if (stopCalls == 1) return terminalStop.future;
+          return Future<String?>.value(recordingPath);
+        });
         final startFuture = service.startRecording(projectId: "project-123");
         await Future<void>.delayed(Duration.zero);
         connector.channel.inbound.add(
@@ -1306,10 +1357,22 @@ void main() {
         connector.channel.inbound.add(jsonEncode({"type": "error", "code": "provider_timeout", "retryable": true}));
         await Future<void>.delayed(Duration.zero);
 
-        await expectLater(service.stopAndTranscribe(), throwsA(isA<VoiceRealtimePartialTranscriptionError>()));
-
         when(mockVoiceApi.discoverCapabilities).thenAnswer((_) async => const VoiceCapabilitiesAsyncFallback());
-        when(mockRecorder.stop).thenAnswer((_) async => recordingPath);
+        var partialSettled = false;
+        final partialExpectation = expectLater(
+          service.stopAndTranscribe().whenComplete(() => partialSettled = true),
+          throwsA(isA<VoiceRealtimePartialTranscriptionError>()),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(partialSettled, isFalse);
+        expect(service.isBusy, isTrue);
+        await service.startRecording(projectId: "project-123");
+        verifyNever(() => mockRecorder.start(any(), path: recordingPath));
+
+        terminalStop.complete(null);
+        await partialExpectation;
+
         when(
           () => mockVoiceApi.transcribe(
             recordingPath,
@@ -1319,6 +1382,9 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success("fresh"));
         await service.startRecording(projectId: "project-123");
+        expect(service.isRecording, isTrue);
+        await Future<void>.delayed(Duration.zero);
+        expect(service.isRecording, isTrue);
         await File(recordingPath).writeAsBytes([1, 2, 3]);
 
         expect(await service.stopAndTranscribe(), "fresh");
