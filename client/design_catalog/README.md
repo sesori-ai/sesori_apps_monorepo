@@ -48,6 +48,19 @@ surface and brand background tokens. The selected semantic token resolves
 against the active light or dark Prego theme and is stored in the URL, so an
 exact interactive preview can be shared with another reviewer.
 
+## Layout guides
+
+Enable **Addons → Prego layout guides** to audit the selected phone viewport
+without changing or blocking the component. Safe-area bands come from the
+viewport's simulated `MediaQuery.viewPadding`; content bounds sit one
+`container-padding-mobile` token (16 logical pixels) inside that safe region.
+The optional spacing grid uses 8-pixel major lines and 4-pixel subdivisions.
+
+The guide master switch and spacing grid start off. Every switch is stored in
+the URL so teammates can share the same interactive audit view. Safe areas and
+content margins are deliberately separate: the 16-pixel margin is a PREGO
+content rule, not an iOS or Android system inset.
+
 ## Inspect rendered values
 
 Enable **Addons → Inspector**, then hover any rendered text, decoration,

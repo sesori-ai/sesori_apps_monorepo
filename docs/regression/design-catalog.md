@@ -14,8 +14,8 @@ a static Flutter Web application.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, Prego canvas-background mappings, inspector token-candidate resolution, transform-correct inspection bounds, nested target cycling, and rendering of every curated state. |
-| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, Prego canvas backgrounds, iOS/Android viewports, enabled clicks, disabled/loading states, the all-states matrix, and hover/pinned inspection in a browser. |
+| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, Prego canvas-background mappings, layout-guide defaults and safe/content geometry, inspector token-candidate resolution, transform-correct inspection bounds, nested target cycling, and rendering of every curated state. |
+| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, Prego canvas backgrounds, toggleable safe-area/content/spacing guides, iOS/Android viewports, enabled clicks, disabled/loading states, the all-states matrix, and hover/pinned inspection in a browser. |
 | L3 Release | Packaged or external: once private PR previews are enabled, verify a trusted same-repository PR receives an Access-protected interactive preview without production credentials, services, data, or analytics. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -30,6 +30,11 @@ a static Flutter Web application.
 - Switch between surface and brand canvas backgrounds. Confirm the selected
   semantic background follows the active Prego theme and survives in a shared
   preview URL.
+- Enable Prego layout guides and confirm safe-area bands follow the selected
+  viewport while the content bounds stay 16 logical pixels inside the safe
+  region. Toggle each guide independently, confirm the spacing grid is off by
+  default, and verify the overlay does not block component interaction. Treat
+  the Android safe-area presets as representative rather than device chrome.
 - Enable the inspector and hover text plus nested layout/decorated elements.
   Confirm bounds stay on the visible target in scaled phone viewports; pin,
   cycle, copy an unambiguous token, and clear without replacing the preview or
@@ -52,6 +57,7 @@ a static Flutter Web application.
 - `client/design_catalog/README.md`
 - `client/design_catalog/lib/src/prego_catalog_background.dart`
 - `client/design_catalog/lib/src/prego_catalog_inspector.dart`
+- `client/design_catalog/lib/src/prego_catalog_layout_guides.dart`
 - `client/design_catalog/lib/src/inspector/`
 - `client/design_catalog/lib/src/prego_catalog_viewports.dart`
 - `client/design_catalog/lib/src/catalog_scenarios.dart`
