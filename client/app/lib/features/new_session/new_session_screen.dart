@@ -440,6 +440,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                           child: IgnorePointer(
                             ignoring: !isComposerEnabled,
                             child: PromptInput(
+                              projectId: widget.projectId,
                               draftIdentity: ComposerDraftRepository.newSessionIdentity(
                                 projectId: widget.projectId,
                               ),

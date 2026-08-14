@@ -14,7 +14,7 @@ import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
 
 class SessionDetailLoadedView extends StatefulWidget {
-  final String? projectId;
+  final String projectId;
   final String sessionId;
   final SessionDetailLoaded state;
   final bool readOnly;
@@ -207,6 +207,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: PromptInput(
+                      projectId: widget.projectId,
                       draftIdentity: editableSessionId,
                       initialDraft: context.read<SessionDetailCubit>().composerDraft,
                       // Queued messages count: the user has already "sent"
