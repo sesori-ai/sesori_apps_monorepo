@@ -6,13 +6,8 @@ import "../api/models/pi_extension_ui_request.dart";
 import "../api/pi_rpc_client.dart";
 import "../models/pi_notification_type.dart";
 import "../repositories/pi_session_catalog_repository.dart";
+import "../repositories/pi_session_process_repository.dart";
 import "../trackers/pi_extension_ui_tracker.dart";
-
-typedef PiExtensionUiResponseSender = bool Function({
-  required String ownerSessionId,
-  required String requestId,
-  required PiExtensionUiReply reply,
-});
 
 sealed class const PiExtensionUiEvent();
 
@@ -39,16 +34,16 @@ final class const PiExtensionUiToast({
 
 final class PiExtensionUiService({
   required final PiSessionCatalogRepository catalogRepository,
+  required final PiSessionProcessRepository processRepository,
   required final PiExtensionUiTracker tracker,
-  required final PiExtensionUiResponseSender responseSender,
   required final Duration editorTimeout,
 }) {
   static const maxTextLength = 500;
   static const defaultEditorTimeout = Duration(minutes: 30);
 
   final PiSessionCatalogRepository _catalogRepository = catalogRepository;
+  final PiSessionProcessRepository _processRepository = processRepository;
   final PiExtensionUiTracker _tracker = tracker;
-  final PiExtensionUiResponseSender _responseSender = responseSender;
   final Duration _editorTimeout = editorTimeout;
   final StreamController<PiExtensionUiEvent> _events = StreamController.broadcast(sync: true);
   final Map<String, Timer> _timers = {};
@@ -129,7 +124,11 @@ final class PiExtensionUiService({
         message: "The question response is invalid.",
       );
     }
-    if (!_responseSender(ownerSessionId: dialog.ownerSessionId, requestId: dialog.requestId, reply: reply)) {
+    if (!_processRepository.sendExtensionUiResponse(
+      ownerSessionId: dialog.ownerSessionId,
+      requestId: dialog.requestId,
+      reply: reply,
+    )) {
       _retireUnavailable(dialog: dialog, operation: "reply to Pi extension question");
     }
     _take(questionId: questionId);
@@ -144,7 +143,7 @@ final class PiExtensionUiService({
 
   void rejectQuestion({required String questionId, required String? sessionId}) {
     final dialog = _required(questionId: questionId, sessionId: sessionId);
-    if (!_responseSender(
+    if (!_processRepository.sendExtensionUiResponse(
       ownerSessionId: dialog.ownerSessionId,
       requestId: dialog.requestId,
       reply: const PiExtensionUiCancelledReply(),
@@ -159,7 +158,7 @@ final class PiExtensionUiService({
     _ownerGenerations[sessionId] = (_ownerGenerations[sessionId] ?? 0) + 1;
     for (final dialog in _tracker.takeForOwner(sessionId: sessionId)) {
       _cancelTimer(questionId: dialog.questionId);
-      _responseSender(
+      _processRepository.sendExtensionUiResponse(
         ownerSessionId: dialog.ownerSessionId,
         requestId: dialog.requestId,
         reply: const PiExtensionUiCancelledReply(),
@@ -173,7 +172,7 @@ final class PiExtensionUiService({
     _disposed = true;
     for (final dialog in _tracker.takeAll()) {
       _cancelTimer(questionId: dialog.questionId);
-      _responseSender(
+      _processRepository.sendExtensionUiResponse(
         ownerSessionId: dialog.ownerSessionId,
         requestId: dialog.requestId,
         reply: const PiExtensionUiCancelledReply(),
@@ -278,7 +277,7 @@ final class PiExtensionUiService({
       _tracker.take(questionId: tracked.questionId);
       _timers.remove(tracked.questionId);
       if (tracked is PiTrackedEditorDialog) {
-        _responseSender(
+        _processRepository.sendExtensionUiResponse(
           ownerSessionId: tracked.ownerSessionId,
           requestId: tracked.requestId,
           reply: const PiExtensionUiCancelledReply(),
@@ -308,7 +307,7 @@ final class PiExtensionUiService({
   void _cancelTimer({required String questionId}) => _timers.remove(questionId)?.cancel();
 
   void _cancel({required String ownerSessionId, required String requestId}) {
-    _responseSender(
+    _processRepository.sendExtensionUiResponse(
       ownerSessionId: ownerSessionId,
       requestId: requestId,
       reply: const PiExtensionUiCancelledReply(),

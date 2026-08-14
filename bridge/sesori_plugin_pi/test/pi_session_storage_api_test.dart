@@ -879,6 +879,34 @@ void main() {
     });
   });
 
+  group("pending new sessions", () {
+    test("persists and clears caller-owned session markers", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final cwd = fixture.directory("pending-project");
+      final api = fixture.api();
+
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: cwd);
+
+      expect(
+        await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}),
+        isA<PiPendingNewSession>().having((marker) => marker.cwd, "cwd", p.normalize(p.absolute(cwd))),
+      );
+      await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd});
+      expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}), isNull);
+    });
+
+    test("rejects unsafe marker ids", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+
+      await expectLater(
+        fixture.api().writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path),
+        throwsArgumentError,
+      );
+    });
+  });
+
   test("real Pi root scan retains metadata-only structural invariants when available", () async {
     final sessions = await PiSessionStorageApi(
       environment: Platform.environment,

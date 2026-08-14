@@ -22,6 +22,18 @@ defaults and queued client sends coherent.
   finalized messages enter durable history matching a history read. Internal
   backend command records are not rendered as conversation messages or used as
   assistant model attribution.
+- Pi keeps at most one lazy resident RPC process per active session and allows
+  different sessions to run concurrently. Startup replays and hydrates message
+  identity before live frames attach or a turn dispatches; same-session prompts
+  remain FIFO. Process exit settles current work before queued work reconnects.
+- Pi slash commands are accepted by their correlated response or a matching
+  extension dialog. Commands reject while that session is busy, and a successful
+  command with no agent run crosses `get_state` before returning the lane idle.
+  Abort rejects queued work and replaces the process so hidden steering or
+  follow-up input cannot leak into the next turn.
+- Pi accepts only bounded, valid inline GIF, JPEG, PNG, and WebP data. Paths,
+  URLs, non-image data, malformed base64, and oversized images fail visibly
+  before admission and are never fetched, stringified, or silently omitted.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other

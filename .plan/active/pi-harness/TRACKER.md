@@ -424,6 +424,32 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   plugin impact; Pi remains app-invisible until Step 18.
 - Diff: +1,003/-7 = 1,010 changed lines; generated lines: 0; tests run: 170.
 
+### Step 14/21 (local evidence; Step 13 remains in PR)
+
+- Added persistent pending-new markers, secure caller-owned IDs, one
+  generation-fenced resident RPC client per active session, replay hydration
+  before frame attachment, merged tagged frame/exit streams, and resident or
+  transient history/rename leases.
+- Added per-session prompt lanes with immediate admission, selection-before-
+  prompt ordering, same-session FIFO and cross-session concurrency, dialog-first
+  command acceptance, correlated response/event settlement, no-run state
+  barriers, failed-response/exit settlement, abort teardown, idle reap, and
+  idempotent disposal.
+- Added strict bounded inline image validation and visible privacy-safe rejection
+  of paths, URLs, non-image data, malformed base64, and oversized collections.
+- Architecture implementation review approved direct resident-repository
+  response ownership. Full package tests pass (194 tests); fatal analysis and
+  diff checks pass. The pinned formatter still crashes on the pre-existing Dart
+  3.13 primary-constructor enum in `pi_session_storage_api.dart`.
+- No generated files, database schema, client/bridge wire contract, analytics,
+  or registered plugin change. Pi composition/catalog exposure remain Steps
+  15-16; Pi remains app-invisible until Step 18.
+- Diff: +2,278/-75 = 2,353 changed lines; generated lines: 0; tests run: 194.
+  Recorded overage: persistence, residency, replay hydration, turn settlement,
+  attachment validation, and focused concurrency/lifecycle tests form one
+  required Step 14 seam; splitting would leave resident processes without their
+  owning lane or required fencing evidence.
+
 ## Findings And Plan Deltas
 
 - Earlier reviews corrected Pi architecture/lifecycle and added rendered toasts,

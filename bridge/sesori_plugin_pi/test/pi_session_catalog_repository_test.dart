@@ -144,4 +144,7 @@ final class _FakeStorageApi({required List<PiSessionMetadata> sessions, final Ob
 
   @override
   Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
