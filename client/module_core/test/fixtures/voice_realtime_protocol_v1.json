@@ -106,7 +106,7 @@
     "badProjectKey": {
       "type": "start",
       "protocolVersion": 1,
-      "projectKey": "project-123",
+      "projectKey": "__INVALID_GLOSSARY_KEY_SENTINEL__",
       "audio": { "encoding": "pcm_s16le", "sampleRate": 44100, "channels": 1 }
     },
     "unknownControl": { "type": "pause" },

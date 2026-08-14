@@ -11,11 +11,12 @@ void main() {
   final invalid = fixture["invalid"]! as Map<String, Object?>;
 
   test("Given canonical transmitted fixture cases When loaded Then they contain no provider token user or raw project data", () {
-    final source = jsonEncode(valid);
+    final source = jsonEncode(fixture);
 
     for (final forbidden in ["accessToken", "soniox", "user_", "sk-", "project-123"]) {
       expect(source, isNot(contains(forbidden)));
     }
+    expect(RegExp(r"\bproject-[A-Za-z0-9_-]+\b").hasMatch(source), isFalse);
   });
 
   test("Given canonical valid cases When parsing protocol v1 Then all client and server messages parse", () {
