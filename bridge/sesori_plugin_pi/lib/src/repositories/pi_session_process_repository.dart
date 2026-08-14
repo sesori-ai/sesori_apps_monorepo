@@ -512,7 +512,7 @@ final class PiSessionProcessRepository({
   }
 
   Future<void> teardown({required String sessionId}) async {
-    _generations[sessionId] = ++_nextConnectionGeneration;
+    _generations.remove(sessionId);
     final connecting = _connectingClients.remove(sessionId);
     if (connecting != null) {
       final wasRunning = connecting.client.isRunning;
