@@ -6,14 +6,11 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
-
 import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
-import 'generated/schema_v13.dart' as v13;
-import 'generated/schema_v14.dart' as v14;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -29,107 +26,6 @@ void main() {
 
   setUpAll(() {
     verifier = SchemaVerifier(GeneratedHelper());
-  });
-
-  test('migration v13 → v14 structural validation', () async {
-    final connection = await verifier.startAt(13);
-    final db = AppDatabase(connection);
-
-    await verifier.migrateAndValidate(db, 14);
-    await db.close();
-  });
-
-  test('migration v13 → v14 normalizes fallback sessions only', () async {
-    const project = v13.ProjectsTableData(
-      projectId: 'project-1',
-      path: '/projects/one',
-      hidden: 0,
-      baseBranch: null,
-      displayName: null,
-      createdAt: 1,
-      updatedAt: 1,
-      projectionUpdatedAt: 1,
-      prCacheGithubLogin: null,
-    );
-    const fallback = v13.SessionsTableData(
-      sessionId: 'fallback',
-      backendSessionId: 'backend-fallback',
-      projectId: 'project-1',
-      parentSessionId: null,
-      directory: '/projects/one',
-      worktreePath: null,
-      branchName: null,
-      currentBranchName: null,
-      currentGithubRepositoryIdentity: null,
-      isDedicated: 1,
-      archivedAt: null,
-      baseBranch: null,
-      baseCommit: null,
-      lastAgent: null,
-      lastAgentModel: null,
-      createdAt: 1,
-      updatedAt: 1,
-      projectionUpdatedAt: 1,
-      lastActivityAt: null,
-      lastSeenAt: null,
-      lastUserMessageAt: null,
-      pluginId: 'opencode',
-      title: null,
-      catalogTitle: null,
-    );
-    const dedicated = v13.SessionsTableData(
-      sessionId: 'dedicated',
-      backendSessionId: 'backend-dedicated',
-      projectId: 'project-1',
-      parentSessionId: null,
-      directory: '/projects/one/.worktrees/dedicated',
-      worktreePath: '/projects/one/.worktrees/dedicated',
-      branchName: 'dedicated',
-      currentBranchName: null,
-      currentGithubRepositoryIdentity: null,
-      isDedicated: 1,
-      archivedAt: null,
-      baseBranch: 'main',
-      baseCommit: 'abc123',
-      lastAgent: null,
-      lastAgentModel: null,
-      createdAt: 2,
-      updatedAt: 2,
-      projectionUpdatedAt: 2,
-      lastActivityAt: null,
-      lastSeenAt: null,
-      lastUserMessageAt: null,
-      pluginId: 'opencode',
-      title: null,
-      catalogTitle: null,
-    );
-
-    await verifier.testWithDataIntegrity(
-      oldVersion: 13,
-      newVersion: 14,
-      createOld: v13.DatabaseAtV13.new,
-      createNew: v14.DatabaseAtV14.new,
-      openTestedDatabase: AppDatabase.new,
-      createItems: (batch, oldDb) {
-        batch.insert(oldDb.projectsTable, project);
-        batch.insertAll(oldDb.sessionsTable, [fallback, dedicated]);
-      },
-      validateItems: (newDb) async {
-        final sessions = {
-          for (final session in await newDb.select(newDb.sessionsTable).get())
-            session.sessionId: session,
-        };
-        expect(sessions['fallback']?.isDedicated, 0);
-        expect(sessions['fallback']?.worktreePath, isNull);
-        expect(sessions['fallback']?.baseCommit, isNull);
-        expect(sessions['dedicated']?.isDedicated, 1);
-        expect(
-          sessions['dedicated']?.worktreePath,
-          '/projects/one/.worktrees/dedicated',
-        );
-        expect(sessions['dedicated']?.baseCommit, 'abc123');
-      },
-    );
   });
 
   test('migrates schema from v2 to v3', () async {

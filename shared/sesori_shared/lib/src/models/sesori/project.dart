@@ -4,24 +4,13 @@ part "project.freezed.dart";
 
 part "project.g.dart";
 
-@Freezed(fromJson: true, toJson: false)
-sealed class const Projects._() with _$Projects {
+@Freezed(fromJson: true, toJson: true)
+sealed class Projects with _$Projects {
   const factory({
     required List<ProjectSummary> data,
   }) = _Projects;
 
   factory fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
-
-  Map<String, dynamic> toJson() => {
-    "data": [
-      for (final project in data)
-        {
-          ...project.toJson(),
-          // COMPATIBILITY 2026-08-14 (v1.8.0): Clients through v1.7.x decode catalog rows as Project and default an omitted capability to true. Remove this field once v1.7.x clients are unsupported.
-          "supportsDedicatedWorktrees": false,
-        },
-    ],
-  };
 }
 
 @Freezed(fromJson: true, toJson: true)
@@ -35,8 +24,6 @@ sealed class ProjectSummary with _$ProjectSummary {
     required ProjectTime? time,
     // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
     @Default(false) bool hasUnseenChanges,
-    // COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
-    @Default(false) bool directoryMissing,
   }) = _ProjectSummary;
 
   factory fromJson(Map<String, dynamic> json) => _$ProjectSummaryFromJson(json);

@@ -113,8 +113,6 @@ void main() {
     await tester.pump();
   }
 
-  Color titleColour(WidgetTester tester, String name) => tester.widget<Text>(find.text(name)).style!.color!;
-
   FontWeight? titleWeight(WidgetTester tester, String name) => tester.widget<Text>(find.text(name)).style!.fontWeight;
 
   /// Whether the row's sparkle is twinkling. `tester.hasRunningAnimations` is
@@ -193,40 +191,6 @@ void main() {
     expect(find.text("Running"), findsNothing);
     expect(find.text("New activity"), findsNothing);
     expect(find.text("just now"), findsOneWidget);
-  });
-
-  group("a project whose folder is gone", () {
-    ProjectSummary missingProject() => testProjectSummary(id: "p1", path: "/gone/my-app", name: "my-app").copyWith(
-      directoryMissing: true,
-      time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
-    );
-
-    testWidgets("recedes, and says why", (tester) async {
-      await pumpList(tester, projects: [missingProject()]);
-
-      expect(find.text("Unavailable"), findsOneWidget);
-      expect(titleColour(tester, "my-app"), PregoColorsLight.textDisabled);
-      // When the folder is gone, when it last changed is noise.
-      expect(find.text("just now"), findsNothing);
-      expect(find.byType(PregoAiLoader), findsNothing);
-    });
-
-    testWidgets("refuses to open, and explains instead", (tester) async {
-      var navigated = false;
-
-      await pumpList(
-        tester,
-        projects: [missingProject()],
-        onSessionsRoute: (_) => navigated = true,
-      );
-
-      await tester.tap(find.text("my-app"));
-      await tester.pump();
-      await tester.pump();
-
-      expect(navigated, isFalse);
-      expect(find.textContaining("no longer exists"), findsOneWidget);
-    });
   });
 
   group("the list's pitch", () {

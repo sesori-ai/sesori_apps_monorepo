@@ -685,37 +685,6 @@ void main() {
         expect(plugin.lastGetProjectId, isNull);
       });
 
-      test("getProjects computes directoryMissing against the live path, not the id", () async {
-        plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
-        plugin.projectsResult = const [
-          PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
-        ];
-        final repoWithMissing = singlePluginProjectRepository(
-          gitCliApi: FakeGitCliApi(),
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          // The original location is gone; the folder lives at /moved/a now.
-          filesystemApi: FakeFilesystemApi(missingPaths: {"/projects/a"}),
-        );
-        await db.projectsDao.recordOpenedProject(
-          projectId: "/projects/a",
-          path: "/moved/a",
-          displayName: null,
-          createdAt: 1,
-          updatedAt: 1,
-        );
-        final target = await repoWithMissing.resolveProjectOpenTarget(path: "/moved/a");
-        await repoWithMissing.persistOpenedProject(
-          target: target,
-          observedAt: 1,
-        );
-
-        final result = await repoWithMissing.getProjects();
-
-        expect(result.firstWhere((p) => p.id == "/projects/a").directoryMissing, isFalse);
-      });
-
       test("getProject and renameProject are catalog-only for a moved aggregate project", () async {
         plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
         await db.projectsDao.recordOpenedProject(
@@ -796,35 +765,6 @@ void main() {
       expect(stored, equals("main"));
     });
 
-    test("getProjects leaves directoryMissing false without filesystem probes", () async {
-      plugin.projectsResult = const [
-        PluginProject(id: "/present", directory: "/present", name: "Present"),
-        PluginProject(id: "/moved", directory: "/moved", name: "Moved"),
-      ];
-      final repoWithMissing = singlePluginProjectRepository(
-        gitCliApi: FakeGitCliApi(),
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(missingPaths: {"/moved"}),
-      );
-      await db.projectsDao.setActivity(
-        projectId: "/present",
-        createdAt: 0,
-        updatedAt: 2,
-      );
-      await db.projectsDao.setActivity(
-        projectId: "/moved",
-        createdAt: 0,
-        updatedAt: 1,
-      );
-
-      final result = await repoWithMissing.getProjects();
-
-      expect(result.firstWhere((p) => p.id == "/present").directoryMissing, isFalse);
-      expect(result.firstWhere((p) => p.id == "/moved").directoryMissing, isFalse);
-    });
-
     test("getProject leaves directoryMissing false without a filesystem probe", () async {
       plugin.projectResult = const PluginProject(id: "/gone", directory: "/gone", name: "Gone");
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
@@ -842,20 +782,6 @@ void main() {
       expect(plugin.lastGetProjectId, isNull);
     });
 
-    test("a directory whose existence probe throws is treated as present, not missing", () async {
-      await db.projectsDao.setActivity(projectId: "/denied", createdAt: 1, updatedAt: 2);
-      final repoWithThrow = singlePluginProjectRepository(
-        gitCliApi: FakeGitCliApi(),
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(throwingPaths: {"/denied"}),
-      );
-
-      final result = await repoWithThrow.getProjects();
-
-      expect(result.single.directoryMissing, isFalse);
-    });
   });
 
   group("ProjectRepository (bridge-owned projects with derived activity)", () {
@@ -1139,34 +1065,6 @@ void main() {
       expect(result.single.time?.updated, persistedActivity!.updatedAt);
     });
 
-    test("getProjects does not probe catalog project directories", () async {
-      plugin.sessions = [
-        _session("/tmp/proj/alpha", id: "a1", created: 1, updated: 2),
-        _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
-      ];
-      final repoWithMissing = singlePluginProjectRepository(
-        gitCliApi: FakeGitCliApi(),
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(missingPaths: {"/tmp/proj/beta"}),
-      );
-      await db.projectsDao.setActivity(
-        projectId: "/tmp/proj/alpha",
-        createdAt: 1,
-        updatedAt: 2,
-      );
-      await db.projectsDao.setActivity(
-        projectId: "/tmp/proj/beta",
-        createdAt: 1,
-        updatedAt: 1,
-      );
-
-      final result = await repoWithMissing.getProjects();
-
-      expect(result.firstWhere((p) => p.id == "/tmp/proj/alpha").directoryMissing, isFalse);
-      expect(result.firstWhere((p) => p.id == "/tmp/proj/beta").directoryMissing, isFalse);
-    });
   });
 
   group("ProjectRepository getRemoteIdentity", () {

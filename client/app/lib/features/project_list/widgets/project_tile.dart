@@ -136,13 +136,6 @@ class const ProjectTile({
     final loc = context.loc;
     final prego = context.prego;
     final displayName = project.name ?? _fallbackName(loc: loc);
-    // The project's folder was moved or deleted on disk. Surface it as
-    // unavailable and block navigation so we don't drive into a dead path;
-    // Hide/Rename stay available via long-press.
-    final missing = project.directoryMissing;
-    // An unavailable project's whole row recedes; the status line stays a shade
-    // darker than the rest so the reason is still legible.
-    final dimmed = missing ? prego.colors.textDisabled : null;
 
     return PregoSwipeActions(
       showBottomHairline: true,
@@ -162,7 +155,7 @@ class const ProjectTile({
           child: Semantics(
             button: true,
             child: InkWell(
-              onTap: () => _open(context: context, displayName: displayName, missing: missing),
+              onTap: () => _open(context: context, displayName: displayName),
               onLongPress: openMenu,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -176,11 +169,11 @@ class const ProjectTile({
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: PregoSpacing.xs,
                         children: [
-                          _titleRow(prego: prego, displayName: displayName, dimmed: dimmed),
+                          _titleRow(prego: prego, displayName: displayName),
                           Text(
                             projectShortPath(project),
                             style: prego.textTheme.textSm.regular.copyWith(
-                              color: dimmed ?? prego.colors.textSecondary,
+                              color: prego.colors.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -193,7 +186,7 @@ class const ProjectTile({
                       child: Icon(
                         TablerLight.chevron_right,
                         size: _chevronSize,
-                        color: dimmed ?? prego.colors.textSecondary,
+                        color: prego.colors.textSecondary,
                       ),
                     ),
                   ],
@@ -272,7 +265,6 @@ class const ProjectTile({
   Widget _titleRow({
     required PregoDesignSystem prego,
     required String displayName,
-    required Color? dimmed,
   }) {
     return Row(
       spacing: PregoSpacing.sm,
@@ -281,7 +273,7 @@ class const ProjectTile({
           child: Icon(
             TablerSolid.folder,
             size: _folderSize,
-            color: dimmed ?? prego.colors.textSecondary,
+            color: prego.colors.textSecondary,
           ),
         ),
         Expanded(
@@ -289,7 +281,7 @@ class const ProjectTile({
             displayName,
             // Unopened activity leans on weight rather than a badge.
             style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
-              color: dimmed ?? prego.colors.textPrimary,
+              color: prego.colors.textPrimary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -304,14 +296,7 @@ class const ProjectTile({
     return lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName;
   }
 
-  void _open({required BuildContext context, required String displayName, required bool missing}) {
-    if (missing) {
-      PregoPopupAlertPresenter.of(context).show(
-        title: context.loc.projectFolderMissingMessage,
-        variant: PregoPopupAlertsNotificationsVariant.warning,
-      );
-      return;
-    }
+  void _open({required BuildContext context, required String displayName}) {
     context.read<ProjectListCubit>().setActiveProject(project);
     context.pushRoute(
       AppRoute.sessions(
@@ -336,7 +321,6 @@ class const _StatusRow({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final missing = project.directoryMissing;
     // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit Project.time, leaving a project with no timestamp to show. Remove the null branch when the shared field becomes non-null.
     final updatedAt = project.time?.updated;
 
@@ -352,14 +336,7 @@ class const _StatusRow({
           // The label yields and ellipsizes when the line runs out of width —
           // a narrow screen under a large text size — so it can't push the
           // timestamp out of the row.
-          if (missing)
-            Flexible(
-              child: _StatusLabel(
-                icon: const Icon(TablerRegular.circle_x, size: _statusIconSize),
-                label: loc.projectFolderMissing,
-              ),
-            )
-          else if (activeSessions > 0)
+          if (activeSessions > 0)
             Flexible(
               child: _StatusLabel(
                 icon: PregoAiLoader(phase: PregoAiLoader.phaseFor(project.id)),
@@ -376,8 +353,7 @@ class const _StatusRow({
                 emphasis: true,
               ),
             ),
-          // An unavailable project's timestamp is noise — the folder is gone.
-          if (!missing && updatedAt != null)
+          if (updatedAt != null)
             Text(
               context.formatTimestamp(updatedAt),
               style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
@@ -489,7 +465,6 @@ const double _statusLineHeight = 20;
 
 const double _folderSize = 16;
 const double _chevronSize = 16;
-const double _statusIconSize = 16;
 
 /// The status icon sits in a fixed slot so the labels of the different statuses
 /// line up with each other down the list.

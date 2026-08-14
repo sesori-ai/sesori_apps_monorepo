@@ -3,7 +3,7 @@ import "package:test/test.dart";
 
 void main() {
   group("ProjectSummary", () {
-    test("project lists ignore a legacy capability field and emit a safe value for old clients", () {
+    test("project lists ignore detail fields and omit them on output", () {
       final projects = Projects.fromJson({
         "data": [
           {
@@ -11,7 +11,8 @@ void main() {
             "name": "A",
             "path": "/projects/a",
             "time": {"created": 1, "updated": 2},
-            "supportsDedicatedWorktrees": true,
+            "supportsDedicatedWorktrees": false,
+            "directoryMissing": true,
           },
         ],
       });
@@ -25,9 +26,9 @@ void main() {
           time: ProjectTime(created: 1, updated: 2),
         ),
       );
-      final summaryJson = (projects.toJson()["data"]! as List<Object?>).single! as Map<String, dynamic>;
-      expect(summaryJson["supportsDedicatedWorktrees"], isFalse);
-      expect(Project.fromJson(summaryJson).supportsDedicatedWorktrees, isFalse);
+      final summaryJson = (projects.toJson()["data"]! as List<Object?>).single;
+      expect(summaryJson, isNot(contains("supportsDedicatedWorktrees")));
+      expect(summaryJson, isNot(contains("directoryMissing")));
     });
   });
 

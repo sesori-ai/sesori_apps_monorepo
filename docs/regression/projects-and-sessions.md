@@ -10,9 +10,7 @@ child sessions with titles, activity, statuses, and unseen state.
 
 - Catalog list summaries contain only durable fields from the bridge database:
   no backend start, no blocking on an in-progress import, no filesystem or Git
-  inspection, always the last committed snapshot. Their wire payload retains a
-  legacy-safe false worktree-capability field for released older clients, while
-  modern clients ignore it. A selected project receives
+  inspection, always the last committed snapshot. A selected project receives
   real capability checks. A failed check blocks creation with an explicit retry
   instead of being treated as unsupported, and dedicated-worktree support is
   revalidated when a dedicated session is created.

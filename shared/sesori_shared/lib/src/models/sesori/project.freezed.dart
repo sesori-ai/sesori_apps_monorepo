@@ -23,6 +23,8 @@ mixin _$Projects {
 @pragma('vm:prefer-inline')
 $ProjectsCopyWith<Projects> get copyWith => _$ProjectsCopyWithImpl<Projects>(this as Projects, _$identity);
 
+  /// Serializes this Projects to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
@@ -76,10 +78,10 @@ as List<ProjectSummary>,
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
-class _Projects extends Projects {
-  const _Projects({required  List<ProjectSummary> data}): _data = data,super._();
+class _Projects implements Projects {
+  const _Projects({required  List<ProjectSummary> data}): _data = data;
   factory _Projects.fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
 
  final  List<ProjectSummary> _data;
@@ -96,7 +98,10 @@ class _Projects extends Projects {
 @pragma('vm:prefer-inline')
 _$ProjectsCopyWith<_Projects> get copyWith => __$ProjectsCopyWithImpl<_Projects>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$ProjectsToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
@@ -151,7 +156,7 @@ as List<ProjectSummary>,
 /// @nodoc
 mixin _$ProjectSummary {
 
- String get id; String? get name; String get path; ProjectTime? get time; bool get hasUnseenChanges; bool get directoryMissing;
+ String get id; String? get name; String get path; ProjectTime? get time; bool get hasUnseenChanges;
 /// Create a copy of ProjectSummary
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -164,16 +169,16 @@ $ProjectSummaryCopyWith<ProjectSummary> get copyWith => _$ProjectSummaryCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges);
 
 @override
 String toString() {
-  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges)';
 }
 
 
@@ -184,7 +189,7 @@ abstract mixin class $ProjectSummaryCopyWith<$Res>  {
   factory $ProjectSummaryCopyWith(ProjectSummary value, $Res Function(ProjectSummary) _then) = _$ProjectSummaryCopyWithImpl;
 @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges
 });
 
 
@@ -201,14 +206,13 @@ class _$ProjectSummaryCopyWithImpl<$Res>
 
 /// Create a copy of ProjectSummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,}) {
   return _then(ProjectSummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
-as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -233,7 +237,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _ProjectSummary implements ProjectSummary {
-  const _ProjectSummary({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false});
+  const _ProjectSummary({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false});
   factory _ProjectSummary.fromJson(Map<String, dynamic> json) => _$ProjectSummaryFromJson(json);
 
 @override final  String id;
@@ -241,7 +245,6 @@ class _ProjectSummary implements ProjectSummary {
 @override@JsonKey() final  String path;
 @override final  ProjectTime? time;
 @override@JsonKey() final  bool hasUnseenChanges;
-@override@JsonKey() final  bool directoryMissing;
 
 /// Create a copy of ProjectSummary
 /// with the given fields replaced by the non-null parameter values.
@@ -256,16 +259,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges);
 
 @override
 String toString() {
-  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges)';
 }
 
 
@@ -276,7 +279,7 @@ abstract mixin class _$ProjectSummaryCopyWith<$Res> implements $ProjectSummaryCo
   factory _$ProjectSummaryCopyWith(_ProjectSummary value, $Res Function(_ProjectSummary) _then) = __$ProjectSummaryCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges
 });
 
 
@@ -293,14 +296,13 @@ class __$ProjectSummaryCopyWithImpl<$Res>
 
 /// Create a copy of ProjectSummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,}) {
   return _then(_ProjectSummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
-as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
