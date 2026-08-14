@@ -31,9 +31,8 @@ class _NullTokenProvider() extends Mock implements AuthTokenProvider {
   }
 }
 
-// ignore: use_primary_constructors, fake state is clearer with field declarations
-class _Connector implements RealtimeWebSocketConnector {
-  final channel = _FakeChannel();
+class _Connector({bool syncInbound = false}) implements RealtimeWebSocketConnector {
+  final channel = _FakeChannel(syncInbound: syncInbound);
   final Completer<WebSocketChannel> connectCompleter = Completer<WebSocketChannel>();
   Uri? uri;
   Map<String, String>? headers;
@@ -63,9 +62,8 @@ class _Connector implements RealtimeWebSocketConnector {
   }
 }
 
-// ignore: use_primary_constructors, WebSocket fake exposes mutable test hooks
-class _FakeChannel extends Mock implements WebSocketChannel {
-  final StreamController<Object?> inbound = StreamController<Object?>();
+class _FakeChannel({required bool syncInbound}) extends Mock implements WebSocketChannel {
+  final inbound = StreamController<Object?>(sync: syncInbound);
   final List<Object?> outbound = [];
   final Completer<void> readyCompleter = Completer<void>();
   final _sinkDone = Completer<void>();
@@ -252,6 +250,53 @@ void main() {
     connector.channel.inbound.add(jsonEncode({"type": "complete", "reason": "finished", "dailySecondsRemaining": 99}));
     expect(await terminal, isA<RealtimeVoiceCompleteEvent>());
   });
+
+  test(
+    "Given server complete already arrived When finish is requested Then returns existing terminal result",
+    () async {
+      connector = _Connector(syncInbound: true);
+      connector.channel.completeReady();
+      api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
+      final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+
+      connector.channel.inbound.add(
+        jsonEncode({"type": "complete", "reason": "finished", "dailySecondsRemaining": 99}),
+      );
+
+      await expectLater(session.finish(), completion(isA<RealtimeVoiceCompleteEvent>()));
+      expect(connector.channel.outbound, hasLength(1));
+    },
+  );
+
+  test("Given server error already arrived When finish is requested Then returns existing terminal result", () async {
+    connector = _Connector(syncInbound: true);
+    connector.channel.completeReady();
+    api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
+    final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+
+    connector.channel.inbound.add(
+      jsonEncode({"type": "error", "code": "provider_capacity", "retryable": true}),
+    );
+
+    await expectLater(session.finish(), completion(isA<RealtimeVoiceErrorEvent>()));
+    expect(connector.channel.outbound, hasLength(1));
+  });
+
+  test(
+    "Given finish is already pending When finish is requested again Then rejects duplicate client terminal control",
+    () async {
+      final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+
+      final terminal = session.finish();
+
+      expect(session.finish, throwsStateError);
+      expect(connector.channel.outbound, hasLength(2));
+      connector.channel.inbound.add(
+        jsonEncode({"type": "complete", "reason": "finished", "dailySecondsRemaining": 99}),
+      );
+      await terminal;
+    },
+  );
 
   test("Given malformed inbound data When received Then emits stream error and closes", () async {
     final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);

@@ -66,6 +66,9 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
   }
 
   Future<RealtimeVoiceEvent> finish() async {
+    if (_terminal.isCompleted) {
+      return await _terminal.future;
+    }
     _ensureOpen();
     if (_terminalControlSent) {
       throw StateError("Realtime voice session already received a terminal control");
