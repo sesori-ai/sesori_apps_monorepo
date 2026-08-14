@@ -160,7 +160,8 @@
   animals, updated regression documentation, passed 64 focused tests and strict
   analysis, and returned to 12/12 passing CI.
 - Step 3 codegen completed for `bridge/app` and `shared/sesori_shared`.
-- Step 3 focused bridge verification passed, 194 tests; shared request-model
+- Step 3 broad bridge verification before prerequisite sync passed, 194 tests;
+  the final post-sync core suite passed, 169 tests; shared request-model
   verification passed, 1 test.
 - Step 3 strict analysis: `dart analyze --fatal-infos` passed in both
   `bridge/app` and `shared/sesori_shared` with no issues.
@@ -170,8 +171,10 @@
 - Step 3 analytics assessment: no event added because the authoritative session
   creation outcome is unchanged and a UI proxy would not measure response-path
   latency.
-- Informational final Step 3 diff size after prerequisite sync/documentation:
-  `+1942 / -1105` (3,047 changed lines), above the 950-1,450 target. The diff
+- Informational final Step 3 diff measured against merge-base `f3c11b379`,
+  self-inclusive of this tracker record: `+2003 / -1106` (3,109 changed lines),
+  above the 950-1,450 target. Verification totals are 194 broad pre-sync bridge
+  tests, 169 final post-sync core bridge tests, and 1 shared model test. The diff
   includes 496 generated-model lines, deletion of 370 obsolete metadata
   implementation/model/test lines, and broad lifecycle/race coverage; no
   unrelated production feature was added.

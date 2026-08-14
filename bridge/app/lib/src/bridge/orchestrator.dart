@@ -1040,7 +1040,8 @@ class OrchestratorSession._({
   }
 
   Future<void> _teardown() async {
-    beginShutdown();
+    _routedRequestDispatcher.beginShutdown();
+    _sessionCreationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
     StackTrace? firstTeardownStackTrace;

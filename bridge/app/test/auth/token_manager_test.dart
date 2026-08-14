@@ -485,7 +485,7 @@ TokenManager _tokenManager({
     authBackendUrl: authBackendUrl,
     loadTokens: loadTokens,
     saveTokens: saveTokens,
-    client: client ?? http.Client(),
+    ownedClient: client ?? http.Client(),
     requestDeadline: requestDeadline,
   );
   addTearDown(manager.dispose);

@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -269,9 +268,13 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         shutdownSignal: _shutdownSignal.future,
       );
       await _sessionMutationDispatcher.applyGeneratedTitle(sessionId: session.id, title: title);
-    } on http.RequestAbortedException catch (error, stackTrace) {
+    } on SessionMetadataRequestAbortedException catch (error) {
       if (_shutdownSignal.isCompleted) return;
-      Log.w("Generated-title request was aborted for session ${session.id}", error, stackTrace);
+      Log.w(
+        "Generated-title request was aborted for session ${session.id}",
+        error.innerError,
+        error.innerStackTrace,
+      );
     } on Object catch (error, stackTrace) {
       Log.w("Failed to generate title for session ${session.id}", error, stackTrace);
     }

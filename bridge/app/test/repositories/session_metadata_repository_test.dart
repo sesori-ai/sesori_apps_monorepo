@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/app_client_status_response.dart";
 import "package:sesori_bridge/src/api/generate_session_metadata_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
@@ -32,6 +33,34 @@ void main() {
       );
 
       expect(api.requests.single.firstMessage, equals("x" * 500));
+    });
+
+    test("does not split a surrogate pair at the 500-code-unit boundary", () async {
+      final api = _FakeSesoriServerApi();
+      final repository = SessionMetadataRepository(api: api);
+
+      await repository.generateTitle(
+        firstMessage: "${"x" * 499}😀tail",
+        shutdownSignal: Completer<void>().future,
+      );
+
+      expect(api.requests.single.firstMessage, equals("x" * 499));
+    });
+
+    test("translates HTTP aborts at the repository boundary", () async {
+      final abort = http.RequestAbortedException(Uri.parse("https://auth.example.test/metadata"));
+      final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: abort));
+
+      await expectLater(
+        repository.generateTitle(firstMessage: "message", shutdownSignal: Completer<void>().future),
+        throwsA(
+          isA<SessionMetadataRequestAbortedException>().having(
+            (error) => error.innerError,
+            "innerError",
+            same(abort),
+          ),
+        ),
+      );
     });
 
     test("surfaces API failure unchanged", () async {

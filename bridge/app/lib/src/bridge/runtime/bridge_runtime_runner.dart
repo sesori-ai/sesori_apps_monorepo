@@ -566,7 +566,7 @@ class const BridgeRuntimeRunner._() {
             data: data,
             dataDirectory: options.dataDirectory,
           ),
-          client: http.Client(),
+          ownedClient: http.Client(),
           requestDeadline: TokenManager.defaultRequestDeadline,
         );
         shutdownCoordinator.add(disposable: tokenManager.dispose);

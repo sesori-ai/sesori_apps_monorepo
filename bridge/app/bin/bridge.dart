@@ -361,7 +361,7 @@ Future<void> _unregisterBridgeRegistration({
     authBackendUrl: authBackendUrl,
     loadTokens: () => loadTokens(dataDirectory: dataDirectory),
     saveTokens: (data) => saveTokens(data: data, dataDirectory: dataDirectory),
-    client: http.Client(),
+    ownedClient: http.Client(),
     requestDeadline: TokenManager.defaultRequestDeadline,
   );
   try {

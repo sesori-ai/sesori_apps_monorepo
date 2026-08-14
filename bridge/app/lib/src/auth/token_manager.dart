@@ -11,12 +11,13 @@ import "token.dart";
 import "token_refresh_exception.dart";
 import "token_refresher.dart";
 
+/// Takes ownership of [ownedClient] and closes it in [dispose].
 class TokenManager({
   required String initialToken,
   required final String _authBackendUrl,
   required final Future<TokenData?> Function() _loadTokens,
   required final Future<void> Function(TokenData) _saveTokens,
-  required final http.Client _client,
+  required final http.Client _ownedClient,
   required final Duration _requestDeadline,
 }) implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
@@ -34,7 +35,7 @@ class TokenManager({
 
   void dispose() {
     _tokenSubject.close();
-    _client.close();
+    _ownedClient.close();
   }
 
   @override
@@ -100,7 +101,7 @@ class TokenManager({
       ..body = jsonEncode({"refreshToken": refreshToken});
     final http.Response response;
     try {
-      response = await http.Response.fromStream(await _client.send(request));
+      response = await http.Response.fromStream(await _ownedClient.send(request));
     } finally {
       deadlineTimer.cancel();
     }

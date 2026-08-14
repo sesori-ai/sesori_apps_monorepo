@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:io";
 
-import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
@@ -408,7 +407,10 @@ class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
     if (abortOnShutdown) {
       await shutdownSignal;
       shutdownObserved?.complete();
-      throw http.RequestAbortedException(Uri.parse("http://localhost/sessions/generate-metadata"));
+      throw SessionMetadataRequestAbortedException(
+        innerError: StateError("metadata request aborted"),
+        innerStackTrace: StackTrace.current,
+      );
     }
     if (generateGate case final gate?) await gate;
     return "Generated title";
