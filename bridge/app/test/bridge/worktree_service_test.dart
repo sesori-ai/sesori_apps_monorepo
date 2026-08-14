@@ -12,6 +12,42 @@ import "package:test/test.dart";
 import "../helpers/test_database.dart";
 
 const _projectId = "/repo/project";
+const _expectedWorkspaceColors = {
+  "amber",
+  "blue",
+  "coral",
+  "cyan",
+  "gold",
+  "green",
+  "indigo",
+  "lime",
+  "navy",
+  "orange",
+  "pink",
+  "purple",
+  "red",
+  "silver",
+  "teal",
+  "violet",
+};
+const _expectedWorkspaceAnimals = {
+  "badger",
+  "bear",
+  "beaver",
+  "bison",
+  "crane",
+  "dolphin",
+  "eagle",
+  "falcon",
+  "fox",
+  "gecko",
+  "heron",
+  "lynx",
+  "otter",
+  "panda",
+  "raven",
+  "wolf",
+};
 
 void main() {
   group("WorktreeService.prepareWorktreeForSession", () {
@@ -62,7 +98,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated session branch does not exist.
+      // Generated workspace branch does not exist.
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
@@ -74,7 +110,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      _expectColorAnimalSlug(success.branchName);
       expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
       expect(success.baseBranch, equals("main"));
       expect(success.baseCommit, equals("abc123def456"));
@@ -105,7 +141,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated session branch does not exist.
+      // Generated workspace branch does not exist.
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
@@ -117,7 +153,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      _expectColorAnimalSlug(success.branchName);
       expect(success.path, equals("/moved/project/.worktrees/${success.branchName}"));
       for (final invocation in processRunner.invocations) {
         expect(invocation.workingDirectory, equals("/moved/project"));
@@ -167,7 +203,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated session branch does not exist.
+      // Generated workspace branch does not exist.
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
@@ -179,7 +215,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      _expectColorAnimalSlug(success.branchName);
       expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
     });
 
@@ -249,24 +285,28 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      _expectColorAnimalSlug(success.branchName);
       expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
-      expect(
-        processRunner.invocations.where(
-          (invocation) =>
-              invocation.arguments.length >= 2 &&
-              invocation.arguments[0] == "branch" &&
-              invocation.arguments[1] == "--list",
-        ),
-        hasLength(2),
-      );
+      final checkedBranches = processRunner.invocations
+          .where(
+            (invocation) =>
+                invocation.arguments.length >= 2 &&
+                invocation.arguments[0] == "branch" &&
+                invocation.arguments[1] == "--list",
+          )
+          .map((invocation) => invocation.arguments.last)
+          .toList(growable: false);
+      expect(checkedBranches, hasLength(2));
+      expect(checkedBranches.toSet(), hasLength(2));
+      checkedBranches.forEach(_expectColorAnimalSlug);
+      expect(success.branchName, checkedBranches.last);
     });
 
     // -----------------------------------------------------------------------
-    // Git failure fallback (all 3 attempts fail)
+    // Git failure fallback (all normal and suffixed attempts fail)
     // -----------------------------------------------------------------------
 
-    test("git failure fallback: returns WorktreeFallback after 3 failed attempts", () async {
+    test("git failure fallback: returns WorktreeFallback after final suffixed attempt", () async {
       // rev-parse HEAD → ok
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
@@ -284,6 +324,8 @@ void main() {
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
+      // Final secure-suffix attempt also fails.
+      processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
@@ -293,7 +335,16 @@ void main() {
       expect(result, isA<WorktreeFallback>());
       final fallback = result as WorktreeFallback;
       expect(fallback.originalPath, equals(_projectId));
-      expect(fallback.reason, equals("failed to create worktree after 3 attempts"));
+      expect(fallback.reason, equals("failed to create worktree after 4 attempts"));
+      expect(
+        processRunner.invocations.where(
+          (invocation) =>
+              invocation.arguments.length >= 2 &&
+              invocation.arguments[0] == "worktree" &&
+              invocation.arguments[1] == "add",
+        ),
+        hasLength(4),
+      );
     });
 
     // -----------------------------------------------------------------------
@@ -316,7 +367,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "deadbeef1234\n"));
       // git rev-parse origin/develop → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -365,7 +416,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -384,10 +435,10 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // Preferred branch name
+    // Secure suffix fallback
     // -----------------------------------------------------------------------
 
-    test("preferred branch name succeeds: creates worktree with preferred name", () async {
+    test("pair exhaustion appends a secure suffix to the last sampled pair", () async {
       // rev-parse HEAD → ok
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
@@ -398,143 +449,35 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list my-feature → empty (preferred name available)
-      processRunner.enqueue(result: _ok(stdout: ""));
-      // worktree add → success
+      // All three normal pairs collide.
+      processRunner.enqueue(result: _ok(stdout: "existing\n"));
+      processRunner.enqueue(result: _ok(stdout: "existing\n"));
+      processRunner.enqueue(result: _ok(stdout: "existing\n"));
+      // The final suffixed name succeeds.
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, equals("my-feature"));
-      expect(success.path, equals("$_projectId/.worktrees/my-feature"));
-      expect(success.baseBranch, equals("main"));
-      expect(success.baseCommit, equals("abc123def456"));
-    });
-
-    test("preferred branch name collides: retries with random suffix", () async {
-      // rev-parse HEAD → ok
-      processRunner.enqueue(result: _ok());
-      // symbolic-ref → main
-      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
-      // fetch origin/main → unavailable; continue with existing refs
-      processRunner.enqueue(result: _fail(exitCode: 1));
-      // git rev-parse main → base commit SHA
-      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
-      // git rev-parse origin/main → no remote tracking branch
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list my-feature → non-empty (collision!)
-      processRunner.enqueue(result: _ok(stdout: "  my-feature\n"));
-      // worktree add with suffixed name → success
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: null,
-        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.branchName, startsWith("my-feature-"));
-      expect(success.branchName.length, equals("my-feature-".length + 6));
-      expect(success.path, startsWith("$_projectId/.worktrees/my-feature-"));
-    });
-
-    test("preferred branch name git fails: falls through to random naming", () async {
-      // rev-parse HEAD → ok
-      processRunner.enqueue(result: _ok());
-      // symbolic-ref → main
-      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
-      // fetch origin/main → unavailable; continue with existing refs
-      processRunner.enqueue(result: _fail(exitCode: 1));
-      // git rev-parse main → base commit SHA
-      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
-      // git rev-parse origin/main → no remote tracking branch
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list my-feature → empty (available)
-      processRunner.enqueue(result: _ok(stdout: ""));
-      // worktree add → failure
-      processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
-      // Generated session branch is free.
-      processRunner.enqueue(result: _ok(stdout: ""));
-      // worktree add → success
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: null,
-        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
-    });
-
-    test("no preferred branch name: uses random naming", () async {
-      // rev-parse HEAD → ok
-      processRunner.enqueue(result: _ok());
-      // symbolic-ref → main
-      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
-      // fetch origin/main → unavailable; continue with existing refs
-      processRunner.enqueue(result: _fail(exitCode: 1));
-      // git rev-parse main → base commit SHA
-      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
-      // git rev-parse origin/main → no remote tracking branch
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated session branch does not exist.
-      processRunner.enqueue(result: _ok(stdout: ""));
-      // worktree add → success
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: null,
-        preferredBranchAndWorktreeName: null,
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
-    });
-
-    test("preferred branch name with parent session: ignored, reuses parent worktree", () async {
-      // Insert a mapping for the parent session.
-      await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
-      await sessionDao.insertSession(
-        pluginId: "opencode",
-        sessionId: "parent-001",
-        backendSessionId: "parent-001",
-        projectId: _projectId,
-        isDedicated: true,
-        createdAt: 123,
-        worktreePath: "$_projectId/.worktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: "sha-parent",
-
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: "parent-001",
-        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectId/.worktrees/session-001"));
-      expect(success.branchName, equals("session-001"));
-      // No git commands should have been called — worktree already exists.
-      expect(processRunner.invocations, isEmpty);
+      expect(success.branchName, matches(RegExp(r"^[a-z]+-[a-z]+-[0-9a-f]{6}$")));
+      final checkedBranches = processRunner.invocations
+          .where(
+            (invocation) =>
+                invocation.arguments.length >= 2 &&
+                invocation.arguments[0] == "branch" &&
+                invocation.arguments[1] == "--list",
+          )
+          .map((invocation) => invocation.arguments.last)
+          .toList(growable: false);
+      expect(checkedBranches, hasLength(3));
+      expect(checkedBranches.toSet(), hasLength(3));
+      checkedBranches.forEach(_expectColorAnimalSlug);
+      expect(success.branchName.substring(0, success.branchName.length - 7), checkedBranches.last);
+      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
     });
 
     // -----------------------------------------------------------------------
@@ -554,7 +497,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "origin222\n"));
       // merge-base --is-ancestor origin222 local111 → exit 1 (origin NOT ancestor of local)
       processRunner.enqueue(result: _fail(exitCode: 1));
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -599,7 +542,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "origin222\n"));
       // merge-base --is-ancestor origin222 local111 → exit 0 (origin IS ancestor of local)
       processRunner.enqueue(result: _ok());
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -630,7 +573,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "samecommit\n"));
       // rev-parse origin/main → same commit
       processRunner.enqueue(result: _ok(stdout: "samecommit\n"));
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -662,7 +605,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "diverged-origin\n"));
       // merge-base --is-ancestor diverged-origin diverged-local → exit 1 (not ancestor)
       processRunner.enqueue(result: _fail(exitCode: 1));
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -691,7 +634,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
       // rev-parse origin/main → fail (no remote tracking branch)
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -742,7 +685,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "origin222\n"));
       // merge-base --is-ancestor → exit 128 (fatal error, e.g. shallow clone)
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "fatal"));
-      // branch --list session-001 → empty
+      // Generated workspace branch is available.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -1003,6 +946,13 @@ ProcessResult _ok({String stdout = "", String stderr = ""}) {
 
 ProcessResult _fail({required int exitCode, String stderr = ""}) {
   return ProcessResult(1, exitCode, "", stderr);
+}
+
+void _expectColorAnimalSlug(String slug) {
+  expect(slug, matches(RegExp(r"^[a-z]+-[a-z]+$")));
+  final parts = slug.split("-");
+  expect(_expectedWorkspaceColors, contains(parts.first));
+  expect(_expectedWorkspaceAnimals, contains(parts.last));
 }
 
 class const _Invocation({

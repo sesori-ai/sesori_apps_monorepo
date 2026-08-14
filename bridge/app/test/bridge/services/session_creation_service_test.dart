@@ -153,6 +153,32 @@ void main() {
       await runtime.dispose();
     });
 
+    test("prepares a dedicated worktree without waiting for metadata", () async {
+      final metadataGate = Completer<void>();
+      metadataService
+        ..generateStarted = Completer<void>()
+        ..generateGate = metadataGate.future;
+      worktreeService.prepareStarted = Completer<void>();
+
+      final creation = service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      await worktreeService.prepareStarted!.future.timeout(const Duration(seconds: 1));
+      expect(metadataService.generateStarted?.isCompleted, isTrue);
+      metadataGate.complete();
+      await creation;
+    });
+
     test("surfaces plugin startup failures without waiting for metadata", () async {
       final metadataGate = Completer<void>();
       final runtime = createTestPluginRuntime(plugins: const <BridgePluginApi>[]);
@@ -375,6 +401,7 @@ class _FakeTokenRefresher() implements TokenRefresher {
 class _FakeWorktreeService({required super.worktreeRepository}) extends WorktreeService {
   int prepareCalls = 0;
   int resolveCalls = 0;
+  Completer<void>? prepareStarted;
   WorktreeResult prepareResult = WorktreeFallback(originalPath: "/repo", reason: "fallback");
   String? headCommit;
 
@@ -382,9 +409,9 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     prepareCalls++;
+    if (prepareStarted case final started? when !started.isCompleted) started.complete();
     return prepareResult;
   }
 

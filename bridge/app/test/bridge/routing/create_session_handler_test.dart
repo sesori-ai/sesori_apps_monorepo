@@ -685,7 +685,7 @@ void main() {
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
     });
 
-    test("AI naming succeeds — preferred branch name and rename used", () async {
+    test("AI metadata renames the session without naming the worktree", () async {
       metadataService.generateResult = const bridge_metadata.SessionMetadata(
         title: "Fix Login Bug",
         branchName: "fix-login-bug",
@@ -733,13 +733,13 @@ void main() {
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(metadataService.lastGenerateMessage, equals("Fix the login bug"));
-      expect(worktreeService.lastPreparePreferredBranchName, equals("fix-login-bug"));
+      expect(worktreeService.prepareCallCount, 1);
       expect(result.title, equals("Fix Login Bug"));
       expect((await db.sessionDao.getSession(sessionId: result.id))?.title, equals("Fix Login Bug"));
       expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
     });
 
-    test("AI naming returns null — no preferred branch and no rename", () async {
+    test("missing AI metadata skips the session rename", () async {
       metadataService.generateResult = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -774,7 +774,6 @@ void main() {
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
-      expect(worktreeService.lastPreparePreferredBranchName, isNull);
       expect(plugin.lastRenameSessionId, isNull);
     });
 
@@ -1184,7 +1183,6 @@ void main() {
 class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
-  String? lastPreparePreferredBranchName;
   String? lastResolveHeadProjectId;
   int prepareCallCount = 0;
   int resolveHeadCommitCallCount = 0;
@@ -1211,12 +1209,10 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     prepareCallCount++;
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
-    lastPreparePreferredBranchName = preferredBranchAndWorktreeName?.branchName;
     return prepareResult;
   }
 
