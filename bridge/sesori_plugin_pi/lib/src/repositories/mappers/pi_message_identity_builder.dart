@@ -16,10 +16,22 @@ final class PiMessageIdentityBuilder({
 
   final Map<String, int> _ordinals = {};
 
-  void mergeHydrated({required PiMessageIdentityBuilder other}) {
-    for (final MapEntry(:key, :value) in other._ordinals.entries) {
-      if (value > (_ordinals[key] ?? 0)) _ordinals[key] = value;
+  PiMessageIdentitySnapshot snapshot() => PiMessageIdentitySnapshot._(Map.unmodifiable(_ordinals));
+
+  void replaceHydrated({
+    required PiMessageIdentityBuilder other,
+    required PiMessageIdentitySnapshot since,
+  }) {
+    final merged = Map<String, int>.of(other._ordinals);
+    for (final MapEntry(:key, :value) in _ordinals.entries) {
+      final allocationsSinceRead = value - (since._ordinals[key] ?? 0);
+      if (allocationsSinceRead > 0) {
+        merged[key] = (merged[key] ?? 0) + allocationsSinceRead;
+      }
     }
+    _ordinals
+      ..clear()
+      ..addAll(merged);
   }
 
   String next({required PiMessageIdentityRole role, required int? timestamp}) {
@@ -41,3 +53,5 @@ final class PiMessageIdentityBuilder({
     return "$pluginId:$sessionId:${role.segment}:$timestampPart:$ordinal";
   }
 }
+
+final class PiMessageIdentitySnapshot._(final Map<String, int> _ordinals);

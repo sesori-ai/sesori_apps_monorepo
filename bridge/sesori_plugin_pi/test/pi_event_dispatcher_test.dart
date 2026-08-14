@@ -557,6 +557,28 @@ void main() {
 
     expect(builder.next(role: PiMessageIdentityRole.assistant, timestamp: 8), "pi:session:assistant:8:3");
   });
+
+  test("identity hydration drops ordinals from an abandoned active branch", () {
+    final builder = identities.forSession(sessionId: sessionId);
+    identities.hydrate<void>(
+      sessionId: sessionId,
+      map: (candidate) {
+        candidate
+          ..nextCompaction()
+          ..nextCompaction();
+      },
+    );
+    expect(builder.nextCompaction(), "pi:session:compaction:compaction:3");
+
+    identities.hydrate<void>(
+      sessionId: sessionId,
+      map: (candidate) {
+        candidate.nextCompaction();
+      },
+    );
+
+    expect(builder.nextCompaction(), "pi:session:compaction:compaction:2");
+  });
 }
 
 PiEvent _event(String type, [Map<String, Object?> fields = const {}]) => PiEvent.parse(

@@ -72,10 +72,10 @@ final class PiSessionProcessRepository({
       );
     }
 
+    final identityHydration = _identityTracker.beginHydration(sessionId: sessionId);
     try {
       final history = await _readHistory(resolved: resolved);
-      final mapped = _identityTracker.hydrate(
-        sessionId: sessionId,
+      final mapped = identityHydration.complete(
         map: (identities) => _historyMapper.map(
           sessionId: sessionId,
           entries: history.entries,
