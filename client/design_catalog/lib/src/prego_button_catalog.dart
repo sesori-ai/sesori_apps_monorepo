@@ -122,7 +122,10 @@ class const _ScenarioCard({required final CatalogScenario scenario}) extends Sta
           const SizedBox(height: 4),
           Text(scenario.description, style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary)),
           const SizedBox(height: 16),
-          SizedBox(width: scenario.fullWidth ? double.infinity : null, child: _buildScenarioButton(scenario)),
+          SizedBox(
+            width: _fullWidthFor(scenario.content) ? double.infinity : null,
+            child: _buildScenarioButton(scenario),
+          ),
           const SizedBox(height: 16),
           Text(
             "${scenario.hierarchy.name} · ${scenario.tone.name} · ${scenario.size.name} · ${scenario.state.name}",
@@ -137,37 +140,41 @@ class const _ScenarioCard({required final CatalogScenario scenario}) extends Sta
 Widget _buildScenarioButton(CatalogScenario scenario) {
   final onPressed = scenario.state == CatalogButtonState.enabled ? () {} : null;
   final isLoading = scenario.state == CatalogButtonState.loading;
-  final leadingIcon = _iconFor(scenario.leadingIcon);
 
-  if (scenario.presentation == CatalogButtonPresentation.iconOnly) {
-    return PregoButtonsSolid.iconOnly(
-      leadingIcon: leadingIcon ?? material.Icons.add,
+  return switch (scenario.content) {
+    CatalogButtonIconOnlyContent(:final icon) => PregoButtonsSolid.iconOnly(
+      leadingIcon: _iconFor(icon),
       hierarchy: _hierarchyFor(scenario.hierarchy),
       size: _sizeFor(scenario.size),
       onPressed: onPressed,
       isLoading: isLoading,
       type: _toneFor(scenario.tone),
-    );
-  }
-
-  return PregoButtonsSolid(
-    label: "Continue",
-    hierarchy: _hierarchyFor(scenario.hierarchy),
-    size: _sizeFor(scenario.size),
-    onPressed: onPressed,
-    leadingIcon: leadingIcon,
-    trailingIcon: _iconFor(scenario.trailingIcon),
-    isLoading: isLoading,
-    type: _toneFor(scenario.tone),
-    fullWidth: scenario.fullWidth,
-  );
+    ),
+    CatalogButtonLabelContent(:final fullWidth, :final leadingIcon, :final trailingIcon) => PregoButtonsSolid(
+      label: "Continue",
+      hierarchy: _hierarchyFor(scenario.hierarchy),
+      size: _sizeFor(scenario.size),
+      onPressed: onPressed,
+      leadingIcon: _optionalIconFor(leadingIcon),
+      trailingIcon: _optionalIconFor(trailingIcon),
+      isLoading: isLoading,
+      type: _toneFor(scenario.tone),
+      fullWidth: fullWidth,
+    ),
+  };
 }
 
-material.IconData? _iconFor(CatalogButtonIcon? icon) => switch (icon) {
+bool _fullWidthFor(CatalogButtonContent content) => switch (content) {
+  CatalogButtonLabelContent(:final fullWidth) => fullWidth,
+  CatalogButtonIconOnlyContent() => false,
+};
+
+material.IconData? _optionalIconFor(CatalogButtonIcon? icon) => icon == null ? null : _iconFor(icon);
+
+material.IconData _iconFor(CatalogButtonIcon icon) => switch (icon) {
   CatalogButtonIcon.add => material.Icons.add,
   CatalogButtonIcon.arrowRight => material.Icons.arrow_forward,
   CatalogButtonIcon.trash => material.Icons.delete_outline,
-  null => null,
 };
 
 PregoButtonsSolidSize _sizeFor(CatalogButtonSize size) => switch (size) {

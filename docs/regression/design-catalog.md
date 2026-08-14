@@ -10,15 +10,15 @@ Synthetic examples are mandatory. A component edit is reviewable only when the
 catalog still resolves, analyzes, renders its curated scenarios, and builds as
 a static Flutter Web application.
 
-## Regression Matrix
+## Regression Levels
 
-| Level | Boundary | Coverage added |
-|---|---|---|
-| L1 | Automated | Validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, and rendering of every curated state. |
-| L2 | Client end to end | Build the release web catalog and interact with the solid-button playground, light/dark themes, iOS/Android viewports, enabled clicks, disabled/loading states, and the all-states matrix in a browser. |
-| L3 | Packaged or external | Once private PR previews are enabled, verify a trusted same-repository PR receives an Access-protected interactive preview without production credentials, services, data, or analytics. |
-| L4 |  | No additional coverage. |
-| L5 |  | No additional coverage. |
+| Level | Additional coverage |
+|---|---|
+| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, and rendering of every curated state. |
+| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, iOS/Android viewports, enabled clicks, disabled/loading states, and the all-states matrix in a browser. |
+| L3 Release | Packaged or external: once private PR previews are enabled, verify a trusted same-repository PR receives an Access-protected interactive preview without production credentials, services, data, or analytics. |
+| L4 Extended | No additional coverage. |
+| L5 Full | No additional coverage. |
 
 ## Exploration Guidance
 

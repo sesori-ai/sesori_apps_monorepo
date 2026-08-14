@@ -11,6 +11,7 @@ on:
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/no_slop_linter/**'
+      - 'shared/sesori_shared/**'
       - '.tool-versions'
       - '.github/workflows/design-catalog-ci.yml'
   pull_request:
@@ -22,6 +23,7 @@ on:
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/no_slop_linter/**'
+      - 'shared/sesori_shared/**'
       - '.tool-versions'
       - '.github/workflows/design-catalog-ci.yml'
 
@@ -57,22 +59,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: ${{ env.FLUTTER_CHANNEL }}
 
-      - name: Get workspace dependencies
-        run: dart pub get
+      - name: Validate catalog
         working-directory: client
-
-      - name: Check catalog manifest
-        run: dart run tool/generate_manifest.dart --check
-        working-directory: client/design_catalog
-
-      - name: Analyze catalog
-        run: dart analyze --fatal-infos
-        working-directory: client/design_catalog
-
-      - name: Test catalog
-        run: flutter test
-        working-directory: client/design_catalog
-
-      - name: Build catalog web release
-        run: flutter build web --release
-        working-directory: client/design_catalog
+        run: |
+          DART_BIN=$(command -v dart)
+          FLUTTER_BIN=$(command -v flutter)
+          FLUTTER_SDK_ROOT=$(dirname "$(dirname "$FLUTTER_BIN")")
+          make DART="$DART_BIN" FLUTTER="$FLUTTER_BIN" FLUTTER_ROOT="$FLUTTER_SDK_ROOT" catalog-check

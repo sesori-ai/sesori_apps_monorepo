@@ -20,13 +20,15 @@ void main() {
       final isRestrictedToneOutsidePrimary =
           (scenario.tone == CatalogButtonTone.warning || scenario.tone == CatalogButtonTone.success) &&
           scenario.hierarchy != CatalogButtonHierarchy.primary;
-      final isInvalidIconOnlyScenario =
-          scenario.presentation == CatalogButtonPresentation.iconOnly && scenario.leadingIcon == null;
 
       expect(isPrimaryAltWithUnsupportedTone, isFalse, reason: scenario.id);
       expect(isRestrictedToneOutsidePrimary, isFalse, reason: scenario.id);
-      expect(isInvalidIconOnlyScenario, isFalse, reason: scenario.id);
     }
+  });
+
+  test("manifest source paths resolve to repository files", () {
+    expect(File("../../$catalogScenarioSourcePath").existsSync(), isTrue);
+    expect(File("../../$catalogComponentSourcePath").existsSync(), isTrue);
   });
 
   test("checked-in manifest matches the scenario registry", () {

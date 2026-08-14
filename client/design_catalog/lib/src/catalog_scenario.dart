@@ -30,18 +30,25 @@ enum CatalogButtonState() {
   loading;
 }
 
-/// Content layouts supported by the production button.
-enum CatalogButtonPresentation() {
-  label,
-  iconOnly;
-}
-
 /// Icons used by curated scenarios. The catalog renderer owns their Flutter mapping.
 enum CatalogButtonIcon() {
   add,
   arrowRight,
   trash;
 }
+
+/// Content layouts supported by the production button.
+sealed class const CatalogButtonContent();
+
+/// A text label with optional leading and trailing icons.
+final class const CatalogButtonLabelContent({
+  required final bool fullWidth,
+  required final CatalogButtonIcon? leadingIcon,
+  required final CatalogButtonIcon? trailingIcon,
+}) extends CatalogButtonContent;
+
+/// A square button whose required icon is its accessible visual content.
+final class const CatalogButtonIconOnlyContent({required final CatalogButtonIcon icon}) extends CatalogButtonContent;
 
 /// A typed, serializable button state used by navigation, matrices, and agents.
 final class const CatalogScenario({
@@ -52,23 +59,37 @@ final class const CatalogScenario({
   required final CatalogButtonHierarchy hierarchy,
   required final CatalogButtonTone tone,
   required final CatalogButtonState state,
-  required final CatalogButtonPresentation presentation,
-  required final bool fullWidth,
-  required final CatalogButtonIcon? leadingIcon,
-  required final CatalogButtonIcon? trailingIcon,
+  required final CatalogButtonContent content,
 }) {
   // ignore: no_slop_linter/prefer_specific_type, JSON-compatible recursive value boundary
-  Map<String, Object?> toJson() => {
-    "id": id,
-    "name": name,
-    "description": description,
-    "size": size.name,
-    "hierarchy": hierarchy.name,
-    "tone": tone.name,
-    "state": state.name,
-    "presentation": presentation.name,
-    "fullWidth": fullWidth,
-    "leadingIcon": leadingIcon?.name,
-    "trailingIcon": trailingIcon?.name,
-  };
+  Map<String, Object?> toJson() {
+    final contentJson = switch (content) {
+      CatalogButtonLabelContent(:final fullWidth, :final leadingIcon, :final trailingIcon) => (
+        presentation: "label",
+        fullWidth: fullWidth,
+        leadingIcon: leadingIcon?.name,
+        trailingIcon: trailingIcon?.name,
+      ),
+      CatalogButtonIconOnlyContent(:final icon) => (
+        presentation: "iconOnly",
+        fullWidth: false,
+        leadingIcon: icon.name,
+        trailingIcon: null,
+      ),
+    };
+
+    return {
+      "id": id,
+      "name": name,
+      "description": description,
+      "size": size.name,
+      "hierarchy": hierarchy.name,
+      "tone": tone.name,
+      "state": state.name,
+      "presentation": contentJson.presentation,
+      "fullWidth": contentJson.fullWidth,
+      "leadingIcon": contentJson.leadingIcon,
+      "trailingIcon": contentJson.trailingIcon,
+    };
+  }
 }
