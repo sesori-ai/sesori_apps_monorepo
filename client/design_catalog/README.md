@@ -11,8 +11,9 @@ business modules.
    hierarchy, tone, interaction state, icons, and width.
 3. Edit the production component in
    `../module_prego/lib/components/buttons/prego_buttons_solid.dart`.
-4. Hot reload, then inspect **All curated states** in both Prego themes and the
-   available iOS/Android viewports.
+4. Hot reload, then inspect **All curated states** in both Prego themes, the
+   available iOS/Android viewports, and the **Canvas background** options under
+   **Addons**.
 5. Add a curated scenario when the change creates a meaningful product state,
    then regenerate the manifest.
 
@@ -37,6 +38,13 @@ The focused viewport menu covers iPhone SE, iPhone 16 Pro, iPhone 16 Pro Max,
 Google Pixel 10 Pro, and Samsung Galaxy S26 Ultra, plus an unconstrained mode.
 Android logical dimensions represent default app viewports; display-size and
 system-navigation settings can change the effective size on physical devices.
+
+## Canvas backgrounds
+
+Use **Addons → Canvas background** to place the current component on Prego's
+surface and brand background tokens. The selected semantic token resolves
+against the active light or dark Prego theme and is stored in the URL, so an
+exact interactive preview can be shared with another reviewer.
 
 The catalog must use synthetic examples only. It must not import production
 authentication, routing, relay, analytics, credentials, or service setup.

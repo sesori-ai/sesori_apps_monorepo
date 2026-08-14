@@ -282,8 +282,5 @@ class const _PreviewSurface({
   final Alignment alignment = Alignment.center,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: context.prego.colors.bgSurface2,
-    child: Align(alignment: alignment, child: child),
-  );
+  Widget build(BuildContext context) => Align(alignment: alignment, child: child);
 }
