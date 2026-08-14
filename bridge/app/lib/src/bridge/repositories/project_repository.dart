@@ -89,7 +89,7 @@ class ProjectRepository({
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
       directoryMissing: false,
-      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: row.path),
+      supportsDedicatedWorktrees: await _inspectDedicatedWorktreeSupport(path: row.path),
     );
   }
 
@@ -260,7 +260,16 @@ class ProjectRepository({
     }
   }
 
-  Future<bool> _supportsDedicatedWorktrees({required String path}) => _worktreeInspectionLock.use(
+  Future<bool> _supportsDedicatedWorktrees({required String path}) async {
+    try {
+      return await _inspectDedicatedWorktreeSupport(path: path);
+    } on Object catch (error, stackTrace) {
+      Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> _inspectDedicatedWorktreeSupport({required String path}) => _worktreeInspectionLock.use(
     operation: () async {
       if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
       return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);

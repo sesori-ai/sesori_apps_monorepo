@@ -799,7 +799,21 @@ void main() {
       );
     });
 
-    test("renameProject does not persist when Git capability inspection fails", () async {
+    test("resolveProjectOpenTarget recovers Git capability inspection failures", () async {
+      final repoWithFailure = singlePluginProjectRepository(
+        gitCliApi: _ThrowingGitCliApi(error: StateError("Git inspection failed")),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final project = await repoWithFailure.resolveProjectOpenTarget(path: "/new-project");
+
+      expect(project.supportsDedicatedWorktrees, isFalse);
+    });
+
+    test("renameProject recovers Git capability inspection failures", () async {
       await db.projectsDao.setActivity(projectId: "/broken", createdAt: 1, updatedAt: 2);
       await db.projectsDao.setDisplayName(
         projectId: "/broken",
@@ -815,11 +829,11 @@ void main() {
         filesystemApi: FakeFilesystemApi(),
       );
 
-      await expectLater(
-        repoWithFailure.renameProject(projectId: "/broken", name: "Renamed"),
-        throwsA(same(inspectionError)),
-      );
-      expect((await db.projectsDao.getProject(projectId: "/broken"))?.displayName, "Original");
+      final renamed = await repoWithFailure.renameProject(projectId: "/broken", name: "Renamed");
+
+      expect(renamed.name, "Renamed");
+      expect(renamed.supportsDedicatedWorktrees, isFalse);
+      expect((await db.projectsDao.getProject(projectId: "/broken"))?.displayName, "Renamed");
     });
   });
 
