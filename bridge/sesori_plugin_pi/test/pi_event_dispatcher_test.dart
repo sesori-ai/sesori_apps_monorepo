@@ -579,6 +579,22 @@ void main() {
 
     expect(builder.nextCompaction(), "pi:session:compaction:compaction:2");
   });
+
+  test("older overlapping hydration cannot inflate or replace a newer result", () {
+    final builder = identities.forSession(sessionId: sessionId);
+    final older = identities.beginHydration(sessionId: sessionId);
+    final newer = identities.beginHydration(sessionId: sessionId);
+    newer.complete<void>(map: (candidate) => candidate.nextCompaction());
+    older.complete<void>(
+      map: (candidate) {
+        candidate
+          ..nextCompaction()
+          ..nextCompaction();
+      },
+    );
+
+    expect(builder.nextCompaction(), "pi:session:compaction:compaction:2");
+  });
 }
 
 PiEvent _event(String type, [Map<String, Object?> fields = const {}]) => PiEvent.parse(

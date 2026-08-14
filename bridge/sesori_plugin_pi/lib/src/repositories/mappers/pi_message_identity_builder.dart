@@ -15,16 +15,17 @@ final class PiMessageIdentityBuilder({
   static const String customMessageTimestampSentinel = "custom-message";
 
   final Map<String, int> _ordinals = {};
+  final Map<String, int> _allocations = {};
 
-  PiMessageIdentitySnapshot snapshot() => PiMessageIdentitySnapshot._(Map.unmodifiable(_ordinals));
+  PiMessageIdentitySnapshot snapshot() => PiMessageIdentitySnapshot._(Map.unmodifiable(_allocations));
 
   void replaceHydrated({
     required PiMessageIdentityBuilder other,
     required PiMessageIdentitySnapshot since,
   }) {
     final merged = Map<String, int>.of(other._ordinals);
-    for (final MapEntry(:key, :value) in _ordinals.entries) {
-      final allocationsSinceRead = value - (since._ordinals[key] ?? 0);
+    for (final MapEntry(:key, :value) in _allocations.entries) {
+      final allocationsSinceRead = value - (since._allocations[key] ?? 0);
       if (allocationsSinceRead > 0) {
         merged[key] = (merged[key] ?? 0) + allocationsSinceRead;
       }
@@ -50,8 +51,9 @@ final class PiMessageIdentityBuilder({
     final key = "${role.segment}\u0000$timestampPart";
     final ordinal = (_ordinals[key] ?? 0) + 1;
     _ordinals[key] = ordinal;
+    _allocations[key] = (_allocations[key] ?? 0) + 1;
     return "$pluginId:$sessionId:${role.segment}:$timestampPart:$ordinal";
   }
 }
 
-final class PiMessageIdentitySnapshot._(final Map<String, int> _ordinals);
+final class PiMessageIdentitySnapshot._(final Map<String, int> _allocations);

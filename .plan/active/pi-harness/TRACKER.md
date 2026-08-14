@@ -380,7 +380,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Reused canonical replay mapping for assistant envelopes, bounded tool results,
   unfinished failed tools, and visible compaction cards; raw Pi payload decoding
   remains below the Layer-3 dispatcher.
-- `dart test` (155 tests), `dart analyze --fatal-infos`, and
+- `dart test` (156 tests), `dart analyze --fatal-infos`, and
   `git diff --check`: pass.
 - Architecture implementation review ran twice. The user approved applying the
   remaining second-pass findings without a third review; identity hydration,
@@ -388,13 +388,14 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   corrected.
 - No user-visible, database, persisted-data mutation, analytics, or client-UI
   change; Pi remains app-invisible until Step 18.
-- Diff after review feedback: +1,726/-130 = 1,856 changed lines;
-  generated lines: 0; tests run: 155.
+- Diff after review feedback: +1,777/-131 = 1,908 changed lines;
+  generated lines: 0; tests run: 156.
 - Recorded overage: review fixes for transactional identity hydration,
-  concurrent live allocations and active-branch rebasing, authoritative part
-  ordering/omission, direct bash/custom parity, diagnostic context, and
-  retry-aware compaction complete the same live-mapping seam; splitting them
-  would preserve known replay divergence or diagnostic gaps.
+  concurrent live allocations, overlapping-read ordering, and active-branch
+  rebasing, authoritative part ordering/omission, direct bash/custom parity,
+  diagnostic context, and retry-aware compaction complete the same live-mapping
+  seam; splitting them would preserve known replay divergence or diagnostic
+  gaps.
 
 ## Findings And Plan Deltas
 
