@@ -99,20 +99,12 @@
 
 ## Step 2 Checklist
 
-- [x] Generate lowercase ASCII `color-animal` slugs locally in
-  `WorktreeService` with `Random.secure`.
-- [x] Use one slug for both branch and worktree directory.
-- [x] Retry three distinct pairs and append a secure suffix to the last pair on
-  bounded exhaustion.
-- [x] Remove the metadata-provided preferred-name parameter, validator, and
-  owning tests.
-- [x] Start dedicated-worktree preparation without waiting for metadata.
-- [x] Preserve parent reuse and non-git, commitless, base-resolution, and Git
-  creation fallbacks.
-- [x] Run focused tests, strict package analysis, and architecture implementation
-  review.
-- [x] Audit causal cleanup; metadata response fields remain for Step 3's typed
-  API/repository replacement.
+- [x] Generate one local lowercase ASCII `color-animal` branch/worktree slug.
+- [x] Retry distinct pairs, occupied paths, and bounded secure suffix candidates.
+- [x] Remove preferred metadata names/validation and overlap metadata/worktree work.
+- [x] Preserve existing parent reuse and Git/non-Git fallback behavior.
+- [x] Pass focused tests, strict analysis, cleanup audit, and architecture review.
+- [x] Retain metadata response fields for Step 3's typed API replacement.
 
 ## Cleanup Ledger
 
@@ -140,14 +132,12 @@
 - Informational result including this record, within the 750-900 target:
   `PLAN.md +751`, `TRACKER.md +144`, total `+895 / -0`.
 - Step 2 package resolution: `dart pub get` from `bridge/app` passed.
-- Step 2 focused tests: `dart test test/bridge/worktree_service_test.dart
-  test/bridge/services/session_creation_service_test.dart
-  test/bridge/routing/create_session_handler_test.dart` passed, 63 tests.
+- Step 2 focused worktree/creation tests passed, 64 tests.
 - Step 2 strict analysis: `dart analyze --fatal-infos` from `bridge/app` passed
   with no issues.
-- Step 2 architecture implementation review: approved with no findings.
-- Step 2 diff size against `origin/main`: `+245 / -227` (472 changed lines),
-  within the 200-500 target.
+- Step 2 architecture reviews: initial approved; follow-up API-placement finding applied.
+- Informational Step 2 diff size against `origin/main`, including this record:
+  `+272 / -226` (498 changed lines), within the 200-500 target.
 
 ### Manual matrix
 

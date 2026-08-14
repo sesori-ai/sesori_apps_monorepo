@@ -262,6 +262,7 @@ class Orchestrator({
     final worktreeRepository = WorktreeRepository(
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
+      filesystemApi: const FilesystemApi(),
       gitApi: gitCliApi,
       runtime: _pluginRuntime,
     );

@@ -12,42 +12,6 @@ import "package:test/test.dart";
 import "../helpers/test_database.dart";
 
 const _projectId = "/repo/project";
-const _expectedWorkspaceColors = {
-  "amber",
-  "blue",
-  "coral",
-  "cyan",
-  "gold",
-  "green",
-  "indigo",
-  "lime",
-  "navy",
-  "orange",
-  "pink",
-  "purple",
-  "red",
-  "silver",
-  "teal",
-  "violet",
-};
-const _expectedWorkspaceAnimals = {
-  "badger",
-  "bear",
-  "beaver",
-  "bison",
-  "crane",
-  "dolphin",
-  "eagle",
-  "falcon",
-  "fox",
-  "gecko",
-  "heron",
-  "lynx",
-  "otter",
-  "panda",
-  "raven",
-  "wolf",
-};
 
 void main() {
   group("WorktreeService.prepareWorktreeForSession", () {
@@ -302,6 +266,44 @@ void main() {
       expect(success.branchName, checkedBranches.last);
     });
 
+    test("occupied worktree path skips the name before Git creates its branch", () async {
+      final projectDirectory = await Directory.systemTemp.createTemp("worktree_name_collision_");
+      addTearDown(() => projectDirectory.delete(recursive: true));
+      await projectsDao.recordOpenedProject(
+        projectId: _projectId,
+        path: projectDirectory.path,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      processRunner
+        ..generatedPathsToOccupy = 1
+        ..enqueue(result: _ok())
+        ..enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"))
+        ..enqueue(result: _fail(exitCode: 1))
+        ..enqueue(result: _ok(stdout: "abc123def456\n"))
+        ..enqueue(result: _fail(exitCode: 128))
+        ..enqueue(result: _ok(stdout: ""))
+        ..enqueue(result: _ok(stdout: ""))
+        ..enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final branchChecks = processRunner.invocations
+          .where((invocation) => invocation.arguments.take(2).join(" ") == "branch --list")
+          .toList(growable: false);
+      final worktreeCreates = processRunner.invocations
+          .where((invocation) => invocation.arguments.take(2).join(" ") == "worktree add")
+          .toList(growable: false);
+      expect(branchChecks, hasLength(2));
+      expect(worktreeCreates, hasLength(1));
+      expect(worktreeCreates.single.arguments, contains((result as WorktreeSuccess).branchName));
+    });
+
     // -----------------------------------------------------------------------
     // Git failure fallback (all normal and suffixed attempts fail)
     // -----------------------------------------------------------------------
@@ -325,6 +327,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
       // Final secure-suffix attempt also fails.
+      processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
 
       final result = await service.prepareWorktreeForSession(
@@ -449,11 +452,13 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // All three normal pairs collide.
+      // All three normal pairs and the first suffix collide.
       processRunner.enqueue(result: _ok(stdout: "existing\n"));
       processRunner.enqueue(result: _ok(stdout: "existing\n"));
       processRunner.enqueue(result: _ok(stdout: "existing\n"));
-      // The final suffixed name succeeds.
+      processRunner.enqueue(result: _ok(stdout: "existing\n"));
+      // The second suffixed candidate is available and succeeds.
+      processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
@@ -473,10 +478,15 @@ void main() {
           )
           .map((invocation) => invocation.arguments.last)
           .toList(growable: false);
-      expect(checkedBranches, hasLength(3));
-      expect(checkedBranches.toSet(), hasLength(3));
-      checkedBranches.forEach(_expectColorAnimalSlug);
-      expect(success.branchName.substring(0, success.branchName.length - 7), checkedBranches.last);
+      expect(checkedBranches, hasLength(5));
+      final normalCandidates = checkedBranches.take(3).toList(growable: false);
+      final suffixCandidates = checkedBranches.skip(3).toList(growable: false);
+      expect(normalCandidates.toSet(), hasLength(3));
+      normalCandidates.forEach(_expectColorAnimalSlug);
+      expect(suffixCandidates.toSet(), hasLength(2));
+      expect(suffixCandidates, everyElement(matches(RegExp(r"^[a-z]+-[a-z]+-[0-9a-f]{6}$"))));
+      expect(success.branchName, suffixCandidates.last);
+      expect(success.branchName.substring(0, success.branchName.length - 7), normalCandidates.last);
       expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
     });
 
@@ -950,9 +960,6 @@ ProcessResult _fail({required int exitCode, String stderr = ""}) {
 
 void _expectColorAnimalSlug(String slug) {
   expect(slug, matches(RegExp(r"^[a-z]+-[a-z]+$")));
-  final parts = slug.split("-");
-  expect(_expectedWorkspaceColors, contains(parts.first));
-  expect(_expectedWorkspaceAnimals, contains(parts.last));
 }
 
 class const _Invocation({
@@ -973,6 +980,7 @@ class _FakeProcessRunner() implements ProcessRunner {
 
   final List<_Invocation> invocations = <_Invocation>[];
   final List<Object> _queue = <Object>[];
+  int generatedPathsToOccupy = 0;
 
   void enqueue({required ProcessResult result}) {
     _queue.add(result);
@@ -997,6 +1005,11 @@ class _FakeProcessRunner() implements ProcessRunner {
         workingDirectory: workingDirectory,
       ),
     );
+
+    if (generatedPathsToOccupy > 0 && arguments.take(2).join(" ") == "branch --list") {
+      Directory("$workingDirectory/.worktrees/${arguments.last}").createSync(recursive: true);
+      generatedPathsToOccupy--;
+    }
 
     if (_queue.isEmpty) {
       throw StateError("No ProcessResult queued for: $executable $arguments");

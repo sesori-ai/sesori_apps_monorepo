@@ -8,6 +8,7 @@ import "../worktree_types.dart";
 export "../worktree_types.dart";
 
 const _maxWorktreeCreationAttempts = 3;
+const _suffixSpace = 0x1000000;
 const _worktreeDir = ".worktrees";
 const _workspaceColors = [
   "amber",
@@ -54,7 +55,7 @@ const _workspaceAnimals = [
 class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
   static final _random = Random.secure();
 
-  static String _randomSuffix() => _random.nextInt(0xFFFFFF).toRadixString(16).padLeft(6, "0");
+  static String _hexSuffix(int value) => value.toRadixString(16).padLeft(6, "0");
 
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
@@ -127,6 +128,9 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       )) {
         continue;
       }
+      if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
+        continue;
+      }
 
       final created = await _worktreeRepository.createWorktree(
         projectPath: projectPath,
@@ -149,21 +153,34 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       colorIndex: (colorOffset + _maxWorktreeCreationAttempts - 1) % _workspaceColors.length,
       animalIndex: (animalOffset + _maxWorktreeCreationAttempts - 1) % _workspaceAnimals.length,
     );
-    final branchName = "$lastSlug-${_randomSuffix()}";
-    final worktreePath = "$projectPath/$_worktreeDir/$branchName";
-    final created = await _worktreeRepository.createWorktree(
-      projectPath: projectPath,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      startPoint: startPoint,
-    );
-    if (created) {
-      return WorktreeSuccess(
-        path: worktreePath,
+    final suffixOffset = _random.nextInt(_suffixSpace);
+    for (var suffixAttempt = 0; suffixAttempt < _maxWorktreeCreationAttempts; suffixAttempt++) {
+      final branchName = "$lastSlug-${_hexSuffix((suffixOffset + suffixAttempt) % _suffixSpace)}";
+      final worktreePath = "$projectPath/$_worktreeDir/$branchName";
+      if (await _worktreeRepository.branchExists(
+        projectPath: projectPath,
         branchName: branchName,
-        baseBranch: baseBranch,
-        baseCommit: baseCommit,
+      )) {
+        continue;
+      }
+      if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
+        continue;
+      }
+      final created = await _worktreeRepository.createWorktree(
+        projectPath: projectPath,
+        worktreePath: worktreePath,
+        branchName: branchName,
+        startPoint: startPoint,
       );
+      if (created) {
+        return WorktreeSuccess(
+          path: worktreePath,
+          branchName: branchName,
+          baseBranch: baseBranch,
+          baseCommit: baseCommit,
+        );
+      }
+      break;
     }
 
     Log.w(
