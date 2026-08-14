@@ -41,6 +41,23 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
     return null;
   }
 
+  Future<({String displaySessionId, String projectId})?> resolveDisplayScope({required String sessionId}) async {
+    final sessions = await _readSessions(knownDirectories: const {});
+    final byId = {for (final session in sessions) session.id: session};
+    final owner = byId[sessionId];
+    if (owner == null) return null;
+    var display = owner;
+    final visited = {owner.id};
+    while (true) {
+      final parentId = display.parentID;
+      if (parentId == null || !visited.add(parentId)) break;
+      final parent = byId[parentId];
+      if (parent == null) break;
+      display = parent;
+    }
+    return (displaySessionId: display.id, projectId: owner.projectID);
+  }
+
   Future<List<PluginSession>> _readSessions({required Set<String> knownDirectories}) async {
     _knownDirectories.addAll({
       for (final directory in knownDirectories)

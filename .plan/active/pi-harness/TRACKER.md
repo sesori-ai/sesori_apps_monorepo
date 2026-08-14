@@ -399,6 +399,27 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   the same live-mapping seam; splitting them would preserve known replay
   divergence or diagnostic gaps.
 
+### Step 13/21
+
+- Added `PiExtensionUiTracker` and `PiExtensionUiService` for select, confirm,
+  input, and editor questions; exact value/confirmation/cancellation replies;
+  bounded editor prefill and notifications; and explicit decorative-UI
+  degradation.
+- Pending dialogs are indexed by owner, top imported display root, and normalized
+  owning project. Upstream timeouts retire mirrored cards, the plugin owns editor
+  expiry, and owner generation fencing prevents abort/replacement cleanup from
+  racing a catalog lookup and recreating stale state.
+- Response sending remains an injected operation until Step 14 owns resident Pi
+  clients. The user explicitly approved that temporary seam after architecture
+  review; answer translation remains service-owned and notification severity
+  stays typed. Owner cleanup and disposal cancel process-local dialogs and emit
+  typed rejection lifecycle events; Pi permissions remain unsupported.
+- `dart test` (166 tests), `dart analyze --fatal-infos`, and
+  `git diff --check`: pass.
+- No current user-visible, database, persisted-data, analytics, or registered
+  plugin impact; Pi remains app-invisible until Step 18.
+- Diff: +852/-1 = 853 changed lines; generated lines: 0; tests run: 166.
+
 ## Findings And Plan Deltas
 
 - Earlier reviews corrected Pi architecture/lifecycle and added rendered toasts,
