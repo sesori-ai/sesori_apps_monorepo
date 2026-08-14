@@ -7,7 +7,7 @@ FLUTTER := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/flutter
 # right Flutter even when the shell exports a stale FLUTTER_ROOT (e.g. asdf global).
 export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 
-.PHONY: pub-get manifest manifest-check analyze test build check
+.PHONY: pub-get manifest manifest-check inspector-tokens inspector-tokens-check analyze test build check
 
 pub-get:
 	(cd .. && $(DART) pub get)
@@ -18,6 +18,12 @@ manifest: pub-get
 manifest-check: pub-get
 	$(DART) run tool/generate_manifest.dart --check
 
+inspector-tokens: pub-get
+	$(DART) run tool/generate_inspector_tokens.dart
+
+inspector-tokens-check: pub-get
+	$(DART) run tool/generate_inspector_tokens.dart --check
+
 analyze: pub-get
 	$(DART) analyze --fatal-infos
 
@@ -27,4 +33,4 @@ test: pub-get
 build: pub-get
 	$(FLUTTER) build web --release
 
-check: manifest-check analyze test build
+check: manifest-check inspector-tokens-check analyze test build
