@@ -8,7 +8,6 @@ import "../../core/di/injection.dart";
 class const SessionListCubitProvider({
   super.key,
   required final String projectId,
-  required final bool? initialSupportsDedicatedWorktrees,
   required final Widget child,
 }) extends StatelessWidget {
   @override
@@ -24,7 +23,6 @@ class const SessionListCubitProvider({
         projectViewingService: getIt<ProjectViewingService>(),
         routeSource: getIt<RouteSource>(),
         projectId: projectId,
-        initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
         failureReporter: getIt<FailureReporter>(),
       ),
       child: child,

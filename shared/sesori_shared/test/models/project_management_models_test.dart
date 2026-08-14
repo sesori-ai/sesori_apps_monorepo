@@ -2,6 +2,33 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("ProjectSummary", () {
+    test("project lists ignore a legacy capability field and omit it on output", () {
+      final projects = Projects.fromJson({
+        "data": [
+          {
+            "id": "/projects/a",
+            "name": "A",
+            "path": "/projects/a",
+            "time": {"created": 1, "updated": 2},
+            "supportsDedicatedWorktrees": false,
+          },
+        ],
+      });
+
+      expect(
+        projects.data.single,
+        const ProjectSummary(
+          id: "/projects/a",
+          name: "A",
+          path: "/projects/a",
+          time: ProjectTime(created: 1, updated: 2),
+        ),
+      );
+      expect((projects.toJson()["data"]! as List<Object?>).single, isNot(contains("supportsDedicatedWorktrees")));
+    });
+  });
+
   group("Project", () {
     test("JSON roundtrip carries the live path alongside the stable id", () {
       const original = Project(

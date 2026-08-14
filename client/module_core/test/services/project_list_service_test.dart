@@ -122,8 +122,12 @@ void main() {
       ],
       activityByProjectId: const {
         "older": {"older-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null)},
-        "newer-b": {"newer-b-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null)},
-        "newer-a": {"newer-a-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null)},
+        "newer-b": {
+          "newer-b-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        },
+        "newer-a": {
+          "newer-a-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        },
       },
       listStateByProjectId: const {},
     );
@@ -132,8 +136,8 @@ void main() {
   });
 }
 
-Project _project({required String id, required String? name, required int updatedAt, String? path}) {
-  return Project(
+ProjectSummary _project({required String id, required String? name, required int updatedAt, String? path}) {
+  return ProjectSummary(
     id: id,
     name: name,
     path: path ?? "/projects/$id",

@@ -17,13 +17,13 @@ import "../rename_project_dialog.dart";
 /// back to the id for payloads from older bridges that don't send a path
 /// (there the id is the directory).
 // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit Project.path. Remove this fallback when the shared path default is removed.
-String projectDisplayPath(Project project) => project.path.isEmpty ? project.id : project.path;
+String projectDisplayPath(ProjectSummary project) => project.path.isEmpty ? project.id : project.path;
 
 /// The last segment of [project]'s directory, used as the display-name
 /// fallback when the project has no stored name. The directory comes from the
 /// bridge's host platform, not the phone's, so both separator styles must
 /// parse — the platform-local basename would return a Windows path unchanged.
-String projectDirectoryBasename(Project project) => p.posix.basename(_toPosix(projectDisplayPath(project)));
+String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toPosix(projectDisplayPath(project)));
 
 /// [project]'s directory, shortened to the part that tells projects apart.
 ///
@@ -32,7 +32,7 @@ String projectDirectoryBasename(Project project) => p.posix.basename(_toPosix(pr
 /// leave every row reading `/Users/someone/workspace/clien…`. So the head is
 /// dropped instead of the tail: the last two segments survive, marked with a
 /// leading ellipsis when anything was actually removed.
-String projectShortPath(Project project) {
+String projectShortPath(ProjectSummary project) {
   final segments = _toPosix(projectDisplayPath(project)).split("/").where((s) => s.isNotEmpty).toList();
   if (segments.length <= _shortPathSegments) return segments.join("/");
   return "…/${segments.sublist(segments.length - _shortPathSegments).join("/")}";
@@ -63,7 +63,7 @@ String _toPosix(String path) => path.replaceAll(r"\", "/");
 /// dependency for every realised row of the list.
 class const ProjectTile({
   super.key,
-  required final Project project,
+  required final ProjectSummary project,
 
   /// How many of the project's sessions an agent is working in right now.
   required final int activeSessions,
@@ -317,7 +317,6 @@ class const ProjectTile({
       AppRoute.sessions(
         projectId: project.id,
         projectName: displayName,
-        supportsDedicatedWorktrees: project.supportsDedicatedWorktrees,
       ),
     );
   }
@@ -329,7 +328,7 @@ class const ProjectTile({
 /// and unseen; a live turn is the more informative of the two, so it wins, and
 /// the unseen state still shows through the title's weight.
 class const _StatusRow({
-  required final Project project,
+  required final ProjectSummary project,
   required final int activeSessions,
   required final bool unseen,
 }) extends StatelessWidget {

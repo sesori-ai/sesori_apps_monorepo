@@ -94,7 +94,7 @@ void main() {
 
   testWidgets("a retained loaded list shows the nav banner while the bridge is offline", (tester) async {
     when(() => mockProjectRepository.listProjects()).thenAnswer(
-      (_) async => ApiResponse.success(Projects(data: [testProject(name: "My Project")])),
+      (_) async => ApiResponse.success(Projects(data: [testProjectSummary(name: "My Project")])),
     );
 
     await tester.pumpWidget(app());

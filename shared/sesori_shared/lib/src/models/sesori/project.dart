@@ -7,10 +7,28 @@ part "project.g.dart";
 @Freezed(fromJson: true, toJson: true)
 sealed class Projects with _$Projects {
   const factory({
-    required List<Project> data,
+    required List<ProjectSummary> data,
   }) = _Projects;
 
   factory fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class ProjectSummary with _$ProjectSummary {
+  const factory({
+    required String id,
+    required String? name,
+    // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once those bridges are unsupported.
+    @Default("") String path,
+    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
+    required ProjectTime? time,
+    // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
+    @Default(false) bool hasUnseenChanges,
+    // COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
+    @Default(false) bool directoryMissing,
+  }) = _ProjectSummary;
+
+  factory fromJson(Map<String, dynamic> json) => _$ProjectSummaryFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)

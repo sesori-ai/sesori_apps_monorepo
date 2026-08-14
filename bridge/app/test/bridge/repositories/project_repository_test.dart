@@ -71,6 +71,7 @@ void main() {
       final result = await repo.getProjects();
 
       expect(plugin.getProjectsCallCount, 0);
+      expect(result, everyElement(isA<ProjectSummary>()));
       final rows = await db.select(db.projectsTable).get();
       expect(
         rows.map((r) => r.projectId).toSet(),
@@ -340,11 +341,8 @@ void main() {
       final projects = await repo.getProjects().timeout(const Duration(seconds: 1));
       final project = await repo.getProject(projectId: "stored").timeout(const Duration(seconds: 1));
 
-      expect(
-        projects.single,
-        project.copyWith(supportsDedicatedWorktrees: true),
-        reason: "catalog reads use the optimistic default while project details inspect Git",
-      );
+      expect(projects.single.id, project.id);
+      expect(projects.single.path, project.path);
       expect(project.supportsDedicatedWorktrees, isFalse);
       expect(plugin.getProjectsCallCount, 0);
       expect(plugin.lastGetProjectId, isNull);
@@ -411,7 +409,7 @@ void main() {
       expect(result.single.time, const ProjectTime(created: 10, updated: 20));
     });
 
-    test("getProjects does not inspect Git worktree support", () async {
+    test("getProjects makes no filesystem or Git calls", () async {
       final paths = [
         for (var index = 0; index < 9; index++) "/project-${index.toString().padLeft(2, "0")}",
       ];
@@ -423,18 +421,19 @@ void main() {
         );
       }
       final gitCliApi = _RecordingGitCliApi();
+      final filesystemApi = _RecordingFilesystemApi();
       final catalogRepo = singlePluginProjectRepository(
         gitCliApi: gitCliApi,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
+        filesystemApi: filesystemApi,
       );
 
       final projects = await catalogRepo.getProjects();
 
       expect(projects.map((project) => project.path), paths);
-      expect(projects.every((project) => project.supportsDedicatedWorktrees), isTrue);
+      expect(filesystemApi.directoryExistsCallCount, 0);
       expect(gitCliApi.isGitInitializedCallCount, 0);
       expect(gitCliApi.hasAtLeastOneCommitCallCount, 0);
     });
@@ -1464,6 +1463,16 @@ class _CountingProjectsDao({required AppDatabase database}) extends ProjectsDao 
   Future<ProjectDto?> getProject({required String projectId}) {
     getProjectCallCount++;
     return super.getProject(projectId: projectId);
+  }
+}
+
+class _RecordingFilesystemApi() extends FakeFilesystemApi {
+  int directoryExistsCallCount = 0;
+
+  @override
+  bool directoryExists(String path) {
+    directoryExistsCallCount++;
+    return super.directoryExists(path);
   }
 }
 

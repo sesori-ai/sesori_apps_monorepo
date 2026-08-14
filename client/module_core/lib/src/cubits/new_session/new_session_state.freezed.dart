@@ -571,7 +571,7 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle({required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.supportsDedicatedWorktrees}): _availablePlugins = availablePlugins;
+  const NewSessionIdle({required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
   
 
  final  List<PluginMetadata> _availablePlugins;
@@ -585,7 +585,7 @@ class NewSessionIdle implements NewSessionState {
  final  NewSessionOptionsLoadState options;
  final  NewSessionBackendScope backendScope;
  final  bool isPluginDiscoveryInFlight;
- final  bool supportsDedicatedWorktrees;
+ final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -597,16 +597,16 @@ $NewSessionIdleCopyWith<NewSessionIdle> get copyWith => _$NewSessionIdleCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,supportsDedicatedWorktrees);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
 
 @override
 String toString() {
-  return 'NewSessionState.idle(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
+  return 'NewSessionState.idle(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
 }
 
 
@@ -617,7 +617,7 @@ abstract mixin class $NewSessionIdleCopyWith<$Res> implements $NewSessionStateCo
   factory $NewSessionIdleCopyWith(NewSessionIdle value, $Res Function(NewSessionIdle) _then) = _$NewSessionIdleCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, bool supportsDedicatedWorktrees
+ List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
 });
 
 
@@ -634,15 +634,15 @@ class _$NewSessionIdleCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? supportsDedicatedWorktrees = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
   return _then(NewSessionIdle(
 availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
 as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
 as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
+as NewSessionProjectWorktreeCapability,
   ));
 }
 
@@ -683,7 +683,7 @@ $NewSessionBackendScopeCopyWith<$Res> get backendScope {
 
 
 class NewSessionSending implements NewSessionState {
-  const NewSessionSending({required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.supportsDedicatedWorktrees}): _availablePlugins = availablePlugins;
+  const NewSessionSending({required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
   
 
  final  List<PluginMetadata> _availablePlugins;
@@ -697,7 +697,7 @@ class NewSessionSending implements NewSessionState {
  final  NewSessionOptionsLoadState options;
  final  NewSessionBackendScope backendScope;
  final  bool isPluginDiscoveryInFlight;
- final  bool supportsDedicatedWorktrees;
+ final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -709,16 +709,16 @@ $NewSessionSendingCopyWith<NewSessionSending> get copyWith => _$NewSessionSendin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,supportsDedicatedWorktrees);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
 
 @override
 String toString() {
-  return 'NewSessionState.sending(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
+  return 'NewSessionState.sending(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
 }
 
 
@@ -729,7 +729,7 @@ abstract mixin class $NewSessionSendingCopyWith<$Res> implements $NewSessionStat
   factory $NewSessionSendingCopyWith(NewSessionSending value, $Res Function(NewSessionSending) _then) = _$NewSessionSendingCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, bool supportsDedicatedWorktrees
+ List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
 });
 
 
@@ -746,15 +746,15 @@ class _$NewSessionSendingCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? supportsDedicatedWorktrees = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
   return _then(NewSessionSending(
 availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
 as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
 as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
+as NewSessionProjectWorktreeCapability,
   ));
 }
 
@@ -795,7 +795,7 @@ $NewSessionBackendScopeCopyWith<$Res> get backendScope {
 
 
 class NewSessionError implements NewSessionState {
-  const NewSessionError({required this.reason, required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.supportsDedicatedWorktrees}): _availablePlugins = availablePlugins;
+  const NewSessionError({required this.reason, required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
   
 
  final  RemoteFailureReason reason;
@@ -810,7 +810,7 @@ class NewSessionError implements NewSessionState {
  final  NewSessionOptionsLoadState options;
  final  NewSessionBackendScope backendScope;
  final  bool isPluginDiscoveryInFlight;
- final  bool supportsDedicatedWorktrees;
+ final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -822,16 +822,16 @@ $NewSessionErrorCopyWith<NewSessionError> get copyWith => _$NewSessionErrorCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,supportsDedicatedWorktrees);
+int get hashCode => Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
 
 @override
 String toString() {
-  return 'NewSessionState.error(reason: $reason, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
+  return 'NewSessionState.error(reason: $reason, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
 }
 
 
@@ -842,7 +842,7 @@ abstract mixin class $NewSessionErrorCopyWith<$Res> implements $NewSessionStateC
   factory $NewSessionErrorCopyWith(NewSessionError value, $Res Function(NewSessionError) _then) = _$NewSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- RemoteFailureReason reason, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, bool supportsDedicatedWorktrees
+ RemoteFailureReason reason, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
 });
 
 
@@ -859,7 +859,7 @@ class _$NewSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? supportsDedicatedWorktrees = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
   return _then(NewSessionError(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason,availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
@@ -867,8 +867,8 @@ as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.select
 as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
 as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
+as NewSessionProjectWorktreeCapability,
   ));
 }
 

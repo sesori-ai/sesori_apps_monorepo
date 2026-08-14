@@ -349,7 +349,7 @@ void main() {
     });
 
     test(
-      "dedicated=true and WorktreeFallback has no system prompt and stores dedicated row with null worktree fields",
+      "dedicated=true and WorktreeFallback persists an in-place session with HEAD",
       () async {
         plugin.createSessionResult = const PluginSession(
           id: "fallback-1",
@@ -363,6 +363,7 @@ void main() {
           originalPath: "/repo",
           reason: "not git",
         );
+        worktreeService.resolveHeadCommitResult = "fallback-head";
 
         final result = await handler.handle(
           makeRequest("POST", "/session/create"),
@@ -393,11 +394,12 @@ void main() {
           pluginId: plugin.id,
         );
         expect(dbSession.projectId, equals("/repo"));
-        expect(dbSession.isDedicated, isTrue);
+        expect(dbSession.isDedicated, isFalse);
         expect(dbSession.worktreePath, isNull);
         expect(dbSession.branchName, isNull);
         expect(dbSession.baseBranch, isNull);
-        expect(dbSession.baseCommit, isNull);
+        expect(dbSession.baseCommit, "fallback-head");
+        expect(worktreeService.resolveHeadCommitCallCount, 1);
         expect(dbSession.createdAt, greaterThan(0));
       },
     );

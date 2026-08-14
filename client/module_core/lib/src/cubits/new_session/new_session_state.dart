@@ -69,6 +69,13 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
   };
 }
 
+enum NewSessionProjectWorktreeCapability() {
+  loading,
+  supported,
+  unsupported,
+  unavailable,
+}
+
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
   const factory idle({
@@ -77,7 +84,7 @@ sealed class NewSessionState with _$NewSessionState {
     required NewSessionOptionsLoadState options,
     required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
-    required bool supportsDedicatedWorktrees,
+    required NewSessionProjectWorktreeCapability projectWorktreeCapability,
   }) = NewSessionIdle;
 
   const factory sending({
@@ -86,7 +93,7 @@ sealed class NewSessionState with _$NewSessionState {
     required NewSessionOptionsLoadState options,
     required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
-    required bool supportsDedicatedWorktrees,
+    required NewSessionProjectWorktreeCapability projectWorktreeCapability,
   }) = NewSessionSending;
 
   const factory error({
@@ -96,7 +103,7 @@ sealed class NewSessionState with _$NewSessionState {
     required NewSessionOptionsLoadState options,
     required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
-    required bool supportsDedicatedWorktrees,
+    required NewSessionProjectWorktreeCapability projectWorktreeCapability,
   }) = NewSessionError;
 
   const factory created({required Session session}) = NewSessionCreated;
@@ -116,7 +123,7 @@ typedef AgentModelData = ({
   AgentModel? agentModel,
   CommandInfo? stagedCommand,
   List<SessionVariant> availableVariants,
-  bool supportsDedicatedWorktrees,
+  NewSessionProjectWorktreeCapability projectWorktreeCapability,
 });
 
 extension NewSessionStateAgentModel on NewSessionState {
@@ -127,7 +134,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final options,
       :final backendScope,
       :final isPluginDiscoveryInFlight,
-      :final supportsDedicatedWorktrees,
+      :final projectWorktreeCapability,
     ) =>
       _agentModelData(
         plugins: availablePlugins,
@@ -135,7 +142,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         options: options,
         backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
+        projectWorktreeCapability: projectWorktreeCapability,
       ),
     NewSessionSending(
       :final availablePlugins,
@@ -143,7 +150,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final options,
       :final backendScope,
       :final isPluginDiscoveryInFlight,
-      :final supportsDedicatedWorktrees,
+      :final projectWorktreeCapability,
     ) =>
       _agentModelData(
         plugins: availablePlugins,
@@ -151,7 +158,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         options: options,
         backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
+        projectWorktreeCapability: projectWorktreeCapability,
       ),
     NewSessionError(
       :final availablePlugins,
@@ -159,7 +166,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final options,
       :final backendScope,
       :final isPluginDiscoveryInFlight,
-      :final supportsDedicatedWorktrees,
+      :final projectWorktreeCapability,
     ) =>
       _agentModelData(
         plugins: availablePlugins,
@@ -167,7 +174,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         options: options,
         backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
+        projectWorktreeCapability: projectWorktreeCapability,
       ),
     NewSessionCreated() => null,
   };
@@ -188,7 +195,7 @@ AgentModelData _agentModelData({
   required NewSessionOptionsLoadState options,
   required NewSessionBackendScope backendScope,
   required bool isPluginDiscoveryInFlight,
-  required bool supportsDedicatedWorktrees,
+  required NewSessionProjectWorktreeCapability projectWorktreeCapability,
 }) {
   final data = options.data;
   return (
@@ -196,7 +203,8 @@ AgentModelData _agentModelData({
     plugin: plugin,
     optionsState: options,
     backendScope: backendScope,
-    isLoading: options.isLoading,
+    isLoading:
+        options.isLoading || projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading,
     isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
     agents: data?.agents ?? const [],
     providers: data?.providers ?? const [],
@@ -205,6 +213,6 @@ AgentModelData _agentModelData({
     agentModel: data?.selectedAgentModel,
     stagedCommand: data?.stagedCommand,
     availableVariants: data?.availableVariants ?? const [],
-    supportsDedicatedWorktrees: supportsDedicatedWorktrees,
+    projectWorktreeCapability: projectWorktreeCapability,
   );
 }

@@ -296,6 +296,33 @@ void main() {
       expect(worktreeService.resolveCalls, 1);
     });
 
+    test("stores a dedicated-worktree fallback as in-place with the HEAD commit", () async {
+      worktreeService
+        ..prepareResult = WorktreeFallback(originalPath: "/fallback/repo", reason: "not git")
+        ..headCommit = "fallback-head";
+
+      final created = await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      final stored = await db.sessionDao.getSession(sessionId: created.id);
+      expect(plugin.lastCreateDirectory, "/fallback/repo");
+      expect(stored?.directory, "/fallback/repo");
+      expect(stored?.isDedicated, isFalse);
+      expect(stored?.worktreePath, isNull);
+      expect(stored?.baseCommit, "fallback-head");
+      expect(worktreeService.resolveCalls, 1);
+    });
+
     test("allocates around a cross-plugin backend-id collision without changing the retained binding", () async {
       await db.projectsDao.recordOpenedProject(
         projectId: "/retained",

@@ -8,13 +8,34 @@ part of 'project.dart';
 
 _Projects _$ProjectsFromJson(Map json) => _Projects(
   data: (json['data'] as List<dynamic>)
-      .map((e) => Project.fromJson(Map<String, dynamic>.from(e as Map)))
+      .map((e) => ProjectSummary.fromJson(Map<String, dynamic>.from(e as Map)))
       .toList(),
 );
 
 Map<String, dynamic> _$ProjectsToJson(_Projects instance) => <String, dynamic>{
   'data': instance.data.map((e) => e.toJson()).toList(),
 };
+
+_ProjectSummary _$ProjectSummaryFromJson(Map json) => _ProjectSummary(
+  id: json['id'] as String,
+  name: json['name'] as String?,
+  path: json['path'] as String? ?? "",
+  time: json['time'] == null
+      ? null
+      : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  hasUnseenChanges: json['hasUnseenChanges'] as bool? ?? false,
+  directoryMissing: json['directoryMissing'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$ProjectSummaryToJson(_ProjectSummary instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': ?instance.name,
+      'path': instance.path,
+      'time': ?instance.time?.toJson(),
+      'hasUnseenChanges': instance.hasUnseenChanges,
+      'directoryMissing': instance.directoryMissing,
+    };
 
 _Project _$ProjectFromJson(Map json) => _Project(
   id: json['id'] as String,

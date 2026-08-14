@@ -4,7 +4,7 @@ import "dart:math" show max;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
+import "package:sesori_shared/sesori_shared.dart" show Project, ProjectSummary, ProjectTime;
 
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
@@ -30,20 +30,16 @@ class ProjectRepository({
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
 
-  Future<List<Project>> getProjects() async {
+  Future<List<ProjectSummary>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
     return [
       for (final row in rows)
-        _projectCatalogMapper.map(
+        _projectCatalogMapper.mapSummary(
           row: row,
           hasUnseenChanges: unseenById[row.projectId] ?? false,
-          directoryMissing: false,
-          // Keep catalog reads database-only. Selected projects are inspected
-          // before use, while older clients retain the released optimistic default.
-          supportsDedicatedWorktrees: true,
         ),
     ];
   }
@@ -85,7 +81,7 @@ class ProjectRepository({
     if (row == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
-    return _projectCatalogMapper.map(
+    return _projectCatalogMapper.mapProject(
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
       directoryMissing: false,
@@ -186,7 +182,7 @@ class ProjectRepository({
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
     final row = (await _projectsDao.getProject(projectId: projectId))!;
-    return _projectCatalogMapper.map(
+    return _projectCatalogMapper.mapProject(
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
       directoryMissing: _directoryMissing(row.path),

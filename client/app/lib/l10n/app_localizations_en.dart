@@ -1479,6 +1479,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionOptionsRefresh => 'Refresh the model list';
 
   @override
+  String get newSessionProjectRefresh => 'Retry project check';
+
+  @override
+  String get newSessionProjectUnavailable =>
+      'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.';
+
+  @override
   String get newSessionOptionsCached => 'Using cached coding tool options.';
 
   @override
