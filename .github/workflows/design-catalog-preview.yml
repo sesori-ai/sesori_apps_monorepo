@@ -9,7 +9,6 @@ on:
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'
-      - 'client/Makefile'
       - 'shared/no_slop_linter/**'
       - 'shared/sesori_shared/**'
       - '.tool-versions'
@@ -57,12 +56,12 @@ jobs:
           channel: ${{ env.FLUTTER_CHANNEL }}
 
       - name: Build catalog
-        working-directory: client
+        working-directory: client/design_catalog
         run: |
           DART_BIN=$(command -v dart)
           FLUTTER_BIN=$(command -v flutter)
           FLUTTER_SDK_ROOT=$(dirname "$(dirname "$FLUTTER_BIN")")
-          make DART="$DART_BIN" FLUTTER="$FLUTTER_BIN" FLUTTER_ROOT="$FLUTTER_SDK_ROOT" pub-get catalog-build
+          make DART="$DART_BIN" FLUTTER="$FLUTTER_BIN" FLUTTER_ROOT="$FLUTTER_SDK_ROOT" pub-get build
 
       - name: Deploy Access-protected preview
         id: deploy

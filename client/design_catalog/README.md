@@ -19,11 +19,12 @@ business modules.
 ## Commands
 
 ```bash
-dart run tool/generate_manifest.dart
-dart run tool/generate_manifest.dart --check
-dart analyze --fatal-infos
-flutter test
-flutter build web --release
+make manifest
+make manifest-check
+make analyze
+make test
+make build
+make check
 ```
 
 `web/catalog_manifest.json` is generated from the same typed scenario registry

@@ -125,7 +125,7 @@ Target individual members when needed:
 Run every catalog-specific gate without broadening the product-shell test loop:
 
 ```bash
-make catalog-check
+make -C design_catalog check
 ```
 
 ## Code Generation
