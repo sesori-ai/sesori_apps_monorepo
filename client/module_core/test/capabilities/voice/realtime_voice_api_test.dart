@@ -69,6 +69,7 @@ class _FakeChannel extends Mock implements WebSocketChannel {
   final List<Object?> outbound = [];
   final Completer<void> readyCompleter = Completer<void>();
   final _sinkDone = Completer<void>();
+  void Function(Object? event)? onSinkAdd;
   int? _closeCode;
 
   @override
@@ -87,7 +88,7 @@ class _FakeChannel extends Mock implements WebSocketChannel {
   Stream<dynamic> get stream => inbound.stream;
 
   @override
-  WebSocketSink get sink => _Sink(outbound, _sinkDone, (code) => _closeCode = code);
+  WebSocketSink get sink => _Sink(outbound, _sinkDone, (code) => _closeCode = code, (event) => onSinkAdd?.call(event));
 
   void completeReady() {
     if (!readyCompleter.isCompleted) readyCompleter.complete();
@@ -102,6 +103,7 @@ class _Sink(
   final List<Object?> outboundItems,
   final Completer<void> sinkDone,
   final void Function(int? code) closeCodeSetter,
+  final void Function(Object? event) onAdd,
 ) implements WebSocketSink {
   final List<Object?> outbound = outboundItems;
   final Completer<void> doneCompleter = sinkDone;
@@ -111,7 +113,10 @@ class _Sink(
   Future<void> get done => doneCompleter.future;
 
   @override
-  void add(Object? event) => outbound.add(event);
+  void add(Object? event) {
+    outbound.add(event);
+    onAdd(event);
+  }
 
   @override
   void addError(Object error, [StackTrace? stackTrace]) {}
@@ -180,6 +185,28 @@ void main() {
       "projectKey": null,
       "audio": {"encoding": "pcm_s16le", "sampleRate": 16000, "channels": 1},
     });
+    await session.close();
+  });
+
+  test("Given server ready arrives during start send When subscribing after start Then delivers ready event", () async {
+    connector.channel.onSinkAdd = (event) {
+      if (event is String && (jsonDecode(event) as Map<String, Object?>)["type"] == "start") {
+        connector.channel.inbound.add(
+          jsonEncode({
+            "type": "ready",
+            "protocolVersion": 1,
+            "maxSessionSeconds": 900,
+            "dailySecondsRemaining": 100,
+          }),
+        );
+      }
+    };
+
+    final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+    await pumpEventQueue();
+    final event = await session.events.first;
+
+    expect(event, isA<RealtimeVoiceReadyEvent>());
     await session.close();
   });
 

@@ -36,7 +36,7 @@ class RealtimeVoiceApi({
 }
 
 final class RealtimeVoiceSession(final WebSocketChannel _channel) {
-  final StreamController<RealtimeVoiceEvent> _events = StreamController<RealtimeVoiceEvent>.broadcast();
+  final StreamController<RealtimeVoiceEvent> _events = StreamController<RealtimeVoiceEvent>();
   final Completer<RealtimeVoiceEvent> _terminal = Completer<RealtimeVoiceEvent>();
   // ignore: no_slop_linter/prefer_specific_type, web_socket_channel exposes a dynamic stream
   StreamSubscription<dynamic>? _subscription;
@@ -90,7 +90,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
     _closed = true;
     await _subscription?.cancel();
     await _channel.sink.close(realtimeNormalCloseCode);
-    await _events.close();
+    unawaited(_events.close());
   }
 
   // ignore: no_slop_linter/prefer_specific_type, JSON encoding requires Object-valued maps
