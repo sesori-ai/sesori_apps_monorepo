@@ -2,9 +2,9 @@ import "package:pi_plugin/src/api/models/pi_event.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.dart";
-import "package:pi_plugin/src/repositories/trackers/pi_message_identity_tracker.dart";
-import "package:pi_plugin/src/repositories/trackers/pi_tool_tracker.dart";
 import "package:pi_plugin/src/services/pi_event_dispatcher.dart";
+import "package:pi_plugin/src/trackers/pi_message_identity_tracker.dart";
+import "package:pi_plugin/src/trackers/pi_tool_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -225,7 +225,11 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_update", {
-        "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "partial"},
+        "assistantMessageEvent": {
+          "type": "toolcall_end",
+          "contentIndex": 0,
+          "toolCall": {"id": "orphan", "name": "read", "arguments": <String, Object?>{}},
+        },
       }),
     );
 
@@ -237,6 +241,13 @@ void main() {
     );
 
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, "pi:session:assistant:103:1");
+    expect(
+      dispatcher.map(
+        sessionId: sessionId,
+        event: _event("tool_execution_start", {"toolCallId": "orphan", "toolName": "read"}),
+      ),
+      isEmpty,
+    );
   });
 
   test("tool updates replace cumulative output and duplicate terminal is ignored", () {

@@ -388,15 +388,16 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   corrected.
 - No user-visible, database, persisted-data mutation, analytics, or client-UI
   change; Pi remains app-invisible until Step 18.
-- Diff after review feedback: +2,023/-146 = 2,169 changed lines;
+- Diff after review feedback: +2,035/-146 = 2,181 changed lines;
   generated lines: 0; tests run: 160.
 - Recorded overage: review fixes for transactional identity hydration,
   concurrent live allocations, overlapping-read ordering, and active-branch
   rebasing, authoritative part ordering/omission, direct bash/custom and
   top-level custom-entry and user-final parity, diagnostic context,
-  malformed-final cleanup, retry-aware compaction/status recovery, and the
-  pre-residency hydration invariant complete the same live-mapping seam;
-  splitting them would preserve known replay divergence or diagnostic gaps.
+  malformed-final/tool cleanup, retry-aware compaction/status recovery,
+  tracker package alignment, and the pre-residency hydration invariant complete
+  the same live-mapping seam; splitting them would preserve known replay
+  divergence or diagnostic gaps.
 
 ## Findings And Plan Deltas
 

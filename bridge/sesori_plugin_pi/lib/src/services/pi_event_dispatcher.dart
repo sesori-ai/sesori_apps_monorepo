@@ -6,8 +6,8 @@ import "../api/models/pi_session_history_dto.dart";
 import "../models/pi_assistant_stop_reason.dart";
 import "../repositories/mappers/pi_history_mapper.dart";
 import "../repositories/mappers/pi_message_identity_builder.dart";
-import "../repositories/trackers/pi_message_identity_tracker.dart";
-import "../repositories/trackers/pi_tool_tracker.dart";
+import "../trackers/pi_message_identity_tracker.dart";
+import "../trackers/pi_tool_tracker.dart";
 
 final class PiEventDispatcher({
   required final PiHistoryMapper historyMapper,
@@ -268,6 +268,7 @@ final class PiEventDispatcher({
     final state = _sessions[sessionId];
     final messageId = state?.messageId;
     final announced = state?.announced ?? false;
+    _tools.beginTurn(sessionId: sessionId);
     state?.clearMessage();
     return announced && messageId != null
         ? [BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId)]

@@ -1,4 +1,4 @@
-import "../mappers/pi_message_identity_builder.dart";
+import "../repositories/mappers/pi_message_identity_builder.dart";
 
 final class PiMessageIdentityTracker({required final String pluginId}) {
   final String _pluginId = pluginId;
