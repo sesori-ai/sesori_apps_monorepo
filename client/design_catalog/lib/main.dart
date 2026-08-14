@@ -4,6 +4,7 @@ import "package:widgetbook/widgetbook.dart";
 import "src/prego_button_catalog.dart";
 import "src/prego_catalog_background.dart";
 import "src/prego_catalog_inspector.dart";
+import "src/prego_catalog_platform.dart";
 import "src/prego_catalog_theme.dart";
 import "src/prego_catalog_viewports.dart";
 
@@ -23,6 +24,7 @@ class const DesignCatalogApp({super.key}) extends StatelessWidget {
         buildPregoThemeAddon(),
         PregoCatalogInspectorAddon(),
         ViewportAddon(PregoCatalogViewports.all),
+        PregoCatalogPlatformAddon(viewports: PregoCatalogViewports.all),
         PregoCanvasBackgroundAddon(),
         AlignmentAddon(),
         TextScaleAddon(min: 1, max: 2),
