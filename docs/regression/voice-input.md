@@ -3,11 +3,13 @@
 ## Capability
 
 The mobile composer records speech while the user holds the mic control, chooses realtime or async transcription from
-auth capabilities before capture, and inserts confirmed text into the prompt field for review before sending. Missing,
-disabled, failed, or unsupported realtime capability uses async. A pre-audio realtime setup failure may fall back to
-async while the hold is still active; any failure after audio starts never uploads retained audio. A voice-first or
-text-first preference decides which control leads. No bridge route or backend plugin participates; the device
-microphone and transcription endpoint are external.
+auth capabilities before capture, and inserts confirmed text into the prompt field for review before sending. Missing
+or failed capability discovery uses async. An advertised protocol 1 capability that is disabled uses async with an
+opaque project key. A malformed capability response or one that does not advertise protocol 1 is a typed contract
+failure and does not silently downgrade. A pre-audio realtime setup failure may fall back to async while the hold is
+still active; any failure after audio starts never uploads retained audio. A voice-first or text-first preference
+decides which control leads. No bridge route or backend plugin participates; the device microphone and transcription
+endpoint are external.
 
 ## Required Behavior
 
@@ -45,7 +47,7 @@ microphone and transcription endpoint are external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin, fake recorder, fake WebSocket, and fake HTTP client: capability-first realtime versus async selection; missing, disabled, failed, and unsupported capability using async; pre-audio setup failure falling back async; post-audio failure not invoking async upload; opaque project key derivation and raw-ID non-transmission; start-paused ordering, effective format validation, pre-ready discard with no queue, confirmed and provisional preview without draft mutation, terminal success append, confirmed-partial failure append, cancel discard, stale-event safety, typed provider-neutral failure mapping, max-duration signalling, and file cleanup attempted on every exit path with deletion failure logged. |
+| L2 Routine | Automated, mobile client, no plugin, fake recorder, fake WebSocket, and fake HTTP client: capability-first realtime versus async selection; missing or failed discovery using async; disabled advertised protocol 1 using async with an opaque project key; malformed or unsupported advertised capability failing as a typed contract error without downgrade; pre-audio setup failure falling back async; post-audio failure not invoking async upload; opaque project key derivation and raw-ID non-transmission; start-paused ordering, effective format validation, pre-ready discard with no queue, confirmed and provisional preview without draft mutation, terminal success append, confirmed-partial failure append, cancel discard, stale-event safety, typed provider-neutral failure mapping, max-duration signalling, and file cleanup attempted on every exit path with deletion failure logged. |
 | L3 Release | Client end to end on the release-target client platform with automated or fake services: hold to record, release to transcribe, confirmed text inserted and editable, very short hold, normal hold, drag-to-cancel, layout stability, quota failure, capacity failure, network loss, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform with automated or fake services: background/resume, system interruption, permission revoked between interactions, realtime setup fallback before audio, post-audio failure with confirmed partial commit and no retained upload, offline async failure, disposal while recording, wake lock released on every path. |
 | L5 Full | Physical iOS and Android devices with real microphones and live auth transcription: realtime enabled and disabled capability paths, async compatibility path, audible speech yielding usable non-empty confirmed text, very short and normal holds, near-maximum auto-stop, drag cancel, quota exhaustion, provider capacity failure, network loss, background/resume, no local recording file remaining after realtime, and iOS haptics and system sounds staying audible while recording. |
@@ -62,8 +64,9 @@ paths. On physical iOS and Android devices, vary ambient noise, background/resum
 
 - The composer stays in a recording or transcribing state after error, cancel, or disposal, or a cancelled transcript
   appears in a later interaction.
-- Realtime is attempted when capability is missing, disabled, failed, or unsupported, or async fallback starts after a
-  realtime session has already sent audio.
+- Realtime is attempted when capability discovery is missing or failed, or when advertised protocol 1 is disabled;
+  malformed or unsupported advertised capabilities silently downgrade instead of failing as a typed contract error;
+  or async fallback starts after a realtime session has already sent audio.
 - Pre-ready audio is queued or retained, preview mutates the draft before a terminal event, provisional text commits,
   or confirmed partial text is lost on terminal failure.
 - A stale realtime event modifies a newer interaction, or a provider-specific error leaks through the app contract.
