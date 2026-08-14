@@ -12,19 +12,19 @@ export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 pub-get:
 	(cd .. && $(DART) pub get)
 
-manifest:
+manifest: pub-get
 	$(DART) run tool/generate_manifest.dart
 
-manifest-check:
+manifest-check: pub-get
 	$(DART) run tool/generate_manifest.dart --check
 
-analyze:
+analyze: pub-get
 	$(DART) analyze --fatal-infos
 
-test:
+test: pub-get
 	$(FLUTTER) test
 
-build:
+build: pub-get
 	$(FLUTTER) build web --release
 
-check: pub-get manifest-check analyze test build
+check: manifest-check analyze test build
