@@ -1278,6 +1278,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceErrorTranscription => 'Transcription failed. Please try again.';
 
   @override
+  String get voiceErrorRealtimeQuota => 'Voice input quota reached. Try again later.';
+
+  @override
+  String get voiceErrorRealtimeTemporaryUnavailable => 'Voice input is temporarily unavailable. Try again in a moment.';
+
+  @override
+  String get voiceErrorRealtimeInterrupted => 'Voice connection was interrupted. Try again.';
+
+  @override
+  String get voiceErrorContract => 'Voice input needs an app update. Update Sesori and try again.';
+
+  @override
   String get voiceErrorNetwork => 'Could not reach the server. Check your connection.';
 
   @override
