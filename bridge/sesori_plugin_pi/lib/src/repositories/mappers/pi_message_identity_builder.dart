@@ -17,7 +17,10 @@ final class PiMessageIdentityBuilder({
   final Map<String, int> _ordinals = {};
   final Map<String, int> _allocations = {};
 
-  PiMessageIdentitySnapshot snapshot() => PiMessageIdentitySnapshot._(Map.unmodifiable(_allocations));
+  PiMessageIdentitySnapshot snapshot() => PiMessageIdentitySnapshot._(
+    ordinals: Map.unmodifiable(_ordinals),
+    allocations: Map.unmodifiable(_allocations),
+  );
 
   void replaceHydrated({
     required PiMessageIdentityBuilder other,
@@ -26,8 +29,10 @@ final class PiMessageIdentityBuilder({
     final merged = Map<String, int>.of(other._ordinals);
     for (final MapEntry(:key, :value) in _allocations.entries) {
       final allocationsSinceRead = value - (since._allocations[key] ?? 0);
-      if (allocationsSinceRead > 0) {
-        merged[key] = (merged[key] ?? 0) + allocationsSinceRead;
+      final replayGrowth = (other._ordinals[key] ?? 0) - (since._ordinals[key] ?? 0);
+      final unpersistedAllocations = allocationsSinceRead - replayGrowth.clamp(0, allocationsSinceRead);
+      if (unpersistedAllocations > 0) {
+        merged[key] = (merged[key] ?? 0) + unpersistedAllocations;
       }
     }
     _ordinals
@@ -56,4 +61,10 @@ final class PiMessageIdentityBuilder({
   }
 }
 
-final class PiMessageIdentitySnapshot._(final Map<String, int> _allocations);
+final class PiMessageIdentitySnapshot._({
+  required final Map<String, int> ordinals,
+  required final Map<String, int> allocations,
+}) {
+  final Map<String, int> _ordinals = ordinals;
+  final Map<String, int> _allocations = allocations;
+}

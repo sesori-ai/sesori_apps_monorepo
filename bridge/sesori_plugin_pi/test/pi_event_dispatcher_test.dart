@@ -90,6 +90,46 @@ void main() {
     expect(finalEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
+  test("top-level custom entries preserve hidden ordinals and visible replay parity", () {
+    final hidden = {
+      "type": "custom_message",
+      "id": "hidden",
+      "parentId": null,
+      "timestamp": "2026-01-01T00:00:00.000Z",
+      "content": [
+        {"type": "text", "text": "hidden"},
+      ],
+      "display": false,
+    };
+    final visible = {
+      "type": "custom_message",
+      "id": "visible",
+      "parentId": "hidden",
+      "timestamp": "2026-01-01T00:00:01.000Z",
+      "content": [
+        {"type": "text", "text": "visible"},
+      ],
+      "display": true,
+    };
+
+    expect(dispatcher.map(sessionId: sessionId, event: _event("entry_appended", {"entry": hidden})), isEmpty);
+    final live = dispatcher.map(sessionId: sessionId, event: _event("entry_appended", {"entry": visible}));
+    final replay = history
+        .map(
+          sessionId: sessionId,
+          entries: [
+            PiSessionEntryDto.fromJson(hidden),
+            PiSessionEntryDto.fromJson(visible),
+          ],
+          leafId: "visible",
+          identities: PiMessageIdentityBuilder(pluginId: "pi", sessionId: sessionId),
+        )
+        .single;
+
+    expect((live.first as BridgeSseMessageUpdated).info, replay.info.toJson());
+    expect(live.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
+  });
+
   test("authoritative final removes streamed parts before restoring final order", () {
     final start = _assistant(content: const [], timestamp: 101);
     dispatcher.map(sessionId: sessionId, event: _event("message_start", {"message": start}));
@@ -594,6 +634,22 @@ void main() {
     );
 
     expect(builder.nextCompaction(), "pi:session:compaction:compaction:2");
+  });
+
+  test("hydration does not recount a live allocation already in replay", () {
+    final builder = identities.forSession(sessionId: sessionId);
+    builder.nextCompaction();
+    final hydration = identities.beginHydration(sessionId: sessionId);
+    builder.nextCompaction();
+    hydration.complete<void>(
+      map: (candidate) {
+        candidate
+          ..nextCompaction()
+          ..nextCompaction();
+      },
+    );
+
+    expect(builder.nextCompaction(), "pi:session:compaction:compaction:3");
   });
 }
 

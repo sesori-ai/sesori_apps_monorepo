@@ -44,6 +44,17 @@ final class PiHistoryMapper({
     return _decodeMessage(raw: raw) as PiCustomMessageDto?;
   }
 
+  PiCustomMessageEntryDto? decodeCustomMessageEntry({required Map<String, Object?> raw}) {
+    if (raw["type"] != "custom_message") return null;
+    try {
+      final entry = PiSessionEntryDto.fromJson(Map<String, dynamic>.from(raw));
+      return entry is PiCustomMessageEntryDto ? entry : null;
+    } on Object catch (error, stack) {
+      Log.w("[pi] appended entry could not be decoded; omitting it", error, stack);
+      return null;
+    }
+  }
+
   PiAgentMessageDto? _decodeMessage({required Map<String, Object?> raw}) {
     try {
       return PiAgentMessageDto.fromJson(Map<String, dynamic>.from(raw));
@@ -230,6 +241,18 @@ final class PiHistoryMapper({
       timestamp: message.timestamp,
       text: text,
     );
+    return PluginMessageWithParts(info: draft.info, parts: draft.parts);
+  }
+
+  PluginMessageWithParts? mapCustomMessageEntry({
+    required String sessionId,
+    required String messageId,
+    required PiCustomMessageEntryDto entry,
+  }) {
+    if (!entry.display) return null;
+    final text = _visibleCustomText(content: entry.content, warnings: <_PiHistoryWarning>{});
+    if (text == null) return null;
+    final draft = _textMessage(sessionId: sessionId, messageId: messageId, timestamp: null, text: text);
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
   }
 

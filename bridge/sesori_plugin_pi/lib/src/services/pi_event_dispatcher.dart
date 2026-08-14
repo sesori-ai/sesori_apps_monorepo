@@ -92,12 +92,12 @@ final class PiEventDispatcher({
       operation: operation,
       error: error,
     ),
+    PiEntryAppendedEvent(:final entry) => _entryAppended(sessionId: sessionId, raw: entry),
     PiAgentEndEvent() ||
     PiTurnStartEvent() ||
     PiTurnEndEvent() ||
     PiBashExecutionUpdateEvent() ||
     PiQueueUpdateEvent() ||
-    PiEntryAppendedEvent() ||
     PiSessionInfoChangedEvent() ||
     PiThinkingLevelChangedEvent() ||
     PiAutoRetryEndEvent() ||
@@ -116,6 +116,24 @@ final class PiEventDispatcher({
       ..message = message
       ..announced = false;
     return const [];
+  }
+
+  List<BridgeSseEvent> _entryAppended({required String sessionId, required Map<String, Object?> raw}) {
+    final entry = _historyMapper.decodeCustomMessageEntry(raw: raw);
+    if (entry == null) return const [];
+    final state = _session(sessionId);
+    final messageId = state.identities.nextTopLevelCustomMessage();
+    final mapped = _historyMapper.mapCustomMessageEntry(
+      sessionId: sessionId,
+      messageId: messageId,
+      entry: entry,
+    );
+    return mapped == null
+        ? const []
+        : [
+            BridgeSseMessageUpdated(info: mapped.info.toJson()),
+            for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
+          ];
   }
 
   List<BridgeSseEvent> _messageUpdate({required String sessionId, required PiAssistantDelta delta}) {
