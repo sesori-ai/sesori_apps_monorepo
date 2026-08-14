@@ -11,6 +11,10 @@ import "realtime_websocket_connector.dart";
 
 final class const RealtimeVoiceAuthenticationException() implements Exception;
 
+final class const RealtimeVoiceTransportClosedException() implements Exception;
+
+const realtimeVoiceConnectTimeout = Duration(seconds: 10);
+
 @lazySingleton
 class RealtimeVoiceApi({
   required final RealtimeWebSocketConnector connector,
@@ -24,6 +28,7 @@ class RealtimeVoiceApi({
     final channel = connector.connect(
       Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
       headers: {"Authorization": "Bearer $token"},
+      connectTimeout: realtimeVoiceConnectTimeout,
     );
     try {
       await channel.ready;
@@ -45,6 +50,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
   StreamSubscription<dynamic>? _subscription;
   bool _closed = false;
   bool _terminalControlSent = false;
+  bool _finishRequested = false;
 
   Stream<RealtimeVoiceEvent> get events => _events.stream;
 
@@ -72,6 +78,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
     if (_terminalControlSent) {
       throw StateError("Realtime voice session already received a terminal control");
     }
+    _finishRequested = true;
     _terminalControlSent = true;
     _sendJson(const RealtimeFinishMessage().toJson());
     return await _terminal.future;
@@ -128,8 +135,9 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
   }
 
   void _handleInboundDone() {
-    if (!_terminal.isCompleted && _terminalControlSent) {
-      _terminal.completeError(StateError("Realtime voice session closed before terminal event"));
+    _closed = true;
+    if (!_terminal.isCompleted && _finishRequested) {
+      _terminal.completeError(const RealtimeVoiceTransportClosedException(), StackTrace.current);
     }
     unawaited(_events.close());
   }
@@ -143,7 +151,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
 
   void _ensureOpen() {
     if (_closed) {
-      throw StateError("Realtime voice session is closed");
+      throw const RealtimeVoiceTransportClosedException();
     }
   }
 }

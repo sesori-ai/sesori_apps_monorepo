@@ -26,11 +26,13 @@ class _Connector implements RealtimeWebSocketConnector {
   final channel = _FakeChannel();
   Uri? uri;
   Map<String, String>? headers;
+  Duration? connectTimeout;
 
   @override
-  WebSocketChannel connect(Uri uri, {required Map<String, String> headers}) {
+  WebSocketChannel connect(Uri uri, {required Map<String, String> headers, required Duration connectTimeout}) {
     this.uri = uri;
     this.headers = headers;
+    this.connectTimeout = connectTimeout;
     return channel;
   }
 }
@@ -39,6 +41,7 @@ class _Connector implements RealtimeWebSocketConnector {
 class _FakeChannel extends Mock implements WebSocketChannel {
   final StreamController<Object?> inbound = StreamController<Object?>();
   final List<Object?> outbound = [];
+  final Completer<void> readyCompleter = Completer<void>();
   final _sinkDone = Completer<void>();
   int? _closeCode;
 
@@ -52,13 +55,21 @@ class _FakeChannel extends Mock implements WebSocketChannel {
   String? get closeReason => null;
 
   @override
-  Future<void> get ready => Future<void>.value();
+  Future<void> get ready => readyCompleter.future;
 
   @override
   Stream<dynamic> get stream => inbound.stream;
 
   @override
   WebSocketSink get sink => _Sink(outbound, _sinkDone, (code) => _closeCode = code);
+
+  void completeReady() {
+    if (!readyCompleter.isCompleted) readyCompleter.complete();
+  }
+
+  void failReady(Object error) {
+    if (!readyCompleter.isCompleted) readyCompleter.completeError(error);
+  }
 }
 
 class _Sink(
@@ -97,6 +108,7 @@ void main() {
   setUp(() {
     tokenProvider = _TokenProvider();
     connector = _Connector();
+    connector.channel.completeReady();
     api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
   });
 
@@ -108,10 +120,12 @@ void main() {
 
     expect(connector.uri, Uri.parse("wss://api.sesori.com/voice/realtime"));
     expect(connector.headers, {"Authorization": "Bearer fresh-token-1"});
+    expect(connector.connectTimeout, realtimeVoiceConnectTimeout);
     expect(tokenProvider.forceRefreshes, [false]);
     expect(connector.uri.toString(), isNot(contains("fresh-token")));
     expect(connector.uri.toString(), isNot(contains("project-123")));
     final start = jsonDecode(connector.channel.outbound.single! as String) as Map<String, Object?>;
+    expect(connector.channel.outbound.single.toString(), isNot(contains("fresh-token")));
     expect(start, {
       "type": "start",
       "protocolVersion": 1,
@@ -120,6 +134,44 @@ void main() {
     });
     await session.close();
   });
+
+  test("Given an async WebSocket connection When starting Then waits for ready before sending start", () async {
+    connector = _Connector();
+    api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
+
+    final startFuture = api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+    await pumpEventQueue();
+
+    expect(connector.channel.outbound, isEmpty);
+
+    connector.channel.completeReady();
+    final session = await startFuture;
+
+    expect(jsonDecode(connector.channel.outbound.single! as String), {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": {"encoding": "pcm_s16le", "sampleRate": 16000, "channels": 1},
+    });
+    await session.close();
+  });
+
+  test(
+    "Given the WebSocket handshake fails asynchronously When starting Then closes and propagates ready error",
+    () async {
+      connector = _Connector();
+      api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
+      final error = StateError("handshake failed");
+
+      final startFuture = api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+      await pumpEventQueue();
+      connector.channel.failReady(error);
+
+      await expectLater(startFuture, throwsA(same(error)));
+      expect(connector.channel.outbound, isEmpty);
+      expect(connector.channel.closeCode, 1000);
+    },
+  );
 
   test("Given a realtime session When sending audio and finish Then forwards binary and waits for terminal", () async {
     final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 48000), projectKey: null);
@@ -144,6 +196,26 @@ void main() {
     expect(errors.single, isA<RealtimeVoiceProtocolException>());
     expect(connector.channel.closeCode, 1000);
     await subscription.cancel();
+  });
+
+  test("Given transport closes before finish When finish is requested Then it fails promptly", () async {
+    final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+
+    await connector.channel.inbound.close();
+    await pumpEventQueue(times: 3);
+
+    await expectLater(session.finish(), throwsA(isA<RealtimeVoiceTransportClosedException>()));
+    expect(connector.channel.outbound, hasLength(1));
+  });
+
+  test("Given transport closes after finish When waiting for terminal Then it fails promptly", () async {
+    final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+
+    final terminal = session.finish();
+    expect(jsonDecode(connector.channel.outbound[1]! as String), {"type": "finish"});
+    await connector.channel.inbound.close();
+
+    await expectLater(terminal, throwsA(isA<RealtimeVoiceTransportClosedException>()));
   });
 
   test("Given invalid audio frames When sending audio Then rejects client-side before socket send", () async {
