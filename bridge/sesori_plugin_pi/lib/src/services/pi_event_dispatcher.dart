@@ -76,11 +76,18 @@ final class PiEventDispatcher({
     PiCompactionStartEvent() => [
       BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy().toJson()),
     ],
-    PiCompactionEndEvent(:final aborted, :final errorMessage) => _compactionEnd(
+    PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage) => _compactionEnd(
       sessionId: sessionId,
-      failed: aborted || errorMessage != null,
+      reason: reason,
+      aborted: aborted,
+      willRetry: willRetry,
+      errorMessage: errorMessage,
     ),
-    PiExtensionErrorEvent(:final error) => _extensionError(error: error),
+    PiExtensionErrorEvent(:final extensionPath, event: final operation, :final error) => _extensionError(
+      extensionPath: extensionPath,
+      operation: operation,
+      error: error,
+    ),
     PiAgentEndEvent() ||
     PiTurnStartEvent() ||
     PiTurnEndEvent() ||
@@ -99,11 +106,11 @@ final class PiEventDispatcher({
     final message = _historyMapper.decodeAssistantMessage(raw: raw);
     if (message == null) return const [];
     final state = _session(sessionId);
+    state.clearMessage();
     state
       ..messageId = state.identities.next(role: PiMessageIdentityRole.assistant, timestamp: message.timestamp)
       ..message = message
-      ..announced = false
-      ..startedParts.clear();
+      ..announced = false;
     return const [];
   }
 
@@ -169,12 +176,13 @@ final class PiEventDispatcher({
 
   List<BridgeSseEvent> _messageEnd({required String sessionId, required Map<String, Object?> raw}) {
     final message = _historyMapper.decodeAssistantMessage(raw: raw);
-    if (message == null) return const [];
+    if (message == null) return _bashEnd(sessionId: sessionId, raw: raw);
     final state = _session(sessionId);
     final messageId =
         state.messageId ?? state.identities.next(role: PiMessageIdentityRole.assistant, timestamp: message.timestamp);
     final mapped = _historyMapper.mapAssistantMessage(sessionId: sessionId, messageId: messageId, message: message);
     final parts = <PluginMessagePart>[];
+    var sessionDiffRequired = false;
     for (final part in mapped.parts) {
       if (part.type != PluginMessagePartType.tool) {
         parts.add(part);
@@ -205,15 +213,42 @@ final class PiEventDispatcher({
               ),
             )
           : null;
+      if (terminal?.sessionDiffRequired ?? false) sessionDiffRequired = true;
       parts.add(_toolPart(sessionId: sessionId, tool: terminal ?? tracked));
     }
-    final removedPartIds = state.emittedPartIds.difference({for (final part in parts) part.id});
+    final removedPartIds = state.emittedPartIds.toList(growable: false);
+    final announced = state.announced;
+    final visible =
+        parts.isNotEmpty ||
+        message.stopReason == PiAssistantStopReason.error ||
+        message.stopReason == PiAssistantStopReason.aborted;
     state.clearMessage();
+    if (!visible) {
+      return [
+        if (announced) BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId),
+      ];
+    }
     return [
       BridgeSseMessageUpdated(info: mapped.info.toJson()),
-      for (final part in parts) BridgeSseMessagePartUpdated(part: part),
       for (final partId in removedPartIds)
         BridgeSseMessagePartRemoved(sessionID: sessionId, messageID: messageId, partID: partId),
+      for (final part in parts) BridgeSseMessagePartUpdated(part: part),
+      if (sessionDiffRequired) BridgeSseSessionDiff(sessionID: sessionId),
+    ];
+  }
+
+  List<BridgeSseEvent> _bashEnd({required String sessionId, required Map<String, Object?> raw}) {
+    final message = _historyMapper.decodeBashExecutionMessage(raw: raw);
+    if (message == null) return const [];
+    final state = _session(sessionId);
+    final messageId = state.identities.next(
+      role: PiMessageIdentityRole.bashExecution,
+      timestamp: message.timestamp,
+    );
+    final mapped = _historyMapper.mapBashExecution(sessionId: sessionId, messageId: messageId, message: message);
+    return [
+      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
 
@@ -275,6 +310,7 @@ final class PiEventDispatcher({
     final messageId = state.messageId;
     if (messageId == null || contentIndex == null || contentIndex < 0 || content == null) return const [];
     state.startedParts.add((contentIndex: contentIndex, type: type));
+    state.emittedPartIds.add(_blockId(messageId: messageId, contentIndex: contentIndex));
     return [
       ..._announce(sessionId: sessionId, state: state),
       BridgeSseMessagePartUpdated(
@@ -399,8 +435,23 @@ final class PiEventDispatcher({
     ];
   }
 
-  List<BridgeSseEvent> _compactionEnd({required String sessionId, required bool failed}) {
-    if (failed) return [BridgeSseSessionError(sessionID: sessionId)];
+  List<BridgeSseEvent> _compactionEnd({
+    required String sessionId,
+    required Object? reason,
+    required bool aborted,
+    required bool willRetry,
+    required String? errorMessage,
+  }) {
+    if (errorMessage != null) {
+      Log.w(
+        "[pi] compaction failed",
+        _PiCompactionFailureDiagnostic(reason: reason, detail: errorMessage),
+      );
+    }
+    if ((aborted || errorMessage != null) && !willRetry) {
+      return [BridgeSseSessionError(sessionID: sessionId)];
+    }
+    if (willRetry) return const [];
     final state = _session(sessionId);
     final messageId = state.identities.nextCompaction();
     final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
@@ -411,8 +462,21 @@ final class PiEventDispatcher({
     ];
   }
 
-  List<BridgeSseEvent> _extensionError({required String? error}) {
-    if (error != null) Log.w("[pi] extension handler failed", _PiExtensionFailureDiagnostic(detail: error));
+  List<BridgeSseEvent> _extensionError({
+    required String? extensionPath,
+    required String? operation,
+    required String? error,
+  }) {
+    if (error != null) {
+      Log.w(
+        "[pi] extension handler failed",
+        _PiExtensionFailureDiagnostic(
+          extensionPath: extensionPath,
+          operation: operation,
+          detail: error,
+        ),
+      );
+    }
     return const [];
   }
 
@@ -490,7 +554,19 @@ PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool t
 
 String _blockId({required String messageId, required int contentIndex}) => "$messageId-block-${contentIndex + 1}";
 
-final class const _PiExtensionFailureDiagnostic({required final String detail}) implements Exception {
+final class const _PiCompactionFailureDiagnostic({
+  required final Object? reason,
+  required final String detail,
+}) implements Exception {
   @override
-  String toString() => "Pi extension handler failed: $detail";
+  String toString() => "Pi compaction failed (reason: $reason): $detail";
+}
+
+final class const _PiExtensionFailureDiagnostic({
+  required final String? extensionPath,
+  required final String? operation,
+  required final String detail,
+}) implements Exception {
+  @override
+  String toString() => "Pi extension handler failed (path: $extensionPath, event: $operation): $detail";
 }

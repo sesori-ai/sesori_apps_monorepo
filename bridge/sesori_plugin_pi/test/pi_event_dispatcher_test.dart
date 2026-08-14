@@ -90,6 +90,63 @@ void main() {
     expect(finalEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
+  test("authoritative final removes streamed parts before restoring final order", () {
+    final start = _assistant(content: const [], timestamp: 101);
+    dispatcher.map(sessionId: sessionId, event: _event("message_start", {"message": start}));
+    for (final update in [
+      {"type": "text_end", "contentIndex": 1, "content": "second"},
+      {"type": "thinking_end", "contentIndex": 0, "content": "first"},
+    ]) {
+      dispatcher.map(
+        sessionId: sessionId,
+        event: _event("message_update", {"assistantMessageEvent": update}),
+      );
+    }
+
+    final events = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": _assistant(
+          content: [
+            {"type": "thinking", "thinking": "first"},
+            {"type": "text", "text": "second"},
+          ],
+          timestamp: 101,
+        ),
+      }),
+    );
+
+    expect(
+      events.whereType<BridgeSseMessagePartRemoved>().map((event) => event.partID),
+      ["pi:session:assistant:101:1-block-2", "pi:session:assistant:101:1-block-1"],
+    );
+    expect(
+      events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.id),
+      ["pi:session:assistant:101:1-block-1", "pi:session:assistant:101:1-block-2"],
+    );
+  });
+
+  test("empty successful final removes its provisional message", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 102)}),
+    );
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "text_end", "contentIndex": 0, "content": "discard"},
+      }),
+    );
+
+    final events = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {"message": _assistant(content: const [], timestamp: 102)}),
+    );
+
+    expect(events.whereType<BridgeSseMessageUpdated>(), isEmpty);
+    expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, "pi:session:assistant:102:1");
+  });
+
   test("tool updates replace cumulative output and duplicate terminal is ignored", () {
     final message = _assistant(
       content: [
@@ -266,6 +323,49 @@ void main() {
     expect(pending.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status, PluginToolStatus.pending);
     expect(failed.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status, PluginToolStatus.error);
     expect(failed.whereType<BridgeSseMessagePartUpdated>().single.part.state?.error, "Pi tool call did not complete.");
+    expect(failed.whereType<BridgeSseSessionDiff>(), hasLength(1));
+  });
+
+  test("tool-call discriminator is enforced below the dispatcher", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 4)}),
+    );
+    final events = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_end",
+          "contentIndex": 0,
+          "toolCall": {"type": "text", "id": "call", "name": "read"},
+        },
+      }),
+    );
+
+    expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.tool, "read");
+  });
+
+  test("direct bash final maps to the replay-equivalent tool card", () {
+    final events = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {
+          "role": "bashExecution",
+          "command": "pwd",
+          "output": "/project\n",
+          "exitCode": 0,
+          "cancelled": false,
+          "truncated": false,
+          "timestamp": 5,
+        },
+      }),
+    );
+
+    expect(events.whereType<BridgeSseMessageUpdated>().single.info["id"] as String, contains(":bashExecution:5:1"));
+    final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+    expect(part.tool, "bash");
+    expect(part.state?.title, "pwd");
+    expect(part.state?.output, "/project\n");
   });
 
   test("retry, compaction, and only agent_settled produce status lifecycle", () {
@@ -296,6 +396,20 @@ void main() {
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
 
+  test("recovering compaction failures stay local while Pi retries", () {
+    final events = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {
+        "reason": "overflow",
+        "errorMessage": "provider detail",
+        "aborted": false,
+        "willRetry": true,
+      }),
+    );
+
+    expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+  });
+
   test("interleaved sessions and unknown variants keep state isolated", () {
     dispatcher.map(
       sessionId: "one",
@@ -323,25 +437,33 @@ void main() {
     expect(dispatcher.map(sessionId: sessionId, event: _event("future_event")), isEmpty);
   });
 
-  test("history hydration advances live identities and final removes stale provisional parts", () {
-    final hydrated = _assistant(content: const [], timestamp: 10);
-    history.map(
-      sessionId: sessionId,
-      entries: [
-        PiSessionEntryDto.message(
-          id: "prior",
-          parentId: null,
-          timestamp: DateTime.utc(2026),
-          message: PiAgentMessageDto.fromJson(hydrated),
-        ),
-        PiSessionEntryDto.compaction(
-          id: "compact",
-          parentId: "prior",
-          timestamp: DateTime.utc(2026),
-        ),
+  test("history hydration advances live identities and reconciles provisional parts", () {
+    final hydrated = _assistant(
+      content: [
+        {"type": "text", "text": "final"},
       ],
-      leafId: "compact",
-      identities: identities.rebuild(sessionId: sessionId),
+      timestamp: 10,
+    );
+    identities.hydrate(
+      sessionId: sessionId,
+      map: (identityBuilder) => history.map(
+        sessionId: sessionId,
+        entries: [
+          PiSessionEntryDto.message(
+            id: "prior",
+            parentId: null,
+            timestamp: DateTime.utc(2026),
+            message: PiAgentMessageDto.fromJson(hydrated),
+          ),
+          PiSessionEntryDto.compaction(
+            id: "compact",
+            parentId: "prior",
+            timestamp: DateTime.utc(2026),
+          ),
+        ],
+        leafId: "compact",
+        identities: identityBuilder,
+      ),
     );
     dispatcher.map(
       sessionId: sessionId,
@@ -362,12 +484,29 @@ void main() {
       event: _event("compaction_end", {"aborted": false, "willRetry": false}),
     );
 
-    expect((finalized.first as BridgeSseMessageUpdated).info["id"], "pi:session:assistant:10:2");
+    expect(finalized.whereType<BridgeSseMessageUpdated>().single.info["id"], "pi:session:assistant:10:2");
     expect(finalized.whereType<BridgeSseMessagePartRemoved>().single.partID, "pi:session:assistant:10:2-block-1");
     expect(
       compacted.whereType<BridgeSseMessageUpdated>().single.info["id"],
       "pi:session:compaction:compaction:2",
     );
+  });
+
+  test("failed identity hydration preserves the live ordinal cursor", () {
+    final builder = identities.forSession(sessionId: sessionId);
+    expect(builder.next(role: PiMessageIdentityRole.assistant, timestamp: 7), "pi:session:assistant:7:1");
+
+    expect(
+      () => identities.hydrate<void>(
+        sessionId: sessionId,
+        map: (candidate) {
+          candidate.next(role: PiMessageIdentityRole.assistant, timestamp: 7);
+          throw StateError("mapping failed");
+        },
+      ),
+      throwsStateError,
+    );
+    expect(builder.next(role: PiMessageIdentityRole.assistant, timestamp: 7), "pi:session:assistant:7:2");
   });
 }
 

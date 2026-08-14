@@ -4,7 +4,15 @@ final class PiMessageIdentityTracker({required final String pluginId}) {
   final String _pluginId = pluginId;
   final Map<String, PiMessageIdentityBuilder> _sessions = {};
 
-  PiMessageIdentityBuilder rebuild({required String sessionId}) => forSession(sessionId: sessionId)..reset();
+  T hydrate<T>({
+    required String sessionId,
+    required T Function(PiMessageIdentityBuilder identities) map,
+  }) {
+    final candidate = PiMessageIdentityBuilder(pluginId: _pluginId, sessionId: sessionId);
+    final result = map(candidate);
+    forSession(sessionId: sessionId).replaceWith(other: candidate);
+    return result;
+  }
 
   PiMessageIdentityBuilder forSession({required String sessionId}) => _sessions.putIfAbsent(
     sessionId,

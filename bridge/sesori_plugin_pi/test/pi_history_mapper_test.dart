@@ -590,6 +590,34 @@ void main() {
       expect(warnings, isNot(contains(secret)));
     });
 
+    test("bounds unknown assistant content warnings across the replay", () async {
+      final warnings = await _captureWarnings(() async {
+        mapper.map(
+          sessionId: sessionId,
+          entries: [
+            for (var index = 0; index < 3; index++)
+              _message(
+                id: "assistant-$index",
+                parentId: index == 0 ? null : "assistant-${index - 1}",
+                message: PiAgentMessageDto.assistant(
+                  content: [
+                    PiContentDto.fromJson({"type": "future"}),
+                  ],
+                  provider: null,
+                  model: null,
+                  stopReason: PiAssistantStopReason.stop,
+                  errorMessage: null,
+                  timestamp: index,
+                ),
+              ),
+          ],
+          leafId: "assistant-2",
+        );
+      });
+
+      expect(RegExp("unknown content blocks").allMatches(warnings), hasLength(1));
+    });
+
     test("returns empty for no visible mapped content", () {
       final messages = mapper.map(
         sessionId: sessionId,
@@ -622,11 +650,14 @@ final class _HydratedHistoryMapper({
     required String sessionId,
     required List<PiSessionEntryDto> entries,
     required String? leafId,
-  }) => mapper.map(
+  }) => identities.hydrate(
     sessionId: sessionId,
-    entries: entries,
-    leafId: leafId,
-    identities: identities.rebuild(sessionId: sessionId),
+    map: (identityBuilder) => mapper.map(
+      sessionId: sessionId,
+      entries: entries,
+      leafId: leafId,
+      identities: identityBuilder,
+    ),
   );
 }
 

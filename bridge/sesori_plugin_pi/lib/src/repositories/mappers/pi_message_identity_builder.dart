@@ -16,7 +16,11 @@ final class PiMessageIdentityBuilder({
 
   final Map<String, int> _ordinals = {};
 
-  void reset() => _ordinals.clear();
+  void replaceWith({required PiMessageIdentityBuilder other}) {
+    _ordinals
+      ..clear()
+      ..addAll(other._ordinals);
+  }
 
   String next({required PiMessageIdentityRole role, required int? timestamp}) {
     return _next(role: role, timestampPart: timestamp?.toString() ?? missingTimestampSentinel);

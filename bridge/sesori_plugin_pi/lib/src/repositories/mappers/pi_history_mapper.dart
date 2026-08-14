@@ -31,17 +31,26 @@ final class PiHistoryMapper({
 
   PiAssistantMessageDto? decodeAssistantMessage({required Map<String, Object?> raw}) {
     if (raw["role"] != "assistant") return null;
+    return _decodeMessage(raw: raw) as PiAssistantMessageDto?;
+  }
+
+  PiBashExecutionMessageDto? decodeBashExecutionMessage({required Map<String, Object?> raw}) {
+    if (raw["role"] != "bashExecution") return null;
+    return _decodeMessage(raw: raw) as PiBashExecutionMessageDto?;
+  }
+
+  PiAgentMessageDto? _decodeMessage({required Map<String, Object?> raw}) {
     try {
-      return PiAgentMessageDto.fromJson(Map<String, dynamic>.from(raw)) as PiAssistantMessageDto;
+      return PiAgentMessageDto.fromJson(Map<String, dynamic>.from(raw));
     } on Object {
-      Log.w("[pi] assistant event message could not be decoded; omitting it");
+      Log.w("[pi] event message could not be decoded; omitting it");
       return null;
     }
   }
 
   PiToolCallContentDto? decodeToolCall({required Map<String, Object?> raw}) {
     try {
-      final content = PiContentDto.fromJson({"type": "toolCall", ...raw});
+      final content = PiContentDto.fromJson({...raw, "type": "toolCall"});
       return content is PiToolCallContentDto ? content : null;
     } on Object {
       Log.w("[pi] tool-call event could not be decoded; omitting it");
@@ -53,8 +62,19 @@ final class PiHistoryMapper({
     required String sessionId,
     required String messageId,
     required PiAssistantMessageDto message,
+  }) => _mapAssistantMessage(
+    sessionId: sessionId,
+    messageId: messageId,
+    message: message,
+    warnings: <_PiHistoryWarning>{},
+  );
+
+  PluginMessageWithParts _mapAssistantMessage({
+    required String sessionId,
+    required String messageId,
+    required PiAssistantMessageDto message,
+    required Set<_PiHistoryWarning> warnings,
   }) {
-    final warnings = <_PiHistoryWarning>{};
     if (message.stopReason == PiAssistantStopReason.error && message.errorMessage != null) {
       Log.w("[pi] assistant response failed", _PiAssistantFailureDiagnostic(detail: message.errorMessage!));
     }
@@ -170,6 +190,27 @@ final class PiHistoryMapper({
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
   }
 
+  PluginMessageWithParts mapBashExecution({
+    required String sessionId,
+    required String messageId,
+    required PiBashExecutionMessageDto message,
+  }) {
+    final failed = message.cancelled || (message.exitCode != null && message.exitCode != 0);
+    final clippedOutput = _clip(message.output);
+    final visibleOutput = clippedOutput.isEmpty ? null : clippedOutput;
+    final draft = _toolMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      timestamp: message.timestamp,
+      tool: "bash",
+      title: _clip(message.command),
+      output: failed ? null : visibleOutput,
+      error: failed ? visibleOutput : null,
+      status: failed ? PluginToolStatus.error : PluginToolStatus.completed,
+    );
+    return PluginMessageWithParts(info: draft.info, parts: draft.parts);
+  }
+
   List<PluginMessageWithParts> map({
     required String sessionId,
     required List<PiSessionEntryDto> entries,
@@ -213,10 +254,11 @@ final class PiHistoryMapper({
                 role: PiMessageIdentityRole.assistant,
                 timestamp: message.timestamp,
               );
-              final mapped = mapAssistantMessage(
+              final mapped = _mapAssistantMessage(
                 sessionId: sessionId,
                 messageId: messageId,
                 message: message,
+                warnings: warnings,
               );
               final draft = _MessageDraft(info: mapped.info, parts: mapped.parts.toList());
               for (var index = 0; index < draft.parts.length; index++) {
@@ -252,29 +294,13 @@ final class PiHistoryMapper({
                   attachments: mapped.attachments,
                 ),
               );
-            case PiBashExecutionMessageDto(
-              :final command,
-              :final output,
-              :final exitCode,
-              :final cancelled,
-              :final timestamp,
-            ):
-              final messageId = identities.next(role: PiMessageIdentityRole.bashExecution, timestamp: timestamp);
-              final failed = cancelled || (exitCode != null && exitCode != 0);
-              final clippedOutput = _clip(output);
-              final visibleOutput = clippedOutput.isEmpty ? null : clippedOutput;
-              messages.add(
-                _toolMessage(
-                  sessionId: sessionId,
-                  messageId: messageId,
-                  timestamp: timestamp,
-                  tool: "bash",
-                  title: _clip(command),
-                  output: failed ? null : visibleOutput,
-                  error: failed ? visibleOutput : null,
-                  status: failed ? PluginToolStatus.error : PluginToolStatus.completed,
-                ),
+            case final PiBashExecutionMessageDto message:
+              final messageId = identities.next(
+                role: PiMessageIdentityRole.bashExecution,
+                timestamp: message.timestamp,
               );
+              final mapped = mapBashExecution(sessionId: sessionId, messageId: messageId, message: message);
+              messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
             case PiCustomMessageDto(:final content, :final display, :final timestamp):
               final messageId = identities.next(role: PiMessageIdentityRole.custom, timestamp: timestamp);
               if (!display) continue;

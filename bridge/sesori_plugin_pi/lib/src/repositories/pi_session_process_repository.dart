@@ -74,12 +74,16 @@ final class PiSessionProcessRepository({
 
     try {
       final history = await _readHistory(resolved: resolved);
-      return _historyMapper.map(
+      final mapped = _identityTracker.hydrate(
         sessionId: sessionId,
-        entries: history.entries,
-        leafId: history.leafId,
-        identities: _identityTracker.rebuild(sessionId: sessionId),
+        map: (identities) => _historyMapper.map(
+          sessionId: sessionId,
+          entries: history.entries,
+          leafId: history.leafId,
+          identities: identities,
+        ),
       );
+      return mapped;
     } on Object catch (error, stack) {
       _throwLoadFailure(path: resolved.path, error: error, stack: stack);
     }
