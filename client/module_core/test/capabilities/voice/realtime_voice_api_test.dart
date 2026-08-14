@@ -21,19 +21,45 @@ class _TokenProvider extends Mock implements AuthTokenProvider {
   }
 }
 
+class _NullTokenProvider() extends Mock implements AuthTokenProvider {
+  @override
+  Future<String?> getFreshAccessToken({
+    Duration minTtl = const Duration(seconds: 30),
+    bool forceRefresh = false,
+  }) async {
+    return null;
+  }
+}
+
 // ignore: use_primary_constructors, fake state is clearer with field declarations
 class _Connector implements RealtimeWebSocketConnector {
   final channel = _FakeChannel();
+  final Completer<WebSocketChannel> connectCompleter = Completer<WebSocketChannel>();
   Uri? uri;
   Map<String, String>? headers;
   Duration? connectTimeout;
+  bool useDelayedConnect = false;
 
   @override
-  WebSocketChannel connect(Uri uri, {required Map<String, String> headers, required Duration connectTimeout}) {
+  Future<WebSocketChannel> connect(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Duration connectTimeout,
+  }) async {
     this.uri = uri;
     this.headers = headers;
     this.connectTimeout = connectTimeout;
+    if (useDelayedConnect) {
+      return await connectCompleter.future;
+    }
     return channel;
+  }
+
+  void completeConnect() {
+    channel.completeReady();
+    if (!connectCompleter.isCompleted) {
+      connectCompleter.complete(channel);
+    }
   }
 }
 
@@ -137,6 +163,7 @@ void main() {
 
   test("Given an async WebSocket connection When starting Then waits for ready before sending start", () async {
     connector = _Connector();
+    connector.useDelayedConnect = true;
     api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
 
     final startFuture = api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
@@ -144,7 +171,7 @@ void main() {
 
     expect(connector.channel.outbound, isEmpty);
 
-    connector.channel.completeReady();
+    connector.completeConnect();
     final session = await startFuture;
 
     expect(jsonDecode(connector.channel.outbound.single! as String), {
@@ -160,18 +187,32 @@ void main() {
     "Given the WebSocket handshake fails asynchronously When starting Then closes and propagates ready error",
     () async {
       connector = _Connector();
+      connector.useDelayedConnect = true;
       api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
-      final error = StateError("handshake failed");
+      final error = RealtimeVoiceOpenAuthenticationException(cause: StateError("unauthorized"), httpStatus: 401);
 
       final startFuture = api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
       await pumpEventQueue();
-      connector.channel.failReady(error);
+      connector.connectCompleter.completeError(error);
 
       await expectLater(startFuture, throwsA(same(error)));
       expect(connector.channel.outbound, isEmpty);
-      expect(connector.channel.closeCode, 1000);
     },
   );
+
+  test("Given no fresh token When starting Then throws provider-neutral authentication open failure", () async {
+    api = RealtimeVoiceApi(connector: connector, tokenProvider: _NullTokenProvider());
+
+    await expectLater(
+      api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null),
+      throwsA(
+        isA<RealtimeVoiceOpenAuthenticationException>()
+            .having((error) => error.cause, "cause", isNull)
+            .having((error) => error.httpStatus, "httpStatus", isNull),
+      ),
+    );
+    expect(connector.uri, isNull);
+  });
 
   test("Given a realtime session When sending audio and finish Then forwards binary and waits for terminal", () async {
     final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 48000), projectKey: null);

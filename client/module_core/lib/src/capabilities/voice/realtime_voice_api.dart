@@ -9,8 +9,6 @@ import "package:web_socket_channel/web_socket_channel.dart";
 import "realtime_voice_protocol.dart";
 import "realtime_websocket_connector.dart";
 
-final class const RealtimeVoiceAuthenticationException() implements Exception;
-
 final class const RealtimeVoiceTransportClosedException() implements Exception;
 
 const realtimeVoiceConnectTimeout = Duration(seconds: 10);
@@ -23,19 +21,13 @@ class RealtimeVoiceApi({
   Future<RealtimeVoiceSession> start({required RealtimeAudioFormat audio, required String? projectKey}) async {
     final token = await tokenProvider.getFreshAccessToken();
     if (token == null) {
-      throw const RealtimeVoiceAuthenticationException();
+      throw const RealtimeVoiceOpenAuthenticationException(cause: null, httpStatus: null);
     }
-    final channel = connector.connect(
+    final channel = await connector.connect(
       Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
       headers: {"Authorization": "Bearer $token"},
       connectTimeout: realtimeVoiceConnectTimeout,
     );
-    try {
-      await channel.ready;
-    } on Object {
-      await channel.sink.close(realtimeNormalCloseCode);
-      rethrow;
-    }
     final session = RealtimeVoiceSession(channel);
     session._initialize();
     session._sendJson(RealtimeStartMessage(audio: audio, projectKey: projectKey).toJson());
