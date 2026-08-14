@@ -235,6 +235,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
         voiceApi: gh<_i948.VoiceApi>(),
+        realtimeVoiceApi: gh<_i948.RealtimeVoiceApi>(),
         recorder: gh<_i1039.AudioRecorder>(),
         recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
         fileProvider: gh<_i62.RecordingFileProvider>(),
