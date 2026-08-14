@@ -8,6 +8,7 @@ final pregoCatalogDarkTheme = _buildPregoTheme(designSystem: PregoDesignSystem.d
 
 material.ThemeData _buildPregoTheme({required PregoDesignSystem designSystem}) => material.ThemeData(
   colorScheme: designSystem.colors.toFlutterColorScheme(),
+  scaffoldBackgroundColor: designSystem.colors.bgSurface1,
   textTheme: designSystem.textTheme.asFlutterTextTheme(),
   fontFamily: PregoTextTheme.fontFamily,
   fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
