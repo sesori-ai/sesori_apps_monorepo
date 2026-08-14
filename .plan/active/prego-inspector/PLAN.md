@@ -149,6 +149,11 @@ Single follow-up PR after #906 merges:
 
 `⚙️ Add a PREGO-aware design catalog inspector`
 
+The implementation commit is expected to slightly exceed the 1,500-line soft
+cap because 470 lines are a mechanically generated token index. The handwritten
+implementation and focused tests remain below the cap, and splitting the index
+from its only consumer would not produce an independently useful review unit.
+
 Expected result: reviewers can inspect elements and sub-elements by hover or
 pin, see resolved styling and honest PREGO token matches, navigate nested hit
 targets, and use the catalog normally when inspection is disabled. There is no

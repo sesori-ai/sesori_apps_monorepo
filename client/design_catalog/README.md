@@ -38,6 +38,8 @@ The focused viewport menu covers iPhone SE, iPhone 16 Pro, iPhone 16 Pro Max,
 Google Pixel 10 Pro, and Samsung Galaxy S26 Ultra, plus an unconstrained mode.
 Android logical dimensions represent default app viewports; display-size and
 system-navigation settings can change the effective size on physical devices.
+Each phone preset also selects its production interaction behavior: iPhone
+presets use the iOS press animation and Android presets use the Material ripple.
 
 ## Canvas backgrounds
 
@@ -45,6 +47,18 @@ Use **Addons → Canvas background** to place the current component on Prego's
 surface and brand background tokens. The selected semantic token resolves
 against the active light or dark Prego theme and is stored in the URL, so an
 exact interactive preview can be shared with another reviewer.
+
+## Inspect rendered values
+
+Enable **Addons → Inspector**, then hover any rendered text, decoration,
+padding, constraint, layout, or semantic element. The hover card shows its
+logical size and the strongest PREGO token matches available from the computed
+Flutter value. Click to pin the full details panel, use **[** and **]** (or the
+panel arrows) to move through nested elements, and press **Escape** to clear.
+
+Token names are value matches, not source-code provenance. When multiple PREGO
+variables resolve to the same value, the inspector shows the ambiguity and
+does not offer to copy an arbitrary token reference.
 
 The catalog must use synthetic examples only. It must not import production
 authentication, routing, relay, analytics, credentials, or service setup.
