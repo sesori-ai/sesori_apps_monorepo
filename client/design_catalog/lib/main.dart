@@ -3,6 +3,7 @@ import "package:widgetbook/widgetbook.dart";
 
 import "src/prego_button_catalog.dart";
 import "src/prego_catalog_theme.dart";
+import "src/prego_catalog_viewports.dart";
 
 void main() {
   runApp(const DesignCatalogApp());
@@ -18,7 +19,7 @@ class const DesignCatalogApp({super.key}) extends StatelessWidget {
       appBuilder: buildPregoCatalogApp,
       addons: [
         buildPregoThemeAddon(),
-        ViewportAddon(const [Viewports.none, IosViewports.iPhone13, AndroidViewports.samsungGalaxyS20]),
+        ViewportAddon(PregoCatalogViewports.all),
         AlignmentAddon(),
         TextScaleAddon(min: 1, max: 2),
         // ignore: experimental_member_use, Widgetbook 3.25 marks this audit addon experimental

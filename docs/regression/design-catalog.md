@@ -27,7 +27,9 @@ a static Flutter Web application.
   production-invalid widget.
 - Exercise hover, press, focus, enabled, disabled, loading, icon-only, and
   full-width behavior in both Prego themes.
-- Resize freely and use at least one iOS and one Android viewport.
+- Exercise the compact iPhone SE, an iPhone 16 Pro size, and both the Pixel and
+  Galaxy Android presets. Treat Android dimensions as representative because
+  display-size and system-navigation settings can change the logical viewport.
 - Compare an individual scenario with the same card in the all-states matrix.
 - Confirm `web/catalog_manifest.json` changes only after the typed registry is
   intentionally changed and regenerated.
@@ -37,6 +39,7 @@ a static Flutter Web application.
 - `.github/workflows/design-catalog-preview.yml`
 - `client/design_catalog/Makefile`
 - `client/design_catalog/README.md`
+- `client/design_catalog/lib/src/prego_catalog_viewports.dart`
 - `client/design_catalog/lib/src/catalog_scenarios.dart`
 - `client/design_catalog/lib/src/prego_button_catalog.dart`
 - `client/design_catalog/test/`
