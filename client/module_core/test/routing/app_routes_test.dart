@@ -24,7 +24,10 @@ void main() {
     });
 
     test("settings Harnesses route without a known presentation decodes as a modal", () {
-      for (final queryParams in [const <String, String>{}, const {harnessSettingsPresentationQueryParam: "sheet"}]) {
+      for (final queryParams in [
+        const <String, String>{},
+        const {harnessSettingsPresentationQueryParam: "sheet"},
+      ]) {
         expect(
           AppRoute.fromDef(
             def: AppRouteDef.settingsHarnesses,
@@ -45,35 +48,16 @@ void main() {
       expect(AppRouteDef.values.map((def) => def.path), isNot(contains("/settings/harnesses/manage")));
     });
 
-    test("sessions round-trips the known worktree capability", () {
-      const route = AppRoute.sessions(
-        projectId: "project-1",
-        projectName: "Project One",
-        supportsDedicatedWorktrees: false,
-      );
+    test("sessions ignores legacy worktree capability query parameters", () {
+      final decoded = AppRoute.fromDef(
+        def: AppRouteDef.sessions,
+        pathParams: const {"projectId": "project-1"},
+        queryParams: const {"name": "Project One", "supportsDedicatedWorktrees": "false"},
+      ) as AppRouteSessions;
 
-      final uri = Uri.parse(route.buildPath());
-      final decoded =
-          AppRoute.fromDef(
-                def: AppRouteDef.sessions,
-                pathParams: {"projectId": uri.pathSegments[1]},
-                queryParams: uri.queryParameters,
-              )
-              as AppRouteSessions;
-
-      expect(decoded.supportsDedicatedWorktrees, isFalse);
-    });
-
-    test("sessions keeps an omitted worktree capability unknown", () {
-      final decoded =
-          AppRoute.fromDef(
-                def: AppRouteDef.sessions,
-                pathParams: const {"projectId": "project-1"},
-                queryParams: const {},
-              )
-              as AppRouteSessions;
-
-      expect(decoded.supportsDedicatedWorktrees, isNull);
+      expect(decoded.projectId, "project-1");
+      expect(decoded.projectName, "Project One");
+      expect(decoded.buildPath(), "/projects/project-1/sessions?name=Project+One");
     });
 
     test("session detail with name encodes path params exactly once and round-trips", () {

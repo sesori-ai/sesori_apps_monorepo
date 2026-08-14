@@ -1,7 +1,6 @@
 const bundleId = "com.sesori.app";
 const redirectUri = "$bundleId://auth/callback";
 const projectNameQueryParam = "name";
-const supportsDedicatedWorktreesQueryParam = "supportsDedicatedWorktrees";
 const projectIdPathParam = "projectId";
 const sessionIdPathParam = "sessionId";
 const harnessSettingsPresentationQueryParam = "presentation";
@@ -88,7 +87,6 @@ sealed class const AppRoute() {
   const factory sessions({
     required String projectId,
     required String? projectName,
-    required bool? supportsDedicatedWorktrees,
   }) = AppRouteSessions;
   const factory newSession({
     required String projectId,
@@ -216,11 +214,9 @@ class const AppRouteSettingsProfile() extends AppRoute {
 class const AppRouteSessions({
   required final String projectId,
   required final String? projectName,
-  required final bool? supportsDedicatedWorktrees,
 }) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
-  static const _supportsDedicatedWorktreesQueryParam = supportsDedicatedWorktreesQueryParam;
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory fromParams({
@@ -230,11 +226,6 @@ class const AppRouteSessions({
     return AppRouteSessions(
       projectId: pathParams[_projectIdPathParam] ?? "",
       projectName: queryParams[_nameQueryParam],
-      supportsDedicatedWorktrees: switch (queryParams[_supportsDedicatedWorktreesQueryParam]) {
-        "true" => true,
-        "false" => false,
-        _ => null,
-      },
     );
   }
 
@@ -246,7 +237,6 @@ class const AppRouteSessions({
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions";
     final queryParams = <String, String>{
       _nameQueryParam: ?projectName,
-      _supportsDedicatedWorktreesQueryParam: ?supportsDedicatedWorktrees?.toString(),
     };
     return _appendQuery(path: base, queryParameters: queryParams);
   }

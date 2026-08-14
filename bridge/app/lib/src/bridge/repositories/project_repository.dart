@@ -2,9 +2,9 @@ import "dart:io" show FileSystemException;
 import "dart:math" show max;
 
 import "package:path/path.dart" as p;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
+import "package:sesori_shared/sesori_shared.dart" show Project, ProjectSummary, ProjectTime;
 
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
@@ -29,22 +29,21 @@ class ProjectRepository({
 }) {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
+  static const int _maxConcurrentWorktreeInspections = 8;
+  final ParallelLock _worktreeInspectionLock = ParallelLock(
+    maxParallelOperations: _maxConcurrentWorktreeInspections,
+  );
 
-  Future<List<Project>> getProjects() async {
+  Future<List<ProjectSummary>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
-    final worktreeCapabilities = await Future.wait([
-      for (final row in rows) _supportsDedicatedWorktrees(path: row.path),
-    ]);
     return [
-      for (final (index, row) in rows.indexed)
-        _projectCatalogMapper.map(
+      for (final row in rows)
+        _projectCatalogMapper.mapSummary(
           row: row,
           hasUnseenChanges: unseenById[row.projectId] ?? false,
-          directoryMissing: false,
-          supportsDedicatedWorktrees: worktreeCapabilities[index],
         ),
     ];
   }
@@ -86,11 +85,11 @@ class ProjectRepository({
     if (row == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
-    return _projectCatalogMapper.map(
+    return _projectCatalogMapper.mapProject(
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
       directoryMissing: false,
-      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: row.path),
+      supportsDedicatedWorktrees: await _inspectDedicatedWorktreeSupport(path: row.path),
     );
   }
 
@@ -181,17 +180,18 @@ class ProjectRepository({
     if (existing == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
+    final supportsDedicatedWorktrees = await _supportsDedicatedWorktrees(path: existing.path);
     await _projectsDao.setDisplayName(
       projectId: projectId,
       displayName: name,
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
     final row = (await _projectsDao.getProject(projectId: projectId))!;
-    return _projectCatalogMapper.map(
+    return _projectCatalogMapper.mapProject(
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
       directoryMissing: _directoryMissing(row.path),
-      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: row.path),
+      supportsDedicatedWorktrees: supportsDedicatedWorktrees,
     );
   }
 
@@ -262,13 +262,19 @@ class ProjectRepository({
 
   Future<bool> _supportsDedicatedWorktrees({required String path}) async {
     try {
-      if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
-      return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
+      return await _inspectDedicatedWorktreeSupport(path: path);
     } on Object catch (error, stackTrace) {
       Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
       return false;
     }
   }
+
+  Future<bool> _inspectDedicatedWorktreeSupport({required String path}) => _worktreeInspectionLock.use(
+    operation: () async {
+      if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
+      return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
+    },
+  );
 
   static ProjectTime _activityToTime(ProjectActivity activity) {
     return ProjectTime(created: activity.createdAt, updated: activity.updatedAt);

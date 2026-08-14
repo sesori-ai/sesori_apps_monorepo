@@ -94,9 +94,10 @@ void main() {
       (_) async => ApiResponse.success(
         const Projects(
           data: [
-            Project(
+            ProjectSummary(
               id: "p1",
               name: "Project One",
+              path: "/projects/p1",
               time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
@@ -156,13 +157,13 @@ void main() {
     expect(tile.selected, isTrue);
   });
 
-  testWidgets("wide detail back returns to the sessions list route", (tester) async {
+  testWidgets("wide detail back returns to a sessions route with legacy query parameters", (tester) async {
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(1024, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     addTearDown(harness.tearDown);
     await harness.setUp(
-      initialLocation: "/projects/p1/sessions",
+      initialLocation: "/projects/p1/sessions?supportsDedicatedWorktrees=false",
       currentRouteDef: AppRouteDef.sessions,
       sessionsByProject: {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
@@ -263,9 +264,10 @@ void main() {
       (_) async => ApiResponse.success(
         const Projects(
           data: [
-            Project(
+            ProjectSummary(
               id: "p1",
               name: "Project One",
+              path: "/projects/p1",
               time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
@@ -316,9 +318,10 @@ void main() {
       (_) async => ApiResponse.success(
         const Projects(
           data: [
-            Project(
+            ProjectSummary(
               id: "p1",
               name: "Project One",
+              path: "/projects/p1",
               time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],

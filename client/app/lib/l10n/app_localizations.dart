@@ -2815,6 +2815,18 @@ abstract class AppLocalizations {
   /// **'Refresh the model list'**
   String get newSessionOptionsRefresh;
 
+  /// No description provided for @newSessionProjectRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry project check'**
+  String get newSessionProjectRefresh;
+
+  /// No description provided for @newSessionProjectUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.'**
+  String get newSessionProjectUnavailable;
+
   /// No description provided for @newSessionOptionsCached.
   ///
   /// In en, this message translates to:

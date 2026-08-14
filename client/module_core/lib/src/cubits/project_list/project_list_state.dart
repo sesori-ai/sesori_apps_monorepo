@@ -10,7 +10,7 @@ sealed class ProjectListState with _$ProjectListState {
   const factory loading() = ProjectListLoading;
 
   const factory loaded({
-    required List<Project> projects,
+    required List<ProjectSummary> projects,
     required Map<String, int> activityById,
 
     /// Map of project ID -> whether it has unseen changes (bold title). Merges

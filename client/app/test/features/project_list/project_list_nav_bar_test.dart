@@ -204,7 +204,7 @@ void main() {
     /// A one-project list, the payload the loaded-bar tests use.
     ApiResponse<Projects> oneProject() {
       final projects = Projects(
-        data: [testProject(id: "p1", name: "app")],
+        data: [testProjectSummary(id: "p1", name: "app")],
       );
       return ApiResponse.success(projects);
     }

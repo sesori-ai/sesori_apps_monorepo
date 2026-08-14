@@ -25,7 +25,6 @@ class const NewSessionScreen({
   super.key,
   required final String projectId,
   required final String? projectName,
-  required final bool? initialSupportsDedicatedWorktrees,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -40,7 +39,6 @@ class const NewSessionScreen({
         composerDraftRepository: getIt<ComposerDraftRepository>(),
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         projectId: projectId,
-        initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
       ),
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );
@@ -187,6 +185,9 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     if (data == null || plugin == null || !plugin.isRoutable || data.isLoading) return null;
 
     final loc = context.loc;
+    if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
+      return (message: loc.newSessionProjectUnavailable, isFailure: true);
+    }
     return switch (data.optionsState) {
       NewSessionOptionsFailureState(:final reason) => (message: reason.localizedMessage(loc), isFailure: true),
       NewSessionOptionsFailureRetainedState() => (message: loc.newSessionOptionsUpdateFailedRetained, isFailure: true),
@@ -238,7 +239,11 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   /// When harness discovery itself failed before identifying a harness, it
   /// retries discovery instead and says so. A confirmed empty harness list has
   /// its own notice and no refresh action.
-  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isHarnessDiscovery}) {
+  Widget _buildOptionsRefresh({
+    required NewSessionCubit cubit,
+    required bool isHarnessDiscovery,
+    required bool isProjectUnavailable,
+  }) {
     return Positioned(
       bottom: _refreshBottomGap,
       left: 0,
@@ -246,7 +251,11 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
       child: Center(
         child: PregoButtonsSolid(
           key: const Key("new_session_options_refresh"),
-          label: isHarnessDiscovery ? context.loc.newSessionHarnessesRefresh : context.loc.newSessionOptionsRefresh,
+          label: isHarnessDiscovery
+              ? context.loc.newSessionHarnessesRefresh
+              : isProjectUnavailable
+              ? context.loc.newSessionProjectRefresh
+              : context.loc.newSessionOptionsRefresh,
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           leadingIcon: TablerRegular.refresh,
@@ -306,7 +315,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
           ),
         ),
         if (status != null) _buildOptionsStatus(status: status),
-        if (data.supportsDedicatedWorktrees) ...[
+        if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported) ...[
           if (hasPlugins) const SizedBox(height: _optionRowSpacing),
           _DedicatedWorkspaceRow(
             value: _dedicatedWorktree,
@@ -326,6 +335,8 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     final composerData = state.agentModelData;
     final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
     final hasNoHarnesses = cubit.hasNoHarnesses;
+    final isProjectUnavailable =
+        composerData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
     // A confirmed empty harness list is explained by the notice and has no
     // refresh action. Keep discovery retry available only when discovery failed
@@ -426,7 +437,12 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                             hasNoHarnesses: hasNoHarnesses,
                           ),
                         ),
-                        if (showsRefresh) _buildOptionsRefresh(cubit: cubit, isHarnessDiscovery: needsHarnessDiscovery),
+                        if (showsRefresh)
+                          _buildOptionsRefresh(
+                            cubit: cubit,
+                            isHarnessDiscovery: needsHarnessDiscovery,
+                            isProjectUnavailable: isProjectUnavailable,
+                          ),
                       ],
                     ),
                   ),

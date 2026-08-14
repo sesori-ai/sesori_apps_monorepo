@@ -7,7 +7,35 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("ProjectCatalogMapper applies name precedence and maps catalog timestamps", () {
+  test("ProjectCatalogMapper maps durable summary fields", () {
+    const mapper = ProjectCatalogMapper();
+    const base = ProjectDto(
+      projectId: "project-1",
+      path: "/projects/repository",
+      displayName: null,
+      prCacheGithubLogin: null,
+      createdAt: 10,
+      updatedAt: 20,
+      projectionUpdatedAt: 20,
+    );
+
+    expect(
+      mapper.mapSummary(row: base, hasUnseenChanges: true),
+      const ProjectSummary(
+        id: "project-1",
+        name: "repository",
+        path: "/projects/repository",
+        time: ProjectTime(created: 10, updated: 20),
+        hasUnseenChanges: true,
+      ),
+    );
+    expect(
+      mapper.mapSummary(row: base.copyWith(displayName: "Renamed"), hasUnseenChanges: false).name,
+      "Renamed",
+    );
+  });
+
+  test("ProjectCatalogMapper maps selected-project capabilities", () {
     const mapper = ProjectCatalogMapper();
     const base = ProjectDto(
       projectId: "project-1",
@@ -21,29 +49,7 @@ void main() {
 
     expect(
       mapper
-          .map(
-            row: base,
-            hasUnseenChanges: true,
-            directoryMissing: false,
-            supportsDedicatedWorktrees: true,
-          )
-          .name,
-      "repository",
-    );
-    expect(
-      mapper
-          .map(
-            row: base.copyWith(displayName: "Renamed"),
-            hasUnseenChanges: false,
-            directoryMissing: true,
-            supportsDedicatedWorktrees: false,
-          )
-          .name,
-      "Renamed",
-    );
-    expect(
-      mapper
-          .map(
+          .mapProject(
             row: base,
             hasUnseenChanges: false,
             directoryMissing: false,

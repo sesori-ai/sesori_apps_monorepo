@@ -58,7 +58,6 @@ void main() {
       final result = const AppRoute.sessions(
         projectId: "proj-123",
         projectName: null,
-        supportsDedicatedWorktrees: null,
       ).buildPath();
       expect(result, "/projects/proj-123/sessions");
     });
@@ -78,7 +77,6 @@ void main() {
       final result = const AppRoute.sessions(
         projectId: "proj-123",
         projectName: "My Project",
-        supportsDedicatedWorktrees: null,
       ).buildPath();
       expect(result, contains("/projects/proj-123/sessions?"));
       expect(result, contains("name=My+Project"));
@@ -88,7 +86,6 @@ void main() {
       final result = const AppRoute.sessions(
         projectId: "proj-123",
         projectName: null,
-        supportsDedicatedWorktrees: null,
       ).buildPath();
       expect(result, "/projects/proj-123/sessions");
       expect(result, isNot(contains("?")));
@@ -445,7 +442,6 @@ void main() {
             const AppRoute.sessions(
               projectId: "proj_1",
               projectName: null,
-              supportsDedicatedWorktrees: null,
             ).buildPath(),
             const AppRoute.sessionDetail(
               projectId: "proj_1",
@@ -466,7 +462,6 @@ void main() {
           const AppRoute.sessions(
             projectId: "proj_1",
             projectName: null,
-            supportsDedicatedWorktrees: null,
           ).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "proj_1",

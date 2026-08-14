@@ -35,13 +35,13 @@ class SessionCreationService({
     final worktreeResult = await _prepareWorktree(request: request);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
-      dedicatedWorktree: request.dedicatedWorktree,
+      projectDirectory: projectDirectory,
       worktreeResult: worktreeResult,
     );
     final created = await _sessionRepository.createSession(
       pluginId: request.pluginId,
       projectId: request.projectId,
-      directory: _resolveDirectory(projectDirectory: projectDirectory, worktreeResult: worktreeResult),
+      directory: worktreeState.directory,
       parentSessionId: null,
       parts: _buildPromptParts(
         parts: request.parts,
@@ -52,7 +52,7 @@ class SessionCreationService({
       variant: request.variant,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
-      isDedicated: request.dedicatedWorktree,
+      isDedicated: worktreeState.isDedicated,
       worktreePath: worktreeState.worktreePath,
       branchName: worktreeState.branchName,
       baseBranch: worktreeState.baseBranch,
@@ -143,22 +143,6 @@ class SessionCreationService({
     return parts;
   }
 
-  /// The working directory the new session runs in: the dedicated worktree
-  /// when one was created, otherwise the project's live directory. The
-  /// request's projectId is the stable identifier — it may point where the
-  /// folder used to be, so it is never used as a directory directly.
-  String _resolveDirectory({
-    required String projectDirectory,
-    required WorktreeResult? worktreeResult,
-  }) {
-    return switch (worktreeResult) {
-      WorktreeSuccess(:final path) => path,
-      // The fallback carries the live project directory it fell back to.
-      WorktreeFallback(:final originalPath) => originalPath,
-      null => projectDirectory,
-    };
-  }
-
   Future<void> _maybeSendCommand({
     required Session session,
     required String? command,
@@ -201,34 +185,35 @@ class SessionCreationService({
     return userArguments;
   }
 
-  Future<({String? worktreePath, String? branchName, String? baseBranch, String? baseCommit})> _resolveWorktreeState({
+  Future<_SessionCreationWorktreeState> _resolveWorktreeState({
     required String projectId,
-    required bool dedicatedWorktree,
+    required String projectDirectory,
     required WorktreeResult? worktreeResult,
   }) async {
-    if (worktreeResult case WorktreeSuccess(
-      :final path,
-      branchName: final resolvedBranchName,
-      baseBranch: final resolvedBaseBranch,
-      baseCommit: final resolvedBaseCommit,
-    )) {
-      return (
-        worktreePath: path,
-        branchName: resolvedBranchName,
-        baseBranch: resolvedBaseBranch,
-        baseCommit: resolvedBaseCommit,
-      );
-    }
-    if (dedicatedWorktree) {
-      return (worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
+    final String directory;
+    switch (worktreeResult) {
+      case WorktreeSuccess(
+        :final path,
+        branchName: final resolvedBranchName,
+        baseBranch: final resolvedBaseBranch,
+        baseCommit: final resolvedBaseCommit,
+      ):
+        return _DedicatedSessionCreationWorktreeState(
+          path: path,
+          branchName: resolvedBranchName,
+          baseBranch: resolvedBaseBranch,
+          baseCommit: resolvedBaseCommit,
+        );
+      case WorktreeFallback(:final originalPath):
+        directory = originalPath;
+      case null:
+        directory = projectDirectory;
     }
     final startCommit = await _worktreeService.resolveHeadCommit(projectId: projectId);
     // In-place sessions have no branch baseline. The immutable HEAD commit is
     // their exact comparison point even when local changes already exist.
-    return (
-      worktreePath: null,
-      branchName: null,
-      baseBranch: null,
+    return _InPlaceSessionCreationWorktreeState(
+      directory: directory,
       baseCommit: startCommit,
     );
   }
@@ -282,4 +267,46 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
     beginShutdown();
     await Future.wait(_lateTitleWork.toList(growable: false));
   }
+}
+
+sealed class _SessionCreationWorktreeState() {
+  String get directory;
+  bool get isDedicated;
+  String? get worktreePath;
+  String? get branchName;
+  String? get baseBranch;
+  String? get baseCommit;
+}
+
+class _DedicatedSessionCreationWorktreeState({
+  required final String path,
+  @override required final String branchName,
+  @override required final String baseBranch,
+  @override required final String baseCommit,
+}) implements _SessionCreationWorktreeState {
+  @override
+  String get directory => path;
+
+  @override
+  bool get isDedicated => true;
+
+  @override
+  String get worktreePath => path;
+}
+
+class _InPlaceSessionCreationWorktreeState({
+  @override required final String directory,
+  @override required final String? baseCommit,
+}) implements _SessionCreationWorktreeState {
+  @override
+  bool get isDedicated => false;
+
+  @override
+  String? get worktreePath => null;
+
+  @override
+  String? get branchName => null;
+
+  @override
+  String? get baseBranch => null;
 }

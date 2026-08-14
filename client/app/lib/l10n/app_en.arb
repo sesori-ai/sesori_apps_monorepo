@@ -828,6 +828,8 @@
   "newSessionHarnessesRefresh": "Check for harnesses",
   "newSessionOptionsLoadingSemantics": "Loading session options",
   "newSessionOptionsRefresh": "Refresh the model list",
+  "newSessionProjectRefresh": "Retry project check",
+  "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",
   "newSessionOptionsLoadFailedUnavailable": "Couldn’t load options. You can create with defaults or try again.",

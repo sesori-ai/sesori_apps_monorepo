@@ -1,5 +1,4 @@
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
-import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -112,7 +111,6 @@ extension on AppRoute {
       AppRouteNewSession(:final projectId, :final projectName) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
-        initialSupportsDedicatedWorktrees: null,
       ),
       AppRouteSessionDetail(
         :final projectId,
@@ -255,19 +253,12 @@ List<RouteBase> _buildAppRoutes({
           builder: (context, state, child) {
             final projectId = state.pathParameters[projectIdPathParam] ?? "";
             final projectName = state.uri.queryParameters[projectNameQueryParam];
-            final supportsDedicatedWorktrees =
-                switch (state.uri.queryParameters[supportsDedicatedWorktreesQueryParam]) {
-                  "true" => true,
-                  "false" => false,
-                  _ => null,
-                };
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
             final projectViewingService = getIt<ProjectViewingService>();
 
             return SessionListCubitProvider(
               key: ValueKey("session-list-cubit-$projectId"),
               projectId: projectId,
-              initialSupportsDedicatedWorktrees: supportsDedicatedWorktrees,
               child: SessionSplitShell(
                 projectViewingService: projectViewingService,
                 list: _SessionListPane(
@@ -321,9 +312,6 @@ List<RouteBase> _buildAppRoutes({
                       child: NewSessionScreen(
                         projectId: route.projectId,
                         projectName: route.projectName,
-                        initialSupportsDedicatedWorktrees: context
-                            .read<SessionListCubit>()
-                            .initialSupportsDedicatedWorktrees,
                       ),
                     );
                   },

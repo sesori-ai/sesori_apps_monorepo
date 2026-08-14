@@ -51,7 +51,8 @@ PluginDiscoverySnapshot _pluginSnapshot({
   plugins: plugins,
 );
 
-final class _AggregateTestOptionsService({required MockSessionRepository sessionRepository}) extends NewSessionOptionsService {
+final class _AggregateTestOptionsService({required MockSessionRepository sessionRepository})
+    extends NewSessionOptionsService {
   this
     : super(
         sessionRepository: sessionRepository,
@@ -146,7 +147,6 @@ void main() {
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
       projectId: "project-1",
-      initialSupportsDedicatedWorktrees: true,
     );
 
     void establishSelectionScope({required String bridgeId}) {
@@ -240,7 +240,7 @@ void main() {
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
     });
 
-    test("failed project capability refresh preserves the prior capability", () async {
+    test("reconnect reloads project capability and failure blocks creation as unavailable", () async {
       final refresh = Completer<ApiResponse<Project>>();
       var projectCalls = 0;
       when(
@@ -268,17 +268,29 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      expect(cubit.state.agentModelData?.supportsDedicatedWorktrees, isTrue);
+      expect(
+        cubit.state.agentModelData?.projectWorktreeCapability,
+        NewSessionProjectWorktreeCapability.supported,
+      );
 
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
         ..add(connectedStatus);
       await _waitUntil(() => projectCalls == 2);
+      expect(
+        cubit.state.agentModelData?.projectWorktreeCapability,
+        NewSessionProjectWorktreeCapability.loading,
+      );
+      expect(cubit.canCreateSession, isFalse);
       refresh.complete(ApiResponse.error(ApiError.generic()));
       await _waitForComposer(cubit);
       await Future<void>.delayed(Duration.zero);
 
-      expect(cubit.state.agentModelData?.supportsDedicatedWorktrees, isTrue);
+      expect(
+        cubit.state.agentModelData?.projectWorktreeCapability,
+        NewSessionProjectWorktreeCapability.unavailable,
+      );
+      expect(cubit.canCreateSession, isFalse);
     });
 
     test("reconnect refreshes metadata, preserving a routable selection before falling back to default", () async {

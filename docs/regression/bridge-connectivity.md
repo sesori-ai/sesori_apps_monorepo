@@ -21,6 +21,8 @@ explicit restart, and the connection states the app presents.
   once and can never later authenticate.
 - One live bridge per account holds the slot; a second start resolves ownership
   explicitly, and an explicit restart hands off to its successor cleanly.
+- Bridge registration uses a stable machine name. On macOS, transient
+  network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
   disconnected, and returns to connected when the bridge is back.
 - The configured sleep policy applies at standalone startup and releases its wake lock on
@@ -34,7 +36,7 @@ explicit restart, and the connection states the app presents.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
-| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
+| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
 | L4 Extended | Relay integration or client end to end for takeover, revocation, live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, status, provisioning progress, unregister, restart sentinels, owner loss, and orphan cleanup. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
@@ -54,6 +56,7 @@ the bridge starts, how many clients are present, and whether restart is explicit
   route freezes all traffic.
 - Reconnect tight-looping, an exhausted iterator reused, or two bridges displacing each
   other without backoff.
+- A bridge registering a network-derived numeric hostname as its machine name.
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an
   app stuck reconnecting after the bridge returns.
 

@@ -627,6 +627,18 @@ Project testProject({String? id, String? path, String? name}) {
 }
 
 /// Returns a realistic [Session] instance.
+ProjectSummary testProjectSummary({String? id, String? path, String? name}) {
+  return ProjectSummary.fromJson({
+    "id": id ?? "project-1",
+    "path": path ?? "/home/user/my-project",
+    "name": name,
+    "time": {
+      "created": 1700000000000,
+      "updated": 1700000000000,
+    },
+  });
+}
+
 Session testSession({
   String? id,
   String? title,
