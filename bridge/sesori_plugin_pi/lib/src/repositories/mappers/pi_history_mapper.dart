@@ -34,6 +34,11 @@ final class PiHistoryMapper({
     return _decodeMessage(raw: raw) as PiAssistantMessageDto?;
   }
 
+  PiUserMessageDto? decodeUserMessage({required Map<String, Object?> raw}) {
+    if (raw["role"] != "user") return null;
+    return _decodeMessage(raw: raw) as PiUserMessageDto?;
+  }
+
   PiBashExecutionMessageDto? decodeBashExecutionMessage({required Map<String, Object?> raw}) {
     if (raw["role"] != "bashExecution") return null;
     return _decodeMessage(raw: raw) as PiBashExecutionMessageDto?;
@@ -84,6 +89,41 @@ final class PiHistoryMapper({
     message: message,
     warnings: <_PiHistoryWarning>{},
   );
+
+  PluginMessageWithParts? mapUserMessage({
+    required String sessionId,
+    required String messageId,
+    required PiUserMessageDto message,
+  }) => _mapUserMessage(
+    sessionId: sessionId,
+    messageId: messageId,
+    message: message,
+    warnings: <_PiHistoryWarning>{},
+  );
+
+  PluginMessageWithParts? _mapUserMessage({
+    required String sessionId,
+    required String messageId,
+    required PiUserMessageDto message,
+    required Set<_PiHistoryWarning> warnings,
+  }) {
+    final parts = _mapUserContent(
+      content: message.content,
+      sessionId: sessionId,
+      messageId: messageId,
+      warnings: warnings,
+    );
+    if (parts.isEmpty) return null;
+    return PluginMessageWithParts(
+      info: PluginMessage.user(
+        id: messageId,
+        sessionID: sessionId,
+        agent: null,
+        time: _time(message.timestamp),
+      ),
+      parts: parts,
+    );
+  }
 
   PluginMessageWithParts _mapAssistantMessage({
     required String sessionId,
@@ -274,26 +314,15 @@ final class PiHistoryMapper({
       switch (entry) {
         case PiMessageEntryDto(:final message):
           switch (message) {
-            case PiUserMessageDto(:final content, :final timestamp):
-              final messageId = identities.next(role: PiMessageIdentityRole.user, timestamp: timestamp);
-              final parts = _mapUserContent(
-                content: content,
+            case final PiUserMessageDto message:
+              final messageId = identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
+              final mapped = _mapUserMessage(
                 sessionId: sessionId,
                 messageId: messageId,
+                message: message,
                 warnings: warnings,
               );
-              if (parts.isEmpty) continue;
-              messages.add(
-                _MessageDraft(
-                  info: PluginMessage.user(
-                    id: messageId,
-                    sessionID: sessionId,
-                    agent: null,
-                    time: _time(timestamp),
-                  ),
-                  parts: parts,
-                ),
-              );
+              if (mapped != null) messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
             case final PiAssistantMessageDto message:
               final messageId = identities.next(
                 role: PiMessageIdentityRole.assistant,

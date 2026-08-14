@@ -275,8 +275,23 @@ final class PiEventDispatcher({
   }
 
   List<BridgeSseEvent> _nonAssistantEnd({required String sessionId, required Map<String, Object?> raw}) {
+    final user = _userEnd(sessionId: sessionId, raw: raw);
+    if (user.isNotEmpty) return user;
     final bash = _bashEnd(sessionId: sessionId, raw: raw);
     return bash.isNotEmpty ? bash : _customEnd(sessionId: sessionId, raw: raw);
+  }
+
+  List<BridgeSseEvent> _userEnd({required String sessionId, required Map<String, Object?> raw}) {
+    final message = _historyMapper.decodeUserMessage(raw: raw);
+    if (message == null) return const [];
+    final state = _session(sessionId);
+    final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
+    final mapped = _historyMapper.mapUserMessage(sessionId: sessionId, messageId: messageId, message: message);
+    if (mapped == null) return const [];
+    return [
+      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
+    ];
   }
 
   List<BridgeSseEvent> _customEnd({required String sessionId, required Map<String, Object?> raw}) {

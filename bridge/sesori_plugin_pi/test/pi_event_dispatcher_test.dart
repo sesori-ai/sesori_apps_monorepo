@@ -90,6 +90,36 @@ void main() {
     expect(finalEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
+  test("user message finals equal cold replay", () {
+    final raw = {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Hello from another surface"},
+      ],
+      "timestamp": 99,
+    };
+
+    final live = dispatcher.map(sessionId: sessionId, event: _event("message_end", {"message": raw}));
+    final replay = history
+        .map(
+          sessionId: sessionId,
+          entries: [
+            PiSessionEntryDto.message(
+              id: "user",
+              parentId: null,
+              timestamp: DateTime.utc(2026),
+              message: PiAgentMessageDto.fromJson(raw),
+            ),
+          ],
+          leafId: "user",
+          identities: PiMessageIdentityBuilder(pluginId: "pi", sessionId: sessionId),
+        )
+        .single;
+
+    expect((live.first as BridgeSseMessageUpdated).info, replay.info.toJson());
+    expect(live.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
+  });
+
   test("top-level custom entries preserve hidden ordinals and visible replay parity", () {
     final hidden = {
       "type": "custom_message",
