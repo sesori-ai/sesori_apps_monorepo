@@ -100,6 +100,24 @@ void main() {
     },
   );
 
+  test("Given hung capability endpoint When discovering voice support Then timeout selects async fallback", () {
+    fakeAsync((async) {
+      publicClient.hang = true;
+      VoiceCapabilitiesDiscoveryResult? result;
+      api.discoverCapabilities().then((value) {
+        result = value;
+      });
+
+      async.elapse(const Duration(seconds: 4));
+      async.flushMicrotasks();
+      expect(result, isNull);
+
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(result, isA<VoiceCapabilitiesAsyncFallback>());
+    });
+  });
+
   test(
     "Given malformed advertised capabilities When discovering voice support Then returns typed contract failure",
     () async {
