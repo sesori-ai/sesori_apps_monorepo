@@ -4,7 +4,7 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 12 merged
-- **Series state:** Step 12/21 merged; Step 13/21 ready for PR
+- **Series state:** Step 12/21 merged; Step 13/21 in PR
 - **Current step:** 13/21, Pi extension dialogs
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
@@ -19,7 +19,8 @@
 - **Step 10 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/884
 - **Step 11 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/892
 - **Step 12 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/905
-- **Next action:** open and monitor the Step 13 PR, then start Step 14 locally
+- **Step 13 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/910
+- **Next action:** monitor the Step 13 PR while starting Step 14 locally
 
 ## Locked Decisions
 
@@ -58,7 +59,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 10/21 | `🚧 [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 (recorded overage) | Merged as PR #884 |
 | [x] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Merged as PR #892 |
 | [x] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 (recorded overage) | Merged as PR #905 |
-| [ ] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Ready for PR |
+| [ ] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | PR #910 open |
 | [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 | Not started |
 | [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Not started |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 | Not started |
@@ -418,7 +419,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   `git diff --check`: pass.
 - No current user-visible, database, persisted-data, analytics, or registered
   plugin impact; Pi remains app-invisible until Step 18.
-- Diff: +858/-7 = 865 changed lines; generated lines: 0; tests run: 167.
+- Diff: +859/-7 = 866 changed lines; generated lines: 0; tests run: 167.
 
 ## Findings And Plan Deltas
 
