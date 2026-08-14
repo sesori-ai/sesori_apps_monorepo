@@ -1,10 +1,8 @@
-import "dart:async" show Completer;
-import "dart:collection" show Queue;
 import "dart:io" show FileSystemException;
 import "dart:math" show max;
 
 import "package:path/path.dart" as p;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
@@ -32,8 +30,9 @@ class ProjectRepository({
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
   static const int _maxConcurrentWorktreeInspections = 8;
-  final Queue<Completer<void>> _worktreeInspectionWaiters = Queue<Completer<void>>();
-  int _activeWorktreeInspections = 0;
+  final ParallelLock _worktreeInspectionLock = ParallelLock(
+    maxParallelOperations: _maxConcurrentWorktreeInspections,
+  );
 
   Future<List<Project>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
@@ -263,18 +262,17 @@ class ProjectRepository({
     }
   }
 
-  Future<bool> _supportsDedicatedWorktrees({required String path}) async {
-    await _acquireWorktreeInspectionSlot();
-    try {
-      if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
-      return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
-    } on Object catch (error, stackTrace) {
-      Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
-      return false;
-    } finally {
-      _releaseWorktreeInspectionSlot();
-    }
-  }
+  Future<bool> _supportsDedicatedWorktrees({required String path}) => _worktreeInspectionLock.use(
+    operation: () async {
+      try {
+        if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
+        return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
+      } on Object catch (error, stackTrace) {
+        Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
+        return false;
+      }
+    },
+  );
 
   Future<List<bool>> _inspectWorktreeCapabilities({required List<ProjectDto> rows}) async {
     final capabilities = List<bool>.filled(rows.length, false);
@@ -291,24 +289,6 @@ class ProjectRepository({
       for (var worker = 0; worker < _maxConcurrentWorktreeInspections && worker < rows.length; worker++) inspectNext(),
     ]);
     return capabilities;
-  }
-
-  Future<void> _acquireWorktreeInspectionSlot() async {
-    if (_activeWorktreeInspections < _maxConcurrentWorktreeInspections) {
-      _activeWorktreeInspections++;
-      return;
-    }
-    final waiter = Completer<void>();
-    _worktreeInspectionWaiters.addLast(waiter);
-    await waiter.future;
-  }
-
-  void _releaseWorktreeInspectionSlot() {
-    if (_worktreeInspectionWaiters.isNotEmpty) {
-      _worktreeInspectionWaiters.removeFirst().complete();
-    } else {
-      _activeWorktreeInspections--;
-    }
   }
 
   static ProjectTime _activityToTime(ProjectActivity activity) {
