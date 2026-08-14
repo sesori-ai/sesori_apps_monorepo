@@ -37,8 +37,10 @@ const _settingsNotificationsRouteSegment = "notifications";
 const _settingsHarnessesRouteSegment = "harnesses";
 const _settingsProfileRouteSegment = "profile";
 
-// go_router only detects the legacy SDK MaterialApp, so builder routes under
-// material_ui.MaterialApp otherwise become NoTransitionPages.
+// WORKAROUND: go_router only recognizes package:flutter's legacy MaterialApp,
+// so builder routes under material_ui.MaterialApp become NoTransitionPages.
+// Remove this helper and the explicit pageBuilders once
+// https://github.com/flutter/flutter/issues/191132 is fixed.
 MaterialPage<void> _materialPage({required GoRouterState state, required Widget child}) {
   return MaterialPage<void>(
     key: state.pageKey,
