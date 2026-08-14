@@ -77,6 +77,9 @@ final class PiEventDispatcher({
       attempt: attempt,
       finalError: finalError,
     ),
+    PiAutoRetryEndEvent() || PiSummarizationRetryAttemptStartEvent() => [
+      BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy().toJson()),
+    ],
     PiCompactionStartEvent() => [
       BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy().toJson()),
     ],
@@ -100,8 +103,6 @@ final class PiEventDispatcher({
     PiQueueUpdateEvent() ||
     PiSessionInfoChangedEvent() ||
     PiThinkingLevelChangedEvent() ||
-    PiAutoRetryEndEvent() ||
-    PiSummarizationRetryAttemptStartEvent() ||
     PiSummarizationRetryFinishedEvent() ||
     PiUnknownEvent() => const [],
   };

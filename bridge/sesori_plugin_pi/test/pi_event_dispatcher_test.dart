@@ -479,6 +479,14 @@ void main() {
       event: _event("auto_retry_start", {"attempt": 2, "delayMs": 500}),
       now: DateTime.fromMillisecondsSinceEpoch(1000),
     );
+    final autoRetryResumed = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("auto_retry_end", {"success": true, "attempt": 2}),
+    );
+    final summarizationResumed = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("summarization_retry_attempt_start", {"source": "branchSummary"}),
+    );
     final agentEnd = dispatcher.map(
       sessionId: sessionId,
       event: _event("agent_end", {"willRetry": false}),
@@ -496,6 +504,8 @@ void main() {
       "runtimeType": "retry",
     });
     expect(agentEnd, isEmpty);
+    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
+    expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     expect(compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state?.title, "Context compacted");
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
