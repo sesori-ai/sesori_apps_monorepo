@@ -422,7 +422,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   `git diff --check`: pass.
 - No current user-visible, database, persisted-data, analytics, or registered
   plugin impact; Pi remains app-invisible until Step 18.
-- Diff: +1,004/-7 = 1,011 changed lines; generated lines: 0; tests run: 170.
+- Diff: +1,003/-7 = 1,010 changed lines; generated lines: 0; tests run: 170.
 
 ## Findings And Plan Deltas
 

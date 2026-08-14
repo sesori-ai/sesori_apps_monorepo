@@ -78,9 +78,8 @@ final class PiExtensionUiService({
         final ({String displaySessionId, String projectId})? scope;
         try {
           scope = await _catalogRepository.resolveDisplayScope(sessionId: ownerSessionId);
-        } on Object catch (error, stack) {
+        } on Object {
           _cancel(ownerSessionId: ownerSessionId, requestId: dialog.id);
-          Log.w("[pi] failed to resolve extension dialog scope for session id=$ownerSessionId", error, stack);
           rethrow;
         }
         if (_disposed) {
