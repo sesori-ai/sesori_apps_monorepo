@@ -20,6 +20,13 @@ class const DesignCatalogApp({super.key}) extends StatelessWidget {
         buildPregoThemeAddon(),
         ViewportAddon(const [Viewports.none, IosViewports.iPhone13, AndroidViewports.samsungGalaxyS20]),
         AlignmentAddon(),
+        TextScaleAddon(min: 1, max: 2),
+        // ignore: experimental_member_use, Widgetbook 3.25 marks this audit addon experimental
+        SemanticsAddon(),
+        InspectorAddon(),
+        GridAddon(8),
+        // ignore: experimental_member_use, Widgetbook 3.25 marks this audit addon experimental
+        TimeDilationAddon(),
       ],
       directories: [
         WidgetbookFolder(
