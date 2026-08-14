@@ -4,8 +4,8 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 13 merged
-- **Series state:** Step 13/21 merged; Step 14/21 in PR
-- **Current step:** 14/21, Pi session residency and turns
+- **Series state:** Step 14/21 in PR; Step 15/21 in progress locally
+- **Current step:** 15/21, Pi models and commands
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -21,7 +21,7 @@
 - **Step 12 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/905
 - **Step 13 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/910
 - **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
-- **Next action:** monitor the Step 14 PR while starting Step 15 locally
+- **Next action:** monitor the Step 14 PR while implementing Step 15 locally
 
 ## Locked Decisions
 
@@ -62,7 +62,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 (recorded overage) | Merged as PR #905 |
 | [x] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Merged as PR #910 |
 | [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | PR #914 open |
-| [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Not started |
+| [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | In progress locally |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 | Not started |
 | [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
 | [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
