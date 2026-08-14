@@ -237,12 +237,12 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _ProjectSummary implements ProjectSummary {
-  const _ProjectSummary({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false});
+  const _ProjectSummary({required this.id, required this.name, required this.path, required this.time, this.hasUnseenChanges = false});
   factory _ProjectSummary.fromJson(Map<String, dynamic> json) => _$ProjectSummaryFromJson(json);
 
 @override final  String id;
 @override final  String? name;
-@override@JsonKey() final  String path;
+@override final  String path;
 @override final  ProjectTime? time;
 @override@JsonKey() final  bool hasUnseenChanges;
 

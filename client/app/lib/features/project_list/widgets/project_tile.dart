@@ -13,17 +13,11 @@ import "../../../core/routing/app_router.dart";
 import "../../../l10n/app_localizations.dart";
 import "../rename_project_dialog.dart";
 
-/// The user-facing directory of [project]: its live path on disk, falling
-/// back to the id for payloads from older bridges that don't send a path
-/// (there the id is the directory).
-// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit Project.path. Remove this fallback when the shared path default is removed.
-String projectDisplayPath(ProjectSummary project) => project.path.isEmpty ? project.id : project.path;
-
 /// The last segment of [project]'s directory, used as the display-name
 /// fallback when the project has no stored name. The directory comes from the
 /// bridge's host platform, not the phone's, so both separator styles must
 /// parse — the platform-local basename would return a Windows path unchanged.
-String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toPosix(projectDisplayPath(project)));
+String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toPosix(project.path));
 
 /// [project]'s directory, shortened to the part that tells projects apart.
 ///
@@ -33,7 +27,7 @@ String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toP
 /// dropped instead of the tail: the last two segments survive, marked with a
 /// leading ellipsis when anything was actually removed.
 String projectShortPath(ProjectSummary project) {
-  final segments = _toPosix(projectDisplayPath(project)).split("/").where((s) => s.isNotEmpty).toList();
+  final segments = _toPosix(project.path).split("/").where((s) => s.isNotEmpty).toList();
   if (segments.length <= _shortPathSegments) return segments.join("/");
   return "…/${segments.sublist(segments.length - _shortPathSegments).join("/")}";
 }

@@ -30,6 +30,20 @@ void main() {
       expect(summaryJson, isNot(contains("supportsDedicatedWorktrees")));
       expect(summaryJson, isNot(contains("directoryMissing")));
     });
+
+    test("normalizes an omitted path to the legacy path-shaped id", () {
+      final projects = Projects.fromJson({
+        "data": [
+          {
+            "id": "/projects/a",
+            "name": "A",
+            "time": {"created": 1, "updated": 2},
+          },
+        ],
+      });
+
+      expect(projects.data.single.path, "/projects/a");
+    });
   });
 
   group("Project", () {

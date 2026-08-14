@@ -19,7 +19,7 @@ Map<String, dynamic> _$ProjectsToJson(_Projects instance) => <String, dynamic>{
 _ProjectSummary _$ProjectSummaryFromJson(Map json) => _ProjectSummary(
   id: json['id'] as String,
   name: json['name'] as String?,
-  path: json['path'] as String? ?? "",
+  path: json['path'] as String,
   time: json['time'] == null
       ? null
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),

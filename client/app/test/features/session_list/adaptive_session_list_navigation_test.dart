@@ -97,6 +97,7 @@ void main() {
             ProjectSummary(
               id: "p1",
               name: "Project One",
+              path: "/projects/p1",
               time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
@@ -266,6 +267,7 @@ void main() {
             ProjectSummary(
               id: "p1",
               name: "Project One",
+              path: "/projects/p1",
               time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
@@ -319,6 +321,7 @@ void main() {
             ProjectSummary(
               id: "p1",
               name: "Project One",
+              path: "/projects/p1",
               time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
