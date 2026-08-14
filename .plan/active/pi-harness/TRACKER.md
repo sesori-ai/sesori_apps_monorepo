@@ -414,11 +414,11 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   review; answer translation remains service-owned and notification severity
   stays typed. Owner cleanup and disposal cancel process-local dialogs and emit
   typed rejection lifecycle events; Pi permissions remain unsupported.
-- `dart test` (166 tests), `dart analyze --fatal-infos`, and
+- `dart test` (167 tests), `dart analyze --fatal-infos`, and
   `git diff --check`: pass.
 - No current user-visible, database, persisted-data, analytics, or registered
   plugin impact; Pi remains app-invisible until Step 18.
-- Diff: +858/-7 = 865 changed lines; generated lines: 0; tests run: 166.
+- Diff: +858/-7 = 865 changed lines; generated lines: 0; tests run: 167.
 
 ## Findings And Plan Deltas
 
