@@ -1417,8 +1417,10 @@ class const BridgeRuntimeRunner._() {
       );
       final stableName = result.stdout.toString().trim();
       if (result.exitCode == 0 && stableName.isNotEmpty) return stableName;
+      final stderr = result.stderr.toString().trim();
       Log.w(
         "Failed to read macOS LocalHostName (exit code ${result.exitCode}); using fallback hostname",
+        stderr.isEmpty ? null : stderr,
       );
     } on Object catch (error, stackTrace) {
       Log.w(
@@ -1431,7 +1433,7 @@ class const BridgeRuntimeRunner._() {
     final fallback = localHostname.trim();
     if (io.InternetAddress.tryParse(fallback) == null) return fallback;
     Log.w("Replacing numeric macOS fallback hostname with the generic bridge name");
-    return "sesori-bridge";
+    return BridgeRegistrationService.fallbackName;
   }
 
   /// Reads `/etc/os-release` (Linux only) so [OsVersionFormatter] can derive the
