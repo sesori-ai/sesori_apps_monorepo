@@ -35,16 +35,15 @@ class ProjectRepository({
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
-    final worktreeCapabilities = await Future.wait([
-      for (final row in rows) _supportsDedicatedWorktrees(path: row.path),
-    ]);
     return [
-      for (final (index, row) in rows.indexed)
+      for (final row in rows)
         _projectCatalogMapper.map(
           row: row,
           hasUnseenChanges: unseenById[row.projectId] ?? false,
           directoryMissing: false,
-          supportsDedicatedWorktrees: worktreeCapabilities[index],
+          // Keep catalog reads database-only. Selected projects are inspected
+          // before use, while older clients retain the released optimistic default.
+          supportsDedicatedWorktrees: true,
         ),
     ];
   }

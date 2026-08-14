@@ -9,7 +9,9 @@ child sessions with titles, activity, statuses, and unseen state.
 ## Required Behavior
 
 - Catalog reads come from the bridge database: no backend start, no blocking on
-  an in-progress import, always the last committed snapshot.
+  an in-progress import, no filesystem or Git inspection, always the last
+  committed snapshot. Dedicated-worktree support is inspected when a project is
+  targeted and revalidated when a dedicated session is created.
 - Backends that own projects supply the list; the bridge derives it for backends
   without a project concept. Both appear as ordinary projects.
 - A backend-native project identifier is stable and independent of its directory,

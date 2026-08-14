@@ -333,14 +333,19 @@ void main() {
       expect(plugin.getProjectsCallCount, 0);
     });
 
-    test("project list and detail complete while plugin reads never complete", () async {
+    test("project list and detail complete independently while plugin reads never complete", () async {
       plugin.getProjectsFuture = Completer<List<PluginProject>>().future;
       await db.projectsDao.setActivity(projectId: "stored", createdAt: 1, updatedAt: 2);
 
       final projects = await repo.getProjects().timeout(const Duration(seconds: 1));
       final project = await repo.getProject(projectId: "stored").timeout(const Duration(seconds: 1));
 
-      expect(projects.single, project);
+      expect(
+        projects.single,
+        project.copyWith(supportsDedicatedWorktrees: true),
+        reason: "catalog reads use the optimistic default while project details inspect Git",
+      );
+      expect(project.supportsDedicatedWorktrees, isFalse);
       expect(plugin.getProjectsCallCount, 0);
       expect(plugin.lastGetProjectId, isNull);
     });
@@ -404,6 +409,34 @@ void main() {
 
       expect(projectsDao.getCatalogProjectsCallCount, 1);
       expect(result.single.time, const ProjectTime(created: 10, updated: 20));
+    });
+
+    test("getProjects does not inspect Git worktree support", () async {
+      final paths = [
+        for (var index = 0; index < 9; index++) "/project-${index.toString().padLeft(2, "0")}",
+      ];
+      for (final (index, path) in paths.indexed) {
+        await db.projectsDao.setActivity(
+          projectId: path,
+          createdAt: 1,
+          updatedAt: paths.length - index,
+        );
+      }
+      final gitCliApi = _RecordingGitCliApi();
+      final catalogRepo = singlePluginProjectRepository(
+        gitCliApi: gitCliApi,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final projects = await catalogRepo.getProjects();
+
+      expect(projects.map((project) => project.path), paths);
+      expect(projects.every((project) => project.supportsDedicatedWorktrees), isTrue);
+      expect(gitCliApi.isGitInitializedCallCount, 0);
+      expect(gitCliApi.hasAtLeastOneCommitCallCount, 0);
     });
 
     test("getProjects breaks equal timestamps by project id descending", () async {
@@ -1448,5 +1481,22 @@ class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends Proj
       await releaseSnapshot.future;
     }
     return projects;
+  }
+}
+
+class _RecordingGitCliApi() extends FakeGitCliApi {
+  int isGitInitializedCallCount = 0;
+  int hasAtLeastOneCommitCallCount = 0;
+
+  @override
+  Future<bool> isGitInitialized({required String projectPath}) async {
+    isGitInitializedCallCount++;
+    return true;
+  }
+
+  @override
+  Future<bool> hasAtLeastOneCommit({required String projectPath}) async {
+    hasAtLeastOneCommitCallCount++;
+    return true;
   }
 }
