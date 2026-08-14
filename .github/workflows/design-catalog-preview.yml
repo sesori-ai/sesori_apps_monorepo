@@ -1,0 +1,119 @@
+name: Design Catalog Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'client/design_catalog/**'
+      - 'client/module_prego/**'
+      - 'client/pubspec.yaml'
+      - 'client/pubspec.lock'
+      - 'client/analysis_options.yaml'
+      - 'client/Makefile'
+      - 'shared/no_slop_linter/**'
+      - 'shared/sesori_shared/**'
+      - '.tool-versions'
+      - '.github/workflows/design-catalog-preview.yml'
+
+concurrency:
+  group: design-catalog-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  deploy:
+    if: >
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.CLOUDFLARE_DESIGN_CATALOG_ACCESS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read Flutter version from .tool-versions
+        shell: bash
+        run: |
+          TOOL_SPEC=$(awk '$1 == "flutter" { print $2 }' .tool-versions)
+          if [ -z "$TOOL_SPEC" ]; then
+            echo "Unable to find a Flutter version in .tool-versions" >&2
+            exit 1
+          fi
+          if [[ "$TOOL_SPEC" == *-* ]]; then
+            FLUTTER_VERSION="${TOOL_SPEC%-*}"
+            FLUTTER_CHANNEL="${TOOL_SPEC##*-}"
+          else
+            FLUTTER_VERSION="$TOOL_SPEC"
+            FLUTTER_CHANNEL="stable"
+          fi
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
+          echo "FLUTTER_CHANNEL=$FLUTTER_CHANNEL" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Build catalog
+        working-directory: client
+        run: |
+          DART_BIN=$(command -v dart)
+          FLUTTER_BIN=$(command -v flutter)
+          FLUTTER_SDK_ROOT=$(dirname "$(dirname "$FLUTTER_BIN")")
+          make DART="$DART_BIN" FLUTTER="$FLUTTER_BIN" FLUTTER_ROOT="$FLUTTER_SDK_ROOT" pub-get catalog-build
+
+      - name: Deploy Access-protected preview
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.119.0'
+          command: >
+            pages deploy client/design_catalog/build/web
+            --project-name=sesori-design-catalog
+            --branch=pr-${{ github.event.pull_request.number }}
+            --commit-hash=${{ github.sha }}
+
+      - name: Publish preview link
+        uses: actions/github-script@v8
+        env:
+          PREVIEW_ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+          PREVIEW_DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const marker = "<!-- sesori-design-catalog-preview -->";
+            const previewUrl = process.env.PREVIEW_ALIAS_URL || process.env.PREVIEW_DEPLOYMENT_URL;
+            if (!previewUrl) {
+              core.setFailed("Cloudflare did not return a preview URL");
+              return;
+            }
+
+            const body = [
+              marker,
+              "### Interactive design catalog preview",
+              "",
+              `[Open the Access-protected preview](${previewUrl})`,
+              "",
+              "This synthetic-data preview updates when new commits are pushed to the PR.",
+            ].join("\n");
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const previous = comments.find(
+              (comment) => comment.user?.login === "github-actions[bot]" && comment.body?.includes(marker),
+            );
+
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

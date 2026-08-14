@@ -34,6 +34,8 @@ a static Flutter Web application.
 
 ## Maintenance Sources
 
+- `.github/workflows/design-catalog-preview.yml`
+- `client/design_catalog/README.md`
 - `client/design_catalog/lib/src/catalog_scenarios.dart`
 - `client/design_catalog/lib/src/prego_button_catalog.dart`
 - `client/design_catalog/test/`
