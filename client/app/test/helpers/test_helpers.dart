@@ -6,7 +6,6 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:get_it/get_it.dart";
 import "package:http/http.dart" as http;
 import "package:mocktail/mocktail.dart";
 import "package:record/record.dart";
@@ -67,9 +66,8 @@ import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
+import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_shared/sesori_shared.dart";
-
-final getIt = GetIt.instance;
 
 // ---------------------------------------------------------------------------
 // Mock classes
