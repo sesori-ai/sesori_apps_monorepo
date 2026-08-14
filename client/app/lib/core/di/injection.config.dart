@@ -27,6 +27,8 @@ import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
     as _i140;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
+import 'package:sesori_mobile/capabilities/voice/io_realtime_websocket_connector.dart'
+    as _i262;
 import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
     as _i361;
 import 'package:sesori_mobile/capabilities/voice/recording_file_provider.dart'
@@ -86,6 +88,9 @@ extension GetItInjectableX on _i174.GetIt {
     final registerModule = _$RegisterModule();
     final firebaseRegisterModule = _$FirebaseRegisterModule();
     gh.lazySingleton<_i430.AudioFormatConfig>(() => _i430.AudioFormatConfig());
+    gh.lazySingleton<_i262.IoRealtimeWebSocketClient>(
+      () => _i262.IoRealtimeWebSocketClient(),
+    );
     gh.lazySingleton<_i361.RecorderPrewarmClient>(
       () => _i361.RecorderPrewarmClient(),
     );
@@ -137,6 +142,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
+    );
+    gh.lazySingleton<_i948.RealtimeWebSocketConnector>(
+      () => _i262.IoRealtimeWebSocketConnector(
+        client: gh<_i262.IoRealtimeWebSocketClient>(),
+      ),
     );
     gh.lazySingleton<_i140.ComposerImagePicker>(
       () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
