@@ -53,6 +53,7 @@ void main() {
 
   testWidgets("hover aligns to a scaled text target and click pins nested details", (tester) async {
     var pressCount = 0;
+    String? copiedReference;
     final pointer = TestPointer(1, PointerDeviceKind.mouse);
 
     await tester.pumpWidget(
@@ -63,6 +64,7 @@ void main() {
             width: 700,
             height: 600,
             child: PregoCatalogInspector(
+              copyText: (value) async => copiedReference = value,
               child: Center(
                 child: Transform.scale(
                   scale: 0.5,
@@ -117,6 +119,14 @@ void main() {
     expect(find.text("Typography"), findsOneWidget);
     expect(find.textContaining("text-sm / medium"), findsOneWidget);
     expect(find.textContaining("Semantic color"), findsWidgets);
+
+    final copyButton = find.text("Copy medium");
+    await tester.ensureVisible(copyButton);
+    await tester.tap(copyButton);
+    await tester.pump();
+    expect(copiedReference, "context.prego.textTheme.textSm.medium");
+    expect(find.text("Copied"), findsOneWidget);
+    expect(find.text("Text"), findsOneWidget);
 
     final firstPosition = tester.widget<Text>(find.byKey(const Key("prego-inspector-position"))).data;
     await tester.sendKeyDownEvent(LogicalKeyboardKey.bracketRight);

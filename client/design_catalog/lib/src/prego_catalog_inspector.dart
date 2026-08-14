@@ -40,6 +40,7 @@ class const PregoCatalogInspector({
 class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   final _rootKey = GlobalKey();
   final _contentKey = GlobalKey();
+  final _panelKey = GlobalKey();
   final _focusNode = FocusNode(debugLabel: "Prego catalog inspector");
 
   List<_InspectionCandidate> _hoverCandidates = const [];
@@ -138,17 +139,20 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
       left: position.dx,
       top: position.dy,
       width: panelWidth,
-      child: _InspectorCard(
-        key: const Key("prego-inspector-card"),
-        details: details,
-        expanded: _hasPinnedSelection,
-        position: _pinnedIndex,
-        candidateCount: _hasPinnedSelection ? _pinnedCandidates.length : _hoverCandidates.length,
-        copiedReference: _copiedReference,
-        onPrevious: _hasPinnedSelection ? () => _cycle(by: -1) : null,
-        onNext: _hasPinnedSelection ? () => _cycle(by: 1) : null,
-        onClear: _hasPinnedSelection ? _clearPinned : null,
-        onCopy: _hasPinnedSelection ? _copy : null,
+      child: KeyedSubtree(
+        key: _panelKey,
+        child: _InspectorCard(
+          key: const Key("prego-inspector-card"),
+          details: details,
+          expanded: _hasPinnedSelection,
+          position: _pinnedIndex,
+          candidateCount: _hasPinnedSelection ? _pinnedCandidates.length : _hoverCandidates.length,
+          copiedReference: _copiedReference,
+          onPrevious: _hasPinnedSelection ? () => _cycle(by: -1) : null,
+          onNext: _hasPinnedSelection ? () => _cycle(by: 1) : null,
+          onClear: _hasPinnedSelection ? _clearPinned : null,
+          onCopy: _hasPinnedSelection ? _copy : null,
+        ),
       ),
     );
   }
@@ -192,6 +196,8 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
 
   void _onPointerUp(PointerUpEvent event) {
     _focusNode.requestFocus();
+    final panel = _panelKey.currentContext?.findRenderObject();
+    if (panel is RenderBox && _containsGlobalPosition(box: panel, globalPosition: event.position)) return;
     final candidates = _findCandidates(globalPosition: event.position);
     if (candidates.isEmpty) return;
     setState(() {
