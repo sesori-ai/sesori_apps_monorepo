@@ -7,13 +7,17 @@ import "package:pi_plugin/src/models/pi_assistant_stop_reason.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
+import "package:pi_plugin/src/repositories/trackers/pi_message_identity_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCandidates, maxTranscriptImageCollectionBytes;
 import "package:test/test.dart";
 
 void main() {
   const sessionId = "session";
-  final mapper = PiHistoryMapper(pluginId: "pi");
+  final mapper = _HydratedHistoryMapper(
+    mapper: PiHistoryMapper(pluginId: "pi"),
+    identities: PiMessageIdentityTracker(pluginId: "pi"),
+  );
 
   group("PiPersistedUserTextCodec", () {
     test("cold-decodes only exact UTF-8 length-framed authored suffixes", () {
@@ -608,6 +612,22 @@ void main() {
       expect(mapper.map(sessionId: sessionId, entries: const [], leafId: "missing"), isEmpty);
     });
   });
+}
+
+final class _HydratedHistoryMapper({
+  required final PiHistoryMapper mapper,
+  required final PiMessageIdentityTracker identities,
+}) {
+  List<PluginMessageWithParts> map({
+    required String sessionId,
+    required List<PiSessionEntryDto> entries,
+    required String? leafId,
+  }) => mapper.map(
+    sessionId: sessionId,
+    entries: entries,
+    leafId: leafId,
+    identities: identities.rebuild(sessionId: sessionId),
+  );
 }
 
 final String _aggregateImageData = base64Encode(

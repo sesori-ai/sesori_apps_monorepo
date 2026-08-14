@@ -10,6 +10,7 @@ import "../api/pi_rpc_client.dart";
 import "../api/pi_session_storage_api.dart";
 import "../models/pi_rpc_command.dart";
 import "mappers/pi_history_mapper.dart";
+import "trackers/pi_message_identity_tracker.dart";
 
 final class const PiSessionHistoryNotFoundException({required final String sessionId}) implements Exception {
   @override
@@ -43,6 +44,7 @@ final class PiSessionProcessRepository({
   required Map<String, String> environment,
   required final PiProcessFactory _processFactory,
   required final PiHistoryMapper _historyMapper,
+  required final PiMessageIdentityTracker _identityTracker,
   required final Duration _startupExitTimeout,
   required final Duration _historyRpcTimeout,
 }) {
@@ -76,6 +78,7 @@ final class PiSessionProcessRepository({
         sessionId: sessionId,
         entries: history.entries,
         leafId: history.leafId,
+        identities: _identityTracker.rebuild(sessionId: sessionId),
       );
     } on Object catch (error, stack) {
       _throwLoadFailure(path: resolved.path, error: error, stack: stack);

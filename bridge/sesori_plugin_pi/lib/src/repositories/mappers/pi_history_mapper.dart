@@ -14,7 +14,9 @@ import "../../models/pi_assistant_stop_reason.dart";
 import "pi_message_identity_builder.dart";
 import "pi_persisted_user_text_codec.dart";
 
-final class PiHistoryMapper({required final String pluginId}) {
+final class PiHistoryMapper({
+  required final String pluginId,
+}) {
   static const _supportedRasterMimes = {
     "image/bmp",
     "image/gif",
@@ -27,10 +29,152 @@ final class PiHistoryMapper({required final String pluginId}) {
   final PiPersistedUserTextCodec _persistedUserTextCodec = const PiPersistedUserTextCodec();
   final String _pluginId = pluginId;
 
+  PiAssistantMessageDto? decodeAssistantMessage({required Map<String, Object?> raw}) {
+    if (raw["role"] != "assistant") return null;
+    try {
+      return PiAgentMessageDto.fromJson(Map<String, dynamic>.from(raw)) as PiAssistantMessageDto;
+    } on Object {
+      Log.w("[pi] assistant event message could not be decoded; omitting it");
+      return null;
+    }
+  }
+
+  PiToolCallContentDto? decodeToolCall({required Map<String, Object?> raw}) {
+    try {
+      final content = PiContentDto.fromJson({"type": "toolCall", ...raw});
+      return content is PiToolCallContentDto ? content : null;
+    } on Object {
+      Log.w("[pi] tool-call event could not be decoded; omitting it");
+      return null;
+    }
+  }
+
+  PluginMessageWithParts mapAssistantMessage({
+    required String sessionId,
+    required String messageId,
+    required PiAssistantMessageDto message,
+  }) {
+    final warnings = <_PiHistoryWarning>{};
+    if (message.stopReason == PiAssistantStopReason.error && message.errorMessage != null) {
+      Log.w("[pi] assistant response failed", _PiAssistantFailureDiagnostic(detail: message.errorMessage!));
+    }
+    final parts = <PluginMessagePart>[];
+    for (var index = 0; index < message.content.length; index++) {
+      switch (message.content[index]) {
+        case PiTextContentDto(:final text) when text.isNotEmpty:
+          parts.add(
+            _part(
+              id: "$messageId-block-${index + 1}",
+              sessionId: sessionId,
+              messageId: messageId,
+              type: PluginMessagePartType.text,
+              text: text,
+            ),
+          );
+        case PiThinkingContentDto(:final thinking, :final redacted) when redacted != true && thinking.isNotEmpty:
+          parts.add(
+            _part(
+              id: "$messageId-block-${index + 1}",
+              sessionId: sessionId,
+              messageId: messageId,
+              type: PluginMessagePartType.reasoning,
+              text: thinking,
+            ),
+          );
+        case PiToolCallContentDto(:final id, :final name):
+          parts.add(
+            _part(
+              id: id,
+              sessionId: sessionId,
+              messageId: messageId,
+              type: PluginMessagePartType.tool,
+              tool: name,
+              state: const PluginToolState(
+                status: PluginToolStatus.pending,
+                title: null,
+                output: null,
+                error: null,
+                attachments: [],
+              ),
+            ),
+          );
+        case PiUnknownContentDto():
+          _warnOnce(reason: _PiHistoryWarning.unknownContent, warnings: warnings);
+        case PiImageContentDto() || PiTextContentDto() || PiThinkingContentDto():
+          continue;
+      }
+    }
+    return PluginMessageWithParts(
+      info: _assistantInfo(
+        sessionId: sessionId,
+        messageId: messageId,
+        provider: message.provider,
+        model: message.model,
+        stopReason: message.stopReason,
+        timestamp: message.timestamp,
+      ),
+      parts: parts,
+    );
+  }
+
+  PluginToolState mapToolResult({
+    required PiToolResultMessageDto message,
+    required PluginToolStatus status,
+    required String? title,
+  }) {
+    final mapped = _mapToolResult(content: message.content, warnings: <_PiHistoryWarning>{});
+    return PluginToolState(
+      status: status,
+      title: title,
+      output: message.isError ? null : mapped.output,
+      error: message.isError ? mapped.output : null,
+      attachments: mapped.attachments,
+    );
+  }
+
+  PluginToolState? mapLiveToolResult({
+    required String toolCallId,
+    required String? toolName,
+    required Map<String, Object?> result,
+    required bool isError,
+    required PluginToolStatus status,
+    required String? title,
+  }) {
+    try {
+      final message = PiAgentMessageDto.fromJson({
+        "role": "toolResult",
+        "toolCallId": toolCallId,
+        "toolName": toolName ?? "tool",
+        "content": result["content"] ?? const [],
+        "isError": isError,
+        "timestamp": null,
+      }) as PiToolResultMessageDto;
+      return mapToolResult(message: message, status: status, title: title);
+    } on Object {
+      Log.w("[pi] tool-result event could not be decoded; omitting the update");
+      return null;
+    }
+  }
+
+  PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) {
+    final draft = _toolMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      timestamp: null,
+      tool: "compact",
+      title: "Context compacted",
+      output: null,
+      error: null,
+      status: PluginToolStatus.completed,
+    );
+    return PluginMessageWithParts(info: draft.info, parts: draft.parts);
+  }
+
   List<PluginMessageWithParts> map({
     required String sessionId,
     required List<PiSessionEntryDto> entries,
     required String? leafId,
+    required PiMessageIdentityBuilder identities,
   }) {
     if (leafId == null) return const [];
 
@@ -39,7 +183,6 @@ final class PiHistoryMapper({required final String pluginId}) {
     final messages = <_MessageDraft>[];
     final toolLocations = <String, _ToolLocation>{};
     final terminalToolDrafts = <_MessageDraft>[];
-    final identities = PiMessageIdentityBuilder(pluginId: _pluginId, sessionId: sessionId);
 
     for (final entry in branch) {
       switch (entry) {
@@ -65,84 +208,30 @@ final class PiHistoryMapper({required final String pluginId}) {
                   parts: parts,
                 ),
               );
-            case PiAssistantMessageDto(
-              :final content,
-              :final provider,
-              :final model,
-              :final stopReason,
-              :final errorMessage,
-              :final timestamp,
-            ):
-              if (stopReason == PiAssistantStopReason.error && errorMessage != null) {
-                Log.w("[pi] replayed assistant response failed", _PiAssistantFailureDiagnostic(detail: errorMessage));
-              }
-              final messageId = identities.next(role: PiMessageIdentityRole.assistant, timestamp: timestamp);
-              final draft = _MessageDraft(
-                info: _assistantInfo(
-                  sessionId: sessionId,
-                  messageId: messageId,
-                  provider: provider,
-                  model: model,
-                  stopReason: stopReason,
-                  timestamp: timestamp,
-                ),
-                parts: [],
+            case final PiAssistantMessageDto message:
+              final messageId = identities.next(
+                role: PiMessageIdentityRole.assistant,
+                timestamp: message.timestamp,
               );
-              for (var index = 0; index < content.length; index++) {
-                final block = content[index];
-                switch (block) {
-                  case PiTextContentDto(:final text) when text.isNotEmpty:
-                    draft.parts.add(
-                      _part(
-                        id: "$messageId-block-${index + 1}",
-                        sessionId: sessionId,
-                        messageId: messageId,
-                        type: PluginMessagePartType.text,
-                        text: text,
-                      ),
-                    );
-                  case PiThinkingContentDto(:final thinking, :final redacted)
-                      when redacted != true && thinking.isNotEmpty:
-                    draft.parts.add(
-                      _part(
-                        id: "$messageId-block-${index + 1}",
-                        sessionId: sessionId,
-                        messageId: messageId,
-                        type: PluginMessagePartType.reasoning,
-                        text: thinking,
-                      ),
-                    );
-                  case PiToolCallContentDto(:final id, :final name):
-                    final partIndex = draft.parts.length;
-                    draft.parts.add(
-                      _part(
-                        id: id,
-                        sessionId: sessionId,
-                        messageId: messageId,
-                        type: PluginMessagePartType.tool,
-                        tool: name,
-                        state: const PluginToolState(
-                          status: PluginToolStatus.pending,
-                          title: null,
-                          output: null,
-                          error: null,
-                          attachments: [],
-                        ),
-                      ),
-                    );
-                    toolLocations[id] = _ToolLocation(draft: draft, partIndex: partIndex);
-                  case PiUnknownContentDto():
-                    _warnOnce(reason: _PiHistoryWarning.unknownContent, warnings: warnings);
-                  case PiImageContentDto() || PiTextContentDto() || PiThinkingContentDto():
-                    continue;
+              final mapped = mapAssistantMessage(
+                sessionId: sessionId,
+                messageId: messageId,
+                message: message,
+              );
+              final draft = _MessageDraft(info: mapped.info, parts: mapped.parts.toList());
+              for (var index = 0; index < draft.parts.length; index++) {
+                final part = draft.parts[index];
+                if (part.type == PluginMessagePartType.tool) {
+                  toolLocations[part.id] = _ToolLocation(draft: draft, partIndex: index);
                 }
               }
-              if (stopReason == PiAssistantStopReason.error || stopReason == PiAssistantStopReason.aborted) {
+              if (message.stopReason == PiAssistantStopReason.error ||
+                  message.stopReason == PiAssistantStopReason.aborted) {
                 terminalToolDrafts.add(draft);
               }
               if (draft.parts.isNotEmpty ||
-                  stopReason == PiAssistantStopReason.error ||
-                  stopReason == PiAssistantStopReason.aborted) {
+                  message.stopReason == PiAssistantStopReason.error ||
+                  message.stopReason == PiAssistantStopReason.aborted) {
                 messages.add(draft);
               }
             case PiToolResultMessageDto(
@@ -206,18 +295,8 @@ final class PiHistoryMapper({required final String pluginId}) {
           }
         case PiCompactionEntryDto():
           final messageId = identities.nextCompaction();
-          messages.add(
-            _toolMessage(
-              sessionId: sessionId,
-              messageId: messageId,
-              timestamp: null,
-              tool: "compact",
-              title: "Context compacted",
-              output: null,
-              error: null,
-              status: PluginToolStatus.completed,
-            ),
-          );
+          final mapped = mapCompaction(sessionId: sessionId, messageId: messageId);
+          messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
         case PiCustomMessageEntryDto(:final content, :final display):
           final messageId = identities.nextTopLevelCustomMessage();
           if (!display) continue;
