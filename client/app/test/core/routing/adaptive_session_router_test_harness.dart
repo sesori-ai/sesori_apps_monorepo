@@ -88,6 +88,20 @@ class AdaptiveSessionRouterTestHarness() {
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEventsController.stream);
 
     when(() => projectRepository.listProjects()).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer((invocation) async {
+      final projectId = invocation.namedArguments[#projectId]! as String;
+      return ApiResponse.success(
+        Project(
+          id: projectId,
+          name: "Project One",
+          path: "/$projectId",
+          time: null,
+          supportsDedicatedWorktrees: true,
+        ),
+      );
+    });
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(

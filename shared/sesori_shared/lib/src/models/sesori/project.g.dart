@@ -12,10 +12,6 @@ _Projects _$ProjectsFromJson(Map json) => _Projects(
       .toList(),
 );
 
-Map<String, dynamic> _$ProjectsToJson(_Projects instance) => <String, dynamic>{
-  'data': instance.data.map((e) => e.toJson()).toList(),
-};
-
 _ProjectSummary _$ProjectSummaryFromJson(Map json) => _ProjectSummary(
   id: json['id'] as String,
   name: json['name'] as String?,

@@ -23,8 +23,6 @@ mixin _$Projects {
 @pragma('vm:prefer-inline')
 $ProjectsCopyWith<Projects> get copyWith => _$ProjectsCopyWithImpl<Projects>(this as Projects, _$identity);
 
-  /// Serializes this Projects to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
@@ -78,10 +76,10 @@ as List<ProjectSummary>,
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
-class _Projects implements Projects {
-  const _Projects({required  List<ProjectSummary> data}): _data = data;
+class _Projects extends Projects {
+  const _Projects({required  List<ProjectSummary> data}): _data = data,super._();
   factory _Projects.fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
 
  final  List<ProjectSummary> _data;
@@ -98,10 +96,7 @@ class _Projects implements Projects {
 @pragma('vm:prefer-inline')
 _$ProjectsCopyWith<_Projects> get copyWith => __$ProjectsCopyWithImpl<_Projects>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$ProjectsToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {

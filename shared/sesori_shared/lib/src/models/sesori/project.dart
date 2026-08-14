@@ -4,13 +4,24 @@ part "project.freezed.dart";
 
 part "project.g.dart";
 
-@Freezed(fromJson: true, toJson: true)
-sealed class Projects with _$Projects {
+@Freezed(fromJson: true, toJson: false)
+sealed class const Projects._() with _$Projects {
   const factory({
     required List<ProjectSummary> data,
   }) = _Projects;
 
   factory fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
+
+  Map<String, dynamic> toJson() => {
+    "data": [
+      for (final project in data)
+        {
+          ...project.toJson(),
+          // COMPATIBILITY 2026-08-14 (v1.8.0): Clients through v1.7.x decode catalog rows as Project and default an omitted capability to true. Remove this field once v1.7.x clients are unsupported.
+          "supportsDedicatedWorktrees": false,
+        },
+    ],
+  };
 }
 
 @Freezed(fromJson: true, toJson: true)
