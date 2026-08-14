@@ -101,10 +101,12 @@ final class PiSessionProcessRepository({
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentClient> _residents = {};
   final Map<String, Future<PiSessionConnection>> _connecting = {};
+  final Map<String, _ConnectingClient> _connectingClients = {};
   final Map<String, Future<void>> _sessionOperationTails = {};
   final Map<String, int> _generations = {};
   final StreamController<PiSessionProcessFrame> _frames = StreamController.broadcast();
   final StreamController<PiSessionProcessExit> _exits = StreamController.broadcast();
+  var _nextConnectionGeneration = 0;
   bool _disposed = false;
 
   Stream<PiSessionProcessFrame> get frames => _frames.stream;
@@ -156,7 +158,7 @@ final class PiSessionProcessRepository({
     required String sessionId,
     required Set<String> knownDirectories,
   }) async {
-    final generation = (_generations[sessionId] ?? 0) + 1;
+    final generation = ++_nextConnectionGeneration;
     _generations[sessionId] = generation;
     final resolved = await _storageApi.resolveSession(
       sessionId: sessionId,
@@ -175,6 +177,16 @@ final class PiSessionProcessRepository({
         cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
       );
     }
+    if (resolved != null) {
+      try {
+        await _storageApi.clearPendingNewSession(
+          sessionId: sessionId,
+          knownDirectories: {...knownDirectories, resolved.metadata.cwd},
+        );
+      } on Object catch (error, stack) {
+        Log.w("[pi] failed to clear stale pending marker for resolved session id=$sessionId; continuing", error, stack);
+      }
+    }
     final launch = resolved == null ? PiNewSession(sessionId: sessionId) : PiResumedSession(sessionPath: resolved.path);
     final cwd = resolved?.metadata.cwd ?? pending!.cwd;
     final client = PiRpcClient(
@@ -186,6 +198,8 @@ final class PiSessionProcessRepository({
       ),
       processFactory: _processFactory,
     );
+    final connecting = _ConnectingClient(client: client, generation: generation);
+    _connectingClients[sessionId] = connecting;
     try {
       await client.start();
       if (_disposed || _generations[sessionId] != generation) {
@@ -230,9 +244,6 @@ final class PiSessionProcessRepository({
           }
         }),
       );
-      if (resolved != null) {
-        await _storageApi.clearPendingNewSession(sessionId: sessionId, knownDirectories: knownDirectories);
-      }
       return PiSessionConnection(sessionId: sessionId, generation: generation);
     } on Object catch (error, stack) {
       final authUnavailable = client.stderrDiagnostics.contains(PiRpcClient.noModelsDiagnosticPrefix);
@@ -241,6 +252,10 @@ final class PiSessionProcessRepository({
         Error.throwWithStackTrace(PiSessionAuthenticationException(innerError: error), stack);
       }
       rethrow;
+    } finally {
+      if (identical(_connectingClients[sessionId], connecting)) {
+        _connectingClients.remove(sessionId);
+      }
     }
   }
 
@@ -321,9 +336,15 @@ final class PiSessionProcessRepository({
 
   bool sendExtensionUiResponse({
     required String ownerSessionId,
+    required int generation,
     required String requestId,
     required PiExtensionUiReply reply,
-  }) => _residents[ownerSessionId]?.client.sendExtensionUiResponse(id: requestId, reply: reply) ?? false;
+  }) {
+    final resident = _residents[ownerSessionId];
+    return resident != null && resident.generation == generation
+        ? resident.client.sendExtensionUiResponse(id: requestId, reply: reply)
+        : false;
+  }
 
   PiPromptPayload mapPrompt({required List<PluginPromptPart> parts, required String? userVisibleText}) {
     final executionText = parts.whereType<PluginPromptPartText>().map((part) => part.text).join();
@@ -491,26 +512,37 @@ final class PiSessionProcessRepository({
   }
 
   Future<void> teardown({required String sessionId}) async {
-    _generations[sessionId] = (_generations[sessionId] ?? 0) + 1;
+    _generations.remove(sessionId);
+    final connecting = _connectingClients.remove(sessionId);
+    if (connecting != null) {
+      final wasRunning = connecting.client.isRunning;
+      final disposal = connecting.client.dispose();
+      if (wasRunning) {
+        await disposal;
+      } else {
+        unawaited(
+          disposal.catchError((Object error, StackTrace stack) {
+            Log.w("[pi] connecting client teardown failed for session id=$sessionId", error, stack);
+          }),
+        );
+      }
+    }
     final resident = _residents.remove(sessionId);
     if (resident == null) return;
     await resident.cancelFrames();
     await resident.client.dispose();
   }
 
-  Future<bool> clearPendingWhenPersisted({
-    required String sessionId,
-    required Set<String> knownDirectories,
-  }) async {
-    final resolved = await _storageApi.resolveSession(sessionId: sessionId, knownDirectories: knownDirectories);
-    if (resolved == null) return false;
-    await _storageApi.clearPendingNewSession(sessionId: sessionId, knownDirectories: knownDirectories);
-    return true;
+  Future<void> teardownConnection({required PiSessionConnection connection}) async {
+    final resident = _residents[connection.sessionId];
+    if (resident == null || resident.generation != connection.generation) return;
+    await teardown(sessionId: connection.sessionId);
   }
 
   Future<void> forgetSession({required String sessionId, required Set<String> knownDirectories}) async {
     await teardown(sessionId: sessionId);
     await _storageApi.clearPendingNewSession(sessionId: sessionId, knownDirectories: knownDirectories);
+    _generations.remove(sessionId);
     _identityTracker.forgetSession(sessionId: sessionId);
   }
 
@@ -518,9 +550,11 @@ final class PiSessionProcessRepository({
     if (_disposed) return;
     _disposed = true;
     for (final sessionId in {..._residents.keys, ..._connecting.keys}) {
-      _generations[sessionId] = (_generations[sessionId] ?? 0) + 1;
+      _generations[sessionId] = ++_nextConnectionGeneration;
     }
-    await Future.wait([for (final sessionId in _residents.keys.toList()) teardown(sessionId: sessionId)]);
+    await Future.wait([
+      for (final sessionId in {..._residents.keys, ..._connectingClients.keys}) teardown(sessionId: sessionId),
+    ]);
     await Future.wait(
       _connecting.values.map((future) => future.then<void>((_) {}, onError: (Object _, StackTrace _) {})),
     );
@@ -823,6 +857,8 @@ final class PiSessionProcessRepository({
     );
   }
 }
+
+final class const _ConnectingClient({required final PiRpcClient client, required final int generation});
 
 final class _ResidentClient({required final PiRpcClient client, required final int generation}) {
   StreamSubscription<PiRpcFrame>? frameSubscription;

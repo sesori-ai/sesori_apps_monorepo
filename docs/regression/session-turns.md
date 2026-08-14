@@ -114,6 +114,10 @@ queue, turn length, and client count.
   churn is recorded as evidence rather than judged pass or fail.
 - The prompt queue is in memory and owned by session detail; leaving that surface
   disposes queued submissions rather than restoring them on reopen.
+- Pi persists API commands and manually typed slash prompts in the same raw
+  shape. Cold replay therefore shows only the slash-command token to avoid
+  exposing bridge-owned arguments; live API-command presentation retains only
+  the exact user-authored arguments.
 
 ## Sources
 

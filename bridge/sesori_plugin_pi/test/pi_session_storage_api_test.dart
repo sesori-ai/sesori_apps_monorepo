@@ -896,13 +896,24 @@ void main() {
       expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}), isNull);
     });
 
-    test("rejects unsafe marker ids", () async {
+    test("rejects unsafe marker ids and line-breaking cwd values", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);
+      final api = fixture.api();
 
       await expectLater(
-        fixture.api().writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path),
+        api.writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path),
         throwsArgumentError,
+      );
+      for (final cwd in ["${fixture.root.path}\nother", "${fixture.root.path}\rother"]) {
+        await expectLater(
+          api.writePendingNewSession(sessionId: "secure-id", cwd: cwd),
+          throwsArgumentError,
+        );
+      }
+      expect(
+        await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {fixture.root.path}),
+        isNull,
       );
     });
   });
