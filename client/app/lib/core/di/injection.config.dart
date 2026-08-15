@@ -27,8 +27,6 @@ import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
     as _i140;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
-import 'package:sesori_mobile/capabilities/voice/io_realtime_websocket_connector.dart'
-    as _i262;
 import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
     as _i361;
 import 'package:sesori_mobile/capabilities/voice/recording_file_provider.dart'
@@ -67,6 +65,8 @@ import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
+import 'package:sesori_mobile/core/platform/io_realtime_websocket_connector.dart'
+    as _i292;
 import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
 import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
@@ -88,9 +88,6 @@ extension GetItInjectableX on _i174.GetIt {
     final registerModule = _$RegisterModule();
     final firebaseRegisterModule = _$FirebaseRegisterModule();
     gh.lazySingleton<_i430.AudioFormatConfig>(() => _i430.AudioFormatConfig());
-    gh.lazySingleton<_i262.IoRealtimeWebSocketClient>(
-      () => _i262.IoRealtimeWebSocketClient(),
-    );
     gh.lazySingleton<_i361.RecorderPrewarmClient>(
       () => _i361.RecorderPrewarmClient(),
     );
@@ -112,6 +109,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
+    gh.lazySingleton<_i292.IoRealtimeWebSocketClient>(
+      () => _i292.IoRealtimeWebSocketClient(),
+    );
     gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
     gh.lazySingleton<_i908.TemporaryDirectoryClient>(
@@ -142,11 +142,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
-    );
-    gh.lazySingleton<_i948.RealtimeWebSocketConnector>(
-      () => _i262.IoRealtimeWebSocketConnector(
-        client: gh<_i262.IoRealtimeWebSocketClient>(),
-      ),
     );
     gh.lazySingleton<_i140.ComposerImagePicker>(
       () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
@@ -195,6 +190,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i62.RecordingFileProvider(
         audioFormat: gh<_i430.AudioFormatConfig>(),
         temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
+      ),
+    );
+    gh.lazySingleton<_i948.RealtimeWebSocketConnector>(
+      () => _i292.IoRealtimeWebSocketConnector(
+        client: gh<_i292.IoRealtimeWebSocketClient>(),
       ),
     );
     gh.lazySingleton<_i948.ImageClipboard>(

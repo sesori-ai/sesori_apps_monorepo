@@ -6,9 +6,9 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
+import "../../foundation/platform/realtime_websocket_connector.dart";
 import "../../logging/logging.dart";
 import "realtime_voice_protocol.dart";
-import "realtime_websocket_connector.dart";
 
 final class const RealtimeVoiceTransportClosedException() implements Exception;
 

@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/capabilities/voice/io_realtime_websocket_connector.dart";
+import "package:sesori_mobile/core/platform/io_realtime_websocket_connector.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 void main() {
