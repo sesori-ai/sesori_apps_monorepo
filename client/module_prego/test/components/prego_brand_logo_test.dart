@@ -55,7 +55,10 @@ void main() {
 
     testWidgets("follows the dark theme with ${mapping.pluginId}'s dark artwork", (tester) async {
       await tester.pumpWidget(
-        _harness(logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null), brightness: Brightness.dark),
+        _harness(
+          logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null),
+          brightness: Brightness.dark,
+        ),
       );
 
       expect(_loaderOf(tester).assetName, mapping.darkAsset);
@@ -64,7 +67,11 @@ void main() {
 
   testWidgets("falls back to a tinted plug for a harness it has no artwork for", (tester) async {
     const color = Color(0xFF123456);
-    await tester.pumpWidget(_harness(logo: const PregoBrandLogo(pluginId: "future-plugin", color: color)));
+    await tester.pumpWidget(
+      _harness(
+        logo: const PregoBrandLogo(pluginId: "future-plugin", color: color),
+      ),
+    );
 
     expect(find.byType(SvgPicture), findsNothing);
     final icon = tester.widget<Icon>(find.byIcon(TablerRegular.plug));
