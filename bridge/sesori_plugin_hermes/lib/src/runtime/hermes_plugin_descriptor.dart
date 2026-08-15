@@ -236,8 +236,8 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       // A pre-ACP install answers `--version` but rejects the `acp` subcommand
       // with a nonzero exit; surface that as missing with an update hint, not
       // as an unknown failure.
-      if (result.stderr.contains("acp") &&
-          (result.stderr.contains("invalid choice") || result.stderr.contains("error"))) {
+      final stderr = result.stderr.toLowerCase();
+      if (stderr.contains("acp") && stderr.contains("invalid choice")) {
         return _HermesRuntimeProbeState.preAcpInstall;
       }
       return _HermesRuntimeProbeState.unknown;

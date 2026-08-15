@@ -216,6 +216,30 @@ void main() {
       );
     });
 
+    test("reports unknown for an unrelated ACP command failure", () async {
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: const [],
+            stderrBytes: utf8.encode("ACP initialization error: configuration unavailable\n"),
+            exitCode: Future<int>.value(1),
+          ),
+        ],
+        servesAcp: false,
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
+    });
+
     test("reports unavailable when the ACP adapter is below the floor", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
