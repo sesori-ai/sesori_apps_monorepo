@@ -18,6 +18,8 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Hermes is a direct-CLI harness with no managed install. Setup distinguishes a missing or
   pre-ACP binary, an adapter below `0.20.0`, and missing model/provider configuration;
   startup revalidates the PATH adapter while an explicit `--hermes-bin` remains authoritative.
+  Model/provider setup remains an out-of-band Hermes CLI action, so authentication-required
+  Hermes entries give local setup guidance rather than offering bridge-managed login.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
@@ -66,7 +68,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 Vary which harness runs first and which stays disabled, and the configuration: default
 managed, explicit binary path, externally managed backend. Vary the trigger between app
 and management API, whether a session is idle or working, and fresh versus reused data
-directories. Restore eligibility, timeouts, and sessions afterwards.
+directories. For Hermes, vary missing and pre-ACP installs, an adapter below `0.20.0`, an
+unconfigured model/provider, PATH discovery, and `--hermes-bin`. Restore eligibility,
+timeouts, and sessions afterwards.
 
 ## Failure Signals
 
@@ -94,6 +98,8 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
   are out of scope, and no lifecycle path installs a runtime.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted.
+- Hermes model/provider configuration is intentionally unavailable through Sesori and must
+  be completed with the Hermes CLI before setup can become ready.
 - Idle windows are minutes-order, so observing a real elapse belongs at L4 or above.
 
 ## Sources
@@ -102,6 +108,7 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
   Cursor, Claude Code, and Hermes Agent descriptors; plugin routing handlers
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
   `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`
+- `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart` and its tests
 - `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, and the
   harness settings screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites
