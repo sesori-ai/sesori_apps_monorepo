@@ -629,7 +629,6 @@ final class PiSessionService({
     await _frameSubscription.cancel();
     await _exitSubscription.cancel();
     await _extensionUi.dispose();
-    await Future.wait(_activeIdleReaps.toList());
     await _processes.dispose(shutdownBudget: shutdownBudget);
     _sessions.clear();
     _pendingNewDirectories.clear();

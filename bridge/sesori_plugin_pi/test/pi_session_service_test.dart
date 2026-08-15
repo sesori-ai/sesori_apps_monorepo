@@ -1003,6 +1003,36 @@ void main() {
     await fixture.dispose();
   });
 
+  test("shutdown budget tightens an active idle-reap teardown", () async {
+    final process = FakePiProcess(stdinCloseCompletes: false);
+    final fixture = _Fixture(processes: [process]);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    clock.elapse();
+    await pump();
+    final stopwatch = Stopwatch()..start();
+
+    await service.dispose(shutdownBudget: const Duration(milliseconds: 30));
+
+    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
+    expect(process.killed, isTrue);
+    await fixture.dispose();
+  });
+
   test("new turn waits for active idle-reap teardown before reconnecting", () async {
     final oldProcess = FakePiProcess(stdinCloseCompletes: false);
     final replacement = FakePiProcess();

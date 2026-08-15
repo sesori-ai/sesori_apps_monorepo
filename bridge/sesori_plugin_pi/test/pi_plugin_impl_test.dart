@@ -301,6 +301,28 @@ void main() {
       expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
       expect(process.killed, isTrue);
     });
+
+    test("API disposal cannot lock in a longer lifecycle shutdown budget", () async {
+      final bounded = _Harness(stdinCloseCompletes: false);
+      addTearDown(bounded.dispose);
+      await bounded.plugin.createSession(
+        directory: bounded.project.path,
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "bounded")],
+        userVisibleText: "bounded",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final process = await bounded.nextSessionProcess();
+      final stopwatch = Stopwatch()..start();
+
+      await bounded.plugin.dispose();
+      await bounded.plugin.shutdown(shutdownBudget: const Duration(milliseconds: 30));
+
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
+      expect(process.killed, isTrue);
+    });
   });
 }
 

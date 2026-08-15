@@ -400,8 +400,7 @@ final class PiPlugin._({
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary();
 
   @override
-  @override
-  Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: const Duration(seconds: 15));
+  Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: Duration.zero);
 
   Future<void> shutdown({required Duration shutdownBudget}) =>
       _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);

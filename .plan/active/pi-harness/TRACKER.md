@@ -549,15 +549,20 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   budgets. The implementation now uses one plugin-local identity, manifest-owned
   fallback resolution, an enum spawn outcome, nullable option defaults that keep
   explicit `--pi-bin pi` authoritative, and caller-budgeted resident teardown.
-- Pi tests pass (249 tests) with fatal analysis. Shared runtime tests pass (132
+  The second review found that API-first disposal and an already-running idle
+  reap could still retain a longer timeout. Per user direction, the fix was
+  completed without a third review: API disposal now chooses immediate teardown,
+  lifecycle shutdown tightens in-flight RPC deadlines, and process ownership
+  retains active reaps until the caller budget has been applied.
+- Pi tests pass (251 tests) with fatal analysis. Shared runtime tests pass (132
   tests) with fatal analysis; package-directory placement, checksum failure,
   abort, cleanup, and superseded-version behavior remain covered there. Diff
-  checks pass. The second architecture implementation review is pending.
+  checks pass.
 - No user-visible, database, persisted-data, analytics, registered-plugin, or
   client/bridge wire impact. The backend-runtime update skill and runtime
   installation regression matrix now include Pi.
-- Diff before tracker/plan evidence: +1,197/-44 = 1,241 changed lines; generated
-  lines: 0; tests run: 433 automated package/app checks plus one live managed
+- Diff before tracker/plan evidence: +1,327/-61 = 1,388 changed lines; generated
+  lines: 0; tests run: 436 automated package/app checks plus one live managed
   artifact/version/RPC probe.
 
 ## Findings And Plan Deltas
