@@ -835,6 +835,32 @@ void main() {
         );
       });
 
+      test("terminal complete during startup after ready does not mark a stopped recorder active", () async {
+        // Terminal cleanup stops the recorder for a completion just as it does
+        // for a failure, so startup must not go on to mark the interaction as
+        // recording. This is the non-failure half of the same window.
+        final resumeGate = Completer<void>();
+        when(mockRecorder.resume).thenAnswer((_) => resumeGate.future);
+
+        final startFuture = service.startRecording(projectId: "project-123");
+        await Future<void>.delayed(Duration.zero);
+        connector.channel.inbound.add(
+          jsonEncode({"type": "ready", "protocolVersion": 1, "maxSessionSeconds": 900, "dailySecondsRemaining": 100}),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        connector.channel.inbound.add(
+          jsonEncode({"type": "complete", "reason": "finished", "dailySecondsRemaining": 99}),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        resumeGate.complete();
+        await startFuture;
+
+        expect(service.isRecording, isFalse);
+        verifyNever(mockWakeLockService.enable);
+      });
+
       test("stream error during startup after ready aborts instead of marking a stopped recorder active", () async {
         // Terminating capture on a post-ready stream error stops the recorder.
         // If startup is still awaiting at that moment it must not go on to mark

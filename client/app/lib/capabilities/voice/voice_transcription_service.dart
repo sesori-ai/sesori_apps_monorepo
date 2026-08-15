@@ -405,6 +405,14 @@ class VoiceTranscriptionService({
     _forwardRealtimeAudio = true;
     _ensureInteractionActive(generation);
     _throwIfRealtimeTerminalFailure();
+    if (_realtimeTerminalEvent != null) {
+      // A terminal event can also land while startup is awaiting, and its
+      // cleanup stops the recorder just as a failure does. Marking the
+      // interaction as recording here would leave the composer live with no
+      // capture; the already-received transcript is surfaced by
+      // _stopRealtimeAndTranscribe instead.
+      return;
+    }
     _markRecordingStarted();
   }
 
