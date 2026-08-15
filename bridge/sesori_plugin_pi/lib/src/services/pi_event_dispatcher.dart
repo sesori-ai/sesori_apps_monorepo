@@ -305,9 +305,9 @@ final class PiEventDispatcher({
     final message = _historyMapper.decodeUserMessage(raw: raw);
     if (message == null) return const [];
     final state = _session(sessionId);
-    final content = message.content.singleOrNull;
+    final textContent = message.content.whereType<PiTextContentDto>().singleOrNull;
     final visibleText = state.userVisibleText;
-    final exactText = content is PiTextContentDto && content.text == state.executionText ? visibleText : null;
+    final exactText = textContent?.text == state.executionText ? visibleText : null;
     final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
     final mapped = _historyMapper.mapUserMessage(
       sessionId: sessionId,
