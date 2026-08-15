@@ -38,6 +38,8 @@ const _authUser = AuthUser(
   providerUsername: "alice",
 );
 const _pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
+const _widePngBase64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAEklEQVR4nGP4z8DwHxkzoAsAAA8hD/EEN8afAAAAAElFTkSuQmCC";
 
 class _FakeImageSaver() implements ImageSaver {
   Uint8List? savedBytes;
@@ -562,6 +564,12 @@ void main() {
     expect(await originalProvider.obtainCacheStatus(configuration: ImageConfiguration.empty), isNotNull);
 
     await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final popFlight = tester.widget<Image>(find.byKey(ImageAttachmentViewer.flightCropImageKey));
+    expect(popFlight.image, same(thumbnailImage.image));
+
     await tester.pumpAndSettle();
 
     final cubit = tester.element(find.byKey(FilePartWidget.previewTapTargetKey)).read<MessageImageCubit>();
@@ -755,6 +763,120 @@ void main() {
 
     expect(identical(imageClipboard.copiedBytes, memoryImage.bytes), isTrue);
     expect(find.text("Image copied to clipboard"), findsOneWidget);
+  });
+
+  testWidgets("Hero flight reveals the contained image from the square crop", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: _widePngBase64,
+      filename: "flight.png",
+    );
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
+    await _finishAsyncDecode(tester: tester);
+    final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
+    await tester.runAsync(
+      () => precacheImage(
+        preview.image,
+        tester.element(find.byKey(FilePartWidget.previewImageKey)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 130));
+
+    final crop = find.byKey(ImageAttachmentViewer.flightCropImageKey);
+    final full = find.byKey(ImageAttachmentViewer.flightFullImageKey);
+    expect(tester.widget<Image>(crop).fit, BoxFit.cover);
+    expect(tester.widget<Image>(full).fit, BoxFit.contain);
+    final cropOpacity = tester.widget<Opacity>(find.ancestor(of: crop, matching: find.byType(Opacity))).opacity;
+    final fullOpacity = tester.widget<Opacity>(find.ancestor(of: full, matching: find.byType(Opacity))).opacity;
+    expect(cropOpacity, isPositive);
+    expect(cropOpacity, lessThan(1));
+    expect(fullOpacity, isPositive);
+    expect(fullOpacity, lessThan(1));
+    expect(
+      cropOpacity + fullOpacity,
+      closeTo(1, 0.001),
+    );
+
+    await tester.pumpAndSettle();
+    expect(crop, findsNothing);
+    expect(full, findsNothing);
+    expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).fit, BoxFit.contain);
+  });
+
+  testWidgets("reduced motion skips image viewer route transitions", (tester) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: _app(
+          child: const FilePartWidget(
+            sessionId: "session-1",
+            attachment: MessageAttachment.inlineImage(
+              mime: "image/png",
+              base64: _pngBase64,
+              filename: "reduced-motion.png",
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await _openImageViewer(tester: tester);
+
+    final route = ModalRoute.of(tester.element(find.byType(ImageAttachmentViewer)))! as PageRoute<void>;
+    expect(route.transitionDuration, Duration.zero);
+    expect(route.reverseTransitionDuration, Duration.zero);
+  });
+
+  testWidgets("cross-fades image replacement without resetting viewer state", (tester) async {
+    final thumbnailProvider = MemoryImage(Uint8List.fromList(base64Decode(_pngBase64)));
+    final originalProvider = MemoryImage(Uint8List.fromList(base64Decode(_pngBase64)));
+    final heroTag = UniqueKey();
+
+    Widget viewer({required ImageProvider provider}) => _app(
+      child: ImageAttachmentViewer(
+        image: ViewOnlyMessageImage(provider: provider, originalUri: null),
+        flightImageProvider: provider,
+        filename: "swap.png",
+        heroTag: heroTag,
+        originalPresentation: ImageAttachmentOriginalPresentation.idle,
+        onRetryOriginal: null,
+      ),
+    );
+
+    await tester.pumpWidget(viewer(provider: thumbnailProvider));
+    await tester.pumpAndSettle();
+    final transformationController = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController;
+
+    await tester.pumpWidget(viewer(provider: originalProvider));
+    await tester.pump();
+
+    final swappingImages = tester.widgetList<Image>(find.byKey(ImageAttachmentViewer.imageKey)).toList();
+    expect(swappingImages, hasLength(2));
+    expect(swappingImages.map((image) => image.image), containsAll([thumbnailProvider, originalProvider]));
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Semantics && (widget.properties.image ?? false) && widget.properties.label == "swap.png",
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<InteractiveViewer>(find.byType(InteractiveViewer)).transformationController,
+      same(transformationController),
+    );
+
+    await tester.pumpAndSettle();
+    final displayed = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(displayed.image, same(originalProvider));
   });
 
   testWidgets("session back closes the root image viewer without leaving the session", (tester) async {
@@ -995,6 +1117,7 @@ void main() {
       _app(
         child: ImageAttachmentViewer(
           image: image,
+          flightImageProvider: image.provider,
           filename: "../../unsafe.exe",
           heroTag: UniqueKey(),
           originalPresentation: ImageAttachmentOriginalPresentation.idle,

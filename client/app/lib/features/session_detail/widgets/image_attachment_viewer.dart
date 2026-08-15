@@ -57,29 +57,31 @@ Future<void> showImageAttachmentViewer({
   if (sourceRoute == null) throw StateError("Image attachment viewer requires a source route");
   final viewerRoute = PageRouteBuilder<void>(
     opaque: false,
-    transitionDuration: const Duration(milliseconds: 260),
-    reverseTransitionDuration: const Duration(milliseconds: 220),
+    transitionDuration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 260),
+    reverseTransitionDuration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
     pageBuilder: (_, _, _) => switch (image) {
-        LoadedMessageImage() => ImageAttachmentViewer(
-          image: image,
-          filename: filename,
-          heroTag: heroTag,
-          originalPresentation: ImageAttachmentOriginalPresentation.idle,
-          onRetryOriginal: null,
-        ),
-        ViewOnlyMessageImage() => ImageAttachmentViewer(
-          image: image,
-          filename: filename,
-          heroTag: heroTag,
-          originalPresentation: ImageAttachmentOriginalPresentation.idle,
-          onRetryOriginal: null,
-        ),
-        StoredMessageImage() => _StoredImageAttachmentViewer(
-          image: image,
-          filename: filename,
-          heroTag: heroTag,
-        ),
-      },
+      LoadedMessageImage() => ImageAttachmentViewer(
+        image: image,
+        flightImageProvider: image.provider,
+        filename: filename,
+        heroTag: heroTag,
+        originalPresentation: ImageAttachmentOriginalPresentation.idle,
+        onRetryOriginal: null,
+      ),
+      ViewOnlyMessageImage() => ImageAttachmentViewer(
+        image: image,
+        flightImageProvider: image.provider,
+        filename: filename,
+        heroTag: heroTag,
+        originalPresentation: ImageAttachmentOriginalPresentation.idle,
+        onRetryOriginal: null,
+      ),
+      StoredMessageImage() => _StoredImageAttachmentViewer(
+        image: image,
+        filename: filename,
+        heroTag: heroTag,
+      ),
+    },
     transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );
   var shouldDismissViewerWithHistory = true;
@@ -273,6 +275,7 @@ class _StoredImageAttachmentViewerContentState() extends State<_StoredImageAttac
     };
     return ImageAttachmentViewer(
       image: _decodedOriginal ?? widget.thumbnail,
+      flightImageProvider: widget.thumbnail.provider,
       filename: widget.filename,
       heroTag: widget.heroTag,
       originalPresentation: presentation,
@@ -284,12 +287,15 @@ class _StoredImageAttachmentViewerContentState() extends State<_StoredImageAttac
 class const ImageAttachmentViewer({
   super.key,
   required final MessageImageViewerImage image,
+  required final ImageProvider flightImageProvider,
   required final String? filename,
   required final Key heroTag,
   required final ImageAttachmentOriginalPresentation originalPresentation,
   required final VoidCallback? onRetryOriginal,
 }) extends StatefulWidget {
   static const imageKey = ValueKey("imageAttachmentViewer.image");
+  static const flightCropImageKey = ValueKey("imageAttachmentViewer.flightCropImage");
+  static const flightFullImageKey = ValueKey("imageAttachmentViewer.flightFullImage");
 
   @override
   State<ImageAttachmentViewer> createState() => _ImageAttachmentViewerState();
@@ -300,6 +306,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
   static const _baseScaleTolerance = 0.01;
   static const _dismissVelocity = 900.0;
   static const _dragResetDuration = Duration(milliseconds: 180);
+  static const _imageSwapDuration = Duration(milliseconds: 180);
   static const _zoomDuration = Duration(milliseconds: 220);
 
   final _transformationController = TransformationController();
@@ -446,6 +453,83 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
     _isDismissing = true;
     // ignore: no_slop_linter/avoid_navigator_of, dismisses the transient route that owns this viewer
     Navigator.of(context).pop();
+  }
+
+  // ignore: no_slop_linter/prefer_required_named_parameters, matches Flutter's HeroFlightShuttleBuilder
+  Widget _buildHeroFlight(
+    BuildContext _,
+    Animation<double> animation,
+    HeroFlightDirection _,
+    BuildContext _,
+    BuildContext _,
+  ) {
+    final provider = widget.flightImageProvider;
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (_, _) {
+        final containedOpacity = Curves.easeInOut.transform(animation.value);
+        return ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Opacity(
+                opacity: 1 - containedOpacity,
+                child: Image(
+                  key: ImageAttachmentViewer.flightCropImageKey,
+                  image: provider,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                ),
+              ),
+              Opacity(
+                opacity: containedOpacity,
+                child: Image(
+                  key: ImageAttachmentViewer.flightFullImageKey,
+                  image: provider,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImage({required MessageImageViewerImage image}) {
+    return Semantics(
+      image: true,
+      label: widget.filename,
+      child: ExcludeSemantics(
+        child: AnimatedSwitcher(
+          duration: context.isReducedMotion ? Duration.zero : _imageSwapDuration,
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeOut,
+          layoutBuilder: (currentChild, previousChildren) => Stack(
+            fit: StackFit.expand,
+            children: [
+              ...previousChildren,
+              ?currentChild,
+            ],
+          ),
+          child: KeyedSubtree(
+            key: ObjectKey(image.provider),
+            child: Image(
+              key: ImageAttachmentViewer.imageKey,
+              image: image.provider,
+              fit: BoxFit.contain,
+              gaplessPlayback: true,
+              errorBuilder: (_, _, _) => Icon(
+                Icons.broken_image,
+                size: context.prego.spacing.x6l,
+                color: context.prego.colors.textTertiary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   ImageShareOrigin? _shareOrigin({required BuildContext originContext}) {
@@ -639,18 +723,9 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                         onInteractionEnd: (details) => _handleInteractionEnd(details: details),
                         child: Hero(
                           tag: widget.heroTag,
+                          flightShuttleBuilder: _buildHeroFlight,
                           child: SizedBox.expand(
-                            child: Image(
-                              key: ImageAttachmentViewer.imageKey,
-                              image: image.provider,
-                              fit: BoxFit.contain,
-                              semanticLabel: widget.filename,
-                              errorBuilder: (_, _, _) => Icon(
-                                Icons.broken_image,
-                                size: prego.spacing.x6l,
-                                color: prego.colors.textTertiary,
-                              ),
-                            ),
+                            child: _buildImage(image: image),
                           ),
                         ),
                       ),
