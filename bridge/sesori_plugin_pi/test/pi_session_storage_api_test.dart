@@ -880,6 +880,29 @@ void main() {
   });
 
   group("pending new sessions", () {
+    test("deleting a globally resolved session clears its project-local marker", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("pending-project");
+      final globalRoot = fixture.directory("global-sessions");
+      fixture.directory(p.join("pending-project", ".pi"));
+      File(p.join(fixture.agentDirectory, "settings.json")).writeAsStringSync(jsonEncode({"sessionDir": globalRoot}));
+      File(p.join(project, ".pi", "settings.json")).writeAsStringSync(
+        jsonEncode({"sessionDir": "project-sessions"}),
+      );
+      final api = fixture.api();
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: project, parentSessionPath: null);
+      fixture.writeSession(
+        root: globalRoot,
+        id: "secure-id",
+        cwd: project,
+      );
+
+      await api.deleteSession(sessionId: "secure-id", directory: null);
+
+      expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project}), isNull);
+    });
+
     test("persists and clears caller-owned session markers", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);

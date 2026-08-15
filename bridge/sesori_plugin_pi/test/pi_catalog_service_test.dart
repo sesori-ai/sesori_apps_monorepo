@@ -94,6 +94,21 @@ void main() {
     expect(tracker.snapshotFor(projectId: project), same(trackedGood));
     expect(repository.projects, hasLength(2));
   });
+
+  test("required options preserve the catalog probe failure as cause", () async {
+    final failure = StateError("private probe failure");
+    final service = _service(
+      repository: _FakeCatalogRepository(results: [failure]),
+      tracker: PiCatalogTracker(),
+    );
+
+    await expectLater(
+      service.requireOptions(projectId: path.absolute("project")),
+      throwsA(
+        isA<PluginOperationException>().having((error) => error.cause, "cause", same(failure)),
+      ),
+    );
+  });
 }
 
 PiCatalogService _service({required PiBackendCatalogRepository repository, required PiCatalogTracker tracker}) =>

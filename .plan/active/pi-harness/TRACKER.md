@@ -507,18 +507,24 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   Claude, Cursor, and OMP implementations were updated in lockstep.
 - Architecture implementation review approved the coherent factory, repository
   boundaries, service lifecycle ownership, and repository-owned cleanup record.
-- Pi package tests pass (231 tests) with fatal analysis. Focused app
+- Pi package tests pass (236 tests) with fatal analysis. Focused app
   persistence/repository/cleanup/migration tests pass (120 tests); plugin
   interface (153), Cursor (31), OMP (18), and Claude (17) suites and fatal
   analysis pass. Codegen/schema generation and diff checks pass.
 - No user-visible, analytics, registered-plugin, or client/bridge wire impact.
   Database impact is one nullable tombstone directory column with no fabricated
   legacy backfill.
-- Diff before tracker/plan evidence: +6,485/-105 = 6,590 changed lines;
-  generated lines: 5,066; non-generated changed lines: 1,524. The 24-line
-  non-generated overage is recorded because exact cleanup required the approved
-  cross-layer persisted-directory contract and migration rather than retaining
-  project-local files after restart.
+- Review fixes normalize tombstone directories, clear project-local pending
+  markers after global-root deletion, preserve catalog failures as causes,
+  resolve cross-project fork parents, await idle reaps during deletion, and emit
+  deletion events only after physical deletion succeeds. Active summaries keep
+  all active descendants grouped under the displayed root; filtering to direct
+  children would omit active nested forks from the only root summary.
+- Diff before tracker/plan evidence: +6,626/-105 = 6,731 changed lines;
+  generated lines: 5,066; non-generated changed lines: 1,665. The 165-line
+  non-generated overage records the approved cross-layer persisted-directory
+  contract/migration plus concrete review regression coverage rather than
+  retaining project-local files or ambiguous cleanup outcomes.
 
 ### Step 17/21
 

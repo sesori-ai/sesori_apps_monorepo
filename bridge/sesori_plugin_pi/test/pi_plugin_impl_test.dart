@@ -216,6 +216,26 @@ void main() {
       expect(await harness.plugin.getPendingQuestions(sessionId: "child"), isEmpty);
     });
 
+    test("failed physical deletion does not emit a session-deleted event", () async {
+      if (Platform.isWindows) return;
+      harness.writeSession(id: "root", parentPath: null);
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      Process.runSync("chmod", ["500", harness.sessions.path]);
+      try {
+        await expectLater(
+          harness.plugin.deleteSession("root"),
+          throwsA(isA<PluginOperationException>()),
+        );
+      } finally {
+        Process.runSync("chmod", ["700", harness.sessions.path]);
+      }
+
+      expect(events.whereType<BridgeSseSessionDeleted>(), isEmpty);
+      expect(File(harness.sessionPath("root")).existsSync(), isTrue);
+    });
+
     test("persisted cleanup uses nullable directory hints and is idempotent", () async {
       harness.writeSession(id: "persisted", parentPath: null);
 

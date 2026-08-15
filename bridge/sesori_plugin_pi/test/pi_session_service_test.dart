@@ -187,6 +187,30 @@ void main() {
     expect(storage.resolveCalls, 2);
   });
 
+  test("fork preparation resolves a parent from its own project directory", () async {
+    final storage = _Storage(
+      initialResolved: PiResolvedSession(
+        metadata: PiSessionMetadata(
+          id: "parent",
+          cwd: "/parent-project",
+          parentId: null,
+          title: null,
+          createdAt: null,
+          updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+        ),
+        path: "/sessions/parent.jsonl",
+      ),
+      requiredKnownDirectory: "/parent-project",
+    );
+    final fixture = _Fixture(processes: const [], storageOverride: storage);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.prepareNewSession(directory: "/child-project", parentSessionId: "parent");
+
+    expect(storage.pending?.parentSessionPath, "/sessions/parent.jsonl");
+  });
+
   test("teardown promptly disposes a connecting process waiting on history", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -1055,6 +1079,39 @@ void main() {
     expect(process.killed, isTrue);
   });
 
+  test("forget waits for active idle-reap teardown", () async {
+    final process = FakePiProcess(stdinCloseCompletes: false);
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    clock.elapse();
+    await pump();
+
+    var completed = false;
+    final forget = service.forgetSession(sessionId: "session").then((_) => completed = true);
+    await pump();
+    expect(completed, isFalse);
+
+    process.completeStdinClose();
+    await forget;
+    expect(process.killed, isTrue);
+  });
+
   test("idle reap preserves pending marker location for later deletion", () async {
     final process = FakePiProcess();
     final storage = _Storage(initialResolved: null);
@@ -1283,6 +1340,7 @@ final class _Storage({
   final PiPendingNewSession? initialPending,
   final Completer<void>? resolveGate,
   final Object? clearError,
+  final String? requiredKnownDirectory,
 }) implements PiSessionStorageApi {
   PiResolvedSession? resolved = initialResolved;
   PiPendingNewSession? pending = initialPending;
@@ -1292,8 +1350,13 @@ final class _Storage({
   Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
     resolveCalls++;
     await resolveGate?.future;
+    if (requiredKnownDirectory case final required? when !knownDirectories.contains(required)) return null;
     return resolved == null || resolved?.metadata.id == sessionId ? resolved : _resolved(id: sessionId);
   }
+
+  @override
+  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async =>
+      (await resolveSession(sessionId: sessionId, knownDirectories: knownDirectories))?.path;
 
   @override
   Future<PiPendingNewSession?> readPendingNewSession({

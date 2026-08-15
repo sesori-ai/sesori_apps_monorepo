@@ -130,12 +130,13 @@ final class PiSessionProcessRepository({
     required String sessionId,
     required String directory,
     required String? parentSessionId,
+    required String? parentDirectory,
   }) async {
     final parentPath = parentSessionId == null
         ? null
         : await _storageApi.resolveSessionPath(
             sessionId: parentSessionId,
-            knownDirectories: {directory},
+            knownDirectories: {directory, ?parentDirectory},
           );
     if (parentSessionId != null && parentPath == null) {
       throw PluginOperationException.notFound(
