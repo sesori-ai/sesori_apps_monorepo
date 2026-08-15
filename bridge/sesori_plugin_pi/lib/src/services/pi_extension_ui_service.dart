@@ -191,7 +191,10 @@ final class PiExtensionUiService({
     if (processGeneration == null) {
       _ownerGenerations[sessionId] = (_ownerGenerations[sessionId] ?? 0) + 1;
     } else {
-      _cancelledProcessGenerations[sessionId] = processGeneration;
+      final cancelledGeneration = _cancelledProcessGenerations[sessionId];
+      if (cancelledGeneration == null || processGeneration > cancelledGeneration) {
+        _cancelledProcessGenerations[sessionId] = processGeneration;
+      }
     }
     for (final dialog in _tracker.takeForOwner(
       sessionId: sessionId,

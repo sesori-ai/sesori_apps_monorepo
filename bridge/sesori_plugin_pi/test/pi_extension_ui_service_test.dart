@@ -316,6 +316,30 @@ void main() {
     await delayed.dispose();
   });
 
+  test("older process exit cannot lower the cancelled generation fence", () async {
+    final oldGeneration = processes.generation;
+    await processes.reconnect();
+    final currentGeneration = processes.generation;
+    service.cancelForOwner(sessionId: "child", processGeneration: currentGeneration);
+    service.cancelForOwner(sessionId: "child", processGeneration: oldGeneration);
+
+    await service.handleRequest(
+      ownerSessionId: "child",
+      processGeneration: currentGeneration,
+      request: const PiInputDialogRequest(
+        id: "cancelled-current-dialog",
+        title: null,
+        placeholder: null,
+        timeoutMs: null,
+        raw: {},
+      ),
+    );
+
+    expect(service.getPendingQuestions(sessionId: "child"), isEmpty);
+    expect(processes.replies.single.requestId, "cancelled-current-dialog");
+    expect(processes.replies.single.reply, isA<PiExtensionUiCancelledReply>());
+  });
+
   test("catalog failures cancel the unresolved Pi dialog", () async {
     final failing = PiExtensionUiService(
       catalogRepository: PiSessionCatalogRepository(
