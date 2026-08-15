@@ -121,9 +121,9 @@ one consumer.
 | 3/9 | `⚙️ [hermes-agent-plugin] feat(hermes): add the ACP plugin core [step 3/9]` | Merged as #916. |
 | 4/9 | `⚙️ [hermes-agent-plugin] feat(hermes): add descriptor, runtime probe, and setup [step 4/9]` | Merged as #917. |
 | 5/9 | `⚙️ [hermes-agent-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | Merged as #919. |
-| 6/9 | `⚙️ [hermes-agent-plugin] feat(client): brand the Hermes harness [step 6/9]` | Open as #921; corrected supplied artwork and asset contract. |
-| 7/9 | `🚧 [hermes-agent-plugin] fix(hermes): correct runtime and ACP assumptions [step 7/9]` | Local: auth selection, version semantics, executable revalidation, setup failure classification, null activation retry, exact registry test, plan/docs correction. |
-| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Pending: complete regression docs and execute the matrix below against a real supported Hermes release. |
+| 6/9 | `⚙️ [hermes-agent-plugin] feat(client): brand the Hermes harness [step 6/9]` | Merged as #921; corrected supplied artwork and asset contract. |
+| 7/9 | `🚧 [hermes-agent-plugin] fix(hermes): correct runtime and ACP assumptions [step 7/9]` | Merged as #927: auth selection, version semantics, executable revalidation, setup failure classification, null activation retry, exact registry test, plan/docs correction. |
+| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Local: supported-version headless/live evidence recorded in `TRACKER.md`; provider and client rows remain blocked. |
 | 9/9 | `🌱 [hermes-agent-plugin] docs: retire the plan [step 9/9]` | Pending; blocked until every required row below passes. |
 
 ## Regression And Retirement Matrix
@@ -148,6 +148,8 @@ targeted L4 recovery checks; unchanged plugins retain their existing coverage.
 
 Step 9 cannot retire this plan while a required row is unexecuted, partial,
 blocked, or failed unless the owner explicitly accepts that reduction here.
+The 2026-08-15 Step 8 execution in `TRACKER.md` contains blocked rows, so Step 9
+remains prohibited.
 
 ## Risks And Test Focus
 
