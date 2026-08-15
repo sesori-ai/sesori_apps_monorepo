@@ -916,6 +916,32 @@ void main() {
       expect(warnings, isNot(contains("private-setting")));
     });
 
+    test("invalid marker logs its path and original failure", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("pending-project");
+      final markerPath = p.join(
+        _defaultSessionDirectory(agentDirectory: fixture.agentDirectory, cwd: project),
+        ".sesori-pending",
+        "secure-id.pending",
+      );
+      final api = fixture.api();
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+      File(markerPath).writeAsStringSync("relative-private-value");
+
+      final warnings = await _captureWarnings(() async {
+        await expectLater(
+          api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project}),
+          throwsA(isA<PiInvalidPendingNewSessionException>()),
+        );
+      });
+
+      expect(warnings, contains("invalid pending session marker session_id=secure-id"));
+      expect(warnings, contains(markerPath));
+      expect(warnings, contains("Pending marker cwd is invalid"));
+      expect(warnings, isNot(contains("relative-private-value")));
+    });
+
     test("rejects unsafe marker ids and line-breaking cwd values", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);

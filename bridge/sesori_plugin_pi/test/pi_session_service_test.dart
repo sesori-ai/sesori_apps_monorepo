@@ -566,7 +566,7 @@ void main() {
     await expectLater(noArguments, throwsA(isA<PiRpcCommandFailureException>()));
   });
 
-  test("manually typed slash prompt keeps exact live presentation", () async {
+  test("manually typed slash prompt with an image keeps exact live presentation", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -577,7 +577,10 @@ void main() {
     await service.sendPrompt(
       sessionId: "session",
       directory: "/project",
-      parts: [const PluginPromptPart.text(text: "/review src")],
+      parts: [
+        const PluginPromptPart.text(text: "/review src"),
+        const PluginPromptPart.fileData(mime: "image/png", base64: "cG5n", filename: null),
+      ],
       userVisibleText: "/review src",
       variant: null,
       model: null,
@@ -591,6 +594,7 @@ void main() {
           "role": "user",
           "content": [
             {"type": "text", "text": "/review src"},
+            {"type": "image", "data": "cG5n", "mimeType": "image/png"},
           ],
           "timestamp": 1,
         },
@@ -599,7 +603,10 @@ void main() {
     process.emitFailure(id: prompt["id"]! as String, command: "prompt", error: "done");
     await _waitForIdle(service: service, sessionId: "session");
 
-    expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.text, "/review src");
+    expect(
+      events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
+      contains("/review src"),
+    );
   });
 
   test("command rejects busy, accepts dialog-first, and uses no-run state barrier", () async {

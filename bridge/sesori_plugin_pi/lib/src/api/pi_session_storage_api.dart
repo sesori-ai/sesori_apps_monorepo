@@ -126,7 +126,8 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
         return null;
       case _PiPendingMarkerFound(:final cwd):
         return PiPendingNewSession(id: sessionId, cwd: cwd);
-      case _PiPendingMarkerInvalid(:final error, :final stackTrace):
+      case _PiPendingMarkerInvalid(:final path, :final error, :final stackTrace):
+        Log.w("[pi] invalid pending session marker session_id=$sessionId path=$path", error, stackTrace);
         Error.throwWithStackTrace(
           PiInvalidPendingNewSessionException(sessionId: sessionId, cause: error),
           stackTrace,
@@ -302,7 +303,7 @@ void _writePendingMarker({required String path, required String cwd}) {
       found = normalized;
     } on Object catch (error, stackTrace) {
       return (
-        marker: _PiPendingMarkerInvalid(error: error, stackTrace: stackTrace),
+        marker: _PiPendingMarkerInvalid(path: markerPath, error: error, stackTrace: stackTrace),
         diagnostics: markers.diagnostics,
       );
     }
@@ -1010,7 +1011,11 @@ final class const _PiPendingMarkerAbsent() extends _PiPendingMarkerResult;
 
 final class const _PiPendingMarkerFound({required final String cwd}) extends _PiPendingMarkerResult;
 
-final class const _PiPendingMarkerInvalid({required final Object error, required final StackTrace stackTrace})
+final class const _PiPendingMarkerInvalid({
+  required final String path,
+  required final Object error,
+  required final StackTrace stackTrace,
+})
     extends _PiPendingMarkerResult;
 
 final class const _PiSettingsAbsent() extends _PiSettingsValue;
