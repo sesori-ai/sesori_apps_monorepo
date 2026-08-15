@@ -54,6 +54,29 @@ void main() {
       );
     });
 
+    test("translates invalid API responses while preserving their cause", () async {
+      const innerError = FormatException("invalid metadata response");
+      final innerStackTrace = StackTrace.fromString("inner metadata response stack");
+      final apiError = SesoriServerApiResponseException(
+        method: "POST",
+        uri: Uri.parse("https://auth.example.test/metadata"),
+        innerError: innerError,
+        innerStackTrace: innerStackTrace,
+      );
+      final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: apiError));
+
+      await expectLater(
+        repository.generateTitle(firstMessage: "message"),
+        throwsA(
+          isA<SessionMetadataInvalidResponseException>()
+              .having((error) => error.cause, "cause", same(apiError))
+              .having((error) => error.causeStackTrace, "causeStackTrace", isNot(StackTrace.empty))
+              .having((error) => error.innerError, "innerError", same(innerError))
+              .having((error) => error.innerStackTrace, "innerStackTrace", same(innerStackTrace)),
+        ),
+      );
+    });
+
     test("surfaces API failure unchanged", () async {
       const error = FormatException("invalid response");
       final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: error));
