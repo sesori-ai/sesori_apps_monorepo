@@ -20,6 +20,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   startup revalidates the PATH adapter while an explicit `--hermes-bin` remains authoritative.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
+- Client-owned branding maps recognized built-in harness ids to their stable names and
+  theme-specific artwork. Hermes renders as `Hermes Agent` with its light or dark staff
+  mark, while an unknown plugin id retains the generic icon and raw-id fallback.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
   idle window and a resident one never does, and idle timeouts survive restart.
   Enable, disable, restart, and refresh are offered only where declared, with enable
@@ -54,7 +57,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
 | L2 Routine | Demand-driven start of a ready harness, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Headless bridge; representative harness for start, every registered harness for listing and ordering. |
-| L3 Release | The management surface as rendered: per-harness setup, runtime and work state, capability-appropriate controls, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
+| L3 Release | The management surface as rendered: per-harness setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Live plugin and client end to end as each entry requires. |
 
@@ -99,5 +102,6 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
   Cursor, Claude Code, and Hermes Agent descriptors; plugin routing handlers
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
   `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`
-- `client/module_core/.../plugin_management_service.dart` and the harness settings screen
+- `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, and the
+  harness settings screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites
