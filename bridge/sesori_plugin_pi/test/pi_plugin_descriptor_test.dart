@@ -18,6 +18,7 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
+      expect((descriptor.options.single as PluginValueOption).defaultsTo, isNull);
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
@@ -92,6 +93,14 @@ void main() {
       expect(missing, isA<PluginSetupRuntimeMissing>());
       expect(outdated, isA<PluginSetupUnavailable>());
       expect(unknown, isA<PluginSetupUnknown>());
+    });
+
+    test("an explicit PATH name remains authoritative and disables managed resolution", () async {
+      const config = PluginConfig(values: {PiPluginDescriptor.binOption: "pi"});
+      final descriptor = PiPluginDescriptor.production();
+
+      expect(descriptor.managementCapabilities(config: config), isNot(contains(PluginControlCapability.install)));
+      expect(await descriptor.ensureRuntime(host: _Host(processes: _Processes(), config: config)).toList(), isEmpty);
     });
   });
 
@@ -268,7 +277,7 @@ PiPlugin _plugin({
 
 class _Host({
   @override required final HostProcessService processes,
-  @override final PluginConfig config = const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
+  @override final PluginConfig config = const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
   @override final String? provisionedRuntimePath,
   StartAbortSignal? startAborted,
 }) implements PluginHost {

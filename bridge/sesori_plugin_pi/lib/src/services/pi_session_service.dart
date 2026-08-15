@@ -605,9 +605,10 @@ final class PiSessionService({
     if (!_events.isClosed) _events.add(event);
   }
 
-  Future<void> dispose() => _disposeFuture ??= _dispose();
+  Future<void> dispose({Duration shutdownBudget = const Duration(seconds: 15)}) =>
+      _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
 
-  Future<void> _dispose() async {
+  Future<void> _dispose({required Duration shutdownBudget}) async {
     _disposed = true;
     for (final state in _sessions.values) {
       state.generation++;
@@ -623,7 +624,7 @@ final class PiSessionService({
     await _exitSubscription.cancel();
     await _extensionUi.dispose();
     await Future.wait(_activeIdleReaps.toList());
-    await _processes.dispose();
+    await _processes.dispose(shutdownBudget: shutdownBudget);
     _sessions.clear();
     _pendingNewDirectories.clear();
     await _events.close();

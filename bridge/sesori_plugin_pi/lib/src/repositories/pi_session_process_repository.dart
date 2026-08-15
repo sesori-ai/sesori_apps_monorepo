@@ -566,12 +566,15 @@ final class PiSessionProcessRepository({
     return _TransientClient(client: client, resolved: resolved);
   }
 
-  Future<void> teardown({required String sessionId}) async {
+  Future<void> teardown({
+    required String sessionId,
+    Duration gracefulTimeout = const Duration(seconds: 5),
+  }) async {
     _generations.remove(sessionId);
     final connecting = _connectingClients.remove(sessionId);
     if (connecting != null) {
       final wasRunning = connecting.client.isRunning;
-      final disposal = connecting.client.dispose();
+      final disposal = connecting.client.dispose(gracefulTimeout: gracefulTimeout);
       if (wasRunning) {
         await disposal;
       } else {
@@ -585,7 +588,7 @@ final class PiSessionProcessRepository({
     final resident = _residents.remove(sessionId);
     if (resident == null) return;
     await resident.cancelFrames();
-    await resident.client.dispose();
+    await resident.client.dispose(gracefulTimeout: gracefulTimeout);
   }
 
   Future<void> teardownConnection({required PiSessionConnection connection}) async {
@@ -601,21 +604,54 @@ final class PiSessionProcessRepository({
     _identityTracker.forgetSession(sessionId: sessionId);
   }
 
-  Future<void> dispose() async {
+  Future<void> dispose({Duration shutdownBudget = const Duration(seconds: 15)}) async {
     if (_disposed) return;
     _disposed = true;
+    final stopwatch = Stopwatch()..start();
+    final gracefulTimeout = Duration(
+      microseconds: shutdownBudget.inMicroseconds ~/ 3,
+    );
     for (final sessionId in {..._residents.keys, ..._connecting.keys}) {
       _generations[sessionId] = ++_nextConnectionGeneration;
     }
     await Future.wait([
-      for (final sessionId in {..._residents.keys, ..._connectingClients.keys}) teardown(sessionId: sessionId),
+      for (final sessionId in {..._residents.keys, ..._connectingClients.keys})
+        teardown(sessionId: sessionId, gracefulTimeout: gracefulTimeout),
     ]);
-    await Future.wait(
-      _connecting.values.map((future) => future.then<void>((_) {}, onError: (Object _, StackTrace _) {})),
+    await _withinRemainingBudget(
+      Future.wait(
+        _connecting.values.map((future) => future.then<void>((_) {}, onError: (Object _, StackTrace _) {})),
+      ),
+      stopwatch: stopwatch,
+      shutdownBudget: shutdownBudget,
+      operation: "connecting sessions",
     );
-    await Future.wait(_sessionOperationTails.values.toList());
+    await _withinRemainingBudget(
+      Future.wait(_sessionOperationTails.values.toList()),
+      stopwatch: stopwatch,
+      shutdownBudget: shutdownBudget,
+      operation: "session operations",
+    );
     await _frames.close();
     await _exits.close();
+  }
+
+  Future<void> _withinRemainingBudget(
+    Future<void> operationFuture, {
+    required Stopwatch stopwatch,
+    required Duration shutdownBudget,
+    required String operation,
+  }) async {
+    final remaining = shutdownBudget - stopwatch.elapsed;
+    if (remaining <= Duration.zero) {
+      Log.w("[pi] shutdown budget elapsed before waiting for $operation");
+      return;
+    }
+    try {
+      await operationFuture.timeout(remaining);
+    } on TimeoutException catch (error, stackTrace) {
+      Log.w("[pi] shutdown budget elapsed while waiting for $operation", error, stackTrace);
+    }
   }
 
   Future<List<PluginMessageWithParts>> loadHistory({

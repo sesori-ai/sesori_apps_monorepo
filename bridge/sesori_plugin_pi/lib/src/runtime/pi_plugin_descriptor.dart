@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "../api/pi_process_factory.dart";
+import "../pi_identity.dart";
 import "../pi_plugin_impl.dart";
 import "pi_bridge_plugin.dart";
 import "pi_runtime_manifest.dart";
@@ -73,12 +74,11 @@ final class const PiPluginDescriptor({
   );
 
   static const String binOption = "bin";
-  static const String defaultBinary = "pi";
   static const List<PluginOption> cliOptions = [
     PluginValueOption(
       name: binOption,
       help: "Path to the Pi CLI binary",
-      defaultsTo: defaultBinary,
+      defaultsTo: null,
       allowedValues: null,
       valueHelp: "path",
       validate: null,
@@ -86,10 +86,10 @@ final class const PiPluginDescriptor({
   ];
 
   @override
-  String get id => PiPlugin.pluginId;
+  String get id => PiPluginIdentity.id;
 
   @override
-  String get displayName => "Pi";
+  String get displayName => PiPluginIdentity.displayName;
 
   @override
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
@@ -105,7 +105,7 @@ final class const PiPluginDescriptor({
 
   String? _explicitBin(PluginConfig config) {
     final value = config.value(binOption)?.trim();
-    if (value == null || value.isEmpty || value == defaultBinary) return null;
+    if (value == null || value.isEmpty) return null;
     return value;
   }
 
@@ -274,7 +274,8 @@ final class const PiPluginDescriptor({
   @override
   Future<BridgePlugin> start(PluginHost host) async {
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
-    final binaryPath = _explicitBin(host.config) ?? host.provisionedRuntimePath ?? defaultBinary;
+    const manifest = PiRuntimeManifest();
+    final binaryPath = _explicitBin(host.config) ?? host.provisionedRuntimePath ?? manifest.pathExecutableName;
     final processFactory = HostPiProcessFactory(processes: host.processes);
     final commandExecutor = HostProcessCommandExecutor(
       processes: host.processes,

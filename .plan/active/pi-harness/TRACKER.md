@@ -544,13 +544,21 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   `c996e888b7f7dce44bcf24f69176ac646c44139d3916bd49a6b28e5a8c5e3a65`,
   preserved the complete package tree, reported `0.84.2`, and returned a
   successful correlated no-session RPC `get_state` response.
-- Pi tests pass (242 tests) with fatal analysis. Shared runtime tests pass (132
+- Initial architecture review rejected duplicate executable/identity ownership,
+  data-free spawn variants, explicit `pi` ambiguity, and discarded shutdown
+  budgets. The implementation now uses one plugin-local identity, manifest-owned
+  fallback resolution, an enum spawn outcome, nullable option defaults that keep
+  explicit `--pi-bin pi` authoritative, and caller-budgeted resident teardown.
+- Pi tests pass (249 tests) with fatal analysis. Shared runtime tests pass (132
   tests) with fatal analysis; package-directory placement, checksum failure,
   abort, cleanup, and superseded-version behavior remain covered there. Diff
-  checks pass. Architecture implementation review is pending.
+  checks pass. The second architecture implementation review is pending.
 - No user-visible, database, persisted-data, analytics, registered-plugin, or
   client/bridge wire impact. The backend-runtime update skill and runtime
   installation regression matrix now include Pi.
+- Diff before tracker/plan evidence: +1,197/-44 = 1,241 changed lines; generated
+  lines: 0; tests run: 433 automated package/app checks plus one live managed
+  artifact/version/RPC probe.
 
 ## Findings And Plan Deltas
 

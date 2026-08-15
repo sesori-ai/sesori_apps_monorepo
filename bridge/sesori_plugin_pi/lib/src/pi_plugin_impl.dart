@@ -7,6 +7,7 @@ import "api/pi_process_factory.dart";
 import "api/pi_session_storage_api.dart";
 import "models/pi_notification_type.dart";
 import "models/pi_thinking_level.dart";
+import "pi_identity.dart";
 import "repositories/mappers/pi_history_mapper.dart";
 import "repositories/pi_backend_catalog_repository.dart";
 import "repositories/pi_session_catalog_repository.dart";
@@ -108,7 +109,7 @@ final class PiPlugin._({
     );
   }
 
-  static const String pluginId = "pi";
+  static const String pluginId = PiPluginIdentity.id;
   final List<StreamSubscription<Object?>> _subscriptions = [];
   Future<void>? _disposeFuture;
   bool _disposed = false;
@@ -399,9 +400,13 @@ final class PiPlugin._({
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary();
 
   @override
-  Future<void> dispose() => _disposeFuture ??= _dispose();
+  @override
+  Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: const Duration(seconds: 15));
 
-  Future<void> _dispose() async {
+  Future<void> shutdown({required Duration shutdownBudget}) =>
+      _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
+
+  Future<void> _dispose({required Duration shutdownBudget}) async {
     _disposed = true;
     Object? firstError;
     StackTrace? firstStack;
@@ -414,7 +419,7 @@ final class PiPlugin._({
       }
     }
 
-    await capture(_sessionService.dispose);
+    await capture(() => _sessionService.dispose(shutdownBudget: shutdownBudget));
     for (final subscription in _subscriptions) {
       await capture(subscription.cancel);
     }

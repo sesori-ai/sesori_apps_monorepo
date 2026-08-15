@@ -46,9 +46,9 @@ final class PiBridgePlugin({
 
   void _handleSpawnEvent(PiProcessSpawnEvent event) {
     switch (event) {
-      case PiProcessSpawnSucceeded():
+      case PiProcessSpawnEvent.succeeded:
         markReady();
-      case PiProcessSpawnFailed():
+      case PiProcessSpawnEvent.failed:
         markDegraded(
           recoverable: true,
           requiresUserAction: true,
@@ -77,7 +77,7 @@ final class PiBridgePlugin({
       firstError = error;
       firstStackTrace = stackTrace;
     }
-    await attempt(_plugin.dispose);
+    await attempt(() => _plugin.shutdown(shutdownBudget: budget ?? const Duration(seconds: 15)));
     await attempt(_processFactory.dispose);
     final error = firstError;
     if (error != null) Error.throwWithStackTrace(error, firstStackTrace!);

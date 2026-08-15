@@ -3,7 +3,7 @@ import "dart:io" show Platform;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
-import "../pi_plugin_impl.dart";
+import "../pi_identity.dart";
 
 /// Pinned official Pi package archives used by managed installation.
 class const PiRuntimeManifest() extends RuntimeManifest {
@@ -62,10 +62,10 @@ class const PiRuntimeManifest() extends RuntimeManifest {
   };
 
   @override
-  String get runtimeId => PiPlugin.pluginId;
+  String get runtimeId => PiPluginIdentity.id;
 
   @override
-  String get displayName => "Pi";
+  String get displayName => PiPluginIdentity.displayName;
 
   @override
   String get installDocsUrl => "https://github.com/earendil-works/pi";

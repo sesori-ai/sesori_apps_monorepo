@@ -17,11 +17,7 @@ abstract class PiProcessHandle() {
 /// Spawns one Pi process for a launch specification.
 typedef PiProcessFactory = Future<PiProcessHandle> Function({required PiLaunchSpec spec});
 
-sealed class const PiProcessSpawnEvent();
-
-final class const PiProcessSpawnSucceeded() extends PiProcessSpawnEvent;
-
-final class const PiProcessSpawnFailed() extends PiProcessSpawnEvent;
+enum PiProcessSpawnEvent() { succeeded, failed }
 
 /// Routes Pi child processes through the bridge host process seam.
 final class HostPiProcessFactory({required final HostProcessService _processes}) {
@@ -38,10 +34,10 @@ final class HostPiProcessFactory({required final HostProcessService _processes})
         workingDirectory: spec.workingDirectory,
         runInShell: io.Platform.isWindows,
       );
-      if (!_events.isClosed) _events.add(const PiProcessSpawnSucceeded());
+      if (!_events.isClosed) _events.add(PiProcessSpawnEvent.succeeded);
       return _HostPiProcessHandle(process: process, processes: _processes);
     } on Object {
-      if (!_events.isClosed) _events.add(const PiProcessSpawnFailed());
+      if (!_events.isClosed) _events.add(PiProcessSpawnEvent.failed);
       rethrow;
     }
   }
