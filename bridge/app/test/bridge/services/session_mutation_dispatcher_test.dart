@@ -243,6 +243,33 @@ void main() {
       await subscription.cancel();
     });
 
+    test("contains rollback failure when conditional branch persistence loses", () async {
+      await insertSession(
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/blue-otter",
+        branchName: "blue-otter",
+      );
+      worktreeService
+        ..renameResult = GeneratedBranchRenamed(branchName: "fix-login-flow")
+        ..rollbackError = StateError("rollback failed")
+        ..onRename = () async {
+          await db.sessionDao.replaceGeneratedBranch(
+            sessionId: "s1",
+            expectedBranchName: "blue-otter",
+            branchName: "user-branch",
+          );
+        };
+
+      expect(
+        await dispatcher.applyGeneratedBranchName(
+          sessionId: "s1",
+          branchName: "fix-login-flow",
+        ),
+        isNull,
+      );
+      expect(worktreeService.rollbackCalls, 1);
+    });
+
     test("does not invoke Git for an in-place session", () async {
       await insertSession();
 

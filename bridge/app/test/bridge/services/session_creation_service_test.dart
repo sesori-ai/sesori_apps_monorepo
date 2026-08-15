@@ -390,6 +390,43 @@ void main() {
       expect(stored?.title, "Generated title");
     });
 
+    test("applies the generated title without waiting for branch refinement", () async {
+      final renameStarted = Completer<void>();
+      final renameGate = Completer<void>();
+      worktreeService
+        ..prepareResult = WorktreeSuccess(
+          path: "/repo/.worktrees/blue-otter",
+          branchName: "blue-otter",
+          baseBranch: "main",
+          baseCommit: "abc123",
+        )
+        ..renameStarted = renameStarted
+        ..renameGate = renameGate.future;
+
+      final created = await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+      await renameStarted.future;
+
+      try {
+        final whileBranchBlocked = await db.sessionDao.getSession(sessionId: created.id);
+        expect(whileBranchBlocked?.title, "Generated title");
+        expect(whileBranchBlocked?.branchName, "blue-otter");
+      } finally {
+        renameGate.complete();
+        await service.drain();
+      }
+    });
+
     test("projects every nonblank user text part without bridge-owned context", () async {
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",
@@ -600,6 +637,8 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
   String? renamedWorktreePath;
   String? renamedInitialBranchName;
   String? renamedGeneratedBranchName;
+  Completer<void>? renameStarted;
+  Future<void>? renameGate;
 
   @override
   Future<WorktreeResult> prepareWorktreeForSession({
@@ -629,6 +668,8 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
     renamedWorktreePath = worktreePath;
     renamedInitialBranchName = initialBranchName;
     renamedGeneratedBranchName = generatedBranchName;
+    renameStarted?.complete();
+    if (renameGate case final gate?) await gate;
     if (renameError case final error?) throw error;
     return renameResult;
   }

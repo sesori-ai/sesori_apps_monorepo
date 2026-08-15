@@ -42,6 +42,13 @@ variant, and worktree mode, and creating the session with its first input.
   conditional bridge-owned update delivered through the existing
   `session.updated` event. User rename or deletion wins, and plugin rename
   failure does not remove the locally committed generated title.
+- Generated metadata may also rename a root dedicated session's still-current
+  initial branch when it has no upstream. The worktree directory and plugin
+  working path remain unchanged. Generated refs are validated, collisions use a
+  bounded secure suffix, durable and current branch facts commit together, and
+  the existing `session.updated` event reports the result without claiming a
+  title change. Switched, detached, published, invalid, and failed refinements
+  retain the usable initial branch; persistence failure attempts Git rollback.
 - Graceful shutdown fences new create routes, aborts and drains accepted metadata
   work, drains session operations and local mutations, then closes normalized
   event delivery and its remaining tails.
@@ -55,9 +62,9 @@ variant, and worktree mode, and creating the session with its first input.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands; explicit refresh forces discovery; cache-only reports unavailable without discovering; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response. |
-| L3 Release | Client end to end (phone), every supporting production plugin: each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title arrives through `session.updated`; pickers, plugin chooser, loading, and no-harness states render. |
-| L4 Extended | Live plugin, every supporting production plugin: occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, and plugin-title-rename-failure cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands; explicit refresh forces discovery; cache-only reports unavailable without discovering; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
+| L3 Release | Client end to end (phone), every supporting production plugin: each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; pickers, plugin chooser, loading, and no-harness states render. |
+| L4 Extended | Live plugin, every supporting production plugin: occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/upstream branch, invalid generated ref, branch collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
 ## Exploration Guidance
@@ -66,7 +73,9 @@ Vary plugin choice, warm cache versus fresh discovery, dedicated versus in-place
 mode, prompt versus command start, default versus explicit options, and fresh,
 collision-prone, or non-git projects. Also vary fast, slow, failed, and
 shutdown-aborted metadata, plus user rename/deletion while title generation is
-in flight.
+in flight. For dedicated sessions, vary untouched, switched, detached, upstream,
+colliding, and rollback-failing branches while confirming the directory stays
+fixed and title application does not wait for branch refinement.
 
 ## Failure Signals
 
@@ -81,6 +90,9 @@ in flight.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
   backend rename fails.
+- Generated branch refinement moves the worktree directory, renames a switched or
+  upstream branch, overwrites a newer current-branch observation, delays title
+  application, persists facts that disagree with Git, or misses its session update.
 
 ## Known Limitations
 

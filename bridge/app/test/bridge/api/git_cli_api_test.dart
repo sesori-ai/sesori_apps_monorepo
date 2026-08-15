@@ -105,8 +105,13 @@ void main() {
   });
 
   test("isValidBranchName delegates to git check-ref-format", () async {
-    for (final testCase in [(exitCode: 0, expected: true), (exitCode: 1, expected: false)]) {
-      final processRunner = _RecordingProcessRunner(exitCode: testCase.exitCode);
+    for (final testCase in [
+      (exitCode: 0, stdout: "generated-branch\n", expected: true),
+      (exitCode: 1, stdout: "", expected: false),
+      (exitCode: 128, stdout: "", expected: false),
+      (exitCode: 0, stdout: "previous-branch\n", expected: false),
+    ]) {
+      final processRunner = _RecordingProcessRunner(exitCode: testCase.exitCode, stdout: testCase.stdout);
       final api = GitCliApi(
         processRunner: processRunner,
         gitPathExists: ({required String gitPath}) => true,

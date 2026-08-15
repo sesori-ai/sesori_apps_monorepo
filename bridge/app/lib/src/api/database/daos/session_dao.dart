@@ -90,7 +90,12 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   }) async {
     final updatedRows =
         await (update(sessionTable)..where(
-              (table) => table.sessionId.equals(sessionId) & table.branchName.equals(expectedBranchName),
+              (table) =>
+                  table.sessionId.equals(sessionId) &
+                  table.branchName.equals(expectedBranchName) &
+                  (table.currentBranchName.isNull() |
+                      table.currentBranchName.equals(expectedBranchName) |
+                      table.currentBranchName.equals(branchName)),
             ))
             .write(
               SessionTableCompanion(

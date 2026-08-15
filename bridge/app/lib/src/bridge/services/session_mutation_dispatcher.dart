@@ -149,9 +149,9 @@ class SessionMutationDispatcher({
     if (rename is GeneratedBranchRenameSkipped) return null;
     final generatedBranchName = (rename as GeneratedBranchRenamed).branchName;
 
-    final Session? updated;
+    final bool persisted;
     try {
-      updated = await _sessionRepository.replaceGeneratedSessionBranch(
+      persisted = await _sessionRepository.replaceGeneratedSessionBranch(
         sessionId: sessionId,
         expectedBranchName: initialBranchName,
         branchName: generatedBranchName,
@@ -173,15 +173,25 @@ class SessionMutationDispatcher({
       Error.throwWithStackTrace(error, stackTrace);
     }
 
-    if (updated == null) {
-      await _worktreeService.rollbackGeneratedBranchRename(
-        worktreePath: worktreePath,
-        generatedBranchName: generatedBranchName,
-        initialBranchName: initialBranchName,
-      );
-      Log.w("Generated branch persistence changed for session $sessionId; restored its initial branch");
+    if (!persisted) {
+      try {
+        await _worktreeService.rollbackGeneratedBranchRename(
+          worktreePath: worktreePath,
+          generatedBranchName: generatedBranchName,
+          initialBranchName: initialBranchName,
+        );
+        Log.w("Generated branch persistence changed for session $sessionId; restored its initial branch");
+      } on Object catch (rollbackError, rollbackStackTrace) {
+        Log.w(
+          "Could not roll back a generated branch after conditional persistence changed for session $sessionId",
+          rollbackError,
+          rollbackStackTrace,
+        );
+      }
       return null;
     }
+    final updated = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    if (updated == null) return null;
     _mutationsController.add(LocalSessionMutation.branchUpdated(session: updated));
     return updated;
   }

@@ -261,11 +261,14 @@
 - Follow-up 4A analytics assessment: no event added because there is no product
   decision or funnel step tied to background branch refinement, and branch names
   are explicitly prohibited analytics data.
-- Informational follow-up 4A diff before delivery: `+1079 / -127` (1,206 changed
-  lines), above the 350-700 target. This includes 264 plan/tracker lines, 33
+- Informational follow-up 4A diff before delivery, measured against implementation
+  base `f7bcdc63e`: `+1079 / -127` (1,206 changed lines), above the 350-700
+  target. This includes 264 plan/tracker lines, 33
   generated model lines, and 582 test lines covering Git eligibility, collisions,
   response timing, conditional persistence, rollback, events, and shutdown.
 - Follow-up 4A PR: #923, based on `main` and monitored.
+- Follow-up 4A review fixes passed 144 focused tests, all 2,641 `bridge/app`
+  tests, strict analysis, and `git diff --check`.
 
 ### Manual matrix
 

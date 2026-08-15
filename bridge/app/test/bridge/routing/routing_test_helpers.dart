@@ -854,11 +854,11 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async => null;
 
   @override
-  Future<Session?> replaceGeneratedSessionBranch({
+  Future<bool> replaceGeneratedSessionBranch({
     required String sessionId,
     required String expectedBranchName,
     required String branchName,
-  }) async => null;
+  }) async => false;
 
   @override
   Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
@@ -1167,11 +1167,11 @@ class FakeSessionRepository({
   }
 
   @override
-  Future<Session?> replaceGeneratedSessionBranch({
+  Future<bool> replaceGeneratedSessionBranch({
     required String sessionId,
     required String expectedBranchName,
     required String branchName,
-  }) async => null;
+  }) async => false;
 
   @override
   Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);

@@ -247,9 +247,7 @@ class GitCliApi({
   Future<bool> isValidBranchName({required String branchName}) async {
     final arguments = ["check-ref-format", "--branch", branchName];
     final result = await runGit(projectPath: ".", arguments: arguments);
-    if (result.exitCode == 0) return true;
-    if (result.exitCode == 1) return false;
-    throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    return result.exitCode == 0 && result.stdout.toString().trim() == branchName;
   }
 
   Future<bool> hasUpstream({
@@ -284,7 +282,7 @@ class GitCliApi({
   }) async {
     final result = await runGit(
       projectPath: projectPath,
-      arguments: ["worktree", "add", "-b", branchName, "--", worktreePath, startPoint],
+      arguments: ["worktree", "add", "-b", branchName, "--no-track", "--", worktreePath, startPoint],
     );
     return result.exitCode == 0;
   }

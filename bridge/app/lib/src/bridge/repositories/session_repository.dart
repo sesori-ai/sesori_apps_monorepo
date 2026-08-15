@@ -390,17 +390,16 @@ class SessionRepository({
     return updated ? await getCatalogSession(sessionId: sessionId) : null;
   }
 
-  Future<Session?> replaceGeneratedSessionBranch({
+  Future<bool> replaceGeneratedSessionBranch({
     required String sessionId,
     required String expectedBranchName,
     required String branchName,
-  }) async {
-    final updated = await _sessionDao.replaceGeneratedBranch(
+  }) {
+    return _sessionDao.replaceGeneratedBranch(
       sessionId: sessionId,
       expectedBranchName: expectedBranchName,
       branchName: branchName,
     );
-    return updated ? await getCatalogSession(sessionId: sessionId) : null;
   }
 
   Future<bool> isSessionTombstoned({required String sessionId}) async {

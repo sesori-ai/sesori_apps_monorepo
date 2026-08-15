@@ -329,6 +329,7 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       String? availableBranchName;
       for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
         final candidate = "$generatedBranchName-${_hexSuffix((suffixOffset + attempt) % _suffixSpace)}";
+        if (!await _worktreeRepository.isValidBranchName(branchName: candidate)) continue;
         if (!await _worktreeRepository.branchExists(
           projectPath: worktreePath,
           branchName: candidate,
@@ -348,7 +349,25 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       oldBranchName: initialBranchName,
       newBranchName: targetBranchName,
     );
-    final confirmedBranchName = await _worktreeRepository.getCurrentBranchName(worktreePath: worktreePath);
+    final String? confirmedBranchName;
+    try {
+      confirmedBranchName = await _worktreeRepository.getCurrentBranchName(worktreePath: worktreePath);
+    } on Object catch (error, stackTrace) {
+      try {
+        await rollbackGeneratedBranchRename(
+          worktreePath: worktreePath,
+          generatedBranchName: targetBranchName,
+          initialBranchName: initialBranchName,
+        );
+      } on Object catch (rollbackError, rollbackStackTrace) {
+        Log.w(
+          "Could not roll back generated branch after confirmation failed in $worktreePath",
+          rollbackError,
+          rollbackStackTrace,
+        );
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
     if (confirmedBranchName == targetBranchName) {
       return GeneratedBranchRenamed(branchName: targetBranchName);
     }

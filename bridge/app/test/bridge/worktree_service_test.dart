@@ -1033,6 +1033,28 @@ void main() {
       expect(repository.renameCalls.single.newBranchName, renamed.branchName);
     });
 
+    test("skips when collision suffixes are not valid branch names", () async {
+      repository
+        ..existingBranches.add("fix-login-flow")
+        ..branchNameValidator = (branchName) => branchName == "fix-login-flow";
+
+      final result = await service.renameGeneratedBranch(
+        worktreePath: "/worktree",
+        initialBranchName: "blue-otter",
+        generatedBranchName: "fix-login-flow",
+      );
+
+      expect(
+        result,
+        isA<GeneratedBranchRenameSkipped>().having(
+          (result) => result.reason,
+          "reason",
+          GeneratedBranchRenameSkipReason.targetCollisions,
+        ),
+      );
+      expect(repository.renameCalls, isEmpty);
+    });
+
     test("restores the initial ref when current branch changes during rename", () async {
       repository.currentAfterRename = "user-branch";
 
@@ -1049,6 +1071,23 @@ void main() {
           "reason",
           GeneratedBranchRenameSkipReason.initialBranchChanged,
         ),
+      );
+      expect(repository.renameCalls, [
+        (oldBranchName: "blue-otter", newBranchName: "fix-login-flow"),
+        (oldBranchName: "fix-login-flow", newBranchName: "blue-otter"),
+      ]);
+    });
+
+    test("restores the initial ref when post-rename confirmation fails", () async {
+      repository.currentBranchReadErrorAfterRename = StateError("confirmation failed");
+
+      await expectLater(
+        service.renameGeneratedBranch(
+          worktreePath: "/worktree",
+          initialBranchName: "blue-otter",
+          generatedBranchName: "fix-login-flow",
+        ),
+        throwsA(isA<StateError>()),
       );
       expect(repository.renameCalls, [
         (oldBranchName: "blue-otter", newBranchName: "fix-login-flow"),
@@ -1137,19 +1176,26 @@ class _FakeProcessRunner() implements ProcessRunner {
 
 class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
   bool validBranchName = true;
+  bool Function(String branchName)? branchNameValidator;
   bool upstream = false;
   String? currentBranchName = "blue-otter";
   String? currentAfterRename;
+  Object? currentBranchReadErrorAfterRename;
   final Set<String> existingBranches = <String>{};
   final List<({String oldBranchName, String newBranchName})> renameCalls = [];
   String? lastWorktreePath;
 
   @override
-  Future<bool> isValidBranchName({required String branchName}) async => validBranchName;
+  Future<bool> isValidBranchName({required String branchName}) async {
+    return branchNameValidator?.call(branchName) ?? validBranchName;
+  }
 
   @override
   Future<String?> getCurrentBranchName({required String worktreePath}) async {
     lastWorktreePath = worktreePath;
+    if (renameCalls.isNotEmpty) {
+      if (currentBranchReadErrorAfterRename case final error?) throw error;
+    }
     return currentBranchName;
   }
 

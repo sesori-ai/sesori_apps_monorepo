@@ -127,6 +127,44 @@ void main() {
       expect(result?.currentBranchName, "fix-login-flow");
     });
 
+    test("replaceGeneratedBranch preserves a concurrently switched current branch", () async {
+      await dao.insertSession(
+        pluginId: "opencode",
+        sessionId: "ses-switched-branch",
+        backendSessionId: "ses-switched-branch",
+        projectId: "proj-1",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/tmp/worktrees/blue-otter",
+        branchName: "blue-otter",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await dao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "ses-switched-branch",
+            currentBranchName: "user-branch",
+            currentGithubRepositoryIdentity: null,
+          ),
+        ],
+      );
+
+      expect(
+        await dao.replaceGeneratedBranch(
+          sessionId: "ses-switched-branch",
+          expectedBranchName: "blue-otter",
+          branchName: "fix-login-flow",
+        ),
+        isFalse,
+      );
+      final result = await dao.getSession(sessionId: "ses-switched-branch");
+      expect(result?.branchName, "blue-otter");
+      expect(result?.currentBranchName, "user-branch");
+    });
+
     test("generated companion insert persists last default selection fields", () async {
       await db
           .into(db.sessionTable)

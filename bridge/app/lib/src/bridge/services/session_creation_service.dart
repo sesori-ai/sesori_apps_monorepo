@@ -272,20 +272,20 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
     }
 
     try {
-      await _sessionMutationDispatcher.applyGeneratedBranchName(
-        sessionId: session.id,
-        branchName: metadata.branchName,
-      );
-    } on Object catch (error, stackTrace) {
-      Log.w("Failed to apply generated branch for session ${session.id}", error, stackTrace);
-    }
-    try {
       await _sessionMutationDispatcher.applyGeneratedTitle(
         sessionId: session.id,
         title: metadata.title,
       );
     } on Object catch (error, stackTrace) {
       Log.w("Failed to apply generated title for session ${session.id}", error, stackTrace);
+    }
+    try {
+      await _sessionMutationDispatcher.applyGeneratedBranchName(
+        sessionId: session.id,
+        branchName: metadata.branchName,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to apply generated branch for session ${session.id}", error, stackTrace);
     }
   }
 
