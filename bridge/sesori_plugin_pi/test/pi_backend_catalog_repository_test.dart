@@ -111,6 +111,20 @@ void main() {
     expect(withoutCommands.commands, isEmpty);
   });
 
+  test("thinking timeout preserves discovered models when command budget is exhausted", () async {
+    final harness = _ProbeHarness(
+      stateModel: _model(provider: "groq", id: "reasoner", reasoning: true),
+      models: [_model(provider: "groq", id: "reasoner", reasoning: true)],
+      ignoreThinking: true,
+    );
+
+    final options = await harness.probe(timeout: const Duration(milliseconds: 20));
+
+    expect(options.completeness, PluginSessionOptionsCompleteness.partial);
+    expect(options.providers.providers.single.models.single.id, "reasoner");
+    expect(options.commands, isEmpty);
+  });
+
   test("no model, auth-shaped empty catalog, process exit, and timeout fail with diagnostics", () async {
     final noModel = _ProbeHarness(stateModel: null, models: const []);
     final auth = _ProbeHarness(
@@ -179,6 +193,7 @@ class _ProbeHarness({
   final List<Map<String, Object?>> commands = const [],
   final bool emitDialogs = false,
   final bool failThinking = false,
+  final bool ignoreThinking = false,
   final bool failCommands = false,
   final bool exitOnModels = false,
   final bool ignoreModels = false,
@@ -244,7 +259,9 @@ class _ProbeHarness({
             selected.add((frame["provider"]! as String, frame["modelId"]! as String));
             process.emitResponse(id: id, command: type!);
           case "get_available_thinking_levels":
-            if (failThinking) {
+            if (ignoreThinking) {
+              continue;
+            } else if (failThinking) {
               process.emitFailure(id: id, command: type!, error: "thinking unavailable");
             } else {
               process.emitResponse(id: id, command: type!, data: {"levels": thinking});

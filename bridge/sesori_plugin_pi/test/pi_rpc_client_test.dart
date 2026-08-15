@@ -547,6 +547,27 @@ void main() {
   });
 
   group("teardown", () {
+    test("does not wait for a stalled process factory", () async {
+      final process = FakePiProcess();
+      final processFactory = Completer<PiProcessHandle>();
+      final client = PiRpcClient(
+        launchSpec: testLaunchSpec(),
+        processFactory: ({required spec}) => processFactory.future,
+      );
+      final starting = client.start();
+      final startingFailure = expectLater(starting, throwsStateError);
+      await pump();
+      final completion = Timer(const Duration(milliseconds: 100), () => processFactory.complete(process));
+      final stopwatch = Stopwatch()..start();
+
+      await client.dispose(gracefulTimeout: const Duration(milliseconds: 20));
+
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 50)));
+      await startingFailure;
+      completion.cancel();
+      expect(process.killed, isTrue);
+    });
+
     test("closes stdin first and then terminates the process", () async {
       final started = await startTestClient();
 
@@ -625,7 +646,7 @@ void main() {
       var disposeCompleted = false;
       unawaited(disposing.then((_) => disposeCompleted = true));
       await pump();
-      expect(disposeCompleted, isFalse);
+      expect(disposeCompleted, isTrue);
       spawnGate.complete();
 
       await expectLater(starting, throwsStateError);

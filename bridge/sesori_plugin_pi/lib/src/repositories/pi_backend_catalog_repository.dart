@@ -122,8 +122,10 @@ class PiBackendCatalogRepository({
           )).data,
         );
         commands = [for (final command in commandDtos.commands) ?_command(command)];
-      } on TimeoutException {
-        rethrow;
+      } on TimeoutException catch (error, stack) {
+        partial = true;
+        commands = const [];
+        Log.w("[pi] command discovery timed out; continuing", error, stack);
       } on PiRpcProcessExitException {
         rethrow;
       } on Object catch (error, stack) {
