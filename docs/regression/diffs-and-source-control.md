@@ -60,6 +60,9 @@ and in-place sessions, and default versus explicit base branches.
 - Line counts disagree with content, especially untracked or deletion-only.
 - Diffs never refresh after a mutating tool completes, or a moved project makes
   git run in the old directory.
+- Generated refinement renames a branch after it switches or becomes published,
+  moves the worktree directory, leaves durable/current branch facts disagreeing,
+  or leaves Git and persistence on different branch names after failure.
 
 ## Known Limitations
 
