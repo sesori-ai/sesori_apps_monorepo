@@ -904,17 +904,20 @@ void main() {
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
   });
 
-  test("retry status survives reads and updates active summaries", () async {
+  test("child retry and question state aggregate into its active root", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
     final service = fixture.service();
     final events = <BridgeSseEvent>[];
     service.events.listen(events.add);
+    fixture.catalogRepository
+      ..recordPendingSession(sessionId: "root", directory: "/project", parentSessionId: null)
+      ..recordPendingSession(sessionId: "child", directory: "/project", parentSessionId: "root");
     await fixture.catalogRepository.listAllSessions(knownDirectories: const {"/project"});
 
     await service.sendPrompt(
-      sessionId: "session",
+      sessionId: "child",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
@@ -927,18 +930,37 @@ void main() {
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "auto_retry_start", "attempt": 2, "delayMs": 500});
     await _waitForEventCount<BridgeSseSessionStatus>(events: events, count: 2);
+    process.emit(
+      frame: {
+        "type": "extension_ui_request",
+        "id": "input",
+        "method": "input",
+        "title": "Value",
+      },
+    );
+    for (
+      var attempt = 0;
+      attempt < 50 && fixture.extensions.single.getPendingQuestions(sessionId: "child").isEmpty;
+      attempt++
+    ) {
+      await pump();
+    }
 
-    final retry = service.sessionStatuses["session"]! as PluginSessionStatusRetry;
+    final retry = service.sessionStatuses["child"]! as PluginSessionStatusRetry;
+    final active = service.getActiveSessionsSummary().single.activeSessions.single;
     expect(retry.attempt, 2);
-    expect(service.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+    expect(active.id, "root");
+    expect(active.childSessionIds, ["child"]);
+    expect(active.isRetrying, isTrue);
+    expect(active.awaitingInput, isTrue);
     expect(events.whereType<BridgeSseProjectUpdated>(), hasLength(2));
 
     process.emit(frame: {"type": "auto_retry_end", "success": true, "attempt": 2});
     await _waitForEventCount<BridgeSseSessionStatus>(events: events, count: 3);
-    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(service.sessionStatuses["child"], const PluginSessionStatus.busy());
     expect(service.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
     process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
+    await _waitForIdle(service: service, sessionId: "child");
   });
 
   test("abort invalidates queue, sends abort, and tears down process", () async {
