@@ -61,9 +61,24 @@ the URL so teammates can share the same interactive audit view. Safe areas and
 content margins are deliberately separate: the 16-pixel margin is a PREGO
 content rule, not an iOS or Android system inset.
 
-## Inspect rendered values
+## Review tools
 
-Enable **Addons → Inspector**, then hover any rendered text, decoration,
+Use **Addons → Review tools** to switch between four mutually exclusive modes:
+
+- **Interact** leaves the preview fully interactive.
+- **Inspect** reads rendered bounds, semantics, and PREGO value matches without
+  activating the component.
+- **Measure** lets you drag between canvas or component points. Endpoints snap
+  to nearby edges and centers, **Shift** locks the dominant axis, and
+  **Escape** clears all temporary measurements. Values are Flutter logical
+  pixels inside the selected viewport, which are the appropriate design pixel
+  values for comparing iOS and Android layouts.
+- **Annotate** lets you click the canvas or a rendered element, write a note,
+  resolve or reopen it, and delete it. Pins attached to a rendered element
+  follow that element when its bounds move; a saved canvas fallback keeps the
+  note visible if that render target disappears.
+
+In **Inspect**, hover any rendered text, decoration,
 padding, constraint, layout, or semantic element. The hover card shows its
 logical size and the strongest PREGO token matches available from the computed
 Flutter value. Click to pin the full details panel, use **[** and **]** (or the
@@ -72,6 +87,15 @@ panel arrows) to move through nested elements, and press **Escape** to clear.
 Token names are value matches, not source-code provenance. When multiple PREGO
 variables resolve to the same value, the inspector shows the ambiguity and
 does not offer to copy an arbitrary token reference.
+
+Measurements are intentionally temporary. Saved annotations are scoped to the
+exact Widgetbook use-case path and viewport name and persist only in that
+browser's `localStorage`; they never enter the URL, manifest, logs, analytics,
+or product data. **Copy JSON** and **Import JSON** provide an explicit portable
+backup when the local development port or browser changes. Import validates the
+schema and exact scope, previews the replacement count, and only overwrites the
+current scope after confirmation. Corrupted local data is left untouched so it
+can be replaced through the import recovery path.
 
 The catalog must use synthetic examples only. It must not import production
 authentication, routing, relay, analytics, credentials, or service setup.

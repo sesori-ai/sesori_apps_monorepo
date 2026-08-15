@@ -14,8 +14,8 @@ a static Flutter Web application.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, Prego canvas-background mappings, layout-guide defaults and safe/content geometry, inspector token-candidate resolution, transform-correct inspection bounds, nested target cycling, and rendering of every curated state. |
-| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, Prego canvas backgrounds, toggleable safe-area/content/spacing guides, iOS/Android viewports, enabled clicks, disabled/loading states, the all-states matrix, and hover/pinned inspection in a browser. |
+| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, Prego canvas-background mappings, layout-guide defaults and safe/content geometry, Review Tools mode routing and keyboard actions, measurement snapping/axis locking/clearing, offset annotation-pin geometry, scope-keyed annotation persistence and import recovery, inspector token-candidate resolution, transform-correct inspection bounds, stale-target clearing, nested target cycling, and rendering of every curated state. |
+| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, Prego canvas backgrounds, toggleable safe-area/content/spacing guides, iOS/Android viewports, enabled clicks, disabled/loading states, the all-states matrix, all four Review Tools modes, keyboard action activation, local annotation reload, JSON copy/import, scope isolation, offset annotation pins, and hover/pinned inspection in a browser. |
 | L3 Release | Packaged or external: once private PR previews are enabled, verify a trusted same-repository PR receives an Access-protected interactive preview without production credentials, services, data, or analytics. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -35,11 +35,29 @@ a static Flutter Web application.
   region. Toggle each guide independently, confirm the spacing grid is off by
   default, and verify the overlay does not block component interaction. Treat
   the Android safe-area presets as representative rather than device chrome.
-- Enable the inspector and hover text plus nested layout/decorated elements.
+- Switch to **Review tools → Inspect** and hover text plus nested
+  layout/decorated elements.
   Confirm bounds stay on the visible target in scaled phone viewports; pin,
   cycle, copy an unambiguous token, and clear without replacing the preview or
   activating the inspected component. Ambiguous equal-valued tokens must be
   labeled as value matches and must not produce an arbitrary copy action.
+- Switch to **Measure** and drag between canvas edges, component edges, and
+  component centers. Confirm nearby points snap, Shift locks horizontally or
+  vertically, multiple measurements remain pinned, labels report Flutter
+  logical pixels inside the simulated viewport, and Escape/Clear removes them.
+  Tab to Clear and activate it with Enter or Space. Switching mode, use case,
+  or viewport must discard measurements.
+- Switch to **Annotate**, place both a canvas note and an element note, then
+  edit, resolve, reopen, and delete them. Reload the page and confirm saved pins
+  return only for the exact use-case path and viewport. Each numbered pin must
+  be offset from the precise annotation point, retain a visible leader to that
+  point, and remain inside the canvas. Copy the JSON, validate that a mismatched
+  viewport is rejected, then import a matching document and confirm replacement
+  requires an explicit final action. Annotation JSON must remain absent from the
+  URL, catalog manifest, logs, analytics, and product services.
+- In every Review Tools mode except **Interact**, confirm the previewed
+  component does not receive taps. Return to **Interact** and confirm normal
+  button press behavior is restored.
 - Exercise the compact iPhone SE, an iPhone 16 Pro size, and both the Pixel and
   Galaxy Android presets. Treat Android dimensions as representative because
   display-size and system-navigation settings can change the logical viewport.
@@ -59,6 +77,7 @@ a static Flutter Web application.
 - `client/design_catalog/lib/src/prego_catalog_inspector.dart`
 - `client/design_catalog/lib/src/prego_catalog_layout_guides.dart`
 - `client/design_catalog/lib/src/inspector/`
+- `client/design_catalog/lib/src/review_tools/`
 - `client/design_catalog/lib/src/prego_catalog_viewports.dart`
 - `client/design_catalog/lib/src/catalog_scenarios.dart`
 - `client/design_catalog/lib/src/prego_button_catalog.dart`

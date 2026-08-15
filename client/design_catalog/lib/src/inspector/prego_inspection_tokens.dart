@@ -3,29 +3,10 @@
 import "package:flutter/widgets.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "prego_inspection_token.dart";
 import "prego_token_catalog.g.dart";
 
-enum PregoInspectionTokenKind({required final String label}) {
-  semanticColor(label: "Semantic color"),
-  primitiveColor(label: "Primitive color"),
-  typography(label: "Typography"),
-  spacing(label: "Spacing"),
-  spacingPrimitive(label: "Spacing primitive"),
-  radius(label: "Radius"),
-  width(label: "Width");
-}
-
-final class const PregoInspectionToken<T>({
-  required this.kind,
-  required this.name,
-  required this.reference,
-  required this.value,
-}) {
-  final PregoInspectionTokenKind kind;
-  final String name;
-  final String reference;
-  final T value;
-}
+export "prego_inspection_token.dart";
 
 final class const PregoInspectionTokenMatches<T>({
   required this.value,

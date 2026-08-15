@@ -1,4 +1,3 @@
-import "package:flutter/material.dart" as flutter_material;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart" as material;
 import "package:sesori_design_catalog/src/prego_catalog_theme.dart";
@@ -32,10 +31,10 @@ void main() {
     final field = addon.fields.single as Field<WidgetbookTheme<material.ThemeData>>;
 
     await tester.pumpWidget(
-      flutter_material.MaterialApp(
-        home: flutter_material.Scaffold(
-          body: flutter_material.Builder(
-            builder: (context) => flutter_material.SizedBox(
+      material.MaterialApp(
+        home: material.Scaffold(
+          body: material.Builder(
+            builder: (context) => material.SizedBox(
               width: 240,
               child: field.toWidget(context, addon.groupName, field.initialValue),
             ),
@@ -48,10 +47,10 @@ void main() {
     expect(find.text("Dark"), findsOneWidget);
     expect(
       find.byWidgetPredicate(
-        (widget) => widget is flutter_material.SegmentedButton<WidgetbookTheme<material.ThemeData>>,
+        (widget) => widget is material.SegmentedButton<WidgetbookTheme<material.ThemeData>>,
       ),
       findsOneWidget,
     );
-    expect(find.byType(flutter_material.DropdownButton), findsNothing);
+    expect(find.byType(material.DropdownButton), findsNothing);
   });
 }

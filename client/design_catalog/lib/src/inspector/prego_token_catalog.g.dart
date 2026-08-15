@@ -6,7 +6,7 @@ import "package:flutter/widgets.dart";
 import "package:theme_prego/module_prego.dart";
 import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
-import "prego_inspection_tokens.dart";
+import "prego_inspection_token.dart";
 
 List<PregoInspectionToken<Color>> buildPregoInspectionColorTokens(PregoColors colors) => [
   PregoInspectionToken(kind: PregoInspectionTokenKind.semanticColor, name: "text-brand-primary", reference: "context.prego.colors.textBrandPrimary", value: colors.textBrandPrimary),

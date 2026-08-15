@@ -61,7 +61,7 @@ String _generate() {
     ..writeln('import "package:theme_prego/module_prego.dart";')
     ..writeln('import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";')
     ..writeln()
-    ..writeln('import "prego_inspection_tokens.dart";')
+    ..writeln('import "prego_inspection_token.dart";')
     ..writeln()
     ..writeln("List<PregoInspectionToken<Color>> buildPregoInspectionColorTokens(PregoColors colors) => [");
 

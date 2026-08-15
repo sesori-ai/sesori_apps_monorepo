@@ -5,23 +5,10 @@ import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter/widgets.dart";
 import "package:theme_prego/module_prego.dart";
-import "package:widgetbook/widgetbook.dart";
 
 import "inspector/prego_inspection_tokens.dart";
-
-final class PregoCatalogInspectorAddon() extends WidgetbookAddon<bool> {
-  this : super(name: "Inspector");
-
-  @override
-  List<Field<bool>> get fields => [BooleanField(name: "isEnabled", initialValue: false)];
-
-  @override
-  bool valueFromQueryGroup(Map<String, String> group) => valueOf<bool>("isEnabled", group) ?? false;
-
-  @override
-  Widget buildUseCase(BuildContext context, Widget child, bool setting) =>
-      setting ? PregoCatalogInspector(child: child) : child;
-}
+import "review_tools/presentation/prego_review_action.dart";
+import "review_tools/presentation/prego_review_target.dart";
 
 typedef PregoInspectorCopyText = Future<void> Function(String text);
 
@@ -43,16 +30,19 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   final _panelKey = GlobalKey();
   final _focusNode = FocusNode(debugLabel: "Prego catalog inspector");
 
-  List<_InspectionCandidate> _hoverCandidates = const [];
-  List<_InspectionCandidate> _pinnedCandidates = const [];
+  static const _targetResolver = PregoReviewTargetResolver();
+
+  List<PregoReviewTarget> _hoverCandidates = const [];
+  List<PregoReviewTarget> _pinnedCandidates = const [];
   int _pinnedIndex = 0;
   Offset _pointerPosition = Offset.zero;
   String? _copiedReference;
+  bool _selectionClearScheduled = false;
 
   bool get _hasPinnedSelection => _pinnedCandidates.isNotEmpty;
-  _InspectionCandidate? get _hovered => _hoverCandidates.firstOrNull;
-  _InspectionCandidate? get _pinned => _hasPinnedSelection ? _pinnedCandidates[_pinnedIndex] : null;
-  _InspectionCandidate? get _active => _pinned ?? _hovered;
+  PregoReviewTarget? get _hovered => _hoverCandidates.firstOrNull;
+  PregoReviewTarget? get _pinned => _hasPinnedSelection ? _pinnedCandidates[_pinnedIndex] : null;
+  PregoReviewTarget? get _active => _pinned ?? _hovered;
 
   @override
   void dispose() {
@@ -65,7 +55,8 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     final colors = context.prego.colors;
     final active = _active;
     final root = _rootKey.currentContext?.findRenderObject() as RenderBox?;
-    final activeRect = active == null || root == null ? null : _rectFor(candidate: active, root: root);
+    final activeRect = active == null || root == null ? null : _safeRectIn(target: active, root: root);
+    if (active != null && root != null && activeRect == null) _scheduleInvalidSelectionClear();
 
     return Focus(
       focusNode: _focusNode,
@@ -114,7 +105,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
 
   Widget _buildInspectionCard(
     BuildContext context, {
-    required _InspectionCandidate candidate,
+    required PregoReviewTarget candidate,
     required Rect targetRect,
   }) {
     final root = _rootKey.currentContext?.findRenderObject() as RenderBox?;
@@ -186,7 +177,9 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     if (root == null) return;
     final candidates = _findCandidates(globalPosition: event.position);
     final localPosition = root.globalToLocal(event.position);
-    if (_sameCandidates(_hoverCandidates, candidates) && _pointerPosition == localPosition) return;
+    if (_targetResolver.sameTargets(first: _hoverCandidates, second: candidates) && _pointerPosition == localPosition) {
+      return;
+    }
     setState(() {
       _hoverCandidates = candidates;
       _pointerPosition = localPosition;
@@ -201,7 +194,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     final candidates = _findCandidates(globalPosition: event.position);
     if (candidates.isEmpty) return;
     setState(() {
-      if (_sameCandidates(_pinnedCandidates, candidates)) {
+      if (_targetResolver.sameTargets(first: _pinnedCandidates, second: candidates)) {
         _pinnedIndex = (_pinnedIndex + 1) % candidates.length;
       } else {
         _pinnedCandidates = candidates;
@@ -240,41 +233,33 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     setState(() => _copiedReference = value);
   }
 
-  List<_InspectionCandidate> _findCandidates({required Offset globalPosition}) {
+  List<PregoReviewTarget> _findCandidates({required Offset globalPosition}) {
     final content = _contentKey.currentContext?.findRenderObject();
     if (content == null) return const [];
-    final candidates = <_InspectionCandidate>[];
+    return _targetResolver.findAt(contentRoot: content, globalPosition: globalPosition);
+  }
 
-    void visit(RenderObject object, int depth) {
-      if (object case final RenderBox box when box.attached && box.hasSize && !box.size.isEmpty) {
-        final label = _labelFor(box);
-        if (label != null && _containsGlobalPosition(box: box, globalPosition: globalPosition)) {
-          candidates.add(_InspectionCandidate(renderBox: box, label: label, depth: depth));
-        }
-      }
-      object.visitChildren((child) => visit(child, depth + 1));
-    }
-
-    visit(content, 0);
-    candidates.sort((first, second) {
-      final area = (first.renderBox.size.width * first.renderBox.size.height).compareTo(
-        second.renderBox.size.width * second.renderBox.size.height,
-      );
-      if (area != 0) return area;
-      return second.depth.compareTo(first.depth);
+  void _scheduleInvalidSelectionClear() {
+    if (_selectionClearScheduled) return;
+    _selectionClearScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _selectionClearScheduled = false;
+      if (!mounted) return;
+      final active = _active;
+      final root = _rootKey.currentContext?.findRenderObject();
+      if (active == null || root is! RenderBox || _safeRectIn(target: active, root: root) != null) return;
+      _clearPinned();
     });
-    return candidates;
   }
 }
 
-final class const _InspectionCandidate({
-  required this.renderBox,
-  required this.label,
-  required this.depth,
-}) {
-  final RenderBox renderBox;
-  final String label;
-  final int depth;
+Rect? _safeRectIn({required PregoReviewTarget target, required RenderBox root}) {
+  if (!target.renderBox.attached || !root.attached || !target.renderBox.hasSize || !root.hasSize) return null;
+  try {
+    return target.rectIn(root: root);
+  } on Object {
+    return null;
+  }
 }
 
 final class const _InspectionDetails({
@@ -298,14 +283,14 @@ final class const _InspectionDetails({
   required this.contrastRatio,
 }) {
   factory _InspectionDetails.from({
-    required _InspectionCandidate candidate,
-    required List<_InspectionCandidate> candidates,
+    required PregoReviewTarget candidate,
+    required List<PregoReviewTarget> candidates,
     required RenderBox root,
     required PregoInspectionTokenResolver resolver,
     required TextDirection textDirection,
   }) {
     final box = candidate.renderBox;
-    final rect = _rectFor(candidate: candidate, root: root);
+    final rect = candidate.rectIn(root: root);
     final style = box is RenderParagraph ? _firstTextStyle(box.text) : null;
     final decoration = box is RenderDecoratedBox && box.decoration is BoxDecoration
         ? box.decoration as BoxDecoration
@@ -475,13 +460,13 @@ class const _InspectorCard({
         Row(
           children: [
             Expanded(child: Text(details.label, style: primaryText)),
-            _InspectorButton(label: "Previous target", text: "‹", onTap: onPrevious),
+            PregoReviewAction(label: "Previous target", text: "‹", onPressed: onPrevious),
             const SizedBox(width: 4),
             Text("${position + 1}/$candidateCount", key: const Key("prego-inspector-position"), style: secondaryText),
             const SizedBox(width: 4),
-            _InspectorButton(label: "Next target", text: "›", onTap: onNext),
+            PregoReviewAction(label: "Next target", text: "›", onPressed: onNext),
             const SizedBox(width: 4),
-            _InspectorButton(label: "Close inspector details", text: "×", onTap: onClear),
+            PregoReviewAction(label: "Close inspector details", text: "×", onPressed: onClear),
           ],
         ),
         const SizedBox(height: 10),
@@ -560,10 +545,10 @@ class const _InspectorCard({
         ],
         if (copyValue != null) ...[
           const SizedBox(height: 12),
-          _InspectorButton(
+          PregoReviewAction(
             label: "Copy PREGO token reference",
             text: copiedReference == copyValue ? "Copied" : "Copy ${_shortReference(copyValue)}",
-            onTap: onCopy == null ? null : () => onCopy!(copyValue),
+            onPressed: onCopy == null ? null : () => onCopy!(copyValue),
             wide: true,
           ),
         ],
@@ -601,77 +586,12 @@ class const _Section({required this.title, required this.rows}) extends Stateles
   }
 }
 
-class const _InspectorButton({
-  required this.label,
-  required this.text,
-  required this.onTap,
-  this.wide = false,
-}) extends StatelessWidget {
-  final String label;
-  final String text;
-  final VoidCallback? onTap;
-  final bool wide;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.prego.colors;
-    final child = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.bgSurface2,
-          border: Border.all(color: colors.borderSecondary),
-          borderRadius: BorderRadius.circular(PregoRadius.md),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Center(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis)),
-        ),
-      ),
-    );
-    return Semantics(
-      button: true,
-      enabled: onTap != null,
-      label: label,
-      child: wide ? SizedBox(width: double.infinity, child: child) : child,
-    );
-  }
-}
-
 bool _containsGlobalPosition({required RenderBox box, required Offset globalPosition}) {
   try {
     return (Offset.zero & box.size).contains(box.globalToLocal(globalPosition));
   } on Object {
     return false;
   }
-}
-
-String? _labelFor(RenderBox box) => switch (box) {
-  RenderParagraph() => "Text",
-  RenderSemanticsAnnotations() => "Semantic element",
-  RenderSemanticsGestureHandler() => "Interactive element",
-  RenderDecoratedBox() => "Decoration",
-  RenderPadding() => "Padding",
-  RenderConstrainedBox() => "Constraints",
-  RenderFlex(:final direction) => direction == Axis.horizontal ? "Row" : "Column",
-  RenderOpacity() => "Opacity",
-  RenderClipRRect() => "Rounded clip",
-  RenderPhysicalModel() => "Physical surface",
-  _ => null,
-};
-
-Rect _rectFor({required _InspectionCandidate candidate, required RenderBox root}) => MatrixUtils.transformRect(
-  candidate.renderBox.getTransformTo(root),
-  Offset.zero & candidate.renderBox.size,
-);
-
-bool _sameCandidates(List<_InspectionCandidate> first, List<_InspectionCandidate> second) {
-  if (first.length != second.length) return false;
-  for (var index = 0; index < first.length; index += 1) {
-    if (!identical(first[index].renderBox, second[index].renderBox)) return false;
-  }
-  return true;
 }
 
 TextStyle? _firstTextStyle(InlineSpan span) {
@@ -685,13 +605,13 @@ TextStyle? _firstTextStyle(InlineSpan span) {
 }
 
 Color? _nearestBackground({
-  required _InspectionCandidate candidate,
-  required List<_InspectionCandidate> candidates,
+  required PregoReviewTarget candidate,
+  required List<PregoReviewTarget> candidates,
 }) {
   final target = candidate.renderBox;
   final decorated = candidates
       .where((item) => item.renderBox is RenderDecoratedBox && item.renderBox.size >= target.size)
-      .cast<_InspectionCandidate>();
+      .cast<PregoReviewTarget>();
   for (final item in decorated) {
     final decoration = (item.renderBox as RenderDecoratedBox).decoration;
     if (decoration is BoxDecoration && decoration.color != null) return decoration.color;

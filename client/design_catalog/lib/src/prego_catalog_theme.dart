@@ -1,4 +1,3 @@
-import "package:flutter/material.dart" as flutter_material;
 import "package:flutter/widgets.dart";
 import "package:material_ui/material_ui.dart" as material;
 import "package:theme_prego/module_prego.dart";
@@ -79,16 +78,16 @@ final class _PregoThemeSegmentedField({
     String group,
     WidgetbookTheme<material.ThemeData>? value,
   ) {
-    return flutter_material.SegmentedButton<WidgetbookTheme<material.ThemeData>>(
+    return material.SegmentedButton<WidgetbookTheme<material.ThemeData>>(
       expandedInsets: EdgeInsets.zero,
       showSelectedIcon: false,
       selected: {value ?? initialValue ?? themes.first},
       onSelectionChanged: (selection) => updateField(context, group, selection.single),
       segments: themes
           .map(
-            (theme) => flutter_material.ButtonSegment(
+            (theme) => material.ButtonSegment(
               value: theme,
-              label: flutter_material.Text(switch (theme.name) {
+              label: material.Text(switch (theme.name) {
                 _lightThemeName => "Light",
                 _darkThemeName => "Dark",
                 _ => theme.name,

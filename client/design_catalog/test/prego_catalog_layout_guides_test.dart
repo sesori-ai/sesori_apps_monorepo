@@ -1,3 +1,7 @@
+// Widgetbook's settings shell is built with Flutter Material, while PREGO's
+// use-case canvas uses the separately packaged material_ui implementation.
+// ignore: no_slop_linter/avoid_legacy_flutter_design_imports
+import "package:flutter/material.dart" as flutter_material;
 import "package:flutter/widgets.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart" as material;
@@ -36,30 +40,21 @@ void main() {
     );
   });
 
-  testWidgets("layout guide controls show reviewer-facing labels", (tester) async {
+  testWidgets("layout guide controls render without a PREGO Material ancestor", (tester) async {
     final fields = PregoLayoutGuidesAddon().fields;
 
     await tester.pumpWidget(
-      material.MaterialApp(
-        theme: pregoCatalogDarkTheme,
-        home: material.Scaffold(
-          body: material.Builder(
-            builder: (context) => Align(
-              alignment: Alignment.topCenter,
-              child: SizedBox(
-                width: 320,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: fields
-                      .map(
-                        (field) => SizedBox(
-                          height: 48,
-                          child: field.toWidget(context, "layout-guides", field.initialValue),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: flutter_material.Material(
+          child: Builder(
+            builder: (context) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: fields
+                  .map(
+                    (field) => field.toWidget(context, "layout-guides", field.initialValue),
+                  )
+                  .toList(),
             ),
           ),
         ),
@@ -70,7 +65,8 @@ void main() {
     expect(find.text("Safe areas"), findsOneWidget);
     expect(find.text("Content bounds"), findsOneWidget);
     expect(find.text("Spacing grid"), findsOneWidget);
-    expect(find.byType(material.Switch), findsNWidgets(4));
+    expect(find.byType(flutter_material.Switch), findsNWidgets(4));
+    expect(tester.takeException(), isNull);
   });
 
   test("layout geometry keeps PREGO content inside device safe areas", () {

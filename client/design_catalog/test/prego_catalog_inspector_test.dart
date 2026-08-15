@@ -6,6 +6,10 @@ import "package:material_ui/material_ui.dart" as material;
 import "package:sesori_design_catalog/src/inspector/prego_inspection_tokens.dart";
 import "package:sesori_design_catalog/src/prego_catalog_inspector.dart";
 import "package:sesori_design_catalog/src/prego_catalog_theme.dart";
+import "package:sesori_design_catalog/src/review_tools/models/prego_annotation.dart";
+import "package:sesori_design_catalog/src/review_tools/prego_review_tools.dart";
+import "package:sesori_design_catalog/src/review_tools/repositories/prego_annotation_repository.dart";
+import "package:sesori_design_catalog/src/review_tools/storage/prego_annotation_storage.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -143,17 +147,69 @@ void main() {
     await tester.sendEventToBinding(pointer.removePointer());
   });
 
-  testWidgets("disabled addon leaves component interaction untouched", (tester) async {
-    final addon = PregoCatalogInspectorAddon();
-    const child = SizedBox(key: Key("child"));
+  testWidgets("clears a pinned target when a knob rebuild removes its render object", (tester) async {
+    var showLabel = true;
+    late StateSetter setHostState;
+    final pointer = TestPointer(2, PointerDeviceKind.mouse);
 
-    expect(addon.groupName, "inspector");
-    expect(addon.valueFromQueryGroup(const {}), isFalse);
+    await tester.pumpWidget(
+      material.MaterialApp(
+        theme: pregoCatalogDarkTheme,
+        home: material.Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              setHostState = setState;
+              return SizedBox(
+                width: 700,
+                height: 600,
+                child: PregoCatalogInspector(
+                  child: Center(
+                    child: showLabel
+                        ? const Text("Replace me", key: Key("replaceable-label"))
+                        : const SizedBox(key: Key("replacement-icon"), width: 40, height: 40),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    final labelPosition = tester.getCenter(find.byKey(const Key("replaceable-label")));
+    await tester.sendEventToBinding(pointer.addPointer(location: labelPosition));
+    await tester.sendEventToBinding(pointer.hover(labelPosition));
+    await tester.pump();
+    await tester.tapAt(labelPosition);
+    await tester.pump();
+    expect(find.byKey(const Key("prego-inspector-card")), findsOneWidget);
+
+    setHostState(() => showLabel = false);
+    await tester.pump();
+    setHostState(() {});
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("replacement-icon")), findsOneWidget);
+    expect(find.byKey(const Key("prego-inspector-card")), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.sendEventToBinding(pointer.removePointer());
+  });
+
+  testWidgets("interact review mode leaves component interaction untouched", (tester) async {
+    final repository = PregoAnnotationRepository(
+      storage: PregoAnnotationStorage.test(read: (_) async => null, write: (_, _) async {}),
+    );
+    const child = SizedBox(key: Key("child"));
+    const scope = PregoAnnotationScope(useCasePath: "prego/button", viewportName: "iPhone");
+
     await tester.pumpWidget(
       material.MaterialApp(
         theme: pregoCatalogLightTheme,
-        home: material.Builder(
-          builder: (context) => addon.buildUseCase(context, child, false),
+        home: PregoReviewToolsScope(
+          mode: PregoReviewMode.interact,
+          annotationScope: scope,
+          repository: repository,
+          child: material.Builder(builder: (context) => buildPregoReviewSurface(context, child: child)),
         ),
       ),
     );

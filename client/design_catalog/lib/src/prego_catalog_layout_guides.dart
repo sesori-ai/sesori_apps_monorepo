@@ -1,5 +1,4 @@
 import "package:flutter/widgets.dart";
-import "package:material_ui/material_ui.dart" as material;
 import "package:theme_prego/module_prego.dart";
 import "package:widgetbook/widgetbook.dart";
 
@@ -67,26 +66,13 @@ final class _LabeledBooleanField({
   required super.name,
   required final String label,
   super.initialValue = true,
-}) extends Field<bool> {
-  this
-    : super(
-        defaultValue: true,
-        type: FieldType.boolean,
-        codec: FieldCodec(
-          toParam: (value) => value.toString(),
-          toValue: (param) => param == null ? null : param == "true",
-        ),
-      );
-
+}) extends BooleanField {
   @override
   Widget toWidget(BuildContext context, String group, bool? value) {
     return Row(
       children: [
-        Expanded(child: material.Text(label)),
-        material.Switch(
-          value: value ?? initialValue ?? true,
-          onChanged: (value) => updateField(context, group, value),
-        ),
+        Expanded(child: Text(label)),
+        super.toWidget(context, group, value),
       ],
     );
   }
