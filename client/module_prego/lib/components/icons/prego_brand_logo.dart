@@ -49,6 +49,8 @@ class const PregoBrandLogo({
         isDark ? "assets/svgs/brands/cursor_dark.svg" : "assets/svgs/brands/cursor_light.svg",
       final id when id == Harness.claude.name =>
         isDark ? "assets/svgs/brands/claude_dark.svg" : "assets/svgs/brands/claude_light.svg",
+      final id when id == Harness.hermes.name =>
+        isDark ? "assets/svgs/brands/hermes_dark.svg" : "assets/svgs/brands/hermes_light.svg",
       _ => null,
     };
   }
@@ -64,6 +66,7 @@ class const PregoBrandLogo({
     final id when id == Harness.codex.name => "Codex",
     final id when id == Harness.cursor.name => "Cursor",
     final id when id == Harness.claude.name => "Claude Code",
+    final id when id == Harness.hermes.name => "Hermes Agent",
     _ => pluginId,
   };
 }

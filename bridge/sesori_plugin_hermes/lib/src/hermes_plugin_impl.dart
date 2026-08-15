@@ -9,10 +9,11 @@ import "hermes_identity.dart";
 ///
 /// Hermes is a stock ACP v1 server: `hermes acp` advertises load/list/resume/
 /// fork/prompt capabilities and streams turns via `session/update`
-/// notifications, so the base [AcpPlugin] machinery applies unchanged. This
-/// class only declares the harness's protocol policies. There are no
-/// `hermes/*` extensions, no config-option model picker, and no managed
-/// runtime (Hermes installs itself; the bridge resolves it on PATH).
+/// notifications, so the base [AcpPlugin] machinery owns sessions and turns.
+/// This class declares Hermes-specific protocol policies, including excluding
+/// interactive terminal setup from headless authentication. Version 1 uses
+/// Hermes's configured model/mode rather than exposing a picker, and has no
+/// managed runtime (Hermes installs itself; the bridge resolves it on PATH).
 class HermesPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -73,10 +74,17 @@ class HermesPlugin._({
   String get clientVersion => "0.0.0";
 
   /// Hermes provider method ids are dynamic, so there is no fixed preferred
-  /// id. Hermes advertises the configured provider first and its terminal
-  /// setup method second; the ACP base uses the first method when this is null.
+  /// id. [selectAuthMethod] chooses Hermes's first non-terminal provider.
   @override
   String? get authMethodId => null;
+
+  @override
+  String? selectAuthMethod({required AcpInitializeResult init}) {
+    for (final method in init.authMethods) {
+      if (method.type != AcpAuthMethodType.terminal) return method.id;
+    }
+    return null;
+  }
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => null;

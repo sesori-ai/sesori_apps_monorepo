@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -18,6 +19,7 @@ void main() {
     late SessionOperationDispatcher operationDispatcher;
     late SessionMutationDispatcher dispatcher;
     late _FakeDerivedPlugin plugin;
+    late _FakeWorktreeService worktreeService;
 
     setUp(() {
       db = createTestDatabase();
@@ -30,9 +32,11 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      worktreeService = _FakeWorktreeService();
       dispatcher = SessionMutationDispatcher(
         sessionRepository: repository,
         sessionOperationDispatcher: operationDispatcher,
+        worktreeService: worktreeService,
       );
     });
 
@@ -42,16 +46,20 @@ void main() {
       await db.close();
     });
 
-    Future<void> insertSession() async {
+    Future<void> insertSession({
+      bool isDedicated = false,
+      String? worktreePath,
+      String? branchName,
+    }) async {
       await repository.insertStoredSession(
         sessionId: "s1",
         backendSessionId: "backend-s1",
         pluginId: "codex",
         projectId: "/repo",
-        isDedicated: false,
+        isDedicated: isDedicated,
         createdAt: 1,
-        worktreePath: null,
-        branchName: null,
+        worktreePath: worktreePath,
+        branchName: branchName,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -174,6 +182,107 @@ void main() {
       expect(plugin.renameCalls, 1);
     });
 
+    test("persists a generated branch and emits the updated session", () async {
+      await insertSession(
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/blue-otter",
+        branchName: "blue-otter",
+      );
+      worktreeService.renameResult = GeneratedBranchRenamed(branchName: "fix-login-flow");
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      final updated = await dispatcher.applyGeneratedBranchName(
+        sessionId: "s1",
+        branchName: "fix-login-flow",
+      );
+
+      final stored = await db.sessionDao.getSession(sessionId: "s1");
+      expect(updated?.branchName, "fix-login-flow");
+      expect(stored?.branchName, "fix-login-flow");
+      expect(stored?.currentBranchName, "fix-login-flow");
+      expect(worktreeService.renameCalls, 1);
+      expect(
+        mutations.single,
+        isA<SessionBranchUpdated>().having(
+          (mutation) => mutation.session.branchName,
+          "branchName",
+          "fix-login-flow",
+        ),
+      );
+      await subscription.cancel();
+    });
+
+    test("rolls back Git when conditional branch persistence loses", () async {
+      await insertSession(
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/blue-otter",
+        branchName: "blue-otter",
+      );
+      worktreeService
+        ..renameResult = GeneratedBranchRenamed(branchName: "fix-login-flow")
+        ..onRename = () async {
+          await db.sessionDao.replaceGeneratedBranch(
+            sessionId: "s1",
+            expectedBranchName: "blue-otter",
+            branchName: "user-branch",
+          );
+        };
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      final updated = await dispatcher.applyGeneratedBranchName(
+        sessionId: "s1",
+        branchName: "fix-login-flow",
+      );
+
+      expect(updated, isNull);
+      expect(worktreeService.rollbackCalls, 1);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.branchName, "user-branch");
+      expect(mutations, isEmpty);
+      await subscription.cancel();
+    });
+
+    test("contains rollback failure when conditional branch persistence loses", () async {
+      await insertSession(
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/blue-otter",
+        branchName: "blue-otter",
+      );
+      worktreeService
+        ..renameResult = GeneratedBranchRenamed(branchName: "fix-login-flow")
+        ..rollbackError = StateError("rollback failed")
+        ..onRename = () async {
+          await db.sessionDao.replaceGeneratedBranch(
+            sessionId: "s1",
+            expectedBranchName: "blue-otter",
+            branchName: "user-branch",
+          );
+        };
+
+      expect(
+        await dispatcher.applyGeneratedBranchName(
+          sessionId: "s1",
+          branchName: "fix-login-flow",
+        ),
+        isNull,
+      );
+      expect(worktreeService.rollbackCalls, 1);
+    });
+
+    test("does not invoke Git for an in-place session", () async {
+      await insertSession();
+
+      expect(
+        await dispatcher.applyGeneratedBranchName(
+          sessionId: "s1",
+          branchName: "fix-login-flow",
+        ),
+        isNull,
+      );
+      expect(worktreeService.renameCalls, isZero);
+    });
+
     test("owns repository deletion and typed deleted mutations", () async {
       await insertSession();
       final events = expectLater(
@@ -201,6 +310,42 @@ void main() {
       );
     });
   });
+}
+
+class _FakeWorktreeService() implements WorktreeService {
+  GeneratedBranchRenameResult renameResult = GeneratedBranchRenameSkipped(
+    reason: GeneratedBranchRenameSkipReason.initialBranchChanged,
+  );
+  Object? renameError;
+  Object? rollbackError;
+  int renameCalls = 0;
+  int rollbackCalls = 0;
+  Future<void> Function()? onRename;
+
+  @override
+  Future<GeneratedBranchRenameResult> renameGeneratedBranch({
+    required String worktreePath,
+    required String initialBranchName,
+    required String generatedBranchName,
+  }) async {
+    renameCalls++;
+    if (onRename case final callback?) await callback();
+    if (renameError case final error?) throw error;
+    return renameResult;
+  }
+
+  @override
+  Future<void> rollbackGeneratedBranchRename({
+    required String worktreePath,
+    required String generatedBranchName,
+    required String initialBranchName,
+  }) async {
+    rollbackCalls++;
+    if (rollbackError case final error?) throw error;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeDerivedPlugin() implements BridgeDerivedProjectsPluginApi {

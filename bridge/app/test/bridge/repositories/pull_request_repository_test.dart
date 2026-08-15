@@ -230,6 +230,33 @@ void main() {
       expect(changed, {projectId});
     });
 
+    test("does not apply a target captured before the durable branch changed", () async {
+      await _insertRoot(
+        database: db,
+        sessionId: "worktree-root",
+        worktreePath: "/worktree",
+        creationBranch: "blue-otter",
+      );
+      final captured = await _storedSessions(database: db);
+      await db.sessionDao.replaceGeneratedBranch(
+        sessionId: "worktree-root",
+        expectedBranchName: "blue-otter",
+        branchName: "fix-login-flow",
+      );
+
+      final changed = await repository.applyResolvedTargets(
+        sessionsByProject: {projectId: captured},
+        targetsByDirectory: const {
+          "/worktree": PullRequestLocalBranchDirectoryTarget(branchName: "blue-otter"),
+        },
+      );
+
+      final session = await db.sessionDao.getSession(sessionId: "worktree-root");
+      expect(session?.branchName, "fix-login-flow");
+      expect(session?.currentBranchName, "fix-login-flow");
+      expect(changed, isEmpty);
+    });
+
     test("prepares the verified account without fabricating missing projects", () async {
       await _insertRoot(
         database: db,

@@ -2,9 +2,9 @@ import "package:acp_plugin/acp_plugin.dart";
 
 /// Builds the launch spec for `hermes acp`.
 ///
-/// Auth is out of band: the process factory inherits the bridge's
-/// environment, so a Hermes install with a configured provider/model
-/// (via `hermes setup` / `hermes model`) is picked up automatically.
+/// Auth is out of band: the process inherits the bridge environment and Hermes
+/// also loads `$HERMES_HOME/.env` (default `~/.hermes/.env`), so provider/model
+/// setup completed through `hermes setup` or `hermes model` is reused.
 abstract final class HermesBinary() {
   /// The Hermes CLI launcher, resolved on PATH.
   static const String defaultBinary = "hermes";

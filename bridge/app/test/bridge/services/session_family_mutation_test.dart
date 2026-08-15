@@ -264,11 +264,12 @@ class _Fixture() {
   this {
     repository = _FamilyRepository();
     operations = SessionOperationDispatcher(sessionRepository: repository);
+    worktree = _FamilyWorktreeService();
     mutations = SessionMutationDispatcher(
       sessionRepository: repository,
       sessionOperationDispatcher: operations,
+      worktreeService: worktree,
     );
-    worktree = _FamilyWorktreeService();
     lifecycle = SessionLifecycleService(
       worktreeService: worktree,
       sessionRepository: repository,
