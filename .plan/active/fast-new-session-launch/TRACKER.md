@@ -5,10 +5,10 @@
 - **Plan slug:** `fast-new-session-launch`
 - **Implementation base:** `origin/main` at `f7bcdc63e` after Step 4 merge
 - **Current branch:** `async-generated-session-branch-rename`
-- **Series state:** Steps 1-4/6 merged; approved standalone follow-up 4A is ready
-  for review before Step 5
-- **Current step:** deliver asynchronous generated branch refinement
-- **Next action:** open and monitor the standalone follow-up 4A PR
+- **Series state:** Steps 1-4/6 merged; standalone follow-up 4A is in review in
+  PR #923 before Step 5
+- **Current step:** monitor asynchronous generated branch refinement
+- **Next action:** merge PR #923, then continue to Step 5
 
 ## Locked Decisions
 
@@ -86,7 +86,7 @@
 | [x] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Merged in #908 |
 | [x] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Merged in #909 |
 | [x] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Merged in #913 |
-| [ ] | 4A | `⚙️ Rename generated session branches after launch` | Ready for review |
+| [ ] | 4A | `⚙️ Rename generated session branches after launch` | PR #923 open and monitored |
 | [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Blocked on follow-up 4A merge |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
 
@@ -159,7 +159,7 @@
 - [x] Persist durable/current branch facts under the session-family lane and emit
   existing `session.updated` with `titleChanged: false`.
 - [x] Preserve independent title application and tracked shutdown ownership.
-- [ ] Run codegen, focused tests, strict analysis, cleanup/analytics assessment,
+- [x] Run codegen, focused tests, strict analysis, cleanup/analytics assessment,
   and architecture reviews; commit, push, open the standalone PR, and monitor it.
 
 ## Cleanup Ledger
@@ -265,6 +265,7 @@
   lines), above the 350-700 target. This includes 264 plan/tracker lines, 33
   generated model lines, and 582 test lines covering Git eligibility, collisions,
   response timing, conditional persistence, rollback, events, and shutdown.
+- Follow-up 4A PR: #923, based on `main` and monitored.
 
 ### Manual matrix
 
