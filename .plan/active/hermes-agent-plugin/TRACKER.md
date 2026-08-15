@@ -54,7 +54,7 @@
 ## Step 7 Verification
 
 - [x] `dart analyze --fatal-infos` in `bridge/sesori_plugin_acp`
-- [x] `dart test` in `bridge/sesori_plugin_acp` (241 tests passed)
+- [x] `dart test` in `bridge/sesori_plugin_acp` (242 tests passed)
 - [x] `dart analyze --fatal-infos` in `bridge/sesori_plugin_hermes`
 - [x] `dart test` in `bridge/sesori_plugin_hermes` (24 tests passed)
 - [x] Registry test in `bridge/app` (2 tests passed)
