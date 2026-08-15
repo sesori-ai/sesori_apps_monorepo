@@ -7,14 +7,19 @@ import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
+import "worktree_service.dart";
 
 sealed class const LocalSessionMutation({required final Session session}) {
   const factory titleUpdated({required Session session}) = SessionTitleUpdated;
+
+  const factory branchUpdated({required Session session}) = SessionBranchUpdated;
 
   const factory deleted({required Session session}) = SessionDeleted;
 }
 
 final class const SessionTitleUpdated({required super.session}) extends LocalSessionMutation;
+
+final class const SessionBranchUpdated({required super.session}) extends LocalSessionMutation;
 
 final class const SessionDeleted({required super.session}) extends LocalSessionMutation;
 
@@ -22,6 +27,7 @@ final class const SessionDeleted({required super.session}) extends LocalSessionM
 class SessionMutationDispatcher({
   required final SessionRepository _sessionRepository,
   required final SessionOperationDispatcher _sessionOperationDispatcher,
+  required final WorktreeService _worktreeService,
 }) {
   final StreamController<LocalSessionMutation> _mutationsController = StreamController<LocalSessionMutation>.broadcast(
     sync: true,
@@ -46,6 +52,21 @@ class SessionMutationDispatcher({
       sessionId: sessionId,
       operation: SessionOperation.applyGeneratedTitle,
       body: () => _applyGeneratedTitleAlreadyReserved(sessionId: sessionId, title: title),
+    );
+  }
+
+  Future<Session?> applyGeneratedBranchName({
+    required String sessionId,
+    required String branchName,
+  }) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
+    return _sessionOperationDispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.applyGeneratedBranchName,
+      body: () => _applyGeneratedBranchNameAlreadyReserved(
+        sessionId: sessionId,
+        branchName: branchName,
+      ),
     );
   }
 
@@ -102,6 +123,66 @@ class SessionMutationDispatcher({
     if (updated == null) return null;
     _mutationsController.add(LocalSessionMutation.titleUpdated(session: updated));
     await _propagateTitle(sessionId: sessionId, title: title);
+    return updated;
+  }
+
+  Future<Session?> _applyGeneratedBranchNameAlreadyReserved({
+    required String sessionId,
+    required String branchName,
+  }) async {
+    final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    final worktreePath = stored?.worktreePath;
+    final initialBranchName = stored?.branchName;
+    if (stored == null ||
+        stored.parentSessionId != null ||
+        !stored.isDedicated ||
+        worktreePath == null ||
+        initialBranchName == null) {
+      return null;
+    }
+
+    final rename = await _worktreeService.renameGeneratedBranch(
+      worktreePath: worktreePath,
+      initialBranchName: initialBranchName,
+      generatedBranchName: branchName,
+    );
+    if (rename is GeneratedBranchRenameSkipped) return null;
+    final generatedBranchName = (rename as GeneratedBranchRenamed).branchName;
+
+    final Session? updated;
+    try {
+      updated = await _sessionRepository.replaceGeneratedSessionBranch(
+        sessionId: sessionId,
+        expectedBranchName: initialBranchName,
+        branchName: generatedBranchName,
+      );
+    } on Object catch (error, stackTrace) {
+      try {
+        await _worktreeService.rollbackGeneratedBranchRename(
+          worktreePath: worktreePath,
+          generatedBranchName: generatedBranchName,
+          initialBranchName: initialBranchName,
+        );
+      } on Object catch (rollbackError, rollbackStackTrace) {
+        Log.w(
+          "Could not roll back an unpersisted generated branch rename for session $sessionId",
+          rollbackError,
+          rollbackStackTrace,
+        );
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+
+    if (updated == null) {
+      await _worktreeService.rollbackGeneratedBranchRename(
+        worktreePath: worktreePath,
+        generatedBranchName: generatedBranchName,
+        initialBranchName: initialBranchName,
+      );
+      Log.w("Generated branch persistence changed for session $sessionId; restored its initial branch");
+      return null;
+    }
+    _mutationsController.add(LocalSessionMutation.branchUpdated(session: updated));
     return updated;
   }
 

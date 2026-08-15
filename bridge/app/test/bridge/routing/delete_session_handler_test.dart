@@ -51,6 +51,7 @@ void main() {
       sessionMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
+        worktreeService: worktreeService,
       );
       final sessionLifecycleService = SessionLifecycleService(
         worktreeService: worktreeService,

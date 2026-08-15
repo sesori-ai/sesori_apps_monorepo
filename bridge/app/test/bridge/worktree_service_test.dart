@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -944,6 +945,117 @@ void main() {
       expect(result, isFalse);
     });
   });
+
+  group("WorktreeService.renameGeneratedBranch", () {
+    late _GeneratedRenameWorktreeRepository repository;
+    late WorktreeService service;
+
+    setUp(() {
+      repository = _GeneratedRenameWorktreeRepository();
+      service = WorktreeService(worktreeRepository: repository);
+    });
+
+    test("renames the still-current unpublished initial branch", () async {
+      final result = await service.renameGeneratedBranch(
+        worktreePath: "/repo/.worktrees/blue-otter",
+        initialBranchName: "blue-otter",
+        generatedBranchName: "fix-login-flow",
+      );
+
+      expect(result, isA<GeneratedBranchRenamed>());
+      expect((result as GeneratedBranchRenamed).branchName, "fix-login-flow");
+      expect(repository.renameCalls, [
+        (oldBranchName: "blue-otter", newBranchName: "fix-login-flow"),
+      ]);
+      expect(repository.lastWorktreePath, "/repo/.worktrees/blue-otter");
+    });
+
+    test("skips invalid, switched, and published branches", () async {
+      repository.validBranchName = false;
+      expect(
+        await service.renameGeneratedBranch(
+          worktreePath: "/worktree",
+          initialBranchName: "blue-otter",
+          generatedBranchName: "invalid branch",
+        ),
+        isA<GeneratedBranchRenameSkipped>().having(
+          (result) => result.reason,
+          "reason",
+          GeneratedBranchRenameSkipReason.invalidGeneratedName,
+        ),
+      );
+
+      repository
+        ..validBranchName = true
+        ..currentBranchName = "user-branch";
+      expect(
+        await service.renameGeneratedBranch(
+          worktreePath: "/worktree",
+          initialBranchName: "blue-otter",
+          generatedBranchName: "fix-login-flow",
+        ),
+        isA<GeneratedBranchRenameSkipped>().having(
+          (result) => result.reason,
+          "reason",
+          GeneratedBranchRenameSkipReason.initialBranchChanged,
+        ),
+      );
+
+      repository
+        ..currentBranchName = "blue-otter"
+        ..upstream = true;
+      expect(
+        await service.renameGeneratedBranch(
+          worktreePath: "/worktree",
+          initialBranchName: "blue-otter",
+          generatedBranchName: "fix-login-flow",
+        ),
+        isA<GeneratedBranchRenameSkipped>().having(
+          (result) => result.reason,
+          "reason",
+          GeneratedBranchRenameSkipReason.initialBranchPublished,
+        ),
+      );
+      expect(repository.renameCalls, isEmpty);
+    });
+
+    test("adds a secure suffix when the generated target already exists", () async {
+      repository.existingBranches.add("fix-login-flow");
+
+      final result = await service.renameGeneratedBranch(
+        worktreePath: "/worktree",
+        initialBranchName: "blue-otter",
+        generatedBranchName: "fix-login-flow",
+      );
+
+      final renamed = result as GeneratedBranchRenamed;
+      expect(renamed.branchName, matches(RegExp(r"^fix-login-flow-[0-9a-f]{6}$")));
+      expect(repository.renameCalls.single.newBranchName, renamed.branchName);
+    });
+
+    test("restores the initial ref when current branch changes during rename", () async {
+      repository.currentAfterRename = "user-branch";
+
+      final result = await service.renameGeneratedBranch(
+        worktreePath: "/worktree",
+        initialBranchName: "blue-otter",
+        generatedBranchName: "fix-login-flow",
+      );
+
+      expect(
+        result,
+        isA<GeneratedBranchRenameSkipped>().having(
+          (result) => result.reason,
+          "reason",
+          GeneratedBranchRenameSkipReason.initialBranchChanged,
+        ),
+      );
+      expect(repository.renameCalls, [
+        (oldBranchName: "blue-otter", newBranchName: "fix-login-flow"),
+        (oldBranchName: "fix-login-flow", newBranchName: "blue-otter"),
+      ]);
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1021,6 +1133,49 @@ class _FakeProcessRunner() implements ProcessRunner {
     }
     throw next;
   }
+}
+
+class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
+  bool validBranchName = true;
+  bool upstream = false;
+  String? currentBranchName = "blue-otter";
+  String? currentAfterRename;
+  final Set<String> existingBranches = <String>{};
+  final List<({String oldBranchName, String newBranchName})> renameCalls = [];
+  String? lastWorktreePath;
+
+  @override
+  Future<bool> isValidBranchName({required String branchName}) async => validBranchName;
+
+  @override
+  Future<String?> getCurrentBranchName({required String worktreePath}) async {
+    lastWorktreePath = worktreePath;
+    return currentBranchName;
+  }
+
+  @override
+  Future<bool> hasUpstream({required String worktreePath, required String branchName}) async => upstream;
+
+  @override
+  Future<bool> branchExists({required String projectPath, required String branchName}) async {
+    lastWorktreePath = projectPath;
+    return existingBranches.contains(branchName);
+  }
+
+  @override
+  Future<void> renameBranch({
+    required String worktreePath,
+    required String oldBranchName,
+    required String newBranchName,
+  }) async {
+    lastWorktreePath = worktreePath;
+    renameCalls.add((oldBranchName: oldBranchName, newBranchName: newBranchName));
+    currentBranchName = currentAfterRename ?? newBranchName;
+    currentAfterRename = null;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeBridgePluginApi() implements NativeProjectsPluginApi {

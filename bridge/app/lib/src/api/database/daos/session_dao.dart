@@ -83,6 +83,24 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     return updatedRows == 1;
   }
 
+  Future<bool> replaceGeneratedBranch({
+    required String sessionId,
+    required String expectedBranchName,
+    required String branchName,
+  }) async {
+    final updatedRows =
+        await (update(sessionTable)..where(
+              (table) => table.sessionId.equals(sessionId) & table.branchName.equals(expectedBranchName),
+            ))
+            .write(
+              SessionTableCompanion(
+                branchName: Value(branchName),
+                currentBranchName: Value(branchName),
+              ),
+            );
+    return updatedRows == 1;
+  }
+
   /// Records a delete tombstone for [backendSessionId]. Idempotent — re-deleting an
   /// already-tombstoned session keeps the original timestamp.
   Future<void> insertSessionTombstone({

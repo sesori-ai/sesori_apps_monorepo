@@ -569,15 +569,19 @@ class FakeSessionDao() {
 /// Hand-written fake [SessionMetadataRepository] for testing.
 class FakeSessionMetadataRepository() implements SessionMetadataRepository {
   String? generateResult = "Generated title";
+  String generatedBranchName = "generated-branch";
   String? lastGenerateMessage;
 
   @override
   void beginShutdown() {}
 
   @override
-  Future<String> generateTitle({required String firstMessage}) async {
+  Future<GeneratedSessionMetadata> generateMetadata({required String firstMessage}) async {
     lastGenerateMessage = firstMessage;
-    return generateResult ?? (throw StateError("metadata unavailable"));
+    return (
+      title: generateResult ?? (throw StateError("metadata unavailable")),
+      branchName: generatedBranchName,
+    );
   }
 }
 
@@ -848,6 +852,13 @@ class _NoopSessionRepository() implements SessionRepository {
 
   @override
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async => null;
+
+  @override
+  Future<Session?> replaceGeneratedSessionBranch({
+    required String sessionId,
+    required String expectedBranchName,
+    required String branchName,
+  }) async => null;
 
   @override
   Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
@@ -1154,6 +1165,13 @@ class FakeSessionRepository({
       lastUserActivityAt: stored.lastUserMessageAt,
     );
   }
+
+  @override
+  Future<Session?> replaceGeneratedSessionBranch({
+    required String sessionId,
+    required String expectedBranchName,
+    required String branchName,
+  }) async => null;
 
   @override
   Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);

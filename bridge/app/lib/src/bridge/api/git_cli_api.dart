@@ -244,6 +244,38 @@ class GitCliApi({
     return result.stdout.toString().trim().isNotEmpty;
   }
 
+  Future<bool> isValidBranchName({required String branchName}) async {
+    final arguments = ["check-ref-format", "--branch", branchName];
+    final result = await runGit(projectPath: ".", arguments: arguments);
+    if (result.exitCode == 0) return true;
+    if (result.exitCode == 1) return false;
+    throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+  }
+
+  Future<bool> hasUpstream({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    final arguments = ["for-each-ref", "--format=%(upstream)", "refs/heads/$branchName"];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+    return result.stdout.toString().trim().isNotEmpty;
+  }
+
+  Future<void> renameBranch({
+    required String projectPath,
+    required String oldBranchName,
+    required String newBranchName,
+  }) async {
+    final arguments = ["branch", "-m", "--", oldBranchName, newBranchName];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+  }
+
   Future<bool> createWorktree({
     required String projectPath,
     required String worktreePath,
