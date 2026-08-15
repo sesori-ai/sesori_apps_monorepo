@@ -6,9 +6,9 @@
 - **Implementation base:** `origin/main` at `9f765e6d5` after follow-up 4A merge
 - **Current branch:** `fast-new-session-launch-step-5`
 - **Series state:** Steps 1-4/6 and standalone follow-up 4A merged; Step 5 is in
-  progress
-- **Current step:** reconcile launch regression contracts and cleanup audit
-- **Next action:** verify and open the Step 5 documentation PR
+  review in PR #928
+- **Current step:** monitor the Step 5 documentation PR
+- **Next action:** merge PR #928, then execute the Step 6 regression matrix
 
 ## Locked Decisions
 
@@ -87,7 +87,7 @@
 | [x] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Merged in #909 |
 | [x] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Merged in #913 |
 | [x] | 4A | `⚙️ Rename generated session branches after launch` | Merged in #923 |
-| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | In progress |
+| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | PR #928 open and monitored |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
 
 ## Step 1 Checklist
@@ -180,7 +180,7 @@
 - [x] Complete the implementation cleanup audit and retain only compatibility or
   independently used artifacts.
 - [x] Validate the documentation-only diff with `git diff --check`.
-- [ ] Commit, push, open Step 5, and monitor it.
+- [x] Commit, push, open Step 5, and monitor it in PR #928.
 
 ## Step 5 Cleanup Audit
 
