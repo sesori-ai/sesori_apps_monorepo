@@ -34,7 +34,15 @@ void main() {
 
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
-      await pump();
+      for (
+        var attempt = 0;
+        attempt < 50 &&
+            (events.whereType<BridgeSseQuestionAsked>().isEmpty ||
+                events.whereType<BridgeSseTuiToastShow>().isEmpty);
+        attempt++
+      ) {
+        await pump();
+      }
       expect(events.single, isA<BridgeSseSessionCreated>());
       await subscription.cancel();
     });
