@@ -8,6 +8,7 @@ import "package:web_socket_channel/web_socket_channel.dart";
 
 import "../../foundation/platform/realtime_websocket_connector.dart";
 import "../../logging/logging.dart";
+import "project_glossary_key.dart";
 import "realtime_voice_protocol.dart";
 
 final class const RealtimeVoiceTransportClosedException() implements Exception;
@@ -23,6 +24,12 @@ class RealtimeVoiceApi({
   required final AuthTokenProvider tokenProvider,
 }) {
   Future<RealtimeVoiceSession> start({required RealtimeAudioFormat audio, required String? projectKey}) async {
+    // This API promises auth only ever sees the opaque derived key. Refuse a
+    // value that is not one rather than forwarding it, so a caller that passes
+    // a raw project ID fails here instead of leaking it off the device.
+    if (projectKey != null && !isValidProjectGlossaryKey(projectKey)) {
+      throw const RealtimeVoiceProtocolException("Realtime projectKey must be an opaque project glossary key");
+    }
     final token = await tokenProvider.getFreshAccessToken();
     if (token == null) {
       throw const RealtimeVoiceOpenAuthenticationException(cause: null, httpStatus: null);

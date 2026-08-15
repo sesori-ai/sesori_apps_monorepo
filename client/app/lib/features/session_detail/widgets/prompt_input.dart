@@ -754,8 +754,11 @@ class _PromptInputState() extends State<PromptInput> {
     } on VoiceRealtimePartialTranscriptionError catch (error) {
       loge("Realtime transcription stopped early", error.failure);
       if (!mounted || stale()) return;
-      final confirmedText = error.confirmedText.trim();
-      if (confirmedText.isNotEmpty) {
+      // Keep the confirmed text exactly as the provider produced it; a trailing
+      // separator is meaningful when it is appended to the draft. The trimmed
+      // form is only used to reject a whitespace-only partial.
+      final confirmedText = error.confirmedText;
+      if (confirmedText.trim().isNotEmpty) {
         _appendVoiceTranscript(transcript: confirmedText);
         _scrollToDraftEndAfterLayout();
         if (!_isVoiceFirst) {

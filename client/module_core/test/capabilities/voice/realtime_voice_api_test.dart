@@ -184,6 +184,19 @@ void main() {
     await session.close();
   });
 
+  test("Given a raw project ID as projectKey When starting Then refuses before opening the socket", () async {
+    // Only the opaque derived key may reach auth. A caller passing the raw ID
+    // must fail here rather than have it leave the device, so the guard has to
+    // run before the connector is touched.
+    await expectLater(
+      api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: "project-123"),
+      throwsA(isA<RealtimeVoiceProtocolException>()),
+    );
+
+    expect(connector.uri, isNull);
+    expect(tokenProvider.forceRefreshes, isEmpty);
+  });
+
   test("Given an async WebSocket connection When starting Then waits for ready before sending start", () async {
     connector = _Connector();
     connector.useDelayedConnect = true;
