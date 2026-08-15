@@ -402,7 +402,6 @@ class VoiceTranscriptionService({
     await _recorder.resume();
     _ensureInteractionActive(generation);
     _throwIfPendingPreAudioFallback();
-    _forwardRealtimeAudio = true;
     _ensureInteractionActive(generation);
     _throwIfRealtimeTerminalFailure();
     if (_realtimeTerminalEvent != null) {
@@ -413,6 +412,12 @@ class VoiceTranscriptionService({
       // _stopRealtimeAndTranscribe instead.
       return;
     }
+    // Enabled only once both terminal checks have passed. Terminal cleanup
+    // cancels the recorder stream asynchronously, so leaving forwarding on
+    // while returning or throwing above would let a queued PCM frame reach
+    // sendAudio() after the session ended and turn a completed interaction
+    // into a transport failure.
+    _forwardRealtimeAudio = true;
     _markRecordingStarted();
   }
 
