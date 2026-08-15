@@ -325,8 +325,8 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     }
 
     var targetBranchName = generatedBranchName;
-    if (await _worktreeRepository.branchExists(
-      projectPath: worktreePath,
+    if (await _branchExistsLocallyOrRemotely(
+      worktreePath: worktreePath,
       branchName: targetBranchName,
     )) {
       final suffixOffset = _random.nextInt(_suffixSpace);
@@ -334,8 +334,8 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
         final candidate = "$generatedBranchName-${_hexSuffix((suffixOffset + attempt) % _suffixSpace)}";
         if (!await _worktreeRepository.isValidBranchName(branchName: candidate)) continue;
-        if (!await _worktreeRepository.branchExists(
-          projectPath: worktreePath,
+        if (!await _branchExistsLocallyOrRemotely(
+          worktreePath: worktreePath,
           branchName: candidate,
         )) {
           availableBranchName = candidate;
@@ -382,6 +382,20 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       initialBranchName: initialBranchName,
     );
     return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.initialBranchChanged);
+  }
+
+  Future<bool> _branchExistsLocallyOrRemotely({
+    required String worktreePath,
+    required String branchName,
+  }) async {
+    return await _worktreeRepository.branchExists(
+          projectPath: worktreePath,
+          branchName: branchName,
+        ) ||
+        await _worktreeRepository.hasRemoteBranch(
+          worktreePath: worktreePath,
+          branchName: branchName,
+        );
   }
 
   Future<void> rollbackGeneratedBranchRename({

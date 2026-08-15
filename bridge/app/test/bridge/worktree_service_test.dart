@@ -1019,7 +1019,7 @@ void main() {
 
       repository
         ..upstream = false
-        ..remoteBranch = true;
+        ..remoteBranches.add("blue-otter");
       expect(
         await service.renameGeneratedBranch(
           worktreePath: "/worktree",
@@ -1037,6 +1037,20 @@ void main() {
 
     test("adds a secure suffix when the generated target already exists", () async {
       repository.existingBranches.add("fix-login-flow");
+
+      final result = await service.renameGeneratedBranch(
+        worktreePath: "/worktree",
+        initialBranchName: "blue-otter",
+        generatedBranchName: "fix-login-flow",
+      );
+
+      final renamed = result as GeneratedBranchRenamed;
+      expect(renamed.branchName, matches(RegExp(r"^fix-login-flow-[0-9a-f]{6}$")));
+      expect(repository.renameCalls.single.newBranchName, renamed.branchName);
+    });
+
+    test("adds a secure suffix when only a matching remote target exists", () async {
+      repository.remoteBranches.add("fix-login-flow");
 
       final result = await service.renameGeneratedBranch(
         worktreePath: "/worktree",
@@ -1194,7 +1208,7 @@ class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
   bool validBranchName = true;
   bool Function(String branchName)? branchNameValidator;
   bool upstream = false;
-  bool remoteBranch = false;
+  final Set<String> remoteBranches = <String>{};
   String? currentBranchName = "blue-otter";
   String? currentAfterRename;
   Object? currentBranchReadErrorAfterRename;
@@ -1220,7 +1234,9 @@ class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
   Future<bool> hasUpstream({required String worktreePath, required String branchName}) async => upstream;
 
   @override
-  Future<bool> hasRemoteBranch({required String worktreePath, required String branchName}) async => remoteBranch;
+  Future<bool> hasRemoteBranch({required String worktreePath, required String branchName}) async {
+    return remoteBranches.contains(branchName);
+  }
 
   @override
   Future<bool> branchExists({required String projectPath, required String branchName}) async {
