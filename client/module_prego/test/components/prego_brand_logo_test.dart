@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -16,6 +18,9 @@ Widget _harness({required PregoBrandLogo logo, Brightness brightness = Brightnes
 
 SvgAssetLoader _loaderOf(WidgetTester tester) =>
     tester.widget<SvgPicture>(find.byType(SvgPicture)).bytesLoader as SvgAssetLoader;
+
+List<String> _pathElements(String svg) =>
+    RegExp(r"<path\b[^>]*>").allMatches(svg).map((match) => match.group(0)!).toList();
 
 void main() {
   for (final mapping in <({String pluginId, String lightAsset, String darkAsset})>[
@@ -85,6 +90,16 @@ void main() {
     expect(PregoBrandLogo.displayNameFor(Harness.claude.name), "Claude Code");
     expect(PregoBrandLogo.displayNameFor(Harness.hermes.name), "Hermes Agent");
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
+  });
+
+  test("dark Hermes artwork insets the same mark inside a white circle", () {
+    final light = File("assets/svgs/brands/hermes_light.svg").readAsStringSync();
+    final dark = File("assets/svgs/brands/hermes_dark.svg").readAsStringSync();
+
+    expect(_pathElements(dark), _pathElements(light));
+    expect(dark, contains('<circle cx="12" cy="12" r="12" fill="#FFFFFF"/>'));
+    expect(dark, contains('transform="translate(3 3) scale(0.75)"'));
+    expect(light, isNot(contains("<circle")));
   });
 
   testWidgets("forwards size and keeps the mark decorative", (tester) async {
