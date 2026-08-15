@@ -103,11 +103,118 @@ void main() {
       throwsA(isA<ProcessException>()),
     );
   });
+
+  test("isValidBranchName delegates to git check-ref-format", () async {
+    for (final testCase in [
+      (exitCode: 0, stdout: "generated-branch\n", expected: true),
+      (exitCode: 1, stdout: "", expected: false),
+      (exitCode: 128, stdout: "", expected: false),
+      (exitCode: 0, stdout: "previous-branch\n", expected: false),
+    ]) {
+      final processRunner = _RecordingProcessRunner(exitCode: testCase.exitCode, stdout: testCase.stdout);
+      final api = GitCliApi(
+        processRunner: processRunner,
+        gitPathExists: ({required String gitPath}) => true,
+      );
+
+      expect(await api.isValidBranchName(branchName: "generated-branch"), testCase.expected);
+      expect(processRunner.arguments, ["check-ref-format", "--branch", "generated-branch"]);
+    }
+  });
+
+  test("hasUpstream reads the exact local branch ref", () async {
+    final processRunner = _RecordingProcessRunner(stdout: "refs/remotes/origin/initial-branch\n");
+    final api = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    expect(
+      await api.hasUpstream(projectPath: "/worktree", branchName: "initial-branch"),
+      isTrue,
+    );
+    expect(processRunner.workingDirectory, "/worktree");
+    expect(processRunner.arguments, [
+      "for-each-ref",
+      "--format=%(upstream)",
+      "refs/heads/initial-branch",
+    ]);
+  });
+
+  test("hasRemoteBranch finds the exact branch name under any remote", () async {
+    final processRunner = _RecordingProcessRunner(
+      results: [
+        ProcessResult(1, 0, "origin\nteam/origin\n", ""),
+        ProcessResult(
+          1,
+          0,
+          "refs/remotes/origin/HEAD\nrefs/remotes/team/origin/initial-branch\n",
+          "",
+        ),
+      ],
+    );
+    final api = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    expect(
+      await api.hasRemoteBranch(projectPath: "/worktree", branchName: "initial-branch"),
+      isTrue,
+    );
+    expect(processRunner.workingDirectory, "/worktree");
+    expect(processRunner.invocations, [
+      ["remote"],
+      ["for-each-ref", "--format=%(refname)", "refs/remotes"],
+    ]);
+  });
+
+  test("renameBranch uses explicit old and new refs and preserves failures", () async {
+    final processRunner = _RecordingProcessRunner();
+    final api = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    await api.renameBranch(
+      projectPath: "/worktree",
+      oldBranchName: "initial-branch",
+      newBranchName: "generated-branch",
+    );
+
+    expect(processRunner.workingDirectory, "/worktree");
+    expect(processRunner.arguments, [
+      "branch",
+      "-m",
+      "--",
+      "initial-branch",
+      "generated-branch",
+    ]);
+
+    final failingApi = GitCliApi(
+      processRunner: _RecordingProcessRunner(exitCode: 128, stderr: "rename failed"),
+      gitPathExists: ({required String gitPath}) => true,
+    );
+    await expectLater(
+      failingApi.renameBranch(
+        projectPath: "/worktree",
+        oldBranchName: "initial-branch",
+        newBranchName: "generated-branch",
+      ),
+      throwsA(isA<ProcessException>()),
+    );
+  });
 }
 
-class _RecordingProcessRunner({final String stdout = "", final String stderr = "", final int exitCode = 0})
+class _RecordingProcessRunner({
+  final String stdout = "",
+  final String stderr = "",
+  final int exitCode = 0,
+  final List<ProcessResult>? results,
+})
     implements ProcessRunner {
   List<String>? arguments;
+  final List<List<String>> invocations = [];
   String? workingDirectory;
   Map<String, String>? environment;
 
@@ -121,8 +228,10 @@ class _RecordingProcessRunner({final String stdout = "", final String stderr = "
   }) async {
     expect(executable, "git");
     this.arguments = arguments;
+    invocations.add(arguments);
     this.workingDirectory = workingDirectory;
     this.environment = environment;
+    if (results case final results? when results.isNotEmpty) return results.removeAt(0);
     return ProcessResult(1, exitCode, stdout, stderr);
   }
 

@@ -128,8 +128,10 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
               "The installed Hermes does not expose the `acp` subcommand. Update Hermes, then retry setup detection.",
         );
       case _HermesRuntimeProbeState.outdated:
-        return const PluginSetupUnavailable(
-          actionHint: "The installed Hermes Agent version is too old. Update Hermes and restart the bridge.",
+        return PluginSetupUnavailable(
+          actionHint: explicitBin != null
+              ? "The configured Hermes CLI path points to an unsupported version. Update that install or fix `--hermes-bin`."
+              : "The installed Hermes Agent version is too old. Update Hermes and restart the bridge.",
         );
       case _HermesRuntimeProbeState.unrecognized:
       case _HermesRuntimeProbeState.unknown:

@@ -244,6 +244,65 @@ class GitCliApi({
     return result.stdout.toString().trim().isNotEmpty;
   }
 
+  Future<bool> isValidBranchName({required String branchName}) async {
+    final arguments = ["check-ref-format", "--branch", branchName];
+    final result = await runGit(projectPath: ".", arguments: arguments);
+    return result.exitCode == 0 && result.stdout.toString().trim() == branchName;
+  }
+
+  Future<bool> hasUpstream({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    final arguments = ["for-each-ref", "--format=%(upstream)", "refs/heads/$branchName"];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+    return result.stdout.toString().trim().isNotEmpty;
+  }
+
+  Future<bool> hasRemoteBranch({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    const remoteArguments = ["remote"];
+    final remotesResult = await runGit(projectPath: projectPath, arguments: remoteArguments);
+    if (remotesResult.exitCode != 0) {
+      throw ProcessException("git", remoteArguments, remotesResult.stderr.toString(), remotesResult.exitCode);
+    }
+    final remoteNames = remotesResult.stdout
+        .toString()
+        .split("\n")
+        .map((remote) => remote.trim())
+        .where((remote) => remote.isNotEmpty);
+    final matchingRefs = {for (final remote in remoteNames) "refs/remotes/$remote/$branchName"};
+    if (matchingRefs.isEmpty) return false;
+
+    const refArguments = ["for-each-ref", "--format=%(refname)", "refs/remotes"];
+    final refsResult = await runGit(projectPath: projectPath, arguments: refArguments);
+    if (refsResult.exitCode != 0) {
+      throw ProcessException("git", refArguments, refsResult.stderr.toString(), refsResult.exitCode);
+    }
+    return refsResult.stdout
+        .toString()
+        .split("\n")
+        .map((ref) => ref.trim())
+        .any(matchingRefs.contains);
+  }
+
+  Future<void> renameBranch({
+    required String projectPath,
+    required String oldBranchName,
+    required String newBranchName,
+  }) async {
+    final arguments = ["branch", "-m", "--", oldBranchName, newBranchName];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+  }
+
   Future<bool> createWorktree({
     required String projectPath,
     required String worktreePath,
@@ -252,7 +311,7 @@ class GitCliApi({
   }) async {
     final result = await runGit(
       projectPath: projectPath,
-      arguments: ["worktree", "add", "-b", branchName, "--", worktreePath, startPoint],
+      arguments: ["worktree", "add", "-b", branchName, "--no-track", "--", worktreePath, startPoint],
     );
     return result.exitCode == 0;
   }

@@ -289,6 +289,31 @@ void main() {
       expect(result, isA<PluginSetupUnavailable>());
     });
 
+    test("an outdated explicit binary points back to the configured path", () async {
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.19.0\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+        servesAcp: false,
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: const PluginConfig(values: {HermesPluginDescriptor.binOption: "/custom/hermes"}),
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnavailable>());
+      expect((result as PluginSetupUnavailable).actionHint, contains("configured Hermes CLI path"));
+    });
+
     test("reports unknown when the version output is unrecognized", () async {
       final processes = _ProbeProcessService(
         spawnError: null,

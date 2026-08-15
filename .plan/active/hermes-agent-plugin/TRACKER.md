@@ -4,9 +4,9 @@
 
 - **Plan slug:** `hermes-agent-plugin`
 - **Owner review:** in progress since 2026-08-15
-- **Current open PR:** Step 6/9, #921
-- **Local successor:** Step 7/9 corrective integration branch
-- **Next action:** finish Step 7 corrections and verification; publish only after #921 merges
+- **Current open PR:** none
+- **Local successor:** Step 8/9 verification branch
+- **Next action:** complete the Step 8 evidence matrix and publish its durable results
 - **Retirement:** blocked on the Step 8 matrix in `PLAN.md`
 
 ## Delivery
@@ -18,8 +18,8 @@
 | [x] | 3/9 | #916 | Merged ACP plugin core. |
 | [x] | 4/9 | #917 | Merged descriptor/setup implementation. |
 | [x] | 5/9 | #919 | Merged registration and CI coverage. |
-| [ ] | 6/9 | #921 | Open; branding implementation and supplied artwork corrections. |
-| [ ] | 7/9 | pending | Local corrective plan/runtime/ACP pass. |
+| [x] | 6/9 | #921 | Merged branding implementation and supplied artwork corrections. |
+| [x] | 7/9 | #927 | Merged corrective plan/runtime/ACP pass. |
 | [ ] | 8/9 | pending | Regression documentation and real Hermes matrix. |
 | [ ] | 9/9 | pending | Retirement only after required evidence passes. |
 
