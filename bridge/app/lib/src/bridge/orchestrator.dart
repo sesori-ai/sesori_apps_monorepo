@@ -1906,7 +1906,7 @@ class OrchestratorSession._({
         }
 
         final connID = ByteData.sublistView(msg.data).getUint16(0, Endian.big);
-        final payload = msg.data.sublist(2);
+        final payload = Uint8List.sublistView(msg.data, 2);
         if (payload.isEmpty) {
           Log.v("empty payload for connID=$connID");
           break processMessage;
@@ -1933,7 +1933,7 @@ class OrchestratorSession._({
             break processMessage;
           }
 
-          List<int> encrypted;
+          Uint8List encrypted;
           try {
             encrypted = await kxManager.handleKeyExchange(message: relayMessage);
             Log.d("key exchange OK, sending ready to connID=$connID");
@@ -2008,7 +2008,7 @@ class OrchestratorSession._({
               _sendIfCurrent(
                 connection: connection,
                 connID: connID,
-                payload: utf8.encode(rekeyRequired),
+                payload: Uint8List.fromList(utf8.encode(rekeyRequired)),
               );
             } catch (_) {
               if (_cancelled) {
@@ -2034,7 +2034,7 @@ class OrchestratorSession._({
           final ackJSON = utf8.encode(
             jsonEncode(const RelayMessage.resumeAck().toJson()),
           );
-          List<int> encryptedAck;
+          Uint8List encryptedAck;
           try {
             encryptedAck = await frame(ackJSON, encryptor: encryptor);
           } catch (_) {
@@ -2213,7 +2213,7 @@ class OrchestratorSession._({
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
-    final ({List<int> payload, int cleartextLength}) encrypted;
+    final ({Uint8List payload, int cleartextLength}) encrypted;
     try {
       encrypted = await _encryptRelayMessage(message: response, connID: connID);
     } on Object catch (error, stackTrace) {
@@ -2335,7 +2335,7 @@ class OrchestratorSession._({
     return base + Duration(milliseconds: extra);
   }
 
-  Future<({List<int> payload, int cleartextLength})> _encryptRelayMessage({
+  Future<({Uint8List payload, int cleartextLength})> _encryptRelayMessage({
     required int connID,
     required RelayMessage message,
   }) async {
@@ -2352,7 +2352,7 @@ class OrchestratorSession._({
   RelaySendOutcome _sendEncryptedResponseIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
     required int cleartextLength,
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
@@ -2374,7 +2374,7 @@ class OrchestratorSession._({
   RelaySendOutcome _sendIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
   }) {
     try {
       return _client.sendIfCurrent(

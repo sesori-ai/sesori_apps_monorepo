@@ -208,7 +208,10 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: PromptInput(
                       draftIdentity: editableSessionId,
+                      restorationKey: null,
                       initialDraft: context.read<SessionDetailCubit>().composerDraft,
+                      initialAttachments: const [],
+                      onInitialAttachmentsConsumed: () {},
                       // Queued messages count: the user has already "sent"
                       // something, so the composer should rest as a follow-up
                       // field even before the first message lands in the list.
@@ -221,11 +224,11 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                         sessionStatus: state.sessionStatus,
                         childStatuses: state.childStatuses,
                       ),
-                      onSend: ({required text, required command, required inputMode, required attachments}) =>
+                      onSend: ({required draft, required command, required attachments}) =>
                           context.read<SessionDetailCubit>().sendMessage(
-                            text: text,
+                            text: draft.text,
                             command: command,
-                            inputMode: inputMode,
+                            inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
                             attachments: attachments,
                           ),
                       onVoiceTranscriptionCompleted: context

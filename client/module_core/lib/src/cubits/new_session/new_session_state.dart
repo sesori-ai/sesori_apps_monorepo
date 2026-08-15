@@ -5,6 +5,7 @@ import "../../errors/remote_failure_reason.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/new_session_options_service.dart";
+import "new_session_submission_snapshot.dart";
 
 part "new_session_state.freezed.dart";
 
@@ -88,6 +89,7 @@ sealed class NewSessionState with _$NewSessionState {
   }) = NewSessionIdle;
 
   const factory sending({
+    required NewSessionSubmissionSnapshot submission,
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
@@ -96,7 +98,8 @@ sealed class NewSessionState with _$NewSessionState {
     required NewSessionProjectWorktreeCapability projectWorktreeCapability,
   }) = NewSessionSending;
 
-  const factory error({
+  const factory restoringSubmission({
+    required NewSessionSubmissionSnapshot submission,
     required RemoteFailureReason reason,
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
@@ -104,7 +107,27 @@ sealed class NewSessionState with _$NewSessionState {
     required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
     required NewSessionProjectWorktreeCapability projectWorktreeCapability,
-  }) = NewSessionError;
+  }) = NewSessionRestoringSubmission;
+
+  const factory creationError({
+    required RemoteFailureReason reason,
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
+    required bool isPluginDiscoveryInFlight,
+    required NewSessionProjectWorktreeCapability projectWorktreeCapability,
+  }) = NewSessionCreationError;
+
+  const factory discoveryError({
+    required RemoteFailureReason reason,
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
+    required bool isPluginDiscoveryInFlight,
+    required NewSessionProjectWorktreeCapability projectWorktreeCapability,
+  }) = NewSessionDiscoveryError;
 
   const factory created({required Session session}) = NewSessionCreated;
 }
@@ -160,22 +183,37 @@ extension NewSessionStateAgentModel on NewSessionState {
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
         projectWorktreeCapability: projectWorktreeCapability,
       ),
-    NewSessionError(
+    NewSessionRestoringSubmission(
       :final availablePlugins,
       :final selectedPlugin,
       :final options,
       :final backendScope,
       :final isPluginDiscoveryInFlight,
       :final projectWorktreeCapability,
-    ) =>
-      _agentModelData(
-        plugins: availablePlugins,
-        plugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
+    ) ||
+    NewSessionCreationError(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final options,
+      :final backendScope,
+      :final isPluginDiscoveryInFlight,
+      :final projectWorktreeCapability,
+    ) ||
+    NewSessionDiscoveryError(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final options,
+      :final backendScope,
+      :final isPluginDiscoveryInFlight,
+      :final projectWorktreeCapability,
+    ) => _agentModelData(
+      plugins: availablePlugins,
+      plugin: selectedPlugin,
+      options: options,
+      backendScope: backendScope,
+      isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
+      projectWorktreeCapability: projectWorktreeCapability,
+    ),
     NewSessionCreated() => null,
   };
 

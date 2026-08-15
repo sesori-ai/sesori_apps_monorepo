@@ -222,7 +222,8 @@ void main() {
         }
       });
       when(
-        () => harness.sessionRepository.createSessionWithMessage(attachments: const [],
+        () => harness.sessionRepository.createSessionWithMessage(
+          attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -260,7 +261,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)));
       await tester.pump();
-      expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+      expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
       // Open a different existing session from the list. go_router swaps the
       // underlying detail in place and pops the pushed new-session page during

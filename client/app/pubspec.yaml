@@ -86,7 +86,6 @@ dependencies:
   firebase_messaging: ^16.4.3
   flutter_local_notifications: ^22.2.0
   flutter_svg: ^2.3.0
-  cue: ^0.3.1
   sign_in_with_apple: ^8.1.0
   crypto: ^3.0.7
   vector_graphics: ^1.2.2

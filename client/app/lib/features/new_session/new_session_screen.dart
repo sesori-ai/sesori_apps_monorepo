@@ -16,7 +16,6 @@ import "../../core/widgets/composer_surface_style.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/project_nav_subtitle.dart";
 import "../session_detail/widgets/prompt_input.dart";
-import "new_session_loading_overlay.dart";
 import "new_session_no_harness_notice.dart";
 import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
@@ -133,22 +132,30 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     final prego = context.prego;
     final loc = context.loc;
     return switch (state) {
-      NewSessionError(:final reason) => Padding(
+      NewSessionRestoringSubmission(:final reason) || NewSessionCreationError(:final reason) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                reason.localizedMessage(loc),
-                style: TextStyle(color: prego.colors.fgErrorPrimary),
-              ),
+            Text(
+              reason.localizedMessage(loc),
+              style: TextStyle(color: prego.colors.fgErrorPrimary),
+            ),
+            Text(
+              loc.newSessionCreationDuplicateWarning,
+              style: TextStyle(color: prego.colors.fgErrorPrimary),
             ),
           ],
         ),
       ),
-      NewSessionIdle() => null,
-      NewSessionSending() => null,
-      NewSessionCreated() => null,
+      NewSessionDiscoveryError(:final reason) => Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
+        child: Text(
+          reason.localizedMessage(loc),
+          style: TextStyle(color: prego.colors.fgErrorPrimary),
+        ),
+      ),
+      NewSessionIdle() || NewSessionSending() || NewSessionCreated() => null,
     };
   }
 
@@ -338,6 +345,18 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     final isProjectUnavailable =
         composerData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
+    final restoringSubmission = switch (state) {
+      NewSessionRestoringSubmission(:final submission) => submission,
+      NewSessionIdle() ||
+      NewSessionSending() ||
+      NewSessionCreationError() ||
+      NewSessionDiscoveryError() ||
+      NewSessionCreated() => null,
+    };
+    final restoredAttachments = switch (restoringSubmission) {
+      NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
+      NewSessionCommandSubmissionSnapshot() || null => const <ComposerAttachment>[],
+    };
     // A confirmed empty harness list is explained by the notice and has no
     // refresh action. Keep discovery retry available only when discovery failed
     // before the bridge could confirm what it runs.
@@ -366,7 +385,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
               projectId: widget.projectId,
               projectName: widget.projectName,
               sessionId: session.id,
-              sessionTitle: session.title ?? "",
+              sessionTitle: session.title,
               readOnly: false,
             ),
           );
@@ -381,122 +400,131 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
         // the composer keeps the project's repository in view. Only the title
         // line changes — this screen is about the session being started, not
         // the project it belongs to.
-        titleMode: PregoTopNavigationTitleMode.backLeading,
-        subtitle: buildProjectNavSubtitle(context),
+        titleMode: isSending ? PregoTopNavigationTitleMode.inline : PregoTopNavigationTitleMode.backLeading,
+        subtitle: isSending ? null : buildProjectNavSubtitle(context),
         reserveBarSpace: false,
         scrollable: false,
         banner: ConnectionBanner.maybeFor(context),
-        // The loading scrim must dim the body while the glass back button
-        // stays tappable (the user can abort while creation is in flight),
-        // so it goes through the scaffold's bar-aware overlay slot rather
-        // than an outer Stack that would also cover the bar.
-        overlay: isSending
-            ? NewSessionLoadingOverlay(
-                semanticsLabel: loc.newSessionLoadingSemantics,
-                messages: [
-                  loc.newSessionLoadingMessage1,
-                  loc.newSessionLoadingMessage2,
-                  loc.newSessionLoadingMessage3,
-                ],
-              )
-            : null,
-        slivers: [
-          // Fill the viewport behind the bar so the variable-height options can
-          // shrink and scroll without pushing the pinned composer off-screen.
-          // With the scaffold's keyboard resize (Scaffold default), the
-          // composer rides above the keyboard when the field is focused.
-          SliverFillRemaining(
-            hasScrollBody: true,
-            child: AbsorbPointer(
-              absorbing: isSending,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Stack(
-                      // The scroll view owns the whole area, as it did before
-                      // the refresh action floated over it — a loose fit would
-                      // let it shrink to its content and strand the last rows
-                      // above a viewport that no longer reaches them.
-                      fit: StackFit.expand,
+        slivers: isSending
+            ? [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: PregoLaunchStatus(
+                    semanticsLabel: loc.newSessionLoadingSemantics,
+                    messages: [
+                      loc.newSessionLoadingMessage1,
+                      loc.newSessionLoadingMessage2,
+                      loc.newSessionLoadingMessage3,
+                    ],
+                  ),
+                ),
+              ]
+            : [
+                // Fill the viewport behind the bar so the variable-height options can
+                // shrink and scroll without pushing the pinned composer off-screen.
+                // With the scaffold's keyboard resize (Scaffold default), the
+                // composer rides above the keyboard when the field is focused.
+                SliverFillRemaining(
+                  hasScrollBody: true,
+                  child: AbsorbPointer(
+                    absorbing: isSending,
+                    child: Column(
                       children: [
-                        PregoTopBarInsetBuilder(
-                          builder: (context, topInset, child) => SingleChildScrollView(
-                            key: const Key("new_session_options_scroll"),
-                            padding: EdgeInsetsDirectional.fromSTEB(
-                              _optionsHorizontalPadding,
-                              topInset + _optionRowSpacing,
-                              _optionsHorizontalPadding,
-                              optionsBottomPadding,
-                            ),
-                            child: child,
-                          ),
-                          child: _buildOptions(
-                            data: composerData,
-                            status: optionsStatus,
-                            needsHarnessDiscovery: needsHarnessDiscovery,
-                            hasNoHarnesses: hasNoHarnesses,
+                        Expanded(
+                          child: Stack(
+                            // The scroll view owns the whole area, as it did before
+                            // the refresh action floated over it — a loose fit would
+                            // let it shrink to its content and strand the last rows
+                            // above a viewport that no longer reaches them.
+                            fit: StackFit.expand,
+                            children: [
+                              PregoTopBarInsetBuilder(
+                                builder: (context, topInset, child) => SingleChildScrollView(
+                                  key: const Key("new_session_options_scroll"),
+                                  padding: EdgeInsetsDirectional.fromSTEB(
+                                    _optionsHorizontalPadding,
+                                    topInset + _optionRowSpacing,
+                                    _optionsHorizontalPadding,
+                                    optionsBottomPadding,
+                                  ),
+                                  child: child,
+                                ),
+                                child: _buildOptions(
+                                  data: composerData,
+                                  status: optionsStatus,
+                                  needsHarnessDiscovery: needsHarnessDiscovery,
+                                  hasNoHarnesses: hasNoHarnesses,
+                                ),
+                              ),
+                              if (showsRefresh)
+                                _buildOptionsRefresh(
+                                  cubit: cubit,
+                                  isHarnessDiscovery: needsHarnessDiscovery,
+                                  isProjectUnavailable: isProjectUnavailable,
+                                ),
+                            ],
                           ),
                         ),
-                        if (showsRefresh)
-                          _buildOptionsRefresh(
-                            cubit: cubit,
-                            isHarnessDiscovery: needsHarnessDiscovery,
-                            isProjectUnavailable: isProjectUnavailable,
+                        if (!hasNoHarnesses)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Semantics(
+                              enabled: isComposerEnabled,
+                              child: ExcludeFocus(
+                                excluding: !isComposerEnabled,
+                                child: IgnorePointer(
+                                  ignoring: !isComposerEnabled,
+                                  child: PromptInput(
+                                    draftIdentity: ComposerDraftRepository.newSessionIdentity(
+                                      projectId: widget.projectId,
+                                    ),
+                                    restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
+                                    initialDraft: context.read<NewSessionCubit>().composerDraft,
+                                    initialAttachments: restoredAttachments,
+                                    onInitialAttachmentsConsumed: () {
+                                      final submission = restoringSubmission;
+                                      if (submission != null) {
+                                        context.read<NewSessionCubit>().acknowledgeRestoredSubmission(
+                                          submission: submission,
+                                        );
+                                      }
+                                    },
+                                    hasMessages: false,
+                                    attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+                                    isBusy: false,
+                                    onSend: ({required draft, required command, required attachments}) {
+                                      context.read<NewSessionCubit>().createSession(
+                                        draft: draft,
+                                        command: command,
+                                        attachments: attachments,
+                                        dedicatedWorktree: _dedicatedWorktree,
+                                      );
+                                    },
+                                    onVoiceTranscriptionCompleted: context
+                                        .read<NewSessionCubit>()
+                                        .reportVoiceTranscriptionCompleted,
+                                    onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
+                                      draft: draft,
+                                    ),
+                                    onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
+                                    onAbort: _dismissScreen,
+                                    surfaceStyleController: _composerSurfaceStyle,
+                                    header: _buildErrorBanner(state),
+                                    composerHeader: _buildComposerHeader(state),
+                                    availableCommands: composerData?.commands ?? const [],
+                                    stagedCommand: composerData?.stagedCommand,
+                                    onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                                    onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                       ],
                     ),
                   ),
-                  if (!hasNoHarnesses)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Semantics(
-                        enabled: isComposerEnabled,
-                        child: ExcludeFocus(
-                          excluding: !isComposerEnabled,
-                          child: IgnorePointer(
-                            ignoring: !isComposerEnabled,
-                            child: PromptInput(
-                              draftIdentity: ComposerDraftRepository.newSessionIdentity(
-                                projectId: widget.projectId,
-                              ),
-                              initialDraft: context.read<NewSessionCubit>().composerDraft,
-                              hasMessages: false,
-                              attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
-                              isBusy: state is NewSessionSending,
-                              onSend: ({required text, required command, required inputMode, required attachments}) {
-                                context.read<NewSessionCubit>().createSession(
-                                  text: text,
-                                  command: command,
-                                  inputMode: inputMode,
-                                  attachments: attachments,
-                                  dedicatedWorktree: _dedicatedWorktree,
-                                );
-                              },
-                              onVoiceTranscriptionCompleted: context
-                                  .read<NewSessionCubit>()
-                                  .reportVoiceTranscriptionCompleted,
-                              onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
-                                draft: draft,
-                              ),
-                              onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
-                              onAbort: _dismissScreen,
-                              surfaceStyleController: _composerSurfaceStyle,
-                              header: _buildErrorBanner(state),
-                              composerHeader: _buildComposerHeader(state),
-                              availableCommands: composerData?.commands ?? const [],
-                              stagedCommand: composerData?.stagedCommand,
-                              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
+                ),
+              ],
       ),
     );
   }

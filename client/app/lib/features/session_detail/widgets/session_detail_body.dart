@@ -133,9 +133,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       actions: actions.isEmpty ? null : actions,
       slivers: [
         switch (state) {
-          SessionDetailLoading() => const SliverFillRemaining(
+          SessionDetailLoading() => SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: CircularProgressIndicator()),
+            child: PregoLaunchStatus(
+              semanticsLabel: loc.sessionDetailLoadingSemantics,
+              messages: [
+                loc.newSessionLoadingMessage1,
+                loc.newSessionLoadingMessage2,
+                loc.newSessionLoadingMessage3,
+              ],
+            ),
           ),
           // The loaded view is a Column with an Expanded chat and a pinned
           // composer. With reserveBarSpace: false there is no top spacer, so
