@@ -4,8 +4,8 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 15 merged
-- **Series state:** Step 15/21 merged; Step 16/21 implemented and verified locally
-- **Current step:** 16/21, Pi plugin API complete locally
+- **Series state:** Step 15/21 merged; Step 16/21 ready for PR
+- **Current step:** 16/21, Pi plugin API verified and reconciled with `main`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -22,7 +22,7 @@
 - **Step 13 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/910
 - **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
 - **Step 15 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/920
-- **Next action:** reconcile Step 16 with merged `main` and prepare its PR
+- **Next action:** open and monitor the Step 16 PR
 
 ## Locked Decisions
 
@@ -64,7 +64,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Merged as PR #910 |
 | [x] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Merged as PR #914 |
 | [x] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Merged as PR #920 |
-| [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | Implemented and verified locally |
+| [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | Verified, reconciled, and ready for PR |
 | [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
 | [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
 | [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 | Not started |
@@ -513,8 +513,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - No user-visible, analytics, registered-plugin, or client/bridge wire impact.
   Database impact is one nullable tombstone directory column with no fabricated
   legacy backfill.
-- Diff before tracker/plan evidence: +6,477/-105 = 6,582 changed lines;
-  generated lines: 5,066; non-generated changed lines: 1,516. The 16-line
+- Diff before tracker/plan evidence: +6,485/-105 = 6,590 changed lines;
+  generated lines: 5,066; non-generated changed lines: 1,524. The 24-line
   non-generated overage is recorded because exact cleanup required the approved
   cross-layer persisted-directory contract and migration rather than retaining
   project-local files after restart.
