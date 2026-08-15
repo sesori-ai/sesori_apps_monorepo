@@ -244,6 +244,12 @@ class SessionRepository({
             lastAgentModel: lastAgentModel,
             pluginId: pluginId,
           );
+          if (parentBinding != null) {
+            await _sessionDao.setParentSessionId(
+              sessionId: sessionId,
+              parentSessionId: parentBinding.sessionId,
+            );
+          }
           await _sessionDao.updateObservedSessionProjection(
             sessionId: sessionId,
             directory: directory,
