@@ -805,6 +805,36 @@ void main() {
         );
       });
 
+      test("post-ready stream error before the first frame terminates instead of stranding capture", () async {
+        // The stream can fail after setup returns but before any audio frame is
+        // forwarded. The pre-audio completer has no listener left by then and
+        // the ready completer is already settled, so this must terminate rather
+        // than record a fallback nothing will ever observe. It must also not
+        // start the async file path: the realtime session is already open.
+        final startFuture = service.startRecording(projectId: "project-123");
+        await Future<void>.delayed(Duration.zero);
+        connector.channel.inbound.add(
+          jsonEncode({"type": "ready", "protocolVersion": 1, "maxSessionSeconds": 900, "dailySecondsRemaining": 100}),
+        );
+        await startFuture;
+
+        audioFrames.addError(Exception("native stream failed"));
+        await Future<void>.delayed(Duration.zero);
+
+        verify(mockRecorder.stop).called(1);
+        verifyNever(() => mockRecorder.start(any(), path: recordingPath));
+        await expectLater(
+          service.stopAndTranscribe(),
+          throwsA(
+            isA<VoiceRealtimePartialTranscriptionError>().having(
+              (error) => error.failure,
+              "failure",
+              isA<RealtimeTransportVoiceError>(),
+            ),
+          ),
+        );
+      });
+
       test("post-audio stream error stops capture immediately and returns partial", () async {
         final startFuture = service.startRecording(projectId: "project-123");
         await Future<void>.delayed(Duration.zero);

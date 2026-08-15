@@ -134,6 +134,22 @@ void main() {
     },
   );
 
+  test(
+    "Given an unparseable capability body When discovering voice support Then returns typed contract failure rather than async fallback",
+    () async {
+      // The client parses `fromJson` internally and converts a throwing parse
+      // into `ApiError.jsonParsing`, so this never surfaces as a FormatException
+      // here. An advertised-but-incompatible contract must not be mistaken for
+      // an old or unreachable server, which would silently downgrade the
+      // rollout to legacy transcription and hide the deployment defect.
+      publicClient.error = ApiError.jsonParsing('{"realtime": ');
+
+      final result = await api.discoverCapabilities();
+
+      expect(result, isA<VoiceCapabilitiesContractFailure>());
+    },
+  );
+
   test("Given disabled protocol-one capabilities When discovering voice support Then preserves capability for async context", () async {
     publicClient.responseJson = {
       "realtime": {

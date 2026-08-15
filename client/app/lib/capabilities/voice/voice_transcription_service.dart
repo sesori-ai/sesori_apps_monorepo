@@ -532,7 +532,13 @@ class VoiceTranscriptionService({
   };
 
   void _handleRealtimeNativeStreamError(Exception error) {
-    if (!_sentRealtimeAudio) {
+    // `_sentRealtimeAudio` alone is not enough: the stream can fail after setup
+    // has already returned but before the first frame. By then the pre-audio
+    // completer has no listener and the ready completer is settled, so
+    // recording a pending fallback would strand capture until release or a
+    // provider timeout. `_canFallbackBeforeAudio` additionally requires that
+    // the ready completer is still open, so anything later terminates instead.
+    if (_canFallbackBeforeAudio) {
       _completePreAudioFallback(error);
       return;
     }

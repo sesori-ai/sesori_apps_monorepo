@@ -32,6 +32,15 @@ class VoiceApi(final AuthenticatedHttpApiClient _client, final HttpApiClient _pu
       return switch (response) {
         SuccessResponse(:final data) when data.supportsProtocol1 => VoiceCapabilitiesAvailable(capabilities: data),
         SuccessResponse() => const VoiceCapabilitiesContractFailure(reason: "Realtime protocol 1 was not advertised"),
+        // The client parses `fromJson` internally and reports a throwing parse as
+        // `JsonParsingError`, so an unparseable body never reaches the
+        // `FormatException` handler below. A server that answers this endpoint but
+        // returns an incompatible payload is a contract failure, not an old or
+        // unreachable server; downgrading it to async would hide the deployment
+        // defect and quietly skew realtime adoption.
+        ErrorResponse(error: JsonParsingError()) => const VoiceCapabilitiesContractFailure(
+          reason: "Realtime capability response could not be parsed",
+        ),
         // COMPATIBILITY 2026-08-14 (v1.8.0): auth servers before realtime capability discovery, disabled rollout
         // deployments, and transient public endpoint failures must preserve the legacy async transcription path.
         // Remove only this missing/unavailable capability fallback after every supported auth server exposes protocol 1.
