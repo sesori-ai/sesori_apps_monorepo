@@ -3,8 +3,8 @@ import "dart:convert";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
-import "package:acp_plugin/acp_testing.dart";
 import "package:hermes_plugin/hermes_plugin.dart";
+import "package:hermes_plugin/src/runtime/hermes_runtime_manifest.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -17,6 +17,7 @@ void main() {
     test("parses the bare adapter version `hermes acp --version` prints", () {
       expect(HermesRuntimeManifest.tryParseVersion(value: "0.20.0\n")?.toString(), "0.20.0");
       expect(HermesRuntimeManifest.tryParseVersion(value: "v0.20.0")?.toString(), "0.20.0");
+      expect(HermesRuntimeManifest.tryParseVersion(value: "hermes-acp V0.20.0\n")?.toString(), "0.20.0");
     });
 
     test("rejects unparseable output", () {
@@ -38,8 +39,11 @@ void main() {
       expect(const HermesPluginDescriptor().displayName, "Hermes Agent");
       expect(const HermesPluginDescriptor().projectOwnership, PluginProjectOwnership.bridgeDerived);
       expect(const HermesPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.plugin);
-      expect(const HermesPluginDescriptor().supportsPromptAttachments, isTrue,
-          reason: "Hermes advertises prompt image support");
+      expect(
+        const HermesPluginDescriptor().supportsPromptAttachments,
+        isTrue,
+        reason: "Hermes advertises prompt image support",
+      );
     });
 
     test("declares only the binary option and no install capability", () {
@@ -53,16 +57,77 @@ void main() {
       );
     });
 
-    test("reports ready after version and status probes", () async {
+    test("ensureRuntime resolves a supported PATH adapter", () async {
       final processes = _ProbeProcessService(
+        spawnError: null,
         processSequence: [
-          _ProbeProcess(pid: 1, stdoutBytes: utf8.encode("0.20.0\n"), exitCode: Future<int>.value(0)),
           _ProbeProcess(
-            pid: 2,
-            stdoutBytes: utf8.encode("Model: deepseek-v4-flash\nProvider: OpenCode Go\n"),
+            pid: 1,
+            stdoutBytes: utf8.encode("hermes-acp v0.20.0\n"),
+            stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
         ],
+        servesAcp: false,
+      );
+
+      final events = await const HermesPluginDescriptor()
+          .ensureRuntime(
+            host: _StartPluginHost(
+              processes: processes,
+              config: config,
+              provisionedRuntimePath: null,
+            ),
+          )
+          .toList();
+
+      expect(events, const [ProvisionReady(binaryPath: HermesBinary.defaultBinary)]);
+      expect(processes.spawnedArguments, [
+        const ["acp", "--version"],
+      ]);
+    });
+
+    test("ensureRuntime skips an explicit binary override", () async {
+      final processes = _ProbeProcessService(
+        spawnError: StateError("an explicit binary must not be probed"),
+        processSequence: const [],
+        servesAcp: false,
+      );
+
+      final events = await const HermesPluginDescriptor()
+          .ensureRuntime(
+            host: _StartPluginHost(
+              processes: processes,
+              config: const PluginConfig(
+                values: {HermesPluginDescriptor.binOption: "/custom/hermes"},
+              ),
+              provisionedRuntimePath: null,
+            ),
+          )
+          .toList();
+
+      expect(events, isEmpty);
+      expect(processes.spawnedExecutables, isEmpty);
+    });
+
+    test("reports ready after version and status probes", () async {
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.20.0\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 2,
+            stdoutBytes: utf8.encode("Model: deepseek-v4-flash\nProvider: OpenCode Go\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -82,7 +147,9 @@ void main() {
 
     test("reports runtime missing when the CLI cannot spawn", () async {
       final processes = _ProbeProcessService(
-        spawnError: const ProcessException("hermes", []),
+        spawnError: const ProcessException("hermes", [], "No such file", 2),
+        processSequence: const [],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -102,6 +169,8 @@ void main() {
     test("reports unknown when the host process seam fails for a non-spawn reason", () async {
       final processes = _ProbeProcessService(
         spawnError: StateError("host process seam unavailable"),
+        processSequence: const [],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -120,6 +189,7 @@ void main() {
 
     test("reports runtime missing with an update hint for a pre-ACP install", () async {
       final processes = _ProbeProcessService(
+        spawnError: null,
         processSequence: [
           _ProbeProcess(
             pid: 1,
@@ -128,6 +198,7 @@ void main() {
             exitCode: Future<int>.value(2),
           ),
         ],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -147,9 +218,16 @@ void main() {
 
     test("reports unavailable when the ACP adapter is below the floor", () async {
       final processes = _ProbeProcessService(
+        spawnError: null,
         processSequence: [
-          _ProbeProcess(pid: 1, stdoutBytes: utf8.encode("0.19.0\n"), exitCode: Future<int>.value(0)),
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.19.0\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
         ],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -164,9 +242,16 @@ void main() {
 
     test("reports unknown when the version output is unrecognized", () async {
       final processes = _ProbeProcessService(
+        spawnError: null,
         processSequence: [
-          _ProbeProcess(pid: 1, stdoutBytes: utf8.encode("not-a-version\n"), exitCode: Future<int>.value(0)),
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("not-a-version\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
         ],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -181,14 +266,22 @@ void main() {
 
     test("reports authentication required when no model is configured", () async {
       final processes = _ProbeProcessService(
+        spawnError: null,
         processSequence: [
-          _ProbeProcess(pid: 1, stdoutBytes: utf8.encode("0.20.0\n"), exitCode: Future<int>.value(0)),
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.20.0\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
           _ProbeProcess(
             pid: 2,
             stdoutBytes: utf8.encode("Model: (not set)\nProvider: none\n"),
+            stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
         ],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -201,16 +294,84 @@ void main() {
       expect(result, isA<PluginSetupAuthenticationRequired>());
     });
 
-    test("uses an explicit --hermes-bin override for every probe", () async {
+    test("reports authentication required when a model has no provider", () async {
       final processes = _ProbeProcessService(
+        spawnError: null,
         processSequence: [
-          _ProbeProcess(pid: 1, stdoutBytes: utf8.encode("0.20.0\n"), exitCode: Future<int>.value(0)),
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.20.0\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
           _ProbeProcess(
             pid: 2,
-            stdoutBytes: utf8.encode("Model: gpt-5.4\nProvider: openai\n"),
+            stdoutBytes: utf8.encode("Model: deepseek-v4-flash\nProvider: none\n"),
+            stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
         ],
+        servesAcp: false,
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupAuthenticationRequired>());
+    });
+
+    test("uses configured status output when the status command exits nonzero", () async {
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.20.0\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 2,
+            stdoutBytes: utf8.encode("Model: deepseek-v4-flash\nProvider: OpenCode Go\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(1),
+          ),
+        ],
+        servesAcp: false,
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, const PluginSetupReady());
+    });
+
+    test("uses an explicit --hermes-bin override for every probe", () async {
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.20.0\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 2,
+            stdoutBytes: utf8.encode("Model: gpt-5.4\nProvider: openai\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+        servesAcp: false,
       );
 
       final result = await const HermesPluginDescriptor().inspectSetup(
@@ -225,95 +386,39 @@ void main() {
     });
 
     test("start spawns exactly one `hermes acp` process and connects", () async {
-      const descriptor = HermesPluginDescriptor(
-        buildPlugin: _buildTestPlugin,
+      const descriptor = HermesPluginDescriptor();
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: const [],
+        servesAcp: true,
       );
-      spawnedAcpProcesses.clear();
-      final handledFrameIds = <Object?>{};
-      var responding = true;
-
-      final responsePump = () async {
-        while (responding) {
-          for (final process in spawnedAcpProcesses) {
-            for (final frame in process.written) {
-              final id = frame["id"];
-              if (id == null || !handledFrameIds.add(id)) continue;
-              if (frame["method"] == "initialize") {
-                process.emit({
-                  "jsonrpc": "2.0",
-                  "id": id,
-                  "result": const {
-                    "protocolVersion": 1,
-                    "agentCapabilities": <String, dynamic>{},
-                    "authMethods": <Object?>[],
-                  },
-                });
-              }
-            }
-          }
-          await Future<void>.delayed(Duration.zero);
-        }
-      }();
 
       final plugin = await descriptor.start(
         _StartPluginHost(
-          processes: _ProbeProcessService(
-            spawnError: StateError("injected plugin must own the test process"),
-          ),
+          processes: processes,
+          config: config,
+          provisionedRuntimePath: "/resolved/hermes",
         ),
       );
-      responding = false;
-      await responsePump;
 
-      expect(
-        spawnedAcpProcesses,
-        hasLength(1),
-        reason: "descriptor startup must only initialize the live ACP process",
-      );
+      expect(processes.spawnedExecutables, ["/resolved/hermes"]);
+      expect(processes.spawnedArguments, [
+        const ["acp"],
+      ]);
 
       await plugin.shutdown(budget: null);
-      for (final process in spawnedAcpProcesses) {
-        await process.close();
-      }
+      expect(processes.gracefulSignals, [1]);
     });
   });
 }
 
-/// Injected test seam: builds a [HermesPlugin] backed by a fake process and
-/// records every spawned fake for the response pump.
-HermesPlugin _buildTestPlugin({
-  required String binaryPath,
-  required String launchDirectory,
-  required AcpProcessFactory processFactory,
-}) {
-  return HermesPlugin(
-    binaryPath: binaryPath,
-    launchDirectory: launchDirectory,
-    processFactory: (_) async {
-      final process = FakeAcpProcess();
-      spawnedAcpProcesses.add(process);
-      return process;
-    },
-  );
-}
-
-// Keep the injected factory's captured processes reachable without plumbing
-// through the typedef (the test seam closure above shares this list).
-final List<FakeAcpProcess> spawnedAcpProcesses = <FakeAcpProcess>[];
-
-class _StartPluginHost({@override required final HostProcessService processes}) implements PluginHost {
-  @override
-  PluginConfig get config => const PluginConfig(
-    values: {
-      HermesPluginDescriptor.binOption: HermesBinary.defaultBinary,
-    },
-  );
-
+class _StartPluginHost({
+  @override required final HostProcessService processes,
+  @override required final PluginConfig config,
+  @override required final String? provisionedRuntimePath,
+}) implements PluginHost {
   @override
   Map<String, String> get environment => const {"HOME": "/tmp"};
-
-  @override
-  String? get provisionedRuntimePath => null;
 
   @override
   ServerClock get clock => const ServerClock();
@@ -328,12 +433,15 @@ class _StartPluginHost({@override required final HostProcessService processes}) 
 /// A [HostProcessService] that either throws on [spawn] (to simulate ENOENT)
 /// or returns canned [_ProbeProcess]es in order. Records the spawn arguments.
 class _ProbeProcessService({
-  final Object? spawnError,
-  final List<_ProbeProcess>? processSequence,
+  required final Object? spawnError,
+  required final List<_ProbeProcess> processSequence,
+  required final bool servesAcp,
 }) implements HostProcessService {
   int _nextProcess = 0;
+  _AcpProcess? _acpProcess;
   final List<String> spawnedExecutables = <String>[];
   final List<List<String>> spawnedArguments = <List<String>>[];
+  final List<int> gracefulSignals = <int>[];
 
   @override
   Future<SpawnedProcess> spawn({
@@ -349,22 +457,46 @@ class _ProbeProcessService({
     if (error != null) {
       throw error;
     }
-    return processSequence![_nextProcess++];
+    if (servesAcp) {
+      final process = _AcpProcess();
+      _acpProcess = process;
+      return process;
+    }
+    return processSequence[_nextProcess++];
   }
 
   @override
   Future<ProcessIdentity?> inspect({required int pid}) async => null;
 
   @override
-  Future<SignalResult> signalGraceful({required int pid}) async => _signal(pid);
+  Future<SignalResult> signalGraceful({required int pid}) async {
+    gracefulSignals.add(pid);
+    _acpProcess?.exit(-15);
+    return _signal(
+      pid: pid,
+      requestedSignal: ShutdownSignal.graceful,
+      deliveredSignal: ProcessSignal.sigterm,
+    );
+  }
 
   @override
-  Future<SignalResult> signalForce({required int pid}) async => _signal(pid);
+  Future<SignalResult> signalForce({required int pid}) async {
+    _acpProcess?.exit(-9);
+    return _signal(
+      pid: pid,
+      requestedSignal: ShutdownSignal.force,
+      deliveredSignal: ProcessSignal.sigkill,
+    );
+  }
 
-  SignalResult _signal(int pid) => SignalResult(
+  SignalResult _signal({
+    required int pid,
+    required ShutdownSignal requestedSignal,
+    required ProcessSignal deliveredSignal,
+  }) => SignalResult(
     pid: pid,
-    requestedSignal: ShutdownSignal.force,
-    deliveredSignal: ProcessSignal.sigkill,
+    requestedSignal: requestedSignal,
+    deliveredSignal: deliveredSignal,
     wasRequested: true,
     attemptedAt: DateTime.utc(2026, 6, 1),
   );
@@ -375,7 +507,7 @@ class _ProbeProcessService({
 class _ProbeProcess({
   @override required final int pid,
   required final List<int> _stdoutBytes,
-  final List<int> _stderrBytes = const <int>[],
+  required final List<int> _stderrBytes,
   required final Future<int> _exitCode,
 }) implements SpawnedProcess {
   @override
@@ -392,4 +524,73 @@ class _ProbeProcess({
 
   @override
   ProcessIdentity get identity => throw UnimplementedError();
+}
+
+class _AcpProcess() implements SpawnedProcess {
+  this {
+    stdin = IOSink(_InputSink(onLine: _handleLine));
+  }
+
+  final StreamController<List<int>> _stdout = StreamController<List<int>>();
+  final Completer<int> _exit = Completer<int>();
+
+  @override
+  late final IOSink stdin;
+
+  void _handleLine(String line) {
+    final frame = jsonDecode(line) as Map<String, dynamic>;
+    if (frame["method"] != AcpMethods.initialize) return;
+    _stdout.add(
+      utf8.encode(
+        "${jsonEncode({
+          "jsonrpc": "2.0",
+          "id": frame["id"],
+          "result": {
+            "protocolVersion": 1,
+            "agentCapabilities": <String, dynamic>{},
+            "authMethods": <Object?>[],
+          },
+        })}\n",
+      ),
+    );
+  }
+
+  void exit(int code) {
+    if (!_exit.isCompleted) _exit.complete(code);
+    if (!_stdout.isClosed) unawaited(_stdout.close());
+  }
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  ProcessIdentity get identity => throw UnimplementedError();
+
+  @override
+  int get pid => 1;
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stdout => _stdout.stream;
+}
+
+class _InputSink({required final void Function(String line) onLine}) implements StreamConsumer<List<int>> {
+  final StringBuffer _buffer = StringBuffer();
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) async {
+    await for (final bytes in stream) {
+      _buffer.write(utf8.decode(bytes));
+      final lines = _buffer.toString().split("\n");
+      _buffer
+        ..clear()
+        ..write(lines.removeLast());
+      lines.where((line) => line.isNotEmpty).forEach(onLine);
+    }
+  }
+
+  @override
+  Future<void> close() async {}
 }

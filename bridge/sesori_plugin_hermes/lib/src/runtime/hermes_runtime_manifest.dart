@@ -15,12 +15,15 @@ abstract final class HermesRuntimeManifest() {
   /// machinery relies on.
   static final SemanticVersion minAcpVersion = SemanticVersion.parse(value: "0.20.0");
 
-  /// Parses the bare version `hermes acp --version` prints (`0.20.0`),
-  /// tolerating an optional leading `v` defensively. Returns null when the
-  /// output is not a recognizable semver.
+  /// Extracts the first whitespace-separated semantic version token from
+  /// `hermes acp --version` output, tolerating an optional `v` prefix.
   static SemanticVersion? tryParseVersion({required String value}) {
-    final trimmed = value.trim();
-    final withoutPrefix = trimmed.startsWith("v") ? trimmed.substring(1) : trimmed;
-    return SemanticVersion.tryParse(value: withoutPrefix);
+    for (final rawToken in value.split(RegExp(r"\s+"))) {
+      final token = rawToken.trim();
+      final candidate = (token.startsWith("v") || token.startsWith("V")) ? token.substring(1) : token;
+      final version = SemanticVersion.tryParse(value: candidate);
+      if (version != null) return version;
+    }
+    return null;
   }
 }
