@@ -37,8 +37,7 @@ void main() {
       for (
         var attempt = 0;
         attempt < 50 &&
-            (events.whereType<BridgeSseQuestionAsked>().isEmpty ||
-                events.whereType<BridgeSseTuiToastShow>().isEmpty);
+            (events.whereType<BridgeSseQuestionAsked>().isEmpty || events.whereType<BridgeSseTuiToastShow>().isEmpty);
         attempt++
       ) {
         await pump();
@@ -272,7 +271,8 @@ final class _Harness() {
     final environment = {"PI_CODING_AGENT_SESSION_DIR": sessions.path};
     plugin = PiPlugin(
       binaryPath: "pi",
-      environment: environment,
+      storageEnvironment: environment,
+      processEnvironment: const {},
       processFactory: ({required spec}) async {
         final process = FakePiProcess();
         processes.add((spec: spec, process: process));

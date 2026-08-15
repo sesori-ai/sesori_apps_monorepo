@@ -5,7 +5,7 @@
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 15 merged
 - **Series state:** Step 16/21 in review as PR #925
-- **Current step:** 16/21, Pi plugin API in review
+- **Current step:** 17/21, Pi managed runtime in progress locally
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -23,7 +23,7 @@
 - **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
 - **Step 15 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/920
 - **Step 16 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/925
-- **Next action:** monitor Step 16 and begin Step 17 locally
+- **Next action:** monitor Step 16 and complete Step 17 architecture review locally
 
 ## Locked Decisions
 
@@ -66,7 +66,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Merged as PR #914 |
 | [x] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Merged as PR #920 |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | In review as PR #925 |
-| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
+| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Implemented and under local review; waits for Step 16 merge |
 | [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
 | [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 | Not started |
 | [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Not started |
@@ -519,6 +519,32 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   non-generated overage is recorded because exact cleanup required the approved
   cross-layer persisted-directory contract and migration rather than retaining
   project-local files after restart.
+
+### Step 17/21
+
+- Added the semantic `PiRuntimeManifest` with a `0.84.1` PATH floor, exact
+  `0.84.2` managed pin, all six official package-directory archives, and
+  published SHA-256 digests.
+- Added read-only PATH/managed resolution, setup inspection, explicit binary
+  precedence, install capability and package installation, host-backed process
+  spawning, lazy lifecycle status, work-state forwarding, active interruption,
+  and ordered abort-safe shutdown. Pi remains unregistered until Step 18.
+- Pi process launches inherit the bridge process environment, add only
+  `PI_SKIP_VERSION_CHECK=1`, and retain `--approve` for every session and
+  no-session RPC launch. Storage receives the full host environment separately
+  so home and custom Pi roots remain discoverable without explicitly overriding
+  `HOME` in child processes.
+- Official `v0.84.2` macOS arm64 verification matched SHA-256
+  `c996e888b7f7dce44bcf24f69176ac646c44139d3916bd49a6b28e5a8c5e3a65`,
+  preserved the complete package tree, reported `0.84.2`, and returned a
+  successful correlated no-session RPC `get_state` response.
+- Pi tests pass (242 tests) with fatal analysis. Shared runtime tests pass (132
+  tests) with fatal analysis; package-directory placement, checksum failure,
+  abort, cleanup, and superseded-version behavior remain covered there. Diff
+  checks pass. Architecture implementation review is pending.
+- No user-visible, database, persisted-data, analytics, registered-plugin, or
+  client/bridge wire impact. The backend-runtime update skill and runtime
+  installation regression matrix now include Pi.
 
 ## Findings And Plan Deltas
 

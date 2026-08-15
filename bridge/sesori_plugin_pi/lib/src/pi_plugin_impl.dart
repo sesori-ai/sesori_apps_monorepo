@@ -37,7 +37,8 @@ final class PiPlugin._({
 
   factory({
     required String binaryPath,
-    required Map<String, String> environment,
+    required Map<String, String> storageEnvironment,
+    required Map<String, String> processEnvironment,
     required PiProcessFactory processFactory,
     required CommandExecutor commandExecutor,
     required ServerClock clock,
@@ -50,7 +51,7 @@ final class PiPlugin._({
     required Duration editorTimeout,
     required int maxCatalogModels,
   }) {
-    final storage = PiSessionStorageApi(environment: environment);
+    final storage = PiSessionStorageApi(environment: storageEnvironment);
     final catalogRepository = PiSessionCatalogRepository(storageApi: storage);
     final identities = PiMessageIdentityTracker(pluginId: pluginId);
     final history = PiHistoryMapper(pluginId: pluginId);
@@ -58,7 +59,7 @@ final class PiPlugin._({
       storageApi: storage,
       historyStorageApi: PiSessionHistoryStorageApi(storageApi: storage),
       binaryPath: binaryPath,
-      environment: environment,
+      environment: processEnvironment,
       processFactory: processFactory,
       historyMapper: history,
       identityTracker: identities,
@@ -86,7 +87,7 @@ final class PiPlugin._({
     final catalogService = PiCatalogService(
       repository: PiBackendCatalogRepository(
         binaryPath: binaryPath,
-        environment: environment,
+        environment: processEnvironment,
         processFactory: processFactory,
         commandExecutor: commandExecutor,
         healthTimeout: healthTimeout,
@@ -117,6 +118,10 @@ final class PiPlugin._({
 
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
+
+  Stream<PluginWorkState> get workState => _sessionService.workState;
+
+  PluginWorkState get currentWorkState => _sessionService.currentWorkState;
 
   @override
   String get launchDirectory => _launchDirectory;
@@ -341,6 +346,9 @@ final class PiPlugin._({
 
   @override
   Future<void> abortSession({required String sessionId}) => _sessionService.abort(sessionId: sessionId);
+
+  Future<Set<String>> interruptActiveWork({required Duration budget}) =>
+      _sessionService.interruptActiveWork(budget: budget);
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async =>

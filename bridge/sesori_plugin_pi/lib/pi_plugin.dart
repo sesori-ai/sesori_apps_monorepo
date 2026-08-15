@@ -21,5 +21,7 @@ export "src/models/pi_thinking_level.dart";
 export "src/pi_plugin_impl.dart";
 export "src/repositories/pi_backend_catalog_repository.dart";
 export "src/repositories/pi_session_catalog_repository.dart";
+export "src/runtime/pi_plugin_descriptor.dart";
+export "src/runtime/pi_runtime_manifest.dart";
 export "src/services/pi_catalog_service.dart";
 export "src/trackers/pi_catalog_tracker.dart";

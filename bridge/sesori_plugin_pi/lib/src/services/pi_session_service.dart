@@ -496,6 +496,23 @@ final class PiSessionService({
     _scheduleIdleReap(sessionId: sessionId, state: state);
   }
 
+  Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    return () async {
+      final activeSessionIds = <String>{
+        for (final entry in _sessions.entries)
+          if (entry.value.active != null || entry.value.queue.isNotEmpty) entry.key,
+      };
+      if (activeSessionIds.isEmpty) return const <String>{};
+      await Future.wait([
+        for (final sessionId in activeSessionIds) abort(sessionId: sessionId),
+      ]);
+      if (currentWorkState != PluginWorkState.idle) {
+        await workState.firstWhere((state) => state == PluginWorkState.idle);
+      }
+      return Set<String>.unmodifiable(activeSessionIds);
+    }().timeout(budget);
+  }
+
   Future<void> forgetSession({required String sessionId}) async {
     final state = _sessions.remove(sessionId);
     if (state != null) {
