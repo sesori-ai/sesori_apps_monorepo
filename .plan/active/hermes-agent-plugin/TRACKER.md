@@ -3,52 +3,66 @@
 ## Current State
 
 - **Plan slug:** `hermes-agent-plugin`
-- **Implementation base:** current `origin/main` (shallow clone; unshallowed before push)
-- **Series state:** Steps 1–6 implemented locally, verified (unit + live E2E), PRs pending
-- **Current step:** 1/9, plan PR to open
-- **Plan PR:** (pending)
-- **Next action:** open the Step 1 plan PR, then the implementation PRs in order
+- **Owner review:** in progress since 2026-08-15
+- **Current open PR:** Step 6/9, #921
+- **Local successor:** Step 7/9 corrective integration branch
+- **Next action:** finish Step 7 corrections and verification; publish only after #921 merges
+- **Retirement:** blocked on the Step 8 matrix in `PLAN.md`
 
-## Locked Decisions
+## Delivery
 
-`PLAN.md` is canonical. Execution must not reopen these without the user:
+| Done | Step | PR | State |
+|---|---|---|---|
+| [x] | 1/9 | #895 | Merged; original contributor plan, now corrected by owner review. |
+| [x] | 2/9 | #915 | Merged package scaffold. |
+| [x] | 3/9 | #916 | Merged ACP plugin core. |
+| [x] | 4/9 | #917 | Merged descriptor/setup implementation. |
+| [x] | 5/9 | #919 | Merged registration and CI coverage. |
+| [ ] | 6/9 | #921 | Open; branding implementation and supplied artwork corrections. |
+| [ ] | 7/9 | pending | Local corrective plan/runtime/ACP pass. |
+| [ ] | 8/9 | pending | Regression documentation and real Hermes matrix. |
+| [ ] | 9/9 | pending | Retirement only after required evidence passes. |
 
-- Hermes support is an **ACP v1 stdio plugin** (`hermes acp`), reusing `sesori_plugin_acp` — not a state.db/transcript direct integration.
-- **No managed runtime**: resolve `hermes` on PATH; `ensureRuntime` probes only, never downloads.
-- pluginId is the plain string `hermes` (pi/omp precedent).
-- **Client branding is IN scope** (user-directed 2026-08-13): `Harness` enum += `hermes`, brand SVGs, `PregoBrandLogo` cases — step 6/9.
-- Backend-side session deletion is out of scope (no ACP delete surface); bridge rows are authoritative.
-- Min supported ACP adapter version: **0.20.0** (the version verified on 2026-08-13).
+## Owner Decisions
 
-## External Dependencies
+- Hermes uses ACP v1 over stdio and no Sesori-managed runtime.
+- Hermes support targets persisted ACP-source sessions, not ordinary CLI/TUI/gateway sessions.
+- `0.20.0` is the conservative minimum tested Hermes Agent release; it is not called an adapter version.
+- Version 1 uses Hermes's configured model/provider and does not expose model or mode selectors.
+- Setup remains out of band through Hermes CLI. The bridge never runs terminal setup as authentication.
+- Custom Hermes branding is explicitly approved (2026-08-15) as a narrow presentation exception.
+- Local deletion uses Sesori purge plus plugin-scoped tombstone; no private Hermes database mutation is added.
 
-- `sesori_plugin_acp` base: `AcpPlugin`, `AcpBridgePlugin`, `AcpLaunchSpec`, `AcpProcessFactory`, `AcpApprovalRegistry`, `AcpEventMapper`, `AcpSessionOptionsService` — no base changes expected for Steps 2–5; any base gap found during implementation goes through a prerequisite PR first.
-- Hermes side: `hermes acp` requires a configured provider/model (out-of-band `hermes setup` / `hermes model`); plugin detects, never configures.
-- Repo clone is shallow (depth 1): unshallow before pushing to avoid upload issues.
+## Audit Findings
 
-## Delivery Steps
+| Finding | Status |
+|---|---|
+| Plan/tracker state and locked decisions were stale and unapproved | Corrected in local Step 7. |
+| Version probe was mislabeled as an ACP adapter version | Code/tests/docs correction in local Step 7. |
+| Terminal-only `hermes-setup` could be selected by the headless bridge | Code/test correction in local Step 7. |
+| Explicit binary was not revalidated before start | Code/test correction in local Step 7. |
+| Nonzero `hermes status` output could still report setup ready | Code/test correction in local Step 7. |
+| Registry test allowed undeclared extra plugins | Exact-set test correction in local Step 7. |
+| Null ACP load/resume results were accepted as resident sessions | ACP base retry correction and regression test in local Step 7. |
+| Plan falsely claimed no model/config operations | Scope corrected: configured defaults only in v1. |
+| Plan overclaimed all Hermes sessions and automatic enumeration | Scope corrected: ACP sessions through explicit import. |
+| History verification bypassed bridge-authoritative cached reads | Matrix corrected. |
+| Deletion did not state upstream Hermes data retention | Limitation and tombstone behavior recorded. |
+| Branding crosses the generic plugin-id presentation preference | Explicitly approved owner exception; unknown-id fallback retained. |
+| Artwork tests selected filenames but did not validate composition | Asset composition test added to #921. |
 
-| Done | Step | Exact PR title | Target | State |
-|---|---|---|---:|---|
-| [x] | 1/9 | `🌱 [hermes-plugin] docs: plan Hermes Agent harness support [step 1/9]` | ~1,200-1,500 | Ready for PR |
-| [x] | 2/9 | `🌱 [hermes-plugin] feat(hermes): scaffold the ACP plugin package [step 2/9]` | 300-600 | Ready for PR (analyze+tests green) |
-| [x] | 3/9 | `⚙️ [hermes-plugin] feat(hermes): add the ACP plugin core [step 3/9]` | 700-1,100 | Ready for PR (tests green) |
-| [x] | 4/9 | `⚙️ [hermes-plugin] feat(hermes): add descriptor, runtime probe, and setup [step 4/9]` | 800-1,200 | Ready for PR (tests green) |
-| [x] | 5/9 | `⚙️ [hermes-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | 100-300 | Ready for PR (full suite green) |
-| [x] | 6/9 | `⚙️ [hermes-plugin] feat(client): brand the Hermes harness [step 6/9]` | 200-400 | Ready for PR (flutter tests green) |
-| [ ] | 7/9 | `⚙️ [hermes-plugin] docs: document Hermes harness behavior [step 7/9]` | 200-500 | Not started |
-| [x] | 8/9 | `🚧 [hermes-plugin] test(hermes): live-verify Hermes over ACP [step 8/9]` | 400-800 | Done locally (live E2E PASS 2026-08-13); PR pending |
-| [ ] | 9/9 | `🌱 [hermes-plugin] docs: retire the plan [step 9/9]` | 100-300 | Not started |
+## Step 7 Verification
 
-## Verification Checklist (step 8/9 live gate)
+- [x] `dart analyze --fatal-infos` in `bridge/sesori_plugin_acp`
+- [x] `dart test` in `bridge/sesori_plugin_acp` (241 tests passed)
+- [x] `dart analyze --fatal-infos` in `bridge/sesori_plugin_hermes`
+- [x] `dart test` in `bridge/sesori_plugin_hermes` (24 tests passed)
+- [x] Registry test in `bridge/app` (2 tests passed)
+- [x] Architecture implementation review approved with no findings
 
-- [ ] `GET /plugin` reports Hermes setup ready, display name `Hermes Agent`, prompt attachments true
-- [ ] Missing runtime: `--hermes-bin /definitely/missing/hermes` → runtime missing + action hint; other harnesses stay ready
-- [ ] New session: prompt streams and completes; session row appears
-- [ ] Tool lifecycle: tool cards progress Running → Done (Hermes tool calls)
-- [ ] Permission: a permission-requiring prompt renders a card; Once/Reject behaves
-- [ ] History: restart bridge, reopen session → full history replays via `session/load`
-- [ ] External session: a Hermes session started outside Sesori appears after enumeration
-- [ ] Abort: stopping a long turn returns idle; pending permission clears
-- [ ] Idle reap: after idle, respawn + resume works transparently
-- [ ] Harness policy: disable/enable from Settings behaves
+## Step 8 Evidence
+
+Every row in `PLAN.md` must record Pass/Fail/Blocked, exact versions and
+platforms, privacy-safe observations, and cleanup. Previous contributor claims
+of a completed live run are not accepted as evidence because the checklist was
+unchecked and no durable result was recorded.

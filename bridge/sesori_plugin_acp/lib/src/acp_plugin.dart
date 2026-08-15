@@ -177,6 +177,13 @@ abstract class AcpPlugin({
   /// uses the first advertised method.
   String? get authMethodId;
 
+  /// Chooses an advertised authentication method for this agent.
+  ///
+  /// Agents that advertise interactive terminal setup can exclude it because
+  /// the headless bridge cannot complete that flow.
+  String? selectAuthMethod(AcpInitializeResult init) =>
+      authMethodId ?? (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);
+
   /// Non-standard capability hints sent under `clientCapabilities._meta`
   /// (e.g. Cursor's `parameterizedModelPicker`).
   Map<String, dynamic>? get initializeCapabilityMeta;
@@ -373,22 +380,27 @@ abstract class AcpPlugin({
       );
     }
     if (init.requiresAuth) {
-      final methodId = authMethodId ?? (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);
-      if (methodId != null) {
-        try {
-          await client.request(
-            method: AcpMethods.authenticate,
-            params: {"methodId": methodId},
-          );
-        } on AcpRpcException catch (error) {
-          if (error.method != "<response>") rethrow;
-          throw PluginAuthenticationRequiredException(
-            AcpMethods.authenticate,
-            actionHint: "Authenticate the configured agent locally, then retry.",
-            message: "$id authentication failed",
-            cause: error,
-          );
-        }
+      final methodId = selectAuthMethod(init);
+      if (methodId == null) {
+        throw PluginAuthenticationRequiredException(
+          AcpMethods.authenticate,
+          actionHint: "Authenticate the configured agent locally, then retry.",
+          message: "$id requires an authentication method the bridge cannot complete",
+        );
+      }
+      try {
+        await client.request(
+          method: AcpMethods.authenticate,
+          params: {"methodId": methodId},
+        );
+      } on AcpRpcException catch (error) {
+        if (error.method != "<response>") rethrow;
+        throw PluginAuthenticationRequiredException(
+          AcpMethods.authenticate,
+          actionHint: "Authenticate the configured agent locally, then retry.",
+          message: "$id authentication failed",
+          cause: error,
+        );
       }
     }
     return init;
@@ -958,8 +970,10 @@ abstract class AcpPlugin({
       );
       // A resume load: capture the catalog + this session's own model, but do
       // not let it redefine the new-session default.
-      final result = AcpNewSessionResult.fromJson(
-        raw is Map ? raw.cast<String, dynamic>() : const {},
+      final result = _parseSessionActivationResult(
+        raw: raw,
+        sessionId: sessionId,
+        operation: AcpMethods.sessionLoad,
       );
       captureSessionConfig(result, sessionId: sessionId);
       // Keep suppressing until the (post-response) replay stream goes quiet.
@@ -986,6 +1000,17 @@ abstract class AcpPlugin({
     }
   }
 
+  AcpNewSessionResult _parseSessionActivationResult({
+    required Object? raw,
+    required String sessionId,
+    required String operation,
+  }) {
+    if (raw is! Map) {
+      throw StateError("$id $operation returned no session for $sessionId");
+    }
+    return AcpNewSessionResult.fromJson(raw.cast<String, dynamic>());
+  }
+
   /// Re-activates [sessionId] via `session/resume` for an agent that
   /// advertises `sessionCapabilities.resume` but not `loadSession`. Without
   /// this, the session would be marked resident with no RPC at all and the
@@ -1007,8 +1032,10 @@ abstract class AcpPlugin({
       // The resume result carries the modes/configOptions catalog (and this
       // session's current selection) — capture it, but never as the
       // new-session default.
-      final result = AcpNewSessionResult.fromJson(
-        raw is Map ? raw.cast<String, dynamic>() : const {},
+      final result = _parseSessionActivationResult(
+        raw: raw,
+        sessionId: sessionId,
+        operation: AcpMethods.sessionResume,
       );
       captureSessionConfig(result, sessionId: sessionId);
       _residentSessions.add(sessionId);
@@ -1485,8 +1512,10 @@ abstract class AcpPlugin({
       // The load result also carries the model/mode catalog (and the loaded
       // session's current model) — capture it so the picker is populated and
       // replayed messages are stamped with the session's real model.
-      final result = AcpNewSessionResult.fromJson(
-        raw is Map ? raw.cast<String, dynamic>() : const {},
+      final result = _parseSessionActivationResult(
+        raw: raw,
+        sessionId: sessionId,
+        operation: AcpMethods.sessionLoad,
       );
       captureSessionConfig(result, sessionId: sessionId);
       // The ACP spec replays the whole thread via `session/update` BEFORE the

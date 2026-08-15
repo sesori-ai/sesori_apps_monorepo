@@ -4,28 +4,10 @@ import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:hermes_plugin/hermes_plugin.dart";
-import "package:hermes_plugin/src/runtime/hermes_runtime_manifest.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("HermesRuntimeManifest", () {
-    test("pins the minimum ACP adapter version the bridge supports", () {
-      expect(HermesRuntimeManifest.minAcpVersion.toString(), "0.20.0");
-    });
-
-    test("parses the bare adapter version `hermes acp --version` prints", () {
-      expect(HermesRuntimeManifest.tryParseVersion(value: "0.20.0\n")?.toString(), "0.20.0");
-      expect(HermesRuntimeManifest.tryParseVersion(value: "v0.20.0")?.toString(), "0.20.0");
-      expect(HermesRuntimeManifest.tryParseVersion(value: "hermes-acp V0.20.0\n")?.toString(), "0.20.0");
-    });
-
-    test("rejects unparseable output", () {
-      expect(HermesRuntimeManifest.tryParseVersion(value: "hermes-acp 0.20"), isNull);
-      expect(HermesRuntimeManifest.tryParseVersion(value: ""), isNull);
-    });
-  });
-
   group("HermesPluginDescriptor", () {
     const stateDirectory = "/state";
     const config = PluginConfig(
@@ -81,16 +63,26 @@ void main() {
           )
           .toList();
 
-      expect(events, const [ProvisionReady(binaryPath: HermesBinary.defaultBinary)]);
+      expect(
+        events,
+        [isA<ProvisionReady>().having((event) => event.binaryPath, "binaryPath", HermesBinary.defaultBinary)],
+      );
       expect(processes.spawnedArguments, [
         const ["acp", "--version"],
       ]);
     });
 
-    test("ensureRuntime skips an explicit binary override", () async {
+    test("ensureRuntime revalidates an explicit binary override", () async {
       final processes = _ProbeProcessService(
-        spawnError: StateError("an explicit binary must not be probed"),
-        processSequence: const [],
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.20.1\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+        ],
         servesAcp: false,
       );
 
@@ -106,8 +98,14 @@ void main() {
           )
           .toList();
 
-      expect(events, isEmpty);
-      expect(processes.spawnedExecutables, isEmpty);
+      expect(
+        events,
+        [isA<ProvisionReady>().having((event) => event.binaryPath, "binaryPath", "/custom/hermes")],
+      );
+      expect(processes.spawnedExecutables, ["/custom/hermes"]);
+      expect(processes.spawnedArguments, [
+        const ["acp", "--version"],
+      ]);
     });
 
     test("reports ready after version and status probes", () async {
@@ -267,7 +265,7 @@ void main() {
       expect(result, isA<PluginSetupUnknown>());
     });
 
-    test("reports unavailable when the ACP adapter is below the floor", () async {
+    test("reports unavailable when Hermes Agent is below the supported floor", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -375,7 +373,7 @@ void main() {
       expect(result, isA<PluginSetupAuthenticationRequired>());
     });
 
-    test("uses configured status output when the status command exits nonzero", () async {
+    test("reports unknown when the status command exits nonzero", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -402,7 +400,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, isA<PluginSetupUnknown>());
     });
 
     test("uses an explicit --hermes-bin override for every probe", () async {
@@ -590,6 +588,14 @@ class _AcpProcess() implements SpawnedProcess {
 
   void _handleLine(String line) {
     final frame = jsonDecode(line) as Map<String, dynamic>;
+    if (frame["method"] == AcpMethods.authenticate) {
+      _stdout.add(
+        utf8.encode(
+          "${jsonEncode({"jsonrpc": "2.0", "id": frame["id"], "result": <String, dynamic>{}})}\n",
+        ),
+      );
+      return;
+    }
     if (frame["method"] != AcpMethods.initialize) return;
     _stdout.add(
       utf8.encode(
@@ -599,7 +605,17 @@ class _AcpProcess() implements SpawnedProcess {
           "result": {
             "protocolVersion": 1,
             "agentCapabilities": <String, dynamic>{},
-            "authMethods": <Object?>[],
+            "authMethods": [
+              {
+                "id": "opencode-go",
+                "name": "Configured provider",
+              },
+              {
+                "type": "terminal",
+                "id": "hermes-setup",
+                "name": "Configure Hermes provider",
+              },
+            ],
           },
         })}\n",
       ),

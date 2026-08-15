@@ -30,9 +30,20 @@ abstract final class AcpMethods() {
 }
 
 /// An auth method advertised by the agent in the `initialize` result.
-class const AcpAuthMethod({required final String id, final String? name, final String? description}) {
+enum AcpAuthMethodType() {
+  terminal,
+  other;
+}
+
+class const AcpAuthMethod({
+  required final String id,
+  required final AcpAuthMethodType type,
+  final String? name,
+  final String? description,
+}) {
   factory fromJson(Map<String, dynamic> json) => AcpAuthMethod(
     id: (json["id"] ?? "") as String,
+    type: json["type"] == "terminal" ? AcpAuthMethodType.terminal : AcpAuthMethodType.other,
     name: json["name"] as String?,
     description: json["description"] as String?,
   );

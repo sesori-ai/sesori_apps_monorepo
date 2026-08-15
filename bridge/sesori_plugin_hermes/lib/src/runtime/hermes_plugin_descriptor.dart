@@ -2,13 +2,13 @@ import "dart:async";
 import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandResult, HostProcessCommandExecutor;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show CommandResult, HostProcessCommandExecutor, SemanticVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../hermes_binary.dart";
 import "../hermes_identity.dart";
 import "../hermes_plugin_impl.dart";
-import "hermes_runtime_manifest.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
@@ -24,6 +24,7 @@ const int _setupProbeOutputLimit = 64 * 1024;
 class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
+  static final SemanticVersion _minHermesVersion = SemanticVersion.parse(value: "0.20.0");
 
   /// CLI option naming the Hermes CLI binary (path or PATH name). Declared
   /// as the bare local name; the bridge's [PluginCliOptionsMapper] namespaces
@@ -71,11 +72,11 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 
   @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
-    if (_explicitBin(config: host.config) != null) return;
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
 
+    final executablePath = _explicitBin(config: host.config) ?? HermesBinary.defaultBinary;
     final state = await _probeHermesRuntime(
-      executablePath: HermesBinary.defaultBinary,
+      executablePath: executablePath,
       processes: host.processes,
       environment: host.environment,
     );
@@ -83,14 +84,14 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 
     switch (state) {
       case _HermesRuntimeProbeState.ready:
-        yield const ProvisionReady(binaryPath: HermesBinary.defaultBinary);
+        yield ProvisionReady(binaryPath: executablePath);
       case _HermesRuntimeProbeState.missing || _HermesRuntimeProbeState.preAcpInstall:
         yield const ProvisionFailed(
           message: "Hermes ACP is unavailable. Install or update Hermes, then retry.",
         );
       case _HermesRuntimeProbeState.outdated:
         yield const ProvisionFailed(
-          message: "The Hermes ACP adapter is too old. Update Hermes, then retry.",
+          message: "The Hermes Agent version is too old. Update Hermes, then retry.",
         );
       case _HermesRuntimeProbeState.unknown || _HermesRuntimeProbeState.unrecognized:
         yield const ProvisionFailed(
@@ -128,7 +129,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         );
       case _HermesRuntimeProbeState.outdated:
         return const PluginSetupUnavailable(
-          actionHint: "The installed Hermes ACP adapter is too old. Update Hermes and restart the bridge.",
+          actionHint: "The installed Hermes Agent version is too old. Update Hermes and restart the bridge.",
         );
       case _HermesRuntimeProbeState.unrecognized:
       case _HermesRuntimeProbeState.unknown:
@@ -172,13 +173,13 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     }
     if (statusResult.exitCode != 0) {
       Log.w("[hermes] status probe '$executablePath status' exited with code ${statusResult.exitCode}");
+      return const PluginSetupUnknown(
+        actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
+      );
     }
     final statusOutput = _normalizedStatusOutput(result: statusResult);
     final model = _statusValue(output: statusOutput, field: "model");
     final provider = _statusValue(output: statusOutput, field: "provider");
-    // Output is authoritative even on a nonzero exit: Hermes can report valid
-    // configuration alongside another status failure, while the ACP handshake
-    // remains the actual authentication gate at connect time.
     if (_isConfiguredStatusValue(value: model) && _isConfiguredStatusValue(value: provider)) {
       return const PluginSetupReady();
     }
@@ -246,13 +247,13 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       return _HermesRuntimeProbeState.unknown;
     }
 
-    final parsed = HermesRuntimeManifest.tryParseVersion(value: result.stdout.trim());
+    final parsed = _tryParseVersion(value: result.stdout.trim());
     if (parsed == null) {
       return _HermesRuntimeProbeState.unrecognized;
     }
-    if (parsed.compareTo(HermesRuntimeManifest.minAcpVersion) < 0) {
+    if (parsed.compareTo(_minHermesVersion) < 0) {
       Log.w(
-        "[hermes] Hermes ACP adapter ${parsed.toString()} is below the supported minimum ${HermesRuntimeManifest.minAcpVersion.toString()}",
+        "[hermes] Hermes Agent ${parsed.toString()} is below the supported minimum ${_minHermesVersion.toString()}",
       );
       return _HermesRuntimeProbeState.outdated;
     }
@@ -265,6 +266,16 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       stderr.contains("is not recognized as an internal or external command") ||
       stderr.contains("is not recognized as the name of a cmdlet") ||
       stderr.contains("command not found");
+
+  SemanticVersion? _tryParseVersion({required String value}) {
+    for (final rawToken in value.split(RegExp(r"\s+"))) {
+      final token = rawToken.trim();
+      final candidate = (token.startsWith("v") || token.startsWith("V")) ? token.substring(1) : token;
+      final version = SemanticVersion.tryParse(value: candidate);
+      if (version != null) return version;
+    }
+    return null;
+  }
 
   String _normalizedStatusOutput({required CommandResult result}) {
     final combined = "${result.stdout}\n${result.stderr}";
