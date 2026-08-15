@@ -75,9 +75,11 @@ class SesoriServerApi({
     required SesoriServerRequestAbortSignal abortSignal,
   }) async {
     final uri = Uri.parse("$_authBackendUrl/sessions/generate-metadata");
-    _throwIfAborted(uri: uri, abortSignal: abortSignal);
-    final token = await _tokenRefresher.getAccessToken();
-    _throwIfAborted(uri: uri, abortSignal: abortSignal);
+    final token = await _getAccessTokenUnlessAborted(
+      uri: uri,
+      abortSignal: abortSignal,
+      forceRefresh: false,
+    );
     final response = await _postSessionMetadata(
       uri: uri,
       request: request,
@@ -86,9 +88,11 @@ class SesoriServerApi({
     );
     if (response.statusCode != 401) return _parseSessionMetadata(uri: uri, response: response);
 
-    _throwIfAborted(uri: uri, abortSignal: abortSignal);
-    final refreshedToken = await _tokenRefresher.getAccessToken(forceRefresh: true);
-    _throwIfAborted(uri: uri, abortSignal: abortSignal);
+    final refreshedToken = await _getAccessTokenUnlessAborted(
+      uri: uri,
+      abortSignal: abortSignal,
+      forceRefresh: true,
+    );
     final retryResponse = await _postSessionMetadata(
       uri: uri,
       request: request,
@@ -96,6 +100,42 @@ class SesoriServerApi({
       abortSignal: abortSignal,
     );
     return _parseSessionMetadata(uri: uri, response: retryResponse);
+  }
+
+  Future<String> _getAccessTokenUnlessAborted({
+    required Uri uri,
+    required SesoriServerRequestAbortSignal abortSignal,
+    required bool forceRefresh,
+  }) async {
+    _throwIfAborted(uri: uri, abortSignal: abortSignal);
+    final result = Completer<String>();
+    final abortSubscription = abortSignal.aborts.listen((_) {
+      if (!result.isCompleted) result.completeError(http.RequestAbortedException(uri));
+    });
+    if (abortSignal.isAborted && !result.isCompleted) {
+      result.completeError(http.RequestAbortedException(uri));
+    }
+
+    try {
+      if (!result.isCompleted) {
+        final token = _tokenRefresher.getAccessToken(forceRefresh: forceRefresh);
+        // Token refresh has no cancellation contract. Keep observing its late
+        // completion so shutdown can stop waiting without leaking an error.
+        unawaited(
+          token.then<void>(
+            (value) {
+              if (!result.isCompleted) result.complete(value);
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              if (!result.isCompleted) result.completeError(error, stackTrace);
+            },
+          ),
+        );
+      }
+      return await result.future;
+    } finally {
+      await abortSubscription.cancel();
+    }
   }
 
   Future<http.Response> _postSessionMetadata({
