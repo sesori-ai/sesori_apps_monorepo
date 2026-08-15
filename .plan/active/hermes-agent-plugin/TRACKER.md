@@ -18,8 +18,8 @@
 | [x] | 3/9 | #916 | Merged ACP plugin core. |
 | [x] | 4/9 | #917 | Merged descriptor/setup implementation. |
 | [x] | 5/9 | #919 | Merged registration and CI coverage. |
-| [ ] | 6/9 | #921 | Open; branding implementation and supplied artwork corrections. |
-| [ ] | 7/9 | pending | Local corrective plan/runtime/ACP pass. |
+| [x] | 6/9 | #921 | Merged branding implementation and supplied artwork corrections. |
+| [ ] | 7/9 | #927 | Open corrective plan/runtime/ACP pass. |
 | [ ] | 8/9 | pending | Regression documentation and real Hermes matrix. |
 | [ ] | 9/9 | pending | Retirement only after required evidence passes. |
 
